@@ -1,5 +1,6 @@
 ---
-description: Use when starting work on a project that has no AGENTS.md file. Triggered automatically by plan-feature when AGENTS.md is missing, or manually with "/pjc:bootstrap-agents-md". Detects project stack from marker files (.csproj, package.json, pyproject.toml, etc.) and generates a minimal AGENTS.md from one of 7 templates. If stack is unknown, asks the user.
+name: bootstrap-agents-md
+description: This skill should be used when starting work on a project that has no AGENTS.md file. Triggered automatically by plan-feature when AGENTS.md is missing, or manually with "/pjc:bootstrap-agents-md". Detects project stack from marker files (.csproj, package.json, pyproject.toml, etc.) and generates a minimal AGENTS.md from one of 7 templates. If stack is unknown, asks the user.
 argument-hint: "(자동)"
 ---
 
@@ -39,13 +40,16 @@ test -f AGENTS.md || test -f CLAUDE.md
 
 | 표식 파일 (glob) | Stack | Template 파일 |
 |---|---|---|
-| `*.csproj`, `*.sln`, `*.fsproj` | .NET | `dotnet.md` |
+| `*.csproj`에 `<UseWinUI>true</UseWinUI>` 포함 | WinUI 3 | `winui3.md` |
+| `*.csproj`, `*.sln`, `*.fsproj` (WinUI 아님) | .NET | `dotnet.md` |
 | `build.gradle*`, `settings.gradle*`, `AndroidManifest.xml` | Android | `android.md` |
 | `package.json` + `tsconfig.json` 또는 `*.ts` 파일 | Node/TypeScript | `node-typescript.md` |
 | `package.json` (TS 없음) | Node/JavaScript | `node-typescript.md` (라벨만 변경) |
 | `pyproject.toml`, `setup.py`, `requirements*.txt` | Python | `python.md` |
 | `go.mod` | Go | `go.md` |
 | `Cargo.toml` | Rust | `rust.md` |
+
+**WinUI 3 우선 판정**: `.csproj`가 있으면 그 안에 `<UseWinUI>true</UseWinUI>`가 있는지 먼저 확인한다. 있으면 `dotnet.md`가 아니라 `winui3.md`를 사용한다 (프로젝트 생성/실행 실패 방지 규칙이 포함됨).
 
 검색 명령 (PowerShell):
 ```powershell
@@ -64,6 +68,16 @@ foreach ($stack in $markers.Keys) {
             $detected += $stack
             break
         }
+    }
+}
+
+# WinUI 3 우선 판정: csproj에 UseWinUI=true 있으면 dotnet → winui3로 승격
+if ($detected -contains 'dotnet') {
+    $isWinUI = Get-ChildItem -Filter '*.csproj' -Recurse -ErrorAction SilentlyContinue |
+               Select-String -Pattern '<UseWinUI>\s*true\s*</UseWinUI>' -SimpleMatch:$false -Quiet
+    if ($isWinUI) {
+        $detected = $detected | Where-Object { $_ -ne 'dotnet' }
+        $detected += 'winui3'
     }
 }
 ```
@@ -186,7 +200,8 @@ D 선택 시 `multi-stack-example.md`를 참고하여 3개 섹션 모두 작성.
 ## Template 위치
 
 plugin 패키지의 `AGENTS.md.templates/` 디렉터리:
-- `dotnet.md`
+- `winui3.md` — WinUI 3 (Windows App SDK). 프로젝트 생성/실행 실패 방지 규칙 + Gallery 디자인 + 다국어 규칙 포함
+- `dotnet.md` — 일반 .NET (WinUI 아님)
 - `android.md`
 - `node-typescript.md`
 - `python.md`

@@ -312,19 +312,22 @@ C:\Tools\claude-harness-pjc\install.ps1
 
 ## AGENTS.md 작성
 
-`plan-feature`가 가장 먼저 읽는 프로젝트 가이드 파일입니다. 7개 template이 `AGENTS.md.templates/`에 제공됩니다:
+`plan-feature`가 가장 먼저 읽는 프로젝트 가이드 파일입니다. 8개 template이 `AGENTS.md.templates/`에 제공됩니다:
 
 ```
 AGENTS.md.templates/
-├── dotnet.md              (.NET / C# / F#)
-├── android.md             (Android / Kotlin / Java)
-├── node-typescript.md     (Node.js / TypeScript / JavaScript)
-├── python.md              (Python)
-├── go.md                  (Go)
-├── rust.md                (Rust)
-├── generic.md             (그 외 모든 stack)
+├── winui3.md             (WinUI 3 / Windows App SDK — 생성·실행 실패 방지 + 디자인 + 다국어)
+├── dotnet.md             (일반 .NET / C# / F#)
+├── android.md            (Android / Kotlin / Java)
+├── node-typescript.md    (Node.js / TypeScript / JavaScript)
+├── python.md             (Python)
+├── go.md                 (Go)
+├── rust.md               (Rust)
+├── generic.md            (그 외 모든 stack)
 └── multi-stack-example.md (모노레포 참고용)
 ```
+
+WinUI 3 프로젝트는 `bootstrap-agents-md`가 `<UseWinUI>true</UseWinUI>`를 감지해 `dotnet.md` 대신 `winui3.md`를 사용합니다 — `.slnx` 플랫폼 매핑, 패키지/비패키지 설정, `MainWindow` 진입점 등 "실행할 수 없습니다" 오류를 예방하는 규칙이 포함됩니다.
 
 대부분의 경우 `bootstrap-agents-md` skill이 자동 처리합니다. 수동 작성 시 다음 4개는 필수:
 

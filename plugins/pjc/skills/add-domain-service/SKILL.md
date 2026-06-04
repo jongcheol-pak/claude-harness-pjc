@@ -1,5 +1,6 @@
 ---
-description: Use when the user requests adding business logic, a domain service, an application service, or any logic that should live in the Domain or Application layer of a DDD project. Triggers on phrases like "서비스 추가", "도메인 로직", "비즈니스 로직", "use case 추가", "add service", "add use case". Generates Domain interface + implementation + DI registration + unit test scaffold.
+name: add-domain-service
+description: This skill should be used when the user requests adding business logic, a domain service, an application service, or any logic that should live in the Domain or Application layer of a DDD project. Triggers on phrases like "서비스 추가", "도메인 로직", "비즈니스 로직", "use case 추가", "add service", "add use case". Generates Domain interface + implementation + DI registration + unit test scaffold.
 argument-hint: "<서비스 이름 또는 목적>"
 ---
 

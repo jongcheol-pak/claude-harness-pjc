@@ -1,5 +1,6 @@
 ---
-description: Use when the user requests code change beyond trivial edits. Triggers on Korean dev phrases ("계획", "설계", "feature 추가", "기능 추가", "리팩토링", "구현", "수정", "변경", "문제 수정", "버그 수정", "여러 곳", "전체") and English equivalents ("plan", "design", "implement", "fix", "refactor"). Also triggers when the request lists multiple sub-tasks (bullets or numbered items) even without explicit keywords - a bullet list of bug fixes plus refactoring is a clear signal. Use plan-feature when the change spans multiple files, alters logic flow, changes a signature, adds a new function/class/method, refactors a resource layer (i18n/i10n, theming, DI), or has unclear cross-file impact. DO NOT trigger for clearly trivial edits - single-line UI text/label changes, icon/image swaps, color/size token tweaks of 1-2 values, README/문서 typo fixes, comment additions, single-line config edits (.editorconfig, .gitignore), single-line resource edits (strings.xml, Resources.resx for a single key), or any small code edit of 3 lines or fewer that does NOT add a new function/class/method or change a signature. For those Claude edits directly via Write/Edit and the PostToolUse impact-warn hook validates cross-file impact. For ambiguous cases (single bug fix of unclear scope, refactoring whose extent is unknown) do NOT silently force a plan - ask the user "A) edit directly / B) make a plan" and follow their pick. See SKILL body for full Trivial Bypass criteria, decision rounds with categorized question grouping, and recommended-answer format with ★.
+name: plan-feature
+description: This skill should be used when the user requests code change beyond trivial edits. Triggers on Korean dev phrases ("계획", "설계", "feature 추가", "기능 추가", "리팩토링", "구현", "수정", "변경", "문제 수정", "버그 수정", "여러 곳", "전체") and English equivalents ("plan", "design", "implement", "fix", "refactor"). Also triggers when the request lists multiple sub-tasks (bullets or numbered items) even without explicit keywords - a bullet list of bug fixes plus refactoring is a clear signal. Use plan-feature when the change spans multiple files, alters logic flow, changes a signature, adds a new function/class/method, refactors a resource layer (i18n/i10n, theming, DI), or has unclear cross-file impact. DO NOT trigger for clearly trivial edits - single-line UI text/label changes, icon/image swaps, color/size token tweaks of 1-2 values, README/문서 typo fixes, comment additions, single-line config edits (.editorconfig, .gitignore), single-line resource edits (strings.xml, Resources.resx for a single key), or any small code edit of 3 lines or fewer that does NOT add a new function/class/method or change a signature. For those Claude edits directly via Write/Edit and the PostToolUse impact-warn hook validates cross-file impact. For ambiguous cases (single bug fix of unclear scope, refactoring whose extent is unknown) do NOT silently force a plan - ask the user "A) edit directly / B) make a plan" and follow their pick. See SKILL body for full Trivial Bypass criteria, decision rounds with categorized question grouping, and recommended-answer format with ★.
 argument-hint: "<요청 설명>"
 ---
 
@@ -201,7 +202,7 @@ B) 2개 plan으로 분할 (T1-<M>, T<M+1>-<N>)
 - Type C: 5-6개
 - Type D: 11개 전체
 
-**상세 카테고리 11개 + 기록 형식은 `reference/decision-points.md` 참조.**
+**상세 카테고리 11개 + 기록 형식은 `references/decision-points.md` 참조.**
 
 ### Step 6.5. Edge Case & Halt Forecast (자율 실행 대비)
 
@@ -213,7 +214,7 @@ B) 2개 plan으로 분할 (T1-<M>, T<M+1>-<N>)
 - Type C: 5-6개
 - Type D: 10개 전체
 
-**상세 카테고리 + Halt Forecast + 자율 실행 준비도 자문은 `reference/edge-cases.md` 참조.**
+**상세 카테고리 + Halt Forecast + 자율 실행 준비도 자문은 `references/edge-cases.md` 참조.**
 
 ### Step 7. plan.md 작성
 
@@ -224,7 +225,7 @@ B) 2개 plan으로 분할 (T1-<M>, T<M+1>-<N>)
 | 작은 프로젝트, 단일 작업 | `<repo>/plan.md` (덮어쓰기) |
 | 큰 프로젝트, 여러 plan 누적 | `<repo>/docs/plans/<YYYY-MM-DD>-<slug>.md` |
 
-**상세 plan.md 템플릿은 `reference/plan-template.md` 참조.**
+**상세 plan.md 템플릿은 `references/plan-template.md` 참조.**
 
 ### Step 8. 리뷰 게이트 (subagent 필수)
 
@@ -299,6 +300,6 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 
 ## 참조 문서
 
-- Decision Points 상세: `reference/decision-points.md`
-- Edge Cases + Halt Forecast: `reference/edge-cases.md`
-- plan.md 템플릿: `reference/plan-template.md`
+- Decision Points 상세: `references/decision-points.md`
+- Edge Cases + Halt Forecast: `references/edge-cases.md`
+- plan.md 템플릿: `references/plan-template.md`

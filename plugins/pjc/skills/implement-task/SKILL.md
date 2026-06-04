@@ -1,5 +1,6 @@
 ---
-description: Use when executing tasks from an approved plan.md. Triggers on phrases like "구현", "implement", "T<N> 진행", "이대로 진행", "go", "진행해". Runs FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking the user between tasks. Only stops when all tasks complete or a Halt Condition fires. Never asks "Should I proceed to the next task?" between tasks. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
+name: implement-task
+description: This skill should be used when executing tasks from an approved plan.md. Triggers on phrases like "구현", "implement", "T<N> 진행", "이대로 진행", "go", "진행해". Runs FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking the user between tasks. Only stops when all tasks complete or a Halt Condition fires. Never asks "Should I proceed to the next task?" between tasks. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
 argument-hint: "<task ID 또는 'all'>"
 ---
 
@@ -64,7 +65,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
     - force push, history rewrite, rm -rf, DB drop, 권한·보안 변경
     - 새 라이브러리·외부 서비스 도입
 
-> **상세 안티패턴 표는 `reference/antipatterns.md` 참조.**
+> **상세 안티패턴 표는 `references/antipatterns.md` 참조.**
 
 ## 자율 루프 (Autonomous Loop)
 
@@ -273,7 +274,7 @@ Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 
 ### 재시도 한계
 - 같은 task에서 동일 BLOCKER 3회 연속 → Halt.
-- 상세 복구 절차는 `reference/recovery.md` 참조.
+- 상세 복구 절차는 `references/recovery.md` 참조.
 
 ## Phase D — Done
 
@@ -338,7 +339,7 @@ Elapsed: <Hm Ms> | Turn ~<N>
 
 ## Phase F — Finalize (모든 task 완료 후)
 
-전체 plan 통합 검증. **상세 절차는 `reference/phase-f-detail.md` 참조.**
+전체 plan 통합 검증. **상세 절차는 `references/phase-f-detail.md` 참조.**
 
 ### Phase F 조건부 진입
 
@@ -381,7 +382,7 @@ F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대�
 
 ## 참조 문서
 
-- 중단 조건 + 보고 양식: `reference/halt-conditions.md`
-- 복구 메커니즘: `reference/recovery.md`
-- 안티패턴 표: `reference/antipatterns.md`
-- Phase F 상세: `reference/phase-f-detail.md`
+- 중단 조건 + 보고 양식: `references/halt-conditions.md`
+- 복구 메커니즘: `references/recovery.md`
+- 안티패턴 표: `references/antipatterns.md`
+- Phase F 상세: `references/phase-f-detail.md`

@@ -3,7 +3,7 @@ name: plan-completion-reviewer
 description: Use ONLY at the very end of implement-task, after ALL tasks are completed, to verify the implementation as a whole satisfies the entire plan.md. NOT used for individual task review (use spec-compliance-reviewer for that). Triggers from implement-task Phase F-7. Performs adversarial whole-plan verification.
 model: opus
 effort: high
-maxTurns: 20
+maxTurns: 40
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit
 ---
@@ -192,3 +192,23 @@ implement-task의 V-8 Self-Honesty와 별개로, 외부 시각에서 점검:
 - **간결.** 종철님 선호: 표·코드·단계별. 길게 늘어놓지 않는다.
 - **재호출 인지.** 같은 plan이 재호출되면 이전 BLOCKER가 해결되었는지 확인.
   동일 BLOCKER 3회 연속 → "RECURRING — escalate to user" 표시.
+
+## 응답 작성 강제 (중요)
+
+Phase F 전체 검토는 가장 큰 작업이다. turn 한계 도달로 빈 응답이 되면 plan 완료를 검증할 수 없다. 다음을 지킨다:
+
+1. plan.md acceptance 전체 + 누적 git log를 먼저 빠르게 본다 (5-8 tool calls).
+2. plan의 각 task acceptance가 실제 commit/diff에 반영됐는지 빠르게 매핑한다.
+3. 의심 항목만 추가 grep으로 확인 (각 항목 1-2회 제한).
+4. **그 이후에는 더 조사하지 말고 즉시 "출력 형식" 섹션의 markdown을 작성하여 반환한다.**
+5. 깊은 회귀 점검이 필요하면 BLOCKER로 보고하고 메인 에이전트에게 위임 (자가 다 파지 말 것).
+
+**불완전한 검토라도 형식에 맞는 응답이 빈 응답보다 낫다.** turn이 부족하면 발견한 만큼만 보고하고 "incomplete — turn budget exhausted" 노트를 Assessment에 적는다.
+
+## 도구 호출 효율 (turn 절약)
+
+- **탐색적·확인용 도구 호출 금지.** 모든 도구 호출은 명확한 목적이 있어야 한다.
+- 도구가 작동하는지 시험하지 말 것 (모든 도구는 정상 작동한다고 가정).
+- 같은 파일을 여러 번 read하지 말고, 필요한 범위를 한 번에 본다.
+- grep은 결과를 활용할 목적이 분명할 때만. "혹시" 하는 grep은 turn 낭비다.
+- 이 원칙은 공식 /code-review가 검증한 turn 절약 패턴이다.

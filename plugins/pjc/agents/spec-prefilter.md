@@ -3,7 +3,7 @@ name: spec-prefilter
 description: Use ONLY for Type B (Trivial Code) tasks in implement-task Phase V-5 as a fast cheap pre-filter before the full spec-compliance-reviewer. NOT used for Type C/D tasks. Quickly checks for obvious defects with minimal token cost. If passes - skip full review. If finds anything suspicious - escalate to spec-compliance-reviewer.
 model: haiku
 effort: low
-maxTurns: 5
+maxTurns: 8
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit
 ---

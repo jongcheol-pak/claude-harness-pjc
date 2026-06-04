@@ -1,5 +1,6 @@
 ---
-description: Use when the user requests adding a new screen, dialog, page, window, or any UI component that needs a ViewModel in a WinUI 3 / WPF / MAUI project using CommunityToolkit.Mvvm. Triggers on phrases like "ViewModel 추가", "새 화면", "다이얼로그 추가", "페이지 만들기", "add screen/page/dialog/window". Generates ViewModel + View skeleton with proper MVVM bindings and DI registration.
+name: add-viewmodel
+description: This skill should be used when the user requests adding a new screen, dialog, page, window, or any UI component that needs a ViewModel in a WinUI 3 / WPF / MAUI project using CommunityToolkit.Mvvm. Triggers on phrases like "ViewModel 추가", "새 화면", "다이얼로그 추가", "페이지 만들기", "add screen/page/dialog/window". Generates ViewModel + View skeleton with proper MVVM bindings and DI registration.
 argument-hint: "<화면 이름 또는 목적>"
 ---
 
@@ -41,6 +42,7 @@ View + ViewModel 스켈레톤을 추가한다.
 3. **DI 등록 누락 금지.** ViewModel은 반드시 `ConfigureServices`에 등록.
 4. **한글 주석.** XML 문서 주석 포함 모두 한글.
 5. **UTF-8 (BOM 없음).**
+6. **WinUI 3 프로젝트면 디자인·다국어 규칙 준수.** AGENTS.md(winui3 템플릿)의 디자인 규칙(토큰화, 폰트 미지정, 시스템 키 우선)과 다국어 규칙(문구는 `x:Uid`+`.resw`, 하드코딩 금지)을 따른다. 상세는 `docs/WINUI3-DESIGN-GUIDE.md`가 있으면 참조. View의 문구를 코드/XAML에 직접 쓰지 않는다.
 
 ## 실행 단계
 

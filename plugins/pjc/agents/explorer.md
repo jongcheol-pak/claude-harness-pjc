@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit
 model: haiku
 effort: low
-maxTurns: 10
+maxTurns: 20
 ---
 
 당신은 코드베이스 탐색 전문가입니다.
