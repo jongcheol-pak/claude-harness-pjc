@@ -26,14 +26,24 @@ Claude Code가 "계획 없이 추측하고 a 파일 수정하면서 b·c 파일�
 
 ### 2. 설치
 
+**방법 A — GitHub (권장)**: Claude Code가 repo를 clone해 캐시하므로 로컬 폴더가 불필요합니다.
+
 ```powershell
-# 1) zip 다운로드 후 압축 해제
+# 저장소를 GitHub에 올린 뒤 (private 가능):
+claude plugin marketplace add <user>/claude-harness-pjc
+claude plugin install pjc@pjc-harness
+claude plugin enable pjc@pjc-harness
+
+# Claude Code 시작
+claude
+```
+
+**방법 B — 로컬 (개발/수정용)**: 압축 해제 폴더가 plugin 본체로 참조됩니다.
+⚠️ 설치 후 폴더를 삭제·이동·이름변경하면 plugin이 깨집니다 — 고정 경로에 두세요.
+
+```powershell
 Expand-Archive claude-harness-pjc.zip -DestinationPath C:\Tools\
-
-# 2) 설치 (기존 설치가 있으면 자동 재설치)
 C:\Tools\claude-harness-pjc\install.ps1
-
-# 3) Claude Code 시작
 claude
 ```
 
@@ -257,6 +267,38 @@ Tasks:
 Elapsed: 8s
 ```
 
+### 예시 2.5 — 대규모 작업 (PRD + 요구 재검증 루프)
+
+```
+> 메모장 앱 만들어줘
+
+[plan-feature — 대규모 판정 → PRD 단계]
+요구사항 질문 (카테고리 묶음 + 추천 ★) → docs/prd.md 작성
+  FR-1 (Must): 메모 생성/편집/삭제
+  FR-2 (Must): 자동 저장
+  FR-3 (Should): 검색
+  NFR-1 (Must): 한/영 다국어
+→ PRD 사용자 승인 (이후 고정)
+
+[plan.md 작성 — 각 task가 PRD ID 역참조]
+  T1 (FR-1): 메모 도메인 모델 + Repository
+  T2 (FR-1): 목록/편집 화면 ...
+
+> [승인]
+
+[implement-task 자율 루프] T1 → ... → Tn
+
+[Phase F] plan.md 대비 검증 — 통과
+
+[Phase G] PRD 대비 재검증 (PRD 있을 때만)
+  FR-1 ✅  FR-2 ✅  FR-3 ❌ (plan에서 누락!)  NFR-1 ✅
+  → Must/Should 갭 발견 → T(n+1) 자동 추가 → 자율 재진입
+  → 재대조 → 전체 충족 → 완료
+  (재루프 최대 2회 — 이후 잔여 갭은 사용자 보고)
+
+🎉 PRD Must 100% 충족 + 충족표 보고
+```
+
 ### 예시 3 — Hook 일시 끄기
 
 ```
@@ -287,27 +329,55 @@ require-plan-for-write 활성화됨.
 
 ## 설치 관리
 
+### GitHub 모드 (권장)
+
+```powershell
+# 최초 설치
+claude plugin marketplace add <user>/claude-harness-pjc
+claude plugin install pjc@pjc-harness
+claude plugin enable pjc@pjc-harness
+
+# 업데이트 (개발 PC에서 git push 후, 사용 PC에서)
+claude plugin marketplace update pjc-harness
+claude plugin update pjc@pjc-harness
+
+# 제거
+claude plugin uninstall pjc
+claude plugin marketplace remove pjc-harness
+```
+
+GitHub 모드에서 install.ps1을 쓰고 싶으면 (재설치 정리 + enable + 검증 안내 일괄):
+```powershell
+.\install.ps1 -GitHub <user>/claude-harness-pjc
+```
+
+### 로컬 모드 (개발용)
+
 ```powershell
 # 자동 재설치 (기본 동작)
 C:\Tools\claude-harness-pjc\install.ps1
 
-# 제거
+# 제거 / 프로젝트별 설치 / 검증
 C:\Tools\claude-harness-pjc\install.ps1 -Uninstall
-
-# 프로젝트별 설치 (현재 디렉터리만)
 C:\Tools\claude-harness-pjc\install.ps1 -Scope project
-
-# 검증
 C:\Tools\claude-harness-pjc\validate.ps1
 ```
 
-업데이트:
+로컬 업데이트 — **반드시 같은 경로에 내용만 교체** (경로가 바뀌면 참조가 깨짐):
 ```powershell
-# 새 zip 받기 → 압축 해제 → install.ps1만 다시 실행
-# (기존 설치 자동 감지 → 재설치)
-Move-Item C:\Tools\claude-harness-pjc C:\Tools\claude-harness-pjc.old -Force
+Remove-Item C:\Tools\claude-harness-pjc -Recurse -Force
 Expand-Archive claude-harness-pjc.zip -DestinationPath C:\Tools\
 C:\Tools\claude-harness-pjc\install.ps1
+```
+
+### 배포 워크플로 (GitHub 모드)
+
+```powershell
+# 개발 폴더에서 수정 후
+git add -A
+git commit -m "1.x.y: <변경 요약>"
+git push
+# 사용 측: claude plugin marketplace update pjc-harness && claude plugin update pjc@pjc-harness
 ```
 
 ## AGENTS.md 작성

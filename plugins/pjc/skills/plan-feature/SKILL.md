@@ -1,6 +1,6 @@
 ---
 name: plan-feature
-description: This skill should be used when the user requests code change beyond trivial edits. Triggers on Korean dev phrases ("계획", "설계", "feature 추가", "기능 추가", "리팩토링", "구현", "수정", "변경", "문제 수정", "버그 수정", "여러 곳", "전체") and English equivalents ("plan", "design", "implement", "fix", "refactor"). Also triggers when the request lists multiple sub-tasks (bullets or numbered items) even without explicit keywords - a bullet list of bug fixes plus refactoring is a clear signal. Use plan-feature when the change spans multiple files, alters logic flow, changes a signature, adds a new function/class/method, refactors a resource layer (i18n/i10n, theming, DI), or has unclear cross-file impact. DO NOT trigger for clearly trivial edits - single-line UI text/label changes, icon/image swaps, color/size token tweaks of 1-2 values, README/문서 typo fixes, comment additions, single-line config edits (.editorconfig, .gitignore), single-line resource edits (strings.xml, Resources.resx for a single key), or any small code edit of 3 lines or fewer that does NOT add a new function/class/method or change a signature. For those Claude edits directly via Write/Edit and the PostToolUse impact-warn hook validates cross-file impact. For ambiguous cases (single bug fix of unclear scope, refactoring whose extent is unknown) do NOT silently force a plan - ask the user "A) edit directly / B) make a plan" and follow their pick. See SKILL body for full Trivial Bypass criteria, decision rounds with categorized question grouping, and recommended-answer format with ★.
+description: This skill should be used when the user requests code change beyond trivial edits. Triggers on Korean dev phrases ("계획", "설계", "feature 추가", "기능 추가", "리팩토링", "구현", "수정", "변경", "문제 수정", "버그 수정", "여러 곳", "전체", "만들어줘", "앱 만들어", "도구 만들어") and English equivalents ("plan", "design", "implement", "fix", "refactor", "build an app", "create a tool"). Requests to build a whole new app or product trigger the large-scale path (PRD step) inside this skill. Also triggers when the request lists multiple sub-tasks (bullets or numbered items) even without explicit keywords - a bullet list of bug fixes plus refactoring is a clear signal. Use plan-feature when the change spans multiple files, alters logic flow, changes a signature, adds a new function/class/method, refactors a resource layer (i18n/i10n, theming, DI), or has unclear cross-file impact. DO NOT trigger for clearly trivial edits - single-line UI text/label changes, icon/image swaps, color/size token tweaks of 1-2 values, README/문서 typo fixes, comment additions, single-line config edits (.editorconfig, .gitignore), single-line resource edits (strings.xml, Resources.resx for a single key), or any small code edit of 3 lines or fewer that does NOT add a new function/class/method or change a signature. For those Claude edits directly via Write/Edit and the PostToolUse impact-warn hook validates cross-file impact. For ambiguous cases (single bug fix of unclear scope, refactoring whose extent is unknown) do NOT silently force a plan - ask the user "A) edit directly / B) make a plan" and follow their pick. See SKILL body for full Trivial Bypass criteria, decision rounds with categorized question grouping, and recommended-answer format with ★.
 argument-hint: "<요청 설명>"
 ---
 
@@ -109,6 +109,27 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 ## 실행 단계
 
+### Step 0.5. 대규모 작업 판정 — PRD 필요 여부
+
+다음 중 하나라도 해당하면 **대규모 작업**이다. plan.md 작성 전에 PRD를 먼저 만든다:
+
+- 앱/제품을 새로 만드는 요청 ("메모장 앱 만들어줘", "OO 도구 만들어줘")
+- 예상 task가 10개 이상인 대형 feature
+- 요구사항 자체가 미정의 상태 (사용자가 "필요한 기능을 검토해서" 같은 위임 표현 사용)
+
+**대규모가 아니면 이 단계를 건너뛰고 Step 1로** (일상 기능 추가·수정·버그는 plan.md만으로 충분).
+
+대규모 작업 PRD 절차:
+1. `references/prd-template.md` 템플릿으로 PRD 초안 작성 — 기능 요구(FR)·비기능 요구(NFR)·Out of Scope·성공 기준
+2. **질문 라운드 의무 (1회 이상).** 대규모 작업은 요구 위임 자체가 모호함을 의미한다 — "모호하지 않다"고 판단해 질문을 생략하는 것 금지. Step 9와 같은 형식(카테고리 묶음 + 추천 ★)으로:
+   - Claude가 자명하게 도출한 Must 후보 → 사용자 확인 요청
+   - 갈림길 요구 (저장 방식, 플랫폼, 검색·다국어 여부 등) → 선택지 + 추천 ★
+   - 우선순위(Must/Should/Could) 배정 → 사용자 확정
+   - 질문 없이 초안만으로 승인 요청하는 것은 추측 코드와 같은 위반이다.
+3. **PRD 사용자 승인 게이트** — 승인 후 PRD는 고정 (이후 임의 수정 금지, 변경은 사용자 합의 필수)
+4. plan.md의 각 task는 PRD 요구 ID를 역참조 (`T3 (FR-1, FR-2 충족)`) + **plan.md 상단에 `**PRD**: <경로>` 줄 의무 기록** (implement-task의 Phase G 진입 신호)
+5. PRD가 있으면 implement-task의 **Phase G (요구 재검증)** 가 활성화된다
+
 ### Step 1. 컨텍스트 수집
 - `AGENTS.md` (또는 `CLAUDE.md`) 읽기
   - **없으면**: `pjc:bootstrap-agents-md` skill 자동 호출 → 사용자 승인 후 plan-feature 계속
@@ -116,6 +137,8 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 - 관련 모듈/파일 식별
 - 기존 컨벤션, 테스트 위치, 빌드 명령 확인
 - **대규모 탐색이 필요하면** `explorer` subagent에 위임 (메인 컨텍스트 보호)
+  - **서로 독립적인 조사 질문이 여러 개면 explorer를 한 turn에 병렬 호출한다** (예: "DI 등록 위치" + "기존 테마 처리 방식" + "테스트 구조" → 3개 동시). read-only라 충돌이 없고 대기 시간만 줄어든다. Step 4(영향 범위 조사)에서도 동일 — 기능별 독립 조사는 병렬로.
+  - 단, 앞 결과가 다음 질문을 결정하는 **의존 조사는 순차로** (예: "DI 컨테이너 종류 확인" → 그 결과에 따라 "해당 컨테이너의 등록 패턴 조사").
 
 ### Step 2. 범위 명확화
 

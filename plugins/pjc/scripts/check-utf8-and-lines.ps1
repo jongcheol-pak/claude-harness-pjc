@@ -47,10 +47,21 @@ if ($extLower -ne '.ps1') {
 }
 
 # ---- 2. 라인 수 검사 ----
+# 자동 생성 파일은 수천 라인이 정상이므로 제외 (경고 노이즈 방지)
+$isGenerated = $file -match '\.(Designer|designer)\.cs$' -or
+               $file -match '\.g(\.i)?\.cs$' -or
+               $file -match '\.generated\.\w+$' -or
+               $file -match '\.(resx|resw)$' -or
+               $file -match '(^|[\\/])(obj|bin)[\\/]' -or
+               $file -match '\.min\.(js|css)$' -or
+               $file -match '(package-lock\.json|yarn\.lock|Cargo\.lock|go\.sum)$'
+
 try {
-    $lineCount = (Get-Content -LiteralPath $file -ErrorAction Stop | Measure-Object -Line).Lines
-    if ($lineCount -gt 1500) {
-        $warnings.Add("파일 라인 수 $lineCount (>1500). 기능 단위 분리 권장 - plan에 분리 task 등록.")
+    if (-not $isGenerated) {
+        $lineCount = (Get-Content -LiteralPath $file -ErrorAction Stop | Measure-Object -Line).Lines
+        if ($lineCount -gt 1500) {
+            $warnings.Add("파일 라인 수 $lineCount (>1500). 기능 단위 분리 권장 - plan에 분리 task 등록.")
+        }
     }
 } catch {
     # 바이너리 등 읽기 불가 파일은 무시

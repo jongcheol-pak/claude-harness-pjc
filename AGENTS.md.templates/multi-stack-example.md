@@ -133,6 +133,7 @@
 
 ```
 Plan Location: <plan.md | docs/plans/>
+PRD Location:  docs/prd.md (대규모 작업 시)
 ```
 
 | 값 | 동작 |

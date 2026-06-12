@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 편집기
+.vs/
+.vscode/
+*.swp
+
+# 로컬 산출물 (plugin 동작과 무관)
+*.zip
+*.log

@@ -27,6 +27,10 @@ plan.md는 **git에 commit되어 영구 보존**되며, PreCompact hook이 스�
 ```markdown
 # Plan: <기능명>
 
+<!-- 대규모 작업(PRD 있는 경우)은 반드시 아래 줄 포함 — implement-task가 이 줄로 Phase G 진입을 판단한다.
+     컨텍스트 압축·새 세션에서도 plan.md만 읽으면 PRD 존재를 알 수 있어야 한다. -->
+**PRD**: <docs/prd.md 경로 — PRD 없으면 이 줄 자체를 생략>
+
 ## Goal
 <한 문장 — 사용자 관점>
 

@@ -90,6 +90,7 @@
 ## Plan Location
 - 단일 plan: `plan.md`
 - 여러 plan 누적: `docs/plans/<YYYY-MM-DD>-<slug>.md`
+- PRD (대규모 작업 시): `docs/prd.md` 또는 `docs/prds/<YYYY-MM-DD>-<slug>.md`
 
 ## 추가 정보
 - 타깃 OS: Windows 11 21H2+ (`net10.0-windows10.0.22000.0`) 또는 프로젝트 지정값

@@ -2,20 +2,23 @@
 # pjc Claude Code Harness Plugin - 자동 설치 스크립트
 #
 # 사용법:
-#   .\install.ps1                   # 기본 (자동 감지 + 재설치)
-#   .\install.ps1 -Scope project    # 프로젝트별 설치 (.claude/settings.json)
-#   .\install.ps1 -Uninstall        # 제거만
-#   .\install.ps1 -KeepExisting     # 이미 설치되어 있으면 그대로 둠 (옛 동작)
+#   .\install.ps1                                    # 로컬 모드 (이 폴더를 marketplace로 등록 - 개발용)
+#   .\install.ps1 -GitHub <user>/<repo>              # GitHub 모드 (권장 - 원본 폴더 불필요)
+#   .\install.ps1 -Scope project                     # 프로젝트별 설치 (.claude/settings.json)
+#   .\install.ps1 -Uninstall                         # 제거만
+#   .\install.ps1 -KeepExisting                      # 이미 설치되어 있으면 그대로 둠
 #
-# 기본 동작 (1.11.1+):
-#   기존 설치를 자동 감지하여, 발견 시 uninstall → 캐시 정리 → install을 한 번에 수행.
-#   토글 상태(.disabled 디렉터리)는 보존.
+# 모드 차이:
+#   로컬 모드  - 이 폴더가 plugin 본체로 참조됨. 폴더를 삭제/이동하면 plugin이 깨짐.
+#   GitHub 모드 - Claude Code가 repo를 clone해 캐시. 로컬 폴더 불필요, push로 배포.
 #
 # Claude Code REPL이 실행 중이면 종료 후 다시 시작해야 변경이 반영됩니다.
 
 param(
     [ValidateSet('user', 'project')]
     [string]$Scope = 'user',
+
+    [string]$GitHub = '',
 
     [switch]$Uninstall,
 
@@ -57,16 +60,21 @@ try {
     Write-Warn "버전 확인 실패. v2.0 이상이 필요합니다."
 }
 
-# ---- 2. marketplace 경로 확인 ----
+# ---- 2. marketplace 경로 확인 (로컬 모드만) ----
 $marketplacePath = $PSScriptRoot
 $marketplaceManifest = Join-Path $marketplacePath ".claude-plugin\marketplace.json"
 
-if (-not (Test-Path -LiteralPath $marketplaceManifest)) {
-    Write-Err "marketplace.json을 찾을 수 없습니다: $marketplaceManifest"
-    Write-Info "이 스크립트는 압축 해제된 패키지 root에서 실행되어야 합니다."
-    exit 1
+if (-not $GitHub) {
+    if (-not (Test-Path -LiteralPath $marketplaceManifest)) {
+        Write-Err "marketplace.json을 찾을 수 없습니다: $marketplaceManifest"
+        Write-Info "이 스크립트는 압축 해제된 패키지 root에서 실행되어야 합니다."
+        Write-Info "또는 GitHub 모드 사용: .\install.ps1 -GitHub <user>/<repo>"
+        exit 1
+    }
+    Write-Ok "Marketplace 경로: $marketplacePath"
+} else {
+    Write-Ok "GitHub marketplace: $GitHub"
 }
-Write-Ok "Marketplace 경로: $marketplacePath"
 
 # ---- 3. 제거 모드 ----
 if ($Uninstall) {
@@ -163,8 +171,19 @@ if ($existingInstall) {
 # ---- 6. Marketplace 추가 ----
 Write-Section "Adding Marketplace"
 
+# GitHub 모드면 repo를, 아니면 이 폴더(로컬)를 marketplace 소스로 사용
+if ($GitHub) {
+    $marketplaceSource = $GitHub
+    Write-Info "GitHub 모드: $GitHub (clone 캐시 방식 - 로컬 폴더 불필요)"
+} else {
+    $marketplaceSource = $marketplacePath
+    Write-Info "로컬 모드: $marketplacePath"
+    Write-Warn "이 폴더가 plugin 본체로 참조됩니다. 삭제/이동하면 plugin이 깨집니다."
+    Write-Info "원본 의존을 없애려면: .\install.ps1 -GitHub <user>/<repo>"
+}
+
 try {
-    $addOutput = & claude plugin marketplace add $marketplacePath 2>&1 | Out-String
+    $addOutput = & claude plugin marketplace add $marketplaceSource 2>&1 | Out-String
     Write-Info $addOutput.Trim()
     Write-Ok "Marketplace 'pjc-harness' added"
 } catch {

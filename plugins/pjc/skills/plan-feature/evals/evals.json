@@ -39,6 +39,18 @@
       "rationale": "신규 클래스 + 바인딩, 다중 파일"
     },
     {
+      "id": 13,
+      "query": "메모장 앱 만들어줘",
+      "should_trigger": true,
+      "rationale": "앱 신규 개발 — Step 0.5 대규모 판정 → PRD 단계 진입까지 발동해야 함"
+    },
+    {
+      "id": 14,
+      "query": "필요한 기능들을 검토해서 할 일 관리 도구를 만들어줘",
+      "should_trigger": true,
+      "rationale": "요구 위임('필요한 기능 검토') + 앱 신규 — 대규모 판정 + PRD 작성 대상"
+    },
+    {
       "id": 7,
       "query": "확인 버튼 라벨 '확인'에서 'OK'로 바꿔줘",
       "should_trigger": false,

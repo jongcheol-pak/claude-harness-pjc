@@ -1,7 +1,7 @@
 ---
 name: implement-task
-description: This skill should be used when executing tasks from an approved plan.md. Triggers on phrases like "구현", "implement", "T<N> 진행", "이대로 진행", "go", "진행해". Runs FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking the user between tasks. Only stops when all tasks complete or a Halt Condition fires. Never asks "Should I proceed to the next task?" between tasks. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
-argument-hint: "<task ID 또는 'all'>"
+description: This skill should be used when executing tasks from an approved plan.md. Triggers on phrases like "구현", "implement", "T<N> 진행", "이대로 진행", "go", "진행해". Runs FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking the user between tasks. Resuming mid-plan ("T6부터 계속") means T6 through the LAST task plus Phase F/G — not just T6. Only stops when all tasks complete or a Halt Condition fires. Never asks "Should I proceed to the next task?" between tasks. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
+argument-hint: "<시작 task ID (거기부터 끝까지 자율 진행) | 생략 시 첫 미완료부터>"
 ---
 
 # Implement Task
@@ -99,15 +99,16 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
    - plan.md의 `## Progress Log`에 완료 task 요약 1-2줄 기록.
    - 이후 task는 전체 대화 history 대신 이 요약 + git log 참조.
 
-4. **컨텍스트 한계 근접 감지 시 중간 보고.**
-   - 응답이 비정상적으로 느려지거나 컨텍스트가 과밀하다고 판단되면
-   - 현재까지 진행을 plan.md에 기록 + commit 후 사용자에게 "중간 체크포인트" 보고 (Halt).
-   - 사용자가 새 세션에서 "T<N>부터 계속"으로 재개 가능.
+4. **컨텍스트 한계 근접 시 멈추지 않는다 — 압축을 통과해 계속 진행한다.**
+   - 컨텍스트가 과밀해지면 **현재 task를 Phase V/D까지 완료**하고 (task 중간에 끊지 않음 — 절반 수정 상태는 압축 후 복구가 불완전하다), plan.md에 상태를 완전 기록한다: Progress Log + Next Steps + 다음 task의 정확한 시작점.
+   - 그 후 **사용자 보고 없이 계속 진행** — Claude Code의 auto-compact가 자동 압축하며, PreCompact hook(backup-on-compact)이 plan.md 스냅샷을 백업한다.
+   - **압축 감지 시 (대화에 압축 요약이 보이면) 첫 행동은 plan.md + AGENTS.md 재읽기.** 압축 요약은 세부를 잃으므로, plan.md(진실의 원천)와 AGENTS.md(컨벤션)를 다시 읽어 컨텍스트를 복구한 뒤 다음 task를 재개한다. 요약의 기억만으로 작업을 이어가지 않는다.
+   - 사용자 호출(Halt)은 다른 Halt 조건(파괴적 작업, 동일 실패 반복 등)에 해당할 때만. 컨텍스트 한계 자체는 Halt 사유가 아니다.
 
 ### 진행 흐름
 
 ```
-loop over plan.md tasks (T1, T2, ..., Tn):
+loop over plan.md tasks (시작 task부터 Tn까지 — 첫 실행은 T1, 재개면 지정/첫 미완료 task):
   Phase P → 변경 전략 확정, caller 사전 추적
   Phase I → 최소 변경으로 구현
   Phase V → Type별 fast-path (V-1~V-8)
@@ -115,6 +116,7 @@ loop over plan.md tasks (T1, T2, ..., Tn):
 
 # 모든 task 완료 후
 Phase F → 전체 plan 통합 검증 (조건부 진입)
+Phase G → PRD 요구 재검증 (docs/prd.md 있을 때만 — 갭 발견 시 task 추가 후 자율 재진입, 최대 2회)
 → 최종 보고 (첫 사용자 개입 지점)
 ```
 
@@ -130,6 +132,8 @@ Phase F → 전체 plan 통합 검증 (조건부 진입)
 3. plan.md의 task 체크박스로 미완료 task 식별
 4. 지정된 task(또는 첫 미완료 task)부터 Phase P 시작
 5. 이전 task 상세는 Progress Log + git으로만 참조 (전체 history 불필요)
+
+**재개도 완전 자율 루프다.** "T6부터 계속"은 "T6 하나만"이 아니라 **"T6부터 마지막 task까지 + Phase F/G까지"를 의미한다.** 첫 세션의 T1 시작과 재개 세션의 T6 시작은 시작점만 다를 뿐 동일한 루프이며, 금지 표현 규칙("T7 진행할까요?" 금지)도 동일하게 적용된다. task 사이에 멈춰 사용자에게 묻는 것은 재개 세션에서도 위반이다. 단일 task만 실행하는 경우는 사용자가 "T6만" 처럼 명시적으로 한정했을 때뿐이다.
 
 ### P-1. plan.md 해당 task 정독
 - task의 Acceptance, Files, Edge Cases, Halt Forecast, Type 모두 확인.
@@ -315,9 +319,9 @@ Elapsed: <Hm Ms> | Turn ~<N>
 이후 task는 전체 대화 history 대신 이 Progress Log + git log를 참조한다.
 이렇게 하면 컨텍스트가 압축(auto-compact)되어도 plan.md에 진행 상황이 남아 복구가 쉽다.
 
-### Next Steps 갱신 (중간 체크포인트 + 최종 보고 시)
+### Next Steps 갱신 (압축 대비 체크포인트 + 최종 보고 시)
 
-장시간 작업 중간 체크포인트(Halt 또는 컨텍스트 한계), 그리고 Phase F 통과 최종 보고 시 plan.md의 `## Next Steps`에 다음을 기록:
+컨텍스트 과밀 시 압축 대비 체크포인트(절대 규칙 4), Halt 보고, 그리고 Phase F 통과 최종 보고 시 plan.md의 `## Next Steps`에 다음을 기록:
 
 ```markdown
 ## Next Steps
@@ -325,7 +329,7 @@ Elapsed: <Hm Ms> | Turn ~<N>
 - Suggested skills: <쉼표 구분> (예: pjc:implement-task, 공식 /code-review, 공식 /security-review)
 ```
 
-목적: 새 세션에서 종철님이 plan.md만 보고도 무엇을 호출할지 즉시 알 수 있게 함. handoff 패턴 차용.
+목적: ① 압축 직후의 Claude 자신이 plan.md만 읽고 정확히 재개할 수 있게 함 (압축 생존의 핵심), ② Halt·완료 시 종철님이 plan.md만 보고도 무엇을 호출할지 즉시 알 수 있게 함. handoff 패턴 차용.
 
 ### 🚫 금지 표현
 
@@ -351,10 +355,82 @@ Elapsed: <Hm Ms> | Turn ~<N>
 
 F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
 
-### 최종 보고 (Phase F 통과 후)
+## Phase G — 요구 재검증 (PRD 있을 때만)
+
+**진입 조건**: plan.md 상단의 `**PRD**: <경로>` 줄이 있으면 그 경로의 PRD로 진입. 줄이 없어도 `docs/prd.md` 또는 `docs/prds/`에 이 작업의 PRD가 존재하면 진입. 둘 다 없으면 이 Phase는 존재하지 않는다 (Phase F가 최종).
+
+Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 — **"plan.md가 PRD 요구를 빠뜨리지 않았는가"** 를 검증한다.
+
+### G-1. PRD 전수 대조
+
+PRD의 각 FR/NFR에 대해:
+1. 해당 요구를 구현한 task와 commit이 존재하는가? (plan.md task의 FR 역참조 + git log)
+2. **검증 방법을 기계 검증 가능 여부로 구분하여 처리한다:**
+   - **기계 검증 가능** (테스트·CLI 실행·파일 확인·grep): 실제 실행하고 출력을 근거로 기록.
+   - **기계 검증 불가** (GUI 조작, 시각 확인, 사용자 체감): **절대 "확인했다"고 적지 않는다.** 대신 ⏳ `HUMAN-VERIFY`로 표기하고, 가능한 간접 근거(관련 단위 테스트 통과, 바인딩 코드 존재 지목)만 기록한다. GUI 동작을 실행해 보지 않고 "표시 확인됨"이라 쓰는 것은 환각이다.
+3. 결과를 표로 기록:
 
 ```markdown
-## 🎉 모든 task 완료 + Phase F 통과
+| PRD ID | 우선순위 | 충족 | 근거 |
+|--------|---------|------|------|
+| FR-1 | Must | ✅ | T2 (commit abc123), MemoServiceTests 5/5 통과 |
+| FR-2 | Must | ⏳ HUMAN-VERIFY | 자동저장 단위테스트 통과, 단 실제 UI 체감은 사용자 확인 필요 |
+| FR-3 | Should | ❌ | 매칭 task 없음 — plan에서 누락 |
+```
+
+- `HUMAN-VERIFY` 항목은 미충족(❌)이 아니다 — 기계로 가능한 검증은 모두 통과했고 사람 확인만 남은 상태. 최종 보고의 "사용자 확인 필요" 목록으로 모아 제시한다.
+- `HUMAN-VERIFY`를 ✅로 둔갑시키는 것은 V-8 자기기만 패턴과 동일한 위반이다.
+
+### G-2. 갭 처리 — 자율 재루프
+
+미충족 항목 발견 시:
+
+| 우선순위 | 처리 |
+|---|---|
+| **Must 미충족** | plan.md에 새 task 추가 (`T<N+1> (FR-x 충족)`) → **Phase P부터 자율 재진입** (사용자 확인 불필요 — PRD가 이미 승인된 요구이므로) |
+| Should 미충족 | 사용자에게 보고: "지금 진행 A / follow-up B" 선택 |
+| Could 미충족 | follow-up 등록만, 재루프 없음 |
+
+새 task도 동일한 P→I→V→D 루프 + 해당 task 완료 후 G-1 재대조.
+
+### G-3. 종료 조건 (무한 루프 방지)
+
+- **Phase G 재루프는 최대 2회.** 2회 후에도 Must 미충족이 남으면 Halt — 아래 형식으로 보고하고 사용자 지시를 기다린다. **그냥 끝내거나 완료 선언하지 않는다.**
+- 같은 FR이 2회 연속 미충족이면 즉시 Halt (구현 접근 자체가 잘못됐을 가능성 — 재시도는 헛돎).
+- PRD 범위를 벗어나는 새 요구 발견은 추가하지 않는다 (Out of Scope 가드). follow-up으로만 기록.
+
+#### 한도 도달 Halt 보고 형식 (의무)
+
+```markdown
+## ⚠️ Phase G 재루프 한도 도달 (2회)
+
+**충족**: <FR-1 ✅, FR-2 ✅, ...>
+**미충족 (Must)**: <FR-x — 한 줄 설명>
+
+**시도 이력** (같은 실패 반복 방지용 — plan.md에도 기록)
+- 1차: <접근> → <실패 양상>
+- 2차: <다른 접근> → <실패 양상>
+
+**원인 분석**: <왜 안 됐는지 — 추정이면 추정이라고 명시>
+
+선택해 주세요:
+A) 다른 접근으로 1회 더 시도 (제안: <구체적 새 접근>)
+B) <FR-x>를 follow-up으로 미루고 현재 상태로 완료 처리
+C) <FR-x> 요구 자체를 조정 (예: <현실적 대안>)
+D) 직접 지침 제공
+```
+
+- 시도 이력은 plan.md의 Progress Log에도 기록한다 — 새 세션에서 같은 접근을 반복하지 않도록.
+- A 선택 시 사용자가 승인한 새 접근으로 1회만 추가 시도. 또 실패하면 재차 이 보고로 복귀 (자동 재시도 없음).
+
+### G-4. 최종 보고에 PRD 충족표 포함
+
+Phase G 통과 시 최종 보고에 G-1 표 전체 + Must 충족률 100% 명시.
+
+### 최종 보고 (Phase F 통과 후 — PRD 있으면 Phase G까지 통과 후)
+
+```markdown
+## 🎉 모든 task 완료 + Phase F 통과 (+ Phase G 통과, PRD 있을 때)
 
 **Plan**: <plan.md 경로>
 **Tasks**: <N>/<TOTAL> 완료
@@ -367,6 +443,11 @@ F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대�
 - F-2 전체 빌드: OK
 - F-2 전체 테스트: <X/Y passed>
 - F-7 plan-completion-reviewer: OK (또는 MINOR n개 follow-up 등록)
+
+**Phase G 결과 (PRD 있을 때만 — G-1 충족표 전체 포함)**
+- Must: <n>/<n> 충족 (기계 검증)
+- 재루프: <0-2>회
+- ⏳ 사용자 확인 필요 (HUMAN-VERIFY): <FR-x UI 체감, ...> ← 기계 검증 불가 항목, 직접 확인 부탁
 
 **Execution stats**
 - Elapsed (total): <Hm Ms>

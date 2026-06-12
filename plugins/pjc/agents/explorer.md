@@ -1,6 +1,6 @@
 ---
 name: explorer
-description: Use to explore an unfamiliar codebase, find files matching a pattern, summarize a module, or trace symbol usage without polluting the main context. Invoked by plan-feature during context gathering. Read-only and fast.
+description: Explores codebase, finds files, traces symbols without polluting main context. Called by plan-feature during context gathering. Read-only, fast.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit
 model: haiku
