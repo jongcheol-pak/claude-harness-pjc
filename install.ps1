@@ -3,7 +3,7 @@
 #
 # 사용법:
 #   .\install.ps1                                    # 로컬 모드 (이 폴더를 marketplace로 등록 - 개발용)
-#   .\install.ps1 -GitHub <user>/<repo>              # GitHub 모드 (권장 - 원본 폴더 불필요)
+#   .\install.ps1 -GitHub jongcheol-pak/claude-harness-pjc   # GitHub 모드 (권장 - 원본 폴더 불필요)
 #   .\install.ps1 -Scope project                     # 프로젝트별 설치 (.claude/settings.json)
 #   .\install.ps1 -Uninstall                         # 제거만
 #   .\install.ps1 -KeepExisting                      # 이미 설치되어 있으면 그대로 둠
@@ -68,7 +68,7 @@ if (-not $GitHub) {
     if (-not (Test-Path -LiteralPath $marketplaceManifest)) {
         Write-Err "marketplace.json을 찾을 수 없습니다: $marketplaceManifest"
         Write-Info "이 스크립트는 압축 해제된 패키지 root에서 실행되어야 합니다."
-        Write-Info "또는 GitHub 모드 사용: .\install.ps1 -GitHub <user>/<repo>"
+        Write-Info "또는 GitHub 모드 사용: .\install.ps1 -GitHub jongcheol-pak/claude-harness-pjc"
         exit 1
     }
     Write-Ok "Marketplace 경로: $marketplacePath"
@@ -179,7 +179,7 @@ if ($GitHub) {
     $marketplaceSource = $marketplacePath
     Write-Info "로컬 모드: $marketplacePath"
     Write-Warn "이 폴더가 plugin 본체로 참조됩니다. 삭제/이동하면 plugin이 깨집니다."
-    Write-Info "원본 의존을 없애려면: .\install.ps1 -GitHub <user>/<repo>"
+    Write-Info "원본 의존을 없애려면: .\install.ps1 -GitHub jongcheol-pak/claude-harness-pjc"
 }
 
 try {

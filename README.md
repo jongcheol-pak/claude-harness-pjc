@@ -2,6 +2,8 @@
 
 > Windows + PowerShell 환경에서 Claude Code의 작업 흐름을 강제·검증하는 plugin
 
+**저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
+
 Claude Code가 "계획 없이 추측하고 a 파일 수정하면서 b·c 파일을 빠뜨리고 검증 없이 완료 선언"하는 것을 막기 위한 도구입니다. 모든 코드 변경은 **계획 → 구현 → 다층 검증 → 완료**의 자율 루프를 거칩니다.
 
 ## 무엇을 해결하나요
@@ -30,7 +32,7 @@ Claude Code가 "계획 없이 추측하고 a 파일 수정하면서 b·c 파일�
 
 ```powershell
 # 저장소를 GitHub에 올린 뒤 (private 가능):
-claude plugin marketplace add <user>/claude-harness-pjc
+claude plugin marketplace add jongcheol-pak/claude-harness-pjc
 claude plugin install pjc@pjc-harness
 claude plugin enable pjc@pjc-harness
 
@@ -333,7 +335,7 @@ require-plan-for-write 활성화됨.
 
 ```powershell
 # 최초 설치
-claude plugin marketplace add <user>/claude-harness-pjc
+claude plugin marketplace add jongcheol-pak/claude-harness-pjc
 claude plugin install pjc@pjc-harness
 claude plugin enable pjc@pjc-harness
 
@@ -348,7 +350,7 @@ claude plugin marketplace remove pjc-harness
 
 GitHub 모드에서 install.ps1을 쓰고 싶으면 (재설치 정리 + enable + 검증 안내 일괄):
 ```powershell
-.\install.ps1 -GitHub <user>/claude-harness-pjc
+.\install.ps1 -GitHub jongcheol-pak/claude-harness-pjc
 ```
 
 ### 로컬 모드 (개발용)
