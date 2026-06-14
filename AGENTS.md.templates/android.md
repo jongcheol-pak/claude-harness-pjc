@@ -1,20 +1,130 @@
-# AGENTS.md — Agent Guide
+# AGENTS.md — Agent Guide (Android)
 
-> Android (Kotlin/Jetpack Compose 또는 Java) 프로젝트용 가이드.
+> Android (Kotlin/Jetpack Compose 또는 Java) 프로젝트용 가이드. Claude Code의 모든 작업은 이 문서를 우선 따른다.
 
 ## Stack
 - **언어**: Kotlin <version> (또는 Java)
-- **UI**: Jetpack Compose / View XML
+- **UI**: Jetpack Compose (권장) / View XML
 - **최소 SDK / 타겟 SDK**: <minSdk> / <targetSdk>
 - **주요 라이브러리**: Hilt, Room, Retrofit, Coroutines/Flow 등 (실제 사용 명시)
 
-## Build & Test
-- **Build (debug)**: `./gradlew assembleDebug` (Windows: `.\gradlew.bat assembleDebug`)
-- **Build (release)**: `./gradlew assembleRelease`
-- **Test (unit)**: `./gradlew test`
-- **Test (instrumented)**: `./gradlew connectedAndroidTest`
-- **Lint**: `./gradlew lint`
-- **Clean**: `./gradlew clean`
+## 검증·테스트 — Android CLI 우선
+
+가능하면 **Android CLI(`android` 명령)** 로 빌드·실행·테스트를 검증한다. Gradle 직접 호출은 fallback.
+설치 확인: `which android` 또는 `command -v android` (경로 반환 시 설치됨). 없으면 https://developer.android.com/tools/agents 에서 설치.
+
+| 작업 | Android CLI | Gradle fallback |
+|---|---|---|
+| 프로젝트 생성 | `android create -o <dir> <template>` (`android create list`로 템플릿 확인) | — |
+| 빌드 산출물 경로 파악 | `android describe --project_dir=<dir>` (APK 경로 JSON) | — |
+| 앱 배포 | `android run --apks=<apk-path>` | `adb install` |
+| UI 테스트 | `android` Journeys (https://developer.android.com/tools/agents/android-cli/journeys) | `connectedAndroidTest` |
+| 단위 테스트 | (Gradle) | `.\gradlew.bat test` |
+| 의존성 최신 버전 | `android studio version-lookup <artifact...>` | — |
+| 문서 검색 | `android docs search '<질문>'` → `android docs fetch kb://...` | — |
+| 화면 캡처/검증 | `android screen capture`, `android layout` | — |
+
+**빌드(권장)**: 단위 테스트는 Gradle, 빌드·배포·UI 검증은 Android CLI.
+- 단위 테스트: `.\gradlew.bat test`
+- 빌드: `.\gradlew.bat assembleDebug` → `android describe`로 APK 경로 확인 → `android run --apks=<경로>`
+- Lint: `.\gradlew.bat lint`
+
+> ⚠️ **Windows 제약**: Android CLI의 `android emulator` 서브명령만 Windows에서 비활성. 에뮬레이터 자체는 SDK의 `emulator.exe`로 정상 실행한다. 아래 "Windows 에뮬레이터 워크플로" 참조.
+
+## Windows 에뮬레이터 워크플로 (검증됨)
+
+PowerShell 기준, `android emulator` 대신 SDK의 `emulator.exe` + `adb`를 직접 쓴다.
+
+**0. 환경변수 (세션당 1회)**
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_SDK_ROOT = "C:\Users\<user>\AppData\Local\Android\Sdk"
+$env:Path = "$env:JAVA_HOME\bin;$env:ANDROID_SDK_ROOT\platform-tools;$env:Path"
+$adb = "$env:ANDROID_SDK_ROOT\platform-tools\adb.exe"   # adb는 절대경로 호출 권장
+```
+
+**1. 에뮬레이터 부팅** (`android emulator`가 아니라 `emulator.exe` 직접)
+```powershell
+& "$env:ANDROID_SDK_ROOT\emulator\emulator.exe" -list-avds          # AVD 목록
+Start-Process -FilePath "$env:ANDROID_SDK_ROOT\emulator\emulator.exe" -ArgumentList '-avd','<AVD명>'
+```
+
+**2. 부팅 완료 대기**
+```powershell
+& $adb wait-for-device
+& $adb -s emulator-5554 shell getprop sys.boot_completed   # 1 될 때까지 폴링
+& $adb devices                                             # emulator-5554  device 확인
+```
+
+**3. 빌드 (Gradle — 빌드만)**
+```powershell
+.\gradlew.bat assembleDebug
+```
+
+**4. 배포·실행** — Android CLI 우선, 세밀 제어는 adb
+```powershell
+# Android CLI (우선)
+android run --apks="app\build\outputs\apk\debug\app-debug.apk" --device=emulator-5554
+
+# 재설치·강제종료·데이터 초기화 등은 adb 직접
+& $adb -s emulator-5554 install -r "app\build\outputs\apk\debug\app-debug.apk"
+& $adb -s emulator-5554 shell am force-stop <package>
+& $adb -s emulator-5554 shell pm clear <package>
+& $adb -s emulator-5554 shell am start -n "<package>/.MainActivity"
+```
+
+**5. 권한 부여** (런타임 권한 테스트)
+```powershell
+& $adb -s emulator-5554 shell pm grant <package> android.permission.ACCESS_FINE_LOCATION
+# COARSE_LOCATION / ACTIVITY_RECOGNITION / POST_NOTIFICATIONS 등 동일
+```
+
+**6. 화면 캡처**
+```powershell
+android screen capture --output="docs\screenshots\<name>.png"     # Android CLI
+# 또는 adb (대용량은 리사이즈 후 확인)
+& $adb -s emulator-5554 shell screencap -p /sdcard/s.png
+& $adb -s emulator-5554 pull /sdcard/s.png "docs\screenshots\<name>.png"
+```
+
+**7. UI 입력 (동선 자동화)**
+```powershell
+& $adb -s emulator-5554 shell input tap 540 1790                  # 탭
+& $adb -s emulator-5554 shell input swipe 540 1800 540 700 400    # 스와이프(스크롤)
+```
+
+> 좌표 기반 input은 화면 해상도에 의존적이다. `android screen capture --annotate` + `android screen resolve`로 요소 좌표를 얻으면 더 안정적이다.
+
+## Android Skills — 작업 전 확인·설치
+
+Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skills)을 활용한다.
+**작업에 맞는 skill이 있으면 설치 여부를 확인하고, 없거나 오래됐으면 사용자 승인 후 설치·업데이트한다.**
+
+절차:
+1. `android skills list --long` 으로 설치된 skill + 버전 확인
+2. 작업 관련 skill 검색: `android skills find '<키워드>'` (예: `performance`, `compose`, `navigation`)
+3. 필요한 skill이 미설치/구버전이면 → **사용자에게 "skill X 설치/업데이트할까요?" 확인** → 승인 시 `android skills add --skill=<name>` (전체는 `--all`)
+4. 커스텀 수정한 skill은 이름을 바꿔 둔다 (`skills add`가 덮어쓰므로)
+
+대표 공식 skill: `migrate-xml-views-to-jetpack-compose`, `agp-9-upgrade`, `navigation-3`, `r8-analyzer`(성능), `play-billing-library-version-upgrade`, `edge-to-edge`.
+관련 작업(예: Compose 마이그레이션, AGP 업그레이드, 성능 최적화) 시 해당 skill을 우선 적용한다.
+
+## UI/UX — 미제공 시 공식 가이드 준수
+
+사용자가 UI/UX 시안을 제공하지 않거나 별도 디자인 요청이 없으면 **Android 공식 디자인 가이드대로 진행**한다 (자체 디자인 임의 창작 금지):
+- Material 3 (Material You) 디자인 시스템
+- 공식 UI 가이드: https://developer.android.com/design/ui/mobile
+- 접근성: 터치 타깃 48dp+, contentDescription, 동적 글꼴 대응
+- `android docs search`로 공식 패턴 확인 후 적용
+
+## Adaptive Apps — 적응형 우선
+
+가능하면 **적응형 앱(adaptive app)** 으로 구축한다 (https://developer.android.com/adaptive-apps):
+- 단일 화면 고정 레이아웃이 아니라 폰/태블릿/폴더블/데스크톱/ChromeOS에서 창 크기에 적응
+- `WindowSizeClass`(Compact/Medium/Expanded)로 분기, 고정 dp 폭 가정 금지
+- 리스트-디테일 등은 `ListDetailPaneScaffold` 등 적응형 레이아웃 사용
+- 회전·창 크기 변경·접힘 상태에서 상태 보존
+- 단, 사용자가 "폰 전용" 등 명시하면 그 범위를 따른다
 
 ## Repository Structure
 
@@ -38,18 +148,20 @@
 ## Conventions
 - **아키텍처**: MVVM + Clean Architecture. UI → Domain ← Data.
 - **DI**: Hilt (`@HiltAndroidApp`, `@HiltViewModel`, `@Module`)
-- **상태 관리**: `StateFlow` 또는 `LiveData` (Compose는 `StateFlow` 권장)
+- **상태 관리**: `StateFlow` (Compose 권장) 또는 `LiveData`
 - **비동기**: Coroutines + Flow. `runBlocking` 금지 (테스트 제외)
-- **테스트**: Domain·Data는 JVM 단위, UI는 Compose Test 또는 Espresso
+- **테스트**: Domain·Data는 JVM 단위, UI는 Compose Test 또는 Journeys
 - **리소스**: 문자열은 `strings.xml`, 색상은 `colors.xml` (하드코딩 금지)
+- **적응형**: 고정 폭 가정 금지, `WindowSizeClass` 기준 분기
 - **파일**: 1500라인 내외, UTF-8, 주석은 한글
 
 ## DO NOT
-- `gradle.properties`, `keystore`, `google-services.json` 커밋
+- `gradle.properties`(민감), `keystore`, `google-services.json` 커밋
 - `.idea/`, `build/`, `*.iml` 커밋 (gitignore에 포함)
 - 메인 스레드에서 I/O (네트워크/DB)
-- `GlobalScope` 사용 (테스트 격리·생명주기 관리 곤란)
-- View binding 없이 `findViewById` 직접 호출 (legacy 코드 제외)
+- `GlobalScope` 사용 (생명주기 관리 곤란)
+- 고정 화면 폭 가정 (적응형 위반)
+- Windows에서 `android emulator` 서브명령 사용 시도 (비활성 — `emulator.exe` 직접 호출)
 
 ## Plan Location
 - 단일 plan: `plan.md`
@@ -62,4 +174,4 @@
 - CI/CD: <GitHub Actions, Bitrise 등>
 - 배포: <Play Console, Internal Distribution 등>
 
-> ⚠️ `pjc:add-viewmodel` skill은 WinUI 3 전용입니다. Android Jetpack ViewModel은 비대상이므로 직접 작성하거나 별도 skill을 사용하세요.
+> ⚠️ `pjc:add-viewmodel` skill은 WinUI 3 전용입니다. Android Jetpack ViewModel은 비대상이므로 직접 작성하거나 Android 공식 skill을 사용하세요.
