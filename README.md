@@ -2,7 +2,7 @@
 
 > Windows + PowerShell 환경에서 Claude Code의 작업 흐름을 강제·검증하는 plugin
 
-**버전**: 1.20.1
+**버전**: 1.21.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 Claude Code가 "계획 없이 추측하고 a 파일 수정하면서 b·c 파일을 빠뜨리고 검증 없이 완료 선언"하는 것을 막기 위한 도구입니다. 모든 코드 변경은 **계획 → 구현 → 다층 검증 → 완료**의 자율 루프를 거칩니다.
@@ -385,11 +385,12 @@ git push
 
 ## AGENTS.md 작성
 
-`plan-feature`가 가장 먼저 읽는 프로젝트 가이드 파일입니다. 8개 template이 `AGENTS.md.templates/`에 제공됩니다:
+`plan-feature`가 가장 먼저 읽는 프로젝트 가이드 파일입니다. 9개 template이 `AGENTS.md.templates/`에 제공됩니다:
 
 ```
 AGENTS.md.templates/
 ├── winui3.md             (WinUI 3 / Windows App SDK — 생성·실행 실패 방지 + 디자인 + 다국어)
+├── wpf.md                (WPF + WPF-UI Fluent — 패키지 설치 + FluentWindow + 테마)
 ├── dotnet.md             (일반 .NET / C# / F#)
 ├── android.md            (Android / Kotlin / Java)
 ├── node-typescript.md    (Node.js / TypeScript / JavaScript)
@@ -400,7 +401,7 @@ AGENTS.md.templates/
 └── multi-stack-example.md (모노레포 참고용)
 ```
 
-WinUI 3 프로젝트는 `bootstrap-agents-md`가 `<UseWinUI>true</UseWinUI>`를 감지해 `dotnet.md` 대신 `winui3.md`를 사용합니다 — `.slnx` 플랫폼 매핑, 패키지/비패키지 설정, `MainWindow` 진입점 등 "실행할 수 없습니다" 오류를 예방하는 규칙이 포함됩니다.
+WinUI 3 프로젝트는 `<UseWinUI>true</UseWinUI>`, WPF 프로젝트는 `<UseWPF>true</UseWPF>`를 `bootstrap-agents-md`가 감지해 각각 `winui3.md` / `wpf.md`를 `dotnet.md` 대신 사용합니다 — `.slnx` 플랫폼 매핑, 패키지/비패키지 설정, `MainWindow` 진입점 등 "실행할 수 없습니다" 오류를 예방하는 규칙이 포함됩니다.
 
 대부분의 경우 `bootstrap-agents-md` skill이 자동 처리합니다. 수동 작성 시 다음 4개는 필수:
 

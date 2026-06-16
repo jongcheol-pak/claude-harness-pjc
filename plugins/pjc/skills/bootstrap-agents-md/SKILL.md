@@ -41,7 +41,8 @@ test -f AGENTS.md || test -f CLAUDE.md
 | 표식 파일 (glob) | Stack | Template 파일 |
 |---|---|---|
 | `*.csproj`에 `<UseWinUI>true</UseWinUI>` 포함 | WinUI 3 | `winui3.md` |
-| `*.csproj`, `*.sln`, `*.fsproj` (WinUI 아님) | .NET | `dotnet.md` |
+| `*.csproj`에 `<UseWPF>true</UseWPF>` 포함 (WinUI 아님) | WPF | `wpf.md` |
+| `*.csproj`, `*.sln`, `*.fsproj` (WinUI/WPF 아님) | .NET | `dotnet.md` |
 | `build.gradle*`, `settings.gradle*`, `AndroidManifest.xml` | Android | `android.md` |
 | `package.json` + `tsconfig.json` 또는 `*.ts` 파일 | Node/TypeScript | `node-typescript.md` |
 | `package.json` (TS 없음) | Node/JavaScript | `node-typescript.md` (라벨만 변경) |
@@ -49,7 +50,7 @@ test -f AGENTS.md || test -f CLAUDE.md
 | `go.mod` | Go | `go.md` |
 | `Cargo.toml` | Rust | `rust.md` |
 
-**WinUI 3 우선 판정**: `.csproj`가 있으면 그 안에 `<UseWinUI>true</UseWinUI>`가 있는지 먼저 확인한다. 있으면 `dotnet.md`가 아니라 `winui3.md`를 사용한다 (프로젝트 생성/실행 실패 방지 규칙이 포함됨).
+**.NET UI 프레임워크 우선 판정**: `.csproj`가 있으면 그 안의 UI 플래그를 먼저 확인한다. `<UseWinUI>true</UseWinUI>`면 `winui3.md`, `<UseWPF>true</UseWPF>`(WinUI 아님)면 `wpf.md`, 둘 다 없으면 `dotnet.md`. WinUI 3가 WPF보다 우선(WinUI 프로젝트도 드물게 UseWPF가 보일 수 있음).
 
 검색 명령 (PowerShell):
 ```powershell
@@ -71,13 +72,16 @@ foreach ($stack in $markers.Keys) {
     }
 }
 
-# WinUI 3 우선 판정: csproj에 UseWinUI=true 있으면 dotnet → winui3로 승격
+# WinUI 3 / WPF 우선 판정: csproj의 UI 플래그로 dotnet → winui3/wpf 승격
 if ($detected -contains 'dotnet') {
-    $isWinUI = Get-ChildItem -Filter '*.csproj' -Recurse -ErrorAction SilentlyContinue |
-               Select-String -Pattern '<UseWinUI>\s*true\s*</UseWinUI>' -SimpleMatch:$false -Quiet
+    $csprojContent = Get-ChildItem -Filter '*.csproj' -Recurse -ErrorAction SilentlyContinue |
+                     Get-Content -Raw -ErrorAction SilentlyContinue
+    $isWinUI = $csprojContent | Select-String -Pattern '<UseWinUI>\s*true\s*</UseWinUI>' -Quiet
+    $isWPF   = $csprojContent | Select-String -Pattern '<UseWPF>\s*true\s*</UseWPF>' -Quiet
     if ($isWinUI) {
-        $detected = $detected | Where-Object { $_ -ne 'dotnet' }
-        $detected += 'winui3'
+        $detected = ($detected | Where-Object { $_ -ne 'dotnet' }) + 'winui3'
+    } elseif ($isWPF) {
+        $detected = ($detected | Where-Object { $_ -ne 'dotnet' }) + 'wpf'
     }
 }
 ```
@@ -201,7 +205,8 @@ D 선택 시 `multi-stack-example.md`를 참고하여 3개 섹션 모두 작성.
 
 plugin 패키지의 `AGENTS.md.templates/` 디렉터리:
 - `winui3.md` — WinUI 3 (Windows App SDK). 프로젝트 생성/실행 실패 방지 규칙 + Gallery 디자인 + 다국어 규칙 포함
-- `dotnet.md` — 일반 .NET (WinUI 아님)
+- `wpf.md` — WPF + WPF-UI(Fluent). 패키지 설치·App.xaml 병합·FluentWindow·테마 규칙 포함
+- `dotnet.md` — 일반 .NET (WinUI/WPF 아님)
 - `android.md`
 - `node-typescript.md`
 - `python.md`
