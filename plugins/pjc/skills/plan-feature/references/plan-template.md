@@ -73,6 +73,9 @@ plan.md는 **git에 commit되어 영구 보존**되며, PreCompact hook이 스�
 - **Source**: ...
 
 ## Tasks
+<!-- 반드시 T1, T2, ... 형식. "Phase 1", "단계 1", "Step 1" 등으로 쓰지 말 것
+     (implement-task 자율 루프가 T<N>를 전제, pjc 내부 Phase와 혼동 방지).
+     큰 묶음 표시는 주석으로만: 예) T1~T3 (데이터 계층) -->
 - [ ] T1. <작업명>
   - **Type**: A | B | C | D
   - **Acceptance**: <검증 가능한 조건>

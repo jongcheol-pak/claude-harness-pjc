@@ -191,6 +191,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 ### Step 5. 작업 분해
 
 - 각 작업은 1–4시간 단위, 독립 검증 가능
+- **각 task는 `T1`, `T2`, ... 형식으로 번호를 매긴다.** "Phase 1", "단계 1", "Step 1" 등 다른 명칭으로 작업을 나누지 않는다 — implement-task의 자율 루프가 `T<N>` 형식을 전제하며, "Phase"는 pjc 내부 단계(Phase P/I/V/D·F·G)와 혼동된다. 작업을 큰 묶음으로 그룹화하고 싶으면 task 번호는 유지한 채 주석으로만 묶는다 (예: `T1~T3 (데이터 계층)`).
 - 각 작업마다 acceptance criterion 1줄 명시
 - 의존 관계 표시
 - **각 task에 Type 분류 명시 (의무)** — implement-task가 fast-path 결정에 사용

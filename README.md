@@ -2,7 +2,7 @@
 
 > Windows + PowerShell 환경에서 Claude Code의 작업 흐름을 강제·검증하는 plugin
 
-**버전**: 1.23.0
+**버전**: 1.24.1
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 Claude Code가 "계획 없이 추측하고 a 파일 수정하면서 b·c 파일을 빠뜨리고 검증 없이 완료 선언"하는 것을 막기 위한 도구입니다. 모든 코드 변경은 **계획 → 구현 → 다층 검증 → 완료**의 자율 루프를 거칩니다.

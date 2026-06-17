@@ -90,6 +90,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
    - 이전 task에서 읽은 파일 내용·빌드 로그에 의존하지 않는다.
    - 필요한 정보는 **plan.md와 git에서 다시 확인** (둘 다 영구 저장됨).
    - 이전 task 상세를 기억하려 애쓰지 말 것 — 이미 commit과 plan.md에 있음.
+   - **plan이 작업을 "Phase 1~N", "단계 1~N", "Step 1~N" 등으로 나눴더라도(T<N>이 아닌 명칭) 동일하게 자율 처리한다.** 그 묶음 사이에서 멈춰 "Phase 2 진행할까요?"라고 묻지 않는다. plan의 "Phase N"은 pjc 내부의 Phase(P/I/V/D·F·G)와 무관한, 사용자 작업 묶음일 뿐이다. 모든 작업 단위를 마지막까지 자율로 진행한다.
 
 2. **빌드/테스트 로그는 핵심만 유지.**
    - 전체 로그 원문을 컨텍스트에 길게 남기지 않는다.
@@ -145,7 +146,8 @@ Phase G → PRD 요구 재검증 (docs/prd.md 있을 때만 — 갭 발견 시 t
 ### P-3. 심볼 사용처 전수 추적
 - 변경 대상 심볼에 대해 `grep -rn "\b<symbol>\b"` 실행.
 - 결과를 모두 Read로 확인.
-- task의 Files 목록과 대조 → 누락된 caller 발견 시 **Halt** (또는 plan.md 갱신).
+- task의 Files 목록과 대조 → 누락된 caller 발견 시 **자율 처리가 기본**: plan.md의 해당 task Files에 누락 caller를 추가하고 함께 수정한다 (멈추지 않음). caller 갱신은 절대 규칙 3(Cross-File Consistency)의 정상 작업이다.
+  - **예외 (Halt)**: 누락 caller가 plan 범위를 크게 벗어나거나(예: 수십 개 파일 연쇄), 파괴적 변경·새 의존성을 유발하는 경우에만 Halt. 단순 caller 추가는 Halt 사유가 아니다.
 
 ### P-4. 외부 식별자 확인 (환각 방지)
 - 호출할 외부 API/메서드/타입의 정의 위치를 직접 확인.
@@ -209,7 +211,7 @@ Phase G → PRD 요구 재검증 (docs/prd.md 있을 때만 — 갭 발견 시 t
   - `pyproject.toml` → `python -m build`
   - `go.mod` → `go build ./...`
   - `Cargo.toml` → `cargo build`
-  - 위 어느 것도 아님 → Halt → 사용자에게 build 명령 요청
+  - 위 어느 것도 아님 → AGENTS.md에 build 명령이 있으면 그것 사용. 없으면 Halt → 사용자에게 build 명령 요청 (또는 `pjc:bootstrap-agents-md`로 AGENTS.md 생성 제안)
 
 ### V-2. 테스트
 - AGENTS.md의 test 명령 실행. 통과 케이스 수 기록.
@@ -338,6 +340,7 @@ Elapsed: <Hm Ms> | Turn ~<N>
 - "이대로 진행해도 괜찮을까요?"
 - "T1 완료. 계속할까요?"
 - "확인 부탁드립니다."
+- "Phase 2 진행할까요?" / "다음 단계로 넘어갈까요?" / "2단계 시작할까요?" / "Step 2 진행할까요?"
 
 → 대신 "✅ T1 완료 (1/10) → T2 시작" 후 **즉시** T2 진행.
 
