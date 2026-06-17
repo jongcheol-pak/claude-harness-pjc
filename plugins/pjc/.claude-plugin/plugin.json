@@ -1,7 +1,7 @@
 {
   "name": "pjc",
   "displayName": "pjc Harness",
-  "version": "1.21.0",
+  "version": "1.23.0",
   "description": "Korean-first harness for Claude Code: plan-feature, implement-task, systematic-debugging, DDD-friendly skills, 2-stage review subagents, PowerShell hooks for Windows.",
   "author": {
     "name": "pjc"

@@ -130,6 +130,13 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 4. plan.md의 각 task는 PRD 요구 ID를 역참조 (`T3 (FR-1, FR-2 충족)`) + **plan.md 상단에 `**PRD**: <경로>` 줄 의무 기록** (implement-task의 Phase G 진입 신호)
 5. PRD가 있으면 implement-task의 **Phase G (요구 재검증)** 가 활성화된다
 
+**승인 후 기능 변경 처리 (PRD 우선 갱신)**: plan 작성·구현 중 PRD의 요구(FR/NFR)를 바꿔야 할 필요가 생기면 —
+- plan이나 코드를 **먼저 바꾸지 않는다.** PRD와 어긋나면 Phase G 재검증의 기준 자체가 틀려 검증이 무의미해진다.
+- 변경 필요를 **사용자에게 보고하고 PRD 갱신을 제안 → 승인**받는다 (PRD는 승인 후 고정이므로).
+- 승인 시 순서: ① PRD 갱신 → ② 영향받는 plan task 조정 → ③ plan.md의 `**PRD**:` 줄 유지.
+- 변경 이력을 PRD에 간단히 기록한다 (무엇을·왜 바꿨는지 한 줄).
+- **금지**: 사용자 승인 없이 PRD를 임의 변경 / PRD는 그대로 둔 채 plan·코드만 어긋나게 변경. 변경은 항상 PRD → plan → 코드 순으로 위에서 아래로 흐른다.
+
 ### Step 1. 컨텍스트 수집
 - `AGENTS.md` (또는 `CLAUDE.md`) 읽기
   - **없으면**: `pjc:bootstrap-agents-md` skill 자동 호출 → 사용자 승인 후 plan-feature 계속
@@ -249,6 +256,24 @@ B) 2개 plan으로 분할 (T1-<M>, T<M+1>-<N>)
 | 큰 프로젝트, 여러 plan 누적 | `<repo>/docs/plans/<YYYY-MM-DD>-<slug>.md` |
 
 **상세 plan.md 템플릿은 `references/plan-template.md` 참조.**
+
+### Step 7.5. PRD 커버리지 확인 (PRD 있을 때만)
+
+PRD가 있으면 (Step 0.5에서 작성), plan이 PRD를 빠짐없이 반영하는지 **구현 전에** 확인한다. 여기서 일치시키면 Phase G(구현 후 재검증)에서 누락이 발견돼 재구현하는 비용을 막는다.
+
+1. **FR/NFR → task 매핑표 작성** — PRD의 각 요구에 대응하는 plan task를 적는다:
+   ```
+   | PRD ID | 우선순위 | 대응 task | 상태 |
+   |--------|---------|----------|------|
+   | FR-1 | Must | T1, T2 | ✅ 커버 |
+   | FR-2 | Must | T3 | ✅ 커버 |
+   | FR-3 | Should | (없음) | ⚠️ 누락 |
+   ```
+2. **일치 판정**:
+   - 모든 Must FR에 대응 task가 있으면 → plan과 PRD가 일치. Step 8로 진행.
+   - **Must FR에 대응 task가 없으면 → 누락**. plan에 task를 추가해 일치시킨 뒤 진행 (plan↔PRD 불일치 상태로 구현에 들어가지 않는다).
+   - Should/Could를 의도적으로 1차 범위에서 빼려면, PRD의 Out of Scope 또는 plan에 "이번 제외" 사유를 명시 (암묵적 누락과 명시적 제외를 구분).
+3. 매핑표는 plan.md에 `## PRD Coverage` 섹션으로 남긴다 (Phase G가 이 표를 기준으로 재대조).
 
 ### Step 8. 리뷰 게이트 (subagent 필수)
 

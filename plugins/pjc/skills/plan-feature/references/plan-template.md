@@ -34,6 +34,12 @@ plan.md는 **git에 commit되어 영구 보존**되며, PreCompact hook이 스�
 ## Goal
 <한 문장 — 사용자 관점>
 
+## PRD Coverage
+<!-- PRD 있을 때만. plan-feature Step 7.5에서 작성. Phase G가 이 표로 재대조. -->
+| PRD ID | 우선순위 | 대응 task | 상태 |
+|--------|---------|----------|------|
+| FR-1 | Must | T1 | ✅ 커버 |
+
 ## Out of Scope
 - <명시적으로 안 함>
 

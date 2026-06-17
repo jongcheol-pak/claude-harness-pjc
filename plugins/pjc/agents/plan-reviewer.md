@@ -15,6 +15,7 @@ plan.md가 코드 작업으로 넘어가도 안전한지를 검증합니다.
 - plan.md 경로 (또는 본문)
 - AGENTS.md 경로
 - 관련 코드베이스 위치
+- PRD 경로 (plan.md 상단 `**PRD**:` 줄에 있으면) — 있으면 PRD 커버리지도 검토
 
 ## 검토 체크리스트
 
@@ -24,10 +25,11 @@ plan의 task Type 분포에 따라 적용 항목이 다르다:
 
 | plan에 포함된 Task Type | 적용 항목 |
 |---|---|
-| **Type A만** (Doc/Config) | 1, 2, 4, 8 (4개) |
-| **Type B만 또는 A+B** | 위 + 3, 5, 6, 7 (8개) |
-| **Type C 포함** | 위 + 9, 11 (10개) |
-| **Type D 포함** | **전체 11개 (모두 검사)** |
+| **Type A만** (Doc/Config) | 1, 2, 4, 8 |
+| **Type B만 또는 A+B** | 위 + 3, 5, 6, 7 |
+| **Type C 포함** | 위 + 9, 10, 11 |
+| **Type D 포함** | **위 전체 (1~11)** |
+| **+ PRD 있으면** (Type 무관) | 위에 더해 항목 **12 (PRD 커버리지)** |
 
 - Type 분포는 plan.md의 각 task `Type:` 필드로 판별
 - "확신 없으면 더 무거운 Type으로 분류" 원칙은 plan-feature Step 5에 명시되어 있으므로, plan-reviewer는 명시된 Type을 신뢰
@@ -169,6 +171,14 @@ plan에 누락이 있으면 자율 루프가 멈추거나 추측으로 진행한
 
 이는 자율 실행을 위한 안전망이다. 누락 시 implement-task가 중간에 멈출 위험 증가.
 
+### 12. PRD 커버리지 (PRD 있을 때만, BLOCKER 후보)
+
+plan.md 상단에 `**PRD**:` 줄이 있으면, 해당 PRD를 읽어 대조한다:
+- PRD의 모든 **Must FR**이 plan의 task로 커버되는가? (plan의 `## PRD Coverage` 표 + task의 FR 역참조로 확인)
+- 대응 task 없는 Must FR이 있으면 → **BLOCKER** (plan↔PRD 불일치 상태로 구현에 들어가면 Phase G에서 재구현 발생).
+- Should/Could 누락은 명시적 제외(Out of Scope/plan 명시)면 통과, 암묵적 누락이면 MAJOR.
+- plan에 PRD에 없는 새 기능이 추가됐으면 → 범위 이탈, MAJOR (PRD 갱신 절차를 거쳐야 함).
+
 ## 출력 형식
 
 JSON 또는 마크다운 둘 다 가능. 다음 정보 포함:
@@ -206,6 +216,6 @@ JSON 또는 마크다운 둘 다 가능. 다음 정보 포함:
 
 ## 검토 효율 (필수)
 
-- plan.md 전체 1회 read 후 10개 항목을 훑는다. plan 내용만으로 판단 가능하면 즉시 판정, 근거 부족하면 보고하지 않음.
+- plan.md 전체 1회 read 후 적용 대상 항목(Type·PRD 유무로 결정)을 훑는다. plan 내용만으로 판단 가능하면 즉시 판정, 근거 부족하면 보고하지 않음.
 - cross-file 검증은 grep 1-2회로 제한. 탐색·확인용 호출 금지 (목적 있는 호출만).
 - turn이 부족하면 즉시 출력 형식대로 작성 — **불완전한 검토라도 형식에 맞는 응답이 빈 응답보다 낫다.** 부족분은 "incomplete — turn budget exhausted"를 Assessment에 명시.
