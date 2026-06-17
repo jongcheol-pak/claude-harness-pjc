@@ -41,6 +41,19 @@
 6. 페이지 골격: `ScrollViewer(페이지 패딩 36,24,40,24) → StackPanel(MaxWidth 1024, Spacing 24) → 헤더 + 카드`. Primary 버튼(`AccentButtonStyle`)은 화면당 1개.
 7. 설정 페이지는 `SettingsCard`/`SettingsExpander` 사용.
 
+## XAML 작성 규칙 (레이아웃 실수 방지 — 시각 확인 없이)
+
+빌드는 통과해도 화면이 깨지는 흔한 실수를 사전 차단한다.
+
+1. **레이아웃을 손으로 짜지 말고 완성 컨트롤을 조합한다.** Grid를 직접 행·열로 쪼개기 전에, `NavigationView`·`SettingsCard`·`InfoBar`·`Expander` 등 레이아웃이 내장된 컨트롤로 표현 가능한지 먼저 확인. 자체 Grid 조립은 정렬·간격 실수의 주원인.
+2. **Grid 사용 시 `RowDefinitions`/`ColumnDefinitions` 필수 명시.** 정의 없이 `Grid.Row` 지정하면 모두 0행에 겹친다.
+3. **고정 픽셀 대신 `*`/`Auto`/`GridLength`.** `Width="320"` 같은 고정값은 다양한 창 크기·DPI에서 깨짐. 콘텐츠 크기는 `Auto`, 채움은 `*`.
+4. **요소 겹침 방지**: 절대 위치(`Canvas`, 음수 Margin) 사용 금지. 겹침이 필요하면 `Grid` 같은 칸 + `ZIndex`.
+5. **바인딩 모드 명시.** 입력 컨트롤 양방향은 `Mode=TwoWay` 명시 (기본값이 OneWay인 속성 많음). `x:Bind`는 기본 OneTime이라 갱신되려면 `Mode=OneWay` 필요.
+6. **리소스 키는 정의 확인 후 사용.** `{ThemeResource X}`/`{StaticResource X}`의 키 X가 실제 정의돼 있는지 grep으로 확인. 오타 키는 런타임 크래시(빌드는 통과).
+7. **참조 구현 우선.** 새 화면은 WinUI Gallery의 동일 패턴 XAML 구조를 따른다 (창작보다 검증된 구조 복제가 안정적).
+8. **빌드로 1차 검증.** `dotnet build`는 XAML 컴파일 오류·`x:Bind` 경로 오류·일부 리소스 키 오류를 잡는다. 빌드는 반드시 통과시킨 뒤 다음 task로. 단, 빌드 통과가 "레이아웃이 보기 좋다"를 보장하지는 않으므로, 레이아웃 적정성은 ⏳ HUMAN-VERIFY로 남기고 사용자 확인 목록에 적는다 (시각 결함은 빌드로 못 잡음).
+
 ## 다국어(문구) 규칙
 
 1. **문구 하드코딩 금지.** 모든 화면 문구는 `.resw` + `x:Uid`로 분리. XAML/코드에 직접 쓴 문자열은 번역 누락 원인.

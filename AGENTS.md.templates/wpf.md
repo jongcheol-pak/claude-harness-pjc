@@ -59,6 +59,20 @@ dotnet add package WPF-UI
 - **테마는 시스템에 맡긴다.** Light/Dark/HighContrast = `ApplicationThemeManager`. 전환은 `ApplicationThemeManager.Apply(theme)` 한 곳. `ApplicationThemeManager.Changed` 이벤트로 커스텀 요소 갱신.
 - 테마 적용은 생명주기 초기(App.xaml 또는 MainWindow 생성자)에.
 
+### 5. XAML 작성 규칙 (레이아웃 실수 방지 — 시각 확인 없이)
+
+빌드는 통과해도 화면이 깨지는 흔한 실수를 사전 차단한다.
+
+1. **레이아웃을 손으로 짜지 말고 WPF-UI 완성 컨트롤을 조합한다.** Grid 직접 조립 전에 `ui:NavigationView`·`ui:Card`·`ui:InfoBar` 등으로 표현 가능한지 먼저 확인.
+2. **Grid 사용 시 `RowDefinitions`/`ColumnDefinitions` 필수 명시.** 정의 없이 `Grid.Row` 지정하면 모두 0행에 겹친다.
+3. **고정 픽셀 대신 `*`/`Auto`.** 고정 `Width`/`Height`는 DPI·창 크기에서 깨짐. 콘텐츠는 `Auto`, 채움은 `*`.
+4. **요소 겹침 방지**: `Canvas`·음수 Margin 금지. 겹침은 `Grid` 같은 칸 + `Panel.ZIndex`.
+5. **바인딩 모드 명시.** 입력 컨트롤 양방향은 `Mode=TwoWay`, `UpdateSourceTrigger=PropertyChanged` 명시. WPF 기본 바인딩은 INotifyPropertyChanged 구현 필요 (CommunityToolkit.Mvvm `[ObservableProperty]`가 자동 처리).
+6. **리소스 키는 정의 확인 후 사용.** `{DynamicResource X}`/`{StaticResource X}`의 키 X 존재를 grep 확인. WPF는 `StaticResource` 키 누락 시 **빌드는 통과하고 런타임 크래시**.
+7. **네임스페이스 혼동 금지.** WPF는 `System.Windows.Controls`(표준) + `Wpf.Ui.Controls`(WPF-UI, `ui:` 접두사). WinUI(`Microsoft.UI.Xaml`) 컨트롤·문법을 섞지 말 것 (`x:Bind`는 WinUI 전용 — WPF는 `Binding` 사용).
+8. **참조 구현 우선.** 새 화면은 Wpf.Ui.Gallery의 동일 패턴 구조를 복제.
+9. **빌드로 1차 검증.** `dotnet build`로 XAML 오류를 잡고 반드시 통과시킨 뒤 다음 task로. 단 레이아웃 적정성(보기 좋은가)은 빌드로 못 잡으므로 ⏳ HUMAN-VERIFY로 남기고 사용자 확인 목록에 적는다.
+
 ## Conventions
 - **아키텍처**: MVVM + Clean. UI(View/ViewModel) → Application → Domain ← Infrastructure
 - **ViewModel**: `[ObservableProperty]` / `[RelayCommand]` (CommunityToolkit.Mvvm), DI 등록 필수
