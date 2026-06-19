@@ -1,8 +1,12 @@
+<p align="center">
+  <img src="assets/logo.png" alt="claude-harness-pjc logo" width="180" />
+</p>
+
 # claude-harness-pjc
 
 > Windows + PowerShell 환경에서 Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
 
-**버전**: 1.29.0
+**버전**: 1.30.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---

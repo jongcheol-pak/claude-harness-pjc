@@ -93,6 +93,39 @@ if ($codeExts -contains $ext) {
     }
 }
 
+# ---- 민감 정보 검사 (문서·코드 모두, 경고만) ----
+# notes.md/plan.md/wiki 등 생성 문서나 코드에 실제 시크릿 값이 남는 것을 방지.
+# 실제 '값' 패턴만 잡고 단순 언급(예: "password 필드 추가")은 통과시켜 과잉 경고를 피한다.
+$skipSecretScan = $file -match '\.(env|env\..*)$' -or $file -match '(^|[\\/])\.git[\\/]'
+if (-not $skipSecretScan) {
+    try {
+        $raw = Get-Content -LiteralPath $file -Raw -Encoding UTF8 -ErrorAction Stop
+        if ($raw) {
+            $secretPatterns = @(
+                @{ rx = '(?i)(password|passwd|pwd)\s*[:=]\s*["'']?[^\s"''<>{}$]{3,}'; label = 'password 값' },
+                @{ rx = '(?i)(api[_-]?key|apikey|access[_-]?token|secret[_-]?key|auth[_-]?token|client[_-]?secret)\s*[:=]\s*["'']?[A-Za-z0-9_\-]{8,}'; label = 'API key/token 값' },
+                @{ rx = '(?i)(Server|Data Source)=[^;]+;\s*(User|Uid|Password|Pwd)='; label = 'DB 연결 문자열' },
+                @{ rx = '(?i)(mongodb(\+srv)?|postgres|postgresql|mysql|redis|amqp)://[^\s]+:[^\s]+@'; label = 'DB/서비스 URI 인증정보' },
+                @{ rx = '-----BEGIN [A-Z ]*PRIVATE KEY-----'; label = '개인키' },
+                @{ rx = '(?i)Bearer\s+[A-Za-z0-9_\-\.]{16,}'; label = 'Bearer 토큰' },
+                @{ rx = '\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'; label = 'IP 주소' }
+            )
+            foreach ($sp in $secretPatterns) {
+                if ($raw -match $sp.rx) {
+                    # localhost/예약 IP 등 안전한 값은 IP 경고에서 제외
+                    if ($sp.label -eq 'IP 주소') {
+                        $m = [regex]::Match($raw, $sp.rx).Value
+                        if ($m -eq '127.0.0.1' -or $m -eq '0.0.0.0' -or $m -eq '255.255.255.255' -or $m -like '0.0.0.*') { continue }
+                    }
+                    $warnings.Add("민감 정보로 보이는 내용 감지: $($sp.label). 실제 값을 파일에 남기지 말고, 환경변수 이름만 기록하거나 .env(gitignore)로 분리하세요. (이 파일은 git/스냅샷으로 보존될 수 있음)")
+                }
+            }
+        }
+    } catch {
+        # 읽기 실패는 무시 (다른 검사에서 이미 처리)
+    }
+}
+
 # ---- 출력 ----
 if ($warnings.Count -gt 0) {
     [Console]::Error.WriteLine("POST-WRITE WARNINGS for ${file}:")
