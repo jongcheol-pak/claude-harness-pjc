@@ -9,7 +9,7 @@
       "name": "pjc",
       "source": "./plugins/pjc",
       "description": "Korean-first agentic coding harness with plan-feature, implement-task, systematic-debugging, MVVM/DDD skills, 2-stage review subagents, and PowerShell-based safety hooks for Windows.",
-      "version": "1.30.0",
+      "version": "1.32.0",
       "category": "workflow",
       "tags": ["korean", "ddd", "windows", "powershell", "harness-engineering"]
     }

@@ -185,6 +185,13 @@ Phase G → PRD 요구 재검증 (docs/prd.md 있을 때만 — 갭 발견 시 t
 
 순서대로 실행. 실패 시 Phase I로 1회 복귀 후 재시도.
 
+> **검증 스크립트 작성 시 Windows 보안 안전 규칙 (PowerShell).** 빌드·테스트·런타임 실증용 임시 스크립트를 작성할 때, 아래 패턴이 한 스크립트에 모이면 Windows Defender·백신이 **credential stealer / 공격 도구로 오인**해 스크립트나 산출물을 격리(삭제)할 수 있다. 다음을 지킨다:
+> - **자격증명을 하드코딩하지 않는다.** 로그인 테스트의 비밀번호·토큰·API 키는 환경변수(`$env:TEST_PW` 등)에서 읽는다. (절대 규칙 6-1과 동일 — 보안 + 백신 회피 양쪽.) 평문 `Password='...'`은 금지.
+> - **`-WindowStyle Hidden`을 쓰지 않는다.** 검증/테스트는 숨길 이유가 없다 — "숨김 실행"은 멀웨어 핵심 신호다.
+> - **`-ExecutionPolicy Bypass`는 최소화.** 꼭 필요할 때만, 그리고 위 다른 위험 신호와 겹치지 않게 한다.
+> - **위험 신호를 한 스크립트에 모으지 않는다.** "정책 우회 + 숨김 실행 + 자격증명 + 토큰 스크래핑 + 프로세스 강제 종료"가 동시에 있으면 휴리스틱에 걸린다. 빌드 검증과 로그인/런타임 테스트는 가능하면 분리한다.
+> - 그래도 격리되면 사용자에게 "개발 작업 폴더를 Windows Defender 예외(`Add-MpPreference -ExclusionPath`)에 추가"를 **안내만** 한다 — 보안 설정 변경은 사용자가 직접 한다(자동 실행 금지, block-destructive·승인 게이트 대상).
+
 ### 🚀 Fast-Path — Task Type에 따른 단계 선택
 
 | Type | 실행 단계 | 생략 단계 |
@@ -359,6 +366,8 @@ Elapsed: <Hm Ms> | Turn ~<N>
 | 1 task + Type A만 | **생략** |
 | 1 task + Type B | F-1, F-2, F-6만 |
 | 2+ tasks 또는 Type C/D 포함 | **전체 (F-1~F-7)** |
+
+> Phase F가 생략·축소돼도 **F-6.5(notes 기록 + 1주일 경과분 아카이브 이동)는 코드 변경이 있었으면 항상 수행**한다 (단, 빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따른다).
 
 F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
 
