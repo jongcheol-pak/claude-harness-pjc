@@ -1,0 +1,4 @@
+{
+  "vault_path": "",
+  "_note": "이 파일은 plugin 번들 기본값입니다. 실제 vault 경로는 ~/.claude/llm-wiki-config.json 에 저장되며 plugin 업데이트로 덮어써지지 않습니다. 여기 vault_path를 채우면 첫 사용 시 사용자 홈으로 마이그레이션됩니다."
+}

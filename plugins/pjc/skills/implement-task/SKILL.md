@@ -329,6 +329,7 @@ Elapsed: <Hm Ms> | Turn ~<N>
 ## Next Steps
 - 권장 다음 액션: <명확한 한 줄> (예: T7부터 implement-task 재개 / PR 생성 후 /code-review 호출)
 - Suggested skills: <쉼표 구분> (예: pjc:implement-task, 공식 /code-review, 공식 /security-review)
+- 위키 갱신 (llm-wiki 사용 중이고 이 프로젝트가 등록돼 있을 때만): 이번 작업으로 기능·구현·동작이 바뀌었으면 `pjc:llm-wiki` 절차 B(ingest)로 위키 반영을 제안 (선택). 구현 세션은 위키를 직접 수정하지 않으므로 별도 위키 세션에서 진행.
 ```
 
 목적: ① 압축 직후의 Claude 자신이 plan.md만 읽고 정확히 재개할 수 있게 함 (압축 생존의 핵심), ② Halt·완료 시 종철님이 plan.md만 보고도 무엇을 호출할지 즉시 알 수 있게 함. handoff 패턴 차용.

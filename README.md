@@ -2,7 +2,7 @@
 
 > Windows + PowerShell 환경에서 Claude Code의 작업 흐름을 강제·검증하는 plugin
 
-**버전**: 1.25.0
+**버전**: 1.27.4
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 Claude Code가 "계획 없이 추측하고 a 파일 수정하면서 b·c 파일을 빠뜨리고 검증 없이 완료 선언"하는 것을 막기 위한 도구입니다. 모든 코드 변경은 **계획 → 구현 → 다층 검증 → 완료**의 자율 루프를 거칩니다.
@@ -18,6 +18,7 @@ Claude Code가 "계획 없이 추측하고 a 파일 수정하면서 b·c 파일�
 | task 사이 "다음 진행할까요?" | 자율 루프 — plan 승인 1회 후 모든 task 끝까지 자동 진행 |
 | 짧은 수정에도 plan + 검증 강제 | Trivial Bypass — UI 문구·아이콘·오타 수정은 plan 없이 직접 처리 |
 | 매번 빌드/테스트 명령 모름 | bootstrap-agents-md skill이 stack 자동 감지 + AGENTS.md 생성 |
+| 과거 구현·결정을 매번 다시 조사 | llm-wiki가 프로젝트 지식을 vault에 정제 축적 → plan-feature가 코드 작업 전 read-only 참조 |
 
 ## 빠른 시작
 
@@ -134,27 +135,28 @@ claude
 
 ## 주요 기능
 
-### 6개 Skills
+### 8개 Skills
 
 | Skill | 트리거 | 역할 |
 |---|---|---|
-| `pjc:plan-feature` | "기능 추가", "리팩토링", "구현" 등 | 코드 변경 전 계획 수립 + 적대적 검증 |
+| `pjc:plan-feature` | "기능 추가", "리팩토링", "구현" 등 | 코드 변경 전 계획 수립 + 적대적 검증 (대규모는 PRD 작성) |
 | `pjc:implement-task` | plan 승인 후 자동 | 자율 루프 — 모든 task를 사용자 개입 없이 완료 |
 | `pjc:systematic-debugging` | "디버깅", "버그", "에러" 등 | 4-phase 근본 원인 분석 |
 | `pjc:add-viewmodel` | "ViewModel 추가" (WinUI/WPF/MAUI만) | MVVM boilerplate 생성 |
 | `pjc:add-domain-service` | "도메인 서비스", "use case" | DDD 서비스 추가 |
 | `pjc:harness-toggle` | "hook 꺼", "harness 상태" | hook 런타임 on/off |
 | `pjc:bootstrap-agents-md` | AGENTS.md 부재 시 자동 | stack 자동 감지 → AGENTS.md 생성 |
+| `pjc:llm-wiki` | "위키에 등록/추가", "위키 업데이트/점검" 등 | Obsidian vault 지식베이스 운영 (프로젝트 등록·갱신·lint·조회). plan-feature가 코드 작업 전 read-only 참조(절차 K)로 연동 |
 
 ### 6개 Subagents (적대적 검증)
 
 | Subagent | 모델 | 시점 | 역할 |
 |---|---|---|---|
-| `plan-reviewer` | Opus | plan 작성 후 | 11개 항목으로 plan 적대적 검토 (BLOCKER 0까지) |
+| `plan-reviewer` | Opus | plan 작성 후 | plan 적대적 검토 (Type·PRD 따라 항목 결정, BLOCKER 0까지) |
 | `spec-prefilter` | Haiku | Type B task의 V-5 | 빠른 1차 필터 (Sonnet 호출 회피) |
 | `spec-compliance-reviewer` | Sonnet | 각 task V-5 | acceptance, 범위, cross-file 영향 검증 |
 | `code-quality-reviewer` | Sonnet | 각 task V-6 | DDD, 환각, 위생, 보안, 동시성 |
-| `plan-completion-reviewer` | Opus | Phase F-7 | plan 전체 적대적 통합 검증 |
+| `plan-completion-reviewer` | Opus | Phase F-7 | plan 전체 + PRD 적대적 통합 검증 |
 | `explorer` | Haiku | plan-feature 컨텍스트 수집 | 메인 컨텍스트 보호용 빠른 탐색 |
 
 ### 6개 Hooks (자동 안전망)
@@ -314,6 +316,27 @@ require-plan-for-write 비활성화됨.
 > 다시 켜
 require-plan-for-write 활성화됨.
 ```
+
+### 예시 4 — 위키 연동 (llm-wiki)
+
+```
+> 이 프로젝트 위키에 등록해줘
+
+[llm-wiki 트리거 — 절차 A]
+(최초 1회) LLM WIKI 폴더 경로를 알려주세요 → 입력
+→ ~/.claude/llm-wiki-config.json 에 저장 (이후 안 물음)
+→ 코드 분석 → feature/recipe 정제 → vault에 페이지 생성 → log.md 기록
+
+[이후 코드 작업 시 — 자동 연동]
+> 로그인에 2FA 추가해줘
+
+[plan-feature Step 1 — 위키 참조 (절차 K, read-only)]
+위키에서 기존 인증 관련 feature/recipe 참조 → 계획에 반영
+→ implement-task 자율 루프 → 완료
+→ Next Steps: "위키 갱신(절차 B) 제안" (선택, 별도 세션)
+```
+
+위키는 코드 작업 중 **읽기만** 하고, 갱신은 별도 위키 세션에서 진행합니다 (코드↔위키 분리).
 
 ## 주요 명령
 

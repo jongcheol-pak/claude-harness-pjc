@@ -198,7 +198,7 @@ implement-task의 V-8 Self-Honesty와 별개로, 외부 시각에서 점검:
 
 ## 검토 효율 (필수)
 
-- plan.md acceptance 전체 + 누적 git log를 먼저 보고, 각 acceptance를 commit/diff에 매핑한다. 매핑 안 되는 항목만 grep 1-2회.
+- plan.md acceptance 전체 + 누적 git log를 먼저 보고, 각 acceptance를 commit/diff에 **하나씩 개별** 매핑한다 (전체를 뭉뚱그려 "달성됨" 판정 금지 — 항목이 많을수록 개별 매핑이 누락을 막는다). 매핑 안 되는 항목만 grep 1-2회.
 - PRD가 있으면 FR/NFR 전수 대조 포함. 검토하지 않은 항목에 OK 판정은 환각이다.
 - 탐색·확인용 호출 금지. 깊은 회귀 점검이 필요하면 직접 파지 말고 BLOCKER로 보고해 메인에 위임.
 - turn이 부족하면 즉시 출력 형식대로 작성 — **불완전한 검토라도 형식에 맞는 응답이 빈 응답보다 낫다.** 부족분은 "incomplete — turn budget exhausted"를 Assessment에 명시.

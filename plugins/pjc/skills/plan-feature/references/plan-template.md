@@ -41,7 +41,13 @@ plan.md는 **git에 commit되어 영구 보존**되며, PreCompact hook이 스�
 | FR-1 | Must | T1 | ✅ 커버 |
 
 ## Out of Scope
-- <명시적으로 안 함>
+<!-- 영구 제외 — 이 기능 자체를 만들지 않음. "다음에 할 것"은 여기 적지 말고 아래 Deferred에. -->
+- <이 작업에서 의도적으로 만들지 않는 것 (영구)>
+
+## Deferred / Follow-up
+<!-- 이번 제외 — 이번 plan에선 안 하지만 향후 진행할 작업.
+     사용자가 "이번엔 빼고 다음에 하자"고 한 것은 Out of Scope가 아니라 반드시 여기로. -->
+- <이번엔 제외, 향후 별도 plan으로 진행할 작업>
 
 ## Investigation Log
 - <확인 방법 + 결과>

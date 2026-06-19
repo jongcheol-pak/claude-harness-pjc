@@ -1,12 +1,14 @@
 {
   "name": "pjc",
-  "displayName": "pjc Harness",
-  "version": "1.25.0",
+  "version": "1.27.4",
   "description": "Korean-first harness for Claude Code: plan-feature, implement-task, systematic-debugging, DDD-friendly skills, 2-stage review subagents, PowerShell hooks for Windows.",
   "author": {
     "name": "pjc"
   },
+  "homepage": "https://github.com/jongcheol-pak/claude-harness-pjc",
+  "repository": "https://github.com/jongcheol-pak/claude-harness-pjc",
   "license": "MIT",
+  "displayName": "pjc Harness",
   "keywords": [
     "harness",
     "korean",

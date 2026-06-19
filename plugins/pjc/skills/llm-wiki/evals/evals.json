@@ -1,0 +1,13 @@
+{
+  "skill": "llm-wiki",
+  "evals": [
+    { "id": 1, "query": "이 프로젝트 위키에 등록해줘", "should_trigger": true, "rationale": "프로젝트 추가 (절차 A)" },
+    { "id": 2, "query": "위키 업데이트해줘", "should_trigger": true, "rationale": "정보 갱신 (절차 B)" },
+    { "id": 3, "query": "위키 점검해줘", "should_trigger": true, "rationale": "lint (절차 F)" },
+    { "id": 4, "query": "이 기능 위키에 추가해줘", "should_trigger": true, "rationale": "가이드/레시피 (절차 I)" },
+    { "id": 5, "query": "위키에서 OO 어떻게 구현했는지 찾아줘", "should_trigger": true, "rationale": "query (절차 G)" },
+    { "id": 6, "query": "변경분 위키에 반영해줘", "should_trigger": true, "rationale": "ingest (절차 B)" },
+    { "id": 7, "query": "파이썬 리스트 컴프리헨션 설명해줘", "should_trigger": false, "rationale": "일반 질문 — 위키 무관" },
+    { "id": 8, "query": "이 버그 고쳐줘", "should_trigger": false, "rationale": "코드 수정 — implement-task/plan-feature 영역 (단 작업 전 K 참조는 plan-feature가 호출)" }
+  ]
+}
