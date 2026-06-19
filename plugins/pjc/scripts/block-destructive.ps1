@@ -2,6 +2,14 @@
 # Bash 도구 호출 시 파괴적 명령 차단.
 # exit 2 = block (Claude에게 차단 사유 전달).
 #
+# 차단 대상: 파일 시스템 파괴(rm -rf 등), git 히스토리 파괴,
+#   DB 데이터 삭제(DROP/TRUNCATE/WHERE 없는 DELETE/스키마 삭제/migration reset/ORM 대량삭제).
+#
+# ⚠️ 한계: 이 hook은 **Bash 도구로 실행되는 명령**만 검사한다.
+#   ORM 대량 삭제 코드(예: RemoveRange, deleteMany)를 소스 파일에 '작성'만 하는 경우는
+#   Write/Edit 도구라 여기서 안 잡힌다. 그런 코드는 plan-feature 승인 게이트 +
+#   code-quality-reviewer가 검토한다 (CLAUDE.md "DB 데이터 삭제는 승인 필수" 참조).
+#
 # ⚠️ 이 hook은 의도적으로 토글 불가합니다.
 #   - 다른 hook(require-plan-for-write, impact-warn 등)과 달리
 #     ~/.claude/.disabled/ 체크를 하지 않습니다.
@@ -9,6 +17,7 @@
 #     harness-toggle skill로도 끌 수 없게 합니다.
 #   - 환경변수 CLAUDE_HARNESS_QUICK도 무시합니다.
 #   - 이 동작을 변경하지 마세요.
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -37,10 +46,25 @@ $patterns = @(
     'git\s+filter-branch',                              # 히스토리 재작성
     'git\s+filter-repo',
     'git\s+reflog\s+expire',
+    'git\s+clean\s+(-[a-z]*f[a-z]*d|-[a-z]*d[a-z]*f|.*-f\b.*-d\b|.*-d\b.*-f\b)',  # git clean -fd/-df/-f -d (untracked 영구 삭제)
     '(^|\s)sudo(\s|$)',                                 # sudo
-    'DROP\s+TABLE',                                     # SQL
-    'DROP\s+DATABASE',
-    'TRUNCATE\s+TABLE',
+    'DROP\s+TABLE',                                     # SQL — 테이블 삭제
+    'DROP\s+DATABASE',                                  # DB 전체 삭제
+    'DROP\s+SCHEMA',                                    # 스키마 삭제
+    'TRUNCATE\s+TABLE',                                 # 테이블 전체 비우기
+    'TRUNCATE\s+(?!TABLE)',                             # TRUNCATE <table> (TABLE 키워드 생략형)
+    'DELETE\s+FROM\s+[^\s;]+\s*;',                      # DELETE FROM x; — WHERE 없는 전체 행 삭제
+    'DELETE\s+FROM\s+[^\s;]+\s*$',                      # DELETE FROM x (문장 끝, WHERE 없음)
+    'DELETE\s+FROM\s+\w+\s+WHERE\s+1\s*=\s*1',          # WHERE 1=1 = 사실상 전체 삭제
+    'UPDATE\s+\w+\s+SET\s+(?:(?!WHERE).)*$',            # UPDATE x SET ... (WHERE 절 자체가 없음 — 전체 행 변조)
+    'UPDATE\s+\w+\s+SET\s+.*WHERE\s+1\s*=\s*1',         # UPDATE ... WHERE 1=1 = 전체 변조
+    '\.RemoveRange\(',                                  # EF Core 대량 삭제
+    'ExecuteDelete(Async)?\(',                          # EF Core 7+ 대량 삭제
+    '\.deleteMany\(\s*\{?\s*\}?\s*\)',                  # Prisma/Mongo 조건 없는 대량 삭제
+    '\.delete_all\b',                                   # ActiveRecord/Django 전체 삭제
+    'migrate\s+reset',                                  # prisma/이주 리셋 (데이터 손실)
+    'db\s+reset',                                       # 일부 ORM CLI
+    'database\s+drop',                                  # dotnet ef database drop
     'mkfs\.',                                           # 포맷
     'dd\s+if=.*of=/dev/',                               # dd to device
     # Windows 특화 위험 명령

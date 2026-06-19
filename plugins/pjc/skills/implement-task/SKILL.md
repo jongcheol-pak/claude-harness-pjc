@@ -63,6 +63,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 ### 안전
 10. **파괴적 작업 · 새 의존성 → 자동 실행 금지, Halt.**
     - force push, history rewrite, rm -rf, DB drop, 권한·보안 변경
+    - **DB 데이터 삭제·변조**: DROP/TRUNCATE, WHERE 없는(또는 전체 대상) DELETE·UPDATE, 스키마 삭제, migration reset/down, ORM 대량 삭제(RemoveRange·deleteMany({})·delete_all 등). 코드로 작성하든 명령으로 실행하든, 데이터 손실·전체 변조 가능 작업은 **사용자 승인 전 금지** (DB 데이터는 git으로 복구 불가). 단 `DELETE/UPDATE ... WHERE <특정 조건>` 같은 일상적·국소적 작업은 plan에 명시돼 있으면 진행 가능.
     - 새 라이브러리·외부 서비스 도입
 
 > **상세 안티패턴 표는 `references/antipatterns.md` 참조.**

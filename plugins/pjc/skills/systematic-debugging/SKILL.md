@@ -109,6 +109,7 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 - 같은 에러 메시지가 코드베이스 다른 곳에서 어떻게 처리되는가?
 - 동일 라이브러리/API를 쓰는 다른 모듈은 정상 동작하는가? (차이가 단서)
 - git log에서 비슷한 수정 이력이 있는가?
+- **위키 참조 (llm-wiki 사용 중이고 이 프로젝트가 등록돼 있으면)**: `pjc:llm-wiki`의 절차 K(read-only 조회)로 과거 동일·유사 버그와 그 해결책이 위키에 기록돼 있는지 확인한다. 과거에 같은 증상을 해결한 적이 있으면 그 원인·해결을 가설에 반영해 재조사를 줄인다. 위키는 읽기만 하고 수정하지 않는다 (위키 갱신은 별도 세션). 위키가 없거나 미등록 프로젝트면 건너뛴다.
 
 ### 2-B. 가설 후보 작성
 
@@ -203,6 +204,10 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 - 빌드 / 테스트 / 린트
 - spec-compliance-reviewer + code-quality-reviewer subagent
 - BLOCKER 0까지 반복
+
+### 4-E. 위키 갱신 제안 (선택)
+
+llm-wiki 사용 중이고 이 프로젝트가 등록돼 있으면, 이번 버그의 **증상·근본 원인·해결책**을 `pjc:llm-wiki` 절차 B(ingest)로 위키에 반영할 것을 제안한다. 다음에 같은·유사 증상이 재발하면 Phase 2-A의 위키 참조가 이 기록을 찾아 재조사를 줄인다. 디버깅 세션은 위키를 직접 수정하지 않으므로 별도 위키 세션에서 진행한다 (read-only 원칙 유지).
 
 ## Phase 4.5 — 아키텍처 의심 (Architectural Doubt)
 

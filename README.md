@@ -1,369 +1,261 @@
 # claude-harness-pjc
 
-> Windows + PowerShell 환경에서 Claude Code의 작업 흐름을 강제·검증하는 plugin
+> Windows + PowerShell 환경에서 Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
 
-**버전**: 1.27.4
+**버전**: 1.29.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
-Claude Code가 "계획 없이 추측하고 a 파일 수정하면서 b·c 파일을 빠뜨리고 검증 없이 완료 선언"하는 것을 막기 위한 도구입니다. 모든 코드 변경은 **계획 → 구현 → 다층 검증 → 완료**의 자율 루프를 거칩니다.
+---
+
+## 한눈에 보기
+
+Claude Code에게 코딩을 맡기면 가끔 이렇게 합니다:
+
+- 계획 없이 바로 코드를 쓰고, 있지도 않은 함수를 호출
+- A 파일만 고치고 그걸 부르는 B·C 파일은 그대로 둬서 빌드가 깨짐
+- 제대로 확인 안 하고 "다 됐습니다"라고 보고
+- task마다 "다음 진행할까요?"를 물어 흐름이 끊김
+
+**pjc는 이걸 막습니다.** 코드를 바꾸기 전에 먼저 계획을 세우게 하고, 바꾼 뒤에는 여러 단계로 검증하게 하며, 한 번 승인하면 끝까지 자동으로 진행합니다. "꼼꼼한 시니어 개발자의 작업 습관"을 Claude Code에 입히는 도구라고 보면 됩니다.
+
+비유하자면, Claude Code가 "재능 있지만 가끔 덤벙대는 주니어"라면, pjc는 그 옆에서 "계획서 보여줘 → 이 부분 빠졌네 → 검증했어? → 좋아 통과"를 챙기는 **작업 절차와 안전장치**입니다.
+
+---
 
 ## 무엇을 해결하나요
 
-| 문제 | 해결 |
+| 자주 겪는 문제 | pjc의 대응 |
 |---|---|
-| 추측 코드, 환각 메서드 호출 | plan-feature가 코드 변경 전 영향 범위 전수 조사 + plan-reviewer 적대적 검증 |
-| a 파일 수정하고 b·c 파일 빠뜨림 | impact-warn hook이 모든 Write 후 caller 자동 검출 + V-7 grep 재검증 |
-| "잘 동작할 것 같음"으로 완료 선언 | 빌드/테스트 + 2단계 subagent 리뷰 + 자기정직성 검사 후에만 완료 |
-| 검토 결과를 자체 판단으로 묵살 | spec-compliance/code-quality subagent의 BLOCKER가 0이 될 때까지 반복 |
-| task 사이 "다음 진행할까요?" | 자율 루프 — plan 승인 1회 후 모든 task 끝까지 자동 진행 |
-| 짧은 수정에도 plan + 검증 강제 | Trivial Bypass — UI 문구·아이콘·오타 수정은 plan 없이 직접 처리 |
-| 매번 빌드/테스트 명령 모름 | bootstrap-agents-md skill이 stack 자동 감지 + AGENTS.md 생성 |
-| 과거 구현·결정을 매번 다시 조사 | llm-wiki가 프로젝트 지식을 vault에 정제 축적 → plan-feature가 코드 작업 전 read-only 참조 |
+| 추측으로 코드를 쓰고, 없는 함수를 호출 | 코드 변경 전 영향 범위를 전부 조사하고, 계획을 적대적으로 검토 |
+| A만 고치고 B·C를 빠뜨림 | 변경할 때마다 그걸 쓰는 다른 파일을 자동으로 찾아 함께 점검 |
+| 확인 없이 "다 됐다"고 보고 | 빌드·테스트 + 2단계 검토 + 자기점검을 통과해야만 완료 |
+| task마다 "다음 할까요?" 물음 | 한 번 승인하면 모든 task를 끝까지 자동 진행 |
+| 사소한 오타 수정에도 거창한 절차 | 3줄 이내 단순 수정은 절차를 건너뛰고 바로 처리 |
+| 빌드·테스트 명령을 매번 모름 | 프로젝트를 분석해 명령을 자동으로 파악·기록 |
+| DB 데이터를 실수로 삭제·변조 | 위험한 DB 명령(전체 삭제/변조 등)을 자동 차단 |
+| 과거에 한 작업을 매번 다시 조사 | 프로젝트 지식을 위키에 쌓고, 다음 작업 때 참조 |
+
+---
 
 ## 빠른 시작
 
 ### 1. 사전 요구사항
 
-- Windows 10/11 + PowerShell 5.1 이상
-- [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) v2.0 이상 (`claude --version`으로 확인)
-- Git (실제 코드 작업 시)
+- Windows 10/11 + PowerShell
+- Claude Code v2.0 이상
 
 ### 2. 설치
 
-**방법 A — GitHub (권장)**: Claude Code가 repo를 clone해 캐시하므로 로컬 폴더가 불필요합니다.
-
 ```powershell
-# 저장소를 GitHub에 올린 뒤 (private 가능):
 claude plugin marketplace add jongcheol-pak/claude-harness-pjc
 claude plugin install pjc@pjc-harness
 claude plugin enable pjc@pjc-harness
-
-# Claude Code 시작
-claude
 ```
 
-**방법 B — 로컬 (개발/수정용)**: 압축 해제 폴더가 plugin 본체로 참조됩니다.
-⚠️ 설치 후 폴더를 삭제·이동·이름변경하면 plugin이 깨집니다 — 고정 경로에 두세요.
+설치가 끝나면 Claude Code를 다시 시작합니다.
 
-```powershell
-Expand-Archive claude-harness-pjc.zip -DestinationPath C:\Tools\
-C:\Tools\claude-harness-pjc\install.ps1
-claude
-```
+### 3. 첫 사용
 
-설치 확인:
-```
-/plugin list   # pjc 표시되어야 함
-```
-
-정밀 검증 (선택):
-```powershell
-C:\Tools\claude-harness-pjc\validate.ps1
-```
-
-### 3. AGENTS.md 준비
-
-처음 사용하는 프로젝트에서 plugin이 자동으로 묻습니다. 또는 수동:
-
-```powershell
-# 프로젝트 루트로 이동 후
-claude
-> /pjc:bootstrap-agents-md
-```
-
-자동으로 stack (`.NET`, `Android`, `Node/TS`, `Python`, `Go`, `Rust` 등) 감지 → `AGENTS.md` 생성.
-
-알려지지 않은 stack은 사용자에게 4가지 질문 (언어, build, test, 아키텍처).
-
-### 4. (선택) 권한 설정으로 승인 줄이기
-
-매번 빌드/테스트/git 명령에 승인을 묻는 게 번거롭다면, `~/.claude/settings.json`(전역) 또는 프로젝트의 `.claude/settings.json`에 권한 규칙을 추가하세요. (plugin 자체는 권한을 설정하지 않습니다 — Claude Code가 plugin의 settings는 `agent` 키만 인식하기 때문입니다.)
-
-stack에 맞는 예시를 복사:
-
-```jsonc
-{
-  "permissions": {
-    "allow": [
-      "Read", "Glob", "Grep",
-      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)",
-      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git checkout:*)",
-      "Bash(git branch:*)", "Bash(git stash:*)", "Bash(git rev-parse:*)",
-
-      // .NET
-      "Bash(dotnet build:*)", "Bash(dotnet test:*)", "Bash(dotnet format:*)",
-      // Android
-      "Bash(./gradlew assembleDebug)", "Bash(./gradlew test)", "Bash(./gradlew lint)",
-      // Node/TS
-      "Bash(npm run build)", "Bash(npm test)", "Bash(npm run lint)",
-      // Python
-      "Bash(pytest:*)", "Bash(ruff:*)",
-      // Go
-      "Bash(go build:*)", "Bash(go test:*)", "Bash(go vet:*)",
-      // Rust
-      "Bash(cargo build:*)", "Bash(cargo test:*)", "Bash(cargo clippy:*)"
-    ],
-    "ask": [
-      "Bash(git push:*)", "Bash(git merge:*)",
-      "Write", "Edit"
-    ],
-    "deny": [
-      "Read(./.env)", "Read(./.env.*)", "Read(./secrets/**)",
-      "Read(./**/*.pem)", "Read(./**/*.key)",
-      "Bash(git push --force:*)", "Bash(git push -f:*)",
-      "Bash(git filter-branch:*)"
-    ]
-  }
-}
-```
-
-> 안전성은 권한 설정과 별개로 `block-destructive` hook이 항상 보장합니다 (force push, `rm -rf /` 등 차단). 위 설정은 **편의를 위한 것**이며 필수는 아닙니다.
-
-본인이 쓰는 stack 줄만 남기고 나머지는 지워도 됩니다.
-
-### 5. 첫 사용
+평소처럼 말하면 됩니다. pjc가 알아서 끼어듭니다:
 
 ```
-claude
-> 사용자 설정 화면을 추가하고 싶어
+> 로그인 화면에 "비밀번호 찾기" 링크 추가해줘
+
+[pjc가 자동으로]
+1. 계획을 세우고 → 검토한 뒤 → 당신에게 승인을 받습니다
+2. 승인하면 → 구현하고 → 검증하고 → 완료를 보고합니다
 ```
 
-흐름:
-1. `plan-feature` 자동 트리거 → 계획 작성 + plan-reviewer 검증 → 사용자 승인
-2. `implement-task` 자동 진행 → task별 P/I/V/D 루프 → 모든 task 자동 완료
-3. Phase F 통합 검증 → 최종 보고
+처음 코드 작업을 시도하면, pjc가 프로젝트 정보(빌드·테스트 명령 등)를 담은 `AGENTS.md` 파일이 없다며 자동 생성을 제안합니다. 승인하면 프로젝트를 분석해 만들어 줍니다.
+
+---
+
+## 어떻게 동작하나요
+
+pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으로 진행합니다.
+
+### 1단계 — 계획 (당신과 함께)
+
+요청을 받으면 바로 코드를 쓰지 않고 먼저 계획을 세웁니다.
+
+- 어떤 파일을 건드려야 하는지 **전부 조사**합니다 (영향 범위 파악)
+- 작업을 작은 단위(T1, T2, …)로 나눕니다
+- 별도의 "검토 담당"이 계획을 **적대적으로 검토**합니다 — 빠진 것, 위험한 것을 찾아냅니다
+- 완성된 계획을 보여주고 **당신의 승인을 기다립니다** ✋
+
+> 큰 작업(앱 신규 개발 등)이면 계획 전에 요구사항 정의서(PRD)부터 만들어 합의합니다.
+
+### 2단계 — 구현 (자동)
+
+승인하면 여기서부터는 **끝까지 자동**입니다. task마다 다음을 반복합니다:
+
+1. 이 변경이 다른 곳에 영향을 주는지 미리 추적
+2. 최소한으로 코드 수정
+3. 빌드·테스트 + 검토 담당의 검증
+4. 통과하면 저장하고 즉시 다음 task로
+
+중간에 "다음 할까요?"라고 묻지 않습니다. 문제가 생겼을 때만 멈춰서 물어봅니다.
+
+### 3단계 — 검증과 완료
+
+모든 task가 끝나면 전체를 한 번 더 통합 검증하고, 빌드·테스트·검토를 모두 통과한 뒤에야 완료를 보고합니다.
+
+### 안전장치 (항상 작동)
+
+작업 흐름과 별개로, **위험한 명령은 자동으로 차단**됩니다. 이건 끌 수 없습니다.
+
+- 파일 전체 삭제(`rm -rf /` 등), git 히스토리 파괴
+- **DB 데이터 삭제·변조**: 전체 삭제(`DELETE` WHERE 없이), 전체 변조(`UPDATE` WHERE 없이), `DROP`/`TRUNCATE`, ORM 대량 삭제 등
+- 단, `WHERE 조건`이 있는 일상적인 DB 작업은 그대로 통과합니다
+
+---
+
+## 단순 작업은 빠르게
+
+모든 작업에 거창한 절차를 강제하면 오히려 불편합니다. 그래서 **3줄 이내의 단순 수정**은 계획 없이 바로 처리합니다:
+
+- UI 문구·라벨 변경, 색상·아이콘 교체
+- 오타·주석 수정
+- 단일 라인 설정·리소스 변경
+
+기준은 "3줄 이내 + 새 함수/구조 추가 없음 + 의도가 명확"입니다. 이 경우에도 다른 파일에 영향이 가면 자동으로 알려줍니다.
+
+---
 
 ## 주요 기능
 
-### 8개 Skills
+### Skills (작업을 수행하는 능력)
 
-| Skill | 트리거 | 역할 |
+| 기능 | 언제 작동하나 | 무엇을 하나 |
 |---|---|---|
-| `pjc:plan-feature` | "기능 추가", "리팩토링", "구현" 등 | 코드 변경 전 계획 수립 + 적대적 검증 (대규모는 PRD 작성) |
-| `pjc:implement-task` | plan 승인 후 자동 | 자율 루프 — 모든 task를 사용자 개입 없이 완료 |
-| `pjc:systematic-debugging` | "디버깅", "버그", "에러" 등 | 4-phase 근본 원인 분석 |
-| `pjc:add-viewmodel` | "ViewModel 추가" (WinUI/WPF/MAUI만) | MVVM boilerplate 생성 |
-| `pjc:add-domain-service` | "도메인 서비스", "use case" | DDD 서비스 추가 |
-| `pjc:harness-toggle` | "hook 꺼", "harness 상태" | hook 런타임 on/off |
-| `pjc:bootstrap-agents-md` | AGENTS.md 부재 시 자동 | stack 자동 감지 → AGENTS.md 생성 |
-| `pjc:llm-wiki` | "위키에 등록/추가", "위키 업데이트/점검" 등 | Obsidian vault 지식베이스 운영 (프로젝트 등록·갱신·lint·조회). plan-feature가 코드 작업 전 read-only 참조(절차 K)로 연동 |
+| 계획 수립 | "기능 추가", "구현" 등 | 코드 변경 전 계획 + 검토 |
+| 구현 | 계획 승인 후 자동 | 모든 task를 끝까지 자동 진행 |
+| 디버깅 | "버그", "에러", "안 됨" 등 | 근본 원인을 찾는 체계적 디버깅 |
+| 위키 운영 | "위키에 등록/업데이트" | 프로젝트 지식을 쌓고 다음 작업 때 참조 |
+| 그 외 | — | MVVM/DDD 코드 생성, 프로젝트 분석 등 |
 
-### 6개 Subagents (적대적 검증)
+### Subagents (검토 담당)
 
-| Subagent | 모델 | 시점 | 역할 |
-|---|---|---|---|
-| `plan-reviewer` | Opus | plan 작성 후 | plan 적대적 검토 (Type·PRD 따라 항목 결정, BLOCKER 0까지) |
-| `spec-prefilter` | Haiku | Type B task의 V-5 | 빠른 1차 필터 (Sonnet 호출 회피) |
-| `spec-compliance-reviewer` | Sonnet | 각 task V-5 | acceptance, 범위, cross-file 영향 검증 |
-| `code-quality-reviewer` | Sonnet | 각 task V-6 | DDD, 환각, 위생, 보안, 동시성 |
-| `plan-completion-reviewer` | Opus | Phase F-7 | plan 전체 + PRD 적대적 통합 검증 |
-| `explorer` | Haiku | plan-feature 컨텍스트 수집 | 메인 컨텍스트 보호용 빠른 탐색 |
+작업을 직접 하는 Claude와 **별개의 검토자**들이 결과를 적대적으로 점검합니다. 작성자와 검토자를 분리해 "자기 일을 자기가 검토하는" 맹점을 줄입니다.
 
-### 6개 Hooks (자동 안전망)
+- 계획 검토자: 계획에 빠진 것·위험한 것을 찾음
+- 명세 준수 검토자: 구현이 계획대로 됐는지, 빠진 파일은 없는지
+- 품질 검토자: 코드 품질·보안·규칙 준수
+- 완료 검토자: 전체가 요구사항을 충족하는지
 
-| Hook | 이벤트 | 동작 |
-|---|---|---|
-| `block-destructive` | PreToolUse Bash | `rm -rf /`, `git push --force` 등 차단 (토글 불가) |
-| `require-plan-for-write` | PreToolUse Write/Edit | plan.md 없이 코드 파일 작성 차단 (문서·이미지·리소스 예외) |
-| `check-utf8-and-lines` | PostToolUse | UTF-8 BOM, 1500라인, 한글 주석 검사 |
-| `impact-warn` | PostToolUse | public 심볼 변경 시 caller 자동 grep → 경고 |
-| `require-evidence` | Stop | 증거 없는 완료 선언 경고 |
-| `backup-on-compact` | PreCompact | 컨텍스트 압축 직전 plan.md 스냅샷 백업 |
+### Hooks (자동 안전망)
 
-## 동작 방식
+당신이 신경 쓰지 않아도 **자동으로 작동**하는 장치들입니다.
 
-### 자율 루프 구조
+- 위험한 명령 차단 (끌 수 없음)
+- 계획 없이 코드 쓰는 것 방지
+- 파일 인코딩·줄 수 검사
+- 변경이 영향을 주는 곳 자동 경고
+
+---
+
+## 자주 쓰는 명령
+
+대부분 자동으로 작동하지만, 직접 부를 수도 있습니다:
+
+| 이렇게 말하면 | 이게 작동합니다 |
+|---|---|
+| "기능 추가", "리팩토링", "구현" | 계획 수립 |
+| "버그", "에러", "안 돼" | 디버깅 |
+| "위키에 등록/업데이트" | 위키 운영 |
+| "hook 꺼줘" / "harness 상태" | 안전장치 켜고 끄기 |
+
+---
+
+## 위키 연동 (선택 기능)
+
+프로젝트 지식을 쌓아두고 재사용하는 기능입니다.
+
+```
+1. "이 프로젝트 위키에 등록해줘"
+   → (최초 1회) 위키 폴더 경로 입력 → 이후 안 물어봄
+   → 프로젝트를 분석해 지식 정리
+
+2. 이후 작업할 때 (자동)
+   → 계획·디버깅 단계에서 위키의 과거 기록을 참조
+   → "예전에 비슷한 걸 했었지" 하고 재조사를 줄임
+
+3. 작업 끝나면
+   → 새로 알게 된 것을 위키에 반영하자고 제안
+```
+
+위키 경로는 사용하는 PC의 개인 설정 파일에 저장되므로, plugin을 업데이트해도 다시 묻지 않습니다.
+
+---
+
+## 더 알아보기 (고급)
+
+<details>
+<summary>작업 흐름 상세 다이어그램</summary>
 
 ```
 사용자 요청
     ↓
-[plan-feature] USER-INTERACTIVE
-  - 컨텍스트 수집 (AGENTS.md 없으면 bootstrap 자동)
-  - 영향 범위 grep 전수 조사
-  - Task 분해 + Type 분류 (A/B/C/D)
-  - plan-reviewer 적대적 검증
+[계획] 당신과 함께
+  - 컨텍스트 수집 (AGENTS.md 없으면 자동 생성)
+  - 영향 범위 전수 조사
+  - task 분해 (T1, T2, …) + 작업 유형 분류
+  - 검토자의 적대적 검증
   - 사용자 승인 1회 ✋
     ↓
-[implement-task] FULLY AUTONOMOUS — 끝까지 사용자 개입 없음
-  반복 (T1, T2, ..., Tn):
-    Phase P: caller 사전 추적
-    Phase I: 최소 변경 구현
-    Phase V: Type별 fast-path 검증 (V-1 ~ V-8)
-    Phase D: commit + 즉시 다음 task
+[구현] 끝까지 자동
+  각 task 반복:
+    - 영향받는 곳 사전 추적
+    - 최소 변경 구현
+    - 유형별 검증 (작은 건 빠르게, 큰 건 철저하게)
+    - 저장 후 즉시 다음 task
     ↓
-[Phase F] plan 전체 통합 검증 (조건부)
-  - 전체 빌드 + 전체 테스트
-  - plan-completion-reviewer 적대적 검토
+[통합 검증]
+  - 전체 빌드 + 테스트
+  - 완료 검토자의 최종 점검
     ↓
 최종 보고 ✋
 ```
+</details>
 
-### Task Type 4단계 (검증 fast-path)
+<details>
+<summary>작업 유형별 검증 깊이</summary>
 
-| Type | 정의 | 검증 단계 |
+작업의 위험도에 따라 검증 강도를 다르게 합니다 — 작은 변경은 빠르게, 큰 변경은 철저하게.
+
+| 유형 | 예 | 검증 |
 |---|---|---|
-| **A** Doc/Config | `.md`, `.json` 등 코드 외 | V-1(필요 시) + V-8 |
-| **B** Trivial Code | 단일 파일·단일 메서드·caller 없음 | V-1, V-2, V-5(Haiku prefilter), V-7, V-8 |
-| **C** Normal Code | 2-3 파일, caller 갱신 있음 | V-1~V-3, V-5(Sonnet), V-7, V-8 |
-| **D** Complex/Cross-cutting | 다중 파일, 시그니처 변경 | V-1 ~ V-8 전체 |
+| 문서/설정 | `.md`, `.json` | 최소 |
+| 단순 코드 | 한 파일·한 메서드 | 가벼운 검토 |
+| 일반 코드 | 2-3 파일, 호출처 갱신 | 표준 검토 |
+| 복잡/광범위 | 다중 파일, 시그니처 변경 | 전체 검토 |
 
-작은 변경은 빠르게, 큰 변경은 철저하게.
+</details>
 
-### Trivial Bypass (1분 작업 가속)
+<details>
+<summary>공식 Claude Code 기능과의 관계</summary>
 
-다음 케이스는 plan-feature를 호출하지 않고 직접 처리:
+pjc는 Claude Code 내장 기능을 **대체하지 않고 보완**합니다.
 
-- UI 문구·라벨 변경 ("확인 버튼을 'OK'로")
-- 아이콘·이미지 파일 교체
-- 색상·치수 토큰 1-2개 변경
-- README/문서 오타 수정
-- 주석 추가
-- 단일 라인 설정 변경 (`.editorconfig`, `.gitignore`)
-- 단일 라인 리소스 변경 (`strings.xml`, `Resources.resx`)
-- **작은 코드 수정** — 값·조건·문자열 변경 등 3줄 이내 (새 함수/클래스/시그니처 추가 아님)
+`/code-review`, `/security-review`: pjc는 **작성 중** 계획 준수를 검증하고, 공식 기능은 **PR 단계**에서 버그·보안을 점검합니다. 둘 다 쓰면 이중 점검이 됩니다.
 
-판정 기준: 3줄 이내, 새 정의/시그니처 변경 없음, 의도 명확. 코드 파일(`.cs`, `.xaml`, `.ts` 등)이라도 이 기준을 만족하면 직접 수정합니다. `require-plan-for-write` hook이 작은 변경을 자동 통과시키고, cross-file 영향은 `impact-warn` hook이 사후 검출합니다.
+권장 흐름: `pjc로 작성·검증 → PR 생성 → 공식 /code-review로 재점검`
 
-## 사용 예시
+</details>
 
-### 예시 1 — 새 기능 추가
+<details>
+<summary>AGENTS.md란</summary>
 
-```
-> 다크 모드 토글을 설정 화면에 추가해줘
+프로젝트의 빌드·테스트 명령, 기술 스택, 규칙을 담은 파일입니다. pjc가 작업할 때 이 파일을 참조합니다. 없으면 자동 생성을 제안하며, 직접 작성할 수도 있습니다. .NET, Android, Node/TS, Python, Go, Rust용 템플릿이 포함돼 있습니다.
 
-[plan-feature 자동 트리거]
-컨텍스트 수집 → 영향 범위 분석 → plan-reviewer 검증 → 사용자 승인
+</details>
 
-[plan.md 생성됨]
-Tasks:
-  T1 (Type C): SettingsViewModel에 IsDarkMode 속성 추가
-  T2 (Type C): SettingsPage XAML에 ToggleSwitch 바인딩
-  T3 (Type D): ThemeService 추가 (Light/Dark 전환)
-  T4 (Type C): App.xaml에서 ThemeService 적용
-  T5 (Type B): 단위 테스트 추가
-
-> [승인]
-
-[implement-task 자율 루프]
-✅ T1 완료 (1/5) → T2 시작
-   Type: C | Tests: 12/12 | Phase V: V-1,V-2,V-3,V-5,V-7,V-8
-   Elapsed: 3m 20s | Turn ~28
-
-✅ T2 완료 (2/5) → T3 시작
-...
-✅ T5 완료 (5/5)
-
-[Phase F]
-- 전체 빌드: OK
-- 전체 테스트: 87/87 passed
-- plan-completion-reviewer: OK
-
-🎉 모든 task 완료
-```
-
-### 예시 2 — Trivial 작업 (plan 없이 빠르게)
-
-```
-> README 첫 문장 오타 수정해줘
-
-[plan-feature 우회 — trivial 판정]
-직접 Edit 실행 → impact-warn hook 자동 검증 → 완료
-
-Elapsed: 8s
-```
-
-### 예시 2.5 — 대규모 작업 (PRD + 요구 재검증 루프)
-
-```
-> 메모장 앱 만들어줘
-
-[plan-feature — 대규모 판정 → PRD 단계]
-요구사항 질문 (카테고리 묶음 + 추천 ★) → docs/prd.md 작성
-  FR-1 (Must): 메모 생성/편집/삭제
-  FR-2 (Must): 자동 저장
-  FR-3 (Should): 검색
-  NFR-1 (Must): 한/영 다국어
-→ PRD 사용자 승인 (이후 고정)
-
-[plan.md 작성 — 각 task가 PRD ID 역참조]
-  T1 (FR-1): 메모 도메인 모델 + Repository
-  T2 (FR-1): 목록/편집 화면 ...
-
-> [승인]
-
-[implement-task 자율 루프] T1 → ... → Tn
-
-[Phase F] plan.md 대비 검증 — 통과
-
-[Phase G] PRD 대비 재검증 (PRD 있을 때만)
-  FR-1 ✅  FR-2 ✅  FR-3 ❌ (plan에서 누락!)  NFR-1 ✅
-  → Must/Should 갭 발견 → T(n+1) 자동 추가 → 자율 재진입
-  → 재대조 → 전체 충족 → 완료
-  (재루프 최대 2회 — 이후 잔여 갭은 사용자 보고)
-
-🎉 PRD Must 100% 충족 + 충족표 보고
-```
-
-### 예시 3 — Hook 일시 끄기
-
-```
-> 일단 plan 강제 검사 꺼
-
-[harness-toggle 트리거]
-require-plan-for-write 비활성화됨.
-~/.claude/.disabled/require-plan-for-write 생성됨.
-
-> 다시 켜
-require-plan-for-write 활성화됨.
-```
-
-### 예시 4 — 위키 연동 (llm-wiki)
-
-```
-> 이 프로젝트 위키에 등록해줘
-
-[llm-wiki 트리거 — 절차 A]
-(최초 1회) LLM WIKI 폴더 경로를 알려주세요 → 입력
-→ ~/.claude/llm-wiki-config.json 에 저장 (이후 안 물음)
-→ 코드 분석 → feature/recipe 정제 → vault에 페이지 생성 → log.md 기록
-
-[이후 코드 작업 시 — 자동 연동]
-> 로그인에 2FA 추가해줘
-
-[plan-feature Step 1 — 위키 참조 (절차 K, read-only)]
-위키에서 기존 인증 관련 feature/recipe 참조 → 계획에 반영
-→ implement-task 자율 루프 → 완료
-→ Next Steps: "위키 갱신(절차 B) 제안" (선택, 별도 세션)
-```
-
-위키는 코드 작업 중 **읽기만** 하고, 갱신은 별도 위키 세션에서 진행합니다 (코드↔위키 분리).
-
-## 주요 명령
-
-```
-# Claude Code 안에서
-/plugin list                                  # pjc 활성 확인
-/pjc:plan-feature <설명>                      # 명시적 plan 호출
-/pjc:implement-task <T번호>                   # 특정 task 실행 (또는 'all')
-/pjc:systematic-debugging <증상>              # 디버깅 모드
-/pjc:bootstrap-agents-md                      # AGENTS.md 생성
-/pjc:harness-toggle <hook> <on|off|status>    # hook 토글
-/pjc:harness-toggle status                    # 모든 hook 상태
-```
-
-자연어로도 호출 가능: "기능 추가해줘", "버그 분석해줘", "hook 상태 보여줘" 등.
+---
 
 ## 설치 관리
 
-### GitHub 모드 (권장)
-
 ```powershell
-# 최초 설치
-claude plugin marketplace add jongcheol-pak/claude-harness-pjc
-claude plugin install pjc@pjc-harness
-claude plugin enable pjc@pjc-harness
-
-# 업데이트 (개발 PC에서 git push 후, 사용 PC에서)
+# 업데이트
 claude plugin marketplace update pjc-harness
 claude plugin update pjc@pjc-harness
 
@@ -372,180 +264,72 @@ claude plugin uninstall pjc
 claude plugin marketplace remove pjc-harness
 ```
 
-GitHub 모드에서 install.ps1을 쓰고 싶으면 (재설치 정리 + enable + 검증 안내 일괄):
+<details>
+<summary>로컬 개발 모드 / 배포 워크플로</summary>
+
+개발용으로 로컬 폴더에서 직접 쓰거나, 수정 후 GitHub에 배포하려면:
+
 ```powershell
+# 로컬 설치 (개발용)
+.\install.ps1
+
+# GitHub 모드 일괄 설치 (정리 + enable + 검증)
 .\install.ps1 -GitHub jongcheol-pak/claude-harness-pjc
+
+# 배포 (개발 PC에서 수정 후)
+git add -A && git commit -m "변경 내용" && git push
+# → 사용 PC에서 위의 "업데이트" 명령 실행
 ```
 
-### 로컬 모드 (개발용)
+</details>
 
-```powershell
-# 자동 재설치 (기본 동작)
-C:\Tools\claude-harness-pjc\install.ps1
-
-# 제거 / 프로젝트별 설치 / 검증
-C:\Tools\claude-harness-pjc\install.ps1 -Uninstall
-C:\Tools\claude-harness-pjc\install.ps1 -Scope project
-C:\Tools\claude-harness-pjc\validate.ps1
-```
-
-로컬 업데이트 — **반드시 같은 경로에 내용만 교체** (경로가 바뀌면 참조가 깨짐):
-```powershell
-Remove-Item C:\Tools\claude-harness-pjc -Recurse -Force
-Expand-Archive claude-harness-pjc.zip -DestinationPath C:\Tools\
-C:\Tools\claude-harness-pjc\install.ps1
-```
-
-### 배포 워크플로 (GitHub 모드)
-
-```powershell
-# 개발 폴더에서 수정 후
-git add -A
-git commit -m "1.x.y: <변경 요약>"
-git push
-# 사용 측: claude plugin marketplace update pjc-harness && claude plugin update pjc@pjc-harness
-```
-
-## AGENTS.md 작성
-
-`plan-feature`가 가장 먼저 읽는 프로젝트 가이드 파일입니다. 9개 template이 `AGENTS.md.templates/`에 제공됩니다:
-
-```
-AGENTS.md.templates/
-├── winui3.md             (WinUI 3 / Windows App SDK — 생성·실행 실패 방지 + 디자인 + 다국어)
-├── wpf.md                (WPF + WPF-UI Fluent — 패키지 설치 + FluentWindow + 테마)
-├── dotnet.md             (일반 .NET / C# / F#)
-├── android.md            (Android / Kotlin / Java)
-├── node-typescript.md    (Node.js / TypeScript / JavaScript)
-├── python.md             (Python)
-├── go.md                 (Go)
-├── rust.md               (Rust)
-├── generic.md            (그 외 모든 stack)
-└── multi-stack-example.md (모노레포 참고용)
-```
-
-WinUI 3 프로젝트는 `<UseWinUI>true</UseWinUI>`, WPF 프로젝트는 `<UseWPF>true</UseWPF>`를 `bootstrap-agents-md`가 감지해 각각 `winui3.md` / `wpf.md`를 `dotnet.md` 대신 사용합니다 — `.slnx` 플랫폼 매핑, 패키지/비패키지 설정, `MainWindow` 진입점 등 "실행할 수 없습니다" 오류를 예방하는 규칙이 포함됩니다.
-
-대부분의 경우 `bootstrap-agents-md` skill이 자동 처리합니다. 수동 작성 시 다음 4개는 필수:
-
-1. **Build 명령** — Phase V-1 검증의 기반
-2. **Test 명령** — Phase V-2 검증의 기반
-3. **아키텍처** — 코드 위치 결정
-4. **파일 위치 컨벤션** — task Files 정확도
+---
 
 ## 트러블슈팅
 
-### plugin 명령이 자동완성에 안 보임
+<details>
+<summary>plugin 명령이 안 보여요</summary>
 
-먼저 공식 진단 명령:
-```
-/plugin validate            # plugin.json, frontmatter, hooks.json 검증
-claude plugin validate ./claude-harness-pjc --strict   # CI/배포 전 엄격 검증
-claude --debug              # plugin 로딩 상세 로그
-```
+Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요. 그래도 안 되면 `claude plugin enable pjc@pjc-harness`로 활성화 상태를 확인하세요.
 
-또는 자체 검증:
-```powershell
-C:\Tools\claude-harness-pjc\validate.ps1
-```
+</details>
 
-`FAIL` 항목이 있으면 재설치:
-```powershell
-C:\Tools\claude-harness-pjc\install.ps1
-```
+<details>
+<summary>안전장치(hook)가 너무 자주 막아요</summary>
 
-### 토큰 비용이 궁금할 때
+대부분의 hook은 "hook 꺼줘"로 일시적으로 끌 수 있습니다. 단, **위험한 명령 차단(파일 삭제·DB 삭제 등)은 안전을 위해 끌 수 없습니다.** 정상 작업인데 막혔다면, 명령에 `WHERE 조건`을 추가하는 등 더 구체적으로 바꾸면 통과합니다.
 
-plugin이 세션에 더하는 토큰을 공식 명령으로 확인:
-```
-claude plugin details pjc
-```
-always-on (매 세션 고정) + on-invoke (각 컴포넌트 호출 시) 토큰을 보여줍니다.
+</details>
 
-### Hook이 너무 자주 차단함
+<details>
+<summary>한글이 깨져요</summary>
 
-```
-> require-plan 꺼
-```
+PowerShell 인코딩 문제일 수 있습니다. pjc의 모든 스크립트는 UTF-8(BOM)로 저장되어 있으니, Claude Code와 터미널이 UTF-8을 쓰는지 확인하세요.
 
-또는 환경 변수 (한 번만 우회):
-```powershell
-$env:CLAUDE_HARNESS_QUICK = '1'
-```
+</details>
 
-### 한글 메시지가 깨짐
-
-`validate.ps1` 실행 → `[WARN] UTF-8 BOM 없음` 항목 확인 → 해당 `.ps1` 파일에 BOM 추가.
-
-### Claude Code REPL이 실행 중에 plugin 업데이트
-
-REPL 종료 후 다시 시작해야 변경 반영됨.
-
-## 여러 프로젝트 동시 작업
-
-서로 다른 프로젝트 폴더에서 Claude Code를 동시에 실행하는 것은 안전합니다. plan.md·git·작업 파일이 폴더별로 분리되기 때문입니다.
-
-| 자원 | 동시 실행 |
-|---|---|
-| plan.md, git, 작업 파일 | ✅ 폴더별 독립 |
-| subagent, hook | ✅ 인스턴스별 독립 |
-| hook 토글 (`~/.claude/.disabled/`) | ⚠️ 전역 공유 — 한 곳에서 끄면 모두 영향 |
-
-같은 프로젝트를 여러 작업으로 병렬 진행하려면 git worktree 사용을 권장합니다:
-
-```bash
-git worktree add ../proj-feature-1 -b feature-1
-git worktree add ../proj-feature-2 -b feature-2
-# 각 worktree에서 독립된 plan.md, 독립 브랜치로 작업
-```
-
-## 공식 Claude Code 기능과의 관계
-
-pjc는 Claude Code의 내장 기능을 대체하지 않고 보완합니다.
-
-| 공식 기능 | pjc와의 관계 |
-|---|---|
-| `/code-review` (PR correctness 리뷰) | **보완** — pjc는 구현 중 plan 준수를 검증(게이트), 공식은 PR 단계에서 correctness 버그를 조언. 둘 다 쓰면 작성 중 + PR 후 이중 점검 |
-| `/security-review` (보안 취약점) | **보완** — pjc는 보안 전용 스캐너가 아니므로, 보안이 중요하면 공식 명령 병행 권장 |
-| Code Review GitHub App (PR 자동) | **보완** — pjc로 작성·검증 후 PR을 열면 공식 App이 클라우드 병렬 에이전트로 재점검 |
-
-권장 워크플로:
-
-```
-pjc (작성 중)                    공식 (PR 후)
-plan-feature → implement-task → [PR 생성] → /code-review 또는 Code Review App
-  plan 준수 + 품질 게이트            correctness 버그 + 보안 재점검
-```
-
-pjc의 리뷰 subagent는 **plan.md 명세 준수**와 **프로젝트 규칙(DDD·한글주석 등)**에 집중하고, 공식 기능은 **correctness·보안**과 **PR 워크플로 통합**에 강합니다.
-
-## 설계 철학
-
-- **예측 코드 방지 > 토큰 비용 절감**: 다층 검증 비용은 재작업 비용보다 작음
-- **자율성과 결정성 동시 추구**: plan 단계는 USER-INTERACTIVE, 구현 단계는 FULLY AUTONOMOUS
-- **결정적 안전망**: subagent 검증은 확률적이지만 hook은 결정적
-- **Type-aware 검증**: 작은 작업 빠르게, 큰 작업 철저하게
+---
 
 ## 호환 환경
 
 | 항목 | 지원 |
 |---|---|
-| OS | Windows 10/11 (PowerShell native) |
-| Shell | PowerShell 5.1 / PowerShell 7+ |
-| Git Bash, WSL | 미지원 (PowerShell hook 사용) |
+| OS | Windows 10/11 |
+| Shell | PowerShell 5.1 / 7+ |
 | Claude Code | v2.0 이상 |
-| 대상 언어 | .NET, Android, Node/TS, Python, Go, Rust (template 제공) + 그 외 generic |
+| 대상 언어 | .NET, Android, Node/TS, Python, Go, Rust (+ 그 외 generic) |
 
-## 변경 이력
+> Git Bash·WSL은 미지원입니다 (PowerShell hook 사용).
 
-전체 릴리스는 [GitHub Releases](https://github.com/jongcheol-pak/claude-harness-pjc/releases) 참고.
+---
 
-### v1.27.4
-- **llm-wiki 스킬 추가** — Obsidian vault 기반 프로젝트 지식베이스 운영 스킬. 프로젝트 등록·정보 갱신(ingest)·lint·query를 절차 A~K로 자기완결적으로 수행. vault가 빈 폴더여도 동작.
-- **plan-feature ↔ 위키 연동** — Step 1에서 구현 전 관련 feature/recipe를 read-only(절차 K)로 참조해 재조사 감소. implement-task Next Steps에 위키 갱신(ingest) 제안 추가. 코드 세션은 위키를 읽기만 하고 갱신은 별도 위키 세션에서 진행(코드↔위키 분리).
-- **plan-feature — Deferred vs Out of Scope 구분** — "이번엔 빼고 다음에"는 `Deferred / Follow-up`, "아예 안 만듦"은 `Out of Scope`로 기록하도록 규칙·템플릿 추가. 향후 작업 누락 방지.
-- **리뷰어 다항목 검증 보강** — spec-compliance / code-quality / plan-completion 리뷰어에 변경/acceptance가 많을 때(6+) 항목별 개별 검증 규칙 추가. "전체적으로 괜찮다"식 부실 통과 방지.
-- plugin.json에 homepage/repository 추가, .gitignore에 Python 캐시 항목 추가.
+## 설계 철학
+
+- **재작업 방지 > 토큰 절약**: 검증에 드는 비용은 잘못 만든 걸 다시 만드는 비용보다 쌉니다.
+- **계획은 함께, 구현은 자동**: 방향은 사람이 정하고, 실행은 Claude가 끝까지.
+- **확실한 안전망**: 검토는 확률적이지만, 위험 명령 차단 같은 hook은 결정적으로 작동합니다.
+
+---
 
 ## 라이선스
 
