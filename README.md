@@ -536,6 +536,17 @@ pjc의 리뷰 subagent는 **plan.md 명세 준수**와 **프로젝트 규칙(DDD
 | Claude Code | v2.0 이상 |
 | 대상 언어 | .NET, Android, Node/TS, Python, Go, Rust (template 제공) + 그 외 generic |
 
+## 변경 이력
+
+전체 릴리스는 [GitHub Releases](https://github.com/jongcheol-pak/claude-harness-pjc/releases) 참고.
+
+### v1.27.4
+- **llm-wiki 스킬 추가** — Obsidian vault 기반 프로젝트 지식베이스 운영 스킬. 프로젝트 등록·정보 갱신(ingest)·lint·query를 절차 A~K로 자기완결적으로 수행. vault가 빈 폴더여도 동작.
+- **plan-feature ↔ 위키 연동** — Step 1에서 구현 전 관련 feature/recipe를 read-only(절차 K)로 참조해 재조사 감소. implement-task Next Steps에 위키 갱신(ingest) 제안 추가. 코드 세션은 위키를 읽기만 하고 갱신은 별도 위키 세션에서 진행(코드↔위키 분리).
+- **plan-feature — Deferred vs Out of Scope 구분** — "이번엔 빼고 다음에"는 `Deferred / Follow-up`, "아예 안 만듦"은 `Out of Scope`로 기록하도록 규칙·템플릿 추가. 향후 작업 누락 방지.
+- **리뷰어 다항목 검증 보강** — spec-compliance / code-quality / plan-completion 리뷰어에 변경/acceptance가 많을 때(6+) 항목별 개별 검증 규칙 추가. "전체적으로 괜찮다"식 부실 통과 방지.
+- plugin.json에 homepage/repository 추가, .gitignore에 Python 캐시 항목 추가.
+
 ## 라이선스
 
 MIT
