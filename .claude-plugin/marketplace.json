@@ -3,15 +3,35 @@
   "owner": {
     "name": "pjc"
   },
-  "description": "Local marketplace for pjc harness plugin",
+  "description": "pjc 하네스 plugin 배포 마켓플레이스 (계획·검증·자율 루프 + 안전 hook)",
   "plugins": [
     {
       "name": "pjc",
       "source": "./plugins/pjc",
+      "displayName": "pjc — 계획·검증 코딩 하네스",
       "description": "Korean-first agentic coding harness with plan-feature, implement-task, systematic-debugging, MVVM/DDD skills, 2-stage review subagents, and PowerShell-based safety hooks for Windows.",
-      "version": "1.32.0",
       "category": "workflow",
-      "tags": ["korean", "ddd", "windows", "powershell", "harness-engineering"]
+      "tags": [
+        "korean",
+        "ddd",
+        "windows",
+        "powershell",
+        "harness-engineering"
+      ],
+      "keywords": [
+        "plan",
+        "verification",
+        "autonomous-loop",
+        "code-review",
+        "safety-hooks",
+        "mvvm",
+        "winui3",
+        "wpf",
+        "android",
+        "dotnet"
+      ],
+      "homepage": "https://github.com/jongcheol-pak/claude-harness-pjc",
+      "license": "MIT"
     }
   ]
 }
