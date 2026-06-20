@@ -1,6 +1,7 @@
 # AGENTS.md — Agent Guide
 
-> Generic template. 알려지지 않은 stack이거나 자동 감지가 실패한 경우 사용.
+> **Generic 템플릿 — 어떤 언어·플랫폼에서도 동작합니다.** 전용 템플릿이 있는 stack(.NET·Android·Node/TS·Python·Go·Rust) 외의 모든 언어(Flutter·Swift·Kotlin·Java·C++·Ruby·Elixir·PHP·Zig 등)에 사용합니다. pjc의 계획·검증·자율 루프는 언어를 가리지 않으며, 빌드/테스트 명령만 알면 작동합니다.
+> **이 템플릿은 빈 칸만 채우면 그대로 동작합니다.** 더 정확한 작업을 원하면 프로젝트 고유의 규칙·함정·컨벤션을 추가하세요 — Claude가 추측을 줄여 더 안정적으로 일합니다.
 > 가능한 한 빈 칸을 모두 채워주세요 — Claude가 추측하지 않아도 됩니다.
 
 ## Stack

@@ -7,7 +7,7 @@
 > Windows + PowerShell 환경에서 Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 Windows 전용 — [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.33.0
+**버전**: 1.35.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -24,6 +24,8 @@ Claude Code에게 코딩을 맡기면 가끔 이렇게 합니다:
 **pjc는 이걸 막습니다.** 코드를 바꾸기 전에 먼저 계획을 세우게 하고, 바꾼 뒤에는 여러 단계로 검증하게 하며, 한 번 승인하면 끝까지 자동으로 진행합니다. "꼼꼼한 시니어 개발자의 작업 습관"을 Claude Code에 입히는 도구라고 보면 됩니다.
 
 비유하자면, Claude Code가 "재능 있지만 가끔 덤벙대는 주니어"라면, pjc는 그 옆에서 "계획서 보여줘 → 이 부분 빠졌네 → 검증했어? → 좋아 통과"를 챙기는 **작업 절차와 안전장치**입니다.
+
+> 특정 언어 전용이 아닙니다 — 빌드/테스트 명령만 알면 **어떤 언어·프로젝트에서도** 동작합니다. (.NET·Android·Node/TS·Python·Go·Rust는 자동 설정, 그 외는 generic 템플릿)
 
 ---
 
@@ -251,7 +253,11 @@ pjc는 Claude Code 내장 기능을 **대체하지 않고 보완**합니다.
 <details>
 <summary>AGENTS.md란</summary>
 
-프로젝트의 빌드·테스트 명령, 기술 스택, 규칙을 담은 파일입니다. pjc가 작업할 때 이 파일을 참조합니다. 없으면 자동 생성을 제안하며, 직접 작성할 수도 있습니다. .NET, Android, Node/TS, Python, Go, Rust용 템플릿이 포함돼 있습니다.
+프로젝트의 빌드·테스트 명령, 기술 스택, 규칙을 담은 파일입니다. pjc가 작업할 때 이 파일을 참조합니다. 없으면 자동 생성을 제안하며, 직접 작성할 수도 있습니다.
+
+pjc는 **특정 언어 전용이 아닙니다.** .NET·Android·Node/TS·Python·Go·Rust는 전용 템플릿으로 자동 설정되고, 그 외 모든 언어(Flutter·Swift·Java·C++·Ruby·Elixir 등)는 generic 템플릿으로 동작합니다 — 빌드/테스트 명령만 알려주면 됩니다. pjc의 계획·검증·자율 루프는 언어를 가리지 않습니다.
+
+**생성된 AGENTS.md는 그대로 써도 동작하지만, 프로젝트 스타일에 맞게 다듬으면 더 좋은 성능을 냅니다.** 빈 칸을 채우고 프로젝트 고유의 규칙·함정·컨벤션을 추가할수록 Claude가 추측을 줄여 더 정확하게 작업합니다. 처음엔 빌드·테스트 명령만으로 시작해 점진적으로 보강하는 것을 권장합니다.
 
 </details>
 
@@ -329,7 +335,7 @@ pjc는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 | OS | **Windows 10/11** (완전한 기능). macOS/Linux는 skill만 동작하고 **hook 안전망은 작동하지 않음** |
 | Shell | PowerShell 5.1 / 7+ (hook 실행용) |
 | Claude Code | v2.0 이상 |
-| 대상 언어 | .NET, Android, Node/TS, Python, Go, Rust (+ 그 외 generic) |
+| 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 전용 템플릿으로 자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 generic 템플릿으로 빌드/테스트 명령만 입력하면 동일하게 작동 |
 
 > **요약**: 위험 명령 차단 같은 자동 안전망(hook)이 핵심 가치이며 이는 Windows 전용입니다. macOS/Linux에서도 계획·검증 같은 skill 기능은 쓸 수 있으나, 안전망이 빠진 "반쪽" 상태가 됩니다. Git Bash·WSL은 PowerShell hook 경로 문제로 미지원입니다.
 

@@ -2,6 +2,8 @@
 
 > WinUI 3 (Windows App SDK) Desktop 프로젝트용 가이드. Claude Code의 모든 작업은 이 문서를 우선 따른다.
 > 상세 원문이 있으면 `docs/WINUI3-PROJECT-GUIDE.md`, `docs/WINUI3-DESIGN-GUIDE.md`를 함께 참조한다.
+>
+> **이 템플릿은 그대로 써도 동작합니다.** 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고 고유 규칙을 추가하면 Claude가 추측을 줄여 더 정확하게 작업합니다. 빌드·테스트 명령만 채워 시작하고 점진적으로 다듬는 것을 권장합니다.
 
 ## Stack
 - **언어**: C# / .NET <version, 예: net8.0-windows10.0.19041.0>

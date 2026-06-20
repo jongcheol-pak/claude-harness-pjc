@@ -87,6 +87,12 @@ git diff <BASE_SHA> <HEAD_SHA>
 - **enum exhaustiveness** — 새 enum 값 추가 시 모든 switch/패턴 매칭이 처리하는가 (MAJOR)
 - **예외 타입 일관성** — 던지는 예외 타입 변경 시 catch 위치 일관성 (MAJOR)
 
+#### I. UI 문구 사용자 친화성 (MINOR/MAJOR)
+diff에 화면 표시 문구(레이블·버튼·메시지·오류·툴팁·플레이스홀더)가 있을 때만 검토:
+- **개발/기술 용어가 사용자에게 노출되는가** — `null`, `exception`, `timeout`, HTTP 상태코드, 변수명·enum 값(`Status.PENDING`), 스택 트레이스 등이 화면 문구에 그대로 있으면 MAJOR.
+- **오류 메시지가 다음 행동을 안내하는가** — 기술적 원인만 나열하고 사용자가 무엇을 할지 모르면 MINOR.
+- 도메인에서 사용자에게 익숙한 전문 용어는 예외(과잉 지적 금지). 판단 애매하면 MINOR로 confidence 낮춰 보고.
+
 > **Cross-file impact 일반 검증은 spec-compliance-reviewer 항목 G로 일원화.**
 > code-quality는 코드 품질 관점만 — 명명, 중첩, 책임 분리, enum/예외 같은 정적 일관성.
 
