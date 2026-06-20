@@ -5,6 +5,7 @@
 # claude-harness-pjc
 
 > Windows + PowerShell 환경에서 Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
+> <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 Windows 전용 — [호환 환경](#호환-환경) 참고)
 
 **버전**: 1.32.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
@@ -316,14 +317,21 @@ PowerShell 인코딩 문제일 수 있습니다. pjc의 모든 스크립트는 U
 
 ## 호환 환경
 
+pjc는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
+
+| 구성 | OS 의존 | 설명 |
+|---|---|---|
+| **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 |
+| **Hooks** (위험 명령 차단·민감정보 경고·plan 강제 등 자동 안전망) | **Windows 전용** | `powershell.exe`로 실행되는 `.ps1` |
+
 | 항목 | 지원 |
 |---|---|
-| OS | Windows 10/11 |
-| Shell | PowerShell 5.1 / 7+ |
+| OS | **Windows 10/11** (완전한 기능). macOS/Linux는 skill만 동작하고 **hook 안전망은 작동하지 않음** |
+| Shell | PowerShell 5.1 / 7+ (hook 실행용) |
 | Claude Code | v2.0 이상 |
 | 대상 언어 | .NET, Android, Node/TS, Python, Go, Rust (+ 그 외 generic) |
 
-> Git Bash·WSL은 미지원입니다 (PowerShell hook 사용).
+> **요약**: 위험 명령 차단 같은 자동 안전망(hook)이 핵심 가치이며 이는 Windows 전용입니다. macOS/Linux에서도 계획·검증 같은 skill 기능은 쓸 수 있으나, 안전망이 빠진 "반쪽" 상태가 됩니다. Git Bash·WSL은 PowerShell hook 경로 문제로 미지원입니다.
 
 ---
 
