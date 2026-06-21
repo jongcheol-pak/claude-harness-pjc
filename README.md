@@ -7,7 +7,7 @@
 > Windows + PowerShell 환경에서 Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 Windows 전용 — [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.35.0
+**버전**: 1.36.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -149,6 +149,28 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 - 명세 준수 검토자: 구현이 계획대로 됐는지, 빠진 파일은 없는지
 - 품질 검토자: 코드 품질·보안·규칙 준수
 - 완료 검토자: 전체가 요구사항을 충족하는지
+
+<details>
+<summary>모델 라우팅 — 작업 무게에 따라 Haiku/Sonnet/Opus 분배</summary>
+
+검토자마다 작업 무게가 다르므로, 모든 것을 비싼 모델로 처리하지 않고 적절한 모델에 분배합니다. 이렇게 해서 검증 품질을 지키면서 비용·속도를 절약합니다.
+
+| 검토자 | 모델 | 역할 | 모델 선택 이유 |
+|---|---|---|---|
+| spec-prefilter | Haiku | 간단한 작업의 빠른 1차 필터 | 가볍고 저렴 — 비싼 모델 호출을 줄임 |
+| explorer | Haiku | 컨텍스트 수집용 빠른 탐색 | 단순 조회 — 빠르고 저렴 |
+| spec-compliance-reviewer | Sonnet | 구현이 계획대로 됐는지 검증 | 정확성과 비용의 균형 |
+| code-quality-reviewer | Sonnet | 코드 품질·보안 검증 | 균형 |
+| plan-reviewer | Opus | 계획 적대적 검토 | 가장 깊은 추론 필요 |
+| plan-completion-reviewer | Opus | 전체 완료 통합 검증 | 가장 깊은 추론 필요 |
+
+**예**: 오타 수정 같은 간단한 작업은 Haiku 필터가 빠르게 통과시켜 Opus·Sonnet을 부르지 않고, 복잡한 기능의 계획은 Opus로 철저히 검토합니다.
+
+**과부하 시 대응**: Opus가 과부하(529)면 재시도 후 Sonnet으로 대체하되 "검증 깊이가 낮을 수 있음"을 알립니다. Sonnet은 Haiku로 내리지 않습니다(검증 신뢰도 유지). 모델을 대체할 때는 항상 그 사실을 표시합니다.
+
+> 참고: 위 모델은 별도 검토자(subagent)에 적용되며, 사용자와 대화하며 실제 코딩하는 메인 Claude의 모델과는 별개입니다.
+
+</details>
 
 ### Hooks (자동 안전망)
 

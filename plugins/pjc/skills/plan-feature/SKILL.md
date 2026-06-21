@@ -287,6 +287,7 @@ PRD가 있으면 (Step 0.5에서 작성), plan이 PRD를 빠짐없이 반영하�
 **`plan-reviewer` subagent 호출.** 자체 검토 금지.
 - 결과가 BLOCKER 또는 MAJOR면 plan 수정 후 재호출 (최대 3회).
 - 통과 후에만 다음 단계.
+- **과부하(529) 시**: `plan-reviewer`는 Opus라 과부하가 잦을 수 있다. `implement-task`의 "Reviewer 과부하(529) 대응" 규칙을 따른다 — 재시도 후 계속 실패하면 Sonnet 대체 실행 + "검증 깊이 저하 가능" 명시.
 
 ### Step 9. Open Questions 해결 — 일괄·완전 모드
 
