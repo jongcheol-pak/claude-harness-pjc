@@ -60,7 +60,7 @@ try {
     if (-not $isGenerated) {
         $lineCount = (Get-Content -LiteralPath $file -ErrorAction Stop | Measure-Object -Line).Lines
         if ($lineCount -gt 1500) {
-            $warnings.Add("파일 라인 수 $lineCount (>1500). 기능 단위 분리 권장 - plan에 분리 task 등록.")
+            $warnings.Add("파일 라인 수 $lineCount (>1500). 분리 '검토' 신호 - 여러 독립 책임이 섞였으면 책임 단위로 분리, 단일 책임인데 길 뿐이면 그대로 둔다(억지 분리는 지역성을 해침). 분리 시 plan에 등록.")
         }
     }
 } catch {
