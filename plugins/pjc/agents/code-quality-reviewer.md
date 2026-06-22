@@ -59,6 +59,7 @@ git diff <BASE_SHA> <HEAD_SHA>
 
 #### D. 코드 위생 (MAJOR/MINOR)
 - 죽은 코드, 미사용 import, placeholder 주석 (MAJOR)
+- **stale 주석** (MAJOR): 코드는 바뀌었는데 주석·docstring·`///` 문서가 옛 동작을 설명하고 있는 경우. 틀린 주석은 없는 것보다 나쁘다 — diff에서 변경된 코드의 주석이 새 동작과 일치하는지 확인.
 - "TODO: 나중에"식 미완 표시 (MAJOR)
 - 사용처 1곳인데 추출된 헬퍼/인터페이스 (MAJOR — YAGNI 위반)
 - "나중에 필요할" 옵션 파라미터, 미사용 매개변수 (MAJOR)
