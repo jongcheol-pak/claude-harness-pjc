@@ -56,6 +56,8 @@ Workspace 사용 시 `members = ["crates/*"]`로 구분.
 - `unsafe` 무분별 사용 — 사유 주석 의무
 - `println!` production 로깅 — `tracing` 또는 `log` 사용
 - `panic!` 직접 호출 (예외: main에서 검증 실패)
+- 코드·문서·notes·plan 등 어떤 파일에도 실제 IP·계정·비밀번호·토큰·DB 연결문자열 기록 (환경변수 이름만 적고 값은 .env로)
+- 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
 - 단일 plan: `plan.md`

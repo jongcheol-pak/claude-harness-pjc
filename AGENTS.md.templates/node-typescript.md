@@ -51,6 +51,8 @@
 - `node_modules/`, `dist/`, `.next/`, `coverage/` 커밋
 - `console.log` production 코드 잔존 (logger 사용)
 - Top-level `await` in CJS, synchronous I/O (`readFileSync` 등) hot path
+- 코드·문서·notes·plan 등 어떤 파일에도 실제 IP·계정·비밀번호·토큰·DB 연결문자열 기록 (환경변수 이름만 적고 값은 .env로)
+- 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
 - 단일 plan: `plan.md`

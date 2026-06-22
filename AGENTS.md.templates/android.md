@@ -164,6 +164,8 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 - `GlobalScope` 사용 (생명주기 관리 곤란)
 - 고정 화면 폭 가정 (적응형 위반)
 - Windows에서 `android emulator` 서브명령 사용 시도 (비활성 — `emulator.exe` 직접 호출)
+- 코드·문서·notes·plan 등 어떤 파일에도 실제 IP·계정·비밀번호·토큰·DB 연결문자열 기록 (환경변수 이름만 적고 값은 .env로)
+- 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
 - 단일 plan: `plan.md`
