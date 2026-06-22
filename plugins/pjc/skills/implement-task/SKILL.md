@@ -409,7 +409,7 @@ Elapsed: <Hm Ms> | Turn ~<N>
 | 1 task + Type B | F-1, F-2, F-6만 |
 | 2+ tasks 또는 Type C/D 포함 | **전체 (F-1~F-7)** |
 
-> Phase F가 생략·축소돼도 **F-6.5(notes 기록 + 1주일 경과분 아카이브 이동)는 코드 변경이 있었으면 항상 수행**한다 (단, 빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따른다).
+> Phase F가 생략·축소돼도 **F-6.5(notes 기록 + 오래된 항목 아카이브 이동)는 코드 변경이 있었으면 항상 수행**한다 (단, 빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따른다).
 
 F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
 
