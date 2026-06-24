@@ -11,7 +11,7 @@ AGENTS.md에 `Plan Location: <plan.md | docs/plans/>`로 명시되어 있으면 
 
 ## 작성 시 주의 — 민감 정보
 
-plan.md는 **git에 commit되어 영구 보존**되며, PreCompact hook이 스냅샷도 백업한다.
+plan.md는 **git에 commit되어 영구 보존**된다.
 다음을 plan.md에 적지 않는다:
 
 - API key, access token, secret
@@ -81,7 +81,11 @@ plan.md는 **git에 commit되어 영구 보존**되며, PreCompact hook이 스�
 ## Tasks
 <!-- 반드시 T1, T2, ... 형식. "Phase 1", "단계 1", "Step 1" 등으로 쓰지 말 것
      (implement-task 자율 루프가 T<N>를 전제, pjc 내부 Phase와 혼동 방지).
-     큰 묶음 표시는 주석으로만: 예) T1~T3 (데이터 계층) -->
+     큰 묶음 표시는 주석으로만: 예) T1~T3 (데이터 계층)
+     placeholder 금지: 자율 루프는 plan.md만 보고 실행하므로 추측을 부르는 표현을 쓰지 말 것.
+       ❌ "T3과 비슷하게" → 그 task에 할 일을 직접 명시
+       ❌ "TBD/미정/추후 결정" → 계획 단계에서 확정
+       ❌ "그 함수/관련 파일들/해당 부분" → 정확한 파일 경로·심볼명으로 -->
 - [ ] T1. <작업명>
   - **Type**: A | B | C | D
   - **Acceptance**: <검증 가능한 조건>

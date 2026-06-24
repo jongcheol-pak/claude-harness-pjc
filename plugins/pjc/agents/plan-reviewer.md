@@ -1,6 +1,6 @@
 ---
 name: plan-reviewer
-description: Adversarial review of plan.md before user approval. Called by plan-feature Step 8. Read-only, reports BLOCKER/MAJOR/MINOR.
+description: Adversarial review of plan.md before user approval. Called by plan-feature Step 9. Read-only, reports BLOCKER/MAJOR/MINOR.
 tools: Read, Grep, Glob
 disallowedTools: Write, Edit, NotebookEdit
 model: opus
@@ -135,6 +135,11 @@ plan에 누락이 있으면 자율 루프가 멈추거나 추측으로 진행한
 - [ ] **plan만 보고 다른 사람이 추가 질문 없이 끝낼 수 있는가?**
   - 검증: plan의 각 task를 읽으며 "여기서 구현자가 결정해야 할 것이 있는가?" 자문
 - [ ] **"적절히 처리", "상황에 맞게", "합리적으로" 같은 모호한 지시 사용?** → BLOCKER
+- [ ] **참조형 placeholder가 있는가?** → BLOCKER. 다음은 자율 루프가 추측으로 채우게 되는 placeholder다:
+  - "Task N과 비슷하게/유사하게", "T3처럼" → 무엇을 어떻게 할지 그 task에 직접 명시해야 함 (다른 task를 보라고 미루지 말 것).
+  - "TBD", "미정", "추후 결정", "나중에" → 계획 단계에서 확정해야 함.
+  - "그 함수", "관련 파일들", "해당 부분", "필요한 곳" 같은 미정의 참조 → 정확한 파일 경로·심볼명으로 대체해야 함.
+  - 자율 루프(implement-task)는 plan.md만 보고 실행하므로, 이런 표현은 실행 단계의 추측 → 재작업으로 직결된다.
 
 검증 방법:
 ```

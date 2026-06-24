@@ -84,6 +84,8 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
     - **DB 데이터 삭제·변조**: DROP/TRUNCATE, WHERE 없는(또는 전체 대상) DELETE·UPDATE, 스키마 삭제, migration reset/down, ORM 대량 삭제(RemoveRange·deleteMany({})·delete_all 등). 코드로 작성하든 명령으로 실행하든, 데이터 손실·전체 변조 가능 작업은 **사용자 승인 전 금지** (DB 데이터는 git으로 복구 불가). 단 `DELETE/UPDATE ... WHERE <특정 조건>` 같은 일상적·국소적 작업은 plan에 명시돼 있으면 진행 가능.
     - 새 라이브러리·외부 서비스 도입
 
+11. **plan에 답이 없는 중대 결정 → 추측 금지, Halt** (예외 안전망). 정상적으로는 계획 단계(Step 6 Decision·6.5 Edge Case·8 Open Questions·9 reviewer)가 모든 중대 결정을 미리 해결하므로 이 상황은 거의 없어야 한다 — 발생하면 **계획 부실의 신호**다. 실행 중 plan·AGENTS.md·코드 어디에도 근거 없는 **중대한** 결정(아키텍처, 비가역적 데이터 형식·API 계약, 동작 의미가 갈리는 분기)을 만나면 추측하지 말고 Halt해 묻는다. **사소한** 결정(변수명·국소 구현 등 쉽게 되돌림)은 follow-up 기록 후 진행(자율성 유지). 애매하면 "틀렸을 때 재작업 비용"으로 가늠 — 크면 Halt, 작으면 follow-up. Halt 시 보고에 "이 결정이 계획에서 누락된 이유"를 한 줄 적어 차후 계획 단계를 강화한다.
+
 > **상세 안티패턴 표는 `references/antipatterns.md` 참조.**
 
 ## 자율 루프 (Autonomous Loop)
@@ -121,7 +123,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 4. **컨텍스트 한계 근접 시 멈추지 않는다 — 압축을 통과해 계속 진행한다.**
    - 컨텍스트가 과밀해지면 **현재 task를 Phase V/D까지 완료**하고 (task 중간에 끊지 않음 — 절반 수정 상태는 압축 후 복구가 불완전하다), plan.md에 상태를 완전 기록한다: Progress Log + Next Steps + 다음 task의 정확한 시작점.
-   - 그 후 **사용자 보고 없이 계속 진행** — Claude Code의 auto-compact가 자동 압축하며, PreCompact hook(backup-on-compact)이 plan.md 스냅샷을 백업한다.
+   - 그 후 **사용자 보고 없이 계속 진행** — Claude Code의 auto-compact가 자동 압축한다. 압축은 대화 히스토리만 요약하고 plan.md 파일은 건드리지 않으므로, plan.md에 상태를 완전 기록해두면 압축 후에도 그대로 복구된다.
    - **압축 감지 시 (대화에 압축 요약이 보이면) 첫 행동은 plan.md + AGENTS.md 재읽기.** 압축 요약은 세부를 잃으므로, plan.md(진실의 원천)와 AGENTS.md(컨벤션)를 다시 읽어 컨텍스트를 복구한 뒤 다음 task를 재개한다. 요약의 기억만으로 작업을 이어가지 않는다.
    - 사용자 호출(Halt)은 다른 Halt 조건(파괴적 작업, 동일 실패 반복 등)에 해당할 때만. 컨텍스트 한계 자체는 Halt 사유가 아니다.
 

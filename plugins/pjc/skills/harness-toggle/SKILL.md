@@ -24,7 +24,6 @@ argument-hint: "<hook 이름> <on|off|toggle|status>"
 | `require-evidence` | Stop 시 증거 없는 완료 경고 |
 | `check-utf8-and-lines` | UTF-8/1500라인/한글주석 검사 |
 | `impact-warn` | public 심볼 변경 시 caller 경고 |
-| `backup-on-compact` | 컨텍스트 압축 직전 plan.md 스냅샷 백업 |
 
 **`block-destructive` 는 안전상 토글 불가** (파괴적 명령 차단은 항상 동작).
 

@@ -29,8 +29,7 @@ $known = @(
     'require-plan-for-write',
     'require-evidence',
     'check-utf8-and-lines',
-    'impact-warn',
-    'backup-on-compact'
+    'impact-warn'
 )
 
 function Show-Status {
