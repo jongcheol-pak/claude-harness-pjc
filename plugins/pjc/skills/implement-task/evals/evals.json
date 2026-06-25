@@ -54,7 +54,7 @@
       "id": 9,
       "query": "버그 발견. 왜 이래?",
       "should_trigger": false,
-      "rationale": "디버깅 영역 — systematic-debugging"
+      "rationale": "디버깅 영역 — pjc-systematic-debugging"
     },
     {
       "id": 10,

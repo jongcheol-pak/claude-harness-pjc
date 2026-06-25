@@ -48,7 +48,7 @@
       "id": 8,
       "query": "SettingsViewModel 버그 수정",
       "should_trigger": false,
-      "rationale": "기존 VM 디버깅 — systematic-debugging 영역"
+      "rationale": "기존 VM 디버깅 — pjc-systematic-debugging 영역"
     }
   ]
 }
