@@ -1,6 +1,6 @@
 ---
 name: plan-feature
-description: This skill should be used when the user requests code change beyond trivial edits. Triggers on Korean dev phrases ("계획", "설계", "feature 추가", "기능 추가", "리팩토링", "구현", "수정", "변경", "문제 수정", "버그 수정", "여러 곳", "전체", "만들어줘", "앱 만들어", "도구 만들어") and English equivalents ("plan", "design", "implement", "fix", "refactor", "build an app", "create a tool"). Requests to build a whole new app or product trigger the large-scale path (PRD step) inside this skill. Also triggers when the request lists multiple sub-tasks (bullets or numbered items) even without explicit keywords - a bullet list of bug fixes plus refactoring is a clear signal. Use plan-feature when the change spans multiple files, alters logic flow, changes a signature, adds a new function/class/method, refactors a resource layer (i18n/i10n, theming, DI), or has unclear cross-file impact. DO NOT trigger for clearly trivial edits - single-line UI text/label changes, icon/image swaps, color/size token tweaks of 1-2 values, README/문서 typo fixes, comment additions, single-line config edits (.editorconfig, .gitignore), single-line resource edits (strings.xml, Resources.resx for a single key), or any small code edit of 3 lines or fewer that does NOT add a new function/class/method or change a signature. For those Claude edits directly via Write/Edit and the PostToolUse impact-warn hook validates cross-file impact. For ambiguous cases (single bug fix of unclear scope, refactoring whose extent is unknown) do NOT silently force a plan - ask the user "A) edit directly / B) make a plan" and follow their pick. See SKILL body for full Trivial Bypass criteria, decision rounds with categorized question grouping, and recommended-answer format with ★.
+description: This skill should be used when the user requests code change beyond trivial edits. Triggers on Korean dev phrases ("계획", "설계", "feature 추가", "기능 추가", "리팩토링", "구현", "수정", "변경", "문제 수정", "버그 수정", "여러 곳", "전체", "만들어줘", "앱 만들어", "도구 만들어") and English equivalents ("plan", "design", "implement", "fix", "refactor", "build an app", "create a tool"). Requests to build a whole new app or product trigger the large-scale path (PRD step) inside this skill. Also triggers when the request lists multiple sub-tasks (bullets or numbered items) even without explicit keywords - a bullet list of bug fixes plus refactoring is a clear signal. Use plan-feature when the change spans multiple files, alters logic flow, changes a signature, adds a new function/class/method, refactors a resource layer (i18n/i10n, theming, DI), or has unclear cross-file impact. DO NOT trigger for clearly trivial edits - single-line UI text/label changes, icon/image swaps, color or size value changes (no logic/structure change), README/문서 typo fixes, comment additions, single-line config edits (.editorconfig, .gitignore), single-line resource edits (strings.xml, Resources.resx for a single key), or any small code edit of 3 lines or fewer that does NOT add a new function/class/method or change a signature. For those Claude edits directly via Write/Edit and the PostToolUse impact-warn hook validates cross-file impact. For ambiguous cases (single bug fix of unclear scope, refactoring whose extent is unknown) do NOT silently force a plan - ask the user "A) edit directly / B) make a plan" and follow their pick. See SKILL body for full Trivial Bypass criteria, decision rounds with categorized question grouping, and recommended-answer format with ★.
 argument-hint: "<요청 설명>"
 ---
 
@@ -16,7 +16,7 @@ argument-hint: "<요청 설명>"
 |---|---|
 | UI 문구·라벨 | "확인 버튼 라벨을 'OK'로", "메시지 문구 변경" |
 | 아이콘·이미지 교체 | "이 아이콘을 SVG 파일로 교체", "PNG 새 파일로 변경" |
-| 색상·치수 토큰 1-2개 | "Primary 색상을 #336699로", "padding을 16px로" |
+| 색상·치수·간격 순수 값 치환 | "Primary 색상을 #336699로", "padding을 16px로", "여러 요소 width/height/font-size 숫자만 조정" (개수 무관, 로직·구조 변화 없으면) |
 | 문서·README 오타 | "README 오타 수정", "줄바꿈 추가" |
 | 주석 추가 | "이 메서드에 한글 주석 추가" |
 | 단일 라인 설정 | ".editorconfig에 한 줄 추가", "gitignore에 폴더 추가" |
@@ -28,7 +28,12 @@ argument-hint: "<요청 설명>"
 2. **새 함수/클래스/메서드 추가 없음, 시그니처 변경 없음**
 3. 사용자 요청이 **명백하고 단순** (의도 모호함 없음)
 
-위 3개를 만족하면 코드 파일(`.cs`, `.xaml`, `.ts`, `.kt`, `.py` 등)이라도 직접 수정한다.
+**예외 — 순수 값 치환은 개수·줄 수 제한 없이 trivial**: 사이즈·색상·간격·폰트 크기 등 **디자인 토큰/리터럴 값을 다른 값으로 바꾸기만** 하고 로직·조건·구조·시그니처 변화가 전혀 없으면, 값이 3개든 10개든·여러 줄이든 trivial로 보고 직접 수정한다(값만 바뀌므로 개수가 많아도 위험이 낮고, 잘못돼도 화면에서 바로 보인다). 단 다음은 **순수 치환이 아니므로 trivial 아님**(plan 또는 최소한 질문):
+- 새 **반응형 분기**(`@media` 블록 신설 등) 추가 — 화면 크기별 동작이 새로 생기는 구조 변화.
+- 값 변경이 **레이아웃 구조**(flex/grid 방향·배치)나 **동작 로직·조건**을 함께 바꿈.
+- 값을 바꾸면서 **계산식·변수 도입**(하드코딩 → 계산) 등 구조가 변함.
+
+위 기준(1-3 또는 순수 값 치환 예외)을 만족하면 코드 파일(`.cs`, `.xaml`, `.ts`, `.kt`, `.py`, `.css` 등)이라도 직접 수정한다.
 `require-plan-for-write` hook이 작은 변경을 자동 통과시키고, cross-file 영향은 `impact-warn` hook이 사후 검출한다.
 
 ### 애매한 경우 — 자동으로 plan 강제하지 말고 사용자에게 질문
