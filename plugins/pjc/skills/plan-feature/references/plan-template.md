@@ -9,6 +9,8 @@
 
 AGENTS.md에 `Plan Location: <plan.md | docs/plans/>`로 명시되어 있으면 그것을 따른다.
 
+**예외 — plan 분할 시**: 긴 plan을 2개로 분할하면(plan-feature "긴 plan 분할 권고") `Plan Location: plan.md`(덮어쓰기)여도 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md`에 둔다 — 분할은 복수 파일이라 단일 plan.md를 덮어쓸 수 없다(두 part가 충돌). 시작 part 식별: part1 = `**다음 plan**:` 있고 `**이전 plan**:` 없음 / part2 = 그 반대. 자동 plan 해소(인자 생략)는 복수 파일에서 모호하므로 각 part 경로를 명시해 `pjc:implement-task`를 호출한다.
+
 ## 작성 시 주의 — 민감 정보
 
 plan.md는 **git에 commit되어 영구 보존**된다.
@@ -31,8 +33,19 @@ plan.md는 **git에 commit되어 영구 보존**된다.
      컨텍스트 압축·새 세션에서도 plan.md만 읽으면 PRD 존재를 알 수 있어야 한다. -->
 **PRD**: <docs/prd.md 경로 — PRD 없으면 이 줄 자체를 생략>
 
+<!-- plan을 2개로 분할한 경우(plan-feature "긴 plan 분할 권고")만 아래 분할 포인터 줄을 둔다(단일 plan이면 생략):
+     - 첫 plan(part1): **다음 plan**: <part2 경로>
+     - 둘째 plan(part2): **이전 plan**: <part1 경로>
+     plan-completion-reviewer가 이 표식으로 분할 plan임을 인지해 Goal을 "이 plan 범위"로 해석한다(전체 미완성을 BLOCKER로 보지 않음).
+     동기화 주의: part2 경로는 이 줄·아래 ## Deferred·## Next Steps 3곳에 나타난다 — 경로를 바꾸면 세 곳을 함께 고친다. -->
+**다음 plan**: <분할 첫 part(part1)면 part2 경로 — 분할 아니거나 마지막 part면 이 줄 생략(part2는 대신 **이전 plan**: 사용)>
+
 ## Goal
 <한 문장 — 사용자 관점>
+<!-- 분할 plan이면: 위 Goal은 "이 plan 범위(이 part가 담당하는 부분)"만 한 문장으로 쓰고, 바로 아래에
+     **전체 목표**: <분할 전 전체 기능 한 문장> 줄을 둔다.
+     reviewer는 분할 표식(**다음/이전 plan**:)이 있으면 Goal 충족을 "이 plan 범위" 기준으로 판정한다(전체 미완성을 BLOCKER로 안 봄). -->
+
 
 ## PRD Coverage
 <!-- PRD 있을 때만. plan-feature Step 7.5에서 작성. Phase G가 이 표로 재대조. -->
@@ -46,7 +59,9 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 
 ## Deferred / Follow-up
 <!-- 이번 제외 — 이번 plan에선 안 하지만 향후 진행할 작업.
-     사용자가 "이번엔 빼고 다음에 하자"고 한 것은 Out of Scope가 아니라 반드시 여기로. -->
+     사용자가 "이번엔 빼고 다음에 하자"고 한 것은 Out of Scope가 아니라 반드시 여기로.
+     분할 plan의 첫 part(part1)면: "**다음 분할 plan**: <part2 경로> — T1~ (전체의 후반부, 미실행)"을
+     반드시 여기 기록해 둘째 plan 실행을 잊지 않게 한다(동기화: 상단 **다음 plan**:·## Next Steps와 같은 경로). -->
 - <이번엔 제외, 향후 별도 plan으로 진행할 작업>
 
 ## Investigation Log
@@ -121,6 +136,7 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 <!-- - 권장 다음 액션: T7부터 implement-task 재개 -->
 <!-- - 또는: 모든 task 완료, PR 생성 후 공식 /code-review 호출 -->
 <!-- - Suggested skills: pjc:implement-task / 공식 /code-review / /security-review -->
+<!-- 분할 plan의 첫 part(part1) 완료 시: "남은 분할 plan: <part2 경로> — pjc:implement-task로 별도 실행" 라인 포함(동기화: 상단 **다음 plan**:·## Deferred와 같은 경로). -->
 
 ## Open Questions
 - [ ] Q1: <질문> (사용자 답변 후 plan 갱신)

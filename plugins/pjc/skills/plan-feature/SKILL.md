@@ -277,12 +277,18 @@ task가 **8개를 초과**하면 사용자에게 분할을 제안한다:
 컨텍스트가 누적되어 후반 task의 품질이 저하될 수 있습니다.
 
 A) 그대로 진행 (Progress Log로 일부 완화됨)
-B) 2개 plan으로 분할 (T1-<M>, T<M+1>-<N>)
-   → 첫 plan 완료 후 두 번째 plan 별도 실행
+B) 2개 plan으로 분할 (앞부분 / 뒷부분)
+   → 첫 plan(part1) 완료 후 둘째 plan(part2) 별도 실행
 ```
 
-분할 시 각 plan은 독립 실행 가능하도록 task 의존성을 고려해 경계를 정한다.
 사용자가 A를 택하면 그대로 진행하되, implement-task가 Progress Log를 적극 활용.
+
+**B(분할) 선택 시 규약** (분할은 드문 경로지만, 둘째 plan 망각·번호 충돌·절반 구현 오판을 막는 연결 장치가 필요하다):
+1. **각 분할 plan은 T1부터 재번호.** 둘째 plan도 자기 안에서 `T1`~ (각 plan이 독립 실행 가능 — implement-task 루프 "첫 실행 T1" 전제와 정합). 경계는 task 의존성을 고려해 정한다.
+2. **저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md` / `-part2.md` 누적** (AGENTS.md가 `Plan Location: plan.md` 덮어쓰기여도 분할은 복수 파일이라 `docs/plans` override — `references/plan-template.md` 위치 가이드).
+3. **상호 포인터**: 첫 plan 상단 `**다음 plan**: <part2 경로>`, 둘째 상단 `**이전 plan**: <part1 경로>` (plan-template 분할 포인터 규약 — `plan-completion-reviewer`가 이 표식으로 분할을 인지해 Goal을 "이 plan 범위"로 해석).
+4. **Goal 범위 한정 + 상기**: 각 plan `## Goal`은 "이 plan 범위"만 쓰고 `**전체 목표**:` 줄로 전체 기능을 따로 적는다. 첫 plan은 `## Deferred / Follow-up`·`## Next Steps`에 다음 분할 plan을 기록한다(둘째 plan 실행 상기).
+5. **시작 part는 경로 명시 호출**: `docs/plans` 복수 파일 자동 해소(인자 생략)는 모호하므로, 각 part 경로를 명시해 `pjc:implement-task`를 호출한다(첫째=part1 경로, part1 완료 보고가 part2 경로 안내).
 
 ### Step 6. Decision Points 발굴
 
@@ -316,6 +322,8 @@ B) 2개 plan으로 분할 (T1-<M>, T<M+1>-<N>)
 |---|---|
 | 작은 프로젝트, 단일 작업 | `<repo>/plan.md` (덮어쓰기) |
 | 큰 프로젝트, 여러 plan 누적 | `<repo>/docs/plans/<YYYY-MM-DD>-<slug>.md` |
+
+단, plan을 분할하면(위 "긴 plan 분할 권고") 덮어쓰기 모드여도 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적 위치를 쓴다(두 part 충돌 방지).
 
 **상세 plan.md 템플릿은 `references/plan-template.md` 참조.**
 

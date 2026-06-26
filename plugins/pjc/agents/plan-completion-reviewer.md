@@ -41,6 +41,8 @@ disallowedTools: Write, Edit, NotebookEdit
 
 plan.md의 `## Goal` 한 문장이 실제 구현으로 달성되었는가:
 
+> **분할 plan 인지 (먼저 확인)**: plan.md 상단에 `**이전 plan**:` 또는 `**다음 plan**:` 표식이 있으면 이 plan은 더 큰 기능을 2개로 나눈 **분할 plan의 한 part**다(plan-feature "긴 plan 분할"). 이때 Goal 충족은 plan.md `## Goal`(= 이 plan 범위)을 기준으로 판정하고, `**전체 목표**:` 줄의 전체 기능이 아직 미완성인 것을 **BLOCKER로 보지 않는다**(분할은 의도된 절반 구현 — 나머지는 다른 part가 담당). 단 `**다음 plan**:`이 없고 `**이전 plan**:`만 있는 **마지막 분할 plan**에서는 `**전체 목표**:`의 통합 동작까지 확인하되, **이때 전체 통합은 diff(BASE..HEAD)가 아니라 전체 트리 빌드/통합 테스트로 확인**한다(마지막 part의 diff엔 앞 part 컴포넌트가 없어 diff 기반 Goal 판정은 거짓 BLOCKER를 낳는다).
+
 - [ ] Goal 문장을 사용자 관점에서 재해석
 - [ ] 그 결과를 얻기 위해 필요한 모든 컴포넌트가 diff에 있는가
 - [ ] Goal에 명시된 사용자 시나리오가 통합 동작하는가 (빌드+UI/통합 테스트)
