@@ -2,6 +2,22 @@
 
 ## 최근 변경
 
+- 2026-06-26: 기능별 인덱스 한/영 양방향 검색 강제 (1.62.0 — 위 a~e 수정과 **같은 커밋**). "한글로 등록하면 영문도, 영문으로 등록하면 한글도 검색되게" 요청. (e)에서 한글→영문 병기는 했으나 규칙(A-3 1)이 한 방향만 명시·lint 미강제라 누락이 쌓일 수 있었음.
+  - **규칙 양방향화(T1)**: SKILL A-3 1·K-3, wiki-schema §3에 "기능별 인덱스 행 첫 컬럼에 한글·영문 키워드를 모두 병기(한쪽만 금지)" 명문화. wiki-schema 2.12→2.13.
+  - **lint 강제(T2)**: lint.py가 기능별 인덱스 행(feature/recipe) 첫 컬럼에 한글(`[가-힣]`)·영문(`[A-Za-z]`) 중 한쪽만 있으면 WARN. **feature_index_rows는 불변**(int 반환), 별도 행 순회로 비파괴 추가. SKILL F-1·wiki-schema §7에 검사항목 16 동시 문서화(H-2 #5).
+  - **데이터 보정(T3)**: 전수 조사 — feature 66행은 (e)로 양방향 완성, recipe 영문없음 2행(taskbar-edge-popup-positioning·popup-chain-unfocused-children)만 잔여 → 영문 병기. 영문만(한글없음) 행은 0건(규칙·lint로 미래 대비). vault index.md·log.md 갱신(커밋 무관).
+  - **검증**: vault lint ERR 0/WARN 0(보정 후 한/영 WARN 소멸). 임시 vault로 한글만 행·영문만 행 각각 WARN, 양방향 행 통과 실증. py_compile OK, spec-compliance OK.
+  - **결정(사용자 승인)**: 대상=기능별 인덱스 전체 행(feature+recipe), severity=WARN(기존 "인덱스 누락"과 일관).
+- 2026-06-26: llm-wiki 위키 동작 점검·수정 (1.61.0 → 1.62.0). "위키 등록/검색 시 인덱스→서브인덱스→본문 탐색·추측 금지·수정 시 링크 정합" 점검 요청 → 결함 5건(a~e) 수정.
+  - **배경(점검)**: 4가지 동작 점검에서 ②서브인덱스→본문·③추측금지·④수정시 링크정합은 양호(lint ERR 0, feature 66개 중 65개 [^src 각주 보유), ①인덱스→서브인덱스 경로에 결함 집중.
+  - **(a) G(Query)절차 서브인덱스 누락**: A-3·K·schema §6엔 sub-index 처리가 있으나 SKILL G절차에만 누락 → Query 시 분할 인덱스 빠뜨릴 위험. G-1에 "index.md 상단 sub-index 목록 있으면 함께 읽음" 추가(K-2·schema §6-2와 동일 취지).
+  - **(b) 분할 트리거 정량 명문화**: "거대하면"이라는 정성 기준만 있고 정량·실행절차 부재(SKILL 예산표엔 index.md 행 자체 없음). wiki-schema §4에 본문 400줄/기능별인덱스 200행 임계 명시(2단계=lint 기계신호, 80%=사람 가이드), SKILL 예산표에 index.md 행 추가, H-2 #5 상수 열거 갱신, lint.py INDEX_BODY_LINES/INDEX_FEAT_ROWS 상수+검사 추가. wiki-schema version 2.11→2.12.
+  - **(c) sub-index 목록 정합 검사**: lint이 sub-index 합산(feature 동기화)만 하고 목록↔파일 정합 미검사. 실재 index-*.md가 index.md에 미등록이면 WARN(단일방향 — 역방향 '목록엔 있으나 파일없음'은 기존 깨진링크 검사에 위임, 중복·모순 차단).
+  - **(d) lint 코드펜스 오탐 보정 복원**: wikilink 검사가 펜스/인라인코드 미제외로 오탐 3건(`[[^]]`·`[[..]]`, recipe 스니펫·log 산문 속 정규식 오인). vault log.md엔 6-23 "보정함" SCHEMA 기록 있으나 1.59.0 audit에서 회귀 → 코드엔 펜스 제외 부재였음(grep 0건). strip_code 헬퍼로 복원(메인 루프 + itext L188 양쪽 적용), 줄바꿈 보존해 줄수 검사 영향 격리.
+  - **(e) index.md 한/영 병기 소급**: A-3 규칙(한/영 병기) 후행 도입돼 초기 등록 personal 프로젝트 feature 행 34개에 영문 키워드 누락(최근 Bitleader는 준수). 파일명 stem 기반 영문 병기(feat-project-cards→`(project cards)`). **vault 데이터라 플러그인 커밋과 무관.** recipe·기존 영문 행 불변.
+  - **변경 파일**: (플러그인) llm-wiki/SKILL.md·references/wiki-schema.md·scripts/lint.py·plugin.json·README, (vault) index.md·log.md. (README는 위키를 사용자향 "선택 기능"으로만 소개하고 lint 내부 검사 항목을 기재하지 않으므로, 신규 검사 반영 없이 버전만 갱신.)
+  - **검증**: 실제 vault lint → ERR 0/경고 0, 오탐 3건 소멸. 임시 테스트 vault로 T2(420줄 INFO 발화)·T3(미등록 WARN→index.md 언급 추가 시 소멸, 양방향)·T4(펜스/인라인 가짜링크 `[[../fake]]` 오탐 0) 긍정 작동 실증. index.md UTF-8 BOM 없음, feature 행 영문 누락 0개 확인.
+  - **설계 결정(사용자 승인)**: (b)분할 임계=줄수 기준(본문 400/인덱스 200), (e)보정 범위=영문 누락 feature 행 전체.
 - 2026-06-26: PRD FR 라이프사이클 도입 (1.60.3 → 1.61.0). "PRD가 역사적 기록이면 잘못된 정보(삭제된 기능)가 있을 때 검증 시 문제 발생하지 않나" 지적 → stale FR 폐기 표시 + 누적/중복/부활 처리를 일관 설계.
   - **배경(검증 문제)**: 하나의 PRD를 여러 plan으로 점진 구현하던 중 일부 FR 기능이 삭제되면, PRD의 그 FR은 여전히 "Must"로 남아 Phase G가 미충족으로 잡고 G-2가 "Must 미충족 → 사용자 확인 없이 재구현(PRD가 승인된 요구이므로)"을 자동 시도 → **삭제된 기능을 되살리는 거짓 재작업**. PRD엔 위키 `deprecated` 같은 폐기 표시·검증 제외 장치가 없었음(다른 작업의 무관 PRD는 v1.60.1로 차단됐지만, 같은 PRD 내 stale FR은 미처리였음).
   - **① 폐기 표시(stale FR 해결)**: prd-template 작성원칙5 — 폐기된 FR은 행 삭제 금지, `~~취소선~~` + 우선순위 셀 `REMOVED (YYYY-MM: 사유)`. **Phase G(G-1)·plan-completion-reviewer·plan-reviewer(항목12) 3개 검증 지점 모두 REMOVED FR을 미충족 대조에서 제외**(거짓 재구현 차단). active FR/NFR만 대조.

@@ -32,6 +32,9 @@ SPECIAL_BUDGET = {"log.md": 60}
 INFRA_TYPES = {"index", "log", "dashboard", "schema"}
 # 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
 ARCHIVE_EXEMPT_TYPES = {"feature", "guide"}
+# index.md 분할 신호 임계 (wiki-schema.md §4 — 초과 시 INFO로 2단계 파일 분할 제안)
+INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
+INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 수
 
 
 def frontmatter(text):
@@ -50,6 +53,26 @@ def parse_date(s):
         return datetime.date.fromisoformat(s)
     except Exception:
         return None
+
+
+def strip_code(text):
+    """wikilink 오탐 방지용: 코드펜스(```...```)·인라인코드(`...`)를 같은 길이 공백으로 치환한 사본 반환.
+    코드 스니펫 안 정규식(예: `![](...)`·`[[..]]`)이 wikilink로 오인되는 것을 막는다.
+    줄바꿈은 보존해 다른 줄 단위 검사(예산 등)와 줄 수가 어긋나지 않게 한다(이 사본은 wikilink 추출 전용)."""
+    blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))  # 줄바꿈만 남기고 공백화
+    text = re.sub(r"```.*?```", blank, text, flags=re.S)   # 펜스 블록
+    text = re.sub(r"```[^\n]*\Z", blank, text, flags=re.S)  # 미닫힘 펜스 → 끝까지 코드 간주(보수적)
+    text = re.sub(r"`[^`\n]*`", blank, text)                # 인라인 코드
+    return text
+
+
+def feature_index_rows(text):
+    """index.md '## 기능별 인덱스' 섹션의 feature/recipe 링크 표 행 수(분할 신호 측정용)."""
+    m = re.search(r"^##\s*기능별 인덱스\b.*?(?=^##\s|\Z)", text, re.M | re.S)
+    if not m:
+        return 0
+    return sum(1 for line in m.group(0).splitlines()
+               if line.lstrip().startswith("|") and ("feature]]" in line or "recipe]]" in line))
 
 
 def main():
@@ -81,7 +104,8 @@ def main():
         in_archive = r.startswith("90_archive/")
 
         # wikilink: 깨진 링크(경로형) + 경로 없는 링크(명시적 경로 필수 위반)
-        for m in re.findall(r"\[\[([^\]|]+)", text):
+        # 코드펜스/인라인코드 안 텍스트는 제외(스니펫 정규식이 [[..]]로 오인되는 오탐 방지 — strip_code)
+        for m in re.findall(r"\[\[([^\]|]+)", strip_code(text)):
             t = m.replace("\\", "").split("#")[0].strip()
             if not t:
                 continue
@@ -173,24 +197,60 @@ def main():
         if typ == "feature":
             feat_files.add(r[:-3])
 
-    # 기능별 인덱스 ↔ feature 동기화
+    # index.md: 분할 신호(줄수/행수) + sub-index 목록 정합 + 기능별 인덱스 ↔ feature 동기화
     idx = os.path.join(vault, "index.md")
+    sub_files = sorted(glob.glob(os.path.join(vault, "index-*.md")))
     if os.path.isfile(idx):
         with open(idx, encoding="utf-8") as fh:
             itext = fh.read()
-        # 인덱스가 sub-index 파일(index-*.md)로 분할된 경우 그 내용도 합쳐서 검사 (분할 시 누락 오탐 방지)
-        for sub in sorted(glob.glob(os.path.join(vault, "index-*.md"))):
+
+        # 분할 신호 (wiki-schema §4) — sub 합치기 전 index.md 본체로 측정
+        idx_lines = itext.count("\n") + 1
+        feat_rows = feature_index_rows(itext)
+        if idx_lines > INDEX_BODY_LINES or feat_rows > INDEX_FEAT_ROWS:
+            infos.append(f"index.md 분할 검토: 본문 {idx_lines}줄(임계 {INDEX_BODY_LINES}), "
+                         f"기능별 인덱스 {feat_rows}행(임계 {INDEX_FEAT_ROWS}) (wiki-schema §4 2단계)")
+
+        # sub-index 목록 정합: 실재하는 index-*.md가 index.md에 언급(등록)됐는지.
+        #  A(실재 파일) − B(index.md 언급) = 미등록 → WARN. 역방향(언급은 있으나 파일 없음)은
+        #  wikilink면 위 깨진/경로없음 검사가 이미 잡으므로 신규 WARN을 내지 않는다(중복·모순 차단).
+        mentioned = set(re.findall(r"index-[a-z]+", itext))
+        for sp in sub_files:
+            stem = os.path.basename(sp)[:-3]  # 예: 'index-personal'
+            if stem not in mentioned:
+                warns.append(f"sub-index 미등록: {stem}.md가 index.md 목록에 없음(절차 K·검색 누락 위험)")
+
+        # 인덱스가 sub-index로 분할된 경우 그 내용도 합쳐서 동기화 검사 (분할 시 누락 오탐 방지)
+        for sub in sub_files:
             try:
                 with open(sub, encoding="utf-8") as sfh:
                     itext += "\n" + sfh.read()
             except OSError:
                 pass
-        for m in re.findall(r"\[\[([^\]|]+)", itext):
+        # 코드펜스/인라인코드 제외 후 feature 링크 추출 (index/sub의 스니펫 예시 오탐 방지)
+        for m in re.findall(r"\[\[([^\]|]+)", strip_code(itext)):
             t = m.replace("\\", "").split("#")[0].strip()  # #앵커 제거(메인 루프 링크 파싱과 일치)
             if "/feat-" in t:
                 index_feat_links.add(t)
         for f in sorted(feat_files - index_feat_links):
             warns.append(f"기능별 인덱스 누락: {f} (feature인데 index 미등록)")
+
+        # 한/영 양방향 병기: 기능별 인덱스 행 첫 컬럼(기능명)에 한글·영문 중 한쪽만 있으면 WARN.
+        #  한글 등록이든 영문 등록이든 양방향 검색이 되게(wiki-schema §3·§7-16). feature_index_rows는
+        #  건드리지 않고 별도 순회(분할 시 sub-index까지 합친 itext 대상). 첫 컬럼은 이후 컬럼 wikilink의
+        #  \| 이스케이프에 영향받지 않으므로 split("|")[1]로 안전.
+        han, lat = re.compile(r"[가-힣]"), re.compile(r"[A-Za-z]")
+        for line in itext.splitlines():
+            s = line.lstrip()
+            if not s.startswith("|") or ("feature]]" not in s and "recipe]]" not in s):
+                continue
+            parts = s.split("|")
+            if len(parts) < 2 or not parts[1].strip():
+                continue
+            name = parts[1].strip()
+            has_h, has_l = bool(han.search(name)), bool(lat.search(name))
+            if has_h != has_l:
+                warns.append(f"한/영 병기 누락: '{name}' ({'한글만' if has_h else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     for r, (fm, typ, text) in pages.items():

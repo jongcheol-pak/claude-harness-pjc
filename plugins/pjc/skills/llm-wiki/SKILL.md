@@ -104,7 +104,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 
 1. **`index.md`**:
    - 해당 카테고리(개인/업무) 프로젝트 테이블에 행 추가
-   - **"기능별 인덱스" 테이블에 새 feature 행 추가**(기능 → feature/레시피/가이드 링크). 행에 **한글 기능명과 함께 영문 식별자/키워드를 병기**한다(예: "설치 (install)", "로그인 (login)"). 파일명·코드 식별자가 영문이므로, 한글로 검색하든 영문으로 검색하든 인덱스 한 줄에서 잡히게 한다. **인덱스가 sub-index 파일(`index-{카테고리}.md`)로 분할된 상태면**, `index.md`가 아니라 그 프로젝트의 category(personal/work)에 해당하는 sub-index(`index-personal.md`/`index-work.md`)에 행을 추가하고 `index.md` 상단의 sub-index 목록이 최신인지 확인한다.
+   - **"기능별 인덱스" 테이블에 새 feature 행 추가**(기능 → feature/레시피/가이드 링크). 행 첫 컬럼(기능명)에 **한글 키워드와 영문 키워드를 양방향으로 모두 병기**한다 — 한글로 등록하든(예: "로그인 (login)") 영문 기술용어로 등록하든(예: "OG image (OG 이미지)") **한쪽만 적지 않는다**. 영문은 feature 파일명·코드 식별자에서, 한글은 기능 설명에서 가져온다. 이로써 한글로 검색하든 영문으로 검색하든 인덱스 한 줄에서 잡힌다(lint이 한/영 병기 누락을 검사 — F-1 16). **인덱스가 sub-index 파일(`index-{카테고리}.md`)로 분할된 상태면**, `index.md`가 아니라 그 프로젝트의 category(personal/work)에 해당하는 sub-index(`index-personal.md`/`index-work.md`)에 행을 추가하고 `index.md` 상단의 sub-index 목록이 최신인지 확인한다.
    - 기술 스택 지식 테이블에 해당 프로젝트를 "사용 프로젝트"에 추가
    - 범용 패턴 테이블에 관련 있으면 추가
    - 가이드를 생성했으면 "가이드 / 레시피" 섹션에 링크 추가
@@ -266,6 +266,9 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 11. **tech_stack 휘발성 버전**: 소스 스텁 "기술 스택" 줄 + project 허브 `tech_stack` frontmatter에 major.minor 이상 버전(`\d+\.\d+`)이 있으면 경고(이름만 기재 — 버전 진실원천은 코드). lint.py가 기계 검사.
 12. **(미검증)·미해결 question 집계**: `20_/30_/40_` 본문(frontmatter·아카이브 제외)의 `(미검증)` 표기 수와 미해결 question(`status != resolved`) 수를 INFO로 집계(0건 생략, lint.py). 1건 이상이면 보고 시 **사용자 검증 후보로 명시**한다(§11 회수 장치).
 13. **잠재 연결 발견 (크로스-프로젝트 미연결 공통점)**: 전 프로젝트 허브의 `tech_stack`·기능 목록·"프로젝트 간 공유 패턴"을 가로질러, **아직 `30_knowledge/` 지식 페이지나 허브 "공유 패턴" 링크로 안 묶인 2개 이상 프로젝트의 공통점**(공유 기술/패턴/접근/함정)을 발굴해 후보로 제안한다. 5번(크로스참조 누락)이 *기존* 지식 페이지의 정합성 점검이라면, 이 항목은 *신규* 연결의 발굴이다. **보수 정책**: tech_stack 일치·동일 명명 패턴 등 구체적 근거가 있는 공통점만 제안(추측 링크 금지), 기존 지식 페이지·기존 공유 패턴 링크와 중복은 제외, `log.md` 이력으로 이미 처리된 후보는 재-제안 금지. **자동 생성 금지** — 후보만 🔵정보로 제시하고, 사용자 승인 시에만 절차 E(지식 페이지 — 2개 실증 충족 시 concept, 단일 기술이면 entity) 또는 허브 "프로젝트 간 공유 패턴" 상호링크로 반영. (**에이전트 수행 — lint.py 범위 아님**)
+14. **index.md 분할 신호**: index.md 본문(frontmatter 포함 전체) 줄 수 또는 기능별 인덱스 표 행 수가 임계(400줄/200행) 초과면 INFO로 2단계(파일) 분할 제안(`wiki-schema.md` §4 — `INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`). lint.py가 기계 검사.
+15. **sub-index 목록 정합**: vault에 실재하는 sub-index 파일(`index-*.md`)이 `index.md`에 언급(목록 등록)됐는지 — 미등록이면 WARN(절차 K·검색이 분할 인덱스를 빠뜨리지 않게). 역방향(목록엔 있으나 파일 없음)은 깨진 wikilink 검사(1번)가 커버. lint.py가 기계 검사.
+16. **기능별 인덱스 한/영 병기**: 기능별 인덱스 행(feature/recipe)의 첫 컬럼(기능명)에 한글(`[가-힣]`)·영문(`[A-Za-z]`)이 모두 있는지 — 한쪽만 있으면 WARN(한글 등록이든 영문 등록이든 양방향 검색 보장, §3·A-3 1). lint.py가 기계 검사.
 
 #### F-2. 결과 보고
 - 결과를 **심각도 등급**(🔴 오류 / 🟡 경고 / 🔵 정보)으로 분류해 보고.
@@ -278,7 +281,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 ### G. Query (위키 질문)
 
 사용자가 위키 내용을 질문하면.
-1. **위키가 진실원천 — 안다고 생각해도 모델 기억으로 답하지 않는다.** 반드시 `index.md`(기능별 인덱스 포함)로 관련 페이지를 식별하고 실제로 읽는다.
+1. **위키가 진실원천 — 안다고 생각해도 모델 기억으로 답하지 않는다.** 반드시 `index.md`(기능별 인덱스 포함)로 관련 페이지를 식별하고 실제로 읽는다. **`index.md` 상단에 sub-index 파일 목록(`index-{카테고리}.md` 등)이 있으면**(인덱스가 비대해 파일 분할된 경우), 관련 카테고리의 sub-index도 함께 읽어 거기서 식별한다 — `index.md`만 보고 분할된 인덱스를 빠뜨리지 않는다(K-2·schema §6-2와 동일).
 2. 관련 feature/guide/지식 페이지를 읽고 답변을 합성한다.
 3. 출처를 각주로 명시(페이지 wikilink + 원 각주). 위키에 근거가 없으면 "위키에 없음"을 밝히고 추정은 `(미검증)` 표기.
 4. **파일백**: 답이 위키에 없던 유용한 종합이면 → 사용자에게 "이 답을 위키에 페이지로 저장할까요?" 제안(2개 실증 시 `30_knowledge/patterns/` concept, 아니면 관련 feature/guide 보강).
@@ -304,7 +307,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 2. 위키 실제 상태와 대조한다.
 3. 불일치를 실제 상태에 맞게 수정한다.
 4. 규칙 번들 수정 시 frontmatter `version`을 올린다.
-5. 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/ORIGIN_REQUIRED_TYPES). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
+5. 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/ORIGIN_REQUIRED_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
 6. `log.md`: `- [YYYY-MM-DD] [SCHEMA] {요약}. (자동 갱신)`
 
 #### H-3. 범위 제한
@@ -374,7 +377,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 2. `index.md`의 "기능별 인덱스"·프로젝트 테이블·"범용 패턴" 섹션에서 작업 대상과 관련된 feature·recipe·guide·**개선 패턴(`30_knowledge/patterns/`)**을 식별한다(필요 시 vault 전체 Grep 보조). **`index.md` 상단에 sub-index 파일 목록(`index-{카테고리}.md` 등)이 있으면**(인덱스가 비대해 파일 분할된 경우), 관련 카테고리의 sub-index도 함께 읽어 거기서 식별한다 — `index.md`만 보고 분할된 인덱스를 빠뜨리지 않는다. 특히 **버그 수정·성능 개선·문제 해결 작업이면 patterns에 같은 문제의 과거 해결책이 있는지 우선 확인**한다 — 다른 프로젝트의 시행착오를 재사용해 재조사를 줄인다. patterns로 아직 승격 안 된 1개 프로젝트 교훈은 관련 feature 페이지의 "관련 지식·레시피"에 있을 수 있으니 함께 본다.
 3. **식별된 페이지만 Read** — 위키 전체 정독 금지. feature/recipe/패턴 각주에 병기된 소스 파일 경로로 실제 코드로 점프한다.
    - **폐기 표시 확인**: 참조한 feature에 `deprecated`/`status: deprecated` 표시나 "코드에서 제거됨" 안내가 있으면, 그것은 **현재 기능이 아니라 이력**이다. 현재 구현의 근거로 삼지 말고(이미 제거된 기능), 필요하면 "과거에 이런 게 있었다"는 맥락으로만 참고한다.
-   - **검색어 한/영 양방향 시도**: 위키 콘텐츠는 한글이지만 **파일명·frontmatter 키·코드 식별자는 영문**이다(예: `feat-install.md`, `feat-login.md`). 한글 개념어로 grep해 못 찾으면 영문도 시도한다 — 설치↔install, 로그인↔login, 설정↔settings, 결제↔payment, 검색↔search 등. 한 방향만 시도하고 "없다"고 단정하지 않는다. index.md 기능별 인덱스의 한글 설명은 한글이 잘 매칭되지만, 파일명·식별자까지 닿으려면 영문 검색이 필요하다.
+   - **검색어 한/영 양방향 시도**: 위키 콘텐츠는 한글이지만 **파일명·frontmatter 키·코드 식별자는 영문**이다(예: `feat-install.md`, `feat-login.md`). 한글 개념어로 grep해 못 찾으면 영문도 시도한다 — 설치↔install, 로그인↔login, 설정↔settings, 결제↔payment, 검색↔search 등. 한 방향만 시도하고 "없다"고 단정하지 않는다. index.md 기능별 인덱스의 한글 설명은 한글이 잘 매칭되지만, 파일명·식별자까지 닿으려면 영문 검색이 필요하다. (등록 시 A-3 규칙대로 인덱스 행에 한/영이 양방향 병기돼 있으면 어느 쪽으로 검색하든 인덱스 한 줄에서 잡힌다.)
 4. `origin`/`confidence`/`(미검증)` 표기를 신뢰도 판단에 반영한다 — `(미검증)`·`confidence: low` 서술은 코드로 재확인 후 사용한다.
 5. **쓰기 금지**: 모순·드리프트(위키↔코드 불일치)를 발견해도 위키를 수정하지 않는다. 발견 사실을 사용자에게 보고만 하고, 반영은 별도 위키 세션(B/F)에서 처리한다.
 6. `log.md` 기록도 하지 않는다(위키 상태 무변경).
@@ -411,6 +414,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 | guide (recipe) | 120 |
 | question | 40 |
 | log.md | 60 |
+| index.md | 제한 없음 (본문 400줄 / 기능별 인덱스 200행 초과 시 분할 검토 — lint INFO. 분할 절차 상세는 `wiki-schema.md` §4) |
 - 예산 80% 도달 시 오래된 항목을 `[YYYY-MM-DD] 한줄요약`으로 압축. feature/guide는 압축(삭제) 대신 하위 페이지 분리.
 
 ## 체크리스트 (작업 완료 전)
