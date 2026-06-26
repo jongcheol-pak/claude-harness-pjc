@@ -1,7 +1,7 @@
 ---
 type: schema
-version: "2.18"
-updated: 2026-06-26
+version: "2.19"
+updated: 2026-06-27
 language: ko
 ---
 
@@ -260,7 +260,7 @@ tags: [question, 관련태그]
 | guide (recipe) | 120줄 | 분리 |
 | question | 40줄 | resolved 시 관련 페이지에 흡수 + `status: resolved` 표시(보존, §2.7) |
 | log.md | 60줄 | 오래된 기록 한 줄 압축 |
-| index.md | 제한 없음 (**1단계(소제목 구역화 — 사람 판단 가이드)**: 기능별 인덱스가 비대해지면(대략 본문 80% ≈ 320줄 또는 기능별 인덱스 160행) `## 기능별 인덱스` 아래를 **`### ` 하위 소제목**으로 구역을 나눈다(새 `## ` 섹션으로 쪼개지 않는다 — `## `로 나누면 lint의 행수 측정 `feature_index_rows`가 첫 `## `까지만 세어 과소계상된다. index.md·sub-index 공통. 검색 등록·한영 병기 검사는 전체 텍스트를 스캔하므로 어느 쪽이든 누락되지 않지만, 행수 신호 정확도를 위해 `### `를 쓴다). **2단계(파일 분할 — lint 기계 신호)**: **본문(frontmatter 포함 전체) 400줄 초과 또는 기능별 인덱스 200행 초과**면 lint이 INFO로 분할을 제안한다(`INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`). 이때 **vault의 기존 category 기준**(`index-personal.md`/`index-work.md`)으로 파일 분할 — 새 분류를 만들지 말고 이미 확립된 personal/work를 따라야 feature가 어느 sub-index인지 그 프로젝트 category로 자동 결정된다. 분할 시 **`index.md` 상단에 sub-index 파일 목록을 반드시 유지** — 절차 K·검색이 `index.md`만 보고도 분할 파일을 찾을 수 있어야 함. **분할 상태에서는 이 문서의 모든 "`index.md` 기능별 인덱스 갱신/제거/표기" 지시가 해당 category의 sub-index 파일에 적용된다** — 기능별 인덱스 항목의 추가·삭제·폐기 표기는 항상 그 항목이 속한 sub-index에서 수행한다. 단 `## 미해결 질문`처럼 category(personal/work)로 분할되지 않는 섹션은 `index.md` 본체에 그대로 두고 거기서 닫는다. `index.md` 본체는 sub-index 목록 + 이런 비분할 섹션만 최신으로 유지한다. **sub-index 비대 시(3단계 없음)**: 분할된 `index-*.md` 자체가 임계(본문 400줄/기능별 인덱스 200행)를 넘으면 lint이 INFO로 알린다 — personal/work는 종착 분류이므로 추가 파일 분할이 아니라 **소제목 구역화(1단계)로 정리**한다(새 분류를 만들지 않는다는 원칙 유지). 분할된 sub-index는 `## 기능별 인덱스` 섹션을 그대로 보유한다 — lint의 행수 측정·동기화 검사가 이 헤딩을 기준으로 한다.) | - |
+| index.md | 제한 없음 (**1단계(소제목 구역화 — 사람 판단 가이드)**: 기능별 인덱스가 비대해지면(대략 본문 80% ≈ 320줄 또는 기능별 인덱스 160행) `## 기능별 인덱스` 아래를 **`### ` 하위 소제목**으로 구역을 나눈다(새 `## ` 섹션으로 쪼개지 않는다 — `## `로 나누면 lint의 행수 측정 `feature_index_rows`가 첫 `## `까지만 세어 과소계상된다. index.md·sub-index 공통. 검색 등록·한영 병기 검사는 전체 텍스트를 스캔하므로 어느 쪽이든 누락되지 않지만, 행수 신호 정확도를 위해 `### `를 쓴다). **2단계(파일 분할 — lint 기계 신호)**: **본문(frontmatter 포함 전체) 400줄 초과 또는 기능별 인덱스 200행 초과**면 lint이 INFO로 분할을 제안한다(`INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`). 이때 **vault의 기존 category 기준**(`index-personal.md`/`index-work.md`)으로 파일 분할 — 새 분류를 만들지 말고 이미 확립된 personal/work를 따라야 feature가 어느 sub-index인지 그 프로젝트 category로 자동 결정된다. 분할 시 **`index.md` 상단에 sub-index 파일 목록을 반드시 유지** — 절차 K·검색이 `index.md`만 보고도 분할 파일을 찾을 수 있어야 함. **분할 상태에서는 이 문서의 "`index.md` 기능별 인덱스 갱신/제거/표기" 지시 중 project feature(20_projects, category 보유)의 행에 대한 것이 해당 category의 sub-index 파일에 적용된다** — project feature 기능별 인덱스 항목의 추가·삭제·폐기 표기는 그 항목이 속한 sub-index에서 수행한다. **분할(sub-index) 대상은 project feature의 기능별 인덱스 행으로 한정한다.** 단 `## 미해결 질문`처럼 category(personal/work)로 분할되지 않는 섹션은 `index.md` 본체에 그대로 두고 거기서 닫는다. recipe(`40_guides`, category 없는 cross-stack)의 기능별 인덱스 행과 프로젝트 테이블(`## 개인/업무 프로젝트`)도 personal/work로 분할되지 않으므로 같은 비분할 취급으로 `index.md` 본체에 남긴다 — recipe는 새 분류를 만들지 않고 본체 기능별 인덱스·`## 가이드 / 레시피` 섹션에서 관리한다. (이 recipe·프로젝트 테이블 귀속은 절차 규칙이며 lint 기계 검사 대상이 아니다 — recipe는 category가 없어 자동 식별이 어렵고 분할은 드문 경로다.) `index.md` 본체는 sub-index 목록 + 이런 비분할 섹션(미해결 질문·recipe 기능별 인덱스·프로젝트 테이블)만 최신으로 유지한다. **sub-index 비대 시(3단계 없음)**: 분할된 `index-*.md` 자체가 임계(본문 400줄/기능별 인덱스 200행)를 넘으면 lint이 INFO로 알린다 — personal/work는 종착 분류이므로 추가 파일 분할이 아니라 **소제목 구역화(1단계)로 정리**한다(새 분류를 만들지 않는다는 원칙 유지). 분할된 sub-index는 `## 기능별 인덱스` 섹션을 그대로 보유한다 — lint의 행수 측정·동기화 검사가 이 헤딩을 기준으로 한다.) | - |
 
 - 예산 80% 도달 시 압축 시작
 - 압축 형식: `[YYYY-MM-DD] 한줄요약`
