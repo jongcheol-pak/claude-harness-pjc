@@ -6,7 +6,7 @@
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 파일은 수정하지 않는다(읽기 전용).
-규칙 진실원천은 reference/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
+규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (SKILL.md H-2: SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
 """
 import os, re, sys, glob, datetime
@@ -178,8 +178,15 @@ def main():
     if os.path.isfile(idx):
         with open(idx, encoding="utf-8") as fh:
             itext = fh.read()
+        # 인덱스가 sub-index 파일(index-*.md)로 분할된 경우 그 내용도 합쳐서 검사 (분할 시 누락 오탐 방지)
+        for sub in sorted(glob.glob(os.path.join(vault, "index-*.md"))):
+            try:
+                with open(sub, encoding="utf-8") as sfh:
+                    itext += "\n" + sfh.read()
+            except OSError:
+                pass
         for m in re.findall(r"\[\[([^\]|]+)", itext):
-            t = m.replace("\\", "").strip()
+            t = m.replace("\\", "").split("#")[0].strip()  # #앵커 제거(메인 루프 링크 파싱과 일치)
             if "/feat-" in t:
                 index_feat_links.add(t)
         for f in sorted(feat_files - index_feat_links):

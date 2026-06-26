@@ -5,6 +5,9 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
 # ---- 토글 체크 ----
 $disableFile = Join-Path $env:USERPROFILE ".claude\.disabled\require-evidence"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
@@ -27,9 +30,10 @@ if (-not $gitDir -or $LASTEXITCODE -ne 0) {
     exit 0
 }
 
-# 마지막 커밋 메시지 가져오기
-$lastMsg = & git log -1 --pretty=%B 2>$null
-if (-not $lastMsg) { exit 0 }
+# 마지막 커밋 메시지 가져오기 (다중 줄 메시지는 배열로 캡처되므로 단일 문자열로 합침 — 배열에 -notmatch 하면 줄 단위 필터가 되어 오탐)
+$lastMsgRaw = & git log -1 --pretty=%B 2>$null
+if (-not $lastMsgRaw) { exit 0 }
+$lastMsg = ($lastMsgRaw -join "`n")
 
 $firstLine = ($lastMsg -split "`n")[0].Trim()
 

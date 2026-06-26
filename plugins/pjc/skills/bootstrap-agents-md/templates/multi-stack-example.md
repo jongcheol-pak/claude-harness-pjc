@@ -149,7 +149,7 @@ PRD Location:  docs/prd.md (대규모 작업 시)
 
 1. **계획 단계**: `pjc:plan-feature` — `plan.md` 작성
 2. **구현 단계**: `pjc:implement-task` — PIV 루프 + 2단계 리뷰
-3. **디버깅**: `pjc:systematic-debugging` — 4-phase 근본 원인 분석
+3. **디버깅**: `pjc:pjc-systematic-debugging` — 4-phase 근본 원인 분석
 4. **MVVM (WinUI 3 전용)**: `pjc:add-viewmodel` — Android에는 적용되지 않음
 5. **DDD/Clean (양쪽 적용 가능)**: `pjc:add-domain-service` — Domain/Application 서비스 추가
 6. **Hook 토글**: `pjc:harness-toggle` — 런타임 on/off

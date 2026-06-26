@@ -1,6 +1,6 @@
 ---
 name: bootstrap-agents-md
-description: This skill should be used when starting work on a project that has no AGENTS.md file. Triggered automatically by plan-feature when AGENTS.md is missing, or manually with "/pjc:bootstrap-agents-md". Detects project stack from marker files (.csproj, package.json, pyproject.toml, etc.) and generates a minimal AGENTS.md from one of 7 templates. If stack is unknown, asks the user.
+description: This skill should be used when starting work on a project that has no AGENTS.md file. Triggered automatically by plan-feature when AGENTS.md is missing, or manually with "/pjc:bootstrap-agents-md". Detects project stack from marker files (.csproj, package.json, pyproject.toml, etc.) and generates a minimal AGENTS.md from one of 8 stack templates (plus generic/multi-stack). If stack is unknown, asks the user.
 argument-hint: "(자동)"
 ---
 
@@ -56,9 +56,9 @@ test -f AGENTS.md || test -f CLAUDE.md
 ```powershell
 $markers = @{
     'dotnet'          = @('*.csproj', '*.sln', '*.fsproj')
-    'android'         = @('build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts')
+    'android'         = @('build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'AndroidManifest.xml')
     'node-typescript' = @('package.json', 'tsconfig.json')
-    'python'          = @('pyproject.toml', 'setup.py')
+    'python'          = @('pyproject.toml', 'setup.py', 'requirements*.txt')
     'go'              = @('go.mod')
     'rust'            = @('Cargo.toml')
 }
@@ -203,7 +203,7 @@ D 선택 시 `multi-stack-example.md`를 참고하여 3개 섹션 모두 작성.
 
 ## Template 위치
 
-plugin 패키지의 `AGENTS.md.templates/` 디렉터리:
+이 스킬 번들의 `templates/` 디렉터리 (`${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-agents-md/templates/`):
 - `winui3.md` — WinUI 3 (Windows App SDK). 프로젝트 생성/실행 실패 방지 규칙 + Gallery 디자인 + 다국어 규칙 포함
 - `wpf.md` — WPF + WPF-UI(Fluent). 패키지 설치·App.xaml 병합·FluentWindow·테마 규칙 포함
 - `dotnet.md` — 일반 .NET (WinUI/WPF 아님)

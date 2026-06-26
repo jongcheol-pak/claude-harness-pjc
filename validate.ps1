@@ -6,7 +6,7 @@
 # 검증 항목:
 #   1. plugin 디렉터리 존재
 #   2. plugin.json + marketplace.json 유효
-#   3. skill 6개 모두 등록
+#   3. skill 8개 모두 등록
 #   4. agent 6개 모두 등록
 #   5. hook 5개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
@@ -81,9 +81,9 @@ Test-Json-Valid (Join-Path $pluginRoot ".claude-plugin\plugin.json") "plugin.jso
 Test-Json-Valid (Join-Path $pluginRoot "hooks\hooks.json") "hooks.json 파싱" | Out-Null
 Write-Host ""
 
-# 3. Skills 6개
-Write-Host "3. Skills 6개" -ForegroundColor Yellow
-$skills = @('plan-feature', 'implement-task', 'systematic-debugging', 'add-viewmodel', 'add-domain-service', 'harness-toggle', 'bootstrap-agents-md')
+# 3. Skills 8개
+Write-Host "3. Skills 8개" -ForegroundColor Yellow
+$skills = @('plan-feature', 'implement-task', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'harness-toggle', 'bootstrap-agents-md', 'llm-wiki')
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills\$s\SKILL.md"
     Test-Item-Exists $skillPath "skill: $s" | Out-Null
@@ -101,7 +101,7 @@ Write-Host ""
 
 # 5. Hooks 5개
 Write-Host "5. Hooks 5개" -ForegroundColor Yellow
-$hooks = @('block-destructive.ps1', 'require-plan-for-write.ps1', 'check-utf8-and-lines.ps1', 'require-evidence.ps1', 'impact-warn.ps1', 'backup-on-compact.ps1')
+$hooks = @('block-destructive.ps1', 'require-plan-for-write.ps1', 'check-utf8-and-lines.ps1', 'require-evidence.ps1', 'impact-warn.ps1')
 foreach ($h in $hooks) {
     $hookPath = Join-Path $pluginRoot "scripts\$h"
     if (Test-Item-Exists $hookPath "hook: $h") {
@@ -179,14 +179,14 @@ if (Test-Path -LiteralPath $userSettings) {
 }
 Write-Host ""
 
-# 8. AGENTS.md.templates 디렉터리
-Write-Host "8. AGENTS.md.templates 디렉터리" -ForegroundColor Yellow
-$templatesDir = Join-Path $marketplaceRoot "AGENTS.md.templates"
+# 8. bootstrap-agents-md templates 디렉터리 (번들 내)
+Write-Host "8. bootstrap-agents-md templates 디렉터리" -ForegroundColor Yellow
+$templatesDir = Join-Path $pluginRoot "skills\bootstrap-agents-md\templates"
 if (Test-Path -LiteralPath $templatesDir) {
-    Write-Host "  [OK]   AGENTS.md.templates 디렉터리" -ForegroundColor Green
+    Write-Host "  [OK]   templates 디렉터리" -ForegroundColor Green
     $script:pass++
 
-    $expectedTemplates = @('dotnet.md', 'android.md', 'node-typescript.md', 'python.md', 'go.md', 'rust.md', 'generic.md')
+    $expectedTemplates = @('winui3.md', 'wpf.md', 'dotnet.md', 'android.md', 'node-typescript.md', 'python.md', 'go.md', 'rust.md', 'generic.md')
     foreach ($t in $expectedTemplates) {
         $tPath = Join-Path $templatesDir $t
         if (Test-Path -LiteralPath $tPath) {
@@ -198,8 +198,8 @@ if (Test-Path -LiteralPath $templatesDir) {
         }
     }
 } else {
-    Write-Host "  [WARN] AGENTS.md.templates 디렉터리 없음" -ForegroundColor DarkYellow
-    $script:warnings += "AGENTS.md.templates 디렉터리 없음 — bootstrap-agents-md 동작 불가"
+    Write-Host "  [WARN] templates 디렉터리 없음" -ForegroundColor DarkYellow
+    $script:warnings += "skills\bootstrap-agents-md\templates 디렉터리 없음 — bootstrap-agents-md 동작 불가"
 }
 Write-Host ""
 

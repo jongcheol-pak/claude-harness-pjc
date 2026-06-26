@@ -9,7 +9,7 @@
       "name": "pjc",
       "source": "./plugins/pjc",
       "displayName": "pjc — 계획·검증 코딩 하네스",
-      "description": "Korean-first agentic coding harness with plan-feature, implement-task, systematic-debugging, MVVM/DDD skills, 2-stage review subagents, and PowerShell-based safety hooks for Windows.",
+      "description": "Korean-first agentic coding harness with plan-feature, implement-task, pjc-systematic-debugging, MVVM/DDD skills, 2-stage review subagents, and PowerShell-based safety hooks for Windows.",
       "category": "workflow",
       "tags": [
         "korean",

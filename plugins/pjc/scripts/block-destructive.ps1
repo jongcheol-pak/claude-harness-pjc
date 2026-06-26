@@ -21,6 +21,9 @@
 
 $ErrorActionPreference = 'Stop'
 
+# 한글 차단 사유가 cp949 콘솔에서 깨지지 않도록 stderr 출력을 UTF-8로 (Claude Code는 hook 출력을 UTF-8로 디코딩)
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
 # stdin으로 JSON 입력 수신
 $inputJson = [Console]::In.ReadToEnd()
 
@@ -41,6 +44,8 @@ $patterns = @(
     'rm\s+-rf\s+~',                                     # rm -rf ~
     'rm\s+-rf\s+\$HOME',                                # rm -rf $HOME
     'rm\s+-rf\s+\*(\s|$)',                              # rm -rf *
+    'rm\s+-rf\s+\.\/?\*',                               # rm -rf ./* (또는 .*) — 현재 디렉터리 전체 삭제
+    'rm\s+-rf\s+\.\/?(\s|$)',                           # rm -rf . / rm -rf ./ — 현재 디렉터리 삭제
     'git\s+push\s+.*(--force|--force-with-lease)',      # git push --force
     'git\s+push\s+-f(\s|$)',                            # git push -f
     'git\s+filter-branch',                              # 히스토리 재작성
@@ -56,7 +61,7 @@ $patterns = @(
     'DELETE\s+FROM\s+[^\s;]+\s*;',                      # DELETE FROM x; — WHERE 없는 전체 행 삭제
     'DELETE\s+FROM\s+[^\s;]+\s*$',                      # DELETE FROM x (문장 끝, WHERE 없음)
     'DELETE\s+FROM\s+\w+\s+WHERE\s+1\s*=\s*1',          # WHERE 1=1 = 사실상 전체 삭제
-    'UPDATE\s+\w+\s+SET\s+(?:(?!WHERE).)*$',            # UPDATE x SET ... (WHERE 절 자체가 없음 — 전체 행 변조)
+    'UPDATE\s+\w+\s+SET\b(?![^;]*\bWHERE\b)',           # UPDATE x SET ... (WHERE 절 없음 — 전체 행 변조). \bWHERE\b로 값 속 "nowhere" 등 오탐 방지
     'UPDATE\s+\w+\s+SET\s+.*WHERE\s+1\s*=\s*1',         # UPDATE ... WHERE 1=1 = 전체 변조
     '\.RemoveRange\(',                                  # EF Core 대량 삭제
     'ExecuteDelete(Async)?\(',                          # EF Core 7+ 대량 삭제

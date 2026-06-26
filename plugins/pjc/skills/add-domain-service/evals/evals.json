@@ -17,8 +17,8 @@
     {
       "id": 3,
       "query": "Customer aggregate에 신용 등급 변경 메서드 추가",
-      "should_trigger": true,
-      "rationale": "Aggregate 도메인 로직"
+      "should_trigger": false,
+      "rationale": "단일 Aggregate 내부 메서드 → Aggregate에 직접 추가(서비스 아님). SKILL 결정표 기준 트리거 안 함"
     },
     {
       "id": 4,

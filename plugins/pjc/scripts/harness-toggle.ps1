@@ -20,6 +20,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# 한글 출력이 cp949 콘솔에서 깨지지 않도록 UTF-8
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
 $disabledDir = Join-Path $env:USERPROFILE '.claude\.disabled'
 New-Item -Force -ItemType Directory -Path $disabledDir | Out-Null
 

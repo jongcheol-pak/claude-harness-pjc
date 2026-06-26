@@ -94,6 +94,7 @@ Claude: [Bash 도구로 harness-toggle.ps1 "" status 실행]
         [OFF] require-plan-for-write
         [ON]  require-evidence
         [ON]  check-utf8-and-lines
+        [ON]  impact-warn
         [ON]  block-destructive (안전상 토글 불가)
 
 사용자: "plan 강제 다시 켜줘"

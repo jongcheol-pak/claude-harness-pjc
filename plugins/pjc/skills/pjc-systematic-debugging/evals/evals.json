@@ -1,6 +1,6 @@
 {
   "skill_name": "pjc-systematic-debugging",
-  "description": "Trigger eval set for systematic-debugging. should_trigger covers bug/error/crash reports requiring root cause investigation. should_not_trigger covers new feature requests, refactoring plans, and explanations.",
+  "description": "Trigger eval set for pjc-systematic-debugging. should_trigger covers bug/error/crash reports requiring root cause investigation. should_not_trigger covers new feature requests, refactoring plans, and explanations.",
   "evals": [
     {
       "id": 1,

@@ -1,5 +1,5 @@
 {
-  "skill": "llm-wiki",
+  "skill_name": "llm-wiki",
   "evals": [
     { "id": 1, "query": "이 프로젝트 위키에 등록해줘", "should_trigger": true, "rationale": "프로젝트 추가 (절차 A)" },
     { "id": 2, "query": "위키 업데이트해줘", "should_trigger": true, "rationale": "정보 갱신 (절차 B)" },

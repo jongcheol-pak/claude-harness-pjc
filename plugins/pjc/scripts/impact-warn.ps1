@@ -7,6 +7,9 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
 # ---- 토글 체크 ----
 $disableFile = Join-Path $env:USERPROFILE ".claude\.disabled\impact-warn"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
@@ -125,14 +128,21 @@ foreach ($sym in $symbols) {
 
 # ---- 출력 ----
 if ($warnings.Count -gt 0) {
-    [Console]::Error.WriteLine("[IMPACT WARNING] $file 의 public/internal 심볼이 변경되었습니다.")
-    foreach ($w in $warnings) {
-        [Console]::Error.WriteLine($w)
-    }
-    [Console]::Error.WriteLine("")
-    [Console]::Error.WriteLine("위 caller 파일들의 동작이 변경되었을 수 있습니다.")
-    [Console]::Error.WriteLine("각 파일을 Read로 열어 영향을 검증하고, 필요 시 함께 수정하세요.")
-    [Console]::Error.WriteLine("이 경고는 차단이 아닙니다. 끄려면: harness-toggle impact-warn off")
+    $lines = @("[IMPACT WARNING] $file 의 public/internal 심볼이 변경되었습니다.")
+    $lines += $warnings
+    $lines += ""
+    $lines += "위 caller 파일들의 동작이 변경되었을 수 있습니다."
+    $lines += "각 파일을 Read로 열어 영향을 검증하고, 필요 시 함께 수정하세요."
+    $lines += "이 경고는 차단이 아닙니다. 끄려면: harness-toggle impact-warn off"
+    $msg = $lines -join "`n"
+
+    # stderr: 디버그/사용자 가시성용
+    [Console]::Error.WriteLine($msg)
+
+    # stdout JSON: PostToolUse additionalContext로 모델에 전달 (exit 0 비차단).
+    # stderr는 exit 2일 때만 모델로 가므로, 비차단 경고는 이 경로로 모델에 닿게 한다.
+    $payload = @{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $msg } } | ConvertTo-Json -Compress -Depth 5
+    [Console]::Out.WriteLine($payload)
 }
 
 exit 0

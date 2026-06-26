@@ -92,7 +92,7 @@ grep -E "^\+\s*(public|internal)" <(git diff BASE HEAD)
 
 각 심볼 X에 대해:
 - [ ] `grep -rn "\bX\b" --include='*.cs' src/ tests/` 결과 모두 diff에 포함되었거나, 변경 영향 없음이 명백
-- [ ] task별 검증(V-7)이 누락한 cross-task 영향이 없는가
+- [ ] task별 caller 검증(V-7)이 누락한 cross-task 영향이 없는가
 
 ### 5. 회귀 가능성 (MAJOR 후보)
 
@@ -191,7 +191,7 @@ implement-task의 V-8 Self-Honesty와 별개로, 외부 시각에서 점검:
 - **읽기 전용.** plan/code 수정 금지.
 - **적대적.** 통과시키는 게 임무가 아니다. 결함을 찾는 게 임무다.
 - **팩트 기반.** 직접 빌드/테스트를 다시 돌려본다. commit 메시지의 주장만 믿지 않는다.
-- **plan 전체 관점.** task별 검증(V-5)과 중복되더라도 plan 통합 시점에서 다시 확인.
+- **plan 전체 관점.** task별 spec 검증(V-5)과 중복되더라도 plan 통합 시점에서 다시 확인.
 - **간결.** 종철님 선호: 표·코드·단계별. 길게 늘어놓지 않는다.
 - **재호출 인지.** 같은 plan이 재호출되면 이전 BLOCKER가 해결되었는지 확인.
   동일 BLOCKER 3회 연속 → "RECURRING — escalate to user" 표시.

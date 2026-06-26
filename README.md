@@ -2,12 +2,12 @@
   <img src="assets/logo.png" alt="claude-harness-pjc logo" width="180" />
 </p>
 
-# claude-harness-pjc
+# claude-harness-pjc (자율 루프)
 
 > Windows + PowerShell 환경에서 Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 Windows 전용 — [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.57.0
+**버전**: 1.59.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---

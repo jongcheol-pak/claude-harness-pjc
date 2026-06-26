@@ -8,6 +8,9 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
 # ---- 토글 체크 ----
 $disableFile = Join-Path $env:USERPROFILE ".claude\.disabled\check-utf8-and-lines"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
@@ -116,6 +119,8 @@ if (-not $skipSecretScan) {
                     if ($sp.label -eq 'IP 주소') {
                         $m = [regex]::Match($raw, $sp.rx).Value
                         if ($m -eq '127.0.0.1' -or $m -eq '0.0.0.0' -or $m -eq '255.255.255.255' -or $m -like '0.0.0.*') { continue }
+                        # 버전 문자열(AssemblyVersion/FileVersion/<Version>/v1.0.0.0 등) 오탐 제외
+                        if ($raw -match "(?i)(version|v)\s*[>=:]?\s*[`"']?$([regex]::Escape($m))") { continue }
                     }
                     $warnings.Add("민감 정보로 보이는 내용 감지: $($sp.label). 실제 값을 파일에 남기지 말고, 환경변수 이름만 기록하거나 .env(gitignore)로 분리하세요. (이 파일은 git/스냅샷으로 보존될 수 있음)")
                 }
@@ -128,12 +133,17 @@ if (-not $skipSecretScan) {
 
 # ---- 출력 ----
 if ($warnings.Count -gt 0) {
-    [Console]::Error.WriteLine("POST-WRITE WARNINGS for ${file}:")
-    foreach ($w in $warnings) {
-        [Console]::Error.WriteLine("  [!] $w")
-    }
-    [Console]::Error.WriteLine("")
-    [Console]::Error.WriteLine("수정 후 다시 저장하거나, 이유와 함께 plan.md에 follow-up으로 기록하세요.")
+    $lines = @("POST-WRITE WARNINGS for ${file}:")
+    foreach ($w in $warnings) { $lines += "  [!] $w" }
+    $lines += ""
+    $lines += "수정 후 다시 저장하거나, 이유와 함께 plan.md에 follow-up으로 기록하세요."
+    $msg = $lines -join "`n"
+
+    [Console]::Error.WriteLine($msg)
+
+    # PostToolUse additionalContext로 모델에 전달 (exit 0 비차단)
+    $payload = @{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $msg } } | ConvertTo-Json -Compress -Depth 5
+    [Console]::Out.WriteLine($payload)
 }
 
 exit 0

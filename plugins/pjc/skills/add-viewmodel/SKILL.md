@@ -118,7 +118,7 @@ public sealed partial class <Name>ViewModel : ObservableObject
 
 ### Step 3. View 생성
 
-#### WinUI 3 / WPF Page 또는 Window
+#### WinUI 3 Page 또는 Window (WPF는 아래 주석 참조)
 
 XAML (`<Name>Page.xaml`):
 ```xml
@@ -126,6 +126,8 @@ XAML (`<Name>Page.xaml`):
     x:Class="<ProjectNamespace>.Views.<Name>Page"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
     <Grid Padding="16" RowDefinitions="Auto,*">
@@ -141,6 +143,8 @@ XAML (`<Name>Page.xaml`):
     </Grid>
 </Page>
 ```
+
+> **WPF 차이**: WPF에는 `x:Bind`·`ProgressRing`·`TitleTextBlockStyle`이 없다. WPF View는 `{Binding Title}`(DataContext에 VM 주입), `ProgressRing` 대신 `ProgressBar IsIndeterminate="True"`, namespace는 `System.Windows.Controls.Page`, Style은 프로젝트/WPF-UI 리소스를 사용한다.
 
 코드비하인드 (`<Name>Page.xaml.cs`):
 ```csharp
@@ -263,11 +267,12 @@ public sealed partial class <Name>Dialog : ContentDialog
 
 ### B. UserControl (재사용 부품)
 
-`ViewModel`을 외부에서 `DataContext`로 주입받는 형태.
+`ViewModel`을 외부(부모 View)에서 `DataContext`로 주입받는 형태. UserControl 내부에서는 상속된 `DataContext`에 `{Binding}`으로 바인딩하고, 자체적으로 `DataContext`를 덮어쓰지 않는다.
 
 ```xml
 <UserControl ...>
-    <Grid DataContext="{x:Bind ViewModel}">
+    <Grid>
+        <!-- 부모가 주입한 DataContext(ViewModel)에 {Binding}으로 접근 -->
         ...
     </Grid>
 </UserControl>

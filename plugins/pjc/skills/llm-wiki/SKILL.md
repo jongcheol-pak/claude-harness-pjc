@@ -1,7 +1,7 @@
 ---
 name: llm-wiki
 description: >
-  LLM WIKI(Obsidian vault) 운영·관리 스킬 — vault 경로의 진실원천은 스킬 config.json(vault_path).
+  LLM WIKI(Obsidian vault) 운영·관리 스킬 — vault 경로의 진실원천은 사용자 설정 파일 ~/.claude/llm-wiki-config.json.
   프로젝트를 위키에 추가/등록·정보 갱신(ingest)·삭제·상태 변경, 특정 기능/가이드/레시피를
   위키에 추가, 위키 점검(lint)·질문(query) 시 사용한다. "위키에 추가/등록", "{프로젝트} 위키에 등록",
   "위키 업데이트", "{프로젝트} 변경분 반영", "위키 점검/lint", "{기능} 위키에 추가" 등의 요청에 발동.
@@ -14,7 +14,7 @@ description: >
 이 스킬은 위키 작업의 **실행 절차(A~K) + 규칙**을 **자기완결적으로** 담는다. **vault에 아무 파일이 없어도(빈 폴더) 동작**한다.
 규칙·타입·예산의 진실원천은 **이 스킬 번들** `<skill>/references/wiki-schema.md` 다. vault에는 SCHEMA.md 사본을 두지 않는다(번들만 사용).
 
-> **`<skill>` 경로**: 이 SKILL.md가 위치한 폴더. pjc plugin으로 설치된 경우 `${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki`, 독립 설치된 경우 `~/.claude/skills/llm-wiki`. 본문의 `<skill>/...` 참조는 모두 이 폴더 기준이며, 실제로는 이 SKILL.md와 같은 디렉터리의 `reference/`·`scripts/`·`config.json`을 가리킨다.
+> **`<skill>` 경로**: 이 SKILL.md가 위치한 폴더. pjc plugin으로 설치된 경우 `${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki`, 독립 설치된 경우 `~/.claude/skills/llm-wiki`. 본문의 `<skill>/...` 참조는 모두 이 폴더 기준이며, 실제로는 이 SKILL.md와 같은 디렉터리의 `references/`·`scripts/`·`config.json`을 가리킨다.
 
 ## 0. 시작 절차 (모든 작업 전 1회 실행)
 
@@ -104,7 +104,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 
 1. **`index.md`**:
    - 해당 카테고리(개인/업무) 프로젝트 테이블에 행 추가
-   - **"기능별 인덱스" 테이블에 새 feature 행 추가**(기능 → feature/레시피/가이드 링크). 행에 **한글 기능명과 함께 영문 식별자/키워드를 병기**한다(예: "설치 (install)", "로그인 (login)"). 파일명·코드 식별자가 영문이므로, 한글로 검색하든 영문으로 검색하든 인덱스 한 줄에서 잡히게 한다.
+   - **"기능별 인덱스" 테이블에 새 feature 행 추가**(기능 → feature/레시피/가이드 링크). 행에 **한글 기능명과 함께 영문 식별자/키워드를 병기**한다(예: "설치 (install)", "로그인 (login)"). 파일명·코드 식별자가 영문이므로, 한글로 검색하든 영문으로 검색하든 인덱스 한 줄에서 잡히게 한다. **인덱스가 sub-index 파일(`index-{카테고리}.md`)로 분할된 상태면**, `index.md`가 아니라 그 프로젝트의 category(personal/work)에 해당하는 sub-index(`index-personal.md`/`index-work.md`)에 행을 추가하고 `index.md` 상단의 sub-index 목록이 최신인지 확인한다.
    - 기술 스택 지식 테이블에 해당 프로젝트를 "사용 프로젝트"에 추가
    - 범용 패턴 테이블에 관련 있으면 추가
    - 가이드를 생성했으면 "가이드 / 레시피" 섹션에 링크 추가
@@ -230,7 +230,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 #### E-1. 생성
 - **조건**: 2개 이상 프로젝트에서 실증된 기술/패턴만.
 - **위치**: 기술 → `30_knowledge/tech/`, 패턴 → `30_knowledge/patterns/`.
-- **템플릿**: `reference/templates.md`의 entity/concept 템플릿 사용.
+- **템플릿**: `references/templates.md`의 entity/concept 템플릿 사용.
 - **생성 후**: `index.md` 해당 테이블 + 관련 프로젝트 "관련 위키 지식"에 링크.
 - **`log.md`**: `- [YYYY-MM-DD] [KNOWLEDGE] {페이지명} 생성.`
 
@@ -288,7 +288,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 
 ### H. 지침 자동 갱신
 
-위키 작업(A~J) 중 아래에 해당하면 **사용자 요청 없이** 이 스킬(`SKILL.md`) 또는 규칙 번들(`reference/wiki-schema.md`)을 즉시 갱신한다.
+위키 작업(A~J) 중 아래에 해당하면 **사용자 요청 없이** 이 스킬(`SKILL.md`) 또는 규칙 번들(`references/wiki-schema.md`)을 즉시 갱신한다.
 
 #### H-1. 대상 조건
 1. 형식 불일치(frontmatter/본문 섹션/경로가 템플릿과 다름)
@@ -300,11 +300,11 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 7. 태그/링크 규칙 변경
 
 #### H-2. 실행 방법
-1. 작업 완료 직전 이 스킬과 규칙 번들 `reference/wiki-schema.md`를 다시 읽는다.
+1. 작업 완료 직전 이 스킬과 규칙 번들 `references/wiki-schema.md`를 다시 읽는다.
 2. 위키 실제 상태와 대조한다.
 3. 불일치를 실제 상태에 맞게 수정한다.
 4. 규칙 번들 수정 시 frontmatter `version`을 올린다.
-5. 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
+5. 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/ORIGIN_REQUIRED_TYPES). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
 6. `log.md`: `- [YYYY-MM-DD] [SCHEMA] {요약}. (자동 갱신)`
 
 #### H-3. 범위 제한
@@ -327,7 +327,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 
 #### I-2. 종류 / 위치 / 본문
 
-> frontmatter/본문 템플릿은 `reference/templates.md`의 guide 템플릿 참조.
+> frontmatter/본문 템플릿은 `references/templates.md`의 guide 템플릿 참조.
 
 - **platform-bootstrap** (`40_guides/platforms/`): 기본 프로젝트 생성·구조. 예산 ~200줄.
   본문: `## 대상 플랫폼`/`## 기본 프로젝트 생성`/`## 권장 구조`/`## 필수 의존성`/`## UI/UX 기본`/`## 체크리스트`.
@@ -359,7 +359,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 2. **`index.md`**: 빈 카탈로그 골격 — 섹션: `## 개인 프로젝트` / `## 업무 프로젝트` / `## 기능별 인덱스` / `## 가이드 / 레시피` / `## 기술 스택 지식 (tech/)` / `## 범용 패턴 (patterns/)` / `## 미해결 질문` / `## 참조`. 표는 헤더만, 내용은 "아직 없음" 주석. 참조 섹션은 **실제 존재하는 파일만** 링크(log/dashboard).
 3. **`log.md`**: `## 최근 변경` + `- [YYYY-MM-DD] [INIT] 위키 초기 골격 생성 (llm-wiki 스킬).`
 4. **`dashboard.md`** (선택): Dataview 쿼리(프로젝트/feature/guide/신선도/질문).
-5. **규칙은 vault에 복사하지 않는다** — 진실원천은 스킬 번들 `reference/wiki-schema.md` 뿐. index `## 참조`에는 번들 경로를 텍스트로 안내한다(vault에 SCHEMA.md를 만들지 말 것).
+5. **규칙은 vault에 복사하지 않는다** — 진실원천은 스킬 번들 `references/wiki-schema.md` 뿐. index `## 참조`에는 번들 경로를 텍스트로 안내한다(vault에 SCHEMA.md를 만들지 말 것).
 6. 부트스트랩 완료 후 본래 요청(A~I)을 이어서 진행한다.
 
 ---
@@ -371,7 +371,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 > **pjc 하네스 연동**: pjc plugin과 함께 설치된 경우, `pjc:plan-feature`가 컨텍스트 수집 단계(Step 1)에서 이 절차 K를 호출해 관련 feature/recipe를 참조한다. 또한 `pjc:implement-task` 완료 후 위키 갱신이 필요하면 절차 B(ingest)가 별도 세션에서 제안된다. 즉 코드 작업 전 참조(K)는 자동 연계, 작업 후 반영(B)은 사용자 확인 후 별도 세션.
 
 1. vault 경로는 §0-1로 결정한다. 빈 위키(index.md 없음)면 참조할 것이 없으므로 부트스트랩하지 말고 종료한다.
-2. `index.md`의 "기능별 인덱스"·프로젝트 테이블·"범용 패턴" 섹션에서 작업 대상과 관련된 feature·recipe·guide·**개선 패턴(`30_knowledge/patterns/`)**을 식별한다(필요 시 vault 전체 Grep 보조). 특히 **버그 수정·성능 개선·문제 해결 작업이면 patterns에 같은 문제의 과거 해결책이 있는지 우선 확인**한다 — 다른 프로젝트의 시행착오를 재사용해 재조사를 줄인다. patterns로 아직 승격 안 된 1개 프로젝트 교훈은 관련 feature 페이지의 "관련 지식·레시피"에 있을 수 있으니 함께 본다.
+2. `index.md`의 "기능별 인덱스"·프로젝트 테이블·"범용 패턴" 섹션에서 작업 대상과 관련된 feature·recipe·guide·**개선 패턴(`30_knowledge/patterns/`)**을 식별한다(필요 시 vault 전체 Grep 보조). **`index.md` 상단에 sub-index 파일 목록(`index-{카테고리}.md` 등)이 있으면**(인덱스가 비대해 파일 분할된 경우), 관련 카테고리의 sub-index도 함께 읽어 거기서 식별한다 — `index.md`만 보고 분할된 인덱스를 빠뜨리지 않는다. 특히 **버그 수정·성능 개선·문제 해결 작업이면 patterns에 같은 문제의 과거 해결책이 있는지 우선 확인**한다 — 다른 프로젝트의 시행착오를 재사용해 재조사를 줄인다. patterns로 아직 승격 안 된 1개 프로젝트 교훈은 관련 feature 페이지의 "관련 지식·레시피"에 있을 수 있으니 함께 본다.
 3. **식별된 페이지만 Read** — 위키 전체 정독 금지. feature/recipe/패턴 각주에 병기된 소스 파일 경로로 실제 코드로 점프한다.
    - **폐기 표시 확인**: 참조한 feature에 `deprecated`/`status: deprecated` 표시나 "코드에서 제거됨" 안내가 있으면, 그것은 **현재 기능이 아니라 이력**이다. 현재 구현의 근거로 삼지 말고(이미 제거된 기능), 필요하면 "과거에 이런 게 있었다"는 맥락으로만 참고한다.
    - **검색어 한/영 양방향 시도**: 위키 콘텐츠는 한글이지만 **파일명·frontmatter 키·코드 식별자는 영문**이다(예: `feat-install.md`, `feat-login.md`). 한글 개념어로 grep해 못 찾으면 영문도 시도한다 — 설치↔install, 로그인↔login, 설정↔settings, 결제↔payment, 검색↔search 등. 한 방향만 시도하고 "없다"고 단정하지 않는다. index.md 기능별 인덱스의 한글 설명은 한글이 잘 매칭되지만, 파일명·식별자까지 닿으려면 영문 검색이 필요하다.

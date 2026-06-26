@@ -10,6 +10,8 @@
 | 1 task + Type B | F-1, F-2, F-6만 (F-7 Opus 생략) |
 | 2+ tasks 또는 Type C/D 포함 | **전체 (F-1~F-7)** |
 
+> Phase F가 생략·축소돼도 **F-6.5(notes 기록 + 오래된 항목 아카이브 이동)는 코드 변경이 있었으면 항상 수행**한다(위 생략/축소 행에도 F-6.5는 포함). 단, 빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따른다. (SKILL.md Phase F 진입 표의 동일 주석과 일치.)
+
 ## F-1. plan Goal 재확인 (자체 검증)
 
 - plan.md의 `## Goal` 문장을 다시 읽고, 누적된 diff 전체가 그것을 충족하는지 자문
@@ -32,7 +34,7 @@
 
 ## F-4. Follow-ups 완전성 확인
 
-- 모든 commit 메시지에서 "follow-up", "TODO", "MINOR" 언급된 사항이 plan.md `## Follow-ups`에 기록되었는지
+- 모든 commit 메시지에서 "follow-up", "TODO", "MINOR" 언급된 사항이 plan.md `## Deferred / Follow-up`에 기록되었는지
 - 누락 시 plan.md 갱신
 
 ## F-5. Risks & Unknowns 실현 검토

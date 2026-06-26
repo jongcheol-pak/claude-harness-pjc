@@ -248,7 +248,7 @@ tags: [question, 관련태그]
 | guide (recipe) | 120줄 | 분리 |
 | question | 40줄 | resolved 시 관련 페이지에 흡수 후 삭제 |
 | log.md | 60줄 | 오래된 기록 한 줄 압축 |
-| index.md | 제한 없음 (기능별 인덱스 비대화 시 도메인 카테고리별 소제목 분할) | - |
+| index.md | 제한 없음 (1단계: 기능별 인덱스 비대화 시 소제목으로 구역 나눔. 2단계: 그래도 거대하면 **vault의 기존 category 기준**(`index-personal.md`/`index-work.md`)으로 파일 분할 — 새 분류를 만들지 말고 이미 확립된 personal/work를 따라야 feature가 어느 sub-index인지 그 프로젝트 category로 자동 결정된다. 분할 시 **`index.md` 상단에 sub-index 파일 목록을 반드시 유지** — 절차 K·검색이 `index.md`만 보고도 분할 파일을 찾을 수 있어야 함. **분할 상태에서는 이 문서의 모든 "`index.md` 기능별 인덱스 갱신/제거/표기" 지시가 해당 category의 sub-index 파일에 적용된다** — 기능별 인덱스 항목의 추가·삭제·폐기 표기는 항상 그 항목이 속한 sub-index에서 수행한다. 단 `## 미해결 질문`처럼 category(personal/work)로 분할되지 않는 섹션은 `index.md` 본체에 그대로 두고 거기서 닫는다. `index.md` 본체는 sub-index 목록 + 이런 비분할 섹션만 최신으로 유지한다.) | - |
 
 - 예산 80% 도달 시 압축 시작
 - 압축 형식: `[YYYY-MM-DD] 한줄요약`
@@ -295,7 +295,7 @@ tags: [question, 관련태그]
 > 위키에 질문할 때
 
 1. 이 규칙 문서 읽기
-2. `index.md`의 "기능별 인덱스" / 카탈로그에서 관련 페이지 식별
+2. `index.md`의 "기능별 인덱스" / 카탈로그에서 관련 페이지 식별 (`index.md` 상단에 sub-index 파일 목록이 있으면 관련 카테고리 sub-index도 함께 읽음)
 3. 관련 feature/guide/지식 페이지 읽고 답변 합성 (출처 각주 필수)
 4. 답변이 유용한 종합이면 → concept 페이지 생성 고려 (2개 실증 시)
 5. 모순 발견 시 → question 페이지 생성
@@ -305,7 +305,7 @@ tags: [question, 관련태그]
 
 > 코드 프로젝트 세션에서 기능 구현·버그 수정 전에 위키를 참고할 때 (절차: 스킬 "K")
 
-1. `index.md` 기능별 인덱스/카탈로그에서 관련 feature·recipe·guide 식별(필요 시 Grep 보조) — 위키 전체 정독 금지
+1. `index.md` 기능별 인덱스/카탈로그에서 관련 feature·recipe·guide 식별(필요 시 Grep 보조, sub-index 파일 목록 있으면 함께) — 위키 전체 정독 금지
 2. 식별된 페이지만 읽고, feature/recipe 각주의 소스 파일 경로로 실제 코드로 점프
 3. `origin`/`confidence`/`(미검증)`을 신뢰도 판단에 반영(미검증 서술은 코드로 재확인 후 사용)
 4. **쓰기 금지** — 모순·드리프트 발견 시 위키 수정 대신 사용자에게 보고만, 반영은 별도 위키 세션(§5/§7)에서 처리. `log.md` 기록도 없음(위키 무변경)

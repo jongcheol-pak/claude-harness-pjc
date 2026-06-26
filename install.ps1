@@ -185,10 +185,12 @@ if ($GitHub) {
 try {
     $addOutput = & claude plugin marketplace add $marketplaceSource 2>&1 | Out-String
     Write-Info $addOutput.Trim()
+    # 네이티브 exe의 비0 종료는 throw되지 않으므로 $LASTEXITCODE로 직접 감지 (거짓 성공 방지)
+    if ($LASTEXITCODE -ne 0) { throw "claude exited with code $LASTEXITCODE" }
     Write-Ok "Marketplace 'pjc-harness' added"
 } catch {
-    # 이미 추가된 경우일 수 있음
-    if ($_.Exception.Message -match "already") {
+    # 이미 추가된 경우일 수 있음 (출력/메시지에 already 포함 시 비치명적)
+    if ("$addOutput $($_.Exception.Message)" -match "already") {
         Write-Warn "Marketplace 이미 추가되어 있음 (계속 진행)"
     } else {
         Write-Err "Marketplace 추가 실패: $($_.Exception.Message)"
@@ -202,9 +204,11 @@ Write-Section "Installing Plugin"
 try {
     $installOutput = & claude plugin install pjc@pjc-harness --scope $Scope 2>&1 | Out-String
     Write-Info $installOutput.Trim()
+    # 네이티브 exe의 비0 종료는 throw되지 않으므로 $LASTEXITCODE로 직접 감지 (거짓 성공 방지)
+    if ($LASTEXITCODE -ne 0) { throw "claude exited with code $LASTEXITCODE" }
     Write-Ok "Plugin 'pjc' installed (scope: $Scope)"
 } catch {
-    if ($_.Exception.Message -match "already") {
+    if ("$installOutput $($_.Exception.Message)" -match "already") {
         Write-Warn "Plugin 이미 설치되어 있음. 업데이트를 원하면:"
         Write-Info "  claude plugin update pjc"
     } else {
@@ -219,6 +223,7 @@ try {
 try {
     $enableOutput = & claude plugin enable pjc@pjc-harness 2>&1 | Out-String
     if ($enableOutput.Trim()) { Write-Info $enableOutput.Trim() }
+    if ($LASTEXITCODE -ne 0) { throw "claude exited with code $LASTEXITCODE" }
     Write-Ok "Plugin 'pjc' enabled"
 } catch {
     Write-Warn "Plugin enable 실패 (이미 enabled일 수 있음): $($_.Exception.Message)"
@@ -259,7 +264,7 @@ if ($policy -in @('Restricted', 'AllSigned')) {
 # ---- 10. AGENTS.md 안내 ----
 Write-Section "Next Steps"
 
-$templatesDir = Join-Path $marketplacePath "AGENTS.md.templates"
+$templatesDir = Join-Path $marketplacePath "plugins\pjc\skills\bootstrap-agents-md\templates"
 if (Test-Path $templatesDir) {
     Write-Host "  각 프로젝트의 루트에 AGENTS.md를 배치하세요." -ForegroundColor White
     Write-Host "  자동 생성 (권장):" -ForegroundColor White
@@ -287,7 +292,7 @@ Write-Host ""
 Write-Host "  주요 명령:" -ForegroundColor White
 Write-Host "    /pjc:plan-feature <설명>" -ForegroundColor Yellow
 Write-Host "    /pjc:implement-task <T번호>" -ForegroundColor Yellow
-Write-Host "    /pjc:systematic-debugging <증상>" -ForegroundColor Yellow
+Write-Host "    /pjc:pjc-systematic-debugging <증상>" -ForegroundColor Yellow
 Write-Host "    /pjc:harness-toggle <hook> <on|off|toggle|status>" -ForegroundColor Yellow
 Write-Host ""
 

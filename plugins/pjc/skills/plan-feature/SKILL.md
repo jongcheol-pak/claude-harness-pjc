@@ -115,7 +115,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
    - 사용자가 **"이 기능은 안 만든다"** → `## Out of Scope`에 기록 (영구 제외).
    - 애매하면 사용자에게 "이번만 제외인가요, 아예 제외인가요?" 확인. 기본 가정은 **Deferred**(다음에) — 영구 제외는 명시적일 때만.
 
-7. **모든 task에 검증 가능한 acceptance.** "잘 동작한다" 같은 모호한 기준 금지.
+8. **모든 task에 검증 가능한 acceptance.** "잘 동작한다" 같은 모호한 기준 금지.
 
 ## 실행 단계
 
@@ -422,3 +422,4 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 - Decision Points 상세: `references/decision-points.md`
 - Edge Cases + Halt Forecast: `references/edge-cases.md`
 - plan.md 템플릿: `references/plan-template.md`
+- PRD 템플릿 (대규모 작업, Step 0.5): `references/prd-template.md`

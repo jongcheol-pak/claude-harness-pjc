@@ -7,6 +7,9 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# 한글 차단 사유가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
 # ---- 토글 체크 (harness-toggle skill로 on/off) ----
 $disableFile = Join-Path $env:USERPROFILE ".claude\.disabled\require-plan-for-write"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
@@ -39,13 +42,17 @@ $alwaysAllowedExts = @(
     # 이미지
     '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.bmp',
     # 리소스
-    '.resx', '.resw',
-    # 환경설정
-    '.env.example', '.env.sample'
+    '.resx', '.resw'
+    # 참고: .env.example/.env.sample은 GetExtension이 '.example'/'.sample'을 반환해
+    #       확장자 매칭이 안 되므로 아래 파일명 기반 예외에서 처리한다(실제 .env는 제외).
 )
 
 $ext = [System.IO.Path]::GetExtension($targetPath).ToLower()
 if ($alwaysAllowedExts -contains $ext) { exit 0 }
+
+# .env 템플릿(.env.example/.env.sample)은 plan 없이 허용 (실제 시크릿 파일 .env는 제외)
+$baseNameEarly = [System.IO.Path]::GetFileName($targetPath)
+if ($baseNameEarly -match '^\.env\.(example|sample)$') { exit 0 }
 
 # 파일명 기반 예외 (확장자 없는 trivial 파일)
 $baseName = [System.IO.Path]::GetFileName($targetPath)
