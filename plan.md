@@ -1,113 +1,113 @@
-# plan.md — lint.py sub-index 분할 신호 검사 추가 (llm-wiki)
+# plan.md — llm-wiki 기계화 가능 빈틈 3건 수정 (F1/F2/F3) + 1.65.1 통합
 
 ## 목표
-llm-wiki의 `lint.py`가 `index.md` 본체뿐 아니라 **sub-index 파일(`index-*.md`)의 크기(본문 줄수·기능별 인덱스 행수)도 "분할 신호"로 측정**해, 임계 초과 시 INFO로 알리도록 검사를 추가한다.
-현재 sub-index 비대는 어떤 신호로도 감지되지 않는 사각지대다(아래 배경). 전부 markdown/python 문서·스크립트 편집이며 외부 의존성·새 인프라 도입은 없다.
+위키 조사에서 드러난 "기계화 가능한 빈틈" 3건을 수정한다:
+- **F1**: lint이 `deprecated` 페이지를 전혀 인식 못 함 → 인식·집계·표기 정합 검사 추가.
+- **F2**: 근거 각주 없는 "얕은 feature"가 lint을 통과 → feature 근거 각주 하드게이트 추가.
+- **F3**: recipe 본문에 "함정/주의점" 전용 섹션 부재 → 스키마에 선택 섹션 추가.
 
-## 결정 (사용자 권장 기본 + 본 계획 확정)
-- **D1 — 임계 재사용**: sub-index도 `index.md`와 **동일 임계**(`INDEX_BODY_LINES` 400 / `INDEX_FEAT_ROWS` 200)를 쓴다. 별도 상수 신설 안 함(일관·3중 동기화 단순). 사용자 권장 기본.
-- **D2 — 권고 메시지 = 소제목 구역화, 레벨 = INFO**: sub-index는 personal/work 2분할이 종착점이고 §4가 "새 분류 금지"라 추가 **파일** 분할 경로가 없다. 따라서 초과 INFO 메시지는 "추가 파일 분할 대신 **소제목 구역화로 정리**"를 권고한다(현 2단계 종착 설계 유지, 최소 변경). `index.md` 분할 신호와 동일하게 **INFO**(차단 아님). 사용자 권장 기본.
-- **D3 — §7-14 확장**: 신규 §7-N를 만들지 않고 기존 **§7-14("index.md 분할 신호")를 "index.md 및 sub-index 분할 신호"로 확장** 정의한다. 사용자 권장 기본.
-- **D4 — 헤딩 가정 명문화(본 계획 발굴)**: `feature_index_rows()`는 `## 기능별 인덱스` 헤딩을 정규식으로 찾는다. §4가 분할 시 기능별 인덱스 표기를 sub-index에 적용한다고 했으므로 sub-index도 같은 헤딩을 보유한다는 전제다. 이 전제가 깨지면 sub의 행수 측정이 조용히 0이 되므로, **§4에 "sub-index는 `## 기능별 인덱스` 섹션을 그대로 보유한다"는 한 줄을 명문화**해 lint 정규식의 계약을 문서로 고정한다. (본문 줄수 검사는 헤딩과 무관하게 항상 동작 — 헤딩 가정이 어긋나도 줄수 신호는 살아 있음.)
-- **버전**: plugin.json `1.64.0 → 1.65.0`(minor — lint 동작 변경=신규 검사). wiki-schema frontmatter `2.15 → 2.16`. README L10·notes 갱신. 승인된 push 후 GitHub 릴리즈(release-on-version-bump).
+직전 미커밋 1.65.1 변경(소제목 `### ` 명문화)을 **하나로 묶어** 통합 버전 **1.66.0**으로 릴리즈한다(사용자 결정). 전부 lint.py(코드)·wiki-schema·SKILL 문서 편집이며 외부 의존성·새 인프라 없음.
+
+## 결정 (사용자 + 본 계획 확정)
+- **범위 = 기계화 가능분만**(사용자 결정). read-only 위반/불가 항목은 수정 대신 "왜 자동화 안 하는가"를 문서로 명문화(아래 Out of Scope 위 "설계상 의도 명문화").
+- **D1 — F1 deprecated**: 셋 다 적용 — ⓐ deprecated 페이지 INFO 집계(가시성), ⓑ deprecated인데 "코드에서 제거" 안내 문구 없으면 WARN(표기 정합), ⓒ 신선도(60/90일) 후보에서 제외(`paused`처럼). deprecated 판정 = `status: deprecated` **또는** `deprecated:` 필드 보유(schema §2.3 둘 다 허용).
+- **D2 — F2 하드게이트 조건**: `type: feature` ∧ `## 구현 방법` 섹션 존재 ∧ `[^src-` 각주 0개 ∧ deprecated/archive 아님 → **WARN**(ERROR 아님 — 정당한 얕은 예외 여지). 무조건 전 feature가 아니라 "구현 방법 있는데 근거 0"에 한정(오탐 방지).
+- **D3 — F3**: doc-only(schema §2.6 선택 섹션 + SKILL I-2 1줄). lint 강제 안 함(선택 섹션 강제는 과함).
+- **D4 — §7 번호**: F1=§7-17, F2=§7-18로 **append**(기존 §7-1~16 번호 불변 → lint.py의 §7-N 주석 참조 무손상). recipe 함정은 §2.6 구조 변경이라 §7 신규 아님.
+- **버전**: plugin.json `1.65.1(working tree) → 1.66.0`, README L10 → 1.66.0, wiki-schema `2.17 → 2.18`, notes 1.65.1 항목을 **1.66.0 통합 항목으로 병합**(### 명문화 + F1/F2/F3). 승인된 push 후 GitHub 릴리즈.
 
 ## 배경
-- 직전 plan.md(외부 저장소 검토 차용 3건)는 완료·커밋(9bb50a1)·릴리즈(v1.64.0). git 클린 → 새 계획으로 교체.
-- **사각지대 근거(조사 실측)**: `lint.py:207-212`에서 `idx_lines`/`feat_rows`를 `index.md` 본체에만 적용("sub 합치기 전 index.md 본체로 측정"). sub-index 내용은 `lint.py:223-227`에서 그 *이후*에 `itext`로 합쳐지나 이는 오직 "기능별 인덱스 ↔ feature 동기화" 검사용. 즉 sub-index 파일 자체의 줄수/행수는 어떤 분할 신호로도 측정되지 않는다.
-- **분할 종착 설계**: `wiki-schema.md §4`(line 262)는 `index.md` → (1단계)소제목 구역화 → (2단계)personal/work category 파일 분할까지만 정의하고 "새 분류를 만들지 말라"고 못박음 → sub-index의 추가 파일 분할 경로 없음(D2 근거).
-- AGENTS.md 없음. 프로젝트/글로벌 CLAUDE.md가 컨벤션 원천(문서·스크립트 편집이라 bootstrap 강제 안 함).
+- 직전 plan.md(sub-index 분할 신호, 1.65.0)는 완료·커밋(1f8b89e)·릴리즈. git 클린 후 1.65.1(소제목 `### ` 명문화) 작업이 **미커밋 상태**로 남음(검증 완료). 사용자 결정으로 1.65.1을 본 작업과 통합 → 새 계획으로 교체.
+- **현 작업 트리 미커밋 5파일**(유지): wiki-schema.md(§4 `### ` + 2.17), lint.py(sub INFO `### `), plugin.json/README(1.65.1), notes.md(1.65.1 항목). 본 작업이 같은 파일을 이어서 편집해 1.66.0으로 통합.
+- AGENTS.md 없음. CLAUDE.md가 컨벤션 원천(문서·스크립트 편집이라 bootstrap 강제 안 함).
 
 ## Impact Analysis (전수 확인)
-- **`lint.py`**: 외부에서 `import`하는 코드 없음 — `python lint.py "<vault>"`로 실행되는 독립 스크립트(파일 listing·grep 확인, 호출자 0). 따라서 함수 시그니처·상수 변경의 cross-file 코드 영향 0. `feature_index_rows()`(`lint.py:69`)는 임의 text를 받는 순수 함수라 sub-index 텍스트에 그대로 재사용 가능.
-- **상수 불변**: D1로 기존 `INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`(`lint.py:35-37`)를 재사용 → `BUDGET`/`GUIDE_BUDGET` 등 예산 상수 **무변경** → SKILL 예산표 수치·wiki-schema §4 예산 테이블 수치 **무변경**. 3중 동기화 영향은 **§7-14 문구 + §4 line 262 산문**뿐(수치 동기화 아님).
-- **신규 검사는 순수 추가**: 기존 index.md 분할 신호(L208-212)·sub-index 목록 정합(L214-221)·동기화 검사(L223-236)·한영 병기(L238+)는 건드리지 않고, sub_files(`lint.py:202`에서 이미 수집) 위를 도는 **읽기 전용 루프 1개 추가** + `infos`에 append. 기존 검사 결과·등급 불변.
-- **문서 동기화 대상**: ① `wiki-schema.md` §4 line 262(sub-index 비대 종결 규칙 + 헤딩 명문화) ② `wiki-schema.md` §7-14(line 341, 확장) ③ `wiki-schema.md` frontmatter version 2.16 ④ `SKILL.md` §7-14 미러(line 279) + 예산표 index.md 행(line 428) 문구 ⑤ `lint.py` 상단 주석/검사 목록(L5-7)에 sub-index 분할 신호 한 줄.
-- **plugin.json / README L10 / notes.md**: 1.64.0 → 1.65.0. marketplace.json은 version 필드 없음(손대지 않음 — 이전 plan에서 확인).
-- **테스트**: lint.py 전용 테스트 파일 없음(무단 추가 금지 규칙). → 커밋 테스트 추가 대신 **임시 vault fixture로 수동 검증**(검증 방법 참조).
+- **lint.py**: 외부 `import` 호출자 0(독립 실행 스크립트, 앞선 조사 확인). main() 페이지 루프(L95~) 내에 검사 추가 + 루프 후 집계 INFO 추가. 시그니처 변경 없음 → cross-file 코드 영향 0.
+  - F1 신선도 제외: L165 `fm.get("status") != "paused"` 조건에 deprecated 추가. F1 안내 WARN·집계: 루프 내 검사 + 루프 후 `infos`. 
+  - F2: 루프 내 `type=="feature"` 분기에 각주 존재 검사 추가.
+  - 기존 상수(BUDGET 등) 무변경 → 3중 동기화 수치 영향 없음. 변경은 §7 항목 문구(신규 17/18) + §2.3/§2.6/§8 산문.
+- **wiki-schema.md**: §2.3(deprecated·각주 규칙 **이미 정의됨** — 강제만 추가, 정의 보강 최소), §2.6(recipe 함정 선택 섹션 신설), §7(17/18 append), §8(deprecated 신선도 제외 예외 추가 + "lint 제안만" 명문), version 2.18. 기존 §7-1~16·예산 수치 불변.
+- **SKILL.md**: §7 미러 17/18 append, I-2 recipe 함정 1줄. 예산표·다른 절차 불변.
+- **plugin.json/README/notes**: 1.66.0 통합. marketplace.json version 필드 없음(불변).
+- **lint.py §7-N 참조 무손상**: 신규는 append라 기존 §7-11/12/16 등 참조가 가리키는 항목 번호 안 밀림.
+- **테스트**: lint.py 전용 테스트 없음 → 임시 vault fixture 수동 검증(무단 테스트 추가 회피).
 
 ## 작업 단계 (T1 코드, T2~T4 문서/버전)
 
-### T1 — lint.py: sub-index 분할 신호 검사 추가  [Type C]
-- 위치: `lint.py` index.md 검사 블록(`if os.path.isfile(idx):` 내부), **index.md 분할 신호 검사(L208-212) 직후**에 sub-index 분할 신호 루프 추가(모든 "분할 신호" 로직을 한곳에 모음).
-- 구현(명시적·직접적):
-  ```python
-  # sub-index 분할 신호 (§7-14): 각 index-*.md 자체 크기도 측정.
-  # index.md → personal/work 2분할이 종착이라 추가 파일 분할 경로가 없으므로
-  # 초과 시 '소제목 구역화'를 권고한다(wiki-schema §4).
-  for sp in sub_files:
-      try:
-          with open(sp, encoding="utf-8") as sfh:
-              stext = sfh.read()
-      except OSError:
-          continue
-      s_lines = stext.count("\n") + 1
-      s_rows = feature_index_rows(stext)
-      if s_lines > INDEX_BODY_LINES or s_rows > INDEX_FEAT_ROWS:
-          infos.append(
-              f"{os.path.basename(sp)} 분할 검토: 본문 {s_lines}줄(임계 {INDEX_BODY_LINES}), "
-              f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — sub-index는 추가 파일 분할 "
-              f"대신 소제목 구역화로 정리(wiki-schema §4)")
-  ```
-- `lint.py` 상단 docstring 검사 목록(L5-7)에 "sub-index 분할 신호" 취지 한 구절 추가(주석 정합).
-- **Decision 반영**: D1(동일 임계 재사용), D2(소제목 구역화·INFO=`infos`), D3은 문서(T2), D4는 문서(T2)+이 루프가 `feature_index_rows` 재사용으로 전제.
+### T1 — lint.py: F1(deprecated) + F2(feature 각주 게이트)  [Type C]
+- **F1 판정 변수(단일·먼저 계산)**: fm 파싱 직후(L100 `fm = frontmatter(text)` 근처)에 `is_dep = (fm.get("status") == "deprecated") or bool(fm.get("deprecated"))` 한 변수로 통일(함수형 안 씀). 이후 ⓐⓑⓒ가 모두 이 변수 사용.
+- **F1-ⓒ 신선도 제외**: L165 조건 `... and fm.get("status") != "paused"` 끝에 `and not is_dep` 추가. deprecated 페이지는 frozen 이력이라 60/90일 후보에서 제외(paused와 동일 취급).
+- **F1-ⓑ 안내 정합 WARN**: 루프 내, `is_dep and not in_archive and ("코드에서 제거" not in text)` → `warns.append("deprecated 표기 안내 누락: {r} ('⚠️ 코드에서 제거됨' 안내 권장, schema §2.3)")`. (in_archive 가드로 이력 페이지 제외 — F2와 동일.)
+- **F1-ⓐ 집계 INFO**: 루프 동안 `is_dep and not in_archive`일 때만 `dep_count` 누적(현행 vault 한정, 90_archive 이력 페이지 제외 — 노이즈 방지) → 루프 후 `if dep_count: infos.append("deprecated 페이지 {dep_count}건 (이력 보존 — 현재 기능 아님, schema §2.3)")`.
+- **F2 각주 게이트**: 루프 내, `typ=="feature"` ∧ not is_dep ∧ not in_archive ∧ `"## 구현 방법" in text` ∧ `"[^src-" not in text` → `warns.append("구현 근거 각주 누락: {r} (## 구현 방법 있으나 [^src-...] 0개 — 얕은 feature 의심, schema §2.3)")`.
+- 주석은 한글 "왜" 중심. docstring 검사 목록(L5-7)에 "deprecated 표기 정합·feature 근거 각주" 한 구절 추가.
 - **Edge cases**:
-  - sub_files 빈 배열(미분할 vault) → 루프 미실행, 기존 동작 그대로. ✓
-  - sub에 `## 기능별 인덱스` 헤딩 없음/빈 표 → `feature_index_rows`=0 → 본문 줄수 신호만 적용(degrade-safe, 오류 아님). D4가 헤딩을 문서로 고정.
-  - 임계 경계값 → `>`(strictly greater)로 index.md 검사와 동일 의미. ✓
-  - 읽기 실패(OSError) → 해당 sub 건너뜀(기존 병합 루프 L228 try/except와 동일 정책). ✓
-- **Halt Forecast**: 없음(독립 스크립트·추가 루프). 단 D4 헤딩 가정이 실제 vault와 어긋날 위험 → T2에서 schema 명문화로 계약 고정 + 본문 줄수 신호가 백업.
-- Acceptance: ① `python -m py_compile lint.py` 0 에러 ② 임시 vault(아래 검증 3)에서 비대 sub-index에 대해 INFO 1줄 출력(파일명·줄수·행수·"소제목 구역화" 문구 포함) ③ 정상 크기 sub-index·미분할 vault에서는 sub 관련 INFO 미출력(오탐 0) ④ 기존 index.md 분할 신호·동기화·한영 병기 출력 불변.
+  - deprecated 표기 두 형식(`status: deprecated` / `deprecated:` 필드) 모두 인식 — 헬퍼로 통일. ✓
+  - deprecated feature는 F2 각주 게이트에서 제외(frozen 이력에 각주 강제 안 함). ✓
+  - `## 구현 방법` 섹션 없는 feature → F2 미발동(근거 누락이 아니라 섹션 부재 — 본 작업 범위 밖). ✓
+  - 90_archive/ 페이지 → in_archive로 F1-ⓑ/F2 제외. ✓
+  - `[^src-`가 코드펜스 안에 우연히 있는 경우 → 드묾(각주 마커), raw text 검색 허용(오탐 시 WARN이라 안전). 
+- **Halt Forecast**: 없음(독립 스크립트, 추가 검사). 회귀 우려 → 기존 검사 출력 불변을 fixture로 확인.
+- Acceptance: ① py_compile 0 ② fixture: deprecated 페이지(안내 有)→집계 INFO·WARN 없음 / deprecated(안내 無)→WARN / 구현 방법 있고 각주 0개 feature→WARN / 각주 1개+ feature→무경고 / 정상 deprecated는 60·90일 후보에서 빠짐 ③ 기존 검사(예산·링크·origin·신선도 비-deprecated) 출력 불변.
 
-### T2 — wiki-schema.md: §4·§7-14·version 갱신  [Type A]
-- **§4 line 262**: `index.md` 행 설명 끝에 sub-index 비대 종결 규칙 + 헤딩 명문화 추가(원문 보존, 추가만):
-  - "**sub-index 비대 시**: 분할된 `index-*.md` 자체가 임계(본문 400줄/기능별 인덱스 200행)를 넘으면 lint이 INFO로 알린다. 단 personal/work는 종착 분류이므로 **추가 파일 분할이 아니라 소제목 구역화(1단계)로 정리**한다(새 분류 금지 원칙 유지)."
-  - "분할된 sub-index는 `## 기능별 인덱스` 섹션을 그대로 보유한다(lint 행수 측정·동기화 검사가 이 헤딩을 기준으로 함)." (D4 명문화)
-- **§7-14(line 341)**: 제목·정의를 "index.md **및 sub-index** 분할 신호"로 확장 — "`index.md` 본문/기능별 인덱스 행수, **그리고 각 `index-*.md` 본문/기능별 인덱스 행수**가 임계 초과면 INFO로 분할(또는 sub-index는 소제목 구역화)을 제안한다."
-- **frontmatter version**: `2.15 → 2.16`.
-- Acceptance: §4에 sub-index 비대 규칙 + `## 기능별 인덱스` 헤딩 명문 존재; §7-14가 sub-index 포함으로 확장; version 2.16; frontmatter YAML 파싱 정상; 기존 §4 예산 수치·§7 다른 항목 불변(추가만, 삭제 0).
+### T2 — wiki-schema.md: §2.6·§7-17/18·§8·version  [Type A]
+- **§2.6 recipe 본문(L189)**: `## 사용 프로젝트 사례` 뒤에 ` / `## 주의점 / 함정`(선택)` 추가 + 한 줄 규칙("재사용 시 밟기 쉬운 함정·플랫폼 제약·성능/안정성 주의점. recipe 승격의 핵심 가치 — 단계 산문에 묻지 말고 별도 섹션으로. 선택이나 함정형 recipe엔 권장").
+- **§7 검사 항목 append**:
+  - `17. **deprecated 표기 정합·집계**: deprecated(`status: deprecated`/`deprecated:` 필드) 페이지를 INFO 집계(이력 가시성) + "⚠️ 코드에서 제거됨" 안내 누락 시 WARN + 신선도(60/90일) 후보에서 제외. (lint.py 검사)`
+  - `18. **feature 구현 근거 각주**: `type: feature`이고 `## 구현 방법` 섹션이 있으나 `[^src-...]` 각주가 0개면 WARN(얕은 feature·근거 누락 의심). lint은 vault만 읽어 레포 파일 실재는 못 보므로 **각주 존재 여부까지** 검사하고, 서술↔코드 사실 정합은 §7-10(에이전트 표본)이 담당. (lint.py 검사)`
+- **§8 신선도 예외**: L363 "예외 1: status: paused" 다음에 "예외 1-1: deprecated(`status: deprecated`/`deprecated:`)도 시간 기반 신선도 처리에서 제외(frozen 이력)" 추가.
+- **lint 제안-only 명문(by-design)**: §7 또는 §8에 1줄 — "lint은 INFO/WARN **제안만** 하며 위키를 자동 수정하지 않는다 — confidence 하락·아카이브 이동 등 적용은 사용자 승인 또는 B/F 세션에서 수행(read-only 원칙)."(§8 L362 "사용자 승인 후 이동"과 정합 보강).
+- **version**: 2.17 → 2.18.
+- Acceptance: §2.6에 `## 주의점 / 함정` 선택 섹션 + 규칙; §7-17/18 신규 정의 존재(문구 위와 일치); §8 deprecated 신선도 예외 + lint 제안-only 1줄; version 2.18; frontmatter YAML 파싱 OK; 기존 §7-1~16·예산 수치 불변(추가만).
 - Halt Forecast: 없음.
 
-### T3 — SKILL.md: §7-14 미러 + 예산표 문구 동기화  [Type A]
-- **§7-14 미러(line 279)**: wiki-schema와 동일 취지로 "sub-index 분할 신호" 포함하도록 확장(SKILL은 요약형 — "각 `index-*.md` 자체 크기도 측정, 초과 시 소제목 구역화 권고" 한 구절 추가).
-- **예산표 index.md 행(line 428)**: 끝에 "(sub-index도 동일 임계 측정 — lint INFO)" 한 구절 추가.
-- Acceptance: SKILL §7-14에 sub-index 측정 언급; 예산표에 sub-index 측정 언급; frontmatter YAML 파싱 정상; 기존 절차·다른 항목 불변.
+### T3 — SKILL.md: §7 미러 17/18 + recipe 함정 1줄  [Type A]
+- **§7 미러(현재 16까지, L281 뒤)**에 17/18 append(SKILL 요약형): "17. deprecated 표기 정합·집계 — 이력 페이지 가시성+안내 누락 WARN+신선도 제외. lint.py 검사. / 18. feature 구현 근거 각주 — `## 구현 방법` 있으나 `[^src-` 0개면 WARN. lint.py 검사."
+- **I-2 recipe(L349 부근)**: 본문 구성에 "주의점/함정(선택)" 추가 1줄(§2.6 참조).
+- Acceptance: SKILL §7에 17/18 존재; I-2에 함정 섹션 언급; frontmatter YAML OK; 기존 절차·예산표 불변.
 - Halt Forecast: 없음.
 
-### T4 — 버전 업 + 문서 갱신  [Type A]
-- `plugins/pjc/.claude-plugin/plugin.json`: version `1.64.0 → 1.65.0`.
-- `README.md` L10 `**버전**: 1.64.0 → 1.65.0`.
-- `notes.md` `## 최근 변경` 최상단에 1.65.0 항목 추가(무엇=sub-index 분할 신호 검사 / 왜=비대 사각지대 / 어떻게=동일 임계 재사용·소제목 구역화 권고 / 검증 결과).
-- Acceptance: plugin.json 1.65.0(JSON 파싱 OK); README L10 1.65.0; notes 1.65.0 항목; 잔존 1.64.0(이력 서술 제외) 없음.
+### T4 — 버전 통합 + 문서 갱신  [Type A]
+- `plugin.json`: version `1.65.1 → 1.66.0`.
+- `README.md` L10: `1.65.1 → 1.66.0`.
+- `notes.md`: 현재 최상단 1.65.1 항목을 **1.66.0 통합 항목으로 병합·치환**(### 소제목 명문화 + F1 deprecated lint + F2 feature 각주 게이트 + F3 recipe 함정 섹션 / 무엇·왜·검증). 1.65.0 이하 기존 항목은 보존.
+- Acceptance: plugin.json 1.66.0(JSON OK); README L10 1.66.0; notes 1.66.0 통합 항목(1.65.1 단독 항목 잔존 0); 잔존 1.65.1(이력 서술 제외) 없음.
 - Halt Forecast: 없음.
 
 ## 검증 방법
-1. **python 구문**: `python -m py_compile plugins/pjc/skills/llm-wiki/scripts/lint.py` → 에러 0.
-2. **lint usage 회귀**: 인자 없이 `python lint.py` → 기존 usage 출력·exit 1(usage 에러 관례 — 기존 동작 불변, 본 변경은 vault 처리 경로에만 추가).
-3. **임시 vault fixture 양성 검증**: 스크래치 디렉터리에 최소 vault 생성 — `index.md`(sub-index 목록 포함) + `index-personal.md`를 임계 초과(본문 401줄 또는 기능별 인덱스 201행)로 구성 → `python lint.py "<temp>"` 실행 → INFO에 "`index-personal.md` 분할 검토 … 소제목 구역화" 1줄 출현 확인.
-4. **음성 검증(오탐 0)**: 같은 fixture에서 sub-index를 임계 미만으로 줄이면 sub 관련 INFO 미출현; sub-index 없는(미분할) vault에서도 sub INFO 미출현.
-5. **문서 동기화**: wiki-schema version 2.16 + §4 sub-index 규칙·헤딩 명문 + §7-14 확장 grep; SKILL §7-14·예산표 문구 grep; wiki-schema·SKILL frontmatter YAML 파싱 OK.
-6. **버전**: plugin.json JSON 파싱 + 1.65.0; README L10 1.65.0; notes 1.65.0 항목.
-7. **임시 fixture는 스크래치에만 생성·삭제**(레포 vault 아님, 커밋 테스트 추가 아님 — 무단 테스트 추가 회피).
+1. **py_compile**: `python -m py_compile .../lint.py` → 0.
+2. **usage 회귀**: 인자 없이 실행 → usage·exit 1(기존 동작 불변).
+3. **fixture — F1**: deprecated 페이지(안내 有/無 2종) + 일반 60일+ feature 구성 → deprecated 집계 INFO·안내無 WARN·deprecated는 신선도 후보 제외, 일반 feature는 60일 후보 그대로.
+4. **fixture — F2**: `## 구현 방법` 있고 각주 0개 feature → WARN / 각주 1개+ feature → 무경고 / deprecated feature → 무경고(제외).
+5. **fixture — 오탐0**: 기존 검사(예산·링크·origin) 출력이 추가 전후 동일(신규 항목 외 변화 없음).
+6. **문서 동기화**: §2.6 함정 섹션, §7-17/18(schema+SKILL 양쪽), §8 예외+lint제안-only, version 2.18 grep; frontmatter YAML 파싱.
+7. **버전**: plugin.json JSON+1.66.0, README L10 1.66.0, notes 1.66.0 통합 항목.
+8. 임시 fixture는 스크래치에만 생성·삭제(레포 vault 아님, 커밋 테스트 추가 아님).
+
+## 설계상 의도 — 수정하지 않고 문서로만 명문화 (사용자 결정)
+- **lint은 제안만, 자동 적용 안 함**(confidence 하락·아카이브) → read-only 원칙. T2에서 §7/§8에 1줄 명문.
+- **위키↔코드 내용 사실 정합의 완전 기계화 불가**(lint은 vault만 읽음) → F2가 "각주 존재" 부분 슬라이스. 사실 정합은 §7-10(에이전트 표본) 책임. T2 §7-18 정의에 명시.
 
 ## 승인 필요 항목
-- 본 plan(코드 1 + 문서 3 + 버전) — 승인 게이트.
-- commit/push 및 GitHub 릴리즈 — 구현·검증 후 별도 승인(release-on-version-bump).
+- 본 plan(코드 1 + 문서 3 + 버전 통합) — 승인 게이트.
+- commit/push 및 GitHub 릴리즈(v1.66.0) — 구현·검증 후 별도 승인(release-on-version-bump).
 
 ## Out of Scope (영구 제외)
-- sub-index의 실제 자동 재분할 구현(파일을 코드로 쪼개기) — 본 작업은 **신호(INFO) 추가**까지.
-- 새 category 도입(personal/work 외) — §4 "새 분류 금지" 유지.
-- 대시보드·기타 lint 항목(§7 1~13, 15~16) 변경.
-- sub-index 전용 별도 임계 상수(D1로 동일 임계 재사용 확정).
+- 코드 레포 파일 실재 검사(vault↔repo 분리로 lint 불가).
+- confidence 자동 강등·아카이브 자동 이동(read-only 원칙 위반).
+- A-3a 승격 거절 시 자동 함정 등록(사용자 게이트 유지 — 설계 의도).
+- 위키 내용 사실성의 완전 기계 검증(§7-4 모순·§7-10 코드 정합은 에이전트 책임 유지).
+- "deprecated여야 하는데 표기 누락" 탐지(코드 상태를 lint이 모름).
 
 ## Progress Log
-- T1 완료 (Type C, 미커밋): lint.py index.md 분할 신호 검사 직후 sub_files 순회 루프 추가 + docstring 검사목록 갱신. D1 동일 임계 재사용·D2 소제목 구역화 INFO·D4 feature_index_rows 재사용. 검증: py_compile OK, fixture 양성2종(본문 402줄·기능별 인덱스 201행 모두 INFO)·음성(오탐 0), spec-compliance OK(0/0/0).
-- T2 완료 (Type A, 미커밋): wiki-schema §4(sub-index 비대 규칙+`## 기능별 인덱스` 헤딩 명문)·§7-14 확장·version 2.15→2.16.
-- T3 완료 (Type A, 미커밋): SKILL §7-14 미러 + 예산표 index.md 행에 sub-index 측정 문구.
-- T4 완료 (Type A, 미커밋): plugin.json·README L10 → 1.65.0, notes 1.65.0 항목.
-- **결정**: m1(이중 읽기)은 기본대로 별도 루프 유지(가독성 우선) — 사용자 승인.
-- **F-2 통합검증**: py_compile OK, plugin.json JSON 1.65.0, schema/SKILL frontmatter YAML OK(schema 2.16), 문서 동기화 grep 6/6, README L10 1.65.0·잔존 1.64.0(이력 외) 0, 편집 6파일 BOM 없음.
-- **미커밋 상태**: 사용자 지침대로 commit/push·릴리즈는 별도 승인 대기. 승인 시 main에서 작업 브랜치 생성 후 커밋.
+- T1 완료 (Type C, 미커밋): lint.py — is_dep 판정 + F1ⓐ(dep_count INFO)·ⓑ(안내누락 WARN)·ⓒ(신선도 제외) + F2(feature 각주 게이트 WARN) + docstring. 기존 검사·상수 불변. 검증: py_compile OK, fixture F1 집계2/안내WARN/신선도제외+회귀유지, F2 얕은feature WARN/각주有·deprecated 무경고. spec-compliance OK(0/0/0).
+- T2 완료 (Type A, 미커밋): wiki-schema §2.6 `## 주의점/함정`(선택)·§7-17/18 신규(append)·§8 예외 1-1(deprecated 신선도 제외)·§7 결과처리 lint 제안-only 명문·version 2.18.
+- T3 완료 (Type A, 미커밋): SKILL §7-14·17·18 미러 + I-2 recipe 함정 1줄.
+- T4 완료 (Type A, 미커밋): plugin.json·README → 1.66.0, notes 1.65.1 항목을 1.66.0 통합 항목으로 병합(### 명문화 + F1/F2/F3).
+- **F-2 통합검증**: py_compile OK, plugin.json 1.66.0, schema 2.18/SKILL frontmatter YAML OK, 문서 동기화 grep 9/9, README L10 1.66.0·잔존 1.65.1(이력 외) 0, 편집 6파일 BOM 없음.
+- **결정**: 1.65.1 ### 명문화를 1.66.0으로 통합(사용자), 기계화 가능분만(F1/F2/F3), read-only·코드정합 완전기계화는 §7 결과처리에 의도 명문(사용자).
+- **미커밋 상태**: commit/push·릴리즈는 별도 승인 대기.
 
 ## Next Steps
-- 권장 다음 액션: 변경 검토 후 commit/push 승인 → push 후 GitHub 릴리즈(v1.65.0, release-on-version-bump).
+- 권장 다음 액션: 검토 후 commit/push 승인 → push 후 GitHub 릴리즈(v1.66.0, release-on-version-bump).
 - Suggested skills: (커밋 후) 공식 /code-review, 공식 /security-review.

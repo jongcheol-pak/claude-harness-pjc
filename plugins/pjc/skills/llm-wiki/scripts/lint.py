@@ -4,7 +4,8 @@
 사용법: python lint.py "<vault_path>"
 검사: 깨진/경로 없는 wikilink / 예산 초과 / platform·origin·confidence 통제어휘 위반·누락
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
-      / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / (미검증)·미해결 question 집계(INFO).
+      / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
+      / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 파일은 수정하지 않는다(읽기 전용).
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (SKILL.md H-2: SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
@@ -88,6 +89,7 @@ def main():
     errors, warns, infos = [], [], []
     unverified_hits, unverified_files = 0, 0  # (미검증) 집계 (wiki-schema §7-12)
     open_questions = 0                        # 미해결 question 집계 (〃)
+    dep_count = 0                             # deprecated 페이지 집계 (wiki-schema §7-17)
     feat_files, index_feat_links = set(), set()
     link_targets = set()   # 위키 전체에서 링크된 대상 (고아 검사용)
     pages = {}             # rel -> (frontmatter, type, 본문 텍스트)
@@ -102,6 +104,19 @@ def main():
         pages[r] = (fm, typ, text)
         is_root = "/" not in r
         in_archive = r.startswith("90_archive/")
+
+        # deprecated 판정 (status: deprecated 또는 deprecated 필드 — schema §2.3 둘 다 허용)
+        is_dep = (fm.get("status") == "deprecated") or bool(fm.get("deprecated"))
+        if is_dep and not in_archive:
+            dep_count += 1  # F1-ⓐ 현행 vault deprecated 집계(이력 가시성, §7-17)
+            # F1-ⓑ 폐기 안내 정합: deprecated인데 "코드에서 제거" 안내가 없으면 경고
+            if "코드에서 제거" not in text:
+                warns.append(f"deprecated 표기 안내 누락: {r} ('⚠️ 코드에서 제거됨' 안내 권장, schema §2.3)")
+        # F2 구현 근거 각주 게이트: feature가 '## 구현 방법'을 갖는데 [^src-...] 각주가 0개면 얕은 feature
+        #  의심. lint은 vault만 읽어 레포 파일 실재는 못 보고 각주 '존재'만 검사; 서술↔코드 사실 정합은
+        #  §7-10(에이전트 표본)이 담당 (§7-18).
+        if typ == "feature" and not is_dep and not in_archive and "## 구현 방법" in text and "[^src-" not in text:
+            warns.append(f"구현 근거 각주 누락: {r} (## 구현 방법 있으나 [^src-...] 0개 — 얕은 feature 의심, schema §2.3)")
 
         # wikilink: 깨진 링크(경로형) + 경로 없는 링크(명시적 경로 필수 위반)
         # 코드펜스/인라인코드 안 텍스트는 제외(스니펫 정규식이 [[..]]로 오인되는 오탐 방지 — strip_code)
@@ -162,7 +177,7 @@ def main():
         if upd:
             if upd > today:
                 errors.append(f"미래 날짜: {r} updated={upd}")
-            elif typ not in INFRA_TYPES and not in_archive and fm.get("status") != "paused":
+            elif typ not in INFRA_TYPES and not in_archive and fm.get("status") != "paused" and not is_dep:
                 days = (today - upd).days
                 if days >= 90 and typ not in ARCHIVE_EXEMPT_TYPES:
                     infos.append(f"90일+ 미편집(아카이브 후보): {r} ({days}일)")
@@ -227,7 +242,7 @@ def main():
                 infos.append(
                     f"{os.path.basename(sp)} 분할 검토: 본문 {s_lines}줄(임계 {INDEX_BODY_LINES}), "
                     f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — sub-index는 추가 파일 분할 "
-                    f"대신 소제목 구역화로 정리(wiki-schema §4)")
+                    f"대신 `### ` 하위 소제목으로 구역화(wiki-schema §4)")
 
         # sub-index 목록 정합: 실재하는 index-*.md가 index.md에 언급(등록)됐는지.
         #  A(실재 파일) − B(index.md 언급) = 미등록 → WARN. 역방향(언급은 있으나 파일 없음)은
@@ -292,6 +307,8 @@ def main():
         infos.append(f"(미검증) 표기 {unverified_hits}건 / {unverified_files}개 파일 — 사용자 검증 후보")
     if open_questions:
         infos.append(f"미해결 question {open_questions}건 — 사용자 검증 후보")
+    if dep_count:
+        infos.append(f"deprecated 페이지 {dep_count}건 (이력 보존 — 현재 기능 아님, schema §2.3)")
 
     # 보고
     print(f"== llm-wiki Lint: {vault} ==")
