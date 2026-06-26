@@ -2,6 +2,12 @@
 
 ## 최근 변경
 
+- 2026-06-26: 외부 저장소 검토 차용 패턴 적용 (1.63.0 → 1.64.0). Understand-Anything·agentmemory 두 저장소를 실제 스킬/프롬프트 구조까지 심층 검토 → 기능/인프라(지식그래프·Tree-sitter·대시보드·SQLite·MCP·벡터DB·캡처훅)는 pjc 경량 markdown 철학과 충돌·중복이라 비적용, **프롬프트 패턴 3건만** 차용.
+  - **#1 llm-wiki 온보딩 섹션**: wiki-schema §2.2(project 허브)에 "온보딩/아키텍처 가이드" 선택 섹션(아키텍처 레이어·주요 흐름·복잡도 핫스팟) 추가. 선택·코드 기반(추측 금지)·예산 120줄 유지. SKILL 절차 A-2 2·B-2 1에 1줄 안내. schema 2.14→2.15. (출처: Understand-Anything understand-onboard)
+  - **#2 스킬 작성 스타일 가이드**: 신규 `plugins/pjc/skills/AUTHORING.md` — 권장 섹션 골격(Quick start→Why→Workflow→Anti-patterns WRONG/RIGHT→Checklist→See also→Troubleshooting) + 작성 원칙 4(실제 함정 WRONG/RIGHT·왜 설명·빈결과 사실보고·pjc 지침 준수). 기존 8개 스킬 소급 재작성 안 함(참고용). skill frontmatter 미사용(스킬 오탐 방지). (출처: agentmemory 스킬 미시 구조)
+  - **#3 타겟 빈결과 안티패턴**: llm-wiki 절차 K에만 "무매칭=관련 자료 없음 사실보고, 합성 금지" 1줄(WRONG/RIGHT). 절차 G는 G-3가 이미 커버라 무수정. 8개 스킬 일괄은 안 함(전역 절대 금지+V-8 중복). (출처: agentmemory recap)
+  - **비적용**: handoff/recap 신규 스킬(implement-task 재개+Next Steps로 커버), 빈결과 8개 일괄, 기존 스킬 미시 템플릿 소급 재작성.
+  - **검증**: wiki-schema 2.15+§2.2 섹션 grep, llm-wiki frontmatter yaml 파싱·절차 K 문구·G 무변경, AUTHORING.md 존재·골격·skill frontmatter 미포함, plugin.json JSON 1.64.0.
 - 2026-06-26: skill-creator 가이드 감사 수정안 8개 스킬 적용 (1.62.0 → 1.63.0). `example-skills:skill-creator` 가이드(SKILL 구조·progressive disclosure·description 트리거·작성 패턴/스타일) 기준으로 pjc 8개 스킬을 병렬 감사 → BLOCKER/MAJOR 0, 전부 MINOR. 다듬기 적용(모두 Type A 문서 편집, 코드 로직 변경 없음).
   - **description(트리거 메타데이터) 개선**: add-domain-service·add-viewmodel에 near-miss(트리거 금지) 추가, bootstrap-agents-md에 자연어 트리거 예시 + near-miss, llm-wiki는 config 경로 구현 디테일 제거(본문 §0-1에 이미 존재)+near-miss, plan-feature는 "무엇을 하는가(plan.md 산출)" 선두 추가 + pjc-systematic-debugging과의 형제 경계 명시, pjc-systematic-debugging은 pjc/DDD 통합 변형 정체성(외부 generic 스킬 대비 우선) 보강, implement-task는 중복 문장("Never asks…") 제거 경량화(자율 시그널 유지).
   - **정확성·구조**: add-domain-service 본문 ".NET/Kotlin(Android) 양쪽 적용" 주장 → ".NET 기준, 타 스택은 AGENTS.md 우선·개념 참고"로 축소(템플릿·DI·테스트가 전부 .NET 전용이라 불일치). harness-toggle은 `-ExecutionPolicy Bypass` 유지(제한 정책 PC 호환) + 사유 주석(보안 규칙 정합). bootstrap-agents-md Step1 `test -f`(bash) → PowerShell `Test-Path`로 통일(Step2와 일관). implement-task에 halt-conditions.md 인라인 포인터 추가 + 컨텍스트 한계 중복(본문↔ref) 축약. llm-wiki 본문 상단에 절차 목차(TOC) 추가 + wiki-schema §6 작업참조 중복 절차 4줄을 SKILL K 포인터로 축약(version 2.13 → 2.14, §7 lint 정의·규칙 정의는 보존 — lint.py의 §7-N 주석 참조 유지).
