@@ -1,113 +1,107 @@
-# plan.md — llm-wiki 기계화 가능 빈틈 3건 수정 (F1/F2/F3) + 1.65.1 통합
+# plan.md — 분할 PRD 귀속 빈틈 보강 (방안 ①+②)
 
-## 목표
-위키 조사에서 드러난 "기계화 가능한 빈틈" 3건을 수정한다:
-- **F1**: lint이 `deprecated` 페이지를 전혀 인식 못 함 → 인식·집계·표기 정합 검사 추가.
-- **F2**: 근거 각주 없는 "얕은 feature"가 lint을 통과 → feature 근거 각주 하드게이트 추가.
-- **F3**: recipe 본문에 "함정/주의점" 전용 섹션 부재 → 스키마에 선택 섹션 추가.
+## Goal
+PRD 파일이 여러 개로 분할됐을 때 "새 작업을 어느 PRD 파일에 귀속시킬지 / 같은 요구가 이미 있는지" 판정하는 절차가 없는 **쓰기(귀속) 측 빈틈**을, ① 단일 `docs/prd.md` 기본화로 빈틈 발생을 억제하고 ② PRD 작성 전 기존 PRD 확인·귀속 판정 절차를 추가해 메운다.
 
-직전 미커밋 1.65.1 변경(소제목 `### ` 명문화)을 **하나로 묶어** 통합 버전 **1.66.0**으로 릴리즈한다(사용자 결정). 전부 lint.py(코드)·wiki-schema·SKILL 문서 편집이며 외부 의존성·새 인프라 없음.
+## 배경 — 영향 범위 전수 조사 결과 (확인 완료)
+PRD 시스템은 두 측으로 나뉘며, 한쪽만 빈틈이다:
 
-## 결정 (사용자 + 본 계획 확정)
-- **범위 = 기계화 가능분만**(사용자 결정). read-only 위반/불가 항목은 수정 대신 "왜 자동화 안 하는가"를 문서로 명문화(아래 Out of Scope 위 "설계상 의도 명문화").
-- **D1 — F1 deprecated**: 셋 다 적용 — ⓐ deprecated 페이지 INFO 집계(가시성), ⓑ deprecated인데 "코드에서 제거" 안내 문구 없으면 WARN(표기 정합), ⓒ 신선도(60/90일) 후보에서 제외(`paused`처럼). deprecated 판정 = `status: deprecated` **또는** `deprecated:` 필드 보유(schema §2.3 둘 다 허용).
-- **D2 — F2 하드게이트 조건**: `type: feature` ∧ `## 구현 방법` 섹션 존재 ∧ `[^src-` 각주 0개 ∧ deprecated/archive 아님 → **WARN**(ERROR 아님 — 정당한 얕은 예외 여지). 무조건 전 feature가 아니라 "구현 방법 있는데 근거 0"에 한정(오탐 방지).
-- **D3 — F3**: doc-only(schema §2.6 선택 섹션 + SKILL I-2 1줄). lint 강제 안 함(선택 섹션 강제는 과함).
-- **D4 — §7 번호**: F1=§7-17, F2=§7-18로 **append**(기존 §7-1~16 번호 불변 → lint.py의 §7-N 주석 참조 무손상). recipe 함정은 §2.6 구조 변경이라 §7 신규 아님.
-- **버전**: plugin.json `1.65.1(working tree) → 1.66.0`, README L10 → 1.66.0, wiki-schema `2.17 → 2.18`, notes 1.65.1 항목을 **1.66.0 통합 항목으로 병합**(### 명문화 + F1/F2/F3). 승인된 push 후 GitHub 릴리즈.
+- **읽기(식별) 측 — 이미 견고 (수정 불필요).** `plan.md`의 `**PRD**:` 줄이 "이 작업의 PRD" 단일 진실. 4곳이 일관:
+  - `plan-feature/references/plan-template.md:32` — `**PRD**:` 줄 규약
+  - `implement-task/SKILL.md:432` — Phase G가 이 줄로만 진입(레포의 다른 PRD는 의도적 무시)
+  - `agents/plan-reviewer.md:184` (12-a/12-b) — 줄 없으면 자동 대조 안 함
+  - `agents/plan-completion-reviewer.md:25` — 줄 기준, 없으면 대조 생략
+- **쓰기(귀속) 측 — 빈틈 (이번 수정 대상).**
+  - `plan-feature/SKILL.md` Step 0.5 (PRD 절차, L156~165) — 초안 작성만, "기존 PRD가 여러 개일 때 어디에 쓸지" 분기 없음
+  - `prd-template.md` 원칙 6 (L72) — 중복 FR 검사 범위가 "한 파일 내"로 암묵 한정
+  - `prd-template.md` 원칙 7 (L73) + 위치 규약 (L5~8) — "쪼개라"만, 쪼갠 뒤 귀속 매칭 부재 + 단일/누적을 동등 제시
 
-## 배경
-- 직전 plan.md(sub-index 분할 신호, 1.65.0)는 완료·커밋(1f8b89e)·릴리즈. git 클린 후 1.65.1(소제목 `### ` 명문화) 작업이 **미커밋 상태**로 남음(검증 완료). 사용자 결정으로 1.65.1을 본 작업과 통합 → 새 계획으로 교체.
-- **현 작업 트리 미커밋 5파일**(유지): wiki-schema.md(§4 `### ` + 2.17), lint.py(sub INFO `### `), plugin.json/README(1.65.1), notes.md(1.65.1 항목). 본 작업이 같은 파일을 이어서 편집해 1.66.0으로 통합.
-- AGENTS.md 없음. CLAUDE.md가 컨벤션 원천(문서·스크립트 편집이라 bootstrap 강제 안 함).
+## 결정 (사용자 확정)
+- **채택 = 방안 ①+② 조합, 방안 ③(INDEX.md) 제외.**
+  - ① 단일 `docs/prd.md`를 기본으로 못박아 빈틈 발생 자체를 억제 (대부분의 pjc 사용처는 단일로 충분).
+  - ② 그래도 분할되는 큰 경우를 위해 PRD 작성 전 기존 PRD 확인·귀속 판정 절차 추가.
+  - ③ INDEX 매핑표는 새 산출물=drift 동기화 부담 + pjc "과한 추상화·불필요 레이어 금지" 철학과 충돌 → 미도입.
+- **방안 ② 위치 = Step 1이 아니라 Step 0.5 (PRD 절차) 안.** 귀속 판정은 PRD가 있는 대규모 작업에만 필요하므로, 일반 컨텍스트 수집(Step 1)이 아닌 PRD 전용 절차(Step 0.5)에 둔다 (사용자 원안 "Step 1"에서 조정 — 승인 시 확정).
+- **implement-task/SKILL.md·reviewer 2개·plan-template.md는 수정하지 않는다.** 읽기 측은 이미 견고하고, ①+②는 쓰기 측 보강이라 읽기 측 규약을 건드릴 이유가 없다(범위 확장 회피).
+- **README.md 미커밋 1줄(hook 설명)은 무관 잔재 → 그대로 두고 진행** (T1·T2는 README 미수정, 커밋 단위 안 섞임). **단 T3에서 버전 bump를 선택하면 README가 수정되므로**, 그 경우 stale 1줄을 먼저 별도 처리(별도 커밋 또는 사용자 위임)해 커밋 단위를 분리한다(m1 대응).
 
 ## Impact Analysis (전수 확인)
-- **lint.py**: 외부 `import` 호출자 0(독립 실행 스크립트, 앞선 조사 확인). main() 페이지 루프(L95~) 내에 검사 추가 + 루프 후 집계 INFO 추가. 시그니처 변경 없음 → cross-file 코드 영향 0.
-  - F1 신선도 제외: L165 `fm.get("status") != "paused"` 조건에 deprecated 추가. F1 안내 WARN·집계: 루프 내 검사 + 루프 후 `infos`. 
-  - F2: 루프 내 `type=="feature"` 분기에 각주 존재 검사 추가.
-  - 기존 상수(BUDGET 등) 무변경 → 3중 동기화 수치 영향 없음. 변경은 §7 항목 문구(신규 17/18) + §2.3/§2.6/§8 산문.
-- **wiki-schema.md**: §2.3(deprecated·각주 규칙 **이미 정의됨** — 강제만 추가, 정의 보강 최소), §2.6(recipe 함정 선택 섹션 신설), §7(17/18 append), §8(deprecated 신선도 제외 예외 추가 + "lint 제안만" 명문), version 2.18. 기존 §7-1~16·예산 수치 불변.
-- **SKILL.md**: §7 미러 17/18 append, I-2 recipe 함정 1줄. 예산표·다른 절차 불변.
-- **plugin.json/README/notes**: 1.66.0 통합. marketplace.json version 필드 없음(불변).
-- **lint.py §7-N 참조 무손상**: 신규는 append라 기존 §7-11/12/16 등 참조가 가리키는 항목 번호 안 밀림.
-- **테스트**: lint.py 전용 테스트 없음 → 임시 vault fixture 수동 검증(무단 테스트 추가 회피).
+- 수정 파일 **2개**, 둘 다 마크다운 지침 문서. 코드·시그니처·DI 영향 0.
+  - `plugins/pjc/skills/plan-feature/references/prd-template.md` — 위치 규약(L5~8), 원칙 6(L72), 원칙 7(L73). 기존 원칙 번호 1~8 불변(문구 보강만).
+  - `plugins/pjc/skills/plan-feature/SKILL.md` — Step 0.5 PRD 절차에 "0번 단계" 추가. 기존 1~5번 절차 불변(앞에 0번 prepend), 다른 Step 불변.
+- **상호 참조 정합(중요)**: Step 0.5 새 0번 단계가 prd-template 원칙 6/7을 참조하므로 두 파일 문구가 일치해야 한다(T2가 T1 문구를 인용). T1 먼저, T2 나중.
+- **읽기 측 무손상 확인**: `**PRD**:` 줄 = 단일 진실 규약을 건드리지 않으므로 plan-template·implement-task·reviewer 2개의 동작 불변. (역대조에서 재확인)
+- 자동 생성·lock 파일 아님. 버전(plugin.json) 영향: 지침 문서 변경이므로 버전 bump 여부는 T3에서 판단.
 
-## 작업 단계 (T1 코드, T2~T4 문서/버전)
+## 작업 단계 (T1·T2 문서, T3 버전/문서)
 
-### T1 — lint.py: F1(deprecated) + F2(feature 각주 게이트)  [Type C]
-- **F1 판정 변수(단일·먼저 계산)**: fm 파싱 직후(L100 `fm = frontmatter(text)` 근처)에 `is_dep = (fm.get("status") == "deprecated") or bool(fm.get("deprecated"))` 한 변수로 통일(함수형 안 씀). 이후 ⓐⓑⓒ가 모두 이 변수 사용.
-- **F1-ⓒ 신선도 제외**: L165 조건 `... and fm.get("status") != "paused"` 끝에 `and not is_dep` 추가. deprecated 페이지는 frozen 이력이라 60/90일 후보에서 제외(paused와 동일 취급).
-- **F1-ⓑ 안내 정합 WARN**: 루프 내, `is_dep and not in_archive and ("코드에서 제거" not in text)` → `warns.append("deprecated 표기 안내 누락: {r} ('⚠️ 코드에서 제거됨' 안내 권장, schema §2.3)")`. (in_archive 가드로 이력 페이지 제외 — F2와 동일.)
-- **F1-ⓐ 집계 INFO**: 루프 동안 `is_dep and not in_archive`일 때만 `dep_count` 누적(현행 vault 한정, 90_archive 이력 페이지 제외 — 노이즈 방지) → 루프 후 `if dep_count: infos.append("deprecated 페이지 {dep_count}건 (이력 보존 — 현재 기능 아님, schema §2.3)")`.
-- **F2 각주 게이트**: 루프 내, `typ=="feature"` ∧ not is_dep ∧ not in_archive ∧ `"## 구현 방법" in text` ∧ `"[^src-" not in text` → `warns.append("구현 근거 각주 누락: {r} (## 구현 방법 있으나 [^src-...] 0개 — 얕은 feature 의심, schema §2.3)")`.
-- 주석은 한글 "왜" 중심. docstring 검사 목록(L5-7)에 "deprecated 표기 정합·feature 근거 각주" 한 구절 추가.
-- **Edge cases**:
-  - deprecated 표기 두 형식(`status: deprecated` / `deprecated:` 필드) 모두 인식 — 헬퍼로 통일. ✓
-  - deprecated feature는 F2 각주 게이트에서 제외(frozen 이력에 각주 강제 안 함). ✓
-  - `## 구현 방법` 섹션 없는 feature → F2 미발동(근거 누락이 아니라 섹션 부재 — 본 작업 범위 밖). ✓
-  - 90_archive/ 페이지 → in_archive로 F1-ⓑ/F2 제외. ✓
-  - `[^src-`가 코드펜스 안에 우연히 있는 경우 → 드묾(각주 마커), raw text 검색 허용(오탐 시 WARN이라 안전). 
-- **Halt Forecast**: 없음(독립 스크립트, 추가 검사). 회귀 우려 → 기존 검사 출력 불변을 fixture로 확인.
-- Acceptance: ① py_compile 0 ② fixture: deprecated 페이지(안내 有)→집계 INFO·WARN 없음 / deprecated(안내 無)→WARN / 구현 방법 있고 각주 0개 feature→WARN / 각주 1개+ feature→무경고 / 정상 deprecated는 60·90일 후보에서 빠짐 ③ 기존 검사(예산·링크·origin·신선도 비-deprecated) 출력 불변.
+### T1 — prd-template.md: 단일 기본화(①) + 중복 검사 범위 확장(②)  [Type A]
+대상: `plugins/pjc/skills/plan-feature/references/prd-template.md`
+- **① 위치 규약 (L5~8)**: "단일 또는 누적"을 동등 제시 → **"기본은 `docs/prd.md` 단일, 분할은 원칙 7 임계 초과 시에만 쓰는 예외"** 로 명문화. 분할 경로의 `<slug>`를 `<기능군>`으로 통일(원칙 7과 일치).
+- **① 원칙 7 (L73)**: "PRD가 커지면 분할"의 기조를 **"기본은 단일 파일 유지, 분할은 단일 파일이 너무 커져 Phase G 대조가 얕아질 때의 마지막 수단"** 으로 강화. 임계(40항목/250줄) 유지. **"분할하면 작성 시 원칙 6 + Step 0.5의 기존 PRD 확인이 필수가 된다"** 는 연결 문장 1줄 추가(②와 묶음).
+- **② 원칙 6 (L72)**: 중복 FR 검사 대상을 **"기존 FR(active + REMOVED) + PRD가 분할돼 여러 파일이면 분할된 다른 PRD 파일까지"** 로 확장. "한 파일만 보면 다른 조각의 같은 요구를 놓친다"는 이유 1줄.
+- **Edge cases (Type A·문서)**: ⓐ 기존 원칙 번호 1~8 불변(문구만 보강) ⓑ 폐기 이력/부활(원칙 5·8) 규약과 모순 없음 ⓒ 위치 규약 예시 코드블록(L7) 형식 유지.
+- **Halt Forecast**: 없음.
+- Acceptance:
+  1. 위치 규약에 "기본=단일 docs/prd.md, 분할=예외" 취지 문구 존재 + 분할 경로가 `<기능군>` 표기.
+  2. 원칙 7에 "기본 단일 유지·분할은 마지막 수단" 기조 + "분할 시 원칙 6/Step 0.5 필수" 연결 문장.
+  3. 원칙 6에 "분할된 다른 PRD 파일까지 중복 확인" 문구.
+  4. 원칙 번호 1~8 개수·순서 불변, 폐기/부활(5·8) 규약 잔존.
+  5. UTF-8(BOM 없음), 마크다운 표·코드블록 구문 깨짐 없음.
 
-### T2 — wiki-schema.md: §2.6·§7-17/18·§8·version  [Type A]
-- **§2.6 recipe 본문(L189)**: `## 사용 프로젝트 사례` 뒤에 ` / `## 주의점 / 함정`(선택)` 추가 + 한 줄 규칙("재사용 시 밟기 쉬운 함정·플랫폼 제약·성능/안정성 주의점. recipe 승격의 핵심 가치 — 단계 산문에 묻지 말고 별도 섹션으로. 선택이나 함정형 recipe엔 권장").
-- **§7 검사 항목 append**:
-  - `17. **deprecated 표기 정합·집계**: deprecated(`status: deprecated`/`deprecated:` 필드) 페이지를 INFO 집계(이력 가시성) + "⚠️ 코드에서 제거됨" 안내 누락 시 WARN + 신선도(60/90일) 후보에서 제외. (lint.py 검사)`
-  - `18. **feature 구현 근거 각주**: `type: feature`이고 `## 구현 방법` 섹션이 있으나 `[^src-...]` 각주가 0개면 WARN(얕은 feature·근거 누락 의심). lint은 vault만 읽어 레포 파일 실재는 못 보므로 **각주 존재 여부까지** 검사하고, 서술↔코드 사실 정합은 §7-10(에이전트 표본)이 담당. (lint.py 검사)`
-- **§8 신선도 예외**: L363 "예외 1: status: paused" 다음에 "예외 1-1: deprecated(`status: deprecated`/`deprecated:`)도 시간 기반 신선도 처리에서 제외(frozen 이력)" 추가.
-- **lint 제안-only 명문(by-design)**: §7 또는 §8에 1줄 — "lint은 INFO/WARN **제안만** 하며 위키를 자동 수정하지 않는다 — confidence 하락·아카이브 이동 등 적용은 사용자 승인 또는 B/F 세션에서 수행(read-only 원칙)."(§8 L362 "사용자 승인 후 이동"과 정합 보강).
-- **version**: 2.17 → 2.18.
-- Acceptance: §2.6에 `## 주의점 / 함정` 선택 섹션 + 규칙; §7-17/18 신규 정의 존재(문구 위와 일치); §8 deprecated 신선도 예외 + lint 제안-only 1줄; version 2.18; frontmatter YAML 파싱 OK; 기존 §7-1~16·예산 수치 불변(추가만).
-- Halt Forecast: 없음.
+### T2 — plan-feature/SKILL.md: Step 0.5에 기존 PRD 확인·귀속 판정 절차 추가(②)  [Type A]
+대상: `plugins/pjc/skills/plan-feature/SKILL.md` (Step 0.5 "대규모 작업 PRD 절차" L156~165)
+- 현재 1~5번 절차 **앞에 0번 단계 prepend**:
+  > `0.` **기존 PRD 확인·귀속 판정 (초안 작성 전 필수)** — 새 PRD를 만들기 전에 `docs/prd.md`와 `docs/prds/`를 확인한다:
+  > - 기존 PRD 없음 → 신규 `docs/prd.md` 작성(원칙: 단일 기본).
+  > - 기존 PRD 있고 이번 작업이 그 연장 → **새 파일 만들지 말고 기존 PRD를 갱신**(새 FR은 새 ID로, 원칙 4·8). 같은 요구가 이미 active/REMOVED FR에 있으면 중복 생성 금지(원칙 6).
+  > - 분할된 PRD가 여러 개(`docs/prds/`) → 이번 작업이 속하는 **기능군 파일을 찾아 그 파일을 갱신**. 어느 기능군에도 안 맞는 새 기능군이면 새 분할 파일 생성(원칙 7). 중복 확인은 분할된 **모든** PRD 대상(원칙 6).
+  > - 어느 PRD를 갱신/생성하든 그 경로를 plan.md 상단 `**PRD**:` 줄에 적어 이 작업의 PRD로 지목(읽기 측 단일 진실 — implement-task Phase G 진입 신호).
+- 기존 1~5번은 번호만 유지(0번이 앞에 붙음). 다른 문장·Step 불변.
+- **Edge cases**: ⓐ "대규모가 아니면 Step 1로" 분기(L154) 위쪽이므로 비-대규모 작업엔 영향 0 ⓑ 원칙 4·6·7·8 참조 번호가 T1의 prd-template와 일치하는지 확인 ⓒ `**PRD**:` 줄 규약 문구를 plan-template과 모순 없이 인용.
+- **Halt Forecast**: 없음.
+- Acceptance:
+  1. Step 0.5 PRD 절차에 "0. 기존 PRD 확인·귀속 판정" 단계 존재(초안 작성 1번보다 앞).
+  2. 4갈래(없음/연장/분할 다수/새 기능군) 판정 + `**PRD**:` 줄 지목 문장 포함.
+  3. 참조 원칙 번호(4·6·7·8)가 T1 수정 후 prd-template과 일치.
+  4. 기존 1~5번 절차 문구 잔존(누락 0), 다른 Step 불변.
+  5. UTF-8(BOM 없음), frontmatter·마크다운 구문 정상.
 
-### T3 — SKILL.md: §7 미러 17/18 + recipe 함정 1줄  [Type A]
-- **§7 미러(현재 16까지, L281 뒤)**에 17/18 append(SKILL 요약형): "17. deprecated 표기 정합·집계 — 이력 페이지 가시성+안내 누락 WARN+신선도 제외. lint.py 검사. / 18. feature 구현 근거 각주 — `## 구현 방법` 있으나 `[^src-` 0개면 WARN. lint.py 검사."
-- **I-2 recipe(L349 부근)**: 본문 구성에 "주의점/함정(선택)" 추가 1줄(§2.6 참조).
-- Acceptance: SKILL §7에 17/18 존재; I-2에 함정 섹션 언급; frontmatter YAML OK; 기존 절차·예산표 불변.
-- Halt Forecast: 없음.
-
-### T4 — 버전 통합 + 문서 갱신  [Type A]
-- `plugin.json`: version `1.65.1 → 1.66.0`.
-- `README.md` L10: `1.65.1 → 1.66.0`.
-- `notes.md`: 현재 최상단 1.65.1 항목을 **1.66.0 통합 항목으로 병합·치환**(### 소제목 명문화 + F1 deprecated lint + F2 feature 각주 게이트 + F3 recipe 함정 섹션 / 무엇·왜·검증). 1.65.0 이하 기존 항목은 보존.
-- Acceptance: plugin.json 1.66.0(JSON OK); README L10 1.66.0; notes 1.66.0 통합 항목(1.65.1 단독 항목 잔존 0); 잔존 1.65.1(이력 서술 제외) 없음.
-- Halt Forecast: 없음.
+### T3 — 버전·문서 갱신 판단  [Type A]
+- `notes.md`: 본 작업(분할 PRD 귀속 빈틈 ①+② 보강) 항목 추가 — 무엇·왜·어떻게·검증.
+- `plugin.json`·`README.md` 버전: **patch bump 1.66.0 → 1.66.1 확정(사용자 승인)**. plugin.json version + README 버전 줄(L10) 수정. README 기능 목록은 변경 없음(현 기능 그대로) → 버전 줄 외 미변경.
+- **m1 대응(커밋 단위 분리)**: bump로 README를 수정하므로, 작업 트리에 남은 README stale hook 1줄이 같은 commit에 섞이지 않게 **commit 직전 사용자에게 처리 확인**(별도 커밋/위임 — 되돌리기는 변경 손실이라 Claude가 직접 실행 안 함). T1~T3 파일 수정·검증은 자율, commit 전 멈춰 m1 + commit 승인.
+- Acceptance: notes.md에 본 작업 항목 1건; (bump 시) plugin.json·README 버전 일치, JSON 파싱 OK.
+- Halt Forecast: 버전 bump 여부 미정 → 구현 중 결정 분기 발생 시 사용자 확인(아래 승인 항목).
 
 ## 검증 방법
-1. **py_compile**: `python -m py_compile .../lint.py` → 0.
-2. **usage 회귀**: 인자 없이 실행 → usage·exit 1(기존 동작 불변).
-3. **fixture — F1**: deprecated 페이지(안내 有/無 2종) + 일반 60일+ feature 구성 → deprecated 집계 INFO·안내無 WARN·deprecated는 신선도 후보 제외, 일반 feature는 60일 후보 그대로.
-4. **fixture — F2**: `## 구현 방법` 있고 각주 0개 feature → WARN / 각주 1개+ feature → 무경고 / deprecated feature → 무경고(제외).
-5. **fixture — 오탐0**: 기존 검사(예산·링크·origin) 출력이 추가 전후 동일(신규 항목 외 변화 없음).
-6. **문서 동기화**: §2.6 함정 섹션, §7-17/18(schema+SKILL 양쪽), §8 예외+lint제안-only, version 2.18 grep; frontmatter YAML 파싱.
-7. **버전**: plugin.json JSON+1.66.0, README L10 1.66.0, notes 1.66.0 통합 항목.
-8. 임시 fixture는 스크래치에만 생성·삭제(레포 vault 아님, 커밋 테스트 추가 아님).
+1. **문구 반영 grep**: T1 3개 변경점(위치/원칙6/원칙7) + T2 0번 단계 — 각 acceptance 문구를 grep으로 확인.
+2. **역대조(읽기 측 무손상)**: plan-template.md `**PRD**:` 규약, implement-task SKILL.md:432, plan-reviewer.md:184, plan-completion-reviewer.md:25 — 수정 전후 **변화 없음** 확인(이번에 안 건드림 → grep로 잔존 확인).
+3. **상호 참조 정합**: T2가 인용한 원칙 번호(4·6·7·8)가 T1 수정 후 prd-template 실제 번호와 일치.
+4. **인코딩·구문**: 두 파일 BOM 없음, 마크다운 표·코드블록·frontmatter 깨짐 없음.
+5. **역대조 표**: 방안 ①(위치·원칙7)·②(원칙6·Step 0.5 0번) 각 항목이 산출물에 실제 존재하는지, ③(INDEX) 흔적이 없는지 대조.
 
-## 설계상 의도 — 수정하지 않고 문서로만 명문화 (사용자 결정)
-- **lint은 제안만, 자동 적용 안 함**(confidence 하락·아카이브) → read-only 원칙. T2에서 §7/§8에 1줄 명문.
-- **위키↔코드 내용 사실 정합의 완전 기계화 불가**(lint은 vault만 읽음) → F2가 "각주 존재" 부분 슬라이스. 사실 정합은 §7-10(에이전트 표본) 책임. T2 §7-18 정의에 명시.
+## Out of Scope (이번 제외)
+- **방안 ③ (docs/prds/INDEX.md 매핑표)** — 영구 제외(사용자 결정). 새 산출물 동기화 부담 + pjc 철학 충돌.
+- **implement-task/SKILL.md, plan-template.md, plan-reviewer.md, plan-completion-reviewer.md 수정** — 읽기 측은 이미 견고. ①+②는 쓰기 측 보강이라 불필요.
+- **방안 ② 강제 검증을 reviewer에 추가** — 이번엔 절차 명문화까지만. reviewer 강제는 별도 작업(Deferred).
+- **README.md 미커밋 1줄(hook 설명)** — 무관 잔재, 그대로 둠.
+
+## Deferred / Follow-up
+- **분할 파일 간 중복 FR의 검토 단계 강제 net (m2)**: ①+②는 작성 시점 예방(write-side)만 메운다. plan-reviewer 12-a의 중복 FR 검사는 `**PRD**:` 줄이 가리키는 **단일 파일만** 읽으므로, 분할된 다른 파일 간 중복은 리뷰에서 안 잡힌다. 빈틈을 완전히 닫으려면 후속 plan에서 `plan-reviewer.md` 12-a의 PRD 로딩을 "분할 시 `docs/prds/` 동기 형제 파일까지 스캔"하도록 보강. (이번 범위는 절차 명문화까지 — 의식적 분리.)
 
 ## 승인 필요 항목
-- 본 plan(코드 1 + 문서 3 + 버전 통합) — 승인 게이트.
-- commit/push 및 GitHub 릴리즈(v1.66.0) — 구현·검증 후 별도 승인(release-on-version-bump).
-
-## Out of Scope (영구 제외)
-- 코드 레포 파일 실재 검사(vault↔repo 분리로 lint 불가).
-- confidence 자동 강등·아카이브 자동 이동(read-only 원칙 위반).
-- A-3a 승격 거절 시 자동 함정 등록(사용자 게이트 유지 — 설계 의도).
-- 위키 내용 사실성의 완전 기계 검증(§7-4 모순·§7-10 코드 정합은 에이전트 책임 유지).
-- "deprecated여야 하는데 표기 누락" 탐지(코드 상태를 lint이 모름).
+- 본 plan(문서 2파일 보강 + notes/버전) — **승인 완료**(사용자).
+- T3 버전 bump — **patch bump 1.66.1 확정**(사용자).
+- commit/push 및 GitHub 릴리즈(v1.66.1) — 구현·검증 후 별도 승인. commit 직전 m1(README stale 줄) 처리 확인.
 
 ## Progress Log
-- T1 완료 (Type C, 미커밋): lint.py — is_dep 판정 + F1ⓐ(dep_count INFO)·ⓑ(안내누락 WARN)·ⓒ(신선도 제외) + F2(feature 각주 게이트 WARN) + docstring. 기존 검사·상수 불변. 검증: py_compile OK, fixture F1 집계2/안내WARN/신선도제외+회귀유지, F2 얕은feature WARN/각주有·deprecated 무경고. spec-compliance OK(0/0/0).
-- T2 완료 (Type A, 미커밋): wiki-schema §2.6 `## 주의점/함정`(선택)·§7-17/18 신규(append)·§8 예외 1-1(deprecated 신선도 제외)·§7 결과처리 lint 제안-only 명문·version 2.18.
-- T3 완료 (Type A, 미커밋): SKILL §7-14·17·18 미러 + I-2 recipe 함정 1줄.
-- T4 완료 (Type A, 미커밋): plugin.json·README → 1.66.0, notes 1.65.1 항목을 1.66.0 통합 항목으로 병합(### 명문화 + F1/F2/F3).
-- **F-2 통합검증**: py_compile OK, plugin.json 1.66.0, schema 2.18/SKILL frontmatter YAML OK, 문서 동기화 grep 9/9, README L10 1.66.0·잔존 1.65.1(이력 외) 0, 편집 6파일 BOM 없음.
-- **결정**: 1.65.1 ### 명문화를 1.66.0으로 통합(사용자), 기계화 가능분만(F1/F2/F3), read-only·코드정합 완전기계화는 §7 결과처리에 의도 명문(사용자).
-- **미커밋 상태**: commit/push·릴리즈는 별도 승인 대기.
+- T1 완료 (Type A, 미커밋): `prd-template.md` — ① 위치 규약 "기본=단일 `docs/prd.md`, 분할은 예외"로 명문화(분할 경로 `<기능군>` 통일), 원칙 7 "분할은 마지막 수단" 강화 / ② 원칙 6 중복 검사 "분할된 다른 PRD 파일까지" 확장. 작성원칙 번호 1~8 순서 유지.
+- T2 완료 (Type A, 미커밋): `plan-feature/SKILL.md` Step 0.5 PRD 절차에 "0. 기존 PRD 확인·귀속 판정" 단계 추가(없음/연장/분할 다수/새 기능군 4갈래 + `**PRD**:` 줄 지목). 인용 원칙 4·6·7·8이 T1 후 prd-template과 정합 확인.
+- T3 완료 (Type A, 미커밋): `plugin.json`·`README.md` 1.66.0 → 1.66.1, `notes.md` 본 작업 항목 추가.
+- **검증**: 문구 grep 전부 반영, 두 수정 파일 BOM 없음, plugin.json JSON 유효, 읽기 측 4파일(implement-task/SKILL·plan-reviewer·plan-completion-reviewer·plan-template) git status 미수정(무손상). plan-reviewer OK(BLOCKER/MAJOR 0, MINOR 2: m1 plan 반영·m2 Deferred).
+- **미커밋 상태**: commit/push·릴리즈는 별도 승인 대기. commit 직전 m1(README stale hook 1줄) 처리 확인 필요.
 
 ## Next Steps
-- 권장 다음 액션: 검토 후 commit/push 승인 → push 후 GitHub 릴리즈(v1.66.0, release-on-version-bump).
+- 권장 다음 액션: commit 전 m1(README stale 줄) 처리 확인 → commit/push 승인 → push 후 GitHub 릴리즈(v1.66.1, release-on-version-bump).
 - Suggested skills: (커밋 후) 공식 /code-review, 공식 /security-review.
