@@ -178,4 +178,4 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 - CI/CD: <GitHub Actions, Bitrise 등>
 - 배포: <Play Console, Internal Distribution 등>
 
-> ⚠️ `pjc:add-viewmodel` skill은 WinUI 3 전용입니다. Android Jetpack ViewModel은 비대상이므로 직접 작성하거나 Android 공식 skill을 사용하세요.
+> ⚠️ `pjc:add-viewmodel` skill은 CommunityToolkit.Mvvm 기반의 WinUI 3 / WPF / MAUI 대상입니다. **Android Jetpack ViewModel은 비대상**이므로 직접 작성하거나 Android 공식 skill을 사용하세요.

@@ -121,4 +121,4 @@ dotnet add package WPF-UI
 - 배포: <MSIX | ClickOnce | 자체 installer>
 - 상세 가이드: https://wpfui.lepo.co/documentation/getting-started.html
 
-> ⚠️ `pjc:add-viewmodel` skill은 WinUI 3 전용입니다. WPF ViewModel은 패턴이 유사하나(CommunityToolkit.Mvvm 공통), View 측은 WPF-UI 컨트롤을 사용하므로 이 문서의 규칙을 따르세요.
+> ⚠️ `pjc:add-viewmodel` skill은 WinUI 3 / WPF / MAUI 대상입니다(CommunityToolkit.Mvvm 기반 — WPF도 ViewModel 생성에 사용 가능). 단 View 측은 WinUI와 달라 WPF-UI 컨트롤을 쓰므로, SKILL의 "WPF 차이" 주석(`x:Bind`→`{Binding}`, `ProgressRing`→`ProgressBar` 등)과 이 문서의 규칙을 따르세요.

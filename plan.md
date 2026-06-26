@@ -1,37 +1,38 @@
-# plan.md — PRD 식별 기준 일관화 (있을 때/없을 때 계획·검증 정합)
+# plan.md — 스킬 연동 점검·정합 수정
 
 ## 목표
-PRD 파일이 있을 때와 없을 때 plan-feature(계획)·implement-task(검증)·reviewer가 PRD를
-일관되게 식별·검증하도록, 식별 기준을 plan.md 상단 `**PRD**:` 줄 단일 진실원천으로 통일한다.
-(plan-template 규약: PRD 없으면 줄 자체를 생략 → 줄 = "이 작업의 PRD" 식별 신호.)
+PRD 점검과 같은 방식(연동 대상 "있을 때/없을 때" 두 경로 시뮬레이션 → 누락/오작동/식별기준 불일치)으로
+다른 스킬 연동(sub-skill 호출 · llm-wiki 참조/갱신 · 스킬 핸드오프)을 점검해 발견한 결함을 수정한다.
 
-## 배경 (발견 문제 — 두 경로)
-- **경로 C(오작동)**: 줄 없는 일상 작업인데 무관한 docs/prd.md가 레포에 남아 있으면
-  Phase G·plan-completion-reviewer가 끌어와 거짓 BLOCKER → 자율 루프 교란(엉뚱한 task/Halt).
-- **경로 D(누락)**: PRD 만들고 `**PRD**:` 줄 누락 시 plan-reviewer 항목12가 침묵 → 커버리지 검토 누락.
-  + 1.60.0 H3가 입력에만 fallback을 넣어 항목12 본문과 내부 불일치.
+## 배경 (발견 — 7종 연동 두 경로 점검)
+- V1(MAJOR): add-viewmodel 적용 범위가 SKILL/implement-task("WinUI/WPF/MAUI")와 bootstrap 템플릿("WinUI 3 전용")에서 불일치.
+- V2(MINOR): llm-wiki 참조(K)가 vault stale 시 경로 재확인 질문으로 코드 작업 흐름 교란.
+- V3(MINOR): llm-wiki 갱신(B) "프로젝트 등록 여부" 판단 메커니즘 미명시.
+- V4(MINOR): systematic→Phase V 핸드오프 시 plan.md 없을 때 검증 기준 모호.
 
 ## 범위
-implement-task/SKILL.md(Phase G 진입조건·진행 다이어그램), agents/plan-completion-reviewer.md,
-agents/plan-reviewer.md(항목12·입력). + 버전(plugin.json/README).
-(plan-feature Step 0.5/7.5는 이미 줄 기준이라 무수정.)
+bootstrap-agents-md templates(wpf.md/android.md/multi-stack-example.md), llm-wiki/SKILL.md,
+implement-task/references/phase-f-detail.md, pjc-systematic-debugging/SKILL.md. + 버전(plugin.json/README).
 
 ## 승인 필요 사항
-- [x] 줄 단일 기준 + 누락 경고 — 사용자 승인("줄 단일 기준 + 누락 경고")
-- [x] 버전 업(1.60.1) + commit + GitHub 릴리즈 — 사용자 승인("1.60.1 + commit + 릴리즈")
+- [x] 4건 전부 수정 — 사용자 승인("4건 전부 수정")
+- [x] 버전 업(1.60.2) + commit + GitHub 릴리즈 — 사용자 승인("1.60.2 + commit + 릴리즈")
 
 ## 작업 단계 (모두 검증 완료)
-- [x] T1. implement-task Phase G 진입조건 docs fallback 제거 → 줄 단일 기준 (+ 진행 다이어그램 일치)
-- [x] T2. plan-completion-reviewer 진입·입력을 "`**PRD**:` 줄이 가리키는 PRD"로
-- [x] T3. plan-reviewer 항목12를 12-a(대조)/12-b(줄 누락 경고)로 분리 + 입력 줄 일치
+- [x] V1 (MAJOR) add-viewmodel 범위를 WinUI/WPF/MAUI로 통일 (템플릿 3개·4곳, Android만 비대상)
+- [x] V2 (MINOR) llm-wiki 절차 K — vault 미설정·stale 시 질문 없이 조용히 건너뛰기
+- [x] V3 (MINOR) llm-wiki 갱신(B) — 등록 여부를 vault 20_projects/ read-only 확인으로 판단 (F-6.5·4-E)
+- [x] V4 (MINOR) systematic 4-D — plan.md 없을 때 변경 파일+회귀 테스트를 acceptance 기준으로
 
 ## 검증 방법·결과
-- 4경로(A 줄있음 / B 줄없음·docs없음 / C 줄없음·무관docs / D 줄누락) 재시뮬레이션 → 모두 일관·안전.
-- grep으로 "줄 없어도 docs 진입" fallback 잔존 점검 → 0건.
-- plan-feature Step 0.5 L164 "`**PRD**:` 줄 = Phase G 진입 신호"와 정합 확인.
+- grep으로 "add-viewmodel WinUI 3 전용" 잔존 점검 → 0건. 전 언급(SKILL·implement-task·evals·템플릿)이 WinUI/WPF/MAUI로 일관.
+- 7종 연동 두 경로 재점검 — 누락/오작동/식별기준 불일치 해소.
+
+## 정합 확인 (무수정)
+- add-domain-service 범위(.NET/Kotlin), bootstrap 연동, plan-feature→implement-task 핸드오프, reviewer 과부하 대체.
 
 ## Out of Scope
-- docs/prds/ 다중 PRD 자동 선택 로직 — 줄이 정확한 경로를 가리키므로 불필요(줄 기준이면 다중도 명확).
+- Kotlin add-domain-service 코드 예시 추가 — "적용 가능"만 명시돼 있고 C# 예시뿐이나, 개념 적용이라 이번 범위 아님.
 
 ## Progress Log
-- T1~T3 완료: 3개 파일 수정, 4경로 재시뮬레이션 통과, fallback 잔존 0 확인. notes.md 상세 기록.
+- V1~V4 완료: 6개 파일 수정, grep 검증으로 범위 표현 일관 확인. notes.md 상세 기록.

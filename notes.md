@@ -2,6 +2,14 @@
 
 ## 최근 변경
 
+- 2026-06-26: 스킬 연동 점검·수정 (1.60.1 → 1.60.2). "다른 스킬 연동도 PRD와 같은 방식(연동 대상 '있을 때/없을 때' 두 경로 시뮬레이션 → 누락/오작동/식별기준 불일치)으로 점검" 요청 — sub-skill 호출·llm-wiki 참조/갱신·스킬 핸드오프 점검해 **MAJOR 1 + MINOR 3** 수정.
+  - **V1 (MAJOR) add-viewmodel 적용 범위 불일치**: SKILL(L3·L9 "WinUI 3/WPF/MAUI 지원", WPF 차이 L147까지 안내, Android만 비대상)·implement-task L205와 달리 bootstrap 템플릿(wpf.md L124·android.md L181·multi-stack L153·157)이 "add-viewmodel은 **WinUI 3 전용**"이라 WPF까지 배제 → WPF 프로젝트에서 AGENTS.md(wpf.md 기반)를 보면 "WPF엔 쓰지 말라"로 읽혀 implement-task의 "WPF도 호출" 지시와 모순. 템플릿 3개(4곳)를 "WinUI 3/WPF/MAUI 대상, Android Jetpack만 비대상"으로 정정.
+  - **V2 (MINOR) llm-wiki 절차 K vault stale 시 흐름 교란** ("없는데 확인하려다 문제" 패턴): 코드 작업 중 read-only 참조에서 vault 경로가 stale(폴더 삭제·이동)이면 §0-1 경로 재확인 질문("위키 옮기셨나요?")이 발동해 작업 흐름을 막음. 절차 K에 "경로 미설정·폴더 사라짐이면 질문 없이 조용히 건너뛰기(경로 정정은 명시적 위키 작업 때만)" 명시.
+  - **V3 (MINOR) llm-wiki 갱신(B) 등록 여부 판단 미명시**: F-6.5·systematic 4-E가 "이 프로젝트 등록 시"만 적고 판단법 없음 → "vault `20_projects/`에 이 프로젝트 허브가 있는지 read-only 확인" 명시. 미설정·미등록이면 제안 생략(미등록 신규 프로젝트는 등록 제안만 1회, 과잉 방지).
+  - **V4 (MINOR) systematic→Phase V 핸드오프 plan.md 없을 때 기준 모호**: 4-D에 "plan.md 없는 디버깅(별도 debug-*.md)이면 spec-compliance에 task 섹션 대신 **변경 파일 목록 + 4-A 회귀 테스트를 acceptance 기준으로** 전달(입력의 '또는 변경 파일 목록' 경로)" 명시.
+  - **변경 파일(6)**: bootstrap templates(wpf.md·android.md·multi-stack-example.md), llm-wiki/SKILL.md, implement-task/references/phase-f-detail.md, pjc-systematic-debugging/SKILL.md (+ plugin.json·README 버전).
+  - **정합 확인(무수정)**: add-domain-service 범위(.NET/Kotlin ↔ "DDD/Clean 명시 시"), bootstrap 연동(AGENTS.md 유무), plan-feature→implement-task 핸드오프(plan.md 전제), reviewer 과부하 대체(직전 audit 확인).
+  - **검증**: grep으로 "add-viewmodel WinUI 3 전용" 잔존 0 확인, 전 언급(SKILL·implement-task·evals·템플릿 3개)이 WinUI/WPF/MAUI로 일관. 7종 연동 두 경로 재점검.
 - 2026-06-26: PRD 식별 기준 불일치 수정 (1.60.0 → 1.60.1). "PRD 있을 때/없을 때 계획·검증 동작" 정밀 점검 중 발견 — 검증 지점들이 PRD 식별 기준을 두 갈래(`**PRD**:` 줄 vs docs 파일 존재)로 써서 오작동.
   - **경로 C (오작동, 핵심)**: plan.md에 `**PRD**:` 줄이 없는 일상 작업인데 레포에 무관한(과거 다른 작업의) `docs/prd.md`가 남아 있으면, Phase G·plan-completion-reviewer가 그 PRD를 끌어와 "Must FR 전부 미충족 BLOCKER"로 오탐 → 자율 루프가 엉뚱한 task 추가(G-2) 또는 Halt(G-3). `docs/prds/` 누적 시 어느 PRD인지 식별 불가.
   - **경로 D (누락)**: PRD를 만들고도 `**PRD**:` 줄을 빠뜨리면 plan-reviewer 항목12("PRD 있을 때만")가 침묵 → PRD 커버리지 검토 누락. + 직전 1.60.0 H3가 plan-reviewer 입력에만 fallback을 넣고 항목12 본문은 줄 기준이라 내부 불일치(자가 유발).

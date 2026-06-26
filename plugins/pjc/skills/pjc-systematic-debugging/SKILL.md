@@ -210,9 +210,11 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 - spec-compliance-reviewer + code-quality-reviewer subagent
 - BLOCKER 0까지 반복
 
+> **plan.md 없이 디버깅한 경우(별도 `debug-*.md`만 작성)**: spec-compliance-reviewer는 plan.md task의 acceptance를 기준으로 검증하므로, plan.md가 없으면 task 섹션 대신 **변경 파일 목록 + 4-A의 회귀 테스트를 acceptance 기준으로** 전달한다("이 버그가 회귀 테스트로 차단되는가 + cross-file caller 일관"이 검증 기준 — spec-compliance 입력의 "또는 변경 파일 목록" 경로). plan-feature를 거쳐 plan.md가 있으면 평소대로 해당 task 섹션을 전달한다.
+
 ### 4-E. 위키 갱신 제안 (선택)
 
-llm-wiki 사용 중이고 이 프로젝트가 등록돼 있으면, 이번 버그의 **증상·근본 원인·해결책**을 `pjc:llm-wiki` 절차 B(ingest)로 위키에 반영할 것을 제안한다. 저장 위치는 다음을 따른다 (다른 프로젝트의 2-A 교차 검색이 찾을 수 있어야 함):
+llm-wiki 사용 중이고 이 프로젝트가 등록돼 있으면(등록 여부는 vault `20_projects/`에 이 프로젝트 허브가 있는지로 판단 — read-only, 미설정·미등록이면 제안 생략), 이번 버그의 **증상·근본 원인·해결책**을 `pjc:llm-wiki` 절차 B(ingest)로 위키에 반영할 것을 제안한다. 저장 위치는 다음을 따른다 (다른 프로젝트의 2-A 교차 검색이 찾을 수 있어야 함):
 - **관련 기능의 feature 페이지 "관련 지식·레시피" 섹션**에 "해결한 문제: {증상} → {원인} → {해결}" 형태로 기록한다 (검색 키워드가 되도록 에러 메시지·증상을 명시). 첫 발견이면 여기까지 — patterns 신규 생성은 안 함(2개째 승격, 절차 B-2 2-1).
 - 같은 버그가 **다른 프로젝트에서도 이미 해결된 적 있으면**(2개째), `30_knowledge/patterns/`로 승격해 "문제→원인→해결→사례 프로젝트"로 정리한다.
 다음에 같은·유사 증상이 (이 프로젝트든 다른 프로젝트든) 재발하면 Phase 2-A의 교차 프로젝트 위키 검색이 이 기록을 찾아 재조사를 줄인다. 디버깅 세션은 위키를 직접 수정하지 않으므로 별도 위키 세션에서 진행한다 (read-only 원칙 유지).
