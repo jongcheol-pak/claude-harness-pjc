@@ -2,6 +2,15 @@
 
 ## 최근 변경
 
+- 2026-06-26: PRD FR 라이프사이클 도입 (1.60.3 → 1.61.0). "PRD가 역사적 기록이면 잘못된 정보(삭제된 기능)가 있을 때 검증 시 문제 발생하지 않나" 지적 → stale FR 폐기 표시 + 누적/중복/부활 처리를 일관 설계.
+  - **배경(검증 문제)**: 하나의 PRD를 여러 plan으로 점진 구현하던 중 일부 FR 기능이 삭제되면, PRD의 그 FR은 여전히 "Must"로 남아 Phase G가 미충족으로 잡고 G-2가 "Must 미충족 → 사용자 확인 없이 재구현(PRD가 승인된 요구이므로)"을 자동 시도 → **삭제된 기능을 되살리는 거짓 재작업**. PRD엔 위키 `deprecated` 같은 폐기 표시·검증 제외 장치가 없었음(다른 작업의 무관 PRD는 v1.60.1로 차단됐지만, 같은 PRD 내 stale FR은 미처리였음).
+  - **① 폐기 표시(stale FR 해결)**: prd-template 작성원칙5 — 폐기된 FR은 행 삭제 금지, `~~취소선~~` + 우선순위 셀 `REMOVED (YYYY-MM: 사유)`. **Phase G(G-1)·plan-completion-reviewer·plan-reviewer(항목12) 3개 검증 지점 모두 REMOVED FR을 미충족 대조에서 제외**(거짓 재구현 차단). active FR/NFR만 대조.
+  - **② 누적 큰 경우**: 작성원칙7 — active FR+NFR이 ~40항목/~250줄 초과 시 ⓐ REMOVED를 `## 폐기 이력` 섹션으로 이동(active 표 축소) ⓑ 그래도 크면 기능군별 PRD 분할(docs/prds/ 누적). 폐기 이력 섹션을 템플릿에 추가.
+  - **③ 중복**: 작성원칙6 — FR 추가/갱신 전 기존 FR(active+REMOVED 모두)과 의미 중복 확인, 중복이면 갱신·통합. plan-reviewer 항목12에 중복 FR **MINOR 경고** 추가.
+  - **④ 부활(removed→재추가)**: 작성원칙8 — 같은 ID 복귀 금지, **새 FR ID로 추가**(옛 ID는 REMOVED 유지, 옛 행에 "→ FR-N으로 재도입" 메모). 사용자 승인 필수(PRD 변경). ID 안정성(plan task 역참조 보존) + "언제 죽고 부활했나" 이력 명확.
+  - **변경 파일(4)**: prd-template.md(라이프사이클 전체), implement-task/SKILL.md(Phase G G-1), plan-completion-reviewer.md, plan-reviewer.md(항목12) (+ plugin.json·README 버전).
+  - **검증**: grep으로 REMOVED/폐기 이력/취소선 용어가 4개 파일에서 일관, 3개 검증 지점이 동일 제외 기준 사용 확인. 4가지(폐기·누적·중복·부활) 모두 커버. 빌드 대상 없는 문서 수정.
+  - **설계 결정(사용자 승인)**: 부활=새 ID, REMOVED 표시=표 취소선 유지→쌓이면 이력 섹션 이동.
 - 2026-06-26: 훅 연동 점검·수정 (1.60.2 → 1.60.3). "훅 연동도 PRD와 같은 방식(트리거 충족/미충족 두 경로 + 스킬 문서 기대 ↔ 실제 hook 동작 대조)으로 점검" 요청 — 6개 hook(block-destructive·require-plan-for-write·check-utf8-and-lines·impact-warn·require-evidence·harness-toggle) 점검해 **MAJOR 1 + MINOR 1** 수정.
   - **H1 (MAJOR) require-plan-for-write trivial 기준 ↔ plan-feature 순수 값 치환 불일치(거짓 차단)**: hook은 trivial 통과를 "3줄+300자 이내"로만 판정하는데, plan-feature Trivial Bypass는 "순수 값 치환(색상·치수·간격·폰트 크기 리터럴)은 값이 3개든 10개든·여러 줄이든 trivial"로 명시(커밋 f50bd55). → plan 없는 상태에서 여러 요소 색상/크기를 바꾸는 순수 값 치환(.xaml/.css/.cs, 5~10줄)을 plan-feature는 직접 수정 허용하는데 hook이 3줄 초과로 차단(exit 2) → 거짓 차단("없는데 차단하려다 문제" 패턴). **수정**: require-plan-for-write에 "순수 값 치환 감지" 추가 — old/new에서 hex 색상·숫자(+CSS/XAML 단위)를 제어문자 토큰으로 정규화한 뒤 동일하면 줄 수 무관 통과(@media 신설·flex→grid·calc/var 도입은 정규화 후에도 달라 자동 제외). **합성 테스트 7/7 PASS**(순수값 px·hex 다중줄 통과 / calc·flex→grid·새함수·식별자변경 차단 / 일반 2줄 통과). PS 5.1 호환 위해 `[char]1` 토큰 사용.
   - **H2 (MINOR) plan-feature "git checkout -- 차단" 기대 ↔ block-destructive 실제 불일치**: plan-feature L135가 "git clean/`git checkout --` 등은 block-destructive가 차단하기도 한다"는데, 실제 block-destructive 패턴에 git clean은 있으나(L54) **git checkout은 없음** → `git checkout -- <파일>`은 차단 안 됨. **수정**: 문구를 실제에 맞게 정정(git clean은 차단, git checkout --는 hook이 안 막으니 Claude가 스스로 실행 안 함). git checkout --를 hook에 추가하는 것은 정당한 파일 복원까지 막는 거짓 차단 위험이라 비채택.

@@ -440,7 +440,9 @@ Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 �
 
 > **F-7 결과 재사용 (역할 경계)**: 바로 앞 Phase F-7의 `plan-completion-reviewer`가 PRD가 있으면 이미 FR/NFR 전수 대조를 수행했다(그 reviewer 역할에 포함 — agent 정의 참조). 그 판정(충족/미충족)을 **입력으로 받아** 여기서는 갭 처리(G-2~G-4)에 집중한다 — 동일 대조를 처음부터 반복하지 않는다. 단 reviewer가 turn 부족 등으로 PRD 대조를 미완료했으면(보고에 "incomplete" 표시) 누락 FR만 메인이 보완 대조한다.
 
-PRD의 각 FR/NFR에 대해:
+**REMOVED FR은 제외**: PRD에서 `~~취소선~~`/`REMOVED` 표시된 FR(또는 `## 폐기 이력` 섹션의 항목)은 이미 폐기된(코드에서 제거된) 기능이므로 대조 대상이 아니다 — 미충족이어도 BLOCKER가 아니며, 자율 루프가 이를 다시 구현하려 시도하지 않는다(삭제된 기능을 되살리는 거짓 재구현 차단). **active FR/NFR만** 아래 절차로 대조한다.
+
+active PRD의 각 FR/NFR에 대해:
 1. 해당 요구를 구현한 task와 commit이 존재하는가? (plan.md task의 FR 역참조 + git log)
 2. **검증 방법을 기계 검증 가능 여부로 구분하여 처리한다:**
    - **기계 검증 가능** (테스트·CLI 실행·파일 확인·grep): 실제 실행하고 출력을 근거로 기록.

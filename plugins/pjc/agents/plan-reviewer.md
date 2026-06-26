@@ -183,11 +183,12 @@ plan에 누락이 있으면 자율 루프가 멈추거나 추측으로 진행한
 
 **PRD 식별은 plan.md 상단 `**PRD**:` 줄을 단일 기준으로 한다** (그 줄이 "이 작업의 PRD"를 가리킴 — plan-template 규약, PRD 없으면 줄을 생략). 두 갈래로 처리:
 
-**12-a. `**PRD**:` 줄이 있으면** — 그 PRD를 읽어 대조한다:
-- PRD의 모든 **Must FR**이 plan의 task로 커버되는가? (plan의 `## PRD Coverage` 표 + task의 FR 역참조로 확인)
-- 대응 task 없는 Must FR이 있으면 → **BLOCKER** (plan↔PRD 불일치 상태로 구현에 들어가면 Phase G에서 재구현 발생).
+**12-a. `**PRD**:` 줄이 있으면** — 그 PRD를 읽어 대조한다 (**`~~취소선~~`/`REMOVED` 표시되거나 `## 폐기 이력`에 있는 FR은 제외** — 폐기된 기능이라 커버 의무 없음):
+- PRD의 모든 **active Must FR**이 plan의 task로 커버되는가? (plan의 `## PRD Coverage` 표 + task의 FR 역참조로 확인)
+- 대응 task 없는 active Must FR이 있으면 → **BLOCKER** (plan↔PRD 불일치 상태로 구현에 들어가면 Phase G에서 재구현 발생).
 - Should/Could 누락은 명시적 제외(Out of Scope/plan 명시)면 통과, 암묵적 누락이면 MAJOR.
 - plan에 PRD에 없는 새 기능이 추가됐으면 → 범위 이탈, MAJOR (PRD 갱신 절차를 거쳐야 함).
+- **중복 FR**: PRD에 같은 요구가 다른 ID로 중복 등록돼 있으면 → MINOR (기존 FR 갱신·통합 권장 — 중복은 Phase G 이중 대조·plan task 역참조 분산을 유발).
 
 **12-b. `**PRD**:` 줄이 없는데 `docs/prd.md`(또는 `docs/prds/`)에 PRD 파일이 존재하면** — 자동으로 끌어와 대조하지 **않는다**(레포에 남은 무관한 과거 PRD일 수 있어 거짓 BLOCKER 유발 + 자율 루프 교란). 대신:
 - 이 plan이 대규모 작업(task 다수·신규 앱/제품 — Step 0.5 대상)인데 PRD 연결이 없으면 → **MAJOR**: "PRD 파일이 있는데 plan에 `**PRD**:` 줄이 없다. 이 PRD가 이 작업 대상이면 줄을 추가(Step 0.5), 무관하면 무시"라고 보고(PRD 줄 누락 감지 — Phase G가 조용히 스킵되는 것 방지).
