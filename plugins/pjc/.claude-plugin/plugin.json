@@ -1,6 +1,6 @@
 {
   "name": "pjc",
-  "version": "1.66.4",
+  "version": "1.66.5",
   "description": "Korean-first harness for Claude Code: plan-feature, implement-task, pjc-systematic-debugging, DDD-friendly skills, 2-stage review subagents, PowerShell hooks for Windows.",
   "author": {
     "name": "pjc"
