@@ -15,3 +15,7 @@ desktop.ini
 # Python
 __pycache__/
 *.pyc
+
+# 작업 문서 (로컬 전용 — git 미추적)
+plan.md
+notes.md
