@@ -147,7 +147,7 @@ loop over plan.md tasks (시작 task부터 Tn까지 — 첫 실행은 T1, 재개
 
 # 모든 task 완료 후
 Phase F → 전체 plan 통합 검증 (조건부 진입)
-Phase G → PRD 요구 재검증 (PRD 있을 때만 — 진입조건 상세는 Phase G 절: `**PRD**:` 줄 또는 docs/prd.md·docs/prds/ — 갭 발견 시 task 추가 후 자율 재진입, 최대 2회)
+Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만 — 갭 발견 시 task 추가 후 자율 재진입, 최대 2회)
 → 최종 보고 (첫 사용자 개입 지점)
 ```
 
@@ -432,7 +432,7 @@ F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대�
 
 ## Phase G — 요구 재검증 (PRD 있을 때만)
 
-**진입 조건**: plan.md 상단의 `**PRD**: <경로>` 줄이 있으면 그 경로의 PRD로 진입. 줄이 없어도 `docs/prd.md` 또는 `docs/prds/`에 이 작업의 PRD가 존재하면 진입. 둘 다 없으면 이 Phase는 존재하지 않는다 (Phase F가 최종).
+**진입 조건**: plan.md 상단의 `**PRD**: <경로>` 줄이 있으면 그 경로의 PRD로 진입한다 — 이 줄이 "이 작업의 PRD"를 가리키는 **단일 신호**다(plan-template 규약: PRD 없으면 줄 자체를 생략). **줄이 없으면 이 작업엔 PRD가 없는 것으로 보고 Phase G를 진입하지 않는다**(Phase F가 최종). `docs/prd.md`·`docs/prds/`에 PRD 파일이 있어도 줄이 없으면 진입하지 않는다 — 레포에 남은 무관한(과거·다른 작업의) PRD를 자기 작업 PRD로 오인해 거짓 미충족(전부 BLOCKER)을 보고하고 자율 루프를 교란하는 것을 막기 위함이다. (대규모 작업인데 PRD를 만들고도 줄을 빠뜨린 경우는 plan-reviewer가 plan 단계에서 경고로 잡는다.)
 
 Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 — **"plan.md가 PRD 요구를 빠뜨리지 않았는가"** 를 검증한다.
 

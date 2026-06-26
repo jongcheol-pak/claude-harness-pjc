@@ -18,11 +18,11 @@ disallowedTools: Write, Edit, NotebookEdit
 각 task의 acceptance만 보는 `spec-compliance-reviewer`와 달리,
 이 subagent는 **plan의 Goal · 통합 시나리오 · 회귀 위험**을 본다.
 
-**PRD가 있으면 (docs/prd.md 또는 docs/prds/) 한 단계 더**: plan.md가 PRD의 FR/NFR을 빠뜨리지 않았는지 전수 대조한다 (Phase G의 G-1). PRD 요구 중 매칭되는 task/commit이 없는 항목은 우선순위(Must/Should/Could)와 함께 BLOCKER(Must) / MAJOR(Should) / MINOR(Could)로 보고한다.
+**plan.md 상단에 `**PRD**: <경로>` 줄이 있으면 한 단계 더**: 그 줄이 가리키는 PRD를 읽어, plan.md가 PRD의 FR/NFR을 빠뜨리지 않았는지 전수 대조한다 (Phase G의 G-1). PRD 요구 중 매칭되는 task/commit이 없는 항목은 우선순위(Must/Should/Could)와 함께 BLOCKER(Must) / MAJOR(Should) / MINOR(Could)로 보고한다. **`**PRD**:` 줄이 없으면 PRD 대조를 하지 않는다** — `docs/prd.md`·`docs/prds/`에 PRD 파일이 있어도 줄이 없으면 이 작업과 무관한(과거·다른 작업의) PRD일 수 있으므로 끌어오지 않는다(무관 PRD를 미충족으로 오인한 거짓 BLOCKER 방지).
 
 ## 입력
 - `plan.md` 경로
-- `docs/prd.md` 또는 `docs/prds/<해당 PRD>` (존재 시)
+- PRD 경로 — plan.md 상단 `**PRD**:` 줄이 가리키는 경로 (줄이 없으면 PRD 대조 생략 — docs/ 파일 존재만으로 끌어오지 않음)
 - BASE_SHA (implement-task 시작 전 커밋)
 - HEAD_SHA (마지막 task 완료 후 커밋)
 - AGENTS.md 위치

@@ -15,7 +15,7 @@ plan.md가 코드 작업으로 넘어가도 안전한지를 검증합니다.
 - plan.md 경로 (또는 본문)
 - AGENTS.md 경로
 - 관련 코드베이스 위치
-- PRD 경로 (plan.md 상단 `**PRD**:` 줄, 없으면 `docs/prd.md`·`docs/prds/` 탐색) — 있으면 PRD 커버리지도 검토
+- PRD 경로 (plan.md 상단 `**PRD**:` 줄이 가리키는 경로) — 줄이 있으면 PRD 커버리지(항목 12-a) 검토. 줄은 없는데 `docs/prd.md`가 있으면 자동 대조 대신 "줄 누락" 경고(항목 12-b)
 
 ## 검토 체크리스트
 
@@ -179,13 +179,19 @@ plan에 누락이 있으면 자율 루프가 멈추거나 추측으로 진행한
 
 이는 자율 실행을 위한 안전망이다. 누락 시 implement-task가 중간에 멈출 위험 증가.
 
-### 12. PRD 커버리지 (PRD 있을 때만, BLOCKER 후보)
+### 12. PRD 커버리지 (BLOCKER 후보)
 
-plan.md 상단에 `**PRD**:` 줄이 있으면, 해당 PRD를 읽어 대조한다:
+**PRD 식별은 plan.md 상단 `**PRD**:` 줄을 단일 기준으로 한다** (그 줄이 "이 작업의 PRD"를 가리킴 — plan-template 규약, PRD 없으면 줄을 생략). 두 갈래로 처리:
+
+**12-a. `**PRD**:` 줄이 있으면** — 그 PRD를 읽어 대조한다:
 - PRD의 모든 **Must FR**이 plan의 task로 커버되는가? (plan의 `## PRD Coverage` 표 + task의 FR 역참조로 확인)
 - 대응 task 없는 Must FR이 있으면 → **BLOCKER** (plan↔PRD 불일치 상태로 구현에 들어가면 Phase G에서 재구현 발생).
 - Should/Could 누락은 명시적 제외(Out of Scope/plan 명시)면 통과, 암묵적 누락이면 MAJOR.
 - plan에 PRD에 없는 새 기능이 추가됐으면 → 범위 이탈, MAJOR (PRD 갱신 절차를 거쳐야 함).
+
+**12-b. `**PRD**:` 줄이 없는데 `docs/prd.md`(또는 `docs/prds/`)에 PRD 파일이 존재하면** — 자동으로 끌어와 대조하지 **않는다**(레포에 남은 무관한 과거 PRD일 수 있어 거짓 BLOCKER 유발 + 자율 루프 교란). 대신:
+- 이 plan이 대규모 작업(task 다수·신규 앱/제품 — Step 0.5 대상)인데 PRD 연결이 없으면 → **MAJOR**: "PRD 파일이 있는데 plan에 `**PRD**:` 줄이 없다. 이 PRD가 이 작업 대상이면 줄을 추가(Step 0.5), 무관하면 무시"라고 보고(PRD 줄 누락 감지 — Phase G가 조용히 스킵되는 것 방지).
+- 명백히 무관한 일상 작업(소규모 plan)이면 경고하지 않는다(과잉 방지).
 
 ## 출력 형식
 

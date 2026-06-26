@@ -2,6 +2,16 @@
 
 ## 최근 변경
 
+- 2026-06-26: PRD 식별 기준 불일치 수정 (1.60.0 → 1.60.1). "PRD 있을 때/없을 때 계획·검증 동작" 정밀 점검 중 발견 — 검증 지점들이 PRD 식별 기준을 두 갈래(`**PRD**:` 줄 vs docs 파일 존재)로 써서 오작동.
+  - **경로 C (오작동, 핵심)**: plan.md에 `**PRD**:` 줄이 없는 일상 작업인데 레포에 무관한(과거 다른 작업의) `docs/prd.md`가 남아 있으면, Phase G·plan-completion-reviewer가 그 PRD를 끌어와 "Must FR 전부 미충족 BLOCKER"로 오탐 → 자율 루프가 엉뚱한 task 추가(G-2) 또는 Halt(G-3). `docs/prds/` 누적 시 어느 PRD인지 식별 불가.
+  - **경로 D (누락)**: PRD를 만들고도 `**PRD**:` 줄을 빠뜨리면 plan-reviewer 항목12("PRD 있을 때만")가 침묵 → PRD 커버리지 검토 누락. + 직전 1.60.0 H3가 plan-reviewer 입력에만 fallback을 넣고 항목12 본문은 줄 기준이라 내부 불일치(자가 유발).
+  - **수정 (plan-template 규약대로 `**PRD**:` 줄을 PRD 식별 단일 진실원천으로 통일)**:
+    - implement-task Phase G 진입조건: docs fallback 제거 → 줄 있을 때만 진입(무관 PRD 오탐 차단). 진행 다이어그램도 일치.
+    - plan-completion-reviewer: 진입·입력을 "`**PRD**:` 줄이 가리키는 PRD"로 변경(docs 파일 존재만으로 안 끌어옴).
+    - plan-reviewer 항목12를 12-a(줄 있으면 대조)/12-b(줄 없는데 docs에 PRD 있고 대규모 plan이면 "줄 누락" MAJOR 경고, 소규모면 침묵)로 분리. 입력 줄도 일치.
+  - **결과**: 4경로(A 줄있음 / B 줄없음·docs없음 / C 줄없음·무관docs / D 줄누락) 재시뮬레이션 — 모두 일관·안전. 오작동(C)·누락(D) 해소. plan-feature Step 0.5/7.5는 이미 줄 기준이라 무수정.
+  - **변경 파일(3)**: implement-task/SKILL.md, plan-completion-reviewer.md, plan-reviewer.md (+ plugin.json·README 버전).
+  - **검증**: grep으로 "줄 없어도 docs 진입" fallback 잔존 0 확인. Step 0.5 L164 "`**PRD**:` 줄 = Phase G 진입 신호"와 일관.
 - 2026-06-26: 위키·하네스 흐름 2차 audit 결함 수정 (1.59.0 → 1.60.0). 3개 병렬 시각 에이전트(① 위키 내부 정합 ② 하네스 흐름 정합 ③ 연동·메타·네이밍) + 직접 정독으로 발견한 **MAJOR 2 / MINOR 7** 수정. 메타·옛이름(`systematic-debugging` 잔존 0)·버전·위키↔하네스 연동은 전부 정합 확인(무수정).
   - **W1 (MAJOR) question resolved 삭제↔보존 모순**: `wiki-schema.md` §2.7·§4는 "흡수 후 삭제", `SKILL.md` B-2 3-1·`lint.py`(`status!=resolved` 집계)·schema §7-12는 "보존" 전제 → schema 내부 자기모순. 진실원천 "보존"(3:2, 최신 커밋 16c7588 의도)으로 §2.7·§4를 `status: resolved` 표시·보존으로 정정.
   - **W2 (MINOR) Lint 검사항목 4·8 뒤바뀜**: `SKILL.md` F-1(4=고아/8=모순) ↔ `wiki-schema.md` §7(4=모순/8=고아). SKILL을 schema(규칙 진실원천) 순서로 교환. 번호 역참조 0건이라 안전.
