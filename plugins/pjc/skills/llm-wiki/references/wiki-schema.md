@@ -1,6 +1,6 @@
 ---
 type: schema
-version: "2.15"
+version: "2.16"
 updated: 2026-06-26
 language: ko
 ---
@@ -259,7 +259,7 @@ tags: [question, 관련태그]
 | guide (recipe) | 120줄 | 분리 |
 | question | 40줄 | resolved 시 관련 페이지에 흡수 + `status: resolved` 표시(보존, §2.7) |
 | log.md | 60줄 | 오래된 기록 한 줄 압축 |
-| index.md | 제한 없음 (**1단계(소제목 구역화 — 사람 판단 가이드)**: 기능별 인덱스가 비대해지면(대략 본문 80% ≈ 320줄 또는 기능별 인덱스 160행) 소제목으로 구역을 나눈다. **2단계(파일 분할 — lint 기계 신호)**: **본문(frontmatter 포함 전체) 400줄 초과 또는 기능별 인덱스 200행 초과**면 lint이 INFO로 분할을 제안한다(`INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`). 이때 **vault의 기존 category 기준**(`index-personal.md`/`index-work.md`)으로 파일 분할 — 새 분류를 만들지 말고 이미 확립된 personal/work를 따라야 feature가 어느 sub-index인지 그 프로젝트 category로 자동 결정된다. 분할 시 **`index.md` 상단에 sub-index 파일 목록을 반드시 유지** — 절차 K·검색이 `index.md`만 보고도 분할 파일을 찾을 수 있어야 함. **분할 상태에서는 이 문서의 모든 "`index.md` 기능별 인덱스 갱신/제거/표기" 지시가 해당 category의 sub-index 파일에 적용된다** — 기능별 인덱스 항목의 추가·삭제·폐기 표기는 항상 그 항목이 속한 sub-index에서 수행한다. 단 `## 미해결 질문`처럼 category(personal/work)로 분할되지 않는 섹션은 `index.md` 본체에 그대로 두고 거기서 닫는다. `index.md` 본체는 sub-index 목록 + 이런 비분할 섹션만 최신으로 유지한다.) | - |
+| index.md | 제한 없음 (**1단계(소제목 구역화 — 사람 판단 가이드)**: 기능별 인덱스가 비대해지면(대략 본문 80% ≈ 320줄 또는 기능별 인덱스 160행) 소제목으로 구역을 나눈다. **2단계(파일 분할 — lint 기계 신호)**: **본문(frontmatter 포함 전체) 400줄 초과 또는 기능별 인덱스 200행 초과**면 lint이 INFO로 분할을 제안한다(`INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`). 이때 **vault의 기존 category 기준**(`index-personal.md`/`index-work.md`)으로 파일 분할 — 새 분류를 만들지 말고 이미 확립된 personal/work를 따라야 feature가 어느 sub-index인지 그 프로젝트 category로 자동 결정된다. 분할 시 **`index.md` 상단에 sub-index 파일 목록을 반드시 유지** — 절차 K·검색이 `index.md`만 보고도 분할 파일을 찾을 수 있어야 함. **분할 상태에서는 이 문서의 모든 "`index.md` 기능별 인덱스 갱신/제거/표기" 지시가 해당 category의 sub-index 파일에 적용된다** — 기능별 인덱스 항목의 추가·삭제·폐기 표기는 항상 그 항목이 속한 sub-index에서 수행한다. 단 `## 미해결 질문`처럼 category(personal/work)로 분할되지 않는 섹션은 `index.md` 본체에 그대로 두고 거기서 닫는다. `index.md` 본체는 sub-index 목록 + 이런 비분할 섹션만 최신으로 유지한다. **sub-index 비대 시(3단계 없음)**: 분할된 `index-*.md` 자체가 임계(본문 400줄/기능별 인덱스 200행)를 넘으면 lint이 INFO로 알린다 — personal/work는 종착 분류이므로 추가 파일 분할이 아니라 **소제목 구역화(1단계)로 정리**한다(새 분류를 만들지 않는다는 원칙 유지). 분할된 sub-index는 `## 기능별 인덱스` 섹션을 그대로 보유한다 — lint의 행수 측정·동기화 검사가 이 헤딩을 기준으로 한다.) | - |
 
 - 예산 80% 도달 시 압축 시작
 - 압축 형식: `[YYYY-MM-DD] 한줄요약`
@@ -338,7 +338,7 @@ tags: [question, 관련태그]
 11. **tech_stack 휘발성 버전**: 소스 스텁 "기술 스택" 줄 + project 허브 `tech_stack` frontmatter에 major.minor 이상 버전(`\d+\.\d+`)이 있으면 경고(§2.1·§2.2 — 이름만 기재, 버전 진실원천은 코드). entity/feature 본문 산문은 오탐 위험으로 기계 검사 제외(규칙으로 보완). (lint.py 검사)
 12. **(미검증)·미해결 question 집계**: ⓐ `20_/30_/40_` 콘텐츠 페이지 본문(frontmatter 제외, `90_archive` 제외)의 `(미검증)` 표기 발생 수·파일 수 ⓑ `type: question` ∧ `status != resolved` 파일 수를 **정보(INFO) 등급**으로 집계 리포트(0건이면 생략). `10_sources`는 불변 스텁이라 검증 루프 대상이 아니므로 제외. (lint.py 검사 — §11 사용자 검증 후보 공급)
 13. **잠재 연결 발견 (크로스-프로젝트 미연결 공통점)**: 전 프로젝트 허브의 `tech_stack`·기능 목록·"프로젝트 간 공유 패턴"을 가로질러, 아직 `30_knowledge/` 지식 페이지나 허브 "공유 패턴" 링크로 묶이지 않은 **2개 이상 프로젝트의 공통점**(공유 기술/패턴/접근/함정)을 발굴해 후보로 제안한다. 5번(크로스참조 품질)이 *기존* 지식 페이지의 정합성(tech_stack↔used_by) 점검이라면, 이 항목은 *신규* 연결의 발굴이다. 위키의 명시 목적(크로스-커팅 지식 축적)을 ingest 시점에만 의존하지 않고 주기적으로 회수하는 장치. **보수 정책**: tech_stack 일치·동일 명명 패턴 등 구체적 근거가 있는 공통점만 제안(추측 링크 금지), 기존 지식 페이지·공유 패턴 링크와 중복 제외, `log.md` 이력으로 이미 처리된 후보는 재-제안 금지. **자동 생성 금지** — 후보만 정보(INFO) 등급으로 제시하고, 사용자 승인 시에만 §2.5 concept(2개 실증 충족) 또는 §2.4 entity 생성, 혹은 허브 "프로젝트 간 공유 패턴" 상호링크로 반영. (에이전트 수행 — lint.py 범위 아님)
-14. **index.md 분할 신호**: index.md 본문(frontmatter 포함 전체) 줄 수 또는 기능별 인덱스 표 행 수가 임계(`INDEX_BODY_LINES` 400 / `INDEX_FEAT_ROWS` 200) 초과면 INFO로 §4 2단계(파일) 분할을 제안한다. (lint.py 검사)
+14. **index.md·sub-index 분할 신호**: index.md 본문(frontmatter 포함 전체) 줄 수 또는 기능별 인덱스 표 행 수, **그리고 각 sub-index(`index-*.md`)의 본문 줄 수·기능별 인덱스 행 수**가 임계(`INDEX_BODY_LINES` 400 / `INDEX_FEAT_ROWS` 200) 초과면 INFO로 분할을 제안한다(index.md는 §4 2단계 파일 분할, sub-index는 §4에 따라 소제목 구역화 — 추가 파일 분할 없음). (lint.py 검사)
 15. **sub-index 목록 정합**: vault에 실재하는 sub-index 파일(`index-*.md`)이 `index.md`에 언급(목록 등록)됐는지 — 미등록이면 WARN(절차 K·검색이 분할 인덱스를 빠뜨리지 않게). 역방향(목록엔 있으나 파일 없음)은 깨진 wikilink 검사(1번)가 커버한다. (lint.py 검사)
 16. **기능별 인덱스 한/영 병기**: 기능별 인덱스 행(feature/recipe)의 첫 컬럼(기능명)에 한글(`[가-힣]`)과 영문(`[A-Za-z]`)이 모두 있는지 — 한쪽만이면 WARN. 한글로 등록하든 영문 기술용어로 등록하든 양방향 검색이 한 줄에서 되도록(§3 기능별 인덱스 한/영 병기). (lint.py 검사)
 

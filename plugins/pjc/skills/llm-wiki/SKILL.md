@@ -276,7 +276,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 11. **tech_stack 휘발성 버전**: 소스 스텁 "기술 스택" 줄 + project 허브 `tech_stack` frontmatter에 major.minor 이상 버전(`\d+\.\d+`)이 있으면 경고(이름만 기재 — 버전 진실원천은 코드). lint.py가 기계 검사.
 12. **(미검증)·미해결 question 집계**: `20_/30_/40_` 본문(frontmatter·아카이브 제외)의 `(미검증)` 표기 수와 미해결 question(`status != resolved`) 수를 INFO로 집계(0건 생략, lint.py). 1건 이상이면 보고 시 **사용자 검증 후보로 명시**한다(§11 회수 장치).
 13. **잠재 연결 발견 (크로스-프로젝트 미연결 공통점)**: 전 프로젝트 허브의 `tech_stack`·기능 목록·"프로젝트 간 공유 패턴"을 가로질러, **아직 `30_knowledge/` 지식 페이지나 허브 "공유 패턴" 링크로 안 묶인 2개 이상 프로젝트의 공통점**(공유 기술/패턴/접근/함정)을 발굴해 후보로 제안한다. 5번(크로스참조 누락)이 *기존* 지식 페이지의 정합성 점검이라면, 이 항목은 *신규* 연결의 발굴이다. **보수 정책**: tech_stack 일치·동일 명명 패턴 등 구체적 근거가 있는 공통점만 제안(추측 링크 금지), 기존 지식 페이지·기존 공유 패턴 링크와 중복은 제외, `log.md` 이력으로 이미 처리된 후보는 재-제안 금지. **자동 생성 금지** — 후보만 🔵정보로 제시하고, 사용자 승인 시에만 절차 E(지식 페이지 — 2개 실증 충족 시 concept, 단일 기술이면 entity) 또는 허브 "프로젝트 간 공유 패턴" 상호링크로 반영. (**에이전트 수행 — lint.py 범위 아님**)
-14. **index.md 분할 신호**: index.md 본문(frontmatter 포함 전체) 줄 수 또는 기능별 인덱스 표 행 수가 임계(400줄/200행) 초과면 INFO로 2단계(파일) 분할 제안(`wiki-schema.md` §4 — `INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`). lint.py가 기계 검사.
+14. **index.md·sub-index 분할 신호**: index.md 본문(frontmatter 포함 전체) 줄 수 또는 기능별 인덱스 표 행 수, **그리고 각 sub-index(`index-*.md`) 자체의 본문 줄 수·기능별 인덱스 행 수**가 임계(400줄/200행) 초과면 INFO 제안(index.md는 2단계 파일 분할, sub-index는 추가 파일 분할 대신 소제목 구역화 — `wiki-schema.md` §4 — `INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`). lint.py가 기계 검사.
 15. **sub-index 목록 정합**: vault에 실재하는 sub-index 파일(`index-*.md`)이 `index.md`에 언급(목록 등록)됐는지 — 미등록이면 WARN(절차 K·검색이 분할 인덱스를 빠뜨리지 않게). 역방향(목록엔 있으나 파일 없음)은 깨진 wikilink 검사(1번)가 커버. lint.py가 기계 검사.
 16. **기능별 인덱스 한/영 병기**: 기능별 인덱스 행(feature/recipe)의 첫 컬럼(기능명)에 한글(`[가-힣]`)·영문(`[A-Za-z]`)이 모두 있는지 — 한쪽만 있으면 WARN(한글 등록이든 영문 등록이든 양방향 검색 보장, §3·A-3 1). lint.py가 기계 검사.
 
@@ -425,7 +425,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 | guide (recipe) | 120 |
 | question | 40 |
 | log.md | 60 |
-| index.md | 제한 없음 (본문 400줄 / 기능별 인덱스 200행 초과 시 분할 검토 — lint INFO. 분할 절차 상세는 `wiki-schema.md` §4) |
+| index.md | 제한 없음 (본문 400줄 / 기능별 인덱스 200행 초과 시 분할 검토 — lint INFO. sub-index `index-*.md`도 동일 임계 측정 — 초과 시 소제목 구역화. 분할 절차 상세는 `wiki-schema.md` §4) |
 - 예산 80% 도달 시 오래된 항목을 `[YYYY-MM-DD] 한줄요약`으로 압축. feature/guide는 압축(삭제) 대신 하위 페이지 분리.
 
 ## 체크리스트 (작업 완료 전)

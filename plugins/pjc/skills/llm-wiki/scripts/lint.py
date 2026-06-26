@@ -4,7 +4,7 @@
 사용법: python lint.py "<vault_path>"
 검사: 깨진/경로 없는 wikilink / 예산 초과 / platform·origin·confidence 통제어휘 위반·누락
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
-      / tech_stack 휘발성 버전 / (미검증)·미해결 question 집계(INFO).
+      / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 파일은 수정하지 않는다(읽기 전용).
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (SKILL.md H-2: SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
@@ -210,6 +210,24 @@ def main():
         if idx_lines > INDEX_BODY_LINES or feat_rows > INDEX_FEAT_ROWS:
             infos.append(f"index.md 분할 검토: 본문 {idx_lines}줄(임계 {INDEX_BODY_LINES}), "
                          f"기능별 인덱스 {feat_rows}행(임계 {INDEX_FEAT_ROWS}) (wiki-schema §4 2단계)")
+
+        # sub-index 분할 신호 (§7-14): 각 index-*.md 자체 크기도 측정.
+        # index.md → personal/work 2분할이 종착이라 추가 파일 분할 경로가 없으므로
+        # 초과 시 '소제목 구역화'를 권고한다(wiki-schema §4). 본문 줄수는 헤딩과 무관하게,
+        # 행수는 sub-index가 보유한 '## 기능별 인덱스' 헤딩 기준으로 측정(wiki-schema §4 명문).
+        for sp in sub_files:
+            try:
+                with open(sp, encoding="utf-8") as sfh:
+                    stext = sfh.read()
+            except OSError:
+                continue
+            s_lines = stext.count("\n") + 1
+            s_rows = feature_index_rows(stext)
+            if s_lines > INDEX_BODY_LINES or s_rows > INDEX_FEAT_ROWS:
+                infos.append(
+                    f"{os.path.basename(sp)} 분할 검토: 본문 {s_lines}줄(임계 {INDEX_BODY_LINES}), "
+                    f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — sub-index는 추가 파일 분할 "
+                    f"대신 소제목 구역화로 정리(wiki-schema §4)")
 
         # sub-index 목록 정합: 실재하는 index-*.md가 index.md에 언급(등록)됐는지.
         #  A(실재 파일) − B(index.md 언급) = 미등록 → WARN. 역방향(언급은 있으나 파일 없음)은
