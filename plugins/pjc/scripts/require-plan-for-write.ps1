@@ -102,9 +102,29 @@ if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
                             $newStr -match '(?m)\b(public|private|protected|internal|static)\s+[\w<>\[\],\s]+\s+\w+\s*\(' -or
                             $newStr -match '(?m)\b(def|func|fun|function)\s+\w+\s*\('
 
-        # 작은 변경 (3줄 이내 + 300자 이내) + 새 심볼 정의 아님 → trivial 통과
-        if ($maxLines -le 3 -and $maxLen -le 300 -and -not $definesNewSymbol) {
-            [Console]::Error.WriteLine("[HARNESS] Trivial edit (<=3줄, 새 정의 없음): plan 검사 우회. 영향은 impact-warn hook이 검증합니다.")
+        # 순수 값 치환 감지 (plan-feature Trivial Bypass "순수 값 치환"과 정합):
+        # 색상·치수·간격·폰트 크기 등 리터럴 '값'만 바뀌고 식별자·구조·키워드는 동일하면
+        # 줄 수·글자 수에 무관하게 trivial로 통과한다(plan-feature는 값이 3개든 10개든 trivial로 봄).
+        # old/new에서 hex 색상·숫자(+CSS/XAML 단위)를 토큰으로 정규화한 뒤 동일하면 값만 바뀐 것.
+        # @media 신설·레이아웃 방향(flex→grid)·계산식(calc/var) 도입은 텍스트 구조가 바뀌어
+        # 정규화 후에도 달라지므로 자동 제외된다.
+        $normValue = {
+            param([string]$s)
+            $c = [char]1 + 'C'   # 소스에 안 나타나는 제어문자 기반 토큰 (PS 5.1 호환)
+            $n = [char]1 + 'N'
+            $s = [regex]::Replace($s, '#[0-9a-fA-F]{3,8}\b', $c)            # hex 색상 먼저
+            $s = [regex]::Replace($s, '\b\d+(\.\d+)?(px|rem|em|pt|%|vh|vw|dp|sp|fr|ch|ex|cm|mm|in|deg)?\b', $n)
+            return $s
+        }
+        $normOld = & $normValue $oldStr
+        $normNew = & $normValue $newStr
+        # 값이 실제로 하나라도 정규화됐고(치환 대상 존재) + 정규화 후 동일(구조 동일) + 새 정의 아님
+        $isPureValueSwap = (-not $definesNewSymbol) -and ($normOld -ne $oldStr) -and ($normOld -eq $normNew)
+
+        # 작은 변경(3줄 + 300자, 새 정의 없음) 또는 순수 값 치환 → trivial 통과
+        if (($maxLines -le 3 -and $maxLen -le 300 -and -not $definesNewSymbol) -or $isPureValueSwap) {
+            $why = if ($isPureValueSwap) { '순수 값 치환(리터럴만 변경, 구조 동일)' } else { '<=3줄, 새 정의 없음' }
+            [Console]::Error.WriteLine("[HARNESS] Trivial edit ($why): plan 검사 우회. 영향은 impact-warn hook이 검증합니다.")
             exit 0
         }
     }
