@@ -1,6 +1,6 @@
 ---
 name: add-viewmodel
-description: This skill should be used when the user requests adding a new screen, dialog, page, window, or any UI component that needs a ViewModel in a WinUI 3 / WPF / MAUI project using CommunityToolkit.Mvvm. Triggers on phrases like "ViewModel 추가", "새 화면", "다이얼로그 추가", "페이지 만들기", "add screen/page/dialog/window". Generates ViewModel + View skeleton with proper MVVM bindings and DI registration.
+description: This skill should be used when the user requests adding a new screen, dialog, page, window, or any UI component that needs a ViewModel in a WinUI 3 / WPF / MAUI project using CommunityToolkit.Mvvm. Triggers on phrases like "ViewModel 추가", "새 화면", "다이얼로그 추가", "페이지 만들기", "add screen/page/dialog/window". Generates ViewModel + View skeleton with proper MVVM bindings and DI registration. Do NOT trigger for non-XAML stacks (React/web, ASP.NET WebAPI controllers), simple UI text/label/style tweaks on an existing view, or debugging an existing ViewModel (use pjc-systematic-debugging). Android Jetpack ViewModel is out of scope.
 argument-hint: "<화면 이름 또는 목적>"
 ---
 

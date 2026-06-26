@@ -1,12 +1,13 @@
 ---
 name: llm-wiki
 description: >
-  LLM WIKI(Obsidian vault) 운영·관리 스킬 — vault 경로의 진실원천은 사용자 설정 파일 ~/.claude/llm-wiki-config.json.
-  프로젝트를 위키에 추가/등록·정보 갱신(ingest)·삭제·상태 변경, 특정 기능/가이드/레시피를
-  위키에 추가, 위키 점검(lint)·질문(query) 시 사용한다. "위키에 추가/등록", "{프로젝트} 위키에 등록",
-  "위키 업데이트", "{프로젝트} 변경분 반영", "위키 점검/lint", "{기능} 위키에 추가" 등의 요청에 발동.
+  LLM WIKI(Obsidian vault) 운영·관리 스킬. 프로젝트를 위키에 추가/등록·정보 갱신(ingest)·삭제·상태 변경,
+  특정 기능/가이드/레시피를 위키에 추가, 위키 점검(lint)·질문(query) 시 사용한다.
+  "위키에 추가/등록", "{프로젝트} 위키에 등록", "위키 업데이트", "{프로젝트} 변경분 반영",
+  "위키 점검/lint", "{기능} 위키에 추가" 등의 요청에 발동.
   코드 작업 세션에서 기능 구현·버그 수정 전에 관련 feature/recipe를 read-only로 참조할 때(절차 K)도 사용한다.
   어느 디렉터리에서든(코드 프로젝트 폴더 포함) 호출 가능 — 위키 vault 밖에서도 동작한다.
+  단순 코드 수정·위키와 무관한 일반 지식 질문에는 발동하지 않는다(그건 plan-feature/implement-task 영역).
 ---
 
 # LLM WIKI 운영 스킬
@@ -15,6 +16,13 @@ description: >
 규칙·타입·예산의 진실원천은 **이 스킬 번들** `<skill>/references/wiki-schema.md` 다. vault에는 SCHEMA.md 사본을 두지 않는다(번들만 사용).
 
 > **`<skill>` 경로**: 이 SKILL.md가 위치한 폴더. pjc plugin으로 설치된 경우 `${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki`, 독립 설치된 경우 `~/.claude/skills/llm-wiki`. 본문의 `<skill>/...` 참조는 모두 이 폴더 기준이며, 실제로는 이 SKILL.md와 같은 디렉터리의 `references/`·`scripts/`·`config.json`을 가리킨다.
+
+## 절차 목차
+
+- **0. 시작 절차** — vault 경로 결정 · 빈 위키 초기화 검사 · 규칙 로드 (모든 작업 전 1회)
+- **A. 프로젝트 추가** / **B. 정보 갱신(Ingest)** / **C. 삭제** / **D. 상태 변경**
+- **E. 지식 페이지 관리** / **F. Lint(건강 검진)** / **G. Query(질문)**
+- **H. 지침 자동 갱신** / **I. 가이드·레시피 작성** / **J. 빈 위키 부트스트랩** / **K. 작업 참조(read-only)**
 
 ## 0. 시작 절차 (모든 작업 전 1회 실행)
 

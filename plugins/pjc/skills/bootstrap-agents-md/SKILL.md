@@ -1,6 +1,6 @@
 ---
 name: bootstrap-agents-md
-description: This skill should be used when starting work on a project that has no AGENTS.md file. Triggered automatically by plan-feature when AGENTS.md is missing, or manually with "/pjc:bootstrap-agents-md". Detects project stack from marker files (.csproj, package.json, pyproject.toml, etc.) and generates a minimal AGENTS.md from one of 8 stack templates (plus generic/multi-stack). If stack is unknown, asks the user.
+description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by plan-feature when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from one of 8 stack templates (plus generic/multi-stack). If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md or CLAUDE.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README.
 argument-hint: "(자동)"
 ---
 
@@ -29,10 +29,10 @@ argument-hint: "(자동)"
 
 ### Step 1. 기존 AGENTS.md 확인
 
-```bash
-test -f AGENTS.md || test -f CLAUDE.md
+```powershell
+(Test-Path AGENTS.md) -or (Test-Path CLAUDE.md)
 ```
-있으면 → 즉시 종료, plan-feature로 복귀.
+결과가 True면(둘 중 하나라도 있으면) → 즉시 종료, plan-feature로 복귀.
 
 ### Step 2. 표식 파일 감지
 

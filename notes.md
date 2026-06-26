@@ -2,6 +2,11 @@
 
 ## 최근 변경
 
+- 2026-06-26: skill-creator 가이드 감사 수정안 8개 스킬 적용 (1.62.0 → 1.63.0). `example-skills:skill-creator` 가이드(SKILL 구조·progressive disclosure·description 트리거·작성 패턴/스타일) 기준으로 pjc 8개 스킬을 병렬 감사 → BLOCKER/MAJOR 0, 전부 MINOR. 다듬기 적용(모두 Type A 문서 편집, 코드 로직 변경 없음).
+  - **description(트리거 메타데이터) 개선**: add-domain-service·add-viewmodel에 near-miss(트리거 금지) 추가, bootstrap-agents-md에 자연어 트리거 예시 + near-miss, llm-wiki는 config 경로 구현 디테일 제거(본문 §0-1에 이미 존재)+near-miss, plan-feature는 "무엇을 하는가(plan.md 산출)" 선두 추가 + pjc-systematic-debugging과의 형제 경계 명시, pjc-systematic-debugging은 pjc/DDD 통합 변형 정체성(외부 generic 스킬 대비 우선) 보강, implement-task는 중복 문장("Never asks…") 제거 경량화(자율 시그널 유지).
+  - **정확성·구조**: add-domain-service 본문 ".NET/Kotlin(Android) 양쪽 적용" 주장 → ".NET 기준, 타 스택은 AGENTS.md 우선·개념 참고"로 축소(템플릿·DI·테스트가 전부 .NET 전용이라 불일치). harness-toggle은 `-ExecutionPolicy Bypass` 유지(제한 정책 PC 호환) + 사유 주석(보안 규칙 정합). bootstrap-agents-md Step1 `test -f`(bash) → PowerShell `Test-Path`로 통일(Step2와 일관). implement-task에 halt-conditions.md 인라인 포인터 추가 + 컨텍스트 한계 중복(본문↔ref) 축약. llm-wiki 본문 상단에 절차 목차(TOC) 추가 + wiki-schema §6 작업참조 중복 절차 4줄을 SKILL K 포인터로 축약(version 2.13 → 2.14, §7 lint 정의·규칙 정의는 보존 — lint.py의 §7-N 주석 참조 유지).
+  - **결정(사용자 승인)**: B6 경량 정리 / C3 경량 포인터화 / 구조 강도 보수적(C4 plan-feature 예시 references 분리는 생략 — 이미 적합) / 버전 minor 업 + 릴리즈 / A2 Bypass 유지+주석.
+  - **검증**: 8개 SKILL.md frontmatter `yaml.safe_load` 파싱 OK + name/description 키 존재, near-miss/변별/"무엇" 문구 grep 확인, harness-toggle `status` 1회 실행 정상(Bypass 유지 확인), plugin.json/README 1.63.0. implement-task는 축약 후에도 약 547줄로 500 약간 초과 잔존(보수적 결정 — 가이드상 줄수는 근사치). 8개 description ↔ 각 evals.json 미세 드리프트는 후속 eval 패스 대상(이번 범위 밖).
 - 2026-06-26: 기능별 인덱스 한/영 양방향 검색 강제 (1.62.0 — 위 a~e 수정과 **같은 커밋**). "한글로 등록하면 영문도, 영문으로 등록하면 한글도 검색되게" 요청. (e)에서 한글→영문 병기는 했으나 규칙(A-3 1)이 한 방향만 명시·lint 미강제라 누락이 쌓일 수 있었음.
   - **규칙 양방향화(T1)**: SKILL A-3 1·K-3, wiki-schema §3에 "기능별 인덱스 행 첫 컬럼에 한글·영문 키워드를 모두 병기(한쪽만 금지)" 명문화. wiki-schema 2.12→2.13.
   - **lint 강제(T2)**: lint.py가 기능별 인덱스 행(feature/recipe) 첫 컬럼에 한글(`[가-힣]`)·영문(`[A-Za-z]`) 중 한쪽만 있으면 WARN. **feature_index_rows는 불변**(int 반환), 별도 행 순회로 비파괴 추가. SKILL F-1·wiki-schema §7에 검사항목 16 동시 문서화(H-2 #5).

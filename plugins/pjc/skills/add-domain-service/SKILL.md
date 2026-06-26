@@ -1,6 +1,6 @@
 ---
 name: add-domain-service
-description: This skill should be used when the user requests adding business logic, a domain service, an application service, or any logic that should live in the Domain or Application layer of a DDD project. Triggers on phrases like "서비스 추가", "도메인 로직", "비즈니스 로직", "use case 추가", "add service", "add use case". Generates Domain interface + implementation + DI registration + unit test scaffold.
+description: This skill should be used when the user requests adding business logic, a domain service, an application service, or any logic that should live in the Domain or Application layer of a DDD project. Triggers on phrases like "서비스 추가", "도메인 로직", "비즈니스 로직", "use case 추가", "add service", "add use case". Generates Domain interface + implementation + DI registration + unit test scaffold. Do NOT trigger for logic that belongs inside a single Aggregate (add a method to the Aggregate instead), for pure UI/ViewModel work (use add-viewmodel), or for infrastructure/config-only changes.
 argument-hint: "<서비스 이름 또는 목적>"
 ---
 
@@ -21,7 +21,7 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 이 skill의 **책임 범위**: 인터페이스 정의, 구현 skeleton, DI 등록, 단위 테스트 스캐폴드 + csproj 의존 방향 검증.
 **책임 범위 밖**: 구체 비즈니스 규칙 작성 — implement-task가 담당.
 
-DDD/Clean Architecture를 따르는 프로젝트라면 .NET/Kotlin(Android) 양쪽 모두 적용 가능.
+이 skill은 **.NET 프로젝트를 기준**으로 한다. 다른 스택(Kotlin/Android 등)은 AGENTS.md 컨벤션을 우선하고, 아래 템플릿·검증은 .NET 기준의 개념적 참고로만 사용한다.
 
 ## 사전 조건
 

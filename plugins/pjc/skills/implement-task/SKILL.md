@@ -1,6 +1,6 @@
 ---
 name: implement-task
-description: This skill should be used when executing tasks from an approved plan.md. Triggers on phrases like "구현", "implement", "T<N> 진행", "이대로 진행", "go", "진행해". Runs FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking the user between tasks. Resuming mid-plan ("T6부터 계속") means T6 through the LAST task plus Phase F/G — not just T6. Only stops when all tasks complete or a Halt Condition fires. Never asks "Should I proceed to the next task?" between tasks. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
+description: This skill should be used when executing tasks from an approved plan.md. Triggers on phrases like "구현", "implement", "T<N> 진행", "이대로 진행", "go", "진행해". Runs a FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking between tasks, stopping only when every task completes or a Halt Condition fires. Resuming mid-plan ("T6부터 계속") means T6 through the LAST task plus Phase F/G, not just T6. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
 argument-hint: "<시작 task ID (거기부터 끝까지 자율 진행) | 생략 시 첫 미완료부터>"
 ---
 
@@ -87,6 +87,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 11. **plan에 답이 없는 중대 결정 → 추측 금지, Halt** (예외 안전망). 정상적으로는 계획 단계(Step 6 Decision·6.5 Edge Case·8 Open Questions·9 reviewer)가 모든 중대 결정을 미리 해결하므로 이 상황은 거의 없어야 한다 — 발생하면 **계획 부실의 신호**다. 실행 중 plan·AGENTS.md·코드 어디에도 근거 없는 **중대한** 결정(아키텍처, 비가역적 데이터 형식·API 계약, 동작 의미가 갈리는 분기)을 만나면 추측하지 말고 Halt해 묻는다. **사소한** 결정(변수명·국소 구현 등 쉽게 되돌림)은 follow-up 기록 후 진행(자율성 유지). 애매하면 "틀렸을 때 재작업 비용"으로 가늠 — 크면 Halt, 작으면 follow-up. Halt 시 보고에 "이 결정이 계획에서 누락된 이유"를 한 줄 적어 차후 계획 단계를 강화한다.
 
 > **상세 안티패턴 표는 `references/antipatterns.md` 참조.**
+> **중단 조건 전체 표 + 중단 보고 양식은 `references/halt-conditions.md` 참조 — Halt 여부가 애매하면 먼저 확인.**
 
 ## 자율 루프 (Autonomous Loop)
 
@@ -130,11 +131,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
    - plan.md의 `## Progress Log`에 완료 task 요약 1-2줄 기록.
    - 이후 task는 전체 대화 history 대신 이 요약 + git log 참조.
 
-4. **컨텍스트 한계 근접 시 멈추지 않는다 — 압축을 통과해 계속 진행한다.**
-   - 컨텍스트가 과밀해지면 **현재 task를 Phase V/D까지 완료**하고 (task 중간에 끊지 않음 — 절반 수정 상태는 압축 후 복구가 불완전하다), plan.md에 상태를 완전 기록한다: Progress Log + Next Steps + 다음 task의 정확한 시작점.
-   - 그 후 **사용자 보고 없이 계속 진행** — Claude Code의 auto-compact가 자동 압축한다. 압축은 대화 히스토리만 요약하고 plan.md 파일은 건드리지 않으므로, plan.md에 상태를 완전 기록해두면 압축 후에도 그대로 복구된다.
-   - **압축 감지 시 (대화에 압축 요약이 보이면) 첫 행동은 plan.md + AGENTS.md 재읽기.** 압축 요약은 세부를 잃으므로, plan.md(진실의 원천)와 AGENTS.md(컨벤션)를 다시 읽어 컨텍스트를 복구한 뒤 다음 task를 재개한다. 요약의 기억만으로 작업을 이어가지 않는다.
-   - 사용자 호출(Halt)은 다른 Halt 조건(파괴적 작업, 동일 실패 반복 등)에 해당할 때만. 컨텍스트 한계 자체는 Halt 사유가 아니다.
+4. **컨텍스트 한계 근접 시 멈추지 않는다 — 압축을 통과해 계속 진행한다.** 현재 task를 Phase V/D까지 완료(중간 절단 금지 — 절반 수정 상태는 복구 불완전)하고 plan.md에 상태를 완전 기록(Progress Log + Next Steps + 다음 task 시작점)한 뒤, 사용자 보고 없이 계속 진행한다(auto-compact가 대화 히스토리만 요약, plan.md는 보존). 압축 감지 시 첫 행동은 plan.md + AGENTS.md 재읽기(요약 기억만으로 이어가지 않음). 컨텍스트 한계 자체는 Halt 사유가 아니다(파괴적 작업·동일 실패 반복 등 다른 Halt 조건만 해당). **상세: `references/halt-conditions.md`.**
 
 ### 진행 흐름
 

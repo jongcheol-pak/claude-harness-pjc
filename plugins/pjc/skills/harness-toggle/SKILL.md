@@ -31,6 +31,8 @@ argument-hint: "<hook 이름> <on|off|toggle|status>"
 
 사용자 의도를 파악하고 다음 PowerShell 명령 중 **하나**를 Bash 도구로 실행하세요.
 
+> 참고: 명령의 `-ExecutionPolicy Bypass`는 로컬 미서명 플러그인 스크립트(`harness-toggle.ps1`)를 실행 정책이 제한된 환경(Restricted/AllSigned)에서도 실행하기 위한 최소 설정이다. 이 스크립트는 자격증명·네트워크·프로세스 종료를 다루지 않아 백신 오인 조합(정책 우회 + 숨김 실행 + 평문 자격증명 등)이 아니다.
+
 ### 상태 확인
 사용자 표현: "harness 상태", "hook 상태", "status", "어떤 hook이 켜져 있나"
 
