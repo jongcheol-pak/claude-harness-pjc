@@ -2,6 +2,18 @@
 
 ## 최근 변경
 
+- 2026-06-26: 위키·하네스 흐름 2차 audit 결함 수정 (1.59.0 → 1.60.0). 3개 병렬 시각 에이전트(① 위키 내부 정합 ② 하네스 흐름 정합 ③ 연동·메타·네이밍) + 직접 정독으로 발견한 **MAJOR 2 / MINOR 7** 수정. 메타·옛이름(`systematic-debugging` 잔존 0)·버전·위키↔하네스 연동은 전부 정합 확인(무수정).
+  - **W1 (MAJOR) question resolved 삭제↔보존 모순**: `wiki-schema.md` §2.7·§4는 "흡수 후 삭제", `SKILL.md` B-2 3-1·`lint.py`(`status!=resolved` 집계)·schema §7-12는 "보존" 전제 → schema 내부 자기모순. 진실원천 "보존"(3:2, 최신 커밋 16c7588 의도)으로 §2.7·§4를 `status: resolved` 표시·보존으로 정정.
+  - **W2 (MINOR) Lint 검사항목 4·8 뒤바뀜**: `SKILL.md` F-1(4=고아/8=모순) ↔ `wiki-schema.md` §7(4=모순/8=고아). SKILL을 schema(규칙 진실원천) 순서로 교환. 번호 역참조 0건이라 안전.
+  - **W3 (MINOR) deprecated 필드 미반영**: B-1a가 도입한 `deprecated:`/`status: deprecated`를 schema §2.3·`templates.md`에 옵션 필드로 명세 추가. 폐기 feature 허브 처리를 "`## 폐기된 기능` 구역으로 이동(링크 유지)"으로 명확화 — 허브에서 링크 완전 제거 시 lint 허브 동기화가 "누락"으로 오발하던 빈틈 차단.
+  - **H1 (MAJOR) Type B V-6 자기모순**: `implement-task` V-5 "Type B PASS → V-6 진행 (Sonnet 호출 안 함)"인데 V-6=code-quality(Sonnet)이고 Fast-Path 표·plan-feature·spec-prefilter는 Type B가 V-6 생략 → "V-7(축소)·V-8 진행, V-6 생략"으로 정정 + ESCALATE된 Type B도 V-6 생략 단서 추가.
+  - **H2 (MINOR)** Phase G 진입조건 흐름 다이어그램(L150 "docs/prd.md 있을 때만")을 본문(`**PRD**:`줄·docs/prds/ 포함)과 일치시킴.
+  - **H3 (MINOR)** `plan-reviewer` PRD 탐지에 `docs/prd.md`·`docs/prds/` fallback 추가(implement-task·plan-completion과 대칭 — `**PRD**:`줄 누락 시 게이트 빠짐 방지).
+  - **H4 (MINOR)** `plan-reviewer` Type-aware 표: C/D 적용항목이 동일(D행 무의미)→"Type C/D 포함"으로 통합 + Type B에 항목9(자율준비도)·조건부 10(빈/null·경계값) 추가(plan-feature 통과 체크리스트와 정합).
+  - **H5 (MINOR)** `plan-reviewer` 항목10 Edge 카테고리 8개→`edge-cases.md` 정본 10개(외부 의존 부재·멱등성 추가).
+  - **H6 (MINOR)** Phase G G-1(메인 직접)과 F-7 `plan-completion-reviewer`(PRD cross-check)의 PRD 전수대조 중복 → G-1에 "F-7 결과 재사용, 메인은 갭처리(G-2~G-4) 집중" 역할경계 한 줄 명시.
+  - **변경 파일(6)**: `wiki-schema.md`, `templates.md`, `llm-wiki/SKILL.md`, `implement-task/SKILL.md`, `plan-reviewer.md` (+ `plugin.json`·`README.md` 버전).
+  - **검증**: grep으로 "흡수 후 삭제"·검사항목 번호 역참조·"V-6 진행" 잔존 점검 → 깨진 참조 0. schema §2.7/§4/§7-12 보존 일관, F-1↔§7 번호 일치, Type B V-5↔Fast-Path 일치 재확인. vault 미설정이라 lint.py 실행 불가(lint.py 자체 무수정). 빌드 대상 없는 문서 수정.
 - 2026-06-26: 플러그인 전체 audit 결함 일괄 수정 (1.58.1 → 1.59.0). 7개 병렬 audit 에이전트 + 직접 검증으로 발견한 BLOCKER 3 / MAJOR 8 / MINOR 다수를 모두 수정. **근본 원인**: `systematic-debugging → pjc-systematic-debugging` 이름 변경이 스킬/매니페스트에는 반영됐으나 install/validate/marketplace/템플릿에 누락 + 템플릿 패키징 누락 + 문서 stale.
   - **B1 validate.ps1 (정상 설치에서 항상 FAIL)**: skills 배열 `systematic-debugging`→`pjc-systematic-debugging` + `llm-wiki` 추가(7→8개), hooks 배열에서 삭제된 `backup-on-compact.ps1` 제거(5개), 주석/카운트 갱신. 템플릿 검사 경로를 번들 내(`$pluginRoot\skills\bootstrap-agents-md\templates`)로, 기대 템플릿에 winui3.md·wpf.md 추가. (왜: 두 stale 항목이 존재 검사 FAIL → 건강한 설치도 ❌ 보고.)
   - **B2 bootstrap 템플릿 패키징**: repo 루트 `AGENTS.md.templates/`(번들 소스 `./plugins/pjc` 밖이라 설치 시 미포함)를 `plugins/pjc/skills/bootstrap-agents-md/templates/`로 `git mv`. SKILL.md 206행 문구·install.ps1:262·validate.ps1:184 경로 갱신. (SKILL 93/107행은 이미 `templates/<stack>.md`였어 이동만으로 정합.)

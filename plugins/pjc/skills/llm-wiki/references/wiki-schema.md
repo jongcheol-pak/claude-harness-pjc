@@ -121,6 +121,8 @@ tags: [feature, 기능태그, 프로젝트태그]
 - `## UI·UX`: 화면 구성, 인터랙션, 플랫폼별 UI 고려. 동작(사용법)과 동일한 근거 규칙 적용
 - `## 관련 지식·레시피`: 연결되는 entity/concept/guide 링크
 
+**폐기 표시(옵션 필드)**: 코드에서 제거된 기능은 삭제 대신 옵션 필드 `deprecated: YYYY-MM-DD`(또는 `status: deprecated`)로 보존할 수 있다(SKILL B-1a — 이력 보존용, 절차 K 참조 시 현재 기능과 구분). 폐기 시 페이지 상단에 "⚠️ 코드에서 제거됨" 안내를 적고, **프로젝트 허브에서는 "## 폐기된 기능" 구역으로 옮겨 링크를 유지**한다(허브에서 링크를 완전히 제거하면 Lint 허브 동기화가 누락으로 오인). project 허브도 동일 방식으로 폐기 표시할 수 있다.
+
 ### 2.4 entity (엔티티)
 - **위치**: `30_knowledge/tech/`
 - **역할**: 특정 기술/라이브러리에 대한 크로스 프로젝트 지식
@@ -186,7 +188,7 @@ tags: [guide, recipe, 플랫폼태그]
 - **위치**: `30_knowledge/questions/`
 - **역할**: 미해결 질문, 모순, 탐구 필요 사항
 - **예산**: ~40줄
-- resolved 시 관련 페이지에 내용을 흡수한 뒤 삭제한다.
+- resolved 시 관련 페이지에 내용을 흡수하고 frontmatter를 `status: resolved`로 표시한다. **페이지 자체는 삭제하지 않고 보존한다**(해결 이력도 지식 — 같은 질문 재조사 방지). 이는 SKILL B-2 3-1·Lint §7-12(`status != resolved` 집계)와 일치한다.
 
 ```yaml
 ---
@@ -246,7 +248,7 @@ tags: [question, 관련태그]
 | guide (platform-bootstrap) | 200줄 | 하위 주제 분리 |
 | guide (ui-ux) | 150줄 | 분리 |
 | guide (recipe) | 120줄 | 분리 |
-| question | 40줄 | resolved 시 관련 페이지에 흡수 후 삭제 |
+| question | 40줄 | resolved 시 관련 페이지에 흡수 + `status: resolved` 표시(보존, §2.7) |
 | log.md | 60줄 | 오래된 기록 한 줄 압축 |
 | index.md | 제한 없음 (1단계: 기능별 인덱스 비대화 시 소제목으로 구역 나눔. 2단계: 그래도 거대하면 **vault의 기존 category 기준**(`index-personal.md`/`index-work.md`)으로 파일 분할 — 새 분류를 만들지 말고 이미 확립된 personal/work를 따라야 feature가 어느 sub-index인지 그 프로젝트 category로 자동 결정된다. 분할 시 **`index.md` 상단에 sub-index 파일 목록을 반드시 유지** — 절차 K·검색이 `index.md`만 보고도 분할 파일을 찾을 수 있어야 함. **분할 상태에서는 이 문서의 모든 "`index.md` 기능별 인덱스 갱신/제거/표기" 지시가 해당 category의 sub-index 파일에 적용된다** — 기능별 인덱스 항목의 추가·삭제·폐기 표기는 항상 그 항목이 속한 sub-index에서 수행한다. 단 `## 미해결 질문`처럼 category(personal/work)로 분할되지 않는 섹션은 `index.md` 본체에 그대로 두고 거기서 닫는다. `index.md` 본체는 sub-index 목록 + 이런 비분할 섹션만 최신으로 유지한다.) | - |
 

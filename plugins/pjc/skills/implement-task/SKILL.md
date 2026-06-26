@@ -147,7 +147,7 @@ loop over plan.md tasks (시작 task부터 Tn까지 — 첫 실행은 T1, 재개
 
 # 모든 task 완료 후
 Phase F → 전체 plan 통합 검증 (조건부 진입)
-Phase G → PRD 요구 재검증 (docs/prd.md 있을 때만 — 갭 발견 시 task 추가 후 자율 재진입, 최대 2회)
+Phase G → PRD 요구 재검증 (PRD 있을 때만 — 진입조건 상세는 Phase G 절: `**PRD**:` 줄 또는 docs/prd.md·docs/prds/ — 갭 발견 시 task 추가 후 자율 재진입, 최대 2회)
 → 최종 보고 (첫 사용자 개입 지점)
 ```
 
@@ -287,14 +287,14 @@ reviewer subagent 호출이 **과부하(HTTP 529)로 실패**하면 다음을 �
 Task Type에 따라 다른 흐름:
 
 **Type B**: `spec-prefilter` (Haiku) 먼저 호출.
-- PASS → V-5 완료, V-6 진행 (Sonnet 호출 안 함).
-- ESCALATE → 아래 Type C/D 흐름.
+- PASS → V-5 완료, **V-7(축소)·V-8 진행** (Type B는 V-6 생략 — Sonnet 호출 안 함. Fast-Path 표와 일치).
+- ESCALATE → 아래 Type C/D 흐름 (단 Type B는 OK 후에도 V-6 생략).
 
 **Type C/D 또는 B에서 ESCALATE**: `spec-compliance-reviewer` (Sonnet) 호출.
 - 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA.
 - BLOCKER/MAJOR → Phase I로 복귀, 수정 후 재호출.
 - MINOR → follow-up 등록 후 다음 단계.
-- OK → V-6 진행.
+- OK → V-6 진행 (단 **Type B(ESCALATE된 경우)는 V-6 생략** → V-7로).
 
 ### V-6. Code Quality Review (subagent, Type C/D)
 - `code-quality-reviewer` subagent 호출. 자체 검토 금지.
@@ -437,6 +437,8 @@ F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대�
 Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 — **"plan.md가 PRD 요구를 빠뜨리지 않았는가"** 를 검증한다.
 
 ### G-1. PRD 전수 대조
+
+> **F-7 결과 재사용 (역할 경계)**: 바로 앞 Phase F-7의 `plan-completion-reviewer`가 PRD가 있으면 이미 FR/NFR 전수 대조를 수행했다(그 reviewer 역할에 포함 — agent 정의 참조). 그 판정(충족/미충족)을 **입력으로 받아** 여기서는 갭 처리(G-2~G-4)에 집중한다 — 동일 대조를 처음부터 반복하지 않는다. 단 reviewer가 turn 부족 등으로 PRD 대조를 미완료했으면(보고에 "incomplete" 표시) 누락 FR만 메인이 보완 대조한다.
 
 PRD의 각 FR/NFR에 대해:
 1. 해당 요구를 구현한 task와 commit이 존재하는가? (plan.md task의 FR 역참조 + git log)

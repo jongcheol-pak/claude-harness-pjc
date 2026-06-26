@@ -85,7 +85,7 @@ project: 프로젝트명
 category: personal | work
 feature_name: "기능명"
 platform: windows-desktop | web | mobile | cli | cross
-status: active
+status: active   # 코드에서 제거 시 deprecated: YYYY-MM-DD 추가 (폐기 보존, wiki-schema §2.3)
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
 updated: YYYY-MM-DD
