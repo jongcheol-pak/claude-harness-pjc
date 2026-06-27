@@ -27,6 +27,7 @@
         "mvvm",
         "winui3",
         "wpf",
+        "maui",
         "android",
         "dotnet"
       ],
