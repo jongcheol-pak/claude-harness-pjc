@@ -264,10 +264,12 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 |---|---|---|
 | **A** (Doc/Config) | `.md`, `.json`, `.yml`, `.csproj`, `.editorconfig` 등 코드 외 파일만 | V-8 (빌드 구성 영향 시에만 V-1 추가) |
 | **B** (Trivial Code) | 단일 코드 파일, 단일 메서드/필드, **호출자 변경 없음** (typo, 주석) | V-1 + V-2 + V-5(prefilter) + V-7 + V-8 |
-| **C** (Normal Code) | 단일 또는 2-3개 파일, caller 갱신 있음 | V-1 ~ V-3 + V-5 + V-7 + V-8 |
+| **C** (Normal Code) | 단일 또는 2-3개 파일, caller 갱신 있음 | V-1 ~ V-3 + V-5 + V-7 + V-8 (plan에 `(quality-review)` 플래그 시 V-6 추가) |
 | **D** (Complex/Cross-cutting) | 다중 파일, 인터페이스 변경, 시그니처 변경, 직렬화 변경, DDD/아키텍처 영향 | V-1 ~ V-8 **전체 의무** |
 
 확실하지 않으면 **한 단계 더 무거운 쪽 선택** (안전 우선).
+
+**Type C의 V-6(code-quality) 요청 플래그**: Type C task가 ① 보안·인증 관련 코드, ② 동시성·공유 상태, ③ 새 공개/내부 멤버(public/internal) 추가, ④ 파일 응집도 우려(1500줄 근접) 중 하나라도 해당하면 Type 라인에 `(quality-review)`를 붙여 V-6을 요청한다 (예: `**Type**: C (quality-review)`). 그 외 Type C는 V-6 생략(V-5 단독). Type D는 항상 V-6.
 
 #### 긴 plan 분할 권고 (컨텍스트 관리)
 

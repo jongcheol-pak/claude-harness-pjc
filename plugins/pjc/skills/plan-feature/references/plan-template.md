@@ -102,7 +102,7 @@ plan.md는 **git에 commit되어 영구 보존**된다.
        ❌ "TBD/미정/추후 결정" → 계획 단계에서 확정
        ❌ "그 함수/관련 파일들/해당 부분" → 정확한 파일 경로·심볼명으로 -->
 - [ ] T1. <작업명>
-  - **Type**: A | B | C | D
+  - **Type**: A | B | C | D  (Type C가 품질-민감이면 `C (quality-review)`로 V-6 요청 — 기준은 plan-feature Step 5)
   - **Acceptance**: <검증 가능한 조건>
   - **Files**:
     - 주: `src/Foo.cs`
