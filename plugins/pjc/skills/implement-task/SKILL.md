@@ -230,7 +230,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 | Type | 실행 단계 | 생략 단계 |
 |---|---|---|
 | **A** (Doc/Config) | V-8만 (코드 빌드에 영향 주는 설정이면 V-1 추가) | V-1(대개)~V-7 |
-| **B** (Trivial Code) | V-1 + V-2 + V-5(**prefilter Haiku**) + V-8 (prefilter PASS 시 V-7은 grep 1회로 축소) | V-3, V-6, (V-7 축소) |
+| **B** (Trivial Code) | V-1 + V-2 + V-5(**prefilter Haiku**) + V-7 + V-8 (prefilter PASS 시 V-7은 grep 1회로 축소) | V-3, V-6 |
 | **C** (Normal Code) | V-1 + V-2 + V-3 + V-5(compliance Sonnet) + V-7 + V-8 | V-6 (plan에 `(quality-review)` 없으면 생략) |
 | **D** (Complex/Cross-cutting) | V-1 ~ V-8 **전체** (V-5는 compliance Sonnet) | 생략 없음 |
 
