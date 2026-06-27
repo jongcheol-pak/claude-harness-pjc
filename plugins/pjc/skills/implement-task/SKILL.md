@@ -1,6 +1,6 @@
 ---
 name: implement-task
-description: This skill should be used when executing tasks from an approved plan.md. Triggers on phrases like "구현", "implement", "T<N> 진행", "이대로 진행", "go", "진행해". Runs a FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking between tasks, stopping only when every task completes or a Halt Condition fires. Resuming mid-plan ("T6부터 계속") means T6 through the LAST task plus Phase F/G, not just T6. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
+description: This skill should be used when executing tasks from an approved plan.md. Triggers — ONLY when an approved plan.md already exists (or the user is approving a plan just presented) — on phrases like "구현", "implement", "이대로 진행", "진행해", "계속", "T<N> 진행", "go" (meaning "proceed with the plan"). If NO plan exists yet and the user asks to design or implement a non-trivial change, that is plan-feature first — it writes the plan, this skill runs it. Runs a FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking between tasks, stopping only when every task completes or a Halt Condition fires. Resuming mid-plan ("T6부터 계속") means T6 through the LAST task plus Phase F/G, not just T6. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
 argument-hint: "<시작 task ID (거기부터 끝까지 자율 진행) | 생략 시 첫 미완료부터>"
 ---
 

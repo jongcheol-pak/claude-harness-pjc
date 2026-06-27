@@ -55,6 +55,18 @@
       "query": "이 hook을 React에 추가",
       "should_trigger": false,
       "rationale": "React hook — pjc plugin hook 아님"
+    },
+    {
+      "id": 10,
+      "query": "evidence 검사 꺼",
+      "should_trigger": true,
+      "rationale": "'harness'/'hook' 단어는 없지만 특정 hook 이름(require-evidence)+off — 규칙 (b) hook 이름이 명시적 harness 맥락으로 인정"
+    },
+    {
+      "id": 11,
+      "query": "utf8 검사 꺼",
+      "should_trigger": true,
+      "rationale": "hook 이름(check-utf8)+off — 규칙 (b). harness/hook 단어 없이도 발동"
     }
   ]
 }

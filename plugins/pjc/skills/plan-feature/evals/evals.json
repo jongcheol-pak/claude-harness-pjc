@@ -85,6 +85,18 @@
       "query": "이 코드 리뷰해줘",
       "should_trigger": false,
       "rationale": "리뷰 요청 — 변경 작업 아님"
+    },
+    {
+      "id": 15,
+      "query": "로그인하면 화면이 하얗게 뜨고 안 됨. 고쳐줘",
+      "should_trigger": false,
+      "rationale": "단일 버그 증상 보고 — pjc-systematic-debugging 영역(근본원인 조사 먼저). plan-feature는 다중 파일/시그니처로 커지면 그때 진입"
+    },
+    {
+      "id": 16,
+      "query": "승인된 plan 이대로 구현 진행해",
+      "should_trigger": false,
+      "rationale": "승인된 plan.md 실행 요청 — implement-task 영역. plan-feature는 plan 작성용이지 실행용 아님"
     }
   ]
 }

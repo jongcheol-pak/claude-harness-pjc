@@ -64,16 +64,35 @@ foreach ($name in $trivialFileNames) {
 # Android strings.xml, iOS Localizable.strings, .NET resx 같은 리소스 파일명
 if ($baseName -match '^(strings\.xml|Localizable\.strings|Info\.plist)$') { exit 0 }
 
-# .git, .vs, node_modules, bin, obj 등 시스템 디렉터리 — 허용
-if ($targetPath -match '[\\/](\.git|\.vs|node_modules|bin|obj|dist|build)[\\/]') { exit 0 }
+# ---- 소스 코드 확장자 판정 (디렉터리명 화이트리스트 정밀화에 사용 — T7) ----
+# 폴더명만 보고 우회시키면, 도메인 폴더명이 plans/build/docs/dist와 충돌할 때
+# 실제 소스(예: src/Models/Plans/PlanService.cs, src/build/Builder.cs)가 plan 없이 통과한다.
+# → 아래 '산출물/문서 디렉터리' 우회는 소스 코드 파일에는 적용하지 않는다.
+# (문서·설정·이미지·리소스 확장자는 위 alwaysAllowedExts에서 이미 통과했으므로 여기 안 옴.)
+$sourceCodeExts = @(
+    '.cs', '.vb', '.fs', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go', '.rs',
+    '.java', '.kt', '.kts', '.cpp', '.cxx', '.cc', '.c', '.h', '.hpp', '.m', '.mm', '.swift',
+    '.scala', '.rb', '.php', '.dart', '.lua', '.sql', '.razor', '.vue', '.svelte', '.xaml',
+    '.ps1', '.psm1', '.sh', '.bash'
+)
+$isSourceCode = $sourceCodeExts -contains $ext
 
-# Android 리소스 디렉터리 (res/values, res/drawable 등)
+# .git, .vs, node_modules, bin, obj — 생성/벤더 디렉터리(손으로 쓰는 소스 아님) → 무조건 허용
+if ($targetPath -match '[\\/](\.git|\.vs|node_modules|bin|obj)[\\/]') { exit 0 }
+
+# Android 리소스 디렉터리 (res/values, res/drawable 등) — 무조건 허용
 if ($targetPath -match '[\\/]res[\\/](values|drawable|mipmap|layout|raw|xml|color|font|menu|anim)') { exit 0 }
 
-# 명시적으로 plan/docs 경로는 항상 허용
-if ($targetPath -match '[\\/]docs[\\/]' -or
-    $targetPath -match '[\\/]plans?[\\/]' -or
-    $targetPath -match '[\\/]\.claude[\\/]') {
+# .claude (하니스 설정·도구) — 무조건 허용
+if ($targetPath -match '[\\/]\.claude[\\/]') { exit 0 }
+
+# docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다.
+# (폴더명 부분일치가 도메인 소스 폴더 — 예: src/Plans, src/build — 와 충돌해 소스가
+#  plan 없이 새는 것을 막는다. 소스면 아래 plan 검사로 떨어진다.)
+if (-not $isSourceCode -and (
+        ($targetPath -match '[\\/]docs[\\/]') -or
+        ($targetPath -match '[\\/]plans?[\\/]') -or
+        ($targetPath -match '[\\/](dist|build)[\\/]'))) {
     exit 0
 }
 

@@ -40,6 +40,20 @@ Write-Host ""
 Write-Host "pjc Claude Code Harness - Plugin Installer" -ForegroundColor Cyan
 Write-Host ""
 
+# ---- 0. OS 확인 (안전 hook은 Windows 전용) ----
+# 이 plugin의 자동 안전망 hook은 powershell.exe 기반이라 Windows에서만 동작한다.
+# pwsh로 macOS/Linux에서 이 스크립트를 실행하면 skill은 설치되나 hook 안전망은
+# 작동하지 않으므로(= 위험 명령 차단·plan 강제 등이 빠진 "반쪽" 상태), 경고만 하고
+# 계속 진행한다(skill 전용으로 쓰려는 사용자를 막지 않음 — 하드 중단 X).
+# $IsWindows는 PowerShell Core(pwsh) 자동 변수이며 Windows PowerShell 5.1에는 없다
+# (없으면 = 5.1 = Windows이므로 경고 안 함).
+if ((Test-Path variable:IsWindows) -and (-not $IsWindows)) {
+    Write-Warn "이 plugin의 자동 안전망 hook은 Windows 전용입니다 (powershell.exe 기반)."
+    Write-Warn "현재 OS는 Windows가 아니므로 skill 기능은 동작하나 hook 안전망(위험 명령 차단 등)은 작동하지 않습니다."
+    Write-Warn "skill만 사용할 목적이 아니라면 Windows에서 설치하세요. (계속 진행합니다 — 중단하려면 Ctrl+C)"
+    Write-Host ""
+}
+
 # ---- 1. claude CLI 확인 ----
 Write-Section "Prerequisite Check"
 

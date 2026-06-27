@@ -61,6 +61,12 @@
       "query": "리팩토링 계획 세워줘",
       "should_trigger": false,
       "rationale": "계획 수립 — plan-feature 영역"
+    },
+    {
+      "id": 11,
+      "query": "T6부터 계속",
+      "should_trigger": true,
+      "rationale": "중간 재개 — 승인된 plan.md 존재 전제, T6~마지막+Phase F/G 자율 진행"
     }
   ]
 }

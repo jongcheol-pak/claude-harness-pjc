@@ -1,6 +1,6 @@
 ---
 name: harness-toggle
-description: This skill should be used ONLY when the user explicitly wants to enable, disable, toggle, or check status of pjc harness hooks. Triggers REQUIRE explicit context words "harness" or "hook" combined with on/off/status intent. Examples that SHOULD trigger - "harness 끄기", "harness 켜기", "hook 끄기", "hook 상태", "harness status", "harness 토글", "plan 강제 꺼" (with "강제" indicating hook), "require-plan off", "require-plan on", "evidence 검사 꺼", "utf8 검사 꺼". Examples that should NOT trigger - "이 기능 끄는 코드 만들어줘", "기능 켜기", "버튼 끄기" (those are code changes via plan-feature, not harness toggle). When in doubt, do NOT trigger this skill.
+description: This skill should be used ONLY when the user explicitly wants to enable, disable, toggle, or check status of pjc harness hooks. Triggers REQUIRE on/off/status/toggle intent combined with EITHER (a) the words "harness"/"hook", OR (b) a specific pjc harness hook name — require-plan(-for-write), require-evidence/evidence, check-utf8/utf8, impact-warn, block-destructive — which counts as explicit harness context. Examples that SHOULD trigger - "harness 끄기", "harness 켜기", "hook 끄기", "hook 상태", "harness status", "harness 토글", "plan 강제 꺼" (with "강제" indicating hook), "require-plan off", "require-plan on", "evidence 검사 꺼", "utf8 검사 꺼". Examples that should NOT trigger - "이 기능 끄는 코드 만들어줘", "기능 켜기", "버튼 끄기" (those are code changes via plan-feature, not harness toggle). When in doubt, do NOT trigger this skill.
 argument-hint: "<hook 이름> <on|off|toggle|status>"
 ---
 
