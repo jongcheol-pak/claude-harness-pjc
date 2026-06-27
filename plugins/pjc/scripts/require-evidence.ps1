@@ -56,11 +56,35 @@ if ($firstLine -match '^checkpoint:') {
     [Console]::Error.WriteLine("정말 종료할 거면 사용자에게 현재 상태를 보고하세요.")
 }
 
-# 2. task 커밋이지만 증거 없음
+# 2. task 커밋이지만 검증 '결과' 증거 없음
+# 단어만(Build/Tests/Review)이 아니라 '결과 동반 패턴'을 요구한다(G4) — "Review: 안 함"처럼
+# 단어만 있고 결과가 없는 빈 증거가 통과하지 못하게 한다.
+# 결과 패턴: Build ...OK/성공, Tests N(개수), Review ...OK/spec/quality/통과 중 하나.
 if ($firstLine -match '^T\d+:') {
-    if ($lastMsg -notmatch 'Build|Tests|Review') {
-        [Console]::Error.WriteLine("STOP WARNING: task 커밋에 검증 증거(Build/Tests/Review)가 누락되었습니다.")
-        [Console]::Error.WriteLine("Done = Proof 원칙 위반 가능 - 커밋 메시지를 갱신하거나 사용자에게 보고하세요.")
+    $evidenceRx = '(Build[^\r\n]*\b(OK|pass|passed|성공)\b)|(Tests?\s*[:=]?\s*\d)|(Review[^\r\n]*\b(OK|spec|quality|passed|통과)\b)'
+    if ($lastMsg -notmatch $evidenceRx) {
+        [Console]::Error.WriteLine("STOP WARNING: task 커밋에 검증 '결과' 증거가 없습니다 (예: Build ...OK / Tests N / Review ...OK).")
+        [Console]::Error.WriteLine("Done = Proof 원칙 위반 가능 - 단어만이 아니라 실제 결과를 커밋 메시지에 적거나 사용자에게 보고하세요.")
+    }
+}
+
+# 3. 코드 파일 미커밋 변경 검출 (G6) — 구현 후 commit 누락 가능성 경고 (비차단)
+# 일반 대화·문서(.md)만 변경한 종료에는 안 뜨도록 '코드 확장자' 변경만 본다.
+$codeExts = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift', '.vb', '.razor', '.xaml', '.vue', '.svelte')
+$porcelain = & git status --porcelain 2>$null
+if ($porcelain) {
+    $codeChanges = New-Object System.Collections.Generic.List[string]
+    foreach ($pl in $porcelain) {
+        if ($pl.Length -lt 4) { continue }
+        $p = $pl.Substring(3).Trim().Trim('"')
+        if ($p -match '->') { $p = ($p -split '->')[-1].Trim().Trim('"') }   # rename은 새 경로 기준
+        $e = [System.IO.Path]::GetExtension($p).ToLower()
+        if ($codeExts -contains $e) { [void]$codeChanges.Add($p) }
+    }
+    if ($codeChanges.Count -gt 0) {
+        [Console]::Error.WriteLine("STOP WARNING: 커밋되지 않은 코드 파일 변경이 $($codeChanges.Count)개 있습니다 - 구현 후 commit을 누락했을 수 있습니다.")
+        foreach ($c in ($codeChanges | Select-Object -First 8)) { [Console]::Error.WriteLine("  - $c") }
+        [Console]::Error.WriteLine("구현이 끝났으면 Phase D(commit)를 수행하거나, 의도된 미커밋이면 사용자에게 상태를 보고하세요.")
     }
 }
 
