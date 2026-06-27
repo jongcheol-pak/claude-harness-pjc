@@ -3,12 +3,23 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
             "shell": "powershell",
             "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/warn-external-ops.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
