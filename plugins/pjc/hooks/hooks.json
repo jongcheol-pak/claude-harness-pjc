@@ -1,5 +1,5 @@
 {
-  "description": "pjc harness PowerShell hooks for Windows",
+  "description": "pjc harness hooks (pwsh 7 / Windows PowerShell) — cross-platform; Windows verified, macOS/Linux experimental",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1\"",
+            "shell": "powershell",
+            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -17,7 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/require-plan-for-write.ps1\"",
+            "shell": "powershell",
+            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/require-plan-for-write.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -29,12 +31,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/check-utf8-and-lines.ps1\"",
+            "shell": "powershell",
+            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/check-utf8-and-lines.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 15
           },
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/impact-warn.ps1\"",
+            "shell": "powershell",
+            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/impact-warn.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 20
           }
         ]
@@ -45,7 +49,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/require-evidence.ps1\"",
+            "shell": "powershell",
+            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/require-evidence.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]

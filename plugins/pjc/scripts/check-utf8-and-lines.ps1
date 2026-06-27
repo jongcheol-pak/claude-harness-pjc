@@ -12,7 +12,9 @@ $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # ---- 토글 체크 ----
-$disableFile = Join-Path $HOME ".claude/.disabled/check-utf8-and-lines"
+# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
+$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+$disableFile = Join-Path $base ".claude/.disabled/check-utf8-and-lines"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 $inputJson = [Console]::In.ReadToEnd()

@@ -23,7 +23,9 @@ $ErrorActionPreference = 'Stop'
 # 한글 출력이 cp949 콘솔에서 깨지지 않도록 UTF-8
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
-$disabledDir = Join-Path $HOME '.claude/.disabled'
+# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
+$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+$disabledDir = Join-Path $base '.claude/.disabled'
 New-Item -Force -ItemType Directory -Path $disabledDir | Out-Null
 
 # 토글 가능한 hook 화이트리스트

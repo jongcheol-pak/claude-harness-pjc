@@ -29,6 +29,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
+$homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+
 # 색상 헬퍼
 function Write-Section($t) { Write-Host "`n=== $t ===" -ForegroundColor Cyan }
 function Write-Ok($t)      { Write-Host "  [OK] $t" -ForegroundColor Green }
@@ -40,20 +43,21 @@ Write-Host ""
 Write-Host "pjc Claude Code Harness - Plugin Installer" -ForegroundColor Cyan
 Write-Host ""
 
-# ---- 0. 런타임 확인 (안전 hook은 pwsh 7로 실행) ----
-# hook은 pwsh(PowerShell 7+)로 실행된다(크로스플랫폼). Windows 내장 powershell.exe(5.1)가
-# 아니라 pwsh가 필요하다. pwsh가 없으면 hook이 동작하지 않으므로 설치를 안내한다
-# (하드 중단 X — skill 전용 사용자나 나중 설치를 막지 않음).
-# 참고: macOS/Linux 지원은 구현됐으나 실제 환경 검증 전(실험적)이다.
+# ---- 0. 런타임 확인 (안전 hook은 pwsh 7 우선·없으면 내장 PowerShell 폴백) ----
+# hook은 pwsh(PowerShell 7+)가 있으면 그쪽, 없으면 Windows 내장 powershell.exe(5.1)로 폴백 실행된다.
+# 따라서 Windows는 pwsh 미설치여도 안전망이 동작한다(추가 설치 불요). pwsh 설치 시 그쪽을 우선 쓴다.
+# 비-Windows(macOS/Linux)는 폴백할 5.1이 없어 pwsh가 반드시 필요하다(미검증·실험적).
 $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
+$isWin = ($IsWindows -or -not (Test-Path variable:IsWindows))
 if (-not $pwshCmd) {
-    Write-Warn "안전 hook은 pwsh(PowerShell 7+)로 실행되는데 pwsh를 찾을 수 없습니다."
-    if ($IsWindows -or -not (Test-Path variable:IsWindows)) {
-        Write-Warn "Windows: 'winget install Microsoft.PowerShell' 로 설치 후 Claude Code를 재시작하세요."
+    if ($isWin) {
+        Write-Info "pwsh(PowerShell 7+) 미설치 — 안전 hook은 내장 powershell.exe(5.1)로 폴백 동작합니다(추가 설치 불요)."
+        Write-Info "pwsh 7을 설치하면 어디서나 그쪽을 우선 사용합니다(선택): winget install Microsoft.PowerShell"
     } else {
+        Write-Warn "안전 hook 실행에 pwsh(PowerShell 7+)가 필요한데 찾을 수 없습니다 (비-Windows는 5.1 폴백 불가)."
         Write-Warn "macOS: 'brew install powershell' / Linux: 배포판 패키지로 pwsh 설치 후 재시작 (비-Windows hook은 미검증·실험적)."
+        Write-Warn "pwsh 없이 진행하면 skill은 동작하나 hook 안전망(위험 명령 차단·plan 강제 등)은 작동하지 않습니다. (계속 진행 — 중단하려면 Ctrl+C)"
     }
-    Write-Warn "pwsh 없이 진행하면 skill은 동작하나 hook 안전망(위험 명령 차단·plan 강제 등)은 작동하지 않습니다. (계속 진행 — 중단하려면 Ctrl+C)"
     Write-Host ""
 }
 
@@ -79,7 +83,7 @@ try {
 
 # ---- 2. marketplace 경로 확인 (로컬 모드만) ----
 $marketplacePath = $PSScriptRoot
-$marketplaceManifest = Join-Path $marketplacePath ".claude-plugin\marketplace.json"
+$marketplaceManifest = Join-Path $marketplacePath ".claude-plugin/marketplace.json"
 
 if (-not $GitHub) {
     if (-not (Test-Path -LiteralPath $marketplaceManifest)) {
@@ -115,7 +119,7 @@ if ($Uninstall) {
     Write-Host "Uninstall complete." -ForegroundColor Green
     Write-Host ""
     Write-Info "토글 상태 파일은 남아있습니다. 완전 제거하려면:"
-    Write-Info "  Remove-Item -Recurse `"`$env:USERPROFILE\.claude\.disabled`""
+    Write-Info "  Remove-Item -Recurse `"$homeBase/.claude/.disabled`""
     Write-Host ""
     return
 }
@@ -129,8 +133,8 @@ if ($claudeProc) {
 }
 
 # ---- 5. 기존 설치 자동 감지 + 재설치 (기본 동작) ----
-$cacheDir = Join-Path $env:USERPROFILE ".claude\plugins\cache\pjc-harness"
-$marketplaceCacheDir = Join-Path $env:USERPROFILE ".claude\plugins\marketplaces\pjc-harness"
+$cacheDir = Join-Path $homeBase ".claude/plugins/cache/pjc-harness"
+$marketplaceCacheDir = Join-Path $homeBase ".claude/plugins/marketplaces/pjc-harness"
 
 $existingInstall = (Test-Path -LiteralPath $cacheDir) -or (Test-Path -LiteralPath $marketplaceCacheDir)
 
@@ -281,7 +285,7 @@ if ($policy -in @('Restricted', 'AllSigned')) {
 # ---- 10. AGENTS.md 안내 ----
 Write-Section "Next Steps"
 
-$templatesDir = Join-Path $marketplacePath "plugins\pjc\skills\bootstrap-agents-md\templates"
+$templatesDir = Join-Path $marketplacePath "plugins/pjc/skills/bootstrap-agents-md/templates"
 if (Test-Path $templatesDir) {
     Write-Host "  각 프로젝트의 루트에 AGENTS.md를 배치하세요." -ForegroundColor White
     Write-Host "  자동 생성 (권장):" -ForegroundColor White
@@ -296,7 +300,7 @@ if (Test-Path $templatesDir) {
     Get-ChildItem -Path $templatesDir -Filter "*.md" | ForEach-Object {
         Write-Host "    #   $($_.Name)" -ForegroundColor DarkGray
     }
-    Write-Host "    Copy-Item `"$templatesDir\<stack>.md`" .\AGENTS.md" -ForegroundColor Yellow
+    Write-Host "    Copy-Item `"$templatesDir/<stack>.md`" ./AGENTS.md" -ForegroundColor Yellow
     Write-Host ""
 }
 

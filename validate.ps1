@@ -19,8 +19,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$pluginRoot = Join-Path $env:USERPROFILE ".claude\plugins\cache\pjc-harness\plugins\pjc"
-$marketplaceRoot = Join-Path $env:USERPROFILE ".claude\plugins\marketplaces\pjc-harness"
+# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
+$homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+
+$pluginRoot = Join-Path $homeBase ".claude/plugins/cache/pjc-harness/plugins/pjc"
+$marketplaceRoot = Join-Path $homeBase ".claude/plugins/marketplaces/pjc-harness"
 
 $pass = 0
 $fail = 0
@@ -71,21 +74,21 @@ Write-Host ""
 # 1. Plugin 디렉터리 구조
 Write-Host "1. Plugin 디렉터리 구조" -ForegroundColor Yellow
 Test-Item-Exists $pluginRoot "plugin 루트 디렉터리" | Out-Null
-Test-Item-Exists (Join-Path $pluginRoot ".claude-plugin\plugin.json") "plugin.json" | Out-Null
+Test-Item-Exists (Join-Path $pluginRoot ".claude-plugin/plugin.json") "plugin.json" | Out-Null
 Test-Item-Exists $marketplaceRoot "marketplace 루트 디렉터리" | Out-Null
 Write-Host ""
 
 # 2. JSON 파일 유효성
 Write-Host "2. JSON 파일 유효성" -ForegroundColor Yellow
-Test-Json-Valid (Join-Path $pluginRoot ".claude-plugin\plugin.json") "plugin.json 파싱" | Out-Null
-Test-Json-Valid (Join-Path $pluginRoot "hooks\hooks.json") "hooks.json 파싱" | Out-Null
+Test-Json-Valid (Join-Path $pluginRoot ".claude-plugin/plugin.json") "plugin.json 파싱" | Out-Null
+Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" | Out-Null
 Write-Host ""
 
 # 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
 $skills = @('plan-feature', 'implement-task', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'harness-toggle', 'bootstrap-agents-md', 'llm-wiki')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
-    $skillPath = Join-Path $pluginRoot "skills\$s\SKILL.md"
+    $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"
     Test-Item-Exists $skillPath "skill: $s" | Out-Null
 }
 # 실제 skills/ 에 SKILL.md가 있는데 expected 목록에 없으면 경고 (skill 추가 후 validate 갱신 누락 포착)
@@ -104,7 +107,7 @@ Write-Host ""
 $agents = @('plan-reviewer', 'spec-compliance-reviewer', 'code-quality-reviewer', 'explorer', 'plan-completion-reviewer', 'spec-prefilter')
 Write-Host "4. Agents $($agents.Count)개" -ForegroundColor Yellow
 foreach ($a in $agents) {
-    $agentPath = Join-Path $pluginRoot "agents\$a.md"
+    $agentPath = Join-Path $pluginRoot "agents/$a.md"
     Test-Item-Exists $agentPath "agent: $a" | Out-Null
 }
 $actualAgents = Get-ChildItem -Path (Join-Path $pluginRoot 'agents') -Filter '*.md' -ErrorAction SilentlyContinue |
@@ -122,7 +125,7 @@ $hooks = @('block-destructive.ps1', 'require-plan-for-write.ps1', 'check-utf8-an
 $knownHelpers = @('harness-toggle.ps1')   # hook이 아닌 scripts/ 내 헬퍼 (미등록 탐지에서 제외)
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
-    $hookPath = Join-Path $pluginRoot "scripts\$h"
+    $hookPath = Join-Path $pluginRoot "scripts/$h"
     if (Test-Item-Exists $hookPath "hook: $h") {
         if (-not (Test-Ps1-Bom $hookPath)) {
             Write-Host "         [WARN] BOM 없음 — 한글 인코딩 문제 가능" -ForegroundColor DarkYellow
@@ -143,7 +146,7 @@ Write-Host ""
 
 # 6. Harness toggle 헬퍼
 Write-Host "6. Harness toggle 헬퍼" -ForegroundColor Yellow
-$togglePath = Join-Path $pluginRoot "scripts\harness-toggle.ps1"
+$togglePath = Join-Path $pluginRoot "scripts/harness-toggle.ps1"
 if (Test-Item-Exists $togglePath "harness-toggle.ps1") {
     if (-not (Test-Ps1-Bom $togglePath)) {
         Write-Host "         [WARN] BOM 없음" -ForegroundColor DarkYellow
@@ -154,7 +157,7 @@ Write-Host ""
 
 # 7. 토글 메커니즘 (hook 토글)
 Write-Host "7. 토글 메커니즘" -ForegroundColor Yellow
-$disabledDir = Join-Path $env:USERPROFILE ".claude\.disabled"
+$disabledDir = Join-Path $homeBase ".claude/.disabled"
 if (Test-Path -LiteralPath $disabledDir) {
     $disabled = Get-ChildItem -LiteralPath $disabledDir -ErrorAction SilentlyContinue
     if ($disabled.Count -gt 0) {
@@ -172,7 +175,7 @@ Write-Host ""
 
 # 7-1. Plugin Enabled 상태 검증 (Claude Code 인식 여부)
 Write-Host "7-1. Plugin Enabled 상태" -ForegroundColor Yellow
-$userSettings = Join-Path $env:USERPROFILE ".claude\settings.json"
+$userSettings = Join-Path $homeBase ".claude/settings.json"
 $enableStatus = "unknown"
 if (Test-Path -LiteralPath $userSettings) {
     try {
@@ -209,7 +212,7 @@ Write-Host ""
 
 # 8. bootstrap-agents-md templates 디렉터리 (번들 내)
 Write-Host "8. bootstrap-agents-md templates 디렉터리" -ForegroundColor Yellow
-$templatesDir = Join-Path $pluginRoot "skills\bootstrap-agents-md\templates"
+$templatesDir = Join-Path $pluginRoot "skills/bootstrap-agents-md/templates"
 if (Test-Path -LiteralPath $templatesDir) {
     Write-Host "  [OK]   templates 디렉터리" -ForegroundColor Green
     $script:pass++

@@ -11,7 +11,9 @@ $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # ---- 토글 체크 (harness-toggle skill로 on/off) ----
-$disableFile = Join-Path $HOME ".claude/.disabled/require-plan-for-write"
+# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
+$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+$disableFile = Join-Path $base ".claude/.disabled/require-plan-for-write"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # stdin JSON 읽기
@@ -193,8 +195,8 @@ function Test-PlanInDirectory {
     # 다음 중 하나라도 있으면 plan 있음으로 간주
     return (Test-Path -LiteralPath (Join-Path $Dir 'plan.md') -PathType Leaf) -or
            (Test-Path -LiteralPath (Join-Path $Dir 'PLAN.md') -PathType Leaf) -or
-           (Test-Path -LiteralPath (Join-Path $Dir 'docs\plan.md') -PathType Leaf) -or
-           (Test-Path -LiteralPath (Join-Path $Dir 'docs\plans') -PathType Container)
+           (Test-Path -LiteralPath (Join-Path $Dir 'docs/plan.md') -PathType Leaf) -or
+           (Test-Path -LiteralPath (Join-Path $Dir 'docs/plans') -PathType Container)
 }
 
 function Find-PlanUpwards {
@@ -244,7 +246,7 @@ foreach ($s in $searchStarts) {
     [Console]::Error.WriteLine("  - $s")
 }
 [Console]::Error.WriteLine("찾는 위치 (각 시작점에서 부모로 최대 8단계):")
-[Console]::Error.WriteLine("  - plan.md, PLAN.md, docs\plan.md, docs\plans\")
+[Console]::Error.WriteLine("  - plan.md, PLAN.md, docs/plan.md, docs/plans/")
 [Console]::Error.WriteLine("위 위치 어디에도 plan이 없습니다.")
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("해결 방법:")
@@ -256,6 +258,6 @@ foreach ($s in $searchStarts) {
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("  3) plan.md 위치 확인:")
 [Console]::Error.WriteLine("     루트의 plan.md 파일 위치와 검색 시작점이 다른 경로일 수 있습니다.")
-[Console]::Error.WriteLine("     모노레포라면 작업 디렉터리 위쪽에 plan.md 또는 docs\plans\ 가 있어야 합니다.")
+[Console]::Error.WriteLine("     모노레포라면 작업 디렉터리 위쪽에 plan.md 또는 docs/plans/ 가 있어야 합니다.")
 
 exit 2

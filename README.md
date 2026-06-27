@@ -4,10 +4,10 @@
 
 # claude-harness-pjc (자율 루프)
 
-> Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 기반)
-> <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7로 실행 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
+> Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
+> <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.70.0
+**버전**: 1.70.1
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -370,16 +370,16 @@ pjc는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 | 구성 | OS 의존 | 설명 |
 |---|---|---|
 | **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 |
-| **Hooks** (위험 명령 차단·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 필요** | `pwsh`(PowerShell 7+)로 실행되는 `.ps1` — Windows/macOS/Linux 공통 |
+| **Hooks** (위험 명령 차단·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 우선·5.1 폴백** | Windows는 pwsh 7 있으면 `pwsh`, 없으면 내장 `powershell.exe`(5.1)로 자동 폴백; macOS/Linux는 `pwsh` 7 |
 
 | 항목 | 지원 |
 |---|---|
 | OS | **Windows 10/11**: 완전 지원·검증. **macOS/Linux**: pwsh 7 설치 시 동작하도록 구현됐으나 **실제 환경 미검증(실험적)** |
-| 런타임 | **pwsh 7 (PowerShell Core) 필요** — hook 실행용. Windows 내장 `powershell.exe`(5.1)로는 동작하지 않으므로 `winget install Microsoft.PowerShell`로 설치 |
+| 런타임 | **Windows**: 추가 설치 불요 — pwsh 7 있으면 사용, 없으면 내장 `powershell.exe`(5.1)로 자동 폴백. **macOS/Linux**: pwsh 7 필요(`brew install powershell` 등). pwsh 7 설치 시 어디서나 그쪽 우선 |
 | Claude Code | v2.0 이상 |
 | 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 전용 템플릿으로 자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 generic 템플릿으로 빌드/테스트 명령만 입력하면 동일하게 작동 |
 
-> **요약**: 자동 안전망(hook)은 **pwsh 7(PowerShell Core)** 로 실행되어 OS에 무관하게 동작하도록 구현됐습니다. **Windows는 검증 완료**, **macOS/Linux는 실험적(미검증)** 입니다. pwsh 7이 없으면 hook이 안 도므로 `winget install Microsoft.PowerShell`(Windows) 등으로 설치하세요. (이전 버전은 Windows 내장 `powershell.exe` 5.1을 썼으나, 크로스플랫폼을 위해 pwsh 7로 전환했습니다.)
+> **요약**: 자동 안전망(hook)은 OS에 무관하게 동작하도록 구현됐습니다. **Windows는 검증 완료** — pwsh 7이 있으면 그쪽을, 없으면 내장 `powershell.exe`(5.1)로 자동 폴백하므로 **추가 설치 없이 안전망이 항상 동작**합니다(pwsh 7 설치 시 우선 사용). **macOS/Linux는 pwsh 7 필요·실험적(미검증)** 입니다(`brew install powershell` 등). (v1.70.0은 pwsh 7 전용이었으나, pwsh 미설치 Windows에서 안전망이 빠지는 문제로 내장 5.1 폴백을 추가했습니다.)
 
 ---
 
