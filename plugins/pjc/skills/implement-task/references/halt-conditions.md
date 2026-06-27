@@ -11,9 +11,10 @@
 | 계획 결함 | plan.md에 없는 결정 분기 발견 |
 | 계획 결함 | plan.md의 가정이 실측과 불일치 |
 | 계획 결함 | acceptance가 검증 불가능함이 드러남 |
-| **계획 결함** | **Phase P-3에서 plan.md Files에 없는 호출자/구현체 발견 (수정 범위 큰 경우)** |
+| **계획 결함** | **Phase P-3에서 plan.md Files에 없는 호출자/구현체 발견 — plan에 없던 공개 시그니처 변경이 새로 필요하거나 여러 모듈(대략 5개 파일 이상)로 번지는 경우** (단순 내부 caller 갱신은 자율 처리) |
 | 루프 실패 | 동일 task에서 checkpoint 복구 2회 |
-| 루프 실패 | Review subagent가 동일 이슈를 3회 연속 지적 |
+| 루프 실패 | Review subagent가 동일 이슈(BLOCKER/MAJOR, RECURRING 태그 포함)를 3회 연속 지적 |
+| 루프 실패 | 같은 task의 리뷰 지적(BLOCKER/MAJOR) 수정 사이클이 누적 5회 (매번 다른 지적이어도 — 무한 수정 루프 방지) |
 | 루프 실패 | 빌드/테스트 5회 연속 실패, 원인 미상 |
 | 범위 초과 | 변경이 plan.md에 없는 모듈로 번짐 |
 | 파괴적 작업 | force push, history rewrite, 데이터·파일·대량 삭제(DB DROP/TRUNCATE·WHERE 없는 DELETE/UPDATE·스키마 삭제·migration reset, 파일/디렉터리 삭제, plan에 없는 대량 코드 삭제), 권한·보안 설정 변경 |

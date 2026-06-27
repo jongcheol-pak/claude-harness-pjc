@@ -85,7 +85,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
     - 새 라이브러리·외부 서비스 도입
     - **기존 외부 서비스로의 비가역 부작용 호출**: 운영 API 쓰기·이메일/알림/SMS 발송·결제·외부 상태 변경 등. 신규 도입이 아니어도 검증·실행 중 이런 비가역 부작용 호출은 사용자 승인 전 금지(테스트는 mock·스테이징). plan에 명시·승인됐으면 진행 가능.
 
-11. **plan에 답이 없는 중대 결정 → 추측 금지, Halt** (예외 안전망). 정상적으로는 계획 단계(Step 6 Decision·6.5 Edge Case·8 Open Questions·9 reviewer)가 모든 중대 결정을 미리 해결하므로 이 상황은 거의 없어야 한다 — 발생하면 **계획 부실의 신호**다. 실행 중 plan·AGENTS.md·코드 어디에도 근거 없는 **중대한** 결정(아키텍처, 비가역적 데이터 형식·API 계약, 동작 의미가 갈리는 분기)을 만나면 추측하지 말고 Halt해 묻는다. **사소한** 결정(변수명·국소 구현 등 쉽게 되돌림)은 follow-up 기록 후 진행(자율성 유지). 애매하면 "틀렸을 때 재작업 비용"으로 가늠 — 크면 Halt, 작으면 follow-up. Halt 시 보고에 "이 결정이 계획에서 누락된 이유"를 한 줄 적어 차후 계획 단계를 강화한다.
+11. **plan에 답이 없는 중대 결정 → 추측 금지, Halt** (예외 안전망). 정상적으로는 계획 단계(Step 6 Decision·6.5 Edge Case·8 Open Questions·9 reviewer)가 모든 중대 결정을 미리 해결하므로 이 상황은 거의 없어야 한다 — 발생하면 **계획 부실의 신호**다. 실행 중 plan·AGENTS.md·코드 어디에도 근거 없는 **중대한** 결정(아키텍처, 비가역적 데이터 형식·API 계약, 동작 의미가 갈리는 분기)을 만나면 추측하지 말고 Halt해 묻는다. **사소한** 결정(변수명·국소 구현 등 쉽게 되돌림)은 follow-up 기록 후 진행(자율성 유지). 애매하면 **보수적으로** 본다 — 안전·수정 범위·공개 API 계약·비가역성에 닿는 결정은 Halt해 승인받고(글로벌 "애매하면 승인 필요로 본다"와 정합), 순수 국소·가역 결정(변수명 등)만 follow-up 후 진행한다. Halt 시 보고에 "이 결정이 계획에서 누락된 이유"를 한 줄 적어 차후 계획 단계를 강화한다.
 
 12. **외부/비가역 작업 → 자율 루프 권한 밖, 별도 명시 승인.** push·main 병합·태그·GitHub 릴리즈·PR 생성은 자율 루프가 자동 수행하지 않는다. 루프 권한은 로컬 작업 브랜치(`task/<id>-<slug>`) commit까지다. 이 작업들은 'plan 승인'·'구현 진행' 승인에 **포함되지 않으며**, 각각 그 행위를 이름으로 적어 별도 승인받는다. 애매하면 승인 필요로 본다.
 
@@ -164,6 +164,8 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 4. 지정된 task(또는 첫 미완료 task)부터 Phase P 시작
 5. 이전 task 상세는 Progress Log + git으로만 참조 (전체 history 불필요)
 
+**세 신호(Progress Log·git log·체크박스)가 어긋나면 git log를 신뢰한다.** git log는 매 task commit(`T<N>: ...`)으로 항상 최신이고, Progress Log는 2 task마다, 체크박스는 갱신 누락 가능성이 있다. 또 지정 task의 선행(`Depends on`) task가 git log에 안 보이면 그 선행부터 다시 확인한 뒤 진행한다.
+
 **재개도 완전 자율 루프다.** "T6부터 계속"은 "T6 하나만"이 아니라 **"T6부터 마지막 task까지 + Phase F/G까지"를 의미한다.** 첫 세션의 T1 시작과 재개 세션의 T6 시작은 시작점만 다를 뿐 동일한 루프이며, 금지 표현 규칙("T7 진행할까요?" 금지)도 동일하게 적용된다. task 사이에 멈춰 사용자에게 묻는 것은 재개 세션에서도 위반이다. 단일 task만 실행하는 경우는 사용자가 "T6만" 처럼 명시적으로 한정했을 때뿐이다.
 
 **분할 plan 호출**: plan이 2개로 분할된 경우(plan-feature "긴 plan 분할" — `docs/plans/...-part1.md`/`-part2.md`), 각 part는 **plan 경로를 명시해 호출**한다(예: "`docs/plans/<날짜>-<slug>-part2.md` 구현"). `docs/plans` 복수 파일은 자동 plan 해소가 모호하므로 경로를 지정한다. 각 분할 plan은 자기 안에서 T1부터 시작하며(분할은 각 plan을 독립 실행), part1 완료 최종 보고가 part2 경로를 안내한다.
@@ -179,7 +181,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 - 변경 대상 심볼에 대해 `grep -rn "\b<symbol>\b"` 실행.
 - 결과를 모두 Read로 확인.
 - task의 Files 목록과 대조 → 누락된 caller 발견 시 **자율 처리가 기본**: plan.md의 해당 task Files에 누락 caller를 추가하고 함께 수정한다 (멈추지 않음). caller 갱신은 절대 규칙 3(Cross-File Consistency)의 정상 작업이다.
-  - **예외 (Halt)**: 누락 caller가 plan 범위를 크게 벗어나거나(예: 수십 개 파일 연쇄), 파괴적 변경·새 의존성을 유발하는 경우에만 Halt. 단순 caller 추가는 Halt 사유가 아니다.
+  - **예외 (Halt → 재승인)**: ① 누락 caller가 여러 모듈로 연쇄(대략 5개 파일 이상)해 plan 범위를 크게 벗어나거나, ② plan에 없던 **공개(public) 멤버 시그니처 변경**이 새로 필요해지거나(공개 API 계약 변경은 plan 승인 범위 밖 — 글로벌 "공개 멤버 시그니처 변경 승인 필요"와 정합), ③ 파괴적 변경·새 의존성을 유발하는 경우에는 Halt해 재승인받는다. plan이 이미 의도한 변경의 **단순 caller 갱신(시그니처 동일·내부 호출부 수정)**은 Cross-File Consistency의 정상 작업이라 Halt 아님.
 
 ### P-4. 외부 식별자 확인 (환각 방지)
 - 호출할 외부 API/메서드/타입의 정의 위치를 직접 확인.
@@ -301,6 +303,7 @@ Task Type에 따라 다른 흐름:
 - **둘 중 하나라도 BLOCKER/MAJOR → Phase I로 복귀, 수정 후 (수행된) 리뷰를 다시 병렬 재실행.** 둘 다 OK/MINOR일 때만 다음 단계 (MINOR → follow-up 등록). **follow-up 등록은 최종 통과 run 기준** — 중간 run에서 본 MINOR는 최종 run에서 재평가하며(수정으로 위치가 바뀔 수 있음), 중간 결과로 중복 등록하지 않는다.
 - 두 리뷰는 항상 **최종 diff에 전체 수행** — 어느 것도 생략·약화하지 않는다 (단 아래 529 인프라 장애 fallback은 예외이며, 그 경우 약화 사실을 반드시 명시한다). 실패 경로에서 V-6이 재실행되는 토큰 비용은 품질 우선으로 감수한다.
 - **529 과부하는 각 reviewer에 독립 적용** — 병렬 중 한쪽만 529면 그 reviewer만 "Reviewer 과부하(529) 대응" fallback을 따른다 (다른 쪽 결과 유지).
+- **reviewer가 "incomplete"(turn 예산 소진 등으로 acceptance 일부만 검토)로 응답하면 통과(OK)로 보지 않는다** — 미검토 항목을 메인이 diff에서 직접 대조(해당 acceptance가 충족되는 위치 지목)하거나 reviewer를 재호출해 나머지를 마저 검토한 뒤에야 다음 단계로 간다. incomplete를 조용히 OK 처리하고 다음 task로 넘어가는 것은 금지. (Phase G의 incomplete 처리 원칙을 per-task V-5/V-6에도 동일 적용 — Type B ESCALATE의 spec-compliance-reviewer 호출 포함 모든 reviewer 응답에 적용.)
 
 ### V-6. Code Quality Review (subagent, Type D 항상 · Type C는 `(quality-review)` 플래그 시) — V-5와 병렬 수행
 - `code-quality-reviewer` subagent 호출 (위 V-5에서 **병렬로 함께 호출**). 자체 검토 금지.
@@ -349,7 +352,8 @@ plan에 Step 2.5의 **시각 요소 분해 표가 있을 때만** 수행한다 (
 > 핵심: "디자인과 동일하게"는 화면 전체를 요소 단위로 대조하고 렌더로 확인해야 하는 작업이다. 일부만 보고 "맞겠지"로 끝내면 사용자가 볼 때만 어긋남이 드러난다.
 
 ### 재시도 한계
-- 같은 task에서 동일 BLOCKER 3회 연속 → Halt.
+- 같은 task에서 **동일 BLOCKER/MAJOR 3회 연속** → Halt (reviewer가 RECURRING으로 태그한 반복 지적도 이 카운터에 포함).
+- 같은 task에서 **리뷰 지적(BLOCKER/MAJOR) 수정 사이클이 누적 5회** → Halt. 매 사이클 지적이 서로 달라 '동일 3회'에 안 걸려도, 5번 고치고도 새 결함이 계속 나오면 구현이 근본적으로 틀린 신호다(매번 다른 BLOCKER로 도는 무한 수정 루프 방지).
 - 상세 복구 절차는 `references/recovery.md` 참조.
 
 ## Phase D — Done
@@ -368,6 +372,8 @@ Self-honesty: PASS
 Elapsed: <Hm Ms> | Turn ~<N>
 "
 ```
+
+**plan.md 체크박스 갱신 (매 task, 필수)**: 이 task의 본체 체크박스를 `[ ]`/`[/]` → `[x]`로 바꾼다. 이는 재개 시 미완료 task 식별의 1차 신호이므로 **task 완료마다 즉시** 갱신한다(Progress Log는 2 task마다지만 체크박스는 매 task). 이 단계를 빠뜨리면 재개('재개 진입')에서 체크박스가 전부 `[ ]`로 남아 git log·Progress Log와 어긋난다. 글로벌 CLAUDE.md에도 동일 규칙이 있으나, 이 스킬은 그에 의존하지 않고 자체적으로 강제한다.
 
 진행 보고 (각 task 1줄, 사용자 확인 요청 금지):
 ```

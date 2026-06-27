@@ -15,7 +15,8 @@ git reset --hard <checkpoint hash>
 ## 한계
 
 - 동일 task에서 **2회 복구 발생 시 Halt** (자동 중단 → 사용자 보고).
-- 같은 BLOCKER가 **3회 연속 지적** → Halt.
+- 같은 BLOCKER/MAJOR가 **3회 연속 지적** → Halt (reviewer의 RECURRING 태그도 이 카운터에 포함).
+- 같은 task에서 **리뷰 지적(BLOCKER/MAJOR) 수정 사이클이 누적 5회** → Halt. 매 사이클 지적이 서로 달라 '동일 3회'에 안 걸려도, 5번 고치고도 새 결함이 계속 나오면 구현 방향이 근본적으로 틀린 신호다(무한 수정 루프 방지).
 - 빌드/테스트 **5회 연속 실패**, 원인 미상 → Halt.
 
 ## checkpoint 구조
