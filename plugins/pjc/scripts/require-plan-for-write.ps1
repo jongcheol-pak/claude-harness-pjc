@@ -11,7 +11,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # ---- 토글 체크 (harness-toggle skill로 on/off) ----
-$disableFile = Join-Path $env:USERPROFILE ".claude\.disabled\require-plan-for-write"
+$disableFile = Join-Path $HOME ".claude/.disabled/require-plan-for-write"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # stdin JSON 읽기

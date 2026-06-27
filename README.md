@@ -4,10 +4,10 @@
 
 # claude-harness-pjc (자율 루프)
 
-> Windows + PowerShell 환경에서 Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
-> <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 Windows 전용 — [호환 환경](#호환-환경) 참고)
+> Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 기반)
+> <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7로 실행 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.69.2
+**버전**: 1.70.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -370,16 +370,16 @@ pjc는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 | 구성 | OS 의존 | 설명 |
 |---|---|---|
 | **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 |
-| **Hooks** (위험 명령 차단·민감정보 경고·plan 강제 등 자동 안전망) | **Windows 전용** | `powershell.exe`로 실행되는 `.ps1` |
+| **Hooks** (위험 명령 차단·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 필요** | `pwsh`(PowerShell 7+)로 실행되는 `.ps1` — Windows/macOS/Linux 공통 |
 
 | 항목 | 지원 |
 |---|---|
-| OS | **Windows 10/11** (완전한 기능). macOS/Linux는 skill만 동작하고 **hook 안전망은 작동하지 않음** |
-| Shell | PowerShell 5.1 / 7+ (hook 실행용) |
+| OS | **Windows 10/11**: 완전 지원·검증. **macOS/Linux**: pwsh 7 설치 시 동작하도록 구현됐으나 **실제 환경 미검증(실험적)** |
+| 런타임 | **pwsh 7 (PowerShell Core) 필요** — hook 실행용. Windows 내장 `powershell.exe`(5.1)로는 동작하지 않으므로 `winget install Microsoft.PowerShell`로 설치 |
 | Claude Code | v2.0 이상 |
 | 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 전용 템플릿으로 자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 generic 템플릿으로 빌드/테스트 명령만 입력하면 동일하게 작동 |
 
-> **요약**: 위험 명령 차단 같은 자동 안전망(hook)이 핵심 가치이며 이는 Windows 전용입니다. macOS/Linux에서도 계획·검증 같은 skill 기능은 쓸 수 있으나, 안전망이 빠진 "반쪽" 상태가 됩니다. Git Bash·WSL은 PowerShell hook 경로 문제로 미지원입니다.
+> **요약**: 자동 안전망(hook)은 **pwsh 7(PowerShell Core)** 로 실행되어 OS에 무관하게 동작하도록 구현됐습니다. **Windows는 검증 완료**, **macOS/Linux는 실험적(미검증)** 입니다. pwsh 7이 없으면 hook이 안 도므로 `winget install Microsoft.PowerShell`(Windows) 등으로 설치하세요. (이전 버전은 Windows 내장 `powershell.exe` 5.1을 썼으나, 크로스플랫폼을 위해 pwsh 7로 전환했습니다.)
 
 ---
 

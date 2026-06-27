@@ -40,17 +40,20 @@ Write-Host ""
 Write-Host "pjc Claude Code Harness - Plugin Installer" -ForegroundColor Cyan
 Write-Host ""
 
-# ---- 0. OS 확인 (안전 hook은 Windows 전용) ----
-# 이 plugin의 자동 안전망 hook은 powershell.exe 기반이라 Windows에서만 동작한다.
-# pwsh로 macOS/Linux에서 이 스크립트를 실행하면 skill은 설치되나 hook 안전망은
-# 작동하지 않으므로(= 위험 명령 차단·plan 강제 등이 빠진 "반쪽" 상태), 경고만 하고
-# 계속 진행한다(skill 전용으로 쓰려는 사용자를 막지 않음 — 하드 중단 X).
-# $IsWindows는 PowerShell Core(pwsh) 자동 변수이며 Windows PowerShell 5.1에는 없다
-# (없으면 = 5.1 = Windows이므로 경고 안 함).
-if ((Test-Path variable:IsWindows) -and (-not $IsWindows)) {
-    Write-Warn "이 plugin의 자동 안전망 hook은 Windows 전용입니다 (powershell.exe 기반)."
-    Write-Warn "현재 OS는 Windows가 아니므로 skill 기능은 동작하나 hook 안전망(위험 명령 차단 등)은 작동하지 않습니다."
-    Write-Warn "skill만 사용할 목적이 아니라면 Windows에서 설치하세요. (계속 진행합니다 — 중단하려면 Ctrl+C)"
+# ---- 0. 런타임 확인 (안전 hook은 pwsh 7로 실행) ----
+# hook은 pwsh(PowerShell 7+)로 실행된다(크로스플랫폼). Windows 내장 powershell.exe(5.1)가
+# 아니라 pwsh가 필요하다. pwsh가 없으면 hook이 동작하지 않으므로 설치를 안내한다
+# (하드 중단 X — skill 전용 사용자나 나중 설치를 막지 않음).
+# 참고: macOS/Linux 지원은 구현됐으나 실제 환경 검증 전(실험적)이다.
+$pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
+if (-not $pwshCmd) {
+    Write-Warn "안전 hook은 pwsh(PowerShell 7+)로 실행되는데 pwsh를 찾을 수 없습니다."
+    if ($IsWindows -or -not (Test-Path variable:IsWindows)) {
+        Write-Warn "Windows: 'winget install Microsoft.PowerShell' 로 설치 후 Claude Code를 재시작하세요."
+    } else {
+        Write-Warn "macOS: 'brew install powershell' / Linux: 배포판 패키지로 pwsh 설치 후 재시작 (비-Windows hook은 미검증·실험적)."
+    }
+    Write-Warn "pwsh 없이 진행하면 skill은 동작하나 hook 안전망(위험 명령 차단·plan 강제 등)은 작동하지 않습니다. (계속 진행 — 중단하려면 Ctrl+C)"
     Write-Host ""
 }
 

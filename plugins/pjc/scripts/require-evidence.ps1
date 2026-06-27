@@ -19,7 +19,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # ---- 토글 체크 ----
-$disableFile = Join-Path $env:USERPROFILE ".claude\.disabled\require-evidence"
+$disableFile = Join-Path $HOME ".claude/.disabled/require-evidence"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # stdin JSON에서 cwd 추출 (Claude Code가 hook을 어디서 실행하든 프로젝트 루트로 이동)

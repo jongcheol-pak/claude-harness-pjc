@@ -39,7 +39,7 @@ argument-hint: "<hook 이름> <on|off|toggle|status>"
 사용자 표현: "harness 상태", "hook 상태", "status", "어떤 hook이 켜져 있나"
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}\scripts\harness-toggle.ps1" "" status
+pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" "" status
 ```
 
 ### 개별 hook 비활성화
@@ -54,19 +54,19 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}\s
 
 명령:
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}\scripts\harness-toggle.ps1" <hook이름> off
+pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" <hook이름> off
 ```
 
 ### 개별 hook 활성화
 "plan 강제 켜" / "require-plan on" 등:
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}\scripts\harness-toggle.ps1" <hook이름> on
+pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" <hook이름> on
 ```
 
 ### 토글
 "plan 강제 토글":
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}\scripts\harness-toggle.ps1" <hook이름> toggle
+pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" <hook이름> toggle
 ```
 
 ## 사용자에게 알릴 사항

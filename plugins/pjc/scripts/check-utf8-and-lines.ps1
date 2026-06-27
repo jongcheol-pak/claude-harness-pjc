@@ -12,7 +12,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # ---- 토글 체크 ----
-$disableFile = Join-Path $env:USERPROFILE ".claude\.disabled\check-utf8-and-lines"
+$disableFile = Join-Path $HOME ".claude/.disabled/check-utf8-and-lines"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 $inputJson = [Console]::In.ReadToEnd()

@@ -11,7 +11,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # ---- 토글 체크 ----
-$disableFile = Join-Path $env:USERPROFILE ".claude\.disabled\impact-warn"
+$disableFile = Join-Path $HOME ".claude/.disabled/impact-warn"
 if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # stdin JSON 읽기
