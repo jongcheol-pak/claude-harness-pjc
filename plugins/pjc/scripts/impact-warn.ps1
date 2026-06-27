@@ -38,7 +38,10 @@ if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
 }
 
 # 코드 파일만 검사
-$codeExts = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')
+# .vb는 전용 VB regex로 심볼 추출. .xaml/.razor/.sql은 추출 패턴이 없어 심볼 0이지만
+# 코드 심볼의 'caller 검색 대상'으로 포함된다(예: C# 메서드가 .xaml 이벤트·.razor·.sql에서 참조되는지 검출).
+# .vue/.svelte는 전용 패턴은 없으나 기존 TS export 패턴이 <script> 블록의 export 심볼을 추출할 수 있다.
+$codeExts = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift', '.vb', '.xaml', '.razor', '.vue', '.svelte', '.sql')
 $ext = [System.IO.Path]::GetExtension($file).ToLower()
 if ($codeExts -notcontains $ext) { exit 0 }
 
@@ -71,7 +74,9 @@ foreach ($line in $diffLines) {
         # Go: 대문자 시작 함수
         '^\+\s*func\s+(?:\([^)]*\)\s+)?(?<sym>[A-Z][a-zA-Z0-9_]*)\s*\(',
         # Rust: pub fn/struct/enum
-        '^\+\s*pub\s+(?:fn|struct|enum|trait)\s+(?<sym>[a-zA-Z_][a-zA-Z0-9_]*)'
+        '^\+\s*pub\s+(?:fn|struct|enum|trait)\s+(?<sym>[a-zA-Z_][a-zA-Z0-9_]*)',
+        # VB.NET: Public/Friend/Protected Sub/Function/Class/Property 등 (C# 자매 언어)
+        '^\+\s*(?:Public|Friend|Protected(?:\s+Friend)?)\s+(?:Shared\s+|Overrides\s+|Overridable\s+|MustOverride\s+|NotOverridable\s+|ReadOnly\s+|WriteOnly\s+)*(?:Sub|Function|Class|Property|Interface|Structure|Enum|Module)\s+(?<sym>[A-Z][a-zA-Z0-9_]*)'
     )
 
     foreach ($pattern in $patterns) {
