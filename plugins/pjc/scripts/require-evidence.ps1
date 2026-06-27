@@ -1,6 +1,16 @@
 ﻿# Stop hook - PowerShell 버전
 # 에이전트가 작업 종료를 시도할 때 실행.
-# 마지막 커밋에 검증 증거가 없으면 stderr 경고 (강제 차단 X).
+# 마지막 커밋에 검증 증거가 없으면 stderr 경고 (강제 차단 X — 의도된 비차단).
+#
+# [설계: 왜 비차단(exit 0 + stderr)인가 — 공식 Stop hook 시맨틱 확인 결과]
+#   Stop hook 피드백 경로는 셋: exit 2(=종료 차단 + stderr를 모델에 전달) /
+#   stdout JSON additionalContext(=종료 안 막고 '대화 계속' → 모델에 컨텍스트 주입) /
+#   exit 0 + stderr(=비차단, 사용자 transcript용, 모델엔 미전달).
+#   이 hook은 implement-task 종료뿐 아니라 '모든' 종료 시도(일반 대화·질문 답변 후 포함)에
+#   발동하므로, 차단(exit 2)이나 대화-계속(additionalContext)으로 바꾸면 무관한 종료까지
+#   막거나 루프를 유발한다. 따라서 의도적으로 exit 0 + stderr 소프트 리마인더로 둔다
+#   (사용자가 transcript에서 보고 판단; 모델 강제는 안 함). 이 동작을 차단으로 바꾸지 말 것.
+#
 # 토글: harness-toggle 로 비활성 가능.
 
 $ErrorActionPreference = 'SilentlyContinue'
