@@ -234,7 +234,37 @@ foreach ($start in $searchStarts) {
     if ($found) { $foundIn = $found; break }
 }
 
-if ($foundIn) { exit 0 }
+if ($foundIn) {
+    # ---- 완료된 plan 비차단 경고 (G4) ----
+    # plan은 존재하지만 task 체크박스가 전부 [x](미완료 [ ]/[/] 0개)면, 이번 코드 변경이
+    # '완료된 옛 plan'에 기대고 있을 수 있다 → plan-feature로 새 계획 작성 권유 (차단 아님).
+    # 단일 plan 파일(plan.md/PLAN.md/docs/plan.md)만 판정한다. docs/plans 디렉터리(복수 plan)는
+    # 어느 것이 이번 작업인지 모호하므로 경고하지 않는다(오탐 방지).
+    $planFile = $null
+    foreach ($cand in @('plan.md', 'PLAN.md', 'docs/plan.md')) {
+        $pf = Join-Path $foundIn $cand
+        if (Test-Path -LiteralPath $pf -PathType Leaf) { $planFile = $pf; break }
+    }
+    if ($planFile) {
+        try {
+            $planText = Get-Content -LiteralPath $planFile -Raw -Encoding UTF8
+            # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] (줄 시작의 '- [ ]' 형태만)
+            $incomplete = [regex]::Matches($planText, '(?m)^\s*-\s*\[[ /]\]').Count
+            $done = [regex]::Matches($planText, '(?m)^\s*-\s*\[[xX]\]').Count
+            if ($incomplete -eq 0 -and $done -ge 1) {
+                $warnMsg = "[HARNESS] 이 plan은 완료된 것으로 보입니다 (task 체크박스 ${done}개 전부 [x], 미완료 0). " +
+                           "이번 코드 변경이 새 작업이면 plan-feature로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다."
+                [Console]::Error.WriteLine($warnMsg)
+                # PreToolUse additionalContext로 모델에 전달 (exit 0 비차단)
+                $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
+                [Console]::Out.WriteLine($payload)
+            }
+        } catch {
+            # plan 읽기 실패는 무시 (통과 자체는 유지)
+        }
+    }
+    exit 0
+}
 
 # ---- 차단 ----
 [Console]::Error.WriteLine("[HARNESS] BLOCKED: 코드 변경 전에 plan이 필요합니다.")
