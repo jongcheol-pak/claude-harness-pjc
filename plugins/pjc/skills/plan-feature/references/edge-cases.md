@@ -57,10 +57,13 @@
 
 ```markdown
 - T2 Halt Forecast:
-  - "DB 마이그레이션 정책?" → Decisions D3에서 결정 (Auto-migration on startup)
-  - "Unicode 정렬 규칙?" → Edge Cases에서 명시 (ICU 기반)
-  - "외부 서비스 mock?" → Verification Strategy에서 정의 (WireMock 사용)
+  - (i) "DB 마이그레이션 정책?" → Decisions D3에서 결정 (Auto-migration on startup)
+  - (i) "Unicode 정렬 규칙?" → Edge Cases에서 명시 (ICU 기반)
+  - (i) "외부 서비스 mock?" → Verification Strategy에서 정의 (WireMock 사용)
+  - (ii) "운영 DB 스키마 변경?" → 불가피한 Halt 명시 (파괴적 — 승인 전 자동 진행 금지)
 ```
+
+각 항목은 (i) 사전 해소(자율 루프가 그 지점에서 멈추지 않도록 plan에 결정을 박아 둠) 또는 (ii) 불가피한 Halt 명시(파괴적·새 의존성·외부 인증·승인 필수처럼 자동 진행이 금지된 항목 — 사전결정으로 우회해 자동 실행으로 바꾸지 않음) 중 하나로 적는다.
 
 ## 6.5-C. 자율 실행 준비도 자문
 
@@ -71,3 +74,5 @@
 3. 다른 사람이 추가 질문 없이 이 task를 끝낼 수 있는가?
 
 하나라도 "아니오"면 Step 6 (Decision Points) 또는 Step 4 (Impact Analysis)로 복귀.
+
+단, (ii) 불가피한 Halt(파괴적·새 의존성·외부 인증·승인 필수 등)가 명시된 task는 그 Halt 지점에서 승인을 위해 멈추는 것이 정상이며, 질문 3의 "추가 질문"이나 "준비도 미달"에 해당하지 않는다 (자율 루프는 그 외 전 구간을 멈춤 없이 진행하고, 불가피한 Halt에서만 공시 후 멈춘다).
