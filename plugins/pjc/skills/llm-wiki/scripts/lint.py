@@ -5,6 +5,7 @@
 검사: 깨진/경로 없는 wikilink / 예산 초과 / platform·origin·confidence 통제어휘 위반·누락
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
+      / log 아카이브 인덱스 정합
       / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 파일은 수정하지 않는다(읽기 전용).
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
@@ -28,7 +29,8 @@ ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
-SPECIAL_BUDGET = {"log.md": 60}
+# log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, wiki-schema §4·§8)
+SPECIAL_BUDGET = {"log.md": 6000}
 # 신선도·고아·타입 검사에서 제외하는 인프라 타입 (위키 본문 페이지가 아님)
 INFRA_TYPES = {"index", "log", "dashboard", "schema"}
 # 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
@@ -131,16 +133,20 @@ def main():
             elif t not in existing:  # 루트 파일(index 등)로도 해석되지 않으면 위반
                 warns.append(f"경로 없는 wikilink(명시적 경로 필수): {r} -> [[{t}]]")
 
-        # 예산
-        budget = None
+        # 예산 — log.md는 문자 수(len), 그 외 타입은 줄 수
         if r in SPECIAL_BUDGET:
-            budget = SPECIAL_BUDGET[r]
-        elif typ == "guide":
-            budget = GUIDE_BUDGET.get(fm.get("guide_kind", ""), 200)
-        elif typ in BUDGET:
-            budget = BUDGET[typ]
-        if budget and lines > budget:
-            warns.append(f"예산 초과: {r} {lines}/{budget}줄 (type={typ})")
+            chars = len(text)
+            if chars > SPECIAL_BUDGET[r]:
+                warns.append(f"예산 초과: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
+                             f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)")
+        else:
+            budget = None
+            if typ == "guide":
+                budget = GUIDE_BUDGET.get(fm.get("guide_kind", ""), 200)
+            elif typ in BUDGET:
+                budget = BUDGET[typ]
+            if budget and lines > budget:
+                warns.append(f"예산 초과: {r} {lines}/{budget}줄 (type={typ})")
 
         # platform 통제어휘
         plat = fm.get("platform")
@@ -284,6 +290,24 @@ def main():
             has_h, has_l = bool(han.search(name)), bool(lat.search(name))
             if has_h != has_l:
                 warns.append(f"한/영 병기 누락: '{name}' ({'한글만' if has_h else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
+
+    # log 아카이브 인덱스 정합 (wiki-schema §7-19): log.md '## 아카이브 인덱스'에 등록된
+    #  {YYYY-MM}.md ↔ 실재 90_archive/log/{YYYY-MM}.md 양방향 대조. sub-index 정합(위)과 유사하나
+    #  양방향 — 아카이브 인덱스 항목은 wikilink가 아니라, 역방향(파일 있으나 미등록)이 깨진링크
+    #  검사로 안 잡히므로 양쪽 다 WARN(검색 누락·깨진 참조 방지).
+    if "log.md" in pages:
+        log_text = pages["log.md"][2]
+        sec = re.search(r"^##\s*아카이브 인덱스\b.*?(?=^##\s|\Z)", log_text, re.M | re.S)
+        indexed = set(re.findall(r"(\d{4}-\d{2})\.md", sec.group(0))) if sec else set()
+        archived = set()
+        for p in md:
+            am = re.fullmatch(r"90_archive/log/(\d{4}-\d{2})\.md", rel(p))
+            if am:
+                archived.add(am.group(1))
+        for ym in sorted(archived - indexed):
+            warns.append(f"log 아카이브 미등록: 90_archive/log/{ym}.md가 log.md '## 아카이브 인덱스'에 없음(검색 누락 위험)")
+        for ym in sorted(indexed - archived):
+            warns.append(f"log 아카이브 인덱스 깨짐: log.md가 {ym}.md를 가리키나 90_archive/log/{ym}.md 없음")
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     for r, (fm, typ, text) in pages.items():
