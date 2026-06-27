@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.71.0
+**버전**: 1.72.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -372,7 +372,7 @@ pjc는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 | 구성 | OS 의존 | 설명 |
 |---|---|---|
 | **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 |
-| **Hooks** (위험 명령 차단·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 우선·5.1 폴백** | Windows는 pwsh 7 있으면 `pwsh`, 없으면 내장 `powershell.exe`(5.1)로 자동 폴백; macOS/Linux는 `pwsh` 7 |
+| **Hooks** (위험 명령 차단·권한/보안 변경 차단·외부 작업(push·릴리즈) 경고·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 우선·5.1 폴백** | Windows는 pwsh 7 있으면 `pwsh`, 없으면 내장 `powershell.exe`(5.1)로 자동 폴백; macOS/Linux는 `pwsh` 7 |
 
 | 항목 | 지원 |
 |---|---|
