@@ -1,6 +1,6 @@
 ---
 name: bootstrap-agents-md
-description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by plan-feature when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from one of 8 stack templates (plus generic/multi-stack). If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md or CLAUDE.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README.
+description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by plan-feature when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from one of 9 stack templates (plus generic/multi-stack). If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md or CLAUDE.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README.
 argument-hint: "(자동)"
 ---
 
@@ -42,7 +42,8 @@ argument-hint: "(자동)"
 |---|---|---|
 | `*.csproj`에 `<UseWinUI>true</UseWinUI>` 포함 | WinUI 3 | `winui3.md` |
 | `*.csproj`에 `<UseWPF>true</UseWPF>` 포함 (WinUI 아님) | WPF | `wpf.md` |
-| `*.csproj`, `*.sln`, `*.fsproj` (WinUI/WPF 아님) | .NET | `dotnet.md` |
+| `*.csproj`에 `<UseMaui>true</UseMaui>` 포함 (WinUI/WPF 아님) | MAUI | `maui.md` |
+| `*.csproj`, `*.sln`, `*.fsproj` (WinUI/WPF/MAUI 아님) | .NET | `dotnet.md` |
 | `build.gradle*`, `settings.gradle*`, `AndroidManifest.xml` | Android | `android.md` |
 | `package.json` + `tsconfig.json` 또는 `*.ts` 파일 | Node/TypeScript | `node-typescript.md` |
 | `package.json` (TS 없음) | Node/JavaScript | `node-typescript.md` (라벨만 변경) |
@@ -50,7 +51,7 @@ argument-hint: "(자동)"
 | `go.mod` | Go | `go.md` |
 | `Cargo.toml` | Rust | `rust.md` |
 
-**.NET UI 프레임워크 우선 판정**: `.csproj`가 있으면 그 안의 UI 플래그를 먼저 확인한다. `<UseWinUI>true</UseWinUI>`면 `winui3.md`, `<UseWPF>true</UseWPF>`(WinUI 아님)면 `wpf.md`, 둘 다 없으면 `dotnet.md`. WinUI 3가 WPF보다 우선(WinUI 프로젝트도 드물게 UseWPF가 보일 수 있음).
+**.NET UI 프레임워크 우선 판정**: `.csproj`가 있으면 그 안의 UI 플래그를 먼저 확인한다. `<UseWinUI>true</UseWinUI>`면 `winui3.md`, `<UseWPF>true</UseWPF>`(WinUI 아님)면 `wpf.md`, `<UseMaui>true</UseMaui>`(WinUI/WPF 아님)면 `maui.md`, 셋 다 없으면 `dotnet.md`. WinUI 3가 WPF보다 우선(WinUI 프로젝트도 드물게 UseWPF가 보일 수 있음).
 
 검색 명령 (PowerShell):
 ```powershell
@@ -78,10 +79,13 @@ if ($detected -contains 'dotnet') {
                      Get-Content -Raw -ErrorAction SilentlyContinue
     $isWinUI = $csprojContent | Select-String -Pattern '<UseWinUI>\s*true\s*</UseWinUI>' -Quiet
     $isWPF   = $csprojContent | Select-String -Pattern '<UseWPF>\s*true\s*</UseWPF>' -Quiet
+    $isMaui  = $csprojContent | Select-String -Pattern '<UseMaui>\s*true\s*</UseMaui>' -Quiet
     if ($isWinUI) {
         $detected = ($detected | Where-Object { $_ -ne 'dotnet' }) + 'winui3'
     } elseif ($isWPF) {
         $detected = ($detected | Where-Object { $_ -ne 'dotnet' }) + 'wpf'
+    } elseif ($isMaui) {
+        $detected = ($detected | Where-Object { $_ -ne 'dotnet' }) + 'maui'
     }
 }
 ```
@@ -206,7 +210,8 @@ D 선택 시 `multi-stack-example.md`를 참고하여 3개 섹션 모두 작성.
 이 스킬 번들의 `templates/` 디렉터리 (`${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-agents-md/templates/`):
 - `winui3.md` — WinUI 3 (Windows App SDK). 프로젝트 생성/실행 실패 방지 규칙 + Gallery 디자인 + 다국어 규칙 포함
 - `wpf.md` — WPF + WPF-UI(Fluent). 패키지 설치·App.xaml 병합·FluentWindow·테마 규칙 포함
-- `dotnet.md` — 일반 .NET (WinUI/WPF 아님)
+- `maui.md` — .NET MAUI (멀티플랫폼). ContentPage·Shell·CommunityToolkit.Mvvm/Maui·MauiProgram DI 규칙 포함
+- `dotnet.md` — 일반 .NET (WinUI/WPF/MAUI 아님)
 - `android.md`
 - `node-typescript.md`
 - `python.md`

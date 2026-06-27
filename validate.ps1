@@ -186,7 +186,7 @@ if (Test-Path -LiteralPath $templatesDir) {
     Write-Host "  [OK]   templates 디렉터리" -ForegroundColor Green
     $script:pass++
 
-    $expectedTemplates = @('winui3.md', 'wpf.md', 'dotnet.md', 'android.md', 'node-typescript.md', 'python.md', 'go.md', 'rust.md', 'generic.md')
+    $expectedTemplates = @('winui3.md', 'wpf.md', 'maui.md', 'dotnet.md', 'android.md', 'node-typescript.md', 'python.md', 'go.md', 'rust.md', 'generic.md')
     foreach ($t in $expectedTemplates) {
         $tPath = Join-Path $templatesDir $t
         if (Test-Path -LiteralPath $tPath) {
