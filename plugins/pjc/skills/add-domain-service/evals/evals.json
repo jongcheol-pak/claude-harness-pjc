@@ -49,6 +49,12 @@
       "query": "DDD가 뭔지 설명",
       "should_trigger": false,
       "rationale": "설명 요청"
+    },
+    {
+      "id": 9,
+      "query": "OrderRepository EF Core 구현체 추가",
+      "should_trigger": false,
+      "rationale": "Infrastructure 구현 — Domain 서비스 아님(Repository 인터페이스는 Domain이나 구현체는 Infra)"
     }
   ]
 }

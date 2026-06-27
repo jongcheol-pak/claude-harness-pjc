@@ -49,6 +49,18 @@
       "query": "SettingsViewModel 버그 수정",
       "should_trigger": false,
       "rationale": "기존 VM 디버깅 — pjc-systematic-debugging 영역"
+    },
+    {
+      "id": 9,
+      "query": "MAUI 앱에 설정 ContentPage 추가하고 ViewModel 연결",
+      "should_trigger": true,
+      "rationale": "MAUI XAML 화면 + VM — 표방 대상(CommunityToolkit.Mvvm 기반)"
+    },
+    {
+      "id": 10,
+      "query": "Android Jetpack ViewModel 추가",
+      "should_trigger": false,
+      "rationale": "Jetpack 비대상 — implement-task가 직접 구현(CommunityToolkit.Mvvm 아님)"
     }
   ]
 }
