@@ -103,6 +103,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 - **시작 전은 멈춰도 안전한 분기점**이므로 새 세션 권유가 적절하다. (작업 *중간*에는 멈추지 않고 압축을 통과하는 절대 규칙 4와 구분된다 — 시작 전 권유 vs 중간 통과.)
 - **컨텍스트가 여유로우면 묻지 않고 바로 T1부터 시작**한다(과잉 방지). 압축 이력 없고 대화도 길지 않으면 이 확인은 조용히 통과.
 - 사용자가 "이대로 진행"을 택하면 그대로 자율 루프를 시작한다(선택 존중).
+- **동일 세션에서 plan-feature를 막 거쳐온 경우(plan 작성·승인 직후 연속 구현)는 이 확인을 생략한다** — plan-feature Step 0에서 이미 같은 컨텍스트 확인을 했으므로 중복이다(과잉 방지). 새 세션 재개(plan-feature를 안 거치고 implement-task 직접 호출)에서만 수행한다.
 
 ### 🚦 Phase 0 — 사전 승인 일괄 확인 (하이브리드 게이트)
 
@@ -261,6 +262,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 #### Type B prefilter PASS 시 V-7 축소
 - spec-prefilter(Haiku)가 PASS → 변경 심볼이 trivial이므로 V-7 caller 재검증을 **변경 심볼 grep 1회**로 축소 (전체 재추적 불필요).
 - prefilter가 ESCALATE → 정상 V-5(Sonnet) + V-7 전체 수행.
+- **Type 오분류 피드백 (경미)**: spec-prefilter가 Type B task에서 ESCALATE를 반복(여러 task에 걸쳐 잦게)하면 plan의 Type 분류가 실제보다 가볍다는 신호다 — 해당 task는 그대로 진행하되 plan.md `## Deferred / Follow-up`에 "Type 분류 재검토 (prefilter ESCALATE 잦음)"를 1줄 남긴다(다음 계획 단계 강화용, 루프는 멈추지 않음).
 
 ### V-1. 빌드
 - AGENTS.md의 build 명령 실행. exit 0 확인. 오류 시 Phase I로 1회 복귀 후 재시도.
