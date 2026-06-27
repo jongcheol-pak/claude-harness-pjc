@@ -74,7 +74,21 @@ $patterns = @(
     # Windows 특화 위험 명령
     # (Remove-Item/rmdir 재귀 강제 삭제는 아래 '컴파운드 검사'에서 인자 순서 무관하게 처리)
     'Format-Volume',                                    # 볼륨 포맷
-    'Clear-RecycleBin\s+.*-Force'                       # 휴지통 강제 비우기
+    'Clear-RecycleBin\s+.*-Force',                      # 휴지통 강제 비우기
+    # ---- 권한·보안 변경 (규칙 10) ----
+    # 각 sub의 '선두 명령'일 때만 차단(^ 앵커). $scan은 trim된 sub라(위 foreach $sub.Trim())
+    # 'git grep chmod'·'rg chmod'는 선두가 git/rg여서 안 걸린다(정당한 검색 오탐 방지).
+    # 조회형(icacls 경로만·attrib 인자 없음)은 변경 인자가 없어 통과한다.
+    # 한계(의도된 트레이드오프): 'xargs chmod'·'find -exec chmod'·'env X=Y chmod'처럼 권한 명령이
+    # sub 선두가 아닌 우회는 미탐 — 검색 오탐 방지를 우선한 것. plan 승인·리뷰가 2차 방어선.
+    '^\s*(sudo\s+)?chmod\s',                            # POSIX 권한 변경
+    '^\s*(sudo\s+)?chown\s',                            # POSIX 소유자 변경
+    '^\s*(sudo\s+)?takeown\b',                          # Windows 소유권 탈취
+    '^\s*Set-Acl\b',                                    # PowerShell ACL 변경
+    '^\s*icacls\b.*(/grant|/deny|/remove|/setowner|/reset|/restore|/setintegritylevel|/inheritance:[red])',  # Windows ACL 변경(조회형·/save 제외)
+    '^\s*attrib\s+.*[+-][rhsa]',                        # 파일 속성 변경(조회형 제외)
+    '^\s*(Add|Set)-MpPreference\b.*Exclusion',          # Defender 예외 추가/변경(보안 약화)
+    '^\s*netsh\s+advfirewall\s+.*\b(set|add|delete|reset|import)\b'  # 방화벽 설정 변경(show/dump/export 조회는 통과)
 )
 
 # &&, ||, ;, | 로 분리 — 단, 따옴표 안의 구분자는 분리하지 않는다(quote-aware).
