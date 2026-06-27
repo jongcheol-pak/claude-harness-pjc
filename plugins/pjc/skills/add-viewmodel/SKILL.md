@@ -54,6 +54,7 @@ View + ViewModel 스켈레톤을 추가한다.
 - DI 등록 진입점 (보통 `App.xaml.cs` 또는 `Program.cs`의 `ConfigureServices`)
 - 네비게이션 서비스 패턴 (`INavigationService` 등 존재 여부)
 - 기존 ViewModel 한 개를 읽어 컨벤션 파악 (네이밍, 베이스 클래스, 주석 스타일)
+- **`CommunityToolkit.Mvvm` PackageReference 존재 확인**(프로젝트 csproj grep). 없으면 아래 Halt 조건으로 중지 — 패키지 추가는 의존성 추가(=승인 필요)이므로 임의 추가하지 않고, `using CommunityToolkit.Mvvm`이 든 컴파일 불가 코드를 생성하지 않는다.
 
 ### Step 2. ViewModel 생성
 
@@ -306,3 +307,4 @@ public sealed partial class <Name>Dialog : ContentDialog
 - DI 컨테이너가 없거나 ServiceLocator 패턴을 쓰고 있음
 - 네비게이션 패턴이 plan.md에 명시되지 않았고 코드베이스에서도 단일 패턴이 보이지 않음
 - View가 코드 생성기로 만들어지는 경우 (`*.Generated.*`)
+- **`CommunityToolkit.Mvvm` 패키지가 프로젝트에 없음** — `[ObservableProperty]`·`[RelayCommand]`·`ObservableObject`가 컴파일되지 않는다. 의존성 추가는 승인 필요이므로 임의로 추가하지 말고 사용자에게 확인(또는 plan에 패키지 추가를 명시)

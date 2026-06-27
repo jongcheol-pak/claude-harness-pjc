@@ -81,27 +81,46 @@ Test-Json-Valid (Join-Path $pluginRoot ".claude-plugin\plugin.json") "plugin.jso
 Test-Json-Valid (Join-Path $pluginRoot "hooks\hooks.json") "hooks.json 파싱" | Out-Null
 Write-Host ""
 
-# 3. Skills 8개
-Write-Host "3. Skills 8개" -ForegroundColor Yellow
+# 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
 $skills = @('plan-feature', 'implement-task', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'harness-toggle', 'bootstrap-agents-md', 'llm-wiki')
+Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills\$s\SKILL.md"
     Test-Item-Exists $skillPath "skill: $s" | Out-Null
 }
+# 실제 skills/ 에 SKILL.md가 있는데 expected 목록에 없으면 경고 (skill 추가 후 validate 갱신 누락 포착)
+$actualSkills = Get-ChildItem -Path (Join-Path $pluginRoot 'skills') -Directory -ErrorAction SilentlyContinue |
+    Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'SKILL.md') } |
+    Select-Object -ExpandProperty Name
+foreach ($a in $actualSkills) {
+    if ($skills -notcontains $a) {
+        Write-Host "         [WARN] validate 미등록 skill: $a (이 목록에 추가 필요)" -ForegroundColor DarkYellow
+        $script:warnings += "validate 미등록 skill: $a"
+    }
+}
 Write-Host ""
 
-# 4. Agents 6개
-Write-Host "4. Agents 6개" -ForegroundColor Yellow
+# 4. Agents (expected 목록 존재 + 미등록 탐지)
 $agents = @('plan-reviewer', 'spec-compliance-reviewer', 'code-quality-reviewer', 'explorer', 'plan-completion-reviewer', 'spec-prefilter')
+Write-Host "4. Agents $($agents.Count)개" -ForegroundColor Yellow
 foreach ($a in $agents) {
     $agentPath = Join-Path $pluginRoot "agents\$a.md"
     Test-Item-Exists $agentPath "agent: $a" | Out-Null
 }
+$actualAgents = Get-ChildItem -Path (Join-Path $pluginRoot 'agents') -Filter '*.md' -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty BaseName
+foreach ($a in $actualAgents) {
+    if ($agents -notcontains $a) {
+        Write-Host "         [WARN] validate 미등록 agent: $a (이 목록에 추가 필요)" -ForegroundColor DarkYellow
+        $script:warnings += "validate 미등록 agent: $a"
+    }
+}
 Write-Host ""
 
-# 5. Hooks 5개
-Write-Host "5. Hooks 5개" -ForegroundColor Yellow
+# 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
 $hooks = @('block-destructive.ps1', 'require-plan-for-write.ps1', 'check-utf8-and-lines.ps1', 'require-evidence.ps1', 'impact-warn.ps1')
+$knownHelpers = @('harness-toggle.ps1')   # hook이 아닌 scripts/ 내 헬퍼 (미등록 탐지에서 제외)
+Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
     $hookPath = Join-Path $pluginRoot "scripts\$h"
     if (Test-Item-Exists $hookPath "hook: $h") {
@@ -109,6 +128,15 @@ foreach ($h in $hooks) {
             Write-Host "         [WARN] BOM 없음 — 한글 인코딩 문제 가능" -ForegroundColor DarkYellow
             $script:warnings += "Hook $h 에 UTF-8 BOM 없음"
         }
+    }
+}
+# scripts/ 에 hook도 known helper도 아닌 .ps1이 있으면 경고 (hook 추가 후 validate/hooks.json 갱신 누락 포착)
+$actualScripts = Get-ChildItem -Path (Join-Path $pluginRoot 'scripts') -Filter '*.ps1' -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty Name
+foreach ($s in $actualScripts) {
+    if (($hooks -notcontains $s) -and ($knownHelpers -notcontains $s)) {
+        Write-Host "         [WARN] validate 미등록 스크립트: $s (hook이면 목록·hooks.json에 추가 필요)" -ForegroundColor DarkYellow
+        $script:warnings += "validate 미등록 스크립트: $s"
     }
 }
 Write-Host ""

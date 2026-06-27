@@ -51,9 +51,9 @@ git diff <BASE> <HEAD> --stat
 - 발견 시 → escalation
 
 ### 4. 명백한 cross-file 누락
-- Type B는 caller 없는 변경이 전제
-- diff에 1개 파일만 변경되었는지 확인
-- 2개 이상 파일 변경 → Type 분류 오류 가능성 → escalation
+- Type B는 caller 없는(또는 외부에서 참조 불가한 내부 한정) 변경이 전제.
+- diff에 1개 파일만 변경되었는지 확인 — 2개 이상 파일 변경 → Type 분류 오류 가능성 → escalation.
+- **변경된 심볼(메서드·클래스·공개 멤버·시그니처)이 있으면 그 심볼 이름을 repo 전체에 grep**(`grep -rn "\b<symbol>\b"`)해 **diff에 없는 파일에서 호출/참조되는지 확인**한다. diff 밖에서 쓰이면 → escalation (caller 누락 또는 Type B 오분류 — "1파일 diff"만으로 cross-file 안전을 단정하지 않는다). 순수 내부 변경(지역 변수명·주석·리터럴 값처럼 외부 참조 불가)은 grep 생략 가능.
 
 ### 5. Files 범위 일치
 - diff의 변경 파일이 task Files 목록과 정확히 일치하는가

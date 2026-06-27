@@ -125,7 +125,7 @@ if ($claudeProc) {
     Write-Info "설치 후 변경 사항을 반영하려면 종료 후 다시 시작하세요."
 }
 
-# ---- 5. 기존 설치 자동 감지 + 재설치 (1.11.1+ 기본 동작) ----
+# ---- 5. 기존 설치 자동 감지 + 재설치 (기본 동작) ----
 $cacheDir = Join-Path $env:USERPROFILE ".claude\plugins\cache\pjc-harness"
 $marketplaceCacheDir = Join-Path $env:USERPROFILE ".claude\plugins\marketplaces\pjc-harness"
 

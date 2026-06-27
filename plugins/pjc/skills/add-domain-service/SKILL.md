@@ -60,7 +60,7 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 
 ### Step 1. 컨텍스트 파악
 
-- AGENTS.md에서 레이어 구조 확인
+- AGENTS.md에서 레이어 구조 확인 — **Domain/Application 레이어 분리가 없으면(비-DDD: 단일 프로젝트·Core/Infra만 등) 아래 Halt 조건으로 중지**(존재하지 않는 레이어를 강요하지 않는다).
 - 기존 Domain Service / Application Service 한 개씩 읽어 컨벤션 파악:
   - 네이밍 (`I<Name>Service`, `<Name>Handler`, `<Name>UseCase` 등)
   - 메서드 시그니처 패턴 (Result 타입 vs 예외, async vs 동기)
@@ -294,3 +294,4 @@ public class <Name>ServiceTests
 - Aggregate 경계가 불명확
 - 트랜잭션 경계가 plan.md에 명시되지 않음
 - 동일 이름의 서비스가 이미 존재
+- **프로젝트에 Domain/Application 레이어가 없음(비-DDD)** — 존재하지 않는 `src/<Project>.Domain/`·`.Application/` 구조를 새로 강요하지 말고, 어디에 둘지(또는 단순 서비스 클래스로 둘지)를 사용자에게 확인

@@ -7,7 +7,7 @@
 > Windows + PowerShell 환경에서 Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 Windows 전용 — [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.69.1
+**버전**: 1.69.2
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
