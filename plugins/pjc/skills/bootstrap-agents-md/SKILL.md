@@ -73,7 +73,7 @@ foreach ($stack in $markers.Keys) {
     }
 }
 
-# WinUI 3 / WPF 우선 판정: csproj의 UI 플래그로 dotnet → winui3/wpf 승격
+# WinUI 3 / WPF / MAUI 우선 판정: csproj의 UI 플래그로 dotnet → winui3/wpf/maui 승격
 if ($detected -contains 'dotnet') {
     $csprojContent = Get-ChildItem -Filter '*.csproj' -Recurse -ErrorAction SilentlyContinue |
                      Get-Content -Raw -ErrorAction SilentlyContinue
