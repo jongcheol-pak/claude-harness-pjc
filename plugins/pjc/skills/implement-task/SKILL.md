@@ -83,6 +83,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
     - force push, history rewrite, rm -rf, DB drop, 권한·보안 변경
     - **DB 데이터 삭제·변조**: DROP/TRUNCATE, WHERE 없는(또는 전체 대상) DELETE·UPDATE, 스키마 삭제, migration reset/down, ORM 대량 삭제(RemoveRange·deleteMany({})·delete_all 등). 코드로 작성하든 명령으로 실행하든, 데이터 손실·전체 변조 가능 작업은 **사용자 승인 전 금지** (DB 데이터는 git으로 복구 불가). 단 `DELETE/UPDATE ... WHERE <특정 조건>` 같은 일상적·국소적 작업은 plan에 명시돼 있으면 진행 가능.
     - 새 라이브러리·외부 서비스 도입
+    - **기존 외부 서비스로의 비가역 부작용 호출**: 운영 API 쓰기·이메일/알림/SMS 발송·결제·외부 상태 변경 등. 신규 도입이 아니어도 검증·실행 중 이런 비가역 부작용 호출은 사용자 승인 전 금지(테스트는 mock·스테이징). plan에 명시·승인됐으면 진행 가능.
 
 11. **plan에 답이 없는 중대 결정 → 추측 금지, Halt** (예외 안전망). 정상적으로는 계획 단계(Step 6 Decision·6.5 Edge Case·8 Open Questions·9 reviewer)가 모든 중대 결정을 미리 해결하므로 이 상황은 거의 없어야 한다 — 발생하면 **계획 부실의 신호**다. 실행 중 plan·AGENTS.md·코드 어디에도 근거 없는 **중대한** 결정(아키텍처, 비가역적 데이터 형식·API 계약, 동작 의미가 갈리는 분기)을 만나면 추측하지 말고 Halt해 묻는다. **사소한** 결정(변수명·국소 구현 등 쉽게 되돌림)은 follow-up 기록 후 진행(자율성 유지). 애매하면 "틀렸을 때 재작업 비용"으로 가늠 — 크면 Halt, 작으면 follow-up. Halt 시 보고에 "이 결정이 계획에서 누락된 이유"를 한 줄 적어 차후 계획 단계를 강화한다.
 
