@@ -424,6 +424,8 @@ Open Questions가 모두 해소돼 plan이 완성된 뒤 검토한다. **`plan-r
 
 ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 
+이 승인은 **plan 실행(구현) 승인**이다 — 이후 push·main 병합·태그·릴리즈·PR 승인은 **포함하지 않으며**, 구현·검증 완료 후 implement-task 최종 보고에서 그 행위를 명시해 따로 받는다 (implement-task 절대 규칙 12).
+
 ## 통과 체크리스트
 
 다음을 모두 만족해야 implement-task로 넘어갈 수 있다:
