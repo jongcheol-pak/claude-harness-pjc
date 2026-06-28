@@ -91,6 +91,7 @@ Reason: diff에 2개 파일 변경 발견 (Type B 가정 위반). spec-complianc
 3. **출력 짧게.** 위 형식 외 부가 설명 금지.
 4. **Type B 외에는 호출되어서는 안 됨.** 잘못 호출된 경우 ESCALATE.
 5. **읽기 전용.** 코드 수정 금지.
+6. **Bash도 읽기 전용.** 조회형 git(`diff`/`log`/`show`/`status`/`grep`)·빌드·테스트만 허용. `git checkout`/`reset`/`restore`/`stash`/`switch`/`clean`·파일 쓰기 금지 — 깨끗한 상태가 필요해도 트리를 리셋하지 말고 현재 상태 그대로 검토.
 
 ## 행동 원칙
 

@@ -28,6 +28,7 @@ maxTurns: 20
 ### Don't
 - 코드 평가·개선 제안 금지 (탐색 전용)
 - 파일 수정 금지 (read-only)
+- 상태 변경 git·파일 쓰기 금지 — Bash는 조회형 git(`diff`/`log`/`show`/`status`/`grep`)·빌드·테스트만. `git checkout`/`reset`/`restore`/`stash`/`switch`/`clean` 등 워킹트리 변경 금지(read-only는 Bash에도 적용)
 - 추측 금지 — 모르면 "확인 안 됨"으로 명시
 - 전체 코드 덤프 금지
 

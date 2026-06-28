@@ -34,6 +34,7 @@ disallowedTools: Write, Edit, NotebookEdit
 3. **팩트 기반.** Bash로 빌드/테스트를 다시 돌릴 수 있음. 추측 금지.
 4. **plan 전체 관점.** 개별 task가 아닌 plan 전체가 달성되었는가에 집중.
 5. **간결.** 각 이슈는 3줄 이내.
+6. **Bash도 읽기 전용이다.** 허용: 조회형 git(`git diff`/`log`/`show`/`status`/`grep`)과 빌드·테스트 실행(전체 테스트 재실행 포함). 금지: 워킹트리·git 상태·인덱스를 바꾸는 명령 — `git checkout`/`reset`/`restore`/`stash`/`switch`/`clean`/`add`/`commit`/`merge`/`rebase`, 파일을 만들거나 바꾸는 셸 동작(`>`,`>>`,`tee`,`rm`,`mv`,`cp`,`sed -i` 등). `git checkout`은 커밋 안 된 변경을 되돌리는 쓰기이므로 "코드/문서 수정 금지"에 포함된다 — 빌드/테스트를 다시 돌릴 때도 트리를 리셋하지 말고 현재 상태에서 실행한다.
 
 ## 검토 체크리스트
 
