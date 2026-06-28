@@ -121,7 +121,7 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 <!-- plan 작성 시점에 알려진 "승인 필요" 작업 중 plan 승인 시 자율 루프에 위임할 항목.
      plan-feature Step 10이 이 목록을 승인 프롬프트에 그대로 나열 → 승인 = 일괄 위임.
      implement-task는 Phase 0에서 이 목록을 읽고, 해당 항목을 만나도 멈추지 않고 진행한다.
-     대상: 비파괴 DB 스키마 변경(CREATE/ADD), 패키지/라이브러리 의존성 추가·버전 변경, 구조 변경,
+     대상: 비파괴 DB 스키마 변경(CREATE/ADD), 패키지/라이브러리 의존성 추가·버전 변경, 구조 변경(파일 분리·병합에 따른 계획된 파일 삭제·이동 포함),
            계획된 공개 API/시그니처 변경, 비파괴 마이그레이션, WHERE 조건이 있는 국소 DELETE/UPDATE.
      ❌ 여기 적지 말 것(항상 ## 불가피한 Halt로): 파괴적 작업(force push·rm -rf·DB DROP/TRUNCATE·
         WHERE 없는 DELETE/UPDATE·스키마 삭제·migration reset·권한/보안 변경), 외부/비가역(push·병합·태그·릴리즈·PR),
