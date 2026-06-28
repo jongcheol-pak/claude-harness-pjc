@@ -38,13 +38,31 @@ try {
 
 if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
+# ---- find로 위험 루트를 훑어 삭제하는 파이프/exec 형태 (Split 전, 전체 명령 사전검사) ----
+# 'find / … | xargs rm', 'find ~ … -exec rm', 'find $HOME … -delete'는 Split-TopLevel가 파이프로
+#   쪼개면 rm sub에 대상 토큰이 없어(삭제 대상은 find가 stdin으로 공급) 아래 컴파운드 검사를 빠져나간다.
+#   → 전체 $cmd에서 직접 차단한다.
+# 오탐 방지: 'find .'(상대 경로 로컬 정리)은 제외하고, 위험 루트로 시작하는 find만 차단한다
+#   — 절대(/…), 홈(~…/$HOME…), $env:…, 드라이브 루트(C:\…). (chmod xargs 미탐과 달리 삭제는 비가역이라 차단.)
+# 한계(의도): echo "find / | xargs rm"처럼 문자열 안에 있어도 차단될 수 있으나 — 차단돼도 무해(echo는 직접 실행).
+$findDangerRoot = '(?i)\bfind\s+(/\S*|~\S*|\$HOME\S*|\$env:\S*|[A-Za-z]:[\\/]\S*)'
+if ($cmd -match $findDangerRoot -and (
+        ($cmd -match '(?i)\|\s*xargs\b[^|]*\b(rm|Remove-Item|ri|del|erase)\b') -or
+        ($cmd -match '(?i)-exec(dir)?\s+(rm|Remove-Item)\b') -or
+        ($cmd -match '(?i)\bfind\b[^|]*\s-delete\b'))) {
+    [Console]::Error.WriteLine("BLOCKED: 위험 루트(/, ~, `$HOME, 드라이브 루트)를 find로 훑어 삭제(xargs rm / -exec rm / -delete) 감지")
+    [Console]::Error.WriteLine("Command: $cmd")
+    [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
+    exit 2
+}
+
 # 차단 패턴 (POSIX + Windows 둘 다 대응)
 # 주의: rm/Remove-Item/rmdir 계열의 '재귀 강제 삭제'는 옵션 순서·따옴표·글롭 변형이 많아
 #   단일 정규식으로는 우회가 쉽다(예: rm -fr /, rm -rf /*, Remove-Item C:\ -Recurse -Force).
 #   → 이 패턴 배열이 아니라 아래 '컴파운드 검사'에서 플래그·대상을 분해해 판정한다.
 $patterns = @(
-    'git\s+push\s+.*(--force|--force-with-lease)',      # git push --force
-    'git\s+push\s+-f(\s|$)',                            # git push -f
+    'git\s+((-c|-C)\s+\S+\s+)*push\s+.*(--force|--force-with-lease)',   # git push --force (git -c/-C 선행 옵션으로 우회 방지)
+    'git\s+((-c|-C)\s+\S+\s+)*push\s+-f(\s|$)',                         # git push -f (git -c/-C 선행 옵션으로 우회 방지)
     'git\s+filter-branch',                              # 히스토리 재작성
     'git\s+filter-repo',
     'git\s+reflog\s+expire',
@@ -147,11 +165,13 @@ foreach ($sub in $subs) {
         # 재귀 플래그: 짧은 묶음(-r/-rf/-fr/-Rf, r·f 문자만) | -Recurse | --recursive | cmd /s
         $hasRecurse = ($scan -match '(^|\s)-[rfRF]*r[rfRF]*(\s|$)') -or
                       ($scan -match '(^|\s)-Recurse\b') -or
+                      ($scan -match '(^|\s)-[rR]e[a-z]*(\s|$)') -or    # PowerShell 약어 -re/-rec/-recur…(전치 약어 허용)
                       ($scan -match '--recursive\b') -or
                       ($scan -match '\s/s\b')
         # 강제 플래그: 짧은 묶음(-f/-rf/-fr) | -Force | --force | cmd /q
         $hasForce   = ($scan -match '(^|\s)-[rfRF]*f[rfRF]*(\s|$)') -or
                       ($scan -match '(^|\s)-Force\b') -or
+                      ($scan -match '(^|\s)-[fF]o[a-z]*(\s|$)') -or    # PowerShell 약어 -fo/-for/-forc…(-f는 -Filter와 모호해 -fo부터)
                       ($scan -match '--force\b') -or
                       ($scan -match '\s/q\b')
         # 위험 대상(따옴표 선택): / /* // | ~ $HOME $env: | * | . ./ .* ./* | 드라이브 루트 C:\(글롭 포함)

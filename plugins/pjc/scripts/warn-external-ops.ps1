@@ -36,9 +36,9 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 # ---- 외부·비가역 작업 패턴 (변경형만 — 조회는 제외) ----
 # git tag: 조회(git tag / git tag -l / git tag -n)는 제외, 생성/삭제(-a/-s/-f/-m/-d/태그명)만.
 $externalOps = @(
-    @{ rx = 'git\s+push\b';                   label = 'git push (원격 반영)' },
-    @{ rx = 'git\s+merge\b';                  label = 'git merge (브랜치 병합)' },
-    @{ rx = 'git\s+tag\s+(--delete\b|-[asfmd]|[^\s-])';  label = 'git tag (태그 생성/삭제)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*push\b';   label = 'git push (원격 반영)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*merge\b';  label = 'git merge (브랜치 병합)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*tag\s+(--delete\b|-[asfmd]|[^\s-])';  label = 'git tag (태그 생성/삭제)' },
     @{ rx = 'gh\s+release\s+create';          label = 'gh release create (릴리즈 발행)' },
     @{ rx = 'gh\s+pr\s+create';               label = 'gh pr create (PR 생성)' },
     @{ rx = 'gh\s+pr\s+merge';                label = 'gh pr merge (PR 병합)' }

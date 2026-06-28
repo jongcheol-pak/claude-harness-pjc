@@ -368,11 +368,10 @@ plan에 Step 2.5의 **시각 요소 분해 표가 있을 때만** 수행한다 (
 
 > 핵심: "디자인과 동일하게"는 화면 전체를 요소 단위로 대조하고 렌더로 확인해야 하는 작업이다. 일부만 보고 "맞겠지"로 끝내면 사용자가 볼 때만 어긋남이 드러난다.
 
-### 재시도 한계
-- 같은 task에서 **동일 BLOCKER/MAJOR 3회 연속** → Halt (reviewer가 RECURRING으로 태그한 반복 지적도 이 카운터에 포함).
-- 같은 task에서 **리뷰 지적(BLOCKER/MAJOR) 수정 사이클이 누적 5회** → Halt. 매 사이클 지적이 서로 달라 '동일 3회'에 안 걸려도, 5번 고치고도 새 결함이 계속 나오면 구현이 근본적으로 틀린 신호다(매번 다른 BLOCKER로 도는 무한 수정 루프 방지).
-- **카운터 영속화 (압축 생존, G5).** 위 세 카운터(동일 BLOCKER/MAJOR 3회·수정 사이클 누적 5회·checkpoint 복구 2회)는 대화 컨텍스트에만 두면 auto-compact나 "T\<N\>부터 재개" 시 0으로 리셋돼 무한 루프 차단이 무력화된다. 따라서 **재시도가 발생할 때마다 plan.md의 `## Retry Ledger`(또는 해당 task 옆)에 카운트를 기록**한다(예: `T<N>: 동일 BLOCKER/MAJOR 2/3, 수정 사이클 3/5, 복구 1/2`). 압축 감지·재개 시 plan.md를 다시 읽어 그 값에서 이어 센다(컨텍스트 요약만 믿지 않음 — 자율 루프 규칙 4와 정합). 첫 시도(카운터 0)면 기록 불필요.
-- 상세 복구 절차는 `references/recovery.md` 참조.
+### 재시도 한계 (Halt 트리거 — 무한 루프 차단)
+- 같은 task에서 **동일 BLOCKER/MAJOR 3회 연속** → Halt (reviewer의 RECURRING 태그 포함).
+- 같은 task에서 **리뷰 지적(BLOCKER/MAJOR) 수정 사이클 누적 5회** → Halt (매번 다른 지적으로 도는 무한 수정 루프 방지).
+- 이 둘 + 나머지 카운터(checkpoint 복구 2회·빌드 5회 연속 실패), **카운터 영속화**(plan.md `## Retry Ledger`에 기록해 auto-compact·재개에서 그 값부터 이어 셈 — G5), 상세 복구 절차는 모두 `references/recovery.md`에 일원화(단일 출처).
 
 ## Phase D — Done
 
@@ -447,19 +446,10 @@ Elapsed: <Hm Ms> | Turn ~<N>
 
 ## Phase F — Finalize (모든 task 완료 후)
 
-전체 plan 통합 검증. **상세 절차는 `references/phase-f-detail.md` 참조.**
+전체 plan 통합 검증. **진입 조건표(1 task+Type A=생략 / 1 task+Type B=F-1·F-2·F-6만 / 2+ tasks·Type C·D=전체 F-1~F-7)와 F-1~F-7 상세는 모두 `references/phase-f-detail.md`에 일원화.**
 
-### Phase F 조건부 진입
-
-| Plan 구성 | Phase F |
-|---|---|
-| 1 task + Type A만 | **생략** |
-| 1 task + Type B | F-1, F-2, F-6만 |
-| 2+ tasks 또는 Type C/D 포함 | **전체 (F-1~F-7)** |
-
-> Phase F가 생략·축소돼도 **F-6.5(notes 기록 + 오래된 항목 아카이브 이동)는 코드 변경이 있었으면 항상 수행**한다 (단, 빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따른다).
-
-F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
+- 단, **F-6.5(notes 기록 + 오래된 항목 아카이브 이동)는 Phase F가 생략·축소돼도 코드 변경이 있었으면 항상 수행**한다(빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따름) — 누락 빈발 지점이라 본문에 남긴다.
+- F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
 
 ## Phase G — 요구 재검증 (PRD 있을 때만)
 

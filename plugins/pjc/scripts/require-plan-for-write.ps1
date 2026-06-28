@@ -139,8 +139,15 @@ if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
         }
         $normOld = & $normValue $oldStr
         $normNew = & $normValue $newStr
-        # 값이 실제로 하나라도 정규화됐고(치환 대상 존재) + 정규화 후 동일(구조 동일) + 새 정의 아님
-        $isPureValueSwap = (-not $definesNewSymbol) -and ($normOld -ne $oldStr) -and ($normOld -eq $normNew)
+        # 값치환 우회는 스타일/마크업 파일에만 적용한다 (T4 — require-plan 우회 차단):
+        # 이 우회는 색상·치수 등 '값'만 바뀌는 CSS/XAML 작업용인데, 모든 소스에 적용하면
+        # .cs의 `const int MaxRetries = 3;` → `100000` 같은 로직 변경(타임아웃·한계·포트)이 줄 수 무관하게
+        # plan 없이 통과한다. → 스타일/마크업 확장자에서만 인정한다. (그 외 소스의 소규모 수치 변경은
+        # 아래 '<=3줄' trivial 경로로 여전히 통과하므로 일상 작업엔 지장 없음.)
+        $styleExts = @('.css', '.scss', '.sass', '.less', '.styl', '.pcss', '.xaml', '.axaml')
+        $isStyleFile = $styleExts -contains $ext
+        # 스타일 파일 + 값이 하나라도 정규화됨(치환 대상 존재) + 정규화 후 동일(구조 동일) + 새 정의 아님
+        $isPureValueSwap = $isStyleFile -and (-not $definesNewSymbol) -and ($normOld -ne $oldStr) -and ($normOld -eq $normNew)
 
         # 작은 변경(3줄 + 300자, 새 정의 없음) 또는 순수 값 치환 → trivial 통과
         if (($maxLines -le 3 -and $maxLen -le 300 -and -not $definesNewSymbol) -or $isPureValueSwap) {
