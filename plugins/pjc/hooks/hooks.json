@@ -43,14 +43,8 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/check-utf8-and-lines.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
-            "timeout": 15
-          },
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/impact-warn.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
-            "timeout": 20
+            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/post-write-checks.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "timeout": 35
           }
         ]
       }

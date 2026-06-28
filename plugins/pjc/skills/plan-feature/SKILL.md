@@ -64,7 +64,7 @@ B) 계획부터 세우기 (plan-feature — 영향 분석 + 검증)
 
 질문은 작업당 한 번만. 사용자가 선택하면 그대로 진행한다.
 
-**Trivial 작업의 안전망**: `impact-warn.ps1` PostToolUse hook이 자동 caller 영향 검출.
+**Trivial 작업의 안전망**: `impact-warn` 검사(`post-write-checks.ps1`의 PostToolUse hook)가 자동 caller 영향 검출.
 
 ## 자율성 모드: USER-INTERACTIVE
 
