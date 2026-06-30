@@ -6,9 +6,9 @@
 # 검증 항목:
 #   1. plugin 디렉터리 존재
 #   2. plugin.json + marketplace.json 유효
-#   3. skill 8개 모두 등록
+#   3. skill 9개 모두 등록
 #   4. agent 6개 모두 등록
-#   5. hook 5개 모두 등록 + BOM 확인
+#   5. hook 6개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
 #   7. JSON 파일 파싱 가능
 #   8. 토글 디렉터리 접근 가능
@@ -85,7 +85,7 @@ Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" |
 Write-Host ""
 
 # 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
-$skills = @('plan-feature', 'implement-task', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'harness-toggle', 'bootstrap-agents-md', 'llm-wiki')
+$skills = @('plan-feature', 'implement-task', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'harness-toggle', 'bootstrap-agents-md', 'llm-wiki', 'record-project-fact')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"
@@ -121,7 +121,7 @@ foreach ($a in $actualAgents) {
 Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
-$hooks = @('block-destructive.ps1', 'require-plan-for-write.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1')
+$hooks = @('block-destructive.ps1', 'require-plan-for-write.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1')
 $knownHelpers = @('harness-toggle.ps1')   # hook이 아닌 scripts/ 내 헬퍼 (미등록 탐지에서 제외)
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
