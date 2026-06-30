@@ -35,7 +35,8 @@ $known = @(
     'require-evidence',
     'check-utf8-and-lines',
     'impact-warn',
-    'warn-external-ops'
+    'warn-external-ops',
+    'suggest-agents-record'
 )
 
 function Show-Status {
