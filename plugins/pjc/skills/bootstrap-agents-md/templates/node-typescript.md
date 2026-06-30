@@ -21,6 +21,14 @@
 - **Format**: `npm run format` (Prettier)
 - **Type check**: `npm run typecheck` (또는 `tsc --noEmit`)
 
+## 데이터 접근
+- **DB/스토어**: <예: PostgreSQL / MySQL / MongoDB / Redis / SQLite / 없음>
+- **ORM/접속**: <Prisma / TypeORM / Drizzle / Mongoose 등 — 연결 정보는 `.env`, 실제 값 금지 (예: `DATABASE_URL`)>
+- **마이그레이션**: <예: `prisma migrate dev` / `knex migrate:latest` / `sequelize db:migrate`>
+- **시드/조회**: <예: `prisma db seed` / 개발용 조회 방법>
+
+> ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
+
 ## Repository Structure
 
 ```
@@ -35,6 +43,11 @@
 ├── tsconfig.json
 └── .eslintrc / eslint.config.js
 ```
+
+## 산출물·파일 관리
+- **빌드 산출물**: `dist/` · `build/` · `.next/` (gitignore)
+- **런타임 생성물**: <로그·업로드/다운로드·리포트 등 경로>
+- **임시/캐시**: `node_modules/` · `coverage/` · `.cache/`
 
 ## Conventions
 - **아키텍처**: Layered / Clean. 의존 방향: interfaces → application → domain ← infrastructure

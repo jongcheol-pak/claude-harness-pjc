@@ -22,6 +22,14 @@
 - **Format**: `cargo fmt`
 - **Doc**: `cargo doc --no-deps --open`
 
+## 데이터 접근
+- **DB/스토어**: <예: PostgreSQL / MySQL / SQLite / Redis / 없음>
+- **드라이버/접속**: <sqlx / SeaORM / Diesel 등 — 연결 정보는 환경변수, 실제 값 금지 (예: `DATABASE_URL`)>
+- **마이그레이션**: <예: `sqlx migrate run` / `diesel migration run` / `sea-orm-cli migrate up`>
+- **시드/조회**: <개발용 데이터 확인 방법>
+
+> ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
+
 ## Repository Structure
 
 ```
@@ -40,6 +48,11 @@
 ```
 
 Workspace 사용 시 `members = ["crates/*"]`로 구분.
+
+## 산출물·파일 관리
+- **빌드 산출물**: `target/` (debug·release, gitignore)
+- **런타임 생성물**: <로그·리포트·업로드/다운로드 등 경로>
+- **임시/캐시**: `target/` (빌드 캐시 겸) · criterion 결과(`target/criterion/`)
 
 ## Conventions
 - **아키텍처**: Clean / Hexagonal. crate 경계로 layered 강제 가능.

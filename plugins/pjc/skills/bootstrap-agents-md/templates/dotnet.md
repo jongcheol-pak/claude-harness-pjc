@@ -16,6 +16,14 @@
 - **Lint/Format**: `dotnet format`
 - **Watch (개발)**: `dotnet watch run --project src/<Main>`
 
+## 데이터 접근
+- **DB/스토어**: <예: SQL Server / PostgreSQL / SQLite / 없음>
+- **ORM/접속**: <EF Core / Dapper 등 — 연결 정보는 환경변수·secrets로, 실제 값 금지 (예: `ConnectionStrings__Default`)>
+- **마이그레이션**: <예: `dotnet ef migrations add <Name>` / `dotnet ef database update`>
+- **시드/조회**: <개발용 데이터 확인 방법>
+
+> ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
+
 ## Repository Structure
 
 ```
@@ -31,6 +39,11 @@
 │   └── <Integration>.Tests/
 └── docs/
 ```
+
+## 산출물·파일 관리
+- **빌드 산출물**: `bin/` · `obj/` (gitignore)
+- **런타임 생성물**: <로그·리포트·게시 출력(`publish/`) 등 경로>
+- **임시/캐시**: `obj/` · `TestResults/`
 
 ## Conventions
 - **아키텍처**: DDD + Clean. 의존 방향: UI → Application → Domain ← Infrastructure

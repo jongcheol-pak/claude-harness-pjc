@@ -21,6 +21,14 @@
 - **Format**: `ruff format src tests` 또는 `black src tests`
 - **Type check**: `mypy src` 또는 `pyright`
 
+## 데이터 접근
+- **DB/스토어**: <예: PostgreSQL / MySQL / SQLite / MongoDB / Redis / 없음>
+- **ORM/접속**: <SQLAlchemy / Django ORM / Tortoise 등 — 연결 정보는 `.env`, 실제 값 금지 (예: `DATABASE_URL`)>
+- **마이그레이션**: <예: `alembic upgrade head` / `python manage.py migrate` (Django)>
+- **시드/조회**: <개발용 데이터 확인 방법>
+
+> ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
+
 ## Repository Structure
 
 ```
@@ -36,6 +44,11 @@
 ├── pyproject.toml
 └── (선택) .python-version
 ```
+
+## 산출물·파일 관리
+- **빌드 산출물**: `dist/` · `build/` · `*.egg-info/` (gitignore)
+- **런타임 생성물**: <로그·리포트·업로드/다운로드 등 경로>
+- **임시/캐시**: `__pycache__/` · `.pytest_cache/` · `.mypy_cache/` · `.venv/`
 
 ## Conventions
 - **타입 힌트 의무**. mypy/pyright strict 권장.

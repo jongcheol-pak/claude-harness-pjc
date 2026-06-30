@@ -20,12 +20,25 @@
 > ⚠️ Build/Test 명령이 비어있으면 `pjc:plan-feature`의 Verification Strategy가 무의미해집니다.
 > 최소한 위 두 줄은 반드시 채우세요.
 
+## 데이터 접근
+- **DB/스토어**: <예: PostgreSQL / SQLite / SQL Server / MongoDB / Redis / 없음>
+- **접속**: <환경변수·secrets로 — 실제 값 금지, 환경변수 이름만 (예: `DB_CONNECTION`)>
+- **마이그레이션**: <마이그레이션 도구·명령 (있으면)>
+- **시드/조회**: <개발용 데이터 확인 방법, 자주 쓰는 조회 명령>
+
+> ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
+
 ## Repository Structure
 
 ```
 <repo>/
 ├── (실제 디렉터리 구조 직접 기록)
 ```
+
+## 산출물·파일 관리
+- **빌드 산출물**: <예: build/ · dist/ · target/ · out/ — gitignore 대상>
+- **런타임 생성물**: <로그·리포트·업로드/다운로드 등 생성 파일 경로>
+- **임시/캐시**: <캐시·스크래치 경로>
 
 ## Conventions
 - **아키텍처**: <Layered / Clean / MVC / 기타 — 명시>
