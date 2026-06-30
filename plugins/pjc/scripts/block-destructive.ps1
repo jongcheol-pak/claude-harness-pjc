@@ -161,22 +161,36 @@ foreach ($sub in $subs) {
     # 대상이 위험 루트(/, /*, //, ~, $HOME, *, ., ./, 드라이브 루트 C:\, $env:)이면 차단.
     # 단일 정규식이 못 잡던 변형을 포착: rm -fr /, rm -r -f /, rm --recursive --force /,
     #   rm -rf /*, rm -rf "/", rm -rf //, Remove-Item C:\ -Recurse -Force(인자 순서) 등.
-    if ($scan -match '(^|\s)(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)') {
-        # 재귀 플래그: 짧은 묶음(-r/-rf/-fr/-Rf, r·f 문자만) | -Recurse | --recursive | cmd /s
-        $hasRecurse = ($scan -match '(^|\s)-[rfRF]*r[rfRF]*(\s|$)') -or
-                      ($scan -match '(^|\s)-Recurse\b') -or
-                      ($scan -match '(^|\s)-[rR]e[a-z]*(\s|$)') -or    # PowerShell 약어 -re/-rec/-recur…(전치 약어 허용)
-                      ($scan -match '--recursive\b') -or
-                      ($scan -match '\s/s\b')
-        # 강제 플래그: 짧은 묶음(-f/-rf/-fr) | -Force | --force | cmd /q
-        $hasForce   = ($scan -match '(^|\s)-[rfRF]*f[rfRF]*(\s|$)') -or
-                      ($scan -match '(^|\s)-Force\b') -or
-                      ($scan -match '(^|\s)-[fF]o[a-z]*(\s|$)') -or    # PowerShell 약어 -fo/-for/-forc…(-f는 -Filter와 모호해 -fo부터)
-                      ($scan -match '--force\b') -or
-                      ($scan -match '\s/q\b')
-        # 위험 대상(따옴표 선택): / /* // | ~ $HOME $env: | * | . ./ .* ./* | 드라이브 루트 C:\(글롭 포함)
-        $dangerTarget = '(^|\s)(["'']?)(/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
-        if ($hasRecurse -and $hasForce -and ($scan -match $dangerTarget)) {
+    #
+    # [오탐 방지 — D2] 위험 판정을 '삭제 명령이 있는 그 줄(인자 윈도우)'에 연계한다. 명령 앞의
+    #   -replace 연산·변수 정의나 '다른 문장 줄'의 경로 구분자(/·C:/)가 재귀·강제 플래그와 잘못
+    #   결합되는 오탐을 막는다. 단, 줄-이음(PowerShell 백틱+개행 · bash 백슬래시+개행)은 셸이 한 명령으로
+    #   잇는 것이라 먼저 공백으로 정규화해 한 논리 줄로 합친다 — 대상이 다음 물리 줄에 와도 차단되게 해
+    #   미탐을 막는다(예: bash에서 rm -rf 뒤 백슬래시+개행+/ 는 실제 rm -rf / 로 실행됨).
+    $norm = $scan -replace '`\s*\r?\n', ' '       # PowerShell 백틱 줄-이음
+    $norm = $norm -replace '\\\s*\r?\n', ' '      # bash 백슬래시 줄-이음
+    # 위험 대상(따옴표 선택): / /* // | ~ $HOME $env: | * | . ./ .* ./* | 드라이브 루트 C:\(글롭 포함). 루프 불변이라 밖에서 1회 정의.
+    $dangerTarget = '(^|\s)(["'']?)(/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+    $delMatches = [regex]::Matches($norm, '(^|\s)(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')
+    foreach ($dm in $delMatches) {
+        # 삭제 명령 토큰부터 다음 줄바꿈 전까지가 그 명령의 인자 윈도우
+        $win = $norm.Substring($dm.Index)
+        $nlIdx = $win.IndexOfAny([char[]]@("`n", "`r"))
+        if ($nlIdx -ge 0) { $win = $win.Substring(0, $nlIdx) }
+
+        # 재귀 플래그: 짧은 묶음(-r/-rf/-fr/-Rf) | -Recurse | PS 약어(-re/-rec…, -replace 연산자는 lookahead로 제외) | --recursive | cmd /s
+        $hasRecurse = ($win -match '(^|\s)-[rfRF]*r[rfRF]*(\s|$)') -or
+                      ($win -match '(^|\s)-Recurse\b') -or
+                      ($win -match '(^|\s)-(?!replace\b)[rR]e[a-z]*(\s|$)') -or    # -replace(문자열 연산자)만 제외, -re/-rec/-recurse 유지
+                      ($win -match '--recursive\b') -or
+                      ($win -match '\s/s\b')
+        # 강제 플래그: 짧은 묶음(-f/-rf/-fr) | -Force | PS 약어(-fo…) | --force | cmd /q
+        $hasForce   = ($win -match '(^|\s)-[rfRF]*f[rfRF]*(\s|$)') -or
+                      ($win -match '(^|\s)-Force\b') -or
+                      ($win -match '(^|\s)-[fF]o[a-z]*(\s|$)') -or    # PowerShell 약어 -fo/-for/-forc…(-f는 -Filter와 모호해 -fo부터)
+                      ($win -match '--force\b') -or
+                      ($win -match '\s/q\b')
+        if ($hasRecurse -and $hasForce -and ($win -match $dangerTarget)) {
             [Console]::Error.WriteLine("BLOCKED: 재귀 강제 삭제 + 위험 루트 대상 감지")
             [Console]::Error.WriteLine("Command: $sub")
             [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
