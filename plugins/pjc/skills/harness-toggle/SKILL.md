@@ -1,6 +1,6 @@
 ---
 name: harness-toggle
-description: This skill should be used ONLY when the user explicitly wants to enable, disable, toggle, or check status of pjc harness hooks. Triggers REQUIRE on/off/status/toggle intent combined with EITHER (a) the words "harness"/"hook", OR (b) a specific pjc harness hook name — require-plan(-for-write), require-evidence/evidence, check-utf8/utf8, impact-warn, block-destructive — which counts as explicit harness context. Examples that SHOULD trigger - "harness 끄기", "harness 켜기", "hook 끄기", "hook 상태", "harness status", "harness 토글", "plan 강제 꺼" (with "강제" indicating hook), "require-plan off", "require-plan on", "evidence 검사 꺼", "utf8 검사 꺼". Examples that should NOT trigger - "이 기능 끄는 코드 만들어줘", "기능 켜기", "버튼 끄기" (those are code changes via plan-feature, not harness toggle). When in doubt, do NOT trigger this skill.
+description: This skill should be used ONLY when the user explicitly wants to enable, disable, toggle, or check status of pjc harness hooks. Triggers REQUIRE on/off/status/toggle intent combined with EITHER (a) the words "harness"/"hook", OR (b) a specific pjc harness hook name — require-plan(-for-write), require-evidence/evidence, check-utf8/utf8, impact-warn, block-destructive, suggest-agents-record — which counts as explicit harness context. Examples that SHOULD trigger - "harness 끄기", "harness 켜기", "hook 끄기", "hook 상태", "harness status", "harness 토글", "plan 강제 꺼" (with "강제" indicating hook), "require-plan off", "require-plan on", "evidence 검사 꺼", "utf8 검사 꺼". Examples that should NOT trigger - "이 기능 끄는 코드 만들어줘", "기능 켜기", "버튼 끄기" (those are code changes via plan-feature, not harness toggle). When in doubt, do NOT trigger this skill.
 argument-hint: "<hook 이름> <on|off|toggle|status>"
 ---
 
@@ -26,6 +26,7 @@ argument-hint: "<hook 이름> <on|off|toggle|status>"
 | `require-evidence` | Stop 시 증거 없는 완료 경고 |
 | `check-utf8-and-lines` | UTF-8/1500라인/한글주석 검사 |
 | `impact-warn` | public 심볼 변경 시 caller 경고 |
+| `suggest-agents-record` | 빌드/테스트/DB 명령 실행 시 AGENTS.md 기록 제안 |
 
 **`block-destructive` 는 안전상 토글 불가** (파괴적 명령 차단은 항상 동작).
 
@@ -51,6 +52,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/har
 | "evidence 꺼", "증거 검사 꺼", "stop 경고 꺼" | `require-evidence` |
 | "utf8 검사 꺼", "주석 검사 꺼", "라인 검사 꺼" | `check-utf8-and-lines` |
 | "impact 경고 꺼", "caller 경고 꺼", "impact-warn off" | `impact-warn` |
+| "기록 제안 꺼", "AGENTS 제안 꺼", "suggest-agents-record off" | `suggest-agents-record` |
 
 명령:
 ```powershell
@@ -99,6 +101,7 @@ Claude: [Bash 도구로 harness-toggle.ps1 "" status 실행]
         [ON]  require-evidence
         [ON]  check-utf8-and-lines
         [ON]  impact-warn
+        [ON]  suggest-agents-record
         [ON]  block-destructive (안전상 토글 불가)
 
 사용자: "plan 강제 다시 켜줘"
