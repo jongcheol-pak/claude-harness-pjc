@@ -158,7 +158,8 @@ foreach ($sub in $subs) {
 
     # ---- 컴파운드 검사: 재귀 강제 삭제 (옵션 순서·따옴표·글롭 변형 무관) ----
     # rm/Remove-Item/rmdir/rd/del 계열이 '재귀'+'강제' 플래그를 모두 갖고,
-    # 대상이 위험 루트(/, /*, //, ~, $HOME, *, ., ./, 드라이브 루트 C:\, $env:)이면 차단.
+    # 대상이 위험 루트(/, /*, //, ~, $HOME, *, ., ./, 드라이브 루트 C:\, $env:) 또는
+    #   시스템 디렉터리(POSIX /usr·/etc…, Windows C:\Windows·Program Files·ProgramData 및 /c/·/mnt/c/ 마운트)이면 차단.
     # 단일 정규식이 못 잡던 변형을 포착: rm -fr /, rm -r -f /, rm --recursive --force /,
     #   rm -rf /*, rm -rf "/", rm -rf //, Remove-Item C:\ -Recurse -Force(인자 순서) 등.
     #
@@ -169,8 +170,11 @@ foreach ($sub in $subs) {
     #   미탐을 막는다(예: bash에서 rm -rf 뒤 백슬래시+개행+/ 는 실제 rm -rf / 로 실행됨).
     $norm = $scan -replace '`\s*\r?\n', ' '       # PowerShell 백틱 줄-이음
     $norm = $norm -replace '\\\s*\r?\n', ' '      # bash 백슬래시 줄-이음
-    # 위험 대상(따옴표 선택): / /* // | ~ $HOME $env: | * | . ./ .* ./* | 드라이브 루트 C:\(글롭 포함). 루프 불변이라 밖에서 1회 정의.
-    $dangerTarget = '(^|\s)(["'']?)(/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+    # 위험 대상(따옴표 선택): / /* // | POSIX 시스템 디렉터리(/usr /etc /bin … /opt /srv /run, 하위·글롭 포함) |
+    #   ~ $HOME $env: | * | . ./ .* ./* | Windows 시스템 디렉터리(C:\Windows·Program Files·ProgramData — 네이티브 및
+    #   MSYS /c/… · WSL /mnt/c/… 마운트(대소문자 무시 — /C/·/D/ 등도 매치), 하위 포함) | 드라이브 루트 C:\(글롭 포함). 루프 불변이라 밖에서 1회 정의.
+    # 시스템 디렉터리는 dir명 뒤가 /·따옴표·공백·끝이어야 매치돼 동음 접두(/etcetera·C:\WindowsApps·/c/Users)는 통과.
+    $dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
     $delMatches = [regex]::Matches($norm, '(^|\s)(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')
     foreach ($dm in $delMatches) {
         # 삭제 명령 토큰부터 다음 줄바꿈 전까지가 그 명령의 인자 윈도우
