@@ -28,7 +28,7 @@
 ├── plugins/pjc/
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop hook 배선
-│   ├── scripts/*.ps1                # hook 구현(block-destructive·require-plan-for-write·post-write-checks·require-evidence·warn-external-ops) + harness-toggle.ps1
+│   ├── scripts/*.ps1                # hook 구현(block-destructive·require-plan-for-write·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record) + harness-toggle.ps1
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
 ├── validate.ps1                     # 설치본 검증
