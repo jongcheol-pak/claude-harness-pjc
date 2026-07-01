@@ -5,9 +5,12 @@
 검사: 깨진/경로 없는 wikilink / 예산 초과 / platform·origin·confidence 통제어휘 위반·누락
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
+      / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / log 아카이브 인덱스 정합
       / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 파일은 수정하지 않는다(읽기 전용).
+범위: vault 파일 읽기 + §7-20의 레포 파일 '실존' 확인까지 — 코드 내용은 해석하지 않는다
+      (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (SKILL.md H-2: SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
 """
@@ -78,6 +81,19 @@ def feature_index_rows(text):
                if line.lstrip().startswith("|") and ("feature]]" in line or "recipe]]" in line))
 
 
+def repo_root_for_hub(hub_text):
+    """project 허브 '## 레포 정보' 섹션의 '- **경로**: `...`' 백틱 값을 레포 루트로 반환(§7-20용).
+    섹션/경로 줄이 없거나 그 디렉터리가 실재하지 않으면(다른 PC 등) None — 레포 접근 불가로 간주."""
+    sec = re.search(r"^##\s*레포 정보\b.*?(?=^##\s|\Z)", hub_text, re.M | re.S)
+    if not sec:
+        return None
+    m = re.search(r"\*\*경로\*\*\s*:\s*`([^`\n]+)`", sec.group(0))
+    if not m:
+        return None
+    root = os.path.expanduser(m.group(1).strip())
+    return root if os.path.isdir(root) else None
+
+
 def main():
     if len(sys.argv) < 2:
         print("사용법: python lint.py \"<vault_path>\"")
@@ -115,8 +131,8 @@ def main():
             if "코드에서 제거" not in text:
                 warns.append(f"deprecated 표기 안내 누락: {r} ('⚠️ 코드에서 제거됨' 안내 권장, schema §2.3)")
         # F2 구현 근거 각주 게이트: feature가 '## 구현 방법'을 갖는데 [^src-...] 각주가 0개면 얕은 feature
-        #  의심. lint은 vault만 읽어 레포 파일 실재는 못 보고 각주 '존재'만 검사; 서술↔코드 사실 정합은
-        #  §7-10(에이전트 표본)이 담당 (§7-18).
+        #  의심. 각주 '존재'는 여기서, 각주 경로의 레포 실존은 §7-20 블록(메인 루프 뒤)이 기계 검사;
+        #  서술↔코드 사실 정합은 §7-10(에이전트 표본)이 담당 (§7-18).
         if typ == "feature" and not is_dep and not in_archive and "## 구현 방법" in text and "[^src-" not in text:
             warns.append(f"구현 근거 각주 누락: {r} (## 구현 방법 있으나 [^src-...] 0개 — 얕은 feature 의심, schema §2.3)")
 
@@ -318,6 +334,56 @@ def main():
         for f in sorted(feat_files):
             if f.startswith(hub_base + "/") and f not in hub_text:
                 warns.append(f"허브 기능 목록 누락: {r} -> {f}")
+
+    # feature 각주 경로 레포 실존 (wiki-schema §7-20): feature의 [^src-...] 각주 정의 줄에 백틱으로
+    #  병기된 레포 상대경로가, 프로젝트 허브 '## 레포 정보 > 경로'의 레포에 실재하는지 확인.
+    #  lint은 파일 '실존'만 보고 코드 내용은 해석하지 않는다(서술↔코드 정합은 §7-10 에이전트 표본).
+    #  허브에 레포 경로가 없거나 디렉터리가 부재(다른 PC 등)면 프로젝트 단위 INFO 1건 후 건너뛴다
+    #  (그 프로젝트의 ① 경로 실재 확인은 §7-10 에이전트가 폴백 수행).
+    repo_cache = {}  # 허브 rel 경로 -> 레포 루트(str) 또는 None(접근 불가)
+    for r, (fm, typ, text) in sorted(pages.items()):
+        if typ != "feature" or r.startswith("90_archive/"):
+            continue
+        if (fm.get("status") == "deprecated") or bool(fm.get("deprecated")):
+            continue  # deprecated는 frozen 이력 — 경로가 이미 제거된 게 정상 (§7-18과 동일 제외)
+        # 각주 정의 줄 판별은 strip_code 사본으로(코드펜스 안 유사 줄 제외 — 줄 구조 보존),
+        #  백틱 토큰 추출은 원문 줄에서(strip_code는 인라인코드를 공백화해 토큰이 사라지므로).
+        raw_lines = text.splitlines()
+        stripped_lines = strip_code(text).splitlines()
+        tokens = []
+        for i, sl in enumerate(stripped_lines):
+            if not sl.lstrip().startswith("[^src-"):
+                continue
+            # 디렉터리 구분자 포함 토큰만 경로 후보 — 무구분자(`MainViewModel.LoadAsync` 등
+            #  클래스·멤버명)는 오탐 방지 위해 제외 (plan D2)
+            tokens += [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
+                       if "/" in t or "\\" in t]
+        if not tokens:
+            continue
+        hub = r.rsplit("/", 1)[0] + ".md"  # 20_projects/{proj}/feat-x.md -> 20_projects/{proj}.md
+        if hub not in repo_cache:
+            hub_text = pages[hub][2] if hub in pages else ""
+            repo_cache[hub] = repo_root_for_hub(hub_text) if hub_text else None
+            if repo_cache[hub] is None:
+                infos.append(f"레포 접근 불가(허브 레포 경로 미기재/부재): {hub} "
+                             f"— 각주 경로 검증 건너뜀(§7-10 에이전트 폴백, schema §7-20)")
+        root = repo_cache[hub]
+        if root is None:
+            continue
+        for t in tokens:
+            p = t.replace("\\", "/").strip()
+            if p.startswith("./"):
+                p = p[2:]
+            if os.path.isabs(p) or re.match(r"^[A-Za-z]:", p):
+                continue  # 레포 '상대'경로만 검사 대상 — 절대경로 병기는 규약 밖이라 제외
+            full = os.path.join(root, p)
+            if "*" in p:
+                if not glob.glob(full):
+                    warns.append(f"각주 경로 레포에 없음: {r} -> '{t}' "
+                                 f"(글롭 매치 0건 — 이동·삭제·오기 가능, schema §7-20)")
+            elif not os.path.exists(full):
+                warns.append(f"각주 경로 레포에 없음: {r} -> '{t}' "
+                             f"(이동·삭제·오기 가능 — 갱신 필요, schema §7-20)")
 
     # 고아 페이지(간이): 어디서도 링크되지 않는 페이지 (루트 인프라·아카이브 제외)
     for r, (fm, typ, _) in sorted(pages.items()):
