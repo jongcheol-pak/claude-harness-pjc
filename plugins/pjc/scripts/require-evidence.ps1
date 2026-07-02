@@ -60,12 +60,35 @@ if ($firstLine -match '^checkpoint:') {
 # 단어만(Build/Tests/Review)이 아니라 '결과 동반 패턴'을 요구한다(G4) — "Review: 안 함"처럼
 # 단어만 있고 결과가 없는 빈 증거가 통과하지 못하게 한다.
 # 결과 패턴: Build ...OK/성공, Tests N(개수), Review ...OK/spec/quality/통과 중 하나.
+$evidenceRx = '(Build[^\r\n]*\b(OK|pass|passed|성공)\b)|(Tests?\s*[:=]?\s*\d)|(Review[^\r\n]*\b(OK|spec|quality|passed|통과)\b)'
+$hasEvidence = $false
 if ($firstLine -match '^T\d+:') {
-    $evidenceRx = '(Build[^\r\n]*\b(OK|pass|passed|성공)\b)|(Tests?\s*[:=]?\s*\d)|(Review[^\r\n]*\b(OK|spec|quality|passed|통과)\b)'
     if ($lastMsg -notmatch $evidenceRx) {
         [Console]::Error.WriteLine("STOP WARNING: task 커밋에 검증 '결과' 증거가 없습니다 (예: Build ...OK / Tests N / Review ...OK).")
         [Console]::Error.WriteLine("Done = Proof 원칙 위반 가능 - 단어만이 아니라 실제 결과를 커밋 메시지에 적거나 사용자에게 보고하세요.")
+    } else {
+        $hasEvidence = $true
     }
+}
+
+# 2-1. transcript 실행 흔적 대조 — 커밋의 증거 '텍스트'가 실제 실행 없이 적혔을 가능성 검출.
+# T커밋에 증거 텍스트가 있을 때만, 이 세션 transcript(JSONL)에서 빌드/테스트 명령 호출 흔적을 찾는다.
+# 판정은 휴리스틱이다: tool 호출의 "command" 필드 근처 명령 패턴만 세어, 본문·문서에 적힌 명령
+# 텍스트로 인한 오탐을 줄이되 완전하지는 않다(정교한 위조 방어가 아니라 정직한 누락의 소프트 리마인더).
+# transcript 포맷은 비공식 내부 형식이므로 파일 부재·읽기 실패·포맷 변경 시 조용히 건너뛴다(비차단 유지).
+# 최근 활동은 파일 끝에 있으므로 끝쪽 3000줄만 본다(대형 transcript 전체 스캔 캡 — 무매치 경로가 최악이라 상한 필수).
+if ($hasEvidence) {
+    try {
+        $tp = if ($data) { $data.transcript_path } else { $null }
+        if ($tp -and (Test-Path -LiteralPath $tp -PathType Leaf)) {
+            $tail = Get-Content -LiteralPath $tp -Tail 3000 -ErrorAction Stop
+            $traceRx = '"command"\s*:\s*".{0,600}?(dotnet (build|test)|npm (test|run )|npx |yarn |pnpm |pytest|cargo (build|test)|gradlew?\b|go (build|test)|mvn |msbuild|make |ctest|python(3)? -m (py_compile|build|pytest)|ParseFile)'
+            if (-not (($tail -join "`n") -match $traceRx)) {
+                [Console]::Error.WriteLine("STOP WARNING: 커밋에 검증 증거 텍스트는 있으나 이 세션 transcript에서 빌드/테스트 실행 흔적을 찾지 못했습니다.")
+                [Console]::Error.WriteLine("증거가 실행 없이 적혔을 수 있습니다 - 실제로 빌드/테스트를 실행했는지 확인하세요 (이전 세션에서 실행했으면 무시).")
+            }
+        }
+    } catch { }
 }
 
 # 3. 코드 파일 미커밋 변경 검출 (G6) — 구현 후 commit 누락 가능성 경고 (비차단)
