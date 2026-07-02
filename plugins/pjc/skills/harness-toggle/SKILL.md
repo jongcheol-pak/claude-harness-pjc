@@ -20,58 +20,29 @@ argument-hint: "<hook 이름> <on|off|toggle|status>"
 
 ## 토글 가능한 hook
 
-| Hook 이름 | 역할 |
-|---|---|
-| `require-plan-for-write` | plan.md 없이 코드 Write/Edit 차단 |
-| `require-evidence` | Stop 시 증거 없는 완료 경고 |
-| `check-utf8-and-lines` | UTF-8/1500라인/한글주석 검사 |
-| `impact-warn` | public 심볼 변경 시 caller 경고 |
-| `warn-external-ops` | push·merge·tag·릴리즈·PR 등 외부·비가역 작업 경고 |
-| `suggest-agents-record` | 빌드/테스트/DB 명령 실행 시 AGENTS.md 기록 제안 |
+| Hook 이름 | 역할 | 사용자 표현 (끄기/켜기 예) |
+|---|---|---|
+| `require-plan-for-write` | plan.md 없이 코드 Write/Edit 차단 | "plan 강제", "plan 차단" |
+| `require-evidence` | Stop 시 증거 없는 완료 경고 | "evidence", "증거 검사", "stop 경고" |
+| `check-utf8-and-lines` | UTF-8/1500라인/한글주석 검사 | "utf8 검사", "주석 검사", "라인 검사" |
+| `impact-warn` | public 심볼 변경 시 caller 경고 | "impact 경고", "caller 경고" |
+| `warn-external-ops` | push·merge·tag·릴리즈·PR 등 외부·비가역 작업 경고 | "외부 작업 경고", "push 경고" |
+| `suggest-agents-record` | 빌드/테스트/DB 명령 실행 시 AGENTS.md 기록 제안 | "기록 제안", "AGENTS 제안" |
 
 **`block-destructive` 는 안전상 토글 불가** (파괴적 명령 차단은 항상 동작).
 
 ## 실행 매뉴얼
 
-사용자 의도를 파악하고 다음 PowerShell 명령 중 **하나**를 Bash 도구로 실행하세요.
-
-> 참고: 명령의 `-ExecutionPolicy Bypass`는 로컬 미서명 플러그인 스크립트(`harness-toggle.ps1`)를 실행 정책이 제한된 환경(Restricted/AllSigned)에서도 실행하기 위한 최소 설정이다. 이 스크립트는 자격증명·네트워크·프로세스 종료를 다루지 않아 백신 오인 조합(정책 우회 + 숨김 실행 + 평문 자격증명 등)이 아니다.
-
-### 상태 확인
-사용자 표현: "harness 상태", "hook 상태", "status", "어떤 hook이 켜져 있나"
+사용자 의도를 위 표의 hook 이름에 매핑한 뒤, 아래 명령의 **마지막 두 인자(`<hook이름> <동작>`)만 바꿔** Bash 도구로 실행한다:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" "" status
+pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" <hook이름> <on|off|toggle>
 ```
 
-### 개별 hook 비활성화
-사용자 표현 → hook 이름 매핑:
+- **끄기/켜기/토글**: 위 표의 hook 이름 + `off`/`on`/`toggle` (예: `require-plan-for-write off`).
+- **상태 확인**("harness 상태"/"status"/"어떤 hook이 켜져 있나"): hook 이름을 `""`로, 동작을 `status`로 → `... "" status`.
 
-| 사용자 표현 | hook 이름 |
-|---|---|
-| "plan 강제 꺼", "plan 차단 꺼", "require-plan off" | `require-plan-for-write` |
-| "evidence 꺼", "증거 검사 꺼", "stop 경고 꺼" | `require-evidence` |
-| "utf8 검사 꺼", "주석 검사 꺼", "라인 검사 꺼" | `check-utf8-and-lines` |
-| "impact 경고 꺼", "caller 경고 꺼", "impact-warn off" | `impact-warn` |
-| "외부 작업 경고 꺼", "push 경고 꺼", "warn-external-ops off" | `warn-external-ops` |
-| "기록 제안 꺼", "AGENTS 제안 꺼", "suggest-agents-record off" | `suggest-agents-record` |
-
-명령:
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" <hook이름> off
-```
-
-### 개별 hook 활성화
-"plan 강제 켜" / "require-plan on" 등:
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" <hook이름> on
-```
-
-### 토글
-"plan 강제 토글":
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/harness-toggle.ps1" <hook이름> toggle
-```
+> 참고: `-ExecutionPolicy Bypass`는 로컬 미서명 플러그인 스크립트(`harness-toggle.ps1`)를 제한 환경(Restricted/AllSigned)에서도 실행하기 위한 최소 설정이다. 자격증명·네트워크·프로세스 종료를 다루지 않아 백신 오인 조합(정책 우회 + 숨김 실행 + 평문 자격증명 등)이 아니다.
 
 ## 사용자에게 알릴 사항
 

@@ -54,7 +54,7 @@ View + ViewModel 스켈레톤을 추가한다.
 - DI 등록 진입점 (보통 `App.xaml.cs` 또는 `Program.cs`의 `ConfigureServices`)
 - 네비게이션 서비스 패턴 (`INavigationService` 등 존재 여부)
 - 기존 ViewModel 한 개를 읽어 컨벤션 파악 (네이밍, 베이스 클래스, 주석 스타일)
-- **`CommunityToolkit.Mvvm` PackageReference 존재 확인**(프로젝트 csproj grep). 없으면 아래 Halt 조건으로 중지 — 패키지 추가는 의존성 추가(=승인 필요)이므로 임의 추가하지 않고, `using CommunityToolkit.Mvvm`이 든 컴파일 불가 코드를 생성하지 않는다.
+- **`CommunityToolkit.Mvvm` PackageReference 존재 확인**(csproj grep) — 없으면 **Halt**(아래 Halt 조건이 정본: 의존성 추가는 승인 필요이므로 임의 추가·컴파일 불가 코드 생성 금지).
 
 ### Step 2. ViewModel 생성
 
@@ -294,10 +294,10 @@ public sealed partial class <Name>Dialog : ContentDialog
 | ViewModel에서 `MessageBox` 직접 호출 | `IDialogService` 등으로 추상화 |
 | ViewModel에서 `HttpClient` 직접 사용 | Domain/Application 서비스 경유 |
 | 코드비하인드에 비즈니스 로직 작성 | ViewModel로 이동 |
-| DI 등록 없이 `new <Name>ViewModel()` | 항상 컨테이너 경유 |
-| 영문 XML doc 주석 | 한글로 작성 |
 | 동기 `Wait()`, `.Result` 호출 | `async/await` |
 | `LoadAsync`를 생성자에서 직접 호출 | `Loaded` 이벤트 또는 명시적 커맨드 |
+
+> DI 등록 없이 `new ViewModel()`·영문 XML doc 주석 금지는 절대 규칙 3·4가 정본(중복 행 제거).
 
 ## Halt 조건
 
