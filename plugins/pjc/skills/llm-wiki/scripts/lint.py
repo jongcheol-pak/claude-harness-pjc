@@ -8,7 +8,7 @@
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
-      / pending.md 미처리 drift 집계(INFO — 절차 K 큐)
+      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE] 태그별)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
       / index.md 부재(ERR — 인덱스 기반 검사 불능 신호)
@@ -488,13 +488,22 @@ def main():
             warn(f"log 아카이브 인덱스 깨짐: log.md가 {ym}.md를 가리키나 90_archive/log/{ym}.md 없음",
                  f"90_archive/log/{ym}.md")
 
-    # pending.md 미처리 drift 집계 (절차 K 큐 — SKILL K-5/B-1 0): 잔량이 있으면 INFO로 알려
-    #  다음 ingest/lint 세션이 소비하게 한다 (0건·파일 없음이면 생략)
+    # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/B-1 0): 잔량이 있으면 INFO로 알려
+    #  다음 ingest/lint 세션이 소비하게 한다 (0건·파일 없음이면 생략). 태그별 분리 —
+    #  [K-DRIFT]는 위키 세션이 반영 후 제거, [SKILL-IMPROVE]는 사용자 보고 대상(제거는 사용자 지시).
+    #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
     if "pending.md" in pages:
-        pend_n = sum(1 for line in pages["pending.md"][2].splitlines()
-                     if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[K-DRIFT\]", line))
-        if pend_n:
-            infos.append(f"pending.md 미처리 drift {pend_n}건 — 다음 ingest(절차 B-1 0)/lint(F-0)에서 소비")
+        pend_text = pages["pending.md"][2]
+        parts = []
+        for tag, label in (("K-DRIFT", "K-DRIFT {n}건"),
+                           ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)")):
+            n = sum(1 for line in pend_text.splitlines()
+                    if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[" + tag + r"\]", line))
+            if n:
+                parts.append(label.format(n=n))
+        if parts:
+            infos.append("pending.md 미처리 잔량 — " + " / ".join(parts)
+                         + " — 다음 ingest(절차 B-1 0)/lint(F-0)에서 소비")
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
