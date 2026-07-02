@@ -439,7 +439,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 
 이 승인은 **plan 실행(구현) 승인**이다 — `## 불가피한 Halt (위임 불가)`의 항목(push·main 병합·태그·릴리즈·PR·파괴적 작업·인증정보 필요 신규 외부 서비스·돌발 결정)은 이 승인에 **포함하지 않으며**, 각 지점에서 그 행위를 이름으로 적어 따로 승인받는다 (implement-task 절대 규칙 12). push·릴리즈 등은 구현·검증 완료 후 implement-task 최종 보고에서 별도로 받는다.
 
-**승인 직후 결정 큐잉**: plan의 주요 채택 결정·`## Deferred / Follow-up`(보류)·`## Out of Scope`(기각)를 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 항목별 1줄로 기록한다(vault 없으면 그 규약의 폴백) — 다음 계획 때 위키 조회로 회수된다.
+**승인 직후 결정 큐잉**: plan의 **기능 단위** 채택 결정·`## Deferred / Follow-up`(보류)·`## Out of Scope`(기각)를 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 항목별 1줄로 기록한다(vault 없으면 그 규약의 폴백, 구현 세부 결정은 제외 — 입도 기준은 K 5-2 정본) — 다음 계획 때 위키 조회로 회수된다.
 
 ## 통과 체크리스트
 
