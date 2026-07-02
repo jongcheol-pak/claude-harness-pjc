@@ -11,6 +11,7 @@
 - [concept](#concept)
 - [guide](#guide)
 - [question](#question)
+- [decision-log](#decision-log)
 
 ## source-stub
 ```markdown
@@ -208,4 +209,21 @@ tags: [question, 관련태그]
 - **상황**: 무엇이 충돌/미해결인가
 - **관련 페이지**: [[...]]
 - **현재 판단**: (잠정)
+```
+
+## decision-log
+```markdown
+---
+type: decision-log
+project: 프로젝트명
+category: personal | work
+updated: YYYY-MM-DD
+tags: [decision-log, 프로젝트태그]
+---
+
+# 프로젝트명 결정 이력
+
+<!-- 항목 불변: 기록된 결정은 수정·삭제하지 않는다 — 결정이 바뀌면 "번복" 항목을 새로 추가(같은 주제어 재사용, wiki-schema §2.8).
+     어휘 고정: 채택 | 보류 | 기각 | 번복. 최신이 위. 예산 150줄 초과 시 오래된 항목부터 90_archive 원경로 이동. -->
+- [YYYY-MM-DD] {주제} — **{채택|보류|기각|번복}**: {요지·근거 1줄}
 ```

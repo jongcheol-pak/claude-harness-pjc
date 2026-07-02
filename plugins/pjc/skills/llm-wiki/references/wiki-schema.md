@@ -1,6 +1,6 @@
 ---
 type: schema
-version: "2.28"
+version: "2.29"
 updated: 2026-07-02
 language: ko
 ---
@@ -12,7 +12,7 @@ language: ko
 
 ## 목차
 1. 위키 개요 / 핵심 원칙·3대 용도
-2. 페이지 타입 정의 (source-stub/project/feature/entity/concept/guide/question)
+2. 페이지 타입 정의 (source-stub/project/feature/entity/concept/guide/question/decision-log)
 3. 네이밍 / 태깅 / 링킹 / 통제 어휘 (platform·스택)
 4. 파일 예산
 5. Ingest 워크플로우
@@ -210,6 +210,26 @@ tags: [question, 관련태그]
 ---
 ```
 
+### 2.8 decision-log (결정 이력) — 신규
+- **위치**: `20_projects/{personal|work}/{프로젝트명}/decisions.md` — 프로젝트 폴더당 1개, **파일명 고정**
+- **역할**: 프로젝트의 기획·설계 **결정 이력** — 무엇을 채택·보류·기각·번복했고 왜인지를 시간순 보존. 존재 목적은 **조회**다: 계획 수립·기획 논의 전에 읽어 "예전에 보류/기각한 안"을 모르고 다시 논의하는 것을 막는다(절차 K 2·plan-feature 연동).
+- **예산**: ~150줄. 초과 시 **오래된 항목부터** `90_archive/` 하위에 원경로를 재현한 파일로 append 이동(§8 아카이브 구조 재사용) — **항목 단위로만 자르고 쪼개지 않는다**. 보존 이동이므로 승인 불필요.
+- **항목 불변 + 번복 규칙**: 기록된 결정 항목은 수정·삭제하지 않는다. 결정이 바뀌면 **번복** 항목을 새로 추가한다(이력 보존 — 같은 주제어를 재사용해 어느 결정을 뒤집었는지 드러낸다).
+- **항목 형식(최신 위)**: `- [YYYY-MM-DD] {주제} — **{채택|보류|기각|번복}**: {요지·근거 1줄}`
+- **결정 통제 어휘(고정)**: `채택` | `보류` | `기각` | `번복`
+- **origin·confidence·platform 없음**: 결정은 사용자 발화·승인이 직접 근거라 agent-synthesized/human-validated 구분(§11)이 부적합하다. **시간 기반 신선도(60/90일) 검사도 전체 면제**(§7-3·§8) — 이력 페이지는 미편집이 정상이다(deprecated·paused 동급).
+- **수집·소비**: 코드·기획 세션이 vault 루트 `pending.md`에 `[DECISION]` 1줄로 큐잉(SKILL 절차 K 5-2), ingest/lint 세션(B-1 0·F-0)이 해당 프로젝트 decisions.md로 소비한다. **최초 생성 시 프로젝트 허브 "관련 위키 지식"에 링크를 1회 추가**한다(고아 방지).
+
+```yaml
+---
+type: decision-log
+project: 프로젝트명
+category: personal | work
+updated: YYYY-MM-DD
+tags: [decision-log, 프로젝트태그]
+---
+```
+
 ---
 
 ## 3. 네이밍 / 태깅 / 링킹 / 통제 어휘
@@ -225,6 +245,7 @@ tags: [question, 관련태그]
 | guide (platform/ui-ux) | `{platforms|ui-ux}/{영문소문자하이픈}.md` | `platforms/winui3-bootstrap.md` |
 | guide (recipe) | `recipes/{스택}/{영문소문자하이픈}.md` | `recipes/winui/startup-autostart.md` |
 | 질문 | `q-{YYYYMMDD}-{짧은설명}.md` | `q-20260607-scrollview-issue.md` |
+| 결정 이력 | `{프로젝트폴더}/decisions.md` (파일명 고정) | `devdashboard-winui/decisions.md` |
 
 ### Wikilink 규칙
 - 형식: `[[경로/파일명|한글 표시이름]]` (명시적 경로 필수)
@@ -238,13 +259,14 @@ tags: [question, 관련태그]
 - **동의어 명명 일관성**: 새 기능명을 등록하기 전에 기존 기능별 인덱스를 한/영 키워드로 검색한다 — **다른 프로젝트에 같은 기능이 이미 등록돼 있으면 그 행의 한/영 키워드를 재사용해 명명**한다(같은 기능 = 같은 검색어 — 프로젝트마다 다른 이름으로 등록하면 교차 프로젝트 검색("A의 이 기능이 다른 프로젝트에도 있나")이 누락된다). 새 이름이 더 적절하면 기존 키워드도 괄호에 병기해 양쪽 검색이 모두 잡히게 한다. (의미 유사성은 기계 검사 불가 — 등록 절차 규칙, A-3 1·B-2 1-1)
 
 ### 태그 / 통제 어휘
-- 계층 태그: `project`, `feature`, `entity`, `concept`, `guide`, `recipe`, `question`, `source`
+- 계층 태그: `project`, `feature`, `entity`, `concept`, `guide`, `recipe`, `question`, `source`, `decision-log`
 - 기술 태그: `winui3`, `rust`, `dotnet`, `tauri`, `mvvm`, `sqlite`, `wpf` …
 - 기능 태그: `tray`, `dpi`, `notification`, `launcher`, `drag-drop`, `import-export` …
 - UI 태그: `xaml`, `navigation`, `theming`, `dialog`, `localization` …
 - **`platform` 통제 어휘(고정)**: `windows-desktop` | `web` | `mobile` | `cli` | `cross`
 - **`origin` 통제 어휘(고정)**: `agent-synthesized` | `human-validated` — project/feature/entity/concept/guide 공통 필수 필드
-- **`confidence` 통제 어휘(고정)**: `high` | `medium` | `low` — project/feature/entity/concept/guide 공통 필수 필드
+- **`confidence` 통제 어휘(고정)**: `high` | `medium` | `low` — project/feature/entity/concept/guide 공통 필수 필드 (decision-log는 대상 아님 — §2.8)
+- **결정 통제 어휘(고정, decision-log 항목)**: `채택` | `보류` | `기각` | `번복` (§2.8)
 - **`스택`(recipe 폴더 분류, 개방 목록)**: 프레임워크/언어 기준 — `winui` | `wpf` | `csharp` | `dotnet` | `unity` | `rust` | `web` | `tauri` … 가장 구체적인 것을 선택(예: WinUI 전용은 `winui`, 언어 일반은 `csharp`).
 
 ---
@@ -262,6 +284,7 @@ tags: [question, 관련태그]
 | guide (ui-ux) | 150줄 | 분리 |
 | guide (recipe) | 120줄 | 분리 |
 | question | 40줄 | resolved 시 관련 페이지에 흡수 + `status: resolved` 표시(보존, §2.7) |
+| decision-log | 150줄 | 오래된 항목부터 `90_archive/` 원경로 재현 파일로 이동(§2.8·§8, 항목 단위) |
 | log.md | 6000자(문자 수) | 6000자 초과 시 가장 오래된 항목부터 `90_archive/log/{YYYY-MM}.md`로 월별 이동(§8 롤오버) |
 | index.md | 제한 없음 (**1단계(소제목 구역화 — 사람 판단 가이드)**: 기능별 인덱스가 비대해지면(대략 본문 80% ≈ 320줄 또는 기능별 인덱스 160행) `## 기능별 인덱스` 아래를 **`### ` 하위 소제목**으로 구역을 나눈다(새 `## ` 섹션으로 쪼개지 않는다 — `## `로 나누면 lint의 행수 측정 `feature_index_rows`가 첫 `## `까지만 세어 과소계상된다. index.md·sub-index 공통. 검색 등록·한영 병기 검사는 전체 텍스트를 스캔하므로 어느 쪽이든 누락되지 않지만, 행수 신호 정확도를 위해 `### `를 쓴다). **2단계(파일 분할 — lint 기계 신호)**: **본문(frontmatter 포함 전체) 400줄 초과 또는 기능별 인덱스 200행 초과**면 lint이 INFO로 분할을 제안한다(`INDEX_BODY_LINES`/`INDEX_FEAT_ROWS`). 이때 **vault의 기존 category 기준**(`index-personal.md`/`index-work.md`)으로 파일 분할 — 새 분류를 만들지 말고 이미 확립된 personal/work를 따라야 feature가 어느 sub-index인지 그 프로젝트 category로 자동 결정된다. 분할 시 **`index.md` 상단에 sub-index 파일 목록을 반드시 유지** — 절차 K·검색이 `index.md`만 보고도 분할 파일을 찾을 수 있어야 함. **분할 상태에서는 이 문서의 "`index.md` 기능별 인덱스 갱신/제거/표기" 지시 중 project feature(20_projects, category 보유)의 행에 대한 것이 해당 category의 sub-index 파일에 적용된다** — project feature 기능별 인덱스 항목의 추가·삭제·폐기 표기는 그 항목이 속한 sub-index에서 수행한다. **분할(sub-index) 대상은 project feature의 기능별 인덱스 행으로 한정한다.** 단 `## 미해결 질문`처럼 category(personal/work)로 분할되지 않는 섹션은 `index.md` 본체에 그대로 두고 거기서 닫는다. recipe(`40_guides`, category 없는 cross-stack)의 기능별 인덱스 행과 프로젝트 테이블(`## 개인/업무 프로젝트`)도 personal/work로 분할되지 않으므로 같은 비분할 취급으로 `index.md` 본체에 남긴다 — recipe는 새 분류를 만들지 않고 본체 기능별 인덱스·`## 가이드 / 레시피` 섹션에서 관리한다. (이 recipe·프로젝트 테이블 귀속은 절차 규칙이며 lint 기계 검사 대상이 아니다 — recipe는 category가 없어 자동 식별이 어렵고 분할은 드문 경로다.) `index.md` 본체는 sub-index 목록 + 이런 비분할 섹션(미해결 질문·recipe 기능별 인덱스·프로젝트 테이블)만 최신으로 유지한다. **sub-index 비대 시(3단계 없음)**: 분할된 `index-*.md` 자체가 임계(본문 400줄/기능별 인덱스 200행)를 넘으면 lint이 INFO로 알린다 — personal/work는 종착 분류이므로 추가 파일 분할이 아니라 **소제목 구역화(1단계)로 정리**한다(새 분류를 만들지 않는다는 원칙 유지). 분할된 sub-index는 `## 기능별 인덱스` 섹션을 그대로 보유한다 — lint의 행수 측정·동기화 검사가 이 헤딩을 기준으로 한다.) | - |
 
@@ -289,6 +312,7 @@ tags: [question, 관련태그]
 > 새 소스(프로젝트 변경분, 문서 등)를 위키에 반영할 때
 
 ### 필수 단계
+0a. **pending.md 큐 소비**: vault 루트 `pending.md`가 있으면 먼저 읽는다 — `[K-DRIFT]`는 갱신 범위에 반영 후 제거, `[SKILL-IMPROVE]`는 위키에 반영하지 않고 사용자 보고, **`[DECISION]`은 해당 프로젝트 `decisions.md`(§2.8)에 항목 추가 후 제거**(미등록 프로젝트면 등록 여부를 사용자에게 확인). (절차: 스킬 "B-1 0")
 0. **교차 sweep (stale 드리프트 차단)**: 변경된 사실이 여러 페이지에 중복 기재됐을 수 있으니, 갱신 전 그 사실을 위키 전체에서 `grep`해 **나온 곳을 모두 일괄 갱신**한다. **단 `10_sources/` 소스 스텁은 불변(§2.1)이라 sweep 대상에서 제외** — 그러므로 휘발성 사실(SDK/패키지 버전 등)을 애초에 스텁에 두지 않는다(이름만). (절차: 스킬 "B-2 0번")
 1. 이 규칙 문서 읽기
 2. 대상 프로젝트의 레포 문서(notes.md, README.md, CLAUDE.md) 변경분 확인 + **신규 프로젝트 등록 시 UI/기능 진입점 소스 스캔(Views/ViewModels/라우트 등)으로 문서 미기재 기능까지 열거**(전체 기능 목록 도출). feature 망라·누락 검증의 기준이 된다.
@@ -321,8 +345,9 @@ tags: [question, 관련태그]
 > 위키에 질문할 때
 
 1. 이 규칙 문서 읽기
-2. `index.md`의 "기능별 인덱스" / 카탈로그에서 관련 페이지 식별 (`index.md` 상단에 sub-index 파일 목록이 있으면 관련 카테고리 sub-index도 함께 읽음)
+2. `index.md`의 "기능별 인덱스" / 카탈로그에서 관련 페이지 식별 (`index.md` 상단에 sub-index 파일 목록이 있으면 관련 카테고리 sub-index도 함께 읽음). 결정·이력 질문이면 해당 프로젝트 `decisions.md`(§2.8)를 우선 식별.
 3. 관련 feature/guide/지식 페이지 읽고 답변 합성 (출처 각주 필수)
+3a. **출력은 사용자 관점**: 결론 요약 먼저 → 상세 → 출처 순으로 정리하고, 내부 표기(frontmatter 필드·wikilink 원문 문법 등)를 본문에 노출하지 않는다. **타임라인 질의**("언제/이력") 는 decisions.md + 허브 "최근 주요 변경" + log(아카이브 인덱스로 월 특정)를 시간순 합성한다. (절차 전문: 스킬 "G")
 4. 답변이 유용한 종합이면 → concept 페이지 생성 고려 (2개 실증 시)
 5. 모순 발견 시 → question 페이지 생성
 6. `origin: agent-synthesized` 표시 (사용자 미검증)
@@ -331,7 +356,7 @@ tags: [question, 관련태그]
 
 > 코드 프로젝트 세션에서 기능 구현·버그 수정 전에 위키를 참고할 때.
 > **절차 전문은 스킬 `SKILL.md` "K. 작업 참조"에 단일 정의** — 인덱스 식별 → 식별 페이지만 read → 소스 점프 → `origin`/`confidence` 반영.
-> 규칙 측 핵심(불변): 이 워크플로는 **read-only**다. 모순·드리프트(위키↔코드 불일치)를 발견해도 위키 본문 페이지·인덱스를 수정하지 않고 사용자에게 보고하며, `log.md`도 남기지 않는다. **유일한 쓰기 예외는 vault 루트 `pending.md` 1줄 append** — 두 태그 공용: `- [YYYY-MM-DD] [K-DRIFT] {프로젝트}: {요약}`(위키↔코드 drift) 및 `- [YYYY-MM-DD] [SKILL-IMPROVE] {스킬명}: {증상·마찰 요지}`(pjc 스킬 자체의 결함·마찰 — SKILL.md 절차 K 5-1, vault 미설정·부재 시 질문 없이 생략하고 프로젝트 plan/notes에 폴백 기록). 중복 요지는 생략. 발견이 세션 종료로 유실되지 않게 큐잉하는 최소 예외다. pending.md는 다음 §5(ingest)/§7(lint) 세션이 시작 시 소비한다 — `[K-DRIFT]`는 위키 반영 후 항목 제거, `[SKILL-IMPROVE]`는 위키에 반영하지 않고 "플러그인 개선 후보"로 사용자 보고(제거는 사용자 지시 시에만 — SKILL.md B-1 0). **pending.md는 소비 대기 큐이지 지식 페이지가 아니다** — 작업 참조(K)·질문(G)의 검색 결과에서 제외하고 계획·디버깅·답변의 근거로 인용하지 않는다(읽기는 중복 억제 판정 목적만).
+> 규칙 측 핵심(불변): 이 워크플로는 **read-only**다. 모순·드리프트(위키↔코드 불일치)를 발견해도 위키 본문 페이지·인덱스를 수정하지 않고 사용자에게 보고하며, `log.md`도 남기지 않는다. **유일한 쓰기 예외는 vault 루트 `pending.md` 1줄 append** — 세 태그 공용: `- [YYYY-MM-DD] [K-DRIFT] {프로젝트}: {요약}`(위키↔코드 drift), `- [YYYY-MM-DD] [SKILL-IMPROVE] {스킬명}: {증상·마찰 요지}`(pjc 스킬 자체의 결함·마찰 — SKILL.md 절차 K 5-1), `- [YYYY-MM-DD] [DECISION] {프로젝트}: {주제} — {채택|보류|기각|번복}: {요지 1줄}`(기획·설계 결정 — SKILL.md 절차 K 5-2). vault 미설정·부재 시 질문 없이 생략하고 프로젝트 plan/notes에 폴백 기록. 중복 요지는 생략. 발견이 세션 종료로 유실되지 않게 큐잉하는 최소 예외다. pending.md는 다음 §5(ingest)/§7(lint) 세션이 시작 시 소비한다 — `[K-DRIFT]`는 위키 반영 후 항목 제거, `[SKILL-IMPROVE]`는 위키에 반영하지 않고 "플러그인 개선 후보"로 사용자 보고(제거는 사용자 지시 시에만 — SKILL.md B-1 0), `[DECISION]`은 해당 프로젝트 `decisions.md`(§2.8)에 추가 후 제거. **pending.md는 소비 대기 큐이지 지식 페이지가 아니다** — 작업 참조(K)·질문(G)의 검색 결과에서 제외하고 계획·디버깅·답변의 근거로 인용하지 않는다(읽기는 중복 억제 판정 목적만). 작업 참조(K)의 식별 단계는 **대상 프로젝트의 decisions.md도 포함**한다 — 기획·계획 작업이면 보류·기각 이력을 우선 확인(재논의 방지).
 
 ---
 
@@ -342,7 +367,7 @@ tags: [question, 관련태그]
 ### 검사 항목
 1. **참조 무결성**: 깨진 wikilink 탐색 및 수정/제거 (`20_projects/{proj}/`, `40_guides/` 포함)
 2. **예산 준수**: 모든 파일 줄 수 확인, 초과 시 압축/분리
-3. **신선도**: `updated` 기준 60일 미편집 → confidence 하락, 90일 → 아카이브 후보 제시. **feature/guide는 검색형 핵심 콘텐츠이므로 시간기반 아카이브 제외**(confidence 하락만, 이동 금지)
+3. **신선도**: `updated` 기준 60일 미편집 → confidence 하락, 90일 → 아카이브 후보 제시. **feature/guide는 검색형 핵심 콘텐츠이므로 시간기반 아카이브 제외**(confidence 하락만, 이동 금지). **decision-log는 60/90일 전체 면제**(§2.8 — 이력 페이지, deprecated·paused 동급)
 4. **모순 탐색**: 동일 주제 상충 기술 → question 페이지 생성
 5. **크로스참조 품질**: 누락된 연결 제안, 프로젝트 tech_stack ↔ entity `used_by` 일치 확인
 6. **기능별 인덱스 동기화**: `index.md` 기능별 인덱스 ↔ 실제 feature 페이지 일치 확인. vault 루트에 `index.md` 자체가 없으면 **ERR 1건** 보고 후 인덱스 기반 검사(§7-6·14·15·16·23)를 건너뛴다(침묵 통과 방지). (lint.py 검사)
@@ -403,6 +428,7 @@ tags: [question, 관련태그]
 - 90일 미편집: `90_archive/`로 이동 후보 제시 (사용자 승인 후 이동)
 - **예외 1**: `status: paused`인 페이지는 시간 기반 신선도 처리 전체(60일 confidence 하락, 90일 아카이브)에서 제외
 - **예외 1-1**: 폐기 표시(`status: deprecated` 또는 `deprecated:` 필드, §2.3) 페이지도 시간 기반 신선도 처리에서 제외 — 코드에서 제거된 frozen 이력이라 미편집이 정상이다(lint §7-17ⓒ)
+- **예외 1-2**: `decision-log` 타입도 시간 기반 신선도 처리 전체에서 제외 — 결정 이력은 미편집이 정상이다(§2.8)
 - **예외 2**: `feature`·`guide` 타입은 시간 기반 아카이브 제외 (confidence 하락만 적용, 이동하지 않음)
 - 아카이브 구조: 원래 경로를 `90_archive/` 하위에 재현
 - 부활: 아카이브 페이지가 다시 참조되면 원래 위치로 복귀
@@ -423,7 +449,7 @@ tags: [question, 관련태그]
 4. 완료 보고 (갱신 파일 목록 + 변경 요약)
 
 ### 금지 사항
-- 코드 작업 세션에서 wiki 갱신 혼합 금지 — 단 **read-only 참조(절차 K, §6)는 허용**(쓰기만 금지). 예외: **절차 K의 drift 발견(`[K-DRIFT]`) 또는 어느 pjc 스킬 세션에서든 스킬 개선 후보 큐잉(`[SKILL-IMPROVE]`, SKILL.md 절차 K 5-1)** 시 **vault 루트 `pending.md` 1줄 append**만 허용(§6 — 본문 페이지·인덱스·log는 계속 금지)
+- 코드 작업 세션에서 wiki 갱신 혼합 금지 — 단 **read-only 참조(절차 K, §6)는 허용**(쓰기만 금지). 예외: **절차 K의 drift 발견(`[K-DRIFT]`), 어느 pjc 스킬 세션에서든 스킬 개선 후보 큐잉(`[SKILL-IMPROVE]`, SKILL.md 절차 K 5-1), 기획·설계 결정 큐잉(`[DECISION]`, SKILL.md 절차 K 5-2)** 시 **vault 루트 `pending.md` 1줄 append**만 허용(§6 — 본문 페이지·인덱스·log는 계속 금지)
 - Lint는 Ingest 세션과 별도로 실행
 
 ### 병렬 다중 에이전트 분업 규칙
