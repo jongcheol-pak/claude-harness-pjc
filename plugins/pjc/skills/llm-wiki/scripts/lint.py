@@ -7,6 +7,8 @@
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
+      / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
+      / pending.md 미처리 drift 집계(INFO — 절차 K 큐)
       / log 아카이브 인덱스 정합
       / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 파일은 수정하지 않는다(읽기 전용).
@@ -42,6 +44,42 @@ ARCHIVE_EXEMPT_TYPES = {"feature", "guide"}
 # index.md 분할 신호 임계 (wiki-schema.md §4 — 초과 시 INFO로 2단계 파일 분할 제안)
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
 INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 수
+
+# 시크릿 의심 패턴 (wiki-schema §7-22 — 키워드+구분자+실값 형태만 매칭하는 보수 정규식.
+#  post-write-checks.ps1의 민감정보 검사를 위키용으로 이식하되, IP 주소는 산문 오탐 위험으로 제외).
+#  password/api key 계열은 값을 캡처해 아래 secret_value_is_codey()로 "코드 꼴" 값을 걸러낸다.
+SECRET_PATTERNS = [
+    ("password", re.compile(r"(?i)\b(password|passwd|pwd)\s*[:=]\s*['\"]?([^\s'\";,]{8,})")),
+    ("api key/token", re.compile(r"(?i)\b(api[_-]?key|apikey|secret|access[_-]?key|auth[_-]?token)\s*[:=]\s*['\"]?([A-Za-z0-9_\-./+]{12,})")),
+    ("bearer 토큰", re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._\-]{20,}")),
+    ("DB 연결문자열", re.compile(r"(?i)(server|data source|host)\s*=\s*[^;\n]+;.*(password|pwd)\s*=\s*[^;\n]{4,}")),
+    ("개인키 블록", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+    ("URI 자격증명", re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^@\s]{4,}@")),
+]
+# 값 post-filter를 적용하는 라벨 (변수 대입·함수 호출 등 "코드 꼴" 값 제외 대상)
+SECRET_VALUE_FILTER_LABELS = {"password", "api key/token"}
+# 플레이스홀더/예시 값 오탐 제외 — 해당 줄에 이 표식이 있으면 시크릿이 아니라 규약 안내로 본다.
+#  'example'은 단어 그대로일 때만(example.com 같은 도메인은 제외 표식 아님 — 위음성 방지).
+SECRET_PLACEHOLDER_RX = re.compile(
+    r"(YOUR_|<[^>]+>|\{[^}]+\}|\$env:|\$\{|%[A-Za-z_]+%|예\s*[:)]|환경변수|placeholder|example(?![.\w])|localhost|127\.0\.0\.1|\*\*\*|xxxx)",
+    re.I)
+# 알려진 시크릿 접두사 — 이 꼴이면 코드 꼴 판정과 무관하게 항상 실값 취급 (JWT eyJ 포함)
+SECRET_KEY_PREFIX_RX = re.compile(r"^(sk_(live|test)_|ghp_|gho_|xox[bap]-|AKIA|AIza|eyJ)")
+# 숫자·특수문자 없는 순수 식별자/프로퍼티 체인 꼴 (예: somePassword, input.password;)
+SECRET_IDENTIFIER_LIKE_RX = re.compile(r"^[A-Za-z_][A-Za-z_.;,\[\]]*$")
+
+
+def secret_value_is_codey(val):
+    """§7-22 값 post-filter: 캡처된 값이 코드 스니펫의 변수·함수 호출 꼴(실값 아님)인지 판정.
+    보수 정책 — 위양성(코드 오탐) 억제를 위음성보다 우선한다(plan T7 Edge Case).
+    함수 호출(괄호 포함)·숫자 없는 순수 식별자/체이닝은 코드 꼴로 보고 제외하되,
+    알려진 시크릿 접두사(sk_live_ 등)는 항상 실값으로 취급한다."""
+    v = val.strip().strip("'\"")
+    if SECRET_KEY_PREFIX_RX.match(v):
+        return False
+    if "(" in v or ")" in v:
+        return True
+    return bool(SECRET_IDENTIFIER_LIKE_RX.match(v))
 
 
 def frontmatter(text):
@@ -221,6 +259,25 @@ def main():
         if not typ and not is_root and not in_archive:
             warns.append(f"타입 미지정 파일: {r}")
 
+        # 시크릿 의심 스캔 (§7-22) — 전 페이지 본문(frontmatter 제외, 아카이브 포함 — 시크릿은
+        #  어디 있든 위험). 코드펜스도 스캔 대상(시크릿이 스니펫 안에 남는 경우가 많음).
+        #  키워드+구분자+실값 형태만 매칭하고, 플레이스홀더 표식 줄은 제외해 오탐을 억제한다.
+        sec_body = re.sub(r"^---\n.*?\n---", "", text, count=1, flags=re.S)
+        fm_lines = text.count("\n") - sec_body.count("\n")  # 본문 시작 줄 오프셋(줄 번호 보고용)
+        for li, line in enumerate(sec_body.splitlines(), start=fm_lines + 1):
+            if SECRET_PLACEHOLDER_RX.search(line):
+                continue
+            for label, rx in SECRET_PATTERNS:
+                m2 = rx.search(line)
+                if not m2:
+                    continue
+                # password/api key 계열은 값이 코드 꼴(변수·함수 호출)이면 제외 (§7-22 보수 정책)
+                if label in SECRET_VALUE_FILTER_LABELS and secret_value_is_codey(m2.group(2)):
+                    continue
+                warns.append(f"시크릿 의심({label}): {r} L{li} — 실제 값이면 즉시 제거하고 "
+                             f"환경변수 이름만 기재 (schema §7-22)")
+                break  # 같은 줄 다중 라벨 중복 경고 방지
+
         # (미검증)·미해결 question 집계 (§7-12) — 20_/30_/40_ 본문만(frontmatter 제외),
         # 10_sources(불변 스텁, 검증 루프 대상 아님)·90_archive·루트 인프라는 범위 밖
         if r.startswith(("20_", "30_", "40_")):
@@ -326,6 +383,14 @@ def main():
         for ym in sorted(indexed - archived):
             warns.append(f"log 아카이브 인덱스 깨짐: log.md가 {ym}.md를 가리키나 90_archive/log/{ym}.md 없음")
 
+    # pending.md 미처리 drift 집계 (절차 K 큐 — SKILL K-5/B-1 0): 잔량이 있으면 INFO로 알려
+    #  다음 ingest/lint 세션이 소비하게 한다 (0건·파일 없음이면 생략)
+    if "pending.md" in pages:
+        pend_n = sum(1 for line in pages["pending.md"][2].splitlines()
+                     if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[K-DRIFT\]", line))
+        if pend_n:
+            infos.append(f"pending.md 미처리 drift {pend_n}건 — 다음 ingest(절차 B-1 0)/lint(F-0)에서 소비")
+
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     for r, (fm, typ, text) in pages.items():
         if typ != "project":
@@ -344,6 +409,7 @@ def main():
     #  허브에 레포 경로가 없거나 디렉터리가 부재(다른 PC 등)면 프로젝트 단위 INFO 1건 후 건너뛴다
     #  (그 프로젝트의 ① 경로 실재 확인은 §7-10 에이전트가 폴백 수행).
     repo_cache = {}  # 허브 rel 경로 -> 레포 루트(str) 또는 None(접근 불가)
+    exists_cache = {}  # (root, 상대경로) -> 실존 여부 — 여러 feature가 같은 경로를 병기할 때 중복 IO 제거
     for r, (fm, typ, text) in sorted(pages.items()):
         if typ != "feature" or r.startswith("90_archive/"):
             continue
@@ -401,13 +467,13 @@ def main():
                 if os.path.isabs(p) or re.match(r"^[A-Za-z]:", p):
                     continue  # 레포 '상대'경로만 검사 대상 — 절대경로 병기는 규약 밖이라 제외
                 full = os.path.join(root, p)
-                if "*" in p:
-                    if not glob.glob(full):
-                        warns.append(f"{label} 레포에 없음: {r} -> '{t}' "
-                                     f"(글롭 매치 0건 — 이동·삭제·오기 가능, schema {sec})")
-                elif not os.path.exists(full):
-                    warns.append(f"{label} 레포에 없음: {r} -> '{t}' "
-                                 f"(이동·삭제·오기 가능 — 갱신 필요, schema {sec})")
+                key = (root, p)
+                if key not in exists_cache:  # 실행-내 memoization (한 실행 중 파일시스템 불변 전제)
+                    exists_cache[key] = bool(glob.glob(full)) if "*" in p else os.path.exists(full)
+                if not exists_cache[key]:
+                    detail = "글롭 매치 0건 — 이동·삭제·오기 가능" if "*" in p \
+                        else "이동·삭제·오기 가능 — 갱신 필요"
+                    warns.append(f"{label} 레포에 없음: {r} -> '{t}' ({detail}, schema {sec})")
 
     # 고아 페이지(간이): 어디서도 링크되지 않는 페이지 (루트 인프라·아카이브 제외)
     for r, (fm, typ, _) in sorted(pages.items()):
