@@ -366,7 +366,8 @@ def main():
             if typ == "question" and not question_is_resolved(fm) and not is_lint_report(r):
                 open_questions += 1
 
-        if typ == "feature":
+        # 90_archive/ 하위(백업 사본 포함)는 인덱스 동기 대상이 아님 — §8 "백업 파일이 WARN을 만들지 않는다"
+        if typ == "feature" and not r.startswith("90_archive/"):
             feat_files.add(r[:-3])
 
     # index.md: 분할 신호(줄수/행수) + sub-index 목록 정합 + 기능별 인덱스 ↔ feature 동기화
@@ -496,8 +497,9 @@ def main():
             infos.append(f"pending.md 미처리 drift {pend_n}건 — 다음 ingest(절차 B-1 0)/lint(F-0)에서 소비")
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
+    # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
     for r, (fm, typ, text) in pages.items():
-        if typ != "project":
+        if typ != "project" or r.startswith("90_archive/"):
             continue
         hub_base = r[:-3]
         hub_text = text.replace("\\", "")
