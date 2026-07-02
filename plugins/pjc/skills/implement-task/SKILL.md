@@ -44,7 +44,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 ### 변경 범위
 4. **요청한 것만, 확인된 범위 안에서, 최소한으로 수정.**
    - 무관한 리팩토링·서식 변경·import 정리 금지.
-   - 작업 중 발견한 다른 문제는 plan.md follow-up에 추가만.
+   - 작업 중 발견한 다른 문제는 plan.md follow-up에 추가만. 발견한 것이 **pjc 스킬 자체의 결함·마찰**이면 `pjc:llm-wiki` 절차 K 5-1의 `[SKILL-IMPROVE]` 큐에도 1줄 기록한다(vault 없으면 그 규약의 폴백을 따름).
    - 한 번에 한 task만 수행.
 
 ### 아키텍처·코드 규율
