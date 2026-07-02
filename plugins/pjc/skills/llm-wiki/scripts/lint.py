@@ -8,7 +8,8 @@
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
-      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION] 태그별)
+      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION] 태그별, §7-25)
+      / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
       / index.md 부재(ERR — 인덱스 기반 검사 불능 신호)
@@ -36,6 +37,8 @@ GUIDE_BUDGET = {"platform-bootstrap": 200, "ui-ux": 150, "recipe": 120}
 PLATFORM_VOCAB = {"windows-desktop", "web", "mobile", "cli", "cross"}
 ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
+# decision-log 항목 결정 어휘 (wiki-schema §2.8·§3 — 어긋나면 타임라인 합성·번복 추적 누락)
+DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, wiki-schema §4·§8)
@@ -265,20 +268,25 @@ def main():
             elif t not in existing:  # 루트 파일(index 등)로도 해석되지 않으면 위반
                 warn(f"경로 없는 wikilink(명시적 경로 필수): {r} -> [[{t}]]", r)
 
-        # 예산 — log.md는 문자 수(len), 그 외 타입은 줄 수
+        # 예산 — log.md는 문자 수(len), 그 외 타입은 줄 수.
+        #  90_archive/ 하위는 제외 — "아카이브는 lint 자동 제외" 서술과 동작 일치(§8),
+        #  특히 append 성장하는 decisions 롤오버 파일에 영구 WARN이 걸리는 것 방지(§2.8).
         if r in SPECIAL_BUDGET:
             chars = len(text)
             if chars > SPECIAL_BUDGET[r]:
                 warn(f"예산 초과: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
                      f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)", r)
-        else:
+        elif not in_archive:
             budget = None
             if typ == "guide":
                 budget = GUIDE_BUDGET.get(fm.get("guide_kind", ""), 200)
             elif typ in BUDGET:
                 budget = BUDGET[typ]
             if budget and lines > budget:
-                warn(f"예산 초과: {r} {lines}/{budget}줄 (type={typ})", r)
+                # decision-log는 수리 방법이 롤오버+포인터라 일반 문구와 분기 (§2.8)
+                hint = (" — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)"
+                        if typ == "decision-log" else "")
+                warn(f"예산 초과: {r} {lines}/{budget}줄 (type={typ}){hint}", r)
 
         # platform 통제어휘
         plat = fm.get("platform")
@@ -509,6 +517,34 @@ def main():
         if parts:
             infos.append("pending.md 미처리 잔량 — " + " / ".join(parts)
                          + " — 다음 ingest(절차 B-1 0)/lint(F-0)에서 소비")
+
+    # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
+    #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시
+    #  조회(K 2·G 2b)가 현행 파일만 읽고 "기록 없음"으로 침묵 오답하므로 기계 검사한다.
+    dec_ptr_rx = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
+    dec_item_rx = re.compile(r"^-\s*\[\d{4}-\d{2}-\d{2}\]")
+    dec_vocab_rx = re.compile(r"\*\*(" + "|".join(DECISION_VOCAB) + r")\*\*")
+    for r, (fm, typ, text) in pages.items():
+        if typ != "decision-log" or r.startswith("90_archive/"):
+            continue
+        # ⓐ-정방향: 포인터가 가리키는 아카이브 파일 실재
+        for m in dec_ptr_rx.finditer(text):
+            if m.group(1) not in pages:
+                warn(f"decisions 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (wiki-schema §2.8)", r)
+        # ⓑ 항목 결정 어휘 (하위 불릿은 들여쓰기라 ^- 매치에서 자연 제외)
+        bad = sum(1 for ln in text.splitlines()
+                  if dec_item_rx.match(ln) and not dec_vocab_rx.search(ln))
+        if bad:
+            warn(f"decision-log 어휘 위반: {r} {bad}건 (고정 어휘 채택|보류|기각|번복 — wiki-schema §2.8)", r)
+    # ⓐ-역방향: 롤오버 아카이브가 실재하는데 대응 현행 파일에 포인터 미등재 (검색 유실).
+    #  대응 현행 파일 자체가 없으면 절차 C 보존-삭제 이력이므로 건너뜀(§7-24).
+    for r in pages:
+        if not (r.startswith("90_archive/") and r.endswith("decisions.md")):
+            continue
+        cur = r[len("90_archive/"):]
+        if cur in pages and r not in pages[cur][2]:
+            warn(f"decisions 아카이브 포인터 누락: {cur}의 '## 아카이브'에 {r} 미등재 "
+                 f"— 오래된 결정이 검색에서 유실 (wiki-schema §2.8)", cur)
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
