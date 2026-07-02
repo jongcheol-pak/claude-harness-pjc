@@ -1,5 +1,10 @@
 # plan.md Template
 
+## 목차
+- [위치 결정 가이드](#위치-결정-가이드)
+- [작성 시 주의 — 민감 정보](#작성-시-주의--민감-정보)
+- [Template](#template) — 내장 섹션: Goal / PRD Coverage / Out of Scope / Deferred·Follow-up / Investigation Log / Risks & Unknowns / Impact Analysis / Decisions / Tasks / 사전 승인 항목 / 불가피한 Halt / Known Workarounds / Verification Strategy / Retry Ledger / Progress Log / Next Steps / Open Questions
+
 ## 위치 결정 가이드
 
 | 프로젝트 규모 | 권장 위치 |

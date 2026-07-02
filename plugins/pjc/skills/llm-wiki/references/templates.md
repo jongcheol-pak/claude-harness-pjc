@@ -1,7 +1,7 @@
 # 페이지 템플릿 모음 (llm-wiki)
 
 > SKILL.md A-2/E/I에서 참조. 새 페이지 생성 시 해당 타입 템플릿을 복사해 채운다.
-> 규칙·예산은 `references/wiki-schema.md` 참조.
+> 규칙·예산의 정본은 형제 문서 `wiki-schema.md`다 — SKILL.md가 모든 작업 시 선독을 지시하므로 여기서 다시 열 필요는 없다.
 
 ## 목차
 - [source-stub](#source-stub)
