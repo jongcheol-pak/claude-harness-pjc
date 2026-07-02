@@ -1,0 +1,14 @@
+{
+  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). 커버리지: 25개 lint 검사 중 대표 8개(깨진 링크·예산·통제어휘·한영 병기·시크릿·decision 어휘·index 부재·feature 각주). 나머지는 Deferred(plan 참조).",
+  "cases": [
+    { "fixture": "clean", "expect_clean": true, "rationale": "위반 0 — 오탐 회귀 방지(정상 vault를 경고하지 않는지)" },
+    { "fixture": "broken-link", "expect_keywords": ["깨진 링크"], "rationale": "§7-1 깨진 wikilink (ERR)" },
+    { "fixture": "budget-over", "expect_keywords": ["예산 초과"], "rationale": "§7-2 파일 예산 초과 (WARN)" },
+    { "fixture": "vocab-bad", "expect_keywords": ["platform 통제어휘 위반", "confidence 통제어휘 위반", "origin 누락"], "rationale": "§7-7 platform·origin·confidence 통제어휘/누락" },
+    { "fixture": "no-hanyeong", "expect_keywords": ["한/영 병기 누락"], "rationale": "§7-16 기능별 인덱스 한/영 병기 누락 (WARN)" },
+    { "fixture": "secret", "expect_keywords": ["시크릿 의심"], "rationale": "§7-22 시크릿 의심 스캔 (WARN)" },
+    { "fixture": "decision-vocab", "expect_keywords": ["decision-log 어휘 위반"], "rationale": "§7-24 decision-log 결정 어휘 위반 (WARN)" },
+    { "fixture": "no-index", "expect_keywords": ["index.md 없음"], "rationale": "§7-6 index.md 부재 (ERR)" },
+    { "fixture": "feature-no-footnote", "expect_keywords": ["구현 근거 각주 누락"], "rationale": "§7-18 feature 구현 근거 각주 0개 (WARN)" }
+  ]
+}
