@@ -10,6 +10,7 @@
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
       / pending.md 미처리 drift 집계(INFO — 절차 K 큐)
       / log 아카이브 인덱스 정합
+      / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
       / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 파일은 수정하지 않는다(읽기 전용).
 범위: vault 파일 읽기 + §7-20의 레포 파일 '실존' 확인까지 — 코드 내용은 해석하지 않는다
@@ -298,6 +299,7 @@ def main():
     if os.path.isfile(idx):
         with open(idx, encoding="utf-8") as fh:
             itext = fh.read()
+        main_itext = itext  # 본체 원문 보존 — 비분할 섹션(미해결 질문 등) 검사용(§4, 아래에서 sub 합산 전)
 
         # 분할 신호 (wiki-schema §4) — sub 합치기 전 index.md 본체로 측정
         idx_lines = itext.count("\n") + 1
@@ -364,6 +366,27 @@ def main():
             has_h, has_l = bool(han.search(name)), bool(lat.search(name))
             if has_h != has_l:
                 warns.append(f"한/영 병기 누락: '{name}' ({'한글만' if has_h else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
+
+        # 미해결 질문 인덱스 동기 (wiki-schema §7-23): open question ↔ index.md '## 미해결 질문'
+        #  (비분할 섹션 — 본체 기준 §4, main_itext 사용) 양방향 대조. lint-* 리포트 페이지는
+        #  질문이 아니라 등록 요구에서 제외. 질문 '유실'(등록 누락으로 잊힘)과 'stale'(해결됐는데
+        #  미해결 목록 잔존)을 기계로 잡는다. resolved 페이지의 '삭제' 자체는 스냅샷 검사로 탐지
+        #  불가 — 삭제 금지는 절차 규칙(§2.7·SKILL 사전 준수)이 담당한다.
+        qm = re.search(r"^##\s*미해결 질문\b(.*?)(?=^##\s|\Z)", main_itext, re.M | re.S)
+        q_section = qm.group(1) if qm else ""
+        q_listed = {t.replace("\\", "").split("#")[0].strip()
+                    for t in re.findall(r"\[\[([^\]|]+)", strip_code(q_section))}
+        for r, (fm, typ, _) in sorted(pages.items()):
+            if typ != "question" or r.startswith("90_archive/"):
+                continue
+            is_open = fm.get("status") != "resolved"
+            listed = r[:-3] in q_listed
+            if is_open and not os.path.basename(r).startswith("lint-") and not listed:
+                warns.append(f"미해결 질문 index 미등록: {r} "
+                             f"(유실 위험 — index.md '## 미해결 질문'에 등록, schema §7-23)")
+            if not is_open and listed:
+                warns.append(f"해결된 질문이 index 미해결 목록에 잔존: {r} "
+                             f"(index에서 제거 — 페이지는 보존, B-2 3-1, schema §7-23)")
 
     # log 아카이브 인덱스 정합 (wiki-schema §7-19): log.md '## 아카이브 인덱스'에 등록된
     #  {YYYY-MM}.md ↔ 실재 90_archive/log/{YYYY-MM}.md 양방향 대조. sub-index 정합(위)과 유사하나
@@ -442,9 +465,14 @@ def main():
             if in_rel and s.startswith("-"):
                 rel_tokens += [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
                                if "/" in t or "\\" in t]
-        if not rel_section_found or not rel_tokens:
-            warns.append(f"관련 파일 섹션 누락/비어 있음: {r} "
+        # 문구로 원인을 구분한다 — "섹션 자체 없음"과 "섹션은 있으나 백틱 경로 0개"(형식 누락:
+        #  백틱 미사용·구분자 없는 토큰만 있는 경우)는 수리 방법이 달라 진단 단계를 줄인다.
+        if not rel_section_found:
+            warns.append(f"관련 파일 섹션 누락: {r} "
                          f"('## 관련 파일' 기능 구성 파일 지도 — 다음 ingest 시 채움, schema §7-21)")
+        elif not rel_tokens:
+            warns.append(f"관련 파일 경로 항목 0개: {r} "
+                         f"(섹션은 있으나 백틱 경로 없음 — '- `경로` — 역할' 형식으로 기재, schema §7-21)")
         if not tokens and not rel_tokens:
             continue
         hub = r.rsplit("/", 1)[0] + ".md"  # 20_projects/{proj}/feat-x.md -> 20_projects/{proj}.md
@@ -491,11 +519,36 @@ def main():
         infos.append(f"deprecated 페이지 {dep_count}건 (이력 보존 — 현재 기능 아님, schema §2.3)")
 
     # 보고
+    # WARN이 많을 때(10건+) 프로젝트별 집계 1줄 — 대규모 정비 세션에서 우선순위 파악용.
+    #  메시지에서 첫 vault 상대경로(NN_디렉터리/...md)를 뽑아, 20_projects는 프로젝트 폴더까지
+    #  (personal/{프로젝트}), 그 외(40_guides 등)는 최상위 디렉터리로 묶는다. 경로 없는 메시지는 제외.
+    WARN_GROUP_MIN = 10
+    warn_summary = ""
+    if len(warns) >= WARN_GROUP_MIN:
+        groups = {}
+        for w in warns:
+            # 메시지 종류에 따라 경로가 .md 없이 적히기도 함(기능별 인덱스 누락 등) — 확장자 불요구
+            m = re.search(r"\b(\d\d_[\w-]+/[^\s:'\"]+)", w)
+            if not m:
+                continue
+            parts = m.group(1).split("/")
+            if parts[0] == "20_projects" and len(parts) >= 4:
+                key = "/".join(parts[1:3])           # feature: personal/{프로젝트}
+            elif parts[0] == "20_projects" and len(parts) == 3:
+                key = f"{parts[1]}/{re.sub(r'\.md$', '', parts[2])}"  # 허브 → 프로젝트와 동일 키
+            else:
+                key = parts[0]                       # 40_guides 등: 최상위 디렉터리
+            groups[key] = groups.get(key, 0) + 1
+        if groups:
+            warn_summary = ", ".join(f"{k} {v}건" for k, v in
+                                     sorted(groups.items(), key=lambda kv: -kv[1]))
     print(f"== llm-wiki Lint: {vault} ==")
     print(f"검사 파일: {len(md)}개")
     for label, items, mark in (("오류", errors, "[ERR]"), ("경고", warns, "[WARN]"),
                                ("정보", infos, "[INFO]")):
         print(f"\n{mark} {label} {len(items)}건")
+        if mark == "[WARN]" and warn_summary:
+            print(f"  (프로젝트별: {warn_summary})")
         for it in items:
             print(f"  - {it}")
     if not errors and not warns:
