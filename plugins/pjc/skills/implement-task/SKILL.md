@@ -260,7 +260,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 - `.csproj`/`build.gradle`/`package.json` 등 **빌드 구성에 영향 주는 설정** → V-1 빌드 실행.
 
 #### Type B prefilter PASS 시 V-7 축소
-- spec-prefilter(Haiku)가 PASS → 변경 심볼이 trivial이므로 V-7 caller 재검증을 **변경 심볼 grep 1회**로 축소 (전체 재추적 불필요).
+- spec-prefilter(Haiku)가 PASS → 변경 심볼이 trivial이므로 V-7을 **정방향(변경 심볼)·역방향(삭제된 호출부 심볼) 각 grep 1회**로 축소 (전체 재추적 불필요).
 - prefilter가 ESCALATE → 정상 V-5(Sonnet) + V-7 전체 수행.
 - **Type 오분류 피드백 (경미)**: spec-prefilter가 Type B task에서 ESCALATE를 반복(여러 task에 걸쳐 잦게)하면 plan의 Type 분류가 실제보다 가볍다는 신호다 — 해당 task는 그대로 진행하되 plan.md `## Deferred / Follow-up`에 "Type 분류 재검토 (prefilter ESCALATE 잦음)"를 1줄 남긴다(다음 계획 단계 강화용, 루프는 멈추지 않음).
 
@@ -329,14 +329,20 @@ Task Type에 따라 다른 흐름:
 
 ### V-7. Caller Re-verification
 
-변경된 모든 public/internal 심볼에 대해:
+**정방향 검사 (caller 갱신 확인)** — 변경된 모든 public/internal 심볼에 대해:
 - `grep -rn "\b<symbol>\b"` 실행.
 - hit 위치가 모두 diff에 포함되어 있거나, 변경 영향 없음이 명백한가.
 - 누락 발견 → Phase I 복귀.
 
 빌드가 통과해도 잡는 cross-file 마지막 관문.
 
-**Type B + prefilter PASS 시 축소**: 변경 심볼이 trivial하므로 변경한 심볼에 대한 grep 1회만 수행 (전체 심볼 재추적 생략). impact-warn hook(V-4)이 이미 자동 검출했으므로 중복을 줄인다.
+**역방향 검사 (고아 코드 탐지)** — 정방향이 "바꾼 심볼의 caller가 함께 갱신됐나"라면, 이 검사는 그 거울상 — "이번 수정으로 마지막 호출부가 사라져 **고아(orphan)가 된 코드**가 없나"를 본다 (빌드는 미사용 정의를 잡지 못한다):
+- diff에서 **삭제·변경된 줄이 호출하던 심볼**(지운 호출부의 대상 함수/메서드/import) 목록을 도출한다.
+- 각 심볼에 `grep -rn "\b<symbol>\b"` 실행 — **잔여 참조가 0인데 정의가 남아 있으면 고아 후보**.
+- 처리 강도: 같은 diff에서 호출부가 사라진 **미사용 import·같은 파일의 private 헬퍼**는 위생 규칙 6의 정상 정리로 이 task에서 함께 제거한다. **public/internal 심볼·다른 파일의 정의·대량(대략 5개 파일 이상)**은 자동 삭제하지 않는다 — 완료 보고에 "고아 코드 후보"로 보고해 사용자가 결정한다("plan에 없는 대량 삭제" Halt 규칙과 정합).
+- 주의: 잔여 참조 0은 **후보이지 확정이 아니다** — 리플렉션·DI 컨테이너·문자열 기반 참조는 grep에 잡히지 않는다. 제거 전 그 가능성을 확인하고, 불확실하면 제거 대신 보고로 돌린다.
+
+**Type B + prefilter PASS 시 축소**: 변경 심볼이 trivial하므로 정방향은 변경한 심볼 grep 1회, 역방향은 삭제된 호출부 심볼 grep 1회만 수행 (전체 재추적 생략). impact-warn hook(V-4)이 이미 자동 검출했으므로 중복을 줄인다.
 
 ### V-8. Self-Honesty Check
 
@@ -347,6 +353,7 @@ Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 - [ ] (V-3 수행 task) 신규 린트 경고 0을 실제로 확인했는가? — 리뷰 지적 수정 후에도 재확인.
 - [ ] acceptance 각 항목에 대해 diff 어디서 충족되는지 지목할 수 있는가?
 - [ ] 변경한 심볼의 caller가 모두 함께 갱신되었는가?
+- [ ] 이 수정으로 마지막 호출부가 사라진 고아 심볼·미사용 import가 없는가 (V-7 역방향)?
 - [ ] "동작 확인됨" 주장의 근거가 빌드 통과 외에 있는가?
 - [ ] 이 task에서 추측으로 작성한 코드가 하나도 없는가?
 - [ ] 수정한 코드의 주석·docstring이 새 동작과 일치하는가 (옛 내용 그대로 둔 stale 주석이 없는가)?

@@ -58,7 +58,7 @@ git diff <BASE_SHA> <HEAD_SHA>
 - 하드코딩된 검증 우회
 
 #### D. 코드 위생 (MAJOR/MINOR)
-- 죽은 코드, 미사용 import, placeholder 주석 (MAJOR)
+- 죽은 코드, 미사용 import, placeholder 주석 (MAJOR) — **이번 diff로 참조가 사라진 고아 심볼**(호출부를 지웠는데 정의가 남아 잔여 참조 0인 함수/메서드/import) 포함: diff에서 삭제된 호출부의 대상 심볼이 다른 곳에서 더 이상 참조되지 않는데 정의가 남아 있으면 지적
 - **stale 주석** (MAJOR): 코드는 바뀌었는데 주석·docstring·`///` 문서가 옛 동작을 설명하고 있는 경우. 틀린 주석은 없는 것보다 나쁘다 — diff에서 변경된 코드의 주석이 새 동작과 일치하는지 확인.
 - "TODO: 나중에"식 미완 표시 (MAJOR)
 - 사용처 1곳인데 추출된 헬퍼/인터페이스 (MAJOR — YAGNI 위반)
