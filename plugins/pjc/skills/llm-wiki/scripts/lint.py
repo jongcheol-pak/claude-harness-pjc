@@ -6,6 +6,7 @@
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
+      / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / log 아카이브 인덱스 정합
       / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 파일은 수정하지 않는다(읽기 전용).
@@ -335,8 +336,10 @@ def main():
             if f.startswith(hub_base + "/") and f not in hub_text:
                 warns.append(f"허브 기능 목록 누락: {r} -> {f}")
 
-    # feature 각주 경로 레포 실존 (wiki-schema §7-20): feature의 [^src-...] 각주 정의 줄에 백틱으로
-    #  병기된 레포 상대경로가, 프로젝트 허브 '## 레포 정보 > 경로'의 레포에 실재하는지 확인.
+    # feature 각주 경로 레포 실존 (wiki-schema §7-20) + '## 관련 파일' 섹션 게이트/경로 실존 (§7-21):
+    #  §7-20 — feature의 [^src-...] 각주 정의 줄에 백틱으로 병기된 레포 상대경로가, 프로젝트 허브
+    #  '## 레포 정보 > 경로'의 레포에 실재하는지 확인. §7-21 — '## 관련 파일' 섹션(기능 구성 파일
+    #  지도, §2.3)이 없거나 경로 항목 0개면 WARN, 섹션 내 경로 토큰은 §7-20과 동일 로직으로 실존 확인.
     #  lint은 파일 '실존'만 보고 코드 내용은 해석하지 않는다(서술↔코드 정합은 §7-10 에이전트 표본).
     #  허브에 레포 경로가 없거나 디렉터리가 부재(다른 PC 등)면 프로젝트 단위 INFO 1건 후 건너뛴다
     #  (그 프로젝트의 ① 경로 실재 확인은 §7-10 에이전트가 폴백 수행).
@@ -358,7 +361,25 @@ def main():
             #  클래스·멤버명)는 오탐 방지 위해 제외 (plan D2)
             tokens += [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
                        if "/" in t or "\\" in t]
-        if not tokens:
+        # §7-21: '## 관련 파일' 섹션 판별(strip_code 사본 — 코드펜스 안 유사 헤딩 제외) +
+        #  섹션 내 '- ' 항목의 백틱 경로 토큰 수집(원문 줄에서).
+        rel_tokens, rel_section_found = [], False
+        in_rel = False
+        for i, sl in enumerate(stripped_lines):
+            s = sl.strip()
+            if re.match(r"^##\s*관련 파일\b", s):
+                rel_section_found = True
+                in_rel = True
+                continue
+            if in_rel and s.startswith("## "):
+                in_rel = False
+            if in_rel and s.startswith("-"):
+                rel_tokens += [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
+                               if "/" in t or "\\" in t]
+        if not rel_section_found or not rel_tokens:
+            warns.append(f"관련 파일 섹션 누락/비어 있음: {r} "
+                         f"('## 관련 파일' 기능 구성 파일 지도 — 다음 ingest 시 채움, schema §7-21)")
+        if not tokens and not rel_tokens:
             continue
         hub = r.rsplit("/", 1)[0] + ".md"  # 20_projects/{proj}/feat-x.md -> 20_projects/{proj}.md
         if hub not in repo_cache:
@@ -366,24 +387,27 @@ def main():
             repo_cache[hub] = repo_root_for_hub(hub_text) if hub_text else None
             if repo_cache[hub] is None:
                 infos.append(f"레포 접근 불가(허브 레포 경로 미기재/부재): {hub} "
-                             f"— 각주 경로 검증 건너뜀(§7-10 에이전트 폴백, schema §7-20)")
+                             f"— 각주·관련 파일 경로 검증 건너뜀(§7-10 에이전트 폴백, schema §7-20·21)")
         root = repo_cache[hub]
         if root is None:
             continue
-        for t in tokens:
-            p = t.replace("\\", "/").strip()
-            if p.startswith("./"):
-                p = p[2:]
-            if os.path.isabs(p) or re.match(r"^[A-Za-z]:", p):
-                continue  # 레포 '상대'경로만 검사 대상 — 절대경로 병기는 규약 밖이라 제외
-            full = os.path.join(root, p)
-            if "*" in p:
-                if not glob.glob(full):
-                    warns.append(f"각주 경로 레포에 없음: {r} -> '{t}' "
-                                 f"(글롭 매치 0건 — 이동·삭제·오기 가능, schema §7-20)")
-            elif not os.path.exists(full):
-                warns.append(f"각주 경로 레포에 없음: {r} -> '{t}' "
-                             f"(이동·삭제·오기 가능 — 갱신 필요, schema §7-20)")
+        # §7-20(각주)·§7-21(관련 파일)을 같은 실존 로직으로 검사하되 출처를 메시지에 구분
+        for token_list, label, sec in ((tokens, "각주 경로", "§7-20"),
+                                       (rel_tokens, "관련 파일 경로", "§7-21")):
+            for t in token_list:
+                p = t.replace("\\", "/").strip()
+                if p.startswith("./"):
+                    p = p[2:]
+                if os.path.isabs(p) or re.match(r"^[A-Za-z]:", p):
+                    continue  # 레포 '상대'경로만 검사 대상 — 절대경로 병기는 규약 밖이라 제외
+                full = os.path.join(root, p)
+                if "*" in p:
+                    if not glob.glob(full):
+                        warns.append(f"{label} 레포에 없음: {r} -> '{t}' "
+                                     f"(글롭 매치 0건 — 이동·삭제·오기 가능, schema {sec})")
+                elif not os.path.exists(full):
+                    warns.append(f"{label} 레포에 없음: {r} -> '{t}' "
+                                 f"(이동·삭제·오기 가능 — 갱신 필요, schema {sec})")
 
     # 고아 페이지(간이): 어디서도 링크되지 않는 페이지 (루트 인프라·아카이브 제외)
     for r, (fm, typ, _) in sorted(pages.items()):
