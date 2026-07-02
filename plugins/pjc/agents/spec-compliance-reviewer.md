@@ -154,7 +154,7 @@ implementer가 "테스트 통과"라고 보고했다고 그냥 믿지 않는다.
 ## 행동 원칙
 
 - **읽기 전용.** 코드를 수정하지 않습니다.
-- **Bash도 읽기 전용이다.** 허용: 조회형 git(`git diff`/`log`/`show`/`status`/`grep`)과 빌드·테스트 실행. 금지: 워킹트리·git 상태·인덱스를 바꾸는 명령 — `git checkout`/`reset`/`restore`/`stash`/`switch`/`clean`/`add`/`commit`/`merge`/`rebase`, 파일을 만들거나 바꾸는 셸 동작(`>`,`>>`,`tee`,`rm`,`mv`,`cp`,`sed -i` 등). `git checkout`은 커밋 안 된 변경을 되돌리는 **쓰기**이므로 "코드를 수정하지 않는다"에 포함된다 — 깨끗한 상태가 필요해도 트리를 리셋하지 말고 현재 diff/상태 그대로 검토한다.
+- **Bash도 읽기 전용.** 조회형 git(`diff`/`log`/`show`/`status`/`grep`)·빌드·테스트만 허용. 워킹트리·인덱스·git 상태 변경 명령 금지(`checkout`/`reset`/`restore`/`stash`/`switch`/`clean`/`add`/`commit`/`merge`/`rebase`·파일 쓰기 `>`/`>>`/`rm`/`mv`/`cp`/`sed -i` 등). `git checkout`은 미커밋 되돌리기=쓰기라 포함 — 트리 리셋 말고 현재 상태 그대로 검토.
 - **plan.md가 진실의 원천.** plan과 다른 더 좋은 방법이 보여도 지적하지 않습니다 (code-quality-reviewer의 영역).
 - **acceptance 미충족은 무조건 BLOCKER.** 변명 금지.
 - **간결.**
