@@ -295,11 +295,18 @@ def main():
             #   대소문자 무관과 정합). link_targets에 raw를 넣으면 고아 검사가 정규화값과 어긋나 오탐 재발.
             t_norm = (t[:-3] if t.endswith(".md") else t).casefold()
             link_targets.add(t_norm)
-            if "/" in t:
-                if t_norm not in existing_cf:
-                    errors.append(f"깨진 링크: {r} -> [[{t}]]")
-            elif t_norm not in existing_cf:  # 루트 파일(index 등)로도 해석되지 않으면 위반
-                warn(f"경로 없는 wikilink(명시적 경로 필수): {r} -> [[{t}]]", r)
+            # 90_archive/ 하위(삭제 -deleted 백업 포함)는 깨진 링크·경로없음 검사에서 제외 —
+            #   §8 "아카이브는 lint 자동 제외" 서술과 동작 일치. 삭제된 프로젝트의 -deleted 백업은
+            #   원경로가 사라져 그 안의 링크가 '깨진 링크' ERR로 뜨는데, 이는 복구 수단(백업)을 스스로
+            #   지우도록 유도하는 오탐이다(예산·인덱스·고아 검사가 이미 아카이브를 제외하는 것과 정합).
+            #   link_targets.add는 위에서 무조건 수행 — 고아 검사가 아카이브발 링크도 '링크됨'으로
+            #   인정해야 무회귀(가드를 add 위로 올리면 아카이브만 링크한 페이지가 고아로 오탐).
+            if not in_archive:
+                if "/" in t:
+                    if t_norm not in existing_cf:
+                        errors.append(f"깨진 링크: {r} -> [[{t}]]")
+                elif t_norm not in existing_cf:  # 루트 파일(index 등)로도 해석되지 않으면 위반
+                    warn(f"경로 없는 wikilink(명시적 경로 필수): {r} -> [[{t}]]", r)
 
         # 예산 — log.md는 문자 수(len), 그 외 타입은 줄 수.
         #  90_archive/ 하위는 제외 — "아카이브는 lint 자동 제외" 서술과 동작 일치(§8),

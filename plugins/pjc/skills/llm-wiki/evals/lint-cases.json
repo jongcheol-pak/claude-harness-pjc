@@ -119,6 +119,15 @@
       "rationale": "M-3 — '.md' 확장자 wikilink가 실존 파일을 가리키면 깨진링크·인덱스누락·고아 오탐이 없어야 함(오탐 회귀 방지)"
     },
     {
+      "fixture": "archive-broken-link",
+      "expect_clean": true,
+      "expect_absent": [
+        "깨진 링크",
+        "경로 없는 wikilink"
+      ],
+      "rationale": "T3 — 90_archive/ 하위(-deleted 백업)의 부재 경로 wikilink는 깨진 링크·경로없음 ERR/WARN을 만들지 않아야 함(§8 아카이브 자동 제외 정합, 복구 백업 오탐 방지). clean 픽스처 + 아카이브 백업 1개라 가드가 없으면 ERR로 비-clean이 되어 FAIL"
+    },
+    {
       "fixture": "clean",
       "bad_encoding": true,
       "expect_keywords": [
