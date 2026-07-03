@@ -25,6 +25,17 @@
         ]
       },
       {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/require-task-checkbox.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [
           {

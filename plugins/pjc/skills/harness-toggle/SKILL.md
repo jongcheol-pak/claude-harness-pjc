@@ -1,6 +1,6 @@
 ---
 name: harness-toggle
-description: This skill should be used ONLY when the user explicitly wants to enable, disable, toggle, or check status of pjc harness hooks. Triggers REQUIRE on/off/status/toggle intent combined with EITHER (a) the words "harness"/"hook", OR (b) a specific pjc harness hook name — require-plan(-for-write), require-evidence/evidence, check-utf8/utf8, impact-warn, warn-external-ops, block-destructive, suggest-agents-record — which counts as explicit harness context. Examples that SHOULD trigger - "harness 끄기", "harness 켜기", "hook 끄기", "hook 상태", "harness status", "harness 토글", "plan 강제 꺼" (with "강제" indicating hook), "require-plan off", "require-plan on", "evidence 검사 꺼", "utf8 검사 꺼". Examples that should NOT trigger - "이 기능 끄는 코드 만들어줘", "기능 켜기", "버튼 끄기" (those are code changes via plan-feature, not harness toggle). When in doubt, do NOT trigger this skill.
+description: This skill should be used ONLY when the user explicitly wants to enable, disable, toggle, or check status of pjc harness hooks. Triggers REQUIRE on/off/status/toggle intent combined with EITHER (a) the words "harness"/"hook", OR (b) a specific pjc harness hook name — require-plan(-for-write), require-task-checkbox/checkbox, require-evidence/evidence, check-utf8/utf8, impact-warn, warn-external-ops, block-destructive, suggest-agents-record — which counts as explicit harness context. Examples that SHOULD trigger - "harness 끄기", "harness 켜기", "hook 끄기", "hook 상태", "harness status", "harness 토글", "plan 강제 꺼" (with "강제" indicating hook), "require-plan off", "require-plan on", "evidence 검사 꺼", "utf8 검사 꺼". Examples that should NOT trigger - "이 기능 끄는 코드 만들어줘", "기능 켜기", "버튼 끄기" (those are code changes via plan-feature, not harness toggle). When in doubt, do NOT trigger this skill.
 argument-hint: "<hook 이름> <on|off|toggle|status>"
 ---
 
@@ -23,6 +23,7 @@ argument-hint: "<hook 이름> <on|off|toggle|status>"
 | Hook 이름 | 역할 | 사용자 표현 (끄기/켜기 예) |
 |---|---|---|
 | `require-plan-for-write` | plan.md 없이 코드 Write/Edit 차단 | "plan 강제", "plan 차단" |
+| `require-task-checkbox` | `T<N>:` 완료 커밋 시 plan 체크박스 [x] 미갱신이면 차단 | "체크박스 검사", "커밋 게이트" |
 | `require-evidence` | Stop 시 증거 없는 완료 경고 | "evidence", "증거 검사", "stop 경고" |
 | `check-utf8-and-lines` | UTF-8/1500라인/한글주석 검사 | "utf8 검사", "주석 검사", "라인 검사" |
 | `impact-warn` | public 심볼 변경 시 caller 경고 | "impact 경고", "caller 경고" |
@@ -71,6 +72,7 @@ Claude: [Bash 도구로 harness-toggle.ps1 require-plan-for-write off 실행]
 사용자: "harness 상태"
 Claude: [Bash 도구로 harness-toggle.ps1 "" status 실행]
         [OFF] require-plan-for-write
+        [ON]  require-task-checkbox
         [ON]  require-evidence
         [ON]  check-utf8-and-lines
         [ON]  impact-warn

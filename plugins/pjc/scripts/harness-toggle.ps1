@@ -32,6 +32,7 @@ New-Item -Force -ItemType Directory -Path $disabledDir | Out-Null
 # block-destructive 는 안전상 의도적으로 제외 (파괴적 명령 차단은 항상 동작)
 $known = @(
     'require-plan-for-write',
+    'require-task-checkbox',
     'require-evidence',
     'check-utf8-and-lines',
     'impact-warn',

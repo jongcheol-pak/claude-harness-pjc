@@ -148,7 +148,7 @@ foreach ($a in $actualAgents) {
 Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
-$hooks = @('block-destructive.ps1', 'require-plan-for-write.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1')
+$hooks = @('block-destructive.ps1', 'require-plan-for-write.ps1', 'require-task-checkbox.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1')
 $knownHelpers = @('harness-toggle.ps1')   # hook이 아닌 scripts/ 내 헬퍼 (미등록 탐지에서 제외)
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
