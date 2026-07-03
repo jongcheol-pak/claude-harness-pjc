@@ -30,4 +30,10 @@ Thing 클래스가 처리한다[^src-thing].
 ## 관련 지식·레시피
 없음.
 
+시크릿 스캔 오탐 방지 확인용(모두 무경고여야 — 코드 꼴·플레이스홀더):
+- 코드 꼴 값: password: getUserConfigValue
+- 긴 camelCase 식별자(20자+): secret: getUserConfigurationFromEnvironment
+- 한글 라벨 코드 꼴: 비밀번호: config.userSecret
+- 플레이스홀더: password: YOUR_PASSWORD_HERE
+
 [^src-thing]: [[10_sources/personal/src-demo\|소스: Demo]] — `src/Demo/Thing.cs`

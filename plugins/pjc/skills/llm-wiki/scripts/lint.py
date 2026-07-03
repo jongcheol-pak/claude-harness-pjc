@@ -62,14 +62,22 @@ INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 �
 #  password/api key 계열은 값을 캡처해 아래 secret_value_is_codey()로 "코드 꼴" 값을 걸러낸다.
 SECRET_PATTERNS = [
     ("password", re.compile(r"(?i)\b(password|passwd|pwd)\s*[:=]\s*['\"]?([^\s'\";,]{8,})")),
-    ("api key/token", re.compile(r"(?i)\b(api[_-]?key|apikey|secret|access[_-]?key|auth[_-]?token)\s*[:=]\s*['\"]?([A-Za-z0-9_\-./+]{12,})")),
+    # api key/token: 라벨 앞 경계를 \b 대신 (?<![A-Za-z0-9])로 — \b는 선행 '_'(단어문자)에서 깨져
+    #   'aws_secret_access_key = ...'의 access_key/secret을 놓쳤다(T5 (d)). '_'는 [A-Za-z0-9]가 아니므로 매치.
+    ("api key/token", re.compile(r"(?i)(?<![A-Za-z0-9])(api[_-]?key|apikey|secret|access[_-]?key|auth[_-]?token)\s*[:=]\s*['\"]?([A-Za-z0-9_\-./+]{12,})")),
+    # 한글 라벨 크리덴셜(T5 (b)) — 위키 본문은 한글이 원칙이라 한글 라벨이 자연스럽다. 값은 ASCII 토큰꼴(8자+)만
+    #   캡처해 한글 산문 값(예: '비밀번호: 사용자설정')은 매치하지 않는다. 값은 아래 codey 필터도 거친다.
+    ("한글 라벨", re.compile(r"(비밀번호|비번|암호|토큰|시크릿|접근키|인증키|비밀키)\s*[:=]\s*['\"]?([A-Za-z0-9_\-./+]{8,})")),
+    # 라벨 없는 생 토큰(T5 (c)) — 알려진 접두사(sk_live_·ghp_·AKIA·AIza·xox·JWT eyJ)는 라벨 없이 산문에 있어도
+    #   실값이다. 접두사 뒤 충분한 본문 길이를 요구해 접두사 언급(예: 'ghp_ 형식')만으로는 오탐하지 않는다.
+    ("토큰 접두사", re.compile(r"(?<![A-Za-z0-9])((sk_(live|test)_|ghp_|gho_|AKIA|AIza)[A-Za-z0-9_\-]{16,}|xox[bap]-[A-Za-z0-9-]{10,}|eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{6,})")),
     ("bearer 토큰", re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._\-]{20,}")),
     ("DB 연결문자열", re.compile(r"(?i)(server|data source|host)\s*=\s*[^;\n]+;.*(password|pwd)\s*=\s*[^;\n]{4,}")),
     ("개인키 블록", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     ("URI 자격증명", re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^@\s]{4,}@")),
 ]
 # 값 post-filter를 적용하는 라벨 (변수 대입·함수 호출 등 "코드 꼴" 값 제외 대상)
-SECRET_VALUE_FILTER_LABELS = {"password", "api key/token"}
+SECRET_VALUE_FILTER_LABELS = {"password", "api key/token", "한글 라벨"}
 # 플레이스홀더/예시 값 오탐 제외 — 해당 줄에 이 표식이 있으면 시크릿이 아니라 규약 안내로 본다.
 #  'example'은 단어 그대로일 때만(example.com 같은 도메인은 제외 표식 아님 — 위음성 방지).
 SECRET_PLACEHOLDER_RX = re.compile(
@@ -90,8 +98,18 @@ def secret_value_is_codey(val):
     if SECRET_KEY_PREFIX_RX.match(v):
         return False
     if "(" in v or ")" in v:
+        return True   # 함수 호출 꼴 — 코드(엔트로피 판정보다 먼저 걸러 정상 코드 오탐 방지)
+    # 숫자·기호(-·/ 등)를 포함하는 값은 SECRET_IDENTIFIER_LIKE_RX(영문·_·.·;·,·[]만 허용)에 매치되지 않아
+    #   여기서 '실값'(비-codey)으로 떨어진다 — 예: Xk29fj3kd82jf, wJalr...K7... (엔트로피 별도 분기 불필요).
+    if SECRET_IDENTIFIER_LIKE_RX.match(v):
+        # 식별자 꼴(영문·_·.…)이면 코드 참조로 보고 codey 처리. 단 **대소문자 변화·구분자가 전혀 없는
+        #   단일 소문자 블록 20자+**는 변수·상수명보다 패스프레이즈(correcthorsebatterystaple 등)에 가까워
+        #   실값으로 본다(T5 (a)). camelCase(대소 혼합)·dotted·snake·대문자 상수는 이 조건에서 빠져 codey 유지
+        #   — 긴 식별자(getUserConfigurationFromEnvironment 등) 위양성을 막는다.
+        if re.fullmatch(r"[a-z]{20,}", v):
+            return False
         return True
-    return bool(SECRET_IDENTIFIER_LIKE_RX.match(v))
+    return False
 
 
 def frontmatter(text):

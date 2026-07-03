@@ -39,9 +39,12 @@
     {
       "fixture": "secret",
       "expect_keywords": [
-        "시크릿 의심"
+        "시크릿 의심(password)",
+        "시크릿 의심(한글 라벨)",
+        "시크릿 의심(토큰 접두사)",
+        "시크릿 의심(api key/token)"
       ],
-      "rationale": "§7-22 시크릿 의심 스캔 (WARN)"
+      "rationale": "§7-22 시크릿 의심 스캔 (WARN) — T5 강화: password 엔트로피·한글 라벨·라벨무관 토큰·밑줄인접 라벨(api key) 각각 발화"
     },
     {
       "fixture": "decision-vocab",

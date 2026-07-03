@@ -13,3 +13,9 @@ tags: [concept, leak]
 password 실값 패턴을 잡는지 검증하기 위한 위반 픽스처다.
 
 password: FakeDummyPass99
+
+T5 강화 검증용 더미(모두 명백한 가짜 — 강화된 스캔이 잡는지 확인):
+- 순수 영문 값(엔트로피): password: correcthorsebatterystaple
+- 한글 라벨: 비밀번호: Xk29fj3kd82jf
+- 라벨 없이 산문에 노출 ghp_wJalrXUtnFEMIabcdefghij0123456789 여기 끝
+- 밑줄 인접 라벨(경계 수정): aws_secret_access_key = wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY
