@@ -115,7 +115,12 @@ plan.md는 **git에 commit되어 영구 보존**된다.
        ❌ "그 함수/관련 파일들/해당 부분" → 정확한 파일 경로·심볼명으로 -->
 - [ ] T1. <작업명>
   - **Type**: A | B | C | D  (Type C가 품질-민감이면 `C (quality-review)`로 V-6 요청 — 기준은 plan-feature Step 5)
-  - **Acceptance**: <검증 가능한 조건>
+  <!-- Acceptance 권장 형식: Given(상태)-When(이벤트)-Then(결과) — 명시적 모델로 쓰면 reviewer의
+       충족 판정이 이분법적으로 가능해진다("잘 동작한다" 같은 모호 기준 차단).
+       예: "Given 설정 화면, When 다크 모드 토글, Then 즉시 테마 전환 + 재시작 후에도 유지".
+       G-W-T가 어색한 조건(예: "빌드 경고 0", "lint 통과")은 자유 서술 유지 — 본질은 형식이 아니라
+       '기계적으로 판정 가능한가'다 (권장이지 강제 아님). -->
+  - **Acceptance**: <검증 가능한 조건 — 권장: Given-When-Then>
   - **Files**:
     - 주: `src/Foo.cs`
     - 동반: `src/Bar.cs`
