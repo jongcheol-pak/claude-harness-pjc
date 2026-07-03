@@ -62,7 +62,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 - **log 월별 롤오버(공통)**: log 기록 추가 후 `log.md`가 **6000자**를 넘으면 가장 오래된 항목부터 `90_archive/log/{YYYY-MM}.md`로 월별 롤오버하고 `## 아카이브 인덱스`를 갱신한다(항목 단위, 보존 이동이라 **승인 불필요**). 목표치(3000자)·인덱스 줄 형식·검색법 등 전문은 wiki-schema §8.
 - **비 git vault 사전 백업(공통)**: 세션 첫 쓰기 절차 전 1회 `<vault>/.git`으로 git 여부를 확인한다. **git 관리 vault면 사전 백업 해당 없음** — 단 이 면제는 **git 이력이 실제 보호를 제공할 때만** 유효하다. vault에 커밋이 하나도 없거나(`git init`만 한 상태) 변경이 오래 미커밋으로 쌓여 있으면 `git checkout` 복구가 무력해 사실상 보호가 0인데도 면제만 적용된다 — 이 경우 세션 종료 전 vault를 커밋하도록 **사용자에게 권한다**(자동 commit은 글로벌 승인 대상이라 스킬이 하지 않음). **비 git vault면** 수정·삭제할 **기존 파일**을 그 세션 **최초 변경 직전**에 `90_archive/backup/{YYYY-MM-DD}/`로 복사한 뒤 진행한다(신규 생성은 백업 불필요) — 이 사전 백업이 글로벌 "git 아닌 폴더 덮어쓰기 — 사전 백업 또는 사용자 확인" 요건을 충족하므로 **별도 승인 문답 없이 진행**한다. 백업으로 되돌리는 복구는 절차 L. vault 상대경로 유지·목적지 존재 시 미덮어쓰기·삭제 백업 분리(`-deleted`)·30일 정리(삭제·복구 백업 제외)·lint 자동제외 등 전문은 wiki-schema §8.
 - **병렬 다중 에이전트 분업 규칙** (한 위키 세션 내부 병렬 실행 시 — 전문·근거는 §9 정본): ① 쓰기 파일 소유권 겹침 없이 분할(각자 담당 페이지만) ② 공유 파일(`index.md`·`log.md`·`plan.md`·`dashboard.md`·허브)은 에이전트 쓰기 금지, 호스트가 완료 후 일괄 갱신 ③ 발견·등록 데이터는 파일 생성 대신 **반환값으로만** 보고 ④ 여러 프로젝트가 걸린 공유 페이지(concept 등)는 단일 에이전트 전담 ⑤ **위임 프롬프트에 형식 규칙(경로 표기·작성 전제·섹션/예산·반환값 형식)을 반드시 포함**.
-- **지침 자동 갱신**: 실제 위키 구조·형식·규칙이 이 스킬 또는 규칙 번들 `wiki-schema.md`와 달라진 경우, 사용자 요청 없이도 현행화한다. 상세는 아래 "H. 지침 자동 갱신".
+- **지침 자동 갱신**: 실제 위키가 이 스킬·규칙 번들 `wiki-schema.md`와 어긋나면, **번들을 직접 고치지 않고** `[SKILL-IMPROVE]` 큐에 기록·보고한다 — 번들은 플러그인 업데이트로 덮어써지고, 위반을 규칙으로 승격하는 자기정당화 루프를 막기 위함이다. 상세는 아래 "H. 지침 자동 갱신".
 
 ## 작업별 실행 절차
 
@@ -314,9 +314,13 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 
 ### H. 지침 자동 갱신
 
-위키 작업(A~J) 중 아래에 해당하면 **사용자 요청 없이** 이 스킬(`SKILL.md`) 또는 규칙 번들(`references/wiki-schema.md`)을 즉시 갱신한다.
+위키 작업(A~J) 중 이 스킬·규칙 번들과 실제 위키가 어긋난 것을 발견하면, **번들 파일을 무승인으로 직접 수정하지 않고** `pending.md`의 `[SKILL-IMPROVE]` 큐에 기록한 뒤 사용자에게 보고한다(절차 K 5-1·B-1 0). 이유:
+- ① 이 스킬 파일들(`SKILL.md`·`references/wiki-schema.md`·`scripts/lint.py`·`references/templates.md`)은 **플러그인 번들**이라 플러그인 업데이트로 덮어써져 자동 갱신분이 유실된다(config.json `_note` 참조 — 실제 설정을 사용자 홈에 두는 이유와 동일).
+- ② 세션이 규약을 위반해 만든 산출물이 '실제 위키 상태'가 되고, H가 그 위반에 맞춰 규칙을 재작성하면 규약이 점진 침식된다(**자기정당화 루프** — H가 규칙 위반을 규칙으로 승격시키는 경로).
 
-#### H-1. 대상 조건
+번들 수정이 실제로 필요하면 **하네스(플러그인) 레포 세션에서 plan-feature 절차로 승인받아** 진행한다(H-2 5의 세 곳 동시 갱신 규칙은 그때 적용).
+
+#### H-1. 대상 조건 (불일치 신호 — 발견 시 큐잉 대상)
 1. 형식 불일치(frontmatter/본문 섹션/경로가 템플릿과 다름)
 2. 새 페이지 타입/섹션/필드 도입
 3. 네이밍 규칙 변경
@@ -325,17 +329,19 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 6. 예산 규칙 변경
 7. 태그/링크 규칙 변경
 
-#### H-2. 실행 방법
+#### H-2. 실행 방법 (위키 세션 — 큐잉만)
 1. 작업 완료 직전 이 스킬과 규칙 번들 `references/wiki-schema.md`를 다시 읽는다.
 2. 위키 실제 상태와 대조한다.
-3. 불일치를 실제 상태에 맞게 수정한다.
-4. 규칙 번들 수정 시 frontmatter `version`을 올린다.
-5. 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
-6. `log.md`: `- [YYYY-MM-DD] [SCHEMA] {요약}. (자동 갱신)`
+3. 불일치를 발견하면 `pending.md`의 `[SKILL-IMPROVE]` 큐에 1줄 기록한다(형식·중복 억제는 절차 K 5-1) + 이번 세션 보고에 포함한다. **번들 파일을 직접 수정하지 않는다.**
 
-#### H-3. 범위 제한
-- **내용을 실제 위키 상태에 맞추는 것**만 허용. 설계 방향/의도 변경은 사용자 요청 필요.
-- 예: 실제 파일에 `status` 필드 추가 → 템플릿 반영(O). 아카이브 60일→30일 변경(X).
+> **(참고) 승인 후 하네스 레포에서 번들을 실제로 수정할 때의 규칙** — 위키 세션이 아니라 plan-feature 승인을 거친 하네스 세션에서 적용:
+> - 규칙 번들 수정 시 frontmatter `version`을 올린다.
+> - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
+
+#### H-3. 범위 제한 (SSOT 우선)
+- **SSOT 우선 판정**: 위키 실제 상태가 규칙과 다르면, 기본은 **규칙(SSOT)이 옳고 위키가 틀린 것**으로 본다 — 규칙을 위키에 맞추지 말고, 위키 콘텐츠를 규칙에 맞추거나(절차 B/F) 판단이 갈리면 사용자에게 확인한다. "위키가 이러니 규칙을 바꾸자"는 H-3 자기정당화 루프의 입구다.
+- **사용자 명시 개선 요청은 절차 H 아님**: 사용자가 스킬·규칙 개선을 직접 요청하면 그건 plan-feature 경로(하네스 레포)다 — 이 절차 H(위키 세션의 우연한 발견)와 구분한다.
+- 예: 실제 파일에 `status` 필드가 흔히 쓰이면 [SKILL-IMPROVE] 큐에 "템플릿에 status 반영 검토"로 기록(O, 큐잉). 위키 세션이 템플릿·번들을 직접 편집(X). 아카이브 60일→30일 같은 설계 변경(X, 항상 사용자 승인).
 
 ### I. 가이드/레시피 작성 (선행형 + 특정 기능 추가)
 
