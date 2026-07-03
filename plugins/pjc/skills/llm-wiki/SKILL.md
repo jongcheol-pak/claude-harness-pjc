@@ -43,6 +43,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 ### 0-2. 빈 위키 초기화 검사
 - (0-1에서 `<vault>` 폴더 존재는 이미 확인됨. 폴더가 아예 없는 경우는 0-1에서 재확인 처리.)
 - `<vault>` 폴더는 있으나 `<vault>/index.md` 또는 `<vault>/log.md`가 없으면 = 빈/신규 위키 → **J. 부트스트랩**을 먼저 실행한 뒤 본 작업을 진행한다.
+  - **단 기존 vault 오인 방지(L-7)**: `index.md`/`log.md`가 없어도 `<vault>`에 **콘텐츠 폴더(`20_projects/`·`10_sources/`·`30_knowledge/` 등)나 다른 `.md` 파일이 이미 있으면** = 내용 있는 vault에서 **`index.md`만 실수로 소실**됐을 가능성이 크다 → J로 빈 골격을 덮어쓰지 말고(카탈로그 소실을 정상 상태로 위장) 사용자에게 확인한다("`index.md`를 재생성할까요, 신규 부트스트랩할까요?").
 
 ### 0-3. 규칙 로드
 - 규칙·타입·예산·네이밍·통제 어휘는 스킬 번들 `<skill>/references/wiki-schema.md`를 따른다. (vault에는 SCHEMA.md 사본을 두지 않는다.)
@@ -134,7 +135,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 4. **거절 시**: feature 산문 + 각주만 유지(현행 동작). 함정 정보는 feature에 남으므로 손실 없음.
 
 #### A-4. 검증
-1. `python <skill>/scripts/lint.py "<vault>"` 실행 — 예산·wikilink·통제어휘·인덱스/허브 동기화를 기계 검증(오류·경고 0 확인).
+1. `python <skill>/scripts/lint.py "<vault>"` 실행 — 예산·wikilink·통제어휘·인덱스/허브 동기화를 기계 검증. **판정은 델타 기준(M-7)**: 이번 작업이 **신규로 만든** 오류·경고 0이 목표다. lint는 vault 전역을 검사하므로 다른 프로젝트의 기존 경고가 섞여 있을 수 있는데, 그것까지 0으로 만들 책임은 이번 작업에 없다(요청 범위 밖 무단 수정 금지). 이번 변경과 무관한 기존 경고는 보고에 "기존 잔여"로 분리해 남기고, **이번 변경 파일 관련 신규 경고만** 해소한다.
 2. **전체 망라 검증 (기능 누락 차단)**: A-1의 "전체 기능 목록(문서 + 소스 스캔)" 각 항목이 feature 페이지 또는 의도적 묶음에 매핑되는지 대조. 미커버는 feature로 생성, 묶은 경우 사유를 해당 feature에 명시. 누락 0이어야 완료.
 
 ### B. 프로젝트 정보 갱신 (Ingest)
@@ -199,7 +200,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 4. `log.md`: `- [YYYY-MM-DD] [INGEST] {프로젝트명} 갱신. {요약}.`
 
 #### B-3. 검증
-- `python <skill>/scripts/lint.py "<vault>"` 실행으로 예산·wikilink·동기화 기계 검증(오류·경고 0 확인).
+- `python <skill>/scripts/lint.py "<vault>"` 실행으로 예산·wikilink·동기화 기계 검증. **판정은 델타 기준(M-7, A-4와 동일)**: 이번 작업이 신규로 만든 오류·경고 0이 목표이며, 다른 프로젝트의 기존 잔여 경고까지 0으로 만들 책임은 없다(보고에 "기존 잔여"로 분리).
 
 ### C. 프로젝트 삭제
 
@@ -297,7 +298,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 
 #### F-2. 결과 보고
 - 결과를 **심각도 등급**(🔴 오류 / 🟡 경고 / 🔵 정보)으로 분류해 보고.
-- 이슈가 있으면 `30_knowledge/questions/lint-{YYYYMMDD}.md`에 리포트 페이지 작성(상세 보존), 요약은 사용자에게.
+- 이슈가 있으면 `30_knowledge/questions/lint-{YYYYMMDD}.md`에 리포트 페이지 작성(상세 보존), 요약은 사용자에게. (이 리포트는 발견 다건이면 길어지는 게 정상이라 lint 예산 검사에서 제외된다 — L-2, is_lint_report.)
 - 사용자 승인 후 수정.
 - `log.md`: `- [YYYY-MM-DD] [LINT] 위키 점검. {발견}건 발견, {수정}건 수정. 표본: {코드 정합 샘플링 feature 목록}.` — 표본 명시는 다음 lint의 로테이션 근거다(F-1 10, schema §7-10).
 

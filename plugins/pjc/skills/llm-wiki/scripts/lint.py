@@ -320,7 +320,10 @@ def main():
                 budget = GUIDE_BUDGET.get(gk, 200)
             elif typ in BUDGET:
                 budget = BUDGET[typ]
-            if budget and lines > budget:
+            # L-2: lint 리포트(questions/lint-YYYYMMDD.md)는 발견 다건이면 길어지는 게 정상이라
+            #   예산 검사에서 제외한다(§7-12/23 집계·등록 제외와 동일 기준) — 자기 리포트가 다음 lint에서
+            #   영구 '예산 초과' WARN을 만드는 것을 막는다.
+            if budget and lines > budget and not is_lint_report(r):
                 # decision-log는 수리 방법이 롤오버+포인터라 일반 문구와 분기 (§2.8)
                 hint = (" — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)"
                         if typ == "decision-log" else "")
