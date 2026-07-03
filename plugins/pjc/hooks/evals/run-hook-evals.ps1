@@ -333,6 +333,16 @@ $nbj = @{ tool_name = 'NotebookEdit'; cwd = $pw; tool_input = @{ notebook_path =
 $r = Invoke-Hook 'post-write-checks.ps1' $nbj
 Assert-Case -Name "post-write: NotebookEdit notebook_path 인식 — password 경고" -R $r -ExpectExit 0 -ExpectContains 'password'
 
+# ---- [T2] H2는 check-utf8·impact 두 토글이 모두 off여도 발화(토글 독립) ----
+& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'check-utf8-and-lines' 'off' | Out-Null
+& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'impact-warn' 'off' | Out-Null
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $disPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 두 토글 off여도 H2 게이트끄기 감지 (T2)" -R $r -ExpectExit 0 -ExpectContains '게이트 비활성화'
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $ipnegPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 두 토글 off + H2 비대상 파일 무출력 (T2)" -R $r -ExpectExit 0 -ExpectSilent $true
+& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'check-utf8-and-lines' 'on' | Out-Null
+& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'impact-warn' 'on' | Out-Null
+
 # =====================================================================
 # 7) impact-warn 시나리오 (git 필요 — caller 경고 양성·음성)
 # =====================================================================

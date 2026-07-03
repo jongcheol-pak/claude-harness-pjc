@@ -18,7 +18,9 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 $base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 $disableUtf8   = Test-Path -LiteralPath (Join-Path $base ".claude/.disabled/check-utf8-and-lines")
 $disableImpact = Test-Path -LiteralPath (Join-Path $base ".claude/.disabled/impact-warn")
-if ($disableUtf8 -and $disableImpact) { exit 0 }   # 두 검사 모두 꺼져 있으면 할 일 없음
+# 두 토글이 모두 꺼져 있어도 조기 종료하지 않는다(T2) — 아래 H2(안전 게이트 자기 비활성화·hook 개조 감지)는
+#   토글과 무관하게 항상 발화해야 한다. 두 검사(섹션 1/2)는 각자 $disableUtf8/$disableImpact 로 개별 가드하고,
+#   H2만 토글 독립으로 stdin·경로 파싱 직후 실행한다. (둘 다 꺼졌고 H2 비대상이면 $allMsgs가 비어 무출력 exit 0.)
 
 # ---- stdin JSON 1회 읽기 (두 검사 공유 — 같은 입력을 두 번 읽지 않음) ----
 $inputJson = [Console]::In.ReadToEnd()
