@@ -200,7 +200,7 @@ $cleaned = -not (Test-Path -LiteralPath $oldMarker)
 Assert-Case -Name "suggest: 30일 경과 마커 자동 정리 (H5)" -R @{ code = ([int](-not $cleaned)); out = '' } -ExpectExit 0
 
 # =====================================================================
-# 6) post-write-checks 시나리오 (BOM·영문 주석·시크릿·비차단)
+# 6) post-write-checks 시나리오 (BOM·영문 주석·시크릿 7종·NotebookEdit·비차단)
 # =====================================================================
 $pw = Join-Path $work 'pwproj'; New-Item -ItemType Directory $pw -Force | Out-Null
 $csPath = Join-Path $pw 'Big.cs'
@@ -212,6 +212,76 @@ Assert-Case -Name "post-write: BOM 경고" -R $r -ExpectExit 0 -ExpectContains '
 Assert-Case -Name "post-write: 영문 주석 경고" -R $r -ExpectExit 0 -ExpectContains '영문'
 Assert-Case -Name "post-write: password 값 경고" -R $r -ExpectExit 0 -ExpectContains 'password'
 Assert-Case -Name "post-write: 비차단 exit 0" -R $r -ExpectExit 0
+
+# ---- 시크릿 잔여 유형 (API key·DB 연결문자열·URI 자격증명·개인키·Bearer·IP) ----
+# 전부 명백한 가짜 값. 개인키 마커·Bearer는 문자열 연결로 분리 기재 — 이 러너 파일 자체가
+# 시크릿 스캐너·자사 post-write hook에 오탐되지 않게 한다.
+$secPath = Join-Path $pw 'notes-secrets.md'
+$fakeKeyMarker = '-----BEGIN RSA ' + 'PRIVATE KEY-----'
+$fakeBearer = 'Bear' + 'er FAKETOKEN1234567890abc'
+$secBody = @(
+    'api_key = "FAKEKEY1234567890"',
+    'conn: Server=dbhost;User=app;Password=fakepw123;',
+    'uri: postgres://appuser:fakepass123@dbhost/appdb',
+    $fakeKeyMarker,
+    ('Authorization: ' + $fakeBearer),
+    '운영 장비: 10.20.30.40'
+) -join "`n"
+[System.IO.File]::WriteAllText($secPath, $secBody, [System.Text.UTF8Encoding]::new($false))
+$sjp = @{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $secPath } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'post-write-checks.ps1' $sjp
+Assert-Case -Name "post-write: API key/token 값 경고" -R $r -ExpectExit 0 -ExpectContains 'API key/token 값'
+Assert-Case -Name "post-write: DB 연결 문자열 경고" -R $r -ExpectExit 0 -ExpectContains 'DB 연결 문자열'
+Assert-Case -Name "post-write: URI 자격증명 경고" -R $r -ExpectExit 0 -ExpectContains 'DB/서비스 URI 인증정보'
+Assert-Case -Name "post-write: 개인키 경고" -R $r -ExpectExit 0 -ExpectContains '개인키'
+Assert-Case -Name "post-write: Bearer 토큰 경고" -R $r -ExpectExit 0 -ExpectContains 'Bearer 토큰'
+Assert-Case -Name "post-write: IP 주소 경고" -R $r -ExpectExit 0 -ExpectContains 'IP 주소'
+
+# ---- IP 음성 2건 (예약 IP·버전 문자열 제외 로직 회귀 가드 — 다른 트리거 없는 파일이라 완전 무출력 기대) ----
+$ipnegPath = Join-Path $pw 'ip-neg.md'
+[System.IO.File]::WriteAllText($ipnegPath, '로컬 검증은 127.0.0.1 에서 수행.', [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $ipnegPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 예약 IP(127.0.0.1) 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$vernegPath = Join-Path $pw 'ver-neg.md'
+[System.IO.File]::WriteAllText($vernegPath, 'Version="1.2.3.4" 로 배포.', [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $vernegPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 버전 문자열 IP 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# ---- NotebookEdit — notebook_path 인식 후 검사 적용 (T1 매처·폴백 회귀 가드) ----
+$nbPath = Join-Path $pw 'analysis.ipynb'
+[System.IO.File]::WriteAllText($nbPath, '{"cells":[{"cell_type":"code","source":["password = ''Fake12345''"]}]}', [System.Text.UTF8Encoding]::new($false))
+$nbj = @{ tool_name = 'NotebookEdit'; cwd = $pw; tool_input = @{ notebook_path = $nbPath; new_source = 'x' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'post-write-checks.ps1' $nbj
+Assert-Case -Name "post-write: NotebookEdit notebook_path 인식 — password 경고" -R $r -ExpectExit 0 -ExpectContains 'password'
+
+# =====================================================================
+# 7) impact-warn 시나리오 (git 필요 — caller 경고 양성·음성)
+# =====================================================================
+if ($gitOk) {
+    $imp = Join-Path $work 'imprepo'; New-Item -ItemType Directory $imp -Force | Out-Null
+    Push-Location $imp
+    git init -q; git config user.email t@t; git config user.name t
+    'namespace Demo { }' | Set-Content Widget.cs
+    'var s = WidgetService.RefreshCache();' | Set-Content CallerFile.cs
+    'namespace Demo2 { }' | Set-Content Lonely.cs
+    git add .; git commit -qm 'base'
+    # public 클래스·메서드 심볼 추가 수정 — caller(CallerFile.cs)가 있는 양성 케이스
+    "public class WidgetService {`n    public static void RefreshCache() { }`n}" | Set-Content Widget.cs
+    Pop-Location
+    $ij = @{ tool_name = 'Write'; cwd = $imp; tool_input = @{ file_path = (Join-Path $imp 'Widget.cs') } } | ConvertTo-Json -Compress
+    $r = Invoke-Hook 'post-write-checks.ps1' $ij
+    Assert-Case -Name "impact: public 심볼 변경 caller 경고" -R $r -ExpectExit 0 -ExpectContains 'IMPACT WARNING'
+    Assert-Case -Name "impact: caller 파일 경로 제시" -R $r -ExpectExit 0 -ExpectContains 'CallerFile.cs'
+    # caller 없는 심볼 — 완전 무출력(음성. BOM·주석·시크릿도 없는 파일이라 IMPACT 미출력이면 전체 무출력)
+    Push-Location $imp
+    "public class LonelyThing {`n}" | Set-Content Lonely.cs
+    Pop-Location
+    $ij2 = @{ tool_name = 'Write'; cwd = $imp; tool_input = @{ file_path = (Join-Path $imp 'Lonely.cs') } } | ConvertTo-Json -Compress
+    $r = Invoke-Hook 'post-write-checks.ps1' $ij2
+    Assert-Case -Name "impact: caller 없는 심볼 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+} else {
+    Write-Host "[SKIP] impact-warn 시나리오 (git 없음)"
+}
 
 # =====================================================================
 # 격리 검증 + 결과 보고

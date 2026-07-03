@@ -9,6 +9,12 @@ lint-cases.json의 각 case를 evals/fixtures/<fixture> vault에 대해 lint.py�
                          (정상 vault를 경고하지 않는지 = 오탐 회귀 방지). INFO는 허용.
   - expect_keywords    → 나열된 키워드가 lint 출력에 모두 있으면 PASS (부분 매칭 —
                          lint 문구 미세 변경에 견고).
+  - expect_absent      → (보조) 나열된 키워드가 lint 출력에 하나라도 있으면 FAIL —
+                         "실재 경로는 경고하지 않는다" 같은 무경고 기대를 검증한다.
+  - placeholder=true   → fixture를 임시 폴더로 복사한 뒤 .md 안의 __FIXTURE_ROOT__를
+                         복사본 절대경로로 치환해 lint를 실행한다. §7-20처럼 '실재하는
+                         절대경로'가 필요한 fixture를 기계 독립적으로 만든다 (opt-in —
+                         기존 fixture는 그대로 원본 경로로 실행).
 
 lint.py 자체는 수정하지 않고 subprocess로 호출만 한다(실사용 경로와 동일). 표준 라이브러리만
 사용하며(테스트 프레임워크 없음 — AGENTS.md 정합), lint.py를 부른 것과 같은 인터프리터
@@ -18,8 +24,10 @@ exit code: 전 case PASS면 0, 하나라도 FAIL이면 1.
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 
 # Windows 콘솔(cp949)에서도 한글·em-dash가 깨지지 않도록 UTF-8 출력 강제 (lint.py와 동일)
 try:
@@ -44,6 +52,28 @@ def run_lint(vault_path):
     return proc.stdout, proc.returncode, proc.stderr
 
 
+def prepare_placeholder_vault(fixture_dir):
+    """fixture를 임시 폴더로 복사하고 .md 안의 __FIXTURE_ROOT__를 복사본 절대경로(슬래시
+    정규화)로 치환한다. 반환: (정리용 임시 루트, lint에 넘길 vault 경로).
+    §7-20 실존 검사는 허브 '레포 정보 > 경로'가 실재 디렉터리여야 동작하는데, 체크인된
+    fixture에 절대경로를 박으면 다른 PC에서 깨지므로 실행 시점에 만들어 넣는다."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    root_token = dest.replace("\\", "/")
+    for dirpath, _dirs, files in os.walk(dest):
+        for name in files:
+            if not name.endswith(".md"):
+                continue
+            path = os.path.join(dirpath, name)
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            if "__FIXTURE_ROOT__" in text:
+                with open(path, "w", encoding="utf-8", newline="") as fh:
+                    fh.write(text.replace("__FIXTURE_ROOT__", root_token))
+    return tmp, dest
+
+
 def check_case(case):
     """한 case를 실행·대조해 (passed, detail) 반환."""
     fixture = case["fixture"]
@@ -54,7 +84,12 @@ def check_case(case):
     if "expect_clean" not in case and "expect_keywords" not in case:
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
 
+    tmp = None
+    if case.get("placeholder"):
+        tmp, vault = prepare_placeholder_vault(vault)
     out, rc, err = run_lint(vault)
+    if tmp:
+        shutil.rmtree(tmp, ignore_errors=True)
     # lint.py 자체 크래시(런타임 예외 → nonzero exit)를 '위반 미검출'과 구분해 진단한다.
     #  lint.py는 정상 실행 시 위반이 있어도 exit 0이므로, rc!=0은 실제 예외를 의미한다.
     if rc != 0:
@@ -71,6 +106,9 @@ def check_case(case):
     missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
     if missing:
         return False, "미검출 키워드: " + ", ".join(missing)
+    present = [kw for kw in case.get("expect_absent", []) if kw in out]
+    if present:
+        return False, "부재 기대 키워드가 출력에 존재(오탐): " + ", ".join(present)
     return True, "검출: " + ", ".join(case.get("expect_keywords", []))
 
 

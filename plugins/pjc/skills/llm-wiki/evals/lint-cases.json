@@ -1,5 +1,5 @@
 {
-  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). 커버리지: 25개 lint 검사 중 대표 11개(깨진 링크·예산·통제어휘(platform/origin/confidence + category)·한영 병기·시크릿·decision 어휘·index 부재·feature 각주·구현 방법 섹션 부재·updated 누락). 나머지는 Deferred(plan 참조).",
+  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 25개 lint 검사 중 대표 13개(깨진 링크·예산·통제어휘(platform/origin/confidence + category)·한영 병기·시크릿·decision 어휘·index 부재·feature 각주·구현 방법 섹션 부재·updated 누락·관련 파일 섹션/경로(§7-21)·각주/관련 파일 경로 실존(§7-20·21)). 나머지는 Deferred(plan 참조).",
   "cases": [
     {
       "fixture": "clean",
@@ -84,6 +84,34 @@
         "category 통제어휘 위반"
       ],
       "rationale": "§7-7 확장 — category 오타는 sub-index 라우팅을 어긋나게 함 (ERR)"
+    },
+    {
+      "fixture": "rel-section-missing",
+      "expect_keywords": [
+        "관련 파일 섹션 누락"
+      ],
+      "rationale": "§7-21 게이트 — '## 관련 파일' 섹션 자체가 없는 feature (WARN)"
+    },
+    {
+      "fixture": "rel-empty",
+      "expect_keywords": [
+        "관련 파일 경로 항목 0개"
+      ],
+      "rationale": "§7-21 형식 누락 — 섹션은 있으나 백틱 경로 0개 (WARN)"
+    },
+    {
+      "fixture": "path-missing",
+      "placeholder": true,
+      "expect_keywords": [
+        "각주 경로 레포에 없음",
+        "Gone.cs",
+        "관련 파일 경로 레포에 없음",
+        "AlsoGone.cs"
+      ],
+      "expect_absent": [
+        "Real.cs"
+      ],
+      "rationale": "§7-20·21 실존 검사 — 부재 경로 2건 WARN + 실재 경로 무경고(오탐 가드). placeholder로 레포 루트를 실행 시점에 주입"
     }
   ]
 }

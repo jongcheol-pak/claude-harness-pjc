@@ -1,5 +1,5 @@
 ﻿# PostToolUse hook (병합) - PowerShell 버전
-# Write/Edit/MultiEdit 후 두 검사를 한 프로세스에서 수행한다:
+# Write/Edit/MultiEdit/NotebookEdit 후 두 검사를 한 프로세스에서 수행한다:
 #   [check-utf8-and-lines] BOM 검사 · 1500라인 초과 경고 · 영문 주석 비율 · 민감 정보
 #   [impact-warn]          변경된 public/internal 심볼의 caller 경고
 #
@@ -26,6 +26,7 @@ try {
     $data = $inputJson | ConvertFrom-Json
     $file = $data.tool_input.path
     if (-not $file) { $file = $data.tool_input.file_path }
+    if (-not $file) { $file = $data.tool_input.notebook_path }   # NotebookEdit (require-plan-for-write와 동일 폴백 사슬)
 } catch {
     exit 0
 }
@@ -233,7 +234,11 @@ if (-not $disableImpact) {
                                     $callerContent = $matches[3]
 
                                     $callerFile = $callerFileRaw -replace '\\', '/'
-                                    if ($callerFile -eq $normalizedFile) { continue }
+                                    # git grep 경로는 cwd 상대라 절대경로($normalizedFile)와 그대로 비교되지 않음 —
+                                    # 절대경로로 정규화해 비교해야 "자기 파일을 자기 caller로 오탐"하지 않는다.
+                                    $callerAbs = if ([System.IO.Path]::IsPathRooted($callerFileRaw)) { $callerFile }
+                                                 else { (Join-Path (Get-Location).Path $callerFileRaw) -replace '\\', '/' }
+                                    if ($callerAbs -ieq $normalizedFile) { continue }
 
                                     # 같은 확장자나 코드 파일만 (test도 포함)
                                     $callerExt = [System.IO.Path]::GetExtension($callerFile).ToLower()

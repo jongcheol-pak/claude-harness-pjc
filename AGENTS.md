@@ -24,6 +24,11 @@
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
   격리 USERPROFILE에서 hook 6종(block-destructive·warn-external-ops·require-plan-for-write·suggest-agents-record·post-write-checks·require-evidence)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
+- **llm-wiki 상수 정합 셀프체크 (SKILL.md 예산표·wiki-schema §2/§3/§4·lint.py 상수 수정 시 필수)**:
+  ```
+  python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
+  ```
+  네 곳의 공유 상수(파일 예산·통제 어휘)를 기계 대조한다 — 전부 일치 exit 0, 불일치 exit 1, 파싱 앵커 실패 exit 2.
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
 ## Repository Structure
