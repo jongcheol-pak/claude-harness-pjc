@@ -214,7 +214,9 @@ foreach ($sub in $subs) {
     #   ~ $HOME $env: | * | . ./ .* ./* | Windows 시스템 디렉터리(C:\Windows·Program Files·ProgramData — 네이티브 및
     #   MSYS /c/… · WSL /mnt/c/… 마운트(대소문자 무시 — /C/·/D/ 등도 매치), 하위 포함) | 드라이브 루트 C:\(글롭 포함). 루프 불변이라 밖에서 1회 정의.
     # 시스템 디렉터리는 dir명 뒤가 /·따옴표·공백·끝이어야 매치돼 동음 접두(/etcetera·C:\WindowsApps·/c/Users)는 통과.
-    $dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+    # M5: 사용자 프로필 루트(C:\Users·C:\Users\<name>)만 위험대상 — 하위 임의 폴더(C:\Users\x\proj\dist 등 2단계+)는
+    #   제외해 일상 정리 작업 오탐을 막는다. Users 또는 Users\<한단계>까지만 매치(([\\/]+[^\\/\s]+)? 뒤 경계 요구).
+    $dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
     # 대소문자 무시(?i) — PowerShell cmdlet·alias는 케이스 무관하게 실행되므로(REMOVE-ITEM·RM·Del 등)
     #   토큰 매칭도 무시해야 한다. 이게 없으면 대문자 변형이 컴파운드 삭제 검사를 통째로 우회한다(H1).
     $delMatches = [regex]::Matches($norm, '(?i)(^|\s)(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')

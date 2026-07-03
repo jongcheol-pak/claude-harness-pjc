@@ -384,6 +384,26 @@
       "name": "[알려진 미탐] 서브셸 (rm -rf /) — M1 Deferred (정규식 경계로 정밀 분리 불가, 명령치환 케이스와 충돌)",
       "command": "(rm -rf /)",
       "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "사용자 프로필 루트 C:\\Users 재귀강제 삭제 차단 (M5)",
+      "command": "Remove-Item C:\\Users -Recurse -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "프로필 하위 C:\\Users\\Public 재귀강제 삭제 차단 (M5 — 한단계)",
+      "command": "Remove-Item C:\\Users\\Public -Recurse -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "프로필 깊은 하위 dist 정리 통과 (M5 오탐 방지 — 2단계+ 제외)",
+      "command": "Remove-Item C:\\Users\\jongc\\proj\\repo\\dist -Recurse -Force",
+      "expect_exit": 0
     }
   ]
 }
