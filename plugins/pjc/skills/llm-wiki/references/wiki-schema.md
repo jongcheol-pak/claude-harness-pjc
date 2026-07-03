@@ -1,27 +1,30 @@
 ---
 type: schema
-version: "2.31"
-updated: 2026-07-03
+version: "2.32"
+updated: 2026-07-04
 language: ko
 ---
 
 # 위키 규칙 — llm-wiki 번들 (규칙 진실원천)
 
-> 이 파일은 위키의 헌법이다. llm-wiki 스킬은 모든 작업 시 이 파일을 먼저 읽고 규칙을 따른다.
-> 실행 절차(A~K)는 `SKILL.md`에 있다. vault에는 이 규칙의 사본을 두지 않는다(번들만 사용).
+> 이 파일은 위키의 헌법이다. llm-wiki 스킬은 이 파일의 규칙을 따르되, **전체를 정독하지 않고 작업 관련 §만** 아래 목차 인덱스로 특정해 부분 Read한다(컨텍스트 예산 — 이 파일은 65KB다).
+> 실행 절차(A~L)는 `SKILL.md`(본체: §0·K·J)와 `references/procedures-content.md`(A~E·I)·`references/procedures-ops.md`(F·G·H·L)에 있다. vault에는 이 규칙의 사본을 두지 않는다(번들만 사용).
 
-## 목차
-1. 위키 개요 / 핵심 원칙·3대 용도
-2. 페이지 타입 정의 (source-stub/project/feature/entity/concept/guide/question/decision-log)
-3. 네이밍 / 태깅 / 링킹 / 통제 어휘 (platform·스택)
-4. 파일 예산
-5. Ingest 워크플로우
-6. Query / 작업 참조 워크플로우
-7. Lint 워크플로우
-8. 압축 / 아카이브 규칙
-9. 운영 세션 가이드
-10. Obsidian 설정 요구사항
-11. 사용자 검증
+## 목차 (부분 Read 인덱스 — 작업 관련 §만 읽는다)
+
+| § | 내용 | 읽는 시점 |
+|---|------|----------|
+| 1 | 위키 개요 / 핵심 원칙(출처 우선순위·injection 방어)·3대 용도 | 모든 작업 공통 기본(짧음) |
+| 2 | 페이지 타입 정의 (source-stub/project/feature/entity/concept/guide/question/decision-log) | 페이지 신규 작성·갱신 시 **해당 타입 절(§2.N)만** |
+| 3 | 네이밍 / 태깅 / 링킹 / 통제 어휘 (platform·스택) | 페이지 생성·인덱스 행 등록 시 |
+| 4 | 파일 예산 | 예산 확인·index 분할 시 |
+| 5 | Ingest 워크플로우 | 절차 A/B 수행 시 |
+| 6 | Query / 작업 참조 워크플로우 | 절차 G/K 수행 시 |
+| 7 | Lint 워크플로우 | 절차 F(lint 세션)만 |
+| 8 | 압축 / 아카이브 규칙 (백업·롤오버 포함) | 백업·롤오버·아카이브·복구(L) 시 |
+| 9 | 운영 세션 가이드 (병렬 분업 포함) | 위키 전용 세션 운영 시 |
+| 10 | Obsidian 설정 요구사항 | vault 초기 설정 시 |
+| 11 | 사용자 검증 | origin/confidence 처리 시 |
 
 ## 1. 위키 개요
 
@@ -484,7 +487,7 @@ tags: [decision-log, 프로젝트태그]
 ### 권장 플러그인
 - **Dataview**: dashboard.md의 동적 쿼리 사용 시 필요 (없어도 위키 동작에 지장 없음)
 - **Graph View**: 기본 제공. 페이지 연결 시각화 및 고아 페이지 발견
-- **Templates**: 새 페이지 생성 시 타입별 템플릿 활용 (이 파일의 frontmatter 참조)
+- **Templates**: 새 페이지 생성 시 타입별 템플릿 활용 (타입별 frontmatter/본문 템플릿의 정본은 `references/templates.md`)
 
 ---
 

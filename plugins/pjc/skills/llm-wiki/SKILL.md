@@ -66,6 +66,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 
 ### 0-3. 규칙 로드
 - 규칙·타입·예산·네이밍·통제 어휘는 스킬 번들 `<skill>/references/wiki-schema.md`를 따른다. (vault에는 SCHEMA.md 사본을 두지 않는다.)
+- **schema는 전체 정독하지 않는다(컨텍스트 예산 — 65KB)**: 작업 관련 §만 schema 상단 "목차 (부분 Read 인덱스)"로 특정해 부분 Read(Grep 또는 offset Read)한다. 절차 본문 곳곳의 "상세는 schema §N" 포인터도 그 §만 읽으면 충분하다.
 
 ## 사전 준수 사항 (모든 작업 공통)
 
