@@ -23,7 +23,7 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  격리 USERPROFILE에서 hook 7종(block-destructive·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
+  격리 USERPROFILE에서 hook 8종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
 - **llm-wiki 상수 정합 셀프체크 (SKILL.md 예산표·wiki-schema §2/§3/§4·lint.py 상수 수정 시 필수)**:
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
@@ -38,7 +38,7 @@
 ├── plugins/pjc/
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop hook 배선
-│   ├── scripts/*.ps1                # hook 구현(block-destructive·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record) + harness-toggle.ps1
+│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record) + harness-toggle.ps1
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
 ├── validate.ps1                     # 설치본 검증
@@ -50,12 +50,12 @@
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **파일 크기**: 1500라인은 분리 "검토" 신호(강제 분리선 아님).
-- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단(`exit 2`)은 `block-destructive`·`require-plan-for-write`·`require-task-checkbox`만.
+- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단(`exit 2`)은 `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox`만.
 - **SKILL 문서 작성**: `plugins/pjc/skills/AUTHORING.md` 참조("왜"를 설명, 절대 규칙만 단호하게).
 
 ## DO NOT
 - 실제 비밀번호·API 키·토큰·시크릿·DB 연결문자열·내부 IP/호스트를 코드·문서·notes·plan에 기록(환경변수 이름만 적고 값은 `.env`로).
-- **`block-destructive.ps1`의 차단 동작 변경** — 안전 임계 hook(토글 불가, 마지막 방어선). 헤더 경고 참조.
+- **`block-destructive.ps1`·`protect-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(토글 불가, 마지막 방어선). protect-harness는 `.claude/.disabled/` 게이트 파일·설치본 hook 스크립트·hooks.json을 Write/Edit로 개조해 안전장치를 무력화하는 시도를 차단한다. 헤더 경고 참조.
 - 자동 생성·캐시 디렉터리(`__pycache__/`, lock 파일 등) 커밋.
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass`(백신이 공격 도구로 오인해 격리할 수 있음).
 
