@@ -11,6 +11,10 @@
 SKILL.md H-2는 이들의 수동 동기화를 요구하는데, 사람이 한 곳을 고치고 나머지를 놓치면
 드리프트가 조용히 생긴다. 이 스크립트가 그 드리프트를 기계로 잡는다.
 
+추가로 ⑤ 절차 배치 정합을 검사한다 — SKILL.md는 지연 로드 분할(본체 + references/procedures-*.md)
+구조라, 본체 '## 절차 목차' 라우팅 표가 가리키는 파일이 실존하고 각 절차 헤딩(### A. ~ ### L.)이
+표의 위치에 정확히 1곳만 존재해야 한다(파일 개명·헤딩 소실·중복 시 라우팅이 허공을 가리킴).
+
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
   - 불일치 → 항목별 소스 값 나열 + exit 1
@@ -39,6 +43,11 @@ LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
 
 # schema §2.x 헤딩 → 예산 키 (### 2.N 뒤 첫 토큰이 타입명)
 SCHEMA_TYPE_HEADING_RX = re.compile(r"^### 2\.\d+\s+([a-z-]+)", re.M)
+
+# SKILL 본체 라우팅 표 행: | A. 프로젝트 추가 | `references/procedures-content.md` | 또는 | ... | (이 문서) |
+ROUTING_ROW_RX = re.compile(r"^\|\s*([A-L])\.\s[^|]*\|\s*(.+?)\s*\|", re.M)
+# 절차 헤딩(### 레벨 고정 — #### A-1. 하위 헤딩과 구분)
+PROC_HEADING_RX = re.compile(r"^### ([A-L])\. ", re.M)
 
 
 def die(msg):
@@ -162,6 +171,54 @@ VOCAB_LINES = {
 }
 
 
+def parse_routing_table(text):
+    """SKILL.md '## 절차 목차' 라우팅 표에서 {절차 문자: 상대경로 또는 None(본체)}을 추출한다."""
+    m = re.search(r"^## 절차 목차\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+    if not m:
+        die("SKILL.md '## 절차 목차' 섹션을 찾지 못함")
+    rows = {}
+    for rm in ROUTING_ROW_RX.finditer(m.group(1)):
+        letter, loc = rm.group(1), rm.group(2).strip().strip("`")
+        rows[letter] = None if "이 문서" in loc else loc
+    if sorted(rows) != list("ABCDEFGHIJKL"):
+        die(f"라우팅 표에서 절차 A~L 12행을 찾지 못함 (발견: {sorted(rows)})")
+    return rows
+
+
+def check_procedure_placement(skill_text):
+    """⑤ 절차 배치 정합 — 라우팅 표 경로 실존 + 절차 헤딩이 표의 위치에 정확히 1곳.
+
+    반환: (불일치 목록, 대조 항목 수). 스캔 대상은 본체 + 표가 참조하는 파일로 한정한다
+    (wiki-schema.md 등 규칙 문서는 절차 본문이 아니므로 제외 — §2.N 헤딩과의 오탐도 없다)."""
+    issues = []
+    checked = 0
+    routing = parse_routing_table(skill_text)
+    files = {"SKILL.md": skill_text}
+    for letter in sorted(routing):
+        rel = routing[letter]
+        if rel is None:
+            continue
+        checked += 1
+        path = os.path.join(SKILL_DIR, *rel.split("/"))
+        if not os.path.isfile(path):
+            issues.append(f"절차 {letter} 라우팅 위치 '{rel}' 파일 없음")
+        elif rel not in files:
+            files[rel] = read(path)
+    found = {}
+    for fname, text in files.items():
+        for hm in PROC_HEADING_RX.finditer(text):
+            found.setdefault(hm.group(1), []).append(fname)
+    for letter in "ABCDEFGHIJKL":
+        checked += 1
+        locs = found.get(letter, [])
+        expected = routing[letter] or "SKILL.md"
+        if len(locs) != 1:
+            issues.append(f"절차 {letter} 헤딩(### {letter}. )이 {len(locs)}곳 {locs} — 정확히 1곳이어야 함")
+        elif locs[0] != expected:
+            issues.append(f"절차 {letter} 헤딩 위치 '{locs[0]}' ≠ 라우팅 표 '{expected}'")
+    return issues, checked
+
+
 def parse_schema_vocab(text):
     out = {}
     for key, (rx, _attr) in VOCAB_LINES.items():
@@ -210,14 +267,19 @@ def main():
             mismatches.append(
                 f"통제 어휘 '{key}' 불일치: lint에만 {only_lint} / schema에만 {only_sch}")
 
+    placement_issues, placement_checked = check_procedure_placement(skill_text)
+    checked += placement_checked
+    mismatches.extend(placement_issues)
+
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
         for m in mismatches:
             print(f"[MISMATCH] {m}")
         print(f"\n결과: 불일치 {len(mismatches)}건 / 대조 {checked}항목 — "
-              f"SKILL.md H-2 규약대로 네 곳을 함께 갱신하세요.")
+              f"SKILL.md H-2 규약대로 관련 파일을 함께 갱신하세요.")
         sys.exit(1)
-    print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 — 항목당 소스 2~4곳 대조)")
+    print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 + "
+          f"절차 배치 {placement_checked}항목 — 항목당 소스 2~4곳 대조)")
     sys.exit(0)
 
 
