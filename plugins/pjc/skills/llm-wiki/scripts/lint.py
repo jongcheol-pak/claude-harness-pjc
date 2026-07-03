@@ -205,9 +205,12 @@ def main():
         print("사용법: python lint.py \"<vault_path>\"")
         sys.exit(1)
     vault = sys.argv[1].rstrip("/\\")
-    md = [f for f in glob.glob(os.path.join(vault, "**", "*.md"), recursive=True)]
+    # L-3: vault 경로에 glob 메타문자([ ] * ? 등)가 있어도 리터럴로 취급 — glob.escape로 감싸지 않으면
+    #   'D:\wiki[2026]' 같은 경로에서 md 목록이 0개가 되어 대부분 검사가 공허 통과한다.
+    md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     existing = {rel(p)[:-3] for p in md}  # 확장자 제거한 상대경로 집합
+    existing_cf = {e.casefold() for e in existing}  # L-1: 대소문자 무시 비교용(Windows/Obsidian 정합)
     today = datetime.date.today()
 
     errors, warns, infos = [], [], []
@@ -242,8 +245,21 @@ def main():
 
     for p in md:
         r = rel(p)
-        with open(p, encoding="utf-8") as fh:
-            text = fh.read()
+        # M-2: 비 UTF-8 파일 1개가 전체 lint를 죽이지 않도록 파일별로 격리한다 — 실패 파일만 ERR로
+        #   보고하고 나머지 검사는 계속(예: 외부 편집기가 CP949로 저장한 페이지 하나).
+        # BOM: utf-8-sig로 읽어 BOM이 있어도 frontmatter 파싱이 실패하지 않게 하고, BOM 존재는 별도 WARN.
+        try:
+            with open(p, "rb") as fh:
+                raw_bytes = fh.read()
+            text = raw_bytes.decode("utf-8-sig")
+        except (UnicodeDecodeError, OSError) as e:
+            errors.append(f"파일 읽기 실패({type(e).__name__}): {r} — UTF-8(BOM 없음)로 저장하세요.")
+            continue
+        # binary 읽기는 text-mode의 universal-newline 변환을 하지 않으므로 CRLF→LF로 정규화한다 —
+        #   frontmatter '^---\n' 매치·줄 수 계산이 CRLF 파일에서 깨지지 않게(text-mode 열기와 동등).
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        if raw_bytes.startswith(b"\xef\xbb\xbf"):
+            warn(f"UTF-8 BOM 발견: {r} — BOM 없이 저장 권장(인코딩 규약)", r)
         lines = text.count("\n") + 1
         fm = frontmatter(text)
         typ = fm.get("type", "")
@@ -273,11 +289,16 @@ def main():
         # wikilink: 깨진 링크(경로형) + 경로 없는 링크(명시적 경로 필수 위반)
         # 코드펜스/인라인코드 안 텍스트는 제외 — 추출·정규화는 wikilink_targets(§7-6·23과 공용)
         for t in wikilink_targets(text):
-            link_targets.add(t)
+            # M-3: '.md' 확장자 제거 + L-1: casefold 정규화 — 깨진링크 검사와 고아 검사(696행)가 모두
+            #   이 정규화값(link_targets)을 쓴다. 실존 파일을 가리키는 [[…/feat-x.md|…]]나 케이스만 다른
+            #   링크를 '깨진 링크'·'고아 페이지'로 3중 오판하지 않게 한다(§3 무확장 규약·Windows/Obsidian
+            #   대소문자 무관과 정합). link_targets에 raw를 넣으면 고아 검사가 정규화값과 어긋나 오탐 재발.
+            t_norm = (t[:-3] if t.endswith(".md") else t).casefold()
+            link_targets.add(t_norm)
             if "/" in t:
-                if t not in existing:
+                if t_norm not in existing_cf:
                     errors.append(f"깨진 링크: {r} -> [[{t}]]")
-            elif t not in existing:  # 루트 파일(index 등)로도 해석되지 않으면 위반
+            elif t_norm not in existing_cf:  # 루트 파일(index 등)로도 해석되지 않으면 위반
                 warn(f"경로 없는 wikilink(명시적 경로 필수): {r} -> [[{t}]]", r)
 
         # 예산 — log.md는 문자 수(len), 그 외 타입은 줄 수.
@@ -291,7 +312,12 @@ def main():
         elif not in_archive:
             budget = None
             if typ == "guide":
-                budget = GUIDE_BUDGET.get(fm.get("guide_kind", ""), 200)
+                gk = fm.get("guide_kind", "")
+                # L-3: guide_kind 오타(예: 'recipes')면 기본 200줄이 조용히 적용돼 recipe 120줄 예산을
+                #   우회한다 → 통제어휘 밖이면 WARN(오타 가시화).
+                if gk and gk not in GUIDE_BUDGET:
+                    warn(f"guide_kind 통제어휘 위반: {r} guide_kind='{gk}' (허용: {', '.join(GUIDE_BUDGET)}) — 기본 200줄 적용됨", r)
+                budget = GUIDE_BUDGET.get(gk, 200)
             elif typ in BUDGET:
                 budget = BUDGET[typ]
             if budget and lines > budget:
@@ -374,11 +400,14 @@ def main():
         sec_body = re.sub(r"^---\n.*?\n---", "", text, count=1, flags=re.S)
         fm_lines = text.count("\n") - sec_body.count("\n")  # 본문 시작 줄 오프셋(줄 번호 보고용)
         for li, line in enumerate(sec_body.splitlines(), start=fm_lines + 1):
-            if SECRET_PLACEHOLDER_RX.search(line):
-                continue
             for label, rx in SECRET_PATTERNS:
                 m2 = rx.search(line)
                 if not m2:
+                    continue
+                # L-6: placeholder 표식을 '줄 전체'가 아니라 '매치된 시크릿 부분'에만 적용한다 —
+                #   'password: realSecret  # localhost용'처럼 실값과 예시 표식이 같은 줄에 있어도 실값을
+                #   놓치지 않는다(기존엔 줄에 localhost가 있으면 줄 전체를 스킵해 위음성이었음).
+                if SECRET_PLACEHOLDER_RX.search(m2.group(0)):
                     continue
                 # password/api key 계열은 값이 코드 꼴(변수·함수 호출)이면 제외 (§7-22 보수 정책)
                 if label in SECRET_VALUE_FILTER_LABELS and secret_value_is_codey(m2.group(2)):
@@ -405,9 +434,9 @@ def main():
 
     # index.md: 분할 신호(줄수/행수) + sub-index 목록 정합 + 기능별 인덱스 ↔ feature 동기화
     idx = os.path.join(vault, "index.md")
-    sub_files = sorted(glob.glob(os.path.join(vault, "index-*.md")))
+    sub_files = sorted(glob.glob(os.path.join(glob.escape(vault), "index-*.md")))  # L-3: vault만 escape('index-*'의 *는 패턴 유지)
     if os.path.isfile(idx):
-        with open(idx, encoding="utf-8") as fh:
+        with open(idx, encoding="utf-8-sig") as fh:  # M-2/BOM 정합: BOM 흡수(text-mode라 개행은 자동 정규화)
             itext = fh.read()
 
         # 미해결 질문 인덱스 동기 (wiki-schema §7-23): open question ↔ index.md '## 미해결 질문'
@@ -446,9 +475,9 @@ def main():
         # 행수는 sub-index가 보유한 '## 기능별 인덱스' 헤딩 기준으로 측정(wiki-schema §4 명문).
         for sp in sub_files:
             try:
-                with open(sp, encoding="utf-8") as sfh:
+                with open(sp, encoding="utf-8-sig") as sfh:  # M-2/BOM 정합
                     stext = sfh.read()
-            except OSError:
+            except (UnicodeDecodeError, OSError):  # M-2: 비 UTF-8 sub-index 하나로 전체가 죽지 않게
                 continue
             s_lines = stext.count("\n") + 1
             s_rows = feature_index_rows(stext)
@@ -470,14 +499,16 @@ def main():
         # 인덱스가 sub-index로 분할된 경우 그 내용도 합쳐서 동기화 검사 (분할 시 누락 오탐 방지)
         for sub in sub_files:
             try:
-                with open(sub, encoding="utf-8") as sfh:
+                with open(sub, encoding="utf-8-sig") as sfh:  # M-2/BOM 정합
                     itext += "\n" + sfh.read()
-            except OSError:
+            except (UnicodeDecodeError, OSError):  # M-2: 비 UTF-8 sub-index 하나로 전체가 죽지 않게
                 pass
         # 코드펜스/인라인코드 제외 후 feature 링크 추출 — wikilink_targets(메인 루프 파싱과 공용)
         for t in wikilink_targets(itext):
             if "/feat-" in t:
-                index_feat_links.add(t)
+                # M-3: '.md' 확장자를 벗겨 feat_files(무확장)와 동일 형태로 맞춘다 —
+                #   '[[…/feat-x.md]]' 링크를 '인덱스 누락'으로 오판하지 않게(깨진링크·고아와 함께 3중 오탐 제거).
+                index_feat_links.add(t[:-3] if t.endswith(".md") else t)
         for f in sorted(feat_files - index_feat_links):
             warn(f"기능별 인덱스 누락: {f} (feature인데 index 미등록)", f)
 
@@ -576,7 +607,9 @@ def main():
         hub_base = r[:-3]
         hub_text = text.replace("\\", "")
         for f in sorted(feat_files):
-            if f.startswith(hub_base + "/") and f not in hub_text:
+            # L-4: 부분문자열 매칭은 'feat-a'가 링크 'feat-a-extended'에 substring으로 포함되면 누락을
+            #   못 잡는다(위음성) → 경로 뒤에 단어문자·하이픈이 없어야 진짜 등록으로 본다(.md 확장자는 허용).
+            if f.startswith(hub_base + "/") and not re.search(re.escape(f) + r"(?![\w-])", hub_text):
                 warn(f"허브 기능 목록 누락: {r} -> {f}", r)
 
     # feature 각주 경로 레포 실존 (wiki-schema §7-20) + '## 관련 파일' 섹션 게이트/경로 실존 (§7-21):
@@ -662,7 +695,7 @@ def main():
     for r, (fm, typ, _) in sorted(pages.items()):
         if "/" not in r or r.startswith("90_archive/") or typ in INFRA_TYPES:
             continue
-        if r[:-3] not in link_targets:
+        if r[:-3].casefold() not in link_targets:  # link_targets는 casefold 정규화값(M-3/L-1과 정합)
             warn(f"고아 페이지(어디서도 링크되지 않음): {r}", r)
 
     # (미검증)·미해결 question 집계 리포트 — 사용자 검증 후보 (0건이면 생략, wiki-schema §11)
@@ -692,6 +725,11 @@ def main():
             print(f"  - {it}")
     if not errors and not warns:
         print("\n[OK] 오류·경고 없음.")
+
+    # L-5: ERR가 있으면 종료코드 1 — A-4/B-3의 "오류 0 확인"을 텍스트 해석이 아니라 종료코드로
+    #   자동 판정할 수 있게 한다(hook·CI 연동 가능). WARN·INFO만이면 0(비차단 정보성).
+    if errors:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

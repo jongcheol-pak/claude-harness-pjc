@@ -112,6 +112,23 @@
         "Real.cs"
       ],
       "rationale": "§7-20·21 실존 검사 — 부재 경로 2건 WARN + 실재 경로 무경고(오탐 가드). placeholder로 레포 루트를 실행 시점에 주입"
+    },
+    {
+      "fixture": "md-ext-link",
+      "expect_clean": true,
+      "rationale": "M-3 — '.md' 확장자 wikilink가 실존 파일을 가리키면 깨진링크·인덱스누락·고아 오탐이 없어야 함(오탐 회귀 방지)"
+    },
+    {
+      "fixture": "clean",
+      "bad_encoding": true,
+      "expect_keywords": [
+        "파일 읽기 실패",
+        "feat-badenc"
+      ],
+      "expect_absent": [
+        "Traceback"
+      ],
+      "rationale": "M-2 — 비 UTF-8(CP949) 파일 1개가 전체 lint를 크래시시키지 않고 그 파일만 ERR로 격리, 나머지 검사 계속"
     }
   ]
 }

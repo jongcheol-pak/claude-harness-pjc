@@ -74,6 +74,19 @@ def prepare_placeholder_vault(fixture_dir):
     return tmp, dest
 
 
+def prepare_bad_encoding_vault(fixture_dir):
+    """fixture를 임시 폴더로 복사하고 CP949(비 UTF-8) .md 파일 1개를 주입한다(M-2 격리 검증).
+    비 UTF-8 파일을 레포에 체크인하면 git·에디터가 손상시킬 수 있어 실행 시점에 만든다.
+    반환: (정리용 임시 루트, lint에 넘길 vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-badenc-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    bad = os.path.join(dest, "20_projects", "personal", "demo", "feat-badenc.md")
+    with open(bad, "wb") as fh:
+        fh.write("---\ntype: feature\n---\n한글 CP949 본문".encode("cp949"))
+    return tmp, dest
+
+
 def check_case(case):
     """한 case를 실행·대조해 (passed, detail) 반환."""
     fixture = case["fixture"]
@@ -87,12 +100,16 @@ def check_case(case):
     tmp = None
     if case.get("placeholder"):
         tmp, vault = prepare_placeholder_vault(vault)
+    elif case.get("bad_encoding"):
+        tmp, vault = prepare_bad_encoding_vault(vault)
     out, rc, err = run_lint(vault)
     if tmp:
         shutil.rmtree(tmp, ignore_errors=True)
-    # lint.py 자체 크래시(런타임 예외 → nonzero exit)를 '위반 미검출'과 구분해 진단한다.
-    #  lint.py는 정상 실행 시 위반이 있어도 exit 0이므로, rc!=0은 실제 예외를 의미한다.
-    if rc != 0:
+    # lint.py는 ERR가 있으면 exit 1(L-5 — A-4/B-3 자동 게이트용), 없으면 0, 사용법 오류 2다.
+    #  정상 실행은 stdout에 리포트 헤더('== llm-wiki Lint:')를 내므로, 헤더가 있으면 rc와 무관하게
+    #  결과를 파싱한다(exit 1이 곧 ERR 검출이라 위반 fixture는 정상이다). 헤더가 없는 종료만
+    #  진짜 크래시(런타임 예외)로 보고 FAIL 처리한다.
+    if "== llm-wiki Lint:" not in out:
         tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
         return False, f"lint.py 비정상 종료(exit {rc}): {tail}"
 
