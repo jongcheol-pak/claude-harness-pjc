@@ -38,6 +38,79 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "T3 Get-ChildItem C:\\ | Remove-Item -Force 차단",
+      "command": "Get-ChildItem C:\\ -Recurse | Remove-Item -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 ls / | xargs rm -rf 차단",
+      "command": "ls / | xargs rm -rf",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 dir C:\\Windows -Recurse | Remove-Item 차단",
+      "command": "dir C:\\Windows -Recurse | Remove-Item -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 별칭 ri 파이프 삭제 차단 (B1)",
+      "command": "Get-ChildItem C:\\ -Recurse | ri -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 별칭 rd 파이프 삭제 차단 (B1)",
+      "command": "dir C:\\Windows -Recurse | rd -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 별칭 rmdir 파이프 삭제 차단 (B1)",
+      "command": "Get-ChildItem C:\\ -Recurse | rmdir -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 find / | xargs rmdir 차단 (별칭 정합)",
+      "command": "find / -type d | xargs rmdir",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 상대경로 ./build 열거 삭제 통과 (회귀 가드)",
+      "command": "Get-ChildItem ./build -Recurse | Remove-Item",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 사용자 하위 2단계+ 열거 삭제 통과 (회귀 가드)",
+      "command": "Get-ChildItem C:\\Users\\me\\proj\\dist | Remove-Item -Force",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "T3 docker --rm 플래그 통과 (회귀 가드)",
+      "command": "docker run --rm img",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] T3 printf / | xargs rm -rf (M3 Deferred)",
+      "command": "printf \"%s\" / | xargs rm -rf",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "DROP TABLE 차단",
       "command": "psql -c \"DROP TABLE users\"",
       "expect_exit": 2,

@@ -43,6 +43,22 @@ try {
 
 if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
+# ---- 위험 대상($dangerTarget) — 루프 밖에서 1회 정의(사전검사 2종·in-loop 컴파운드 검사 공유) ----
+# 위험 대상(따옴표 선택): / /* // | POSIX 시스템 디렉터리(/usr /etc /bin … /opt /srv /run, 하위·글롭 포함) |
+#   ~ $HOME $env: | * | . ./ .* ./* | Windows 시스템 디렉터리(C:\Windows·Program Files·ProgramData — 네이티브 및
+#   MSYS /c/… · WSL /mnt/c/… 마운트) | 드라이브 루트 C:\(글롭 포함).
+# MSYS /c/… · WSL /mnt/c/… 마운트는 (?i)로 /C/·/D/ 등 대소문자 무관 매치. 시스템 디렉터리는 dir명 뒤가
+#   /·따옴표·공백·끝이어야 매치돼 동음 접두(/etcetera·C:\WindowsApps·/c/Users)는 통과.
+# M5: 사용자 프로필 루트(C:\Users·C:\Users\<name>)만 위험대상 — 하위 임의 폴더(C:\Users\x\proj\dist 등 2단계+)는
+#   제외해 일상 정리 작업 오탐을 막는다(([\\/]+[^\\/\s]+)? 뒤 경계 요구).
+# /home: /home·/home/<user>만 위험대상 — /home/<user>/<하위>(프로젝트 폴더)는 제외(C:\Users와 동일 원리).
+#   /root와 달리 /home은 POSIX 그룹의 (/\S*)?(하위 전부 포함)에 넣으면 정상 하위 삭제까지 차단되므로 별도 알터네이션.
+$dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home([\\/]+[^\\/\s]+)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+
+# 삭제 명령 별칭 세트 — 사전검사(find·열거 파이프)와 in-loop 컴파운드 검사가 **동일 집합을 공유**한다.
+#   한 곳만 좁으면(예: 사전검사가 ri/rmdir/rd 누락) 그 별칭으로 파이프 삭제 우회가 다시 열린다(T3 B1).
+$delCmdAlt = 'rm|Remove-Item|ri|rmdir|rd|del|erase'
+
 # ---- find로 위험 루트를 훑어 삭제하는 파이프/exec 형태 (Split 전, 전체 명령 사전검사) ----
 # 'find / … | xargs rm', 'find ~ … -exec rm', 'find $HOME … -delete'는 Split-TopLevel가 파이프로
 #   쪼개면 rm sub에 대상 토큰이 없어(삭제 대상은 find가 stdin으로 공급) 아래 컴파운드 검사를 빠져나간다.
@@ -52,10 +68,31 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 # 한계(의도): echo "find / | xargs rm"처럼 문자열 안에 있어도 차단될 수 있으나 — 차단돼도 무해(echo는 직접 실행).
 $findDangerRoot = '(?i)\bfind\s+(/\S*|~\S*|\$HOME\S*|\$env:\S*|[A-Za-z]:[\\/]\S*)'
 if ($cmd -match $findDangerRoot -and (
-        ($cmd -match '(?i)\|\s*xargs\b[^|]*\b(rm|Remove-Item|ri|del|erase)\b') -or
+        ($cmd -match ('(?i)\|\s*xargs\b[^|]*\b(' + $delCmdAlt + ')\b')) -or
         ($cmd -match '(?i)-exec(dir)?\s+(rm|Remove-Item)\b') -or
         ($cmd -match '(?i)\bfind\b[^|]*\s-delete\b'))) {
     [Console]::Error.WriteLine("BLOCKED: 위험 루트(/, ~, `$HOME, 드라이브 루트)를 find로 훑어 삭제(xargs rm / -exec rm / -delete) 감지")
+    [Console]::Error.WriteLine("Command: $cmd")
+    [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
+    exit 2
+}
+
+# ---- 열거 명령으로 위험 루트를 훑어 삭제로 파이프하는 형태 (Split 전, 전체 명령 사전검사) ----
+# 'Get-ChildItem C:\ -Recurse | Remove-Item -Force', 'ls / | xargs rm -rf', 'dir C:\Windows -Recurse | Remove-Item'
+#   은 Split-TopLevel가 파이프로 쪼개면 삭제 sub에 대상·재귀 토큰이 없어(대상은 열거 명령이 stdin으로 공급)
+#   아래 컴파운드 검사를 빠져나간다 → find 사전검사와 같은 원리로 전체 $cmd에서 직접 차단한다.
+# 오탐 방지: 위험 판정은 '첫 파이프 앞(열거 소스 인자)'에만 $dangerTarget을 적용한다 — 상대경로(./build)·
+#   사용자 하위 2단계+(C:\Users\me\proj\dist)는 $dangerTarget 미매치라 통과. 삭제측은 재귀·강제 플래그
+#   (또는 xargs rm)를 요구해 단순 조회 파이프는 통과시킨다. printf/echo 소스는 목록에서 제외(데이터 오탐 — M3 Deferred).
+$enumSource      = '(?i)(^|\s|\|)(Get-ChildItem|gci|ls|dir|find)\b'
+$pipeToDelete    = '(?i)\|\s*[^|]*\b(' + $delCmdAlt + ')\b'
+$pipeXargsRm     = '(?i)\|\s*xargs\b[^|]*\b(' + $delCmdAlt + ')\b'
+$delRecurseForce = '(?i)(-Recurse\b|-Force\b|--recursive\b|--force\b|(^|\s)-[rfRF]+(\s|$)|\s/[sq]\b)'
+$beforePipe = ($cmd -split '\|', 2)[0]   # 첫 파이프 앞 = 열거 소스 인자 영역(여기서만 위험루트 판정)
+if (($beforePipe -match $enumSource) -and ($beforePipe -match $dangerTarget) -and (
+        (($cmd -match $pipeToDelete) -and ($cmd -match $delRecurseForce)) -or
+        ($cmd -match $pipeXargsRm))) {
+    [Console]::Error.WriteLine("BLOCKED: 위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지")
     [Console]::Error.WriteLine("Command: $cmd")
     [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
     exit 2
@@ -210,16 +247,7 @@ foreach ($sub in $subs) {
     #   미탐을 막는다(예: bash에서 rm -rf 뒤 백슬래시+개행+/ 는 실제 rm -rf / 로 실행됨).
     $norm = $scan -replace '`\r?\n', ' '       # PowerShell 백틱 줄-이음(백틱 직후 개행만 — D2)
     $norm = $norm -replace '\\\r?\n', ' '      # bash 백슬래시 줄-이음(백슬래시 직후 개행만 — D2)
-    # 위험 대상(따옴표 선택): / /* // | POSIX 시스템 디렉터리(/usr /etc /bin … /opt /srv /run, 하위·글롭 포함) |
-    #   ~ $HOME $env: | * | . ./ .* ./* | Windows 시스템 디렉터리(C:\Windows·Program Files·ProgramData — 네이티브 및
-    #   MSYS /c/… · WSL /mnt/c/… 마운트(대소문자 무시 — /C/·/D/ 등도 매치), 하위 포함) | 드라이브 루트 C:\(글롭 포함). 루프 불변이라 밖에서 1회 정의.
-    # 시스템 디렉터리는 dir명 뒤가 /·따옴표·공백·끝이어야 매치돼 동음 접두(/etcetera·C:\WindowsApps·/c/Users)는 통과.
-    # M5: 사용자 프로필 루트(C:\Users·C:\Users\<name>)만 위험대상 — 하위 임의 폴더(C:\Users\x\proj\dist 등 2단계+)는
-    #   제외해 일상 정리 작업 오탐을 막는다. Users 또는 Users\<한단계>까지만 매치(([\\/]+[^\\/\s]+)? 뒤 경계 요구).
-    # /home: POSIX 홈 파티션. /home·/home/<user>만 위험대상 — /home/<user>/<하위>(프로젝트 폴더 등)는 제외해
-    #   일상 삭제 오탐을 막는다(C:\Users와 동일 원리, ([\\/]+[^\\/\s]+)? 뒤 경계 요구). /root와 달리 /home은
-    #   기존 POSIX 그룹의 (/\S*)?(하위 전부 포함)에 넣으면 정상 하위 삭제까지 차단되므로 별도 알터네이션.
-    $dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home([\\/]+[^\\/\s]+)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+    # $dangerTarget(위험 대상 정규식)은 위(파일 상단, 사전검사 공유)에서 1회 정의했다 — 루프 불변.
     # 대소문자 무시(?i) — PowerShell cmdlet·alias는 케이스 무관하게 실행되므로(REMOVE-ITEM·RM·Del 등)
     #   토큰 매칭도 무시해야 한다. 이게 없으면 대문자 변형이 컴파운드 삭제 검사를 통째로 우회한다(H1).
     # 앞 경계에 ["'] 포함 — 인터프리터 문자열 안 삭제(bash -c "rm -rf /"·eval "rm -rf /")는 따옴표가
@@ -230,7 +258,7 @@ foreach ($sub in $subs) {
     #   않는 명령의 따옴표 인자에 rm+위험대상 문자열이 들어가도 차단될 수 있다(예: notify-send 'rm -rf /').
     #   (echo/printf/grep/git은 190~196행에서 인자를 스트립하므로 echo "rm -rf /"는 오차단 안 됨.)
     #   이는 과소 차단보다 과잉 차단을 택하는 안전 hook 설계 방향과 일치 — 오차단 시 사용자가 직접 실행하면 됨.
-    $delMatches = [regex]::Matches($norm, '(?i)(^|\s|["''])(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')
+    $delMatches = [regex]::Matches($norm, '(?i)(^|\s|["''])(' + $delCmdAlt + ')(\s|$)')
     foreach ($dm in $delMatches) {
         # 삭제 명령 토큰부터 다음 줄바꿈 전까지가 그 명령의 인자 윈도우.
         # 선행 공백·개행을 먼저 제거한다(H1 방어) — 매치가 (^|\s)로 시작해 선행 \n을 포함하면
