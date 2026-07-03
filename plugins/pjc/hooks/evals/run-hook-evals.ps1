@@ -284,6 +284,56 @@ if ($gitOk) {
 }
 
 # =====================================================================
+# 8) require-task-checkbox 시나리오 (plan 체크박스 게이트 — git 불요, plan 파일만)
+# =====================================================================
+# hook은 command 문자열 파싱 + plan 파일 Read만 하므로 git repo가 필요 없다.
+# 무상태 음성(비커밋·checkpoint·merge 등)은 hook-cases.json, 여기는 plan 상태 필요분.
+$rtcUn = Join-Path $work 'rtc-unchecked'; New-Item -ItemType Directory $rtcUn -Force | Out-Null
+"# plan`n- [ ] T3. 검색 기능`n- [x] T1. 완료분" | Set-Content (Join-Path $rtcUn 'plan.md')
+$rtcIn = Join-Path $work 'rtc-inprog'; New-Item -ItemType Directory $rtcIn -Force | Out-Null
+"# plan`n- [/] T3. 진행 중" | Set-Content (Join-Path $rtcIn 'plan.md')
+$rtcOk = Join-Path $work 'rtc-checked'; New-Item -ItemType Directory $rtcOk -Force | Out-Null
+"# plan`n- [x] T3. 검색 기능" | Set-Content (Join-Path $rtcOk 'plan.md')
+$rtcMulti = Join-Path $work 'rtc-multi/docs/plans'; New-Item -ItemType Directory $rtcMulti -Force | Out-Null
+"# part1`n- [ ] T3. x" | Set-Content (Join-Path $rtcMulti 'a-part1.md')
+
+function New-CommitJson([string]$cwd, [string]$msg) {
+    return (@{ tool_name = 'Bash'; cwd = $cwd; tool_input = @{ command = "git commit -m `"$msg`"" } } | ConvertTo-Json -Compress)
+}
+
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
+Assert-Case -Name "rtc: 미완료 [ ] T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcIn 'T3: 검색 요약')
+Assert-Case -Name "rtc: 진행중 [/] T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains 'T3'
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcOk 'T3: 검색 요약')
+Assert-Case -Name "rtc: 완료 [x] T3 커밋 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T99: 없는 task')
+Assert-Case -Name "rtc: plan에 없는 T번호 통과(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson (Join-Path $work 'rtc-multi') 'T3: x')
+Assert-Case -Name "rtc: docs/plans 복수만 존재 통과(판정 모호)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T1: 이미 완료된 task')
+Assert-Case -Name "rtc: [x] T1은 통과·[ ] T3 무관(첫 매치만 판정)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# plan 파일이 아예 없는 프로젝트 → 통과 (fail-open. 상위 탐색은 .git/.claude 경계에서 멈춤)
+$rtcNo = Join-Path $work 'rtc-noplan'; New-Item -ItemType Directory $rtcNo -Force | Out-Null
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcNo 'T3: 검색 요약')
+Assert-Case -Name "rtc: plan 파일 없음 통과(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# QUICK 우회 — 별도 stderr 안내 출력이 있는 독립 분기 (silent 아님, exit 0)
+$env:CLAUDE_HARNESS_QUICK = '1'
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
+Assert-Case -Name "rtc: QUICK=1 우회 (비차단 + 안내)" -R $r -ExpectExit 0 -ExpectContains 'QUICK'
+$env:CLAUDE_HARNESS_QUICK = $null
+
+# 토글 off → 통과, on → 다시 차단 (§3 패턴 재사용 — 격리 홈이라 실제 상태 무영향)
+& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'require-task-checkbox' 'off' | Out-Null
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
+Assert-Case -Name "rtc: 토글 off 후 통과" -R $r -ExpectExit 0 -ExpectSilent $true
+& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'require-task-checkbox' 'on' | Out-Null
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
+Assert-Case -Name "rtc: 토글 on 후 다시 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+# =====================================================================
 # 격리 검증 + 결과 보고
 # =====================================================================
 $env:USERPROFILE = $realHome
