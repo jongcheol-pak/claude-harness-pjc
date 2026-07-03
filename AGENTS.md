@@ -24,11 +24,11 @@
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
   격리 USERPROFILE에서 hook 8종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
-- **llm-wiki 상수·배치 정합 셀프체크 (SKILL.md 예산표·라우팅 표·references/procedures-*.md·wiki-schema §2/§3/§4·lint.py 상수 수정 시 필수)**:
+- **llm-wiki 상수·배치 정합 셀프체크 (SKILL.md 예산표·라우팅 표·references/procedures-*.md·wiki-schema §2/§3/§4·목차·lint.py 상수 수정 시 필수)**:
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
-  네 곳의 공유 상수(파일 예산·통제 어휘)와 절차 배치(본체 `## 절차 목차` 라우팅 표 ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 A~L 실존·1곳·위치 일치)를 기계 대조한다 — 전부 일치 exit 0, 불일치 exit 1, 파싱 앵커 실패 exit 2.
+  네 곳의 공유 상수(파일 예산·통제 어휘)와 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치 — 절차 문자는 표에서 동적 캡처(신규 절차도 자동 검사), 체크리스트 등 비문자 행·중복 행·표에 없는 스트레이 헤딩 포함), wiki-schema 목차(부분 Read 인덱스) § ↔ `## N.` 헤딩 정합을 기계 대조한다 — 전부 일치 exit 0, 불일치 exit 1, 파싱 앵커 실패 exit 2.
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
 ## Repository Structure

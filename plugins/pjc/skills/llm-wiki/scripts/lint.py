@@ -19,7 +19,7 @@
 범위: vault 파일 읽기 + §7-20의 레포 파일 '실존' 확인까지 — 코드 내용은 해석하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
-(SKILL.md H-2: SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
+(H-2 규약(references/procedures-ops.md): SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
 """
 import os, re, sys, glob, datetime
 
