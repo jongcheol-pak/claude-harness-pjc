@@ -128,13 +128,13 @@ $newsym = @{ tool_name = 'Edit'; cwd = $noplan; tool_input = @{ file_path = (Joi
 $r = Invoke-Hook 'require-plan-for-write.ps1' $newsym
 Assert-Case -Name "require-plan: 새 클래스 정의 Edit 차단" -R $r -ExpectExit 2
 
-# [H3] 시스템 임시 폴더의 검증 스크립트 — 수정 후 통과가 기대 (pending_fix, T2)
+# [H3] 시스템 임시 폴더의 검증 스크립트 — plan 없이도 통과가 기대(회귀 가드)
 $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-eval-scratch/check.py'
 New-Item -ItemType Directory (Split-Path $tempFile) -Force | Out-Null
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson (Split-Path $tempFile) $tempFile)
 Assert-Case -Name "require-plan: 시스템 임시폴더 .py 통과 (H3)" -R $r -ExpectExit 0
 
-# [H5] NotebookEdit — notebook_path 인식 후 plan 게이트 적용이 기대 (pending_fix, T2)
+# [H5] NotebookEdit — notebook_path 인식 후 plan 게이트 적용이 기대(회귀 가드)
 $nb = @{ tool_name = 'NotebookEdit'; cwd = $noplan; tool_input = @{ notebook_path = (Join-Path $noplan 'n.ipynb'); new_source = 'x=1' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'require-plan-for-write.ps1' $nb
 Assert-Case -Name "require-plan: NotebookEdit plan 없음 차단 (H5)" -R $r -ExpectExit 2

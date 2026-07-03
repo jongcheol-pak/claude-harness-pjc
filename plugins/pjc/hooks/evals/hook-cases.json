@@ -147,7 +147,7 @@
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "gh repo delete 차단 (H5)",
+      "name": "gh repo delete 차단 (H1)",
       "command": "gh repo delete owner/repo --yes",
       "expect_exit": 2,
       "expect_contains": "BLOCKED"
