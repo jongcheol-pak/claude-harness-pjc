@@ -325,6 +325,39 @@
       "command": "git commit --fixup=abc123",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "대문자 REMOVE-ITEM 재귀강제 차단 (H1 대소문자)",
+      "command": "REMOVE-ITEM C:\\Windows -Recurse -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "대문자 RM -rf / 차단 (H1 대소문자)",
+      "command": "RM -rf /",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "대문자 RM 비위험대상 통과 (H1 오탐 방지)",
+      "command": "RM -rf node_modules",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "대문자 DEL /s /q 드라이브루트 차단 (H1 대소문자)",
+      "command": "DEL /s /q C:\\",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "del 국소 파일 통과 (H1 오탐 방지 — 재귀·강제 없음)",
+      "command": "del build\\output.log",
+      "expect_exit": 0
     }
   ]
 }

@@ -214,7 +214,9 @@ foreach ($sub in $subs) {
     #   MSYS /c/… · WSL /mnt/c/… 마운트(대소문자 무시 — /C/·/D/ 등도 매치), 하위 포함) | 드라이브 루트 C:\(글롭 포함). 루프 불변이라 밖에서 1회 정의.
     # 시스템 디렉터리는 dir명 뒤가 /·따옴표·공백·끝이어야 매치돼 동음 접두(/etcetera·C:\WindowsApps·/c/Users)는 통과.
     $dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
-    $delMatches = [regex]::Matches($norm, '(^|\s)(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')
+    # 대소문자 무시(?i) — PowerShell cmdlet·alias는 케이스 무관하게 실행되므로(REMOVE-ITEM·RM·Del 등)
+    #   토큰 매칭도 무시해야 한다. 이게 없으면 대문자 변형이 컴파운드 삭제 검사를 통째로 우회한다(H1).
+    $delMatches = [regex]::Matches($norm, '(?i)(^|\s)(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')
     foreach ($dm in $delMatches) {
         # 삭제 명령 토큰부터 다음 줄바꿈 전까지가 그 명령의 인자 윈도우.
         # 선행 공백·개행을 먼저 제거한다(H1 방어) — 매치가 (^|\s)로 시작해 선행 \n을 포함하면
