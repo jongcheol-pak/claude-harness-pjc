@@ -227,6 +227,69 @@
       "command": "gh release delete v1.0.0 --yes",
       "expect_exit": 0,
       "expect_contains": "release delete"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "pnpm publish 경고",
+      "command": "pnpm publish",
+      "expect_exit": 0,
+      "expect_contains": "패키지 배포"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "yarn publish 경고",
+      "command": "yarn publish",
+      "expect_exit": 0,
+      "expect_contains": "패키지 배포"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "cargo publish 경고",
+      "command": "cargo publish",
+      "expect_exit": 0,
+      "expect_contains": "cargo publish"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "twine upload 경고",
+      "command": "twine upload dist/*",
+      "expect_exit": 0,
+      "expect_contains": "twine upload"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "dotnet nuget push 경고",
+      "command": "dotnet nuget push pkg.nupkg",
+      "expect_exit": 0,
+      "expect_contains": "dotnet nuget push"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "nuget push 경고",
+      "command": "nuget push pkg.nupkg",
+      "expect_exit": 0,
+      "expect_contains": "nuget push"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "PowerShell 백틱 줄-이음 뒤 Remove-Item C:\\Windows 차단",
+      "command": "Remove-Item C:\\Windows `\n-Recurse -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "CRLF 개행분리 뒤 rm -rf / 차단",
+      "command": "ls\r\nrm -rf /",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "CRLF 백슬래시 줄-이음 rm -rf / 차단",
+      "command": "rm -rf \\\r\n/",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
     }
   ]
 }
