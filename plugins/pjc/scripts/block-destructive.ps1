@@ -216,10 +216,20 @@ foreach ($sub in $subs) {
     # 시스템 디렉터리는 dir명 뒤가 /·따옴표·공백·끝이어야 매치돼 동음 접두(/etcetera·C:\WindowsApps·/c/Users)는 통과.
     # M5: 사용자 프로필 루트(C:\Users·C:\Users\<name>)만 위험대상 — 하위 임의 폴더(C:\Users\x\proj\dist 등 2단계+)는
     #   제외해 일상 정리 작업 오탐을 막는다. Users 또는 Users\<한단계>까지만 매치(([\\/]+[^\\/\s]+)? 뒤 경계 요구).
-    $dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+    # /home: POSIX 홈 파티션. /home·/home/<user>만 위험대상 — /home/<user>/<하위>(프로젝트 폴더 등)는 제외해
+    #   일상 삭제 오탐을 막는다(C:\Users와 동일 원리, ([\\/]+[^\\/\s]+)? 뒤 경계 요구). /root와 달리 /home은
+    #   기존 POSIX 그룹의 (/\S*)?(하위 전부 포함)에 넣으면 정상 하위 삭제까지 차단되므로 별도 알터네이션.
+    $dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home([\\/]+[^\\/\s]+)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
     # 대소문자 무시(?i) — PowerShell cmdlet·alias는 케이스 무관하게 실행되므로(REMOVE-ITEM·RM·Del 등)
     #   토큰 매칭도 무시해야 한다. 이게 없으면 대문자 변형이 컴파운드 삭제 검사를 통째로 우회한다(H1).
-    $delMatches = [regex]::Matches($norm, '(?i)(^|\s)(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')
+    # 앞 경계에 ["'] 포함 — 인터프리터 문자열 안 삭제(bash -c "rm -rf /"·eval "rm -rf /")는 따옴표가
+    #   보존돼 rm 앞이 " 가 되므로, (^|\s)만으론 미탐이었다. 뒤 경계 (\s|$)는 불변 — 확장하면
+    #   'rm'(SQL 문자열 등 정상) 매치 표면만 넓히고 실익은 "rm" -rf /(명령어 완전 따옴표) 1건뿐이라,
+    #   그 케이스는 $(echo /)처럼 '알려진 미탐'으로 남긴다(안전 hook 오탐 최소화 우선).
+    #   트레이드오프: 앞경계 ["'] 확장으로, echo/printf/grep/git처럼 데이터로 스트립되지 않는 명령의
+    #   따옴표 인자에 rm+위험대상 문자열이 들어가도 차단될 수 있다(예: notify-send 'rm -rf /'). 이는
+    #   과소 차단보다 과잉 차단을 택하는 안전 hook 설계 방향과 일치 — 오차단 시 사용자가 직접 실행하면 됨.
+    $delMatches = [regex]::Matches($norm, '(?i)(^|\s|["''])(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')
     foreach ($dm in $delMatches) {
         # 삭제 명령 토큰부터 다음 줄바꿈 전까지가 그 명령의 인자 윈도우.
         # 선행 공백·개행을 먼저 제거한다(H1 방어) — 매치가 (^|\s)로 시작해 선행 \n을 포함하면

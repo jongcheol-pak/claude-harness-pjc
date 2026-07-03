@@ -126,6 +126,58 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "bash -c 문자열 안 rm -rf / 차단 (따옴표 인접)",
+      "command": "bash -c \"rm -rf /\"",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "eval 문자열 안 rm -rf / 차단 (따옴표 인접)",
+      "command": "eval \"rm -rf /\"",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf /home 차단 (홈 파티션 루트)",
+      "command": "rm -rf /home",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf /home/jongc 차단 (홈 사용자 디렉터리)",
+      "command": "rm -rf /home/jongc",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf /home/jongc/project/build 통과 (홈 하위 정상)",
+      "command": "rm -rf /home/jongc/project/build",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "docker run --rm 통과 (--rm 플래그 오탐 방지)",
+      "command": "docker run --rm my-image",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "echo \"rm -rf /\" 통과 (출력 문자열 오탐 방지)",
+      "command": "echo \"rm -rf /\"",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] 명령어 완전 따옴표 \"rm\" -rf /",
+      "command": "\"rm\" -rf /",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "개행 뒤 chmod 차단 (H1)",
       "command": "ls\nchmod 777 file.txt",
       "expect_exit": 2,
