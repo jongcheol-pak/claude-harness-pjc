@@ -3,7 +3,7 @@
 ## 목차
 - [위치 결정 가이드](#위치-결정-가이드)
 - [작성 시 주의 — 민감 정보](#작성-시-주의--민감-정보)
-- [Template](#template) — 내장 섹션: Goal / PRD Coverage / Out of Scope / Deferred·Follow-up / Investigation Log / Risks & Unknowns / Impact Analysis / Decisions / Tasks / 사전 승인 항목 / 불가피한 Halt / Known Workarounds / Verification Strategy / Retry Ledger / Progress Log / Next Steps / Open Questions
+- [Template](#template) — 내장 섹션: 요구 이해 / Goal / PRD Coverage / Out of Scope / Deferred·Follow-up / Investigation Log / Risks & Unknowns / Impact Analysis / Decisions / Tasks / 사전 승인 항목 / 불가피한 Halt / Known Workarounds / Verification Strategy / Retry Ledger / Progress Log / Next Steps / Open Questions
 
 ## 위치 결정 가이드
 
@@ -44,6 +44,17 @@ plan.md는 **git에 commit되어 영구 보존**된다.
      plan-completion-reviewer가 이 표식으로 분할 plan임을 인지해 Goal을 "이 plan 범위"로 해석한다(전체 미완성을 BLOCKER로 보지 않음).
      동기화 주의: part2 경로는 이 줄·아래 ## Deferred·## Next Steps 3곳에 나타난다 — 경로를 바꾸면 세 곳을 함께 고친다. -->
 **다음 plan**: <분할 첫 part(part1)면 part2 경로 — 분할 아니거나 마지막 part면 이 줄 생략(part2는 대신 **이전 plan**: 사용)>
+
+## 요구 이해
+<!-- 승인 게이트를 통과한 "요구 오해"는 이후 어느 단계도 잡지 못한다(구현 리뷰는 plan 대비 diff만 검증).
+     이 섹션은 그 오해를 유일하게 판정할 수 있는 사용자 앞에 노출하는 장치다 — plan-feature Step 10
+     승인 프롬프트의 첫 항목으로 그대로 노출되므로 "이해한 요구"는 3~5줄 상한을 지킨다
+     (길면 안 읽혀 게이트가 무력화된다).
+     Goal과의 역할 구분: 요구 이해 = "사용자 말의 해석", Goal = "구현 목표 한 문장".
+     요구가 여러 턴에 걸쳐 진화했으면 최종 합의된 요구를 기준으로 쓴다(원문 인용은 대표 문장). -->
+- **원문 요청**: "<사용자 요청 원문 — 짧으면 그대로, 길면 핵심 문장만 인용>"
+- **이해한 요구**: <무엇을·왜·어디까지 — 3~5줄 상한>
+- **포함하지 않는 것으로 이해**: <사용자가 포함으로 기대했을 수 있는 반대 해석 1줄 — 오해 소지 없으면 이 줄 생략>
 
 ## Goal
 <한 문장 — 사용자 관점>
