@@ -362,6 +362,12 @@ plan에 Step 2.5의 **시각 요소 분해 표가 있을 때만** 수행한다 (
 
 ## Phase D — Done
 
+**① plan.md 체크박스 갱신 (매 task, 필수 — commit보다 먼저)**: 이 task의 본체 체크박스를 `[ ]`/`[/]` → `[x]`로 바꾼 **뒤에** commit한다. 재개 시 미완료 task 식별의 1차 신호이므로 **task 완료마다 즉시** 갱신한다(Progress Log는 2 task마다지만 체크박스는 매 task). 이 단계를 빠뜨리면 재개('재개 진입')에서 체크박스가 전부 `[ ]`로 남아 git log·Progress Log와 어긋난다. 글로벌 CLAUDE.md에도 동일 규칙이 있으나, 이 스킬은 그에 의존하지 않고 자체적으로 강제한다.
+- **`require-task-checkbox` hook이 이 순서를 기계 강제한다** — `T<N>:` 완료 커밋 시 plan의 해당 체크박스가 [x]가 아니면 commit이 차단(exit 2)된다. 지침 준수 부탁이 아니라 구조적 게이트다.
+- 주의(stale [x]): 체크박스를 [x]로 바꾼 뒤 commit이 실패하면 체크박스만 [x]로 남을 수 있고, **plan.md가 gitignore인 repo에선 `git reset --hard <checkpoint>` 복구도 이를 되돌리지 못한다** — 이 신호 충돌은 '재개 진입'의 "git log 신뢰" 원칙이 그대로 해소한다(체크박스는 어긋날 수 있는 신호, git log가 진실).
+
+**② commit**:
+
 ```bash
 git add -A
 git commit -m "T<N>: <한 줄 요약>
@@ -376,8 +382,6 @@ Self-honesty: PASS
 Elapsed: <Hm Ms> | Turn ~<N>
 "
 ```
-
-**plan.md 체크박스 갱신 (매 task, 필수)**: 이 task의 본체 체크박스를 `[ ]`/`[/]` → `[x]`로 바꾼다. 이는 재개 시 미완료 task 식별의 1차 신호이므로 **task 완료마다 즉시** 갱신한다(Progress Log는 2 task마다지만 체크박스는 매 task). 이 단계를 빠뜨리면 재개('재개 진입')에서 체크박스가 전부 `[ ]`로 남아 git log·Progress Log와 어긋난다. 글로벌 CLAUDE.md에도 동일 규칙이 있으나, 이 스킬은 그에 의존하지 않고 자체적으로 강제한다.
 
 진행 보고 (각 task 1줄, 사용자 확인 요청 금지):
 ```
