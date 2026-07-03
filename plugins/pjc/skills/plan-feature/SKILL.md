@@ -294,6 +294,8 @@ B) 2개 plan으로 분할 (앞부분 / 뒷부분)
 
 단, plan을 분할하면(위 "긴 plan 분할 권고") 덮어쓰기 모드여도 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적 위치를 쓴다(두 part 충돌 방지).
 
+**`## 요구 이해`를 반드시 채운다** (원문 요청 인용 + 이해한 요구 3~5줄 — 형식·작성 규칙은 `references/plan-template.md` 정본). 승인 게이트를 통과한 요구 오해는 이후 어느 리뷰도 잡지 못하므로(구현 리뷰는 plan 대비 diff만 검증), 이 섹션이 Step 10 승인 프롬프트 첫 항목으로 노출되어 사용자가 오해를 승인 전에 발견하는 장치다.
+
 **상세 plan.md 템플릿은 `references/plan-template.md` 참조.**
 
 ### Step 7.5. PRD 커버리지 확인 (PRD 있을 때만)
@@ -374,10 +376,11 @@ Open Questions가 모두 해소돼 plan이 완성된 뒤 검토한다. **`plan-r
 ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 
 **승인 프롬프트에 plan 요약을 반드시 포함한다 — 사용자가 plan.md 파일을 열지 않고도 판단할 수 있게**:
-1. Goal 1~2줄
-2. **task 요약 표 (전 task)**: `| T# | Type | 내용 한 줄 | 주요 파일·범위 |`
-3. Deferred / Follow-up · Out of Scope 요지 (있으면)
-4. 사전 승인 항목·불가피한 Halt (아래 규정)
+1. **요구 이해** — plan의 `## 요구 이해`(원문 인용 + 이해 3~5줄)를 **최상단에 그대로 노출**. 요구 오해는 사용자만 판정할 수 있으므로 승인 판단의 첫 항목이다 (여기서 어긋나면 아래 task가 전부 맞아도 무의미).
+2. Goal 1~2줄
+3. **task 요약 표 (전 task)**: `| T# | Type | 내용 한 줄 | 주요 파일·범위 |`
+4. Deferred / Follow-up · Out of Scope 요지 (있으면)
+5. 사전 승인 항목·불가피한 Halt (아래 규정)
 
 "상세는 plan.md 참조"로 요약을 대체하지 않는다 — 승인 판단에 파일 열람을 요구하는 것 자체가 승인 마찰이다. plan.md는 실행용 정본, 승인 프롬프트의 요약은 판단용이다.
 
@@ -392,6 +395,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 다음을 모두 만족해야 implement-task로 넘어갈 수 있다:
 
 - [ ] "아마도/보통" 0회
+- [ ] `## 요구 이해` 작성됨 (원문 요청 인용 + 이해한 요구 3~5줄)
 - [ ] Impact Analysis 항목(4-A~4-D) 모두 ✓ — 신규 심볼이 있으면 4-D 재사용 확인 기록 포함
 - [ ] plan-reviewer 이슈 0 (또는 MINOR만 follow-up으로 등록)
 - [ ] 각 task에 검증 가능한 acceptance 1개 이상
