@@ -36,6 +36,22 @@ if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { exit 0 }
 # 두 검사의 경고를 합쳐 단일 stderr + 단일 additionalContext로 출력한다(모델 수신 정보는 분리 hook 때와 동일).
 $allMsgs = New-Object System.Collections.Generic.List[string]
 
+# ---- H2: 하니스 게이트 자기 비활성화·hook 개조 감지 (안전 게이트 감시, 비차단) ----
+# require-plan은 .claude 하위 쓰기를 무조건 허용하므로, 에이전트가 Write로 .disabled 게이트 끄기 파일을
+#   만들거나 hook 스크립트를 개조해 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만
+#   그 시도를 가시화한다. 정상 harness-toggle 경유 토글도 여기 걸리지만 경고(비차단)라 무해.
+$normFileH2 = $file -replace '\\', '/'
+$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|harness-toggle'
+if ($normFileH2 -match '/\.claude/\.disabled/\S') {
+    $allMsgs.Add("[HARNESS] 게이트 비활성화 파일 생성 감지: $file")
+    $allMsgs.Add("  안전 게이트(plan·checkbox 등)를 끄는 동작일 수 있습니다 — 의도된 것인지 확인하세요(정상 harness-toggle 경유면 무시).")
+    $allMsgs.Add("")
+} elseif ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hooks/hooks\.json$') {
+    $allMsgs.Add("[HARNESS] 하니스 hook 스크립트 변경 감지: $file")
+    $allMsgs.Add("  안전 hook을 개조/약화하는 변경일 수 있습니다 — 의도된 것인지, 골든 회귀(run-hook-evals.ps1)로 검증했는지 확인하세요.")
+    $allMsgs.Add("")
+}
+
 # =====================================================================
 # 섹션 1: check-utf8-and-lines (BOM · 라인 수 · 영문 주석 · 민감 정보)
 #   절대경로($file)만 쓰므로 cwd에 의존하지 않는다 → 섹션 2의 Set-Location 앞에 둔다.
@@ -124,7 +140,7 @@ if (-not $disableUtf8) {
                 @{ rx = '(?i)(mongodb(\+srv)?|postgres|postgresql|mysql|redis|amqp)://[^\s]+:[^\s]+@'; label = 'DB/서비스 URI 인증정보' },
                 @{ rx = '-----BEGIN [A-Z ]*PRIVATE KEY-----'; label = '개인키' },
                 @{ rx = '(?i)Bearer\s+[A-Za-z0-9_\-\.]{16,}'; label = 'Bearer 토큰' },
-                @{ rx = '\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'; label = 'IP 주소' }
+                @{ rx = '\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b'; label = 'IP 주소' }   # L5: 옥텟 0-255 제한 — 999.999.999.999 등 IP 아닌 숫자열 오탐 완화
             )
             foreach ($sp in $secretPatterns) {
                 if ($raw -match $sp.rx) {

@@ -251,6 +251,24 @@ $vernegPath = Join-Path $pw 'ver-neg.md'
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $vernegPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 버전 문자열 IP 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+# ---- [L5] 옥텟 초과(999.x)는 IP 아님 — 무경고 (옥텟 0-255 제한 회귀 가드) ----
+$octnegPath = Join-Path $pw 'oct-neg.md'
+[System.IO.File]::WriteAllText($octnegPath, '식별자 999.999.999.999 는 IP 아님.', [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $octnegPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 옥텟 초과 999.x IP 무경고 (L5)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# ---- [H2] 게이트 비활성화 파일·하니스 hook 스크립트 변경 감지 (비차단 경고) ----
+$disPath = Join-Path $pw '.claude/.disabled/require-plan-for-write'
+New-Item -ItemType Directory (Split-Path $disPath) -Force | Out-Null
+[System.IO.File]::WriteAllText($disPath, '', [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $disPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: .disabled 게이트끄기 파일 감지 (H2)" -R $r -ExpectExit 0 -ExpectContains '게이트 비활성화'
+$hookPath = Join-Path $pw 'plugins/pjc/scripts/block-destructive.ps1'
+New-Item -ItemType Directory (Split-Path $hookPath) -Force | Out-Null
+[System.IO.File]::WriteAllText($hookPath, '# test', [System.Text.UTF8Encoding]::new($true))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $hookPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 하니스 hook 스크립트 변경 감지 (H2)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
+
 # ---- NotebookEdit — notebook_path 인식 후 검사 적용 (T1 매처·폴백 회귀 가드) ----
 $nbPath = Join-Path $pw 'analysis.ipynb'
 [System.IO.File]::WriteAllText($nbPath, '{"cells":[{"cell_type":"code","source":["password = ''Fake12345''"]}]}', [System.Text.UTF8Encoding]::new($false))
