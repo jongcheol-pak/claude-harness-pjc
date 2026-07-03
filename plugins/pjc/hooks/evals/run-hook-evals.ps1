@@ -317,6 +317,10 @@ $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson (Join-Path $work 'r
 Assert-Case -Name "rtc: docs/plans 복수만 존재 통과(판정 모호)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T1: 이미 완료된 task')
 Assert-Case -Name "rtc: [x] T1은 통과·[ ] T3 무관(첫 매치만 판정)" -R $r -ExpectExit 0 -ExpectSilent $true
+$rtcStar = Join-Path $work 'rtc-star'; New-Item -ItemType Directory $rtcStar -Force | Out-Null
+"# plan`n* [ ] T3. 별표 불릿" | Set-Content (Join-Path $rtcStar 'plan.md')
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcStar 'T3: 요약')
+Assert-Case -Name "rtc: 별표 불릿 * [ ] T3 커밋 차단 (M6)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
 # plan 파일이 아예 없는 프로젝트 → 통과 (fail-open. 상위 탐색은 .git/.claude 경계에서 멈춤)
 $rtcNo = Join-Path $work 'rtc-noplan'; New-Item -ItemType Directory $rtcNo -Force | Out-Null

@@ -39,6 +39,8 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
 # ---- git commit 명령이 아니면 즉시 통과 (fast path) ----
 # 프리픽스 패턴은 warn-external-ops와 동일 (git -C <dir> commit / git -c k=v commit 매칭 유지).
+# [M6 한계] 'git commit -F <msgfile>'·'--file'은 커밋 메시지가 $cmd에 없어 아래 T<N>: 판정 자체가
+#   불가능하다 → 통과(fail-open 유지). 파일 메시지 커밋은 드물고, 오차단 위험이 더 크므로 감수한다.
 if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { exit 0 }
 
 # ---- 완료 커밋 판정: 첫 'T<N>:' 매치만 사용 ----
@@ -102,9 +104,10 @@ try {
 }
 if ([string]::IsNullOrWhiteSpace($planText)) { exit 0 }
 
-# 미완료 마커 [ ]/[/] + 해당 task 번호 (줄 시작의 '- [ ] T<N>' 형태만).
+# 미완료 마커 [ ]/[/] + 해당 task 번호 (줄 시작의 '- [ ] T<N>' 또는 '* [ ] T<N>' 형태).
+# 불릿은 마크다운 표준 '-'·'*' 둘 다 인식한다(M6 — '* [ ]' plan이 판정에서 새던 구멍 보완).
 # 'T$taskNum\b'라 T1이 T10에 오매치하지 않는다. [x]/[X]이거나 T<N> 줄 자체가 없으면 통과.
-$unchecked = [regex]::Match($planText, "(?m)^\s*-\s*\[[ /]\]\s*T$taskNum\b")
+$unchecked = [regex]::Match($planText, "(?m)^\s*[-*]\s*\[[ /]\]\s*T$taskNum\b")
 if (-not $unchecked.Success) { exit 0 }
 
 # ---- 차단 ----
