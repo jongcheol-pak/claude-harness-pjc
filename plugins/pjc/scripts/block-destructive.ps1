@@ -68,6 +68,7 @@ if ($cmd -match $findDangerRoot -and (
 $patterns = @(
     'git\s+((-c|-C)\s+\S+\s+)*push\s+.*(--force|--force-with-lease)',   # git push --force (git -c/-C 선행 옵션으로 우회 방지)
     'git\s+((-c|-C)\s+\S+\s+)*push\s+-f(\s|$)',                         # git push -f (git -c/-C 선행 옵션으로 우회 방지)
+    'git\s+((-c|-C)\s+\S+\s+)*push\s+\S+\s+\+\S',                       # git push <remote> +refspec (M4 — plus-refspec 강제 푸시. 예: git push origin +main, +HEAD:master. 히스토리 덮어씀)
     'git\s+filter-branch',                              # 히스토리 재작성
     'git\s+filter-repo',
     'git\s+reflog\s+expire',

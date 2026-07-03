@@ -358,6 +358,32 @@
       "name": "del 국소 파일 통과 (H1 오탐 방지 — 재귀·강제 없음)",
       "command": "del build\\output.log",
       "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "git push +main refspec 강제푸시 차단 (M4)",
+      "command": "git push origin +main",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "git push +HEAD:master refspec 강제푸시 차단 (M4)",
+      "command": "git push origin +HEAD:master",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "git push origin main 정상 통과 (M4 오탐 방지)",
+      "command": "git push origin main",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] 서브셸 (rm -rf /) — M1 Deferred (정규식 경계로 정밀 분리 불가, 명령치환 케이스와 충돌)",
+      "command": "(rm -rf /)",
+      "expect_exit": 0
     }
   ]
 }
