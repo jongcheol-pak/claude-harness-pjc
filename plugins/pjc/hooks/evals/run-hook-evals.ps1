@@ -166,6 +166,41 @@ $r = Invoke-Hook 'require-plan-for-write.ps1' $relYml
 Assert-Case -Name "require-plan: 상대경로 .github/workflows/rel.yml plan 없이 차단 (T2 ^ 분기)" -R $r -ExpectExit 2
 
 # =====================================================================
+# 2b) protect-harness 시나리오 (Write/Edit로 하니스 게이트 무력화 차단 — 경로 문자열만 검사, 무상태)
+#   .claude 하위 게이트 토글 파일·설치본 hook 스크립트·hooks.json만 차단.
+#   .claude 없는 개발 repo 소스·일반 .claude 설정은 통과(하니스 자기 개발은 plan 게이트로 관리).
+# =====================================================================
+$ph = Join-Path $work 'ph'; New-Item -ItemType Directory $ph -Force | Out-Null
+$fakeInstall = Join-Path $ph '.claude/plugins/cache/pjc-harness/pjc/1.89.0'
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph '.claude/.disabled/require-plan-for-write'))
+Assert-Case -Name "protect-harness: .disabled 토글 파일 Write 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/block-destructive.ps1'))
+Assert-Case -Name "protect-harness: 설치본 hook 스크립트 Write 차단" -R $r -ExpectExit 2
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/hooks.json'))
+Assert-Case -Name "protect-harness: 설치본 hooks.json Write 차단" -R $r -ExpectExit 2
+$phEdit = @{ tool_name = 'Edit'; cwd = $ph; tool_input = @{ file_path = (Join-Path $fakeInstall 'scripts/protect-harness.ps1'); old_string = 'exit 0'; new_string = 'exit 0 # x' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'protect-harness.ps1' $phEdit
+Assert-Case -Name "protect-harness: 자기 자신 Edit 차단 (self-protect)" -R $r -ExpectExit 2
+# 경로 표기 변형 우회 차단 (세그먼트 정규화 — B1): ./ · 이중슬래시 · ../ 삽입해도 차단
+$phFwd = $ph -replace '\\', '/'
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/./.disabled/require-plan-for-write")
+Assert-Case -Name "protect-harness: .disabled 우회(./) 차단 (B1)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude//.disabled/require-plan-for-write")
+Assert-Case -Name "protect-harness: .disabled 우회(이중슬래시) 차단 (B1)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/foo/../.disabled/require-plan-for-write")
+Assert-Case -Name "protect-harness: .disabled 우회(../) 차단 (B1)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph '.claude/settings.json'))
+Assert-Case -Name "protect-harness: .claude/settings.json 통과(무경고)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/pjc/scripts/block-destructive.ps1'))
+Assert-Case -Name "protect-harness: 개발 repo hook 스크립트(.claude 없음) 통과" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'src/app.ts'))
+Assert-Case -Name "protect-harness: 일반 소스 통과" -R $r -ExpectExit 0 -ExpectSilent $true
+# NotebookEdit — notebook_path 폴백으로 .disabled 게이트 파일 차단 (폴백 분기 검증)
+$phNb = @{ tool_name = 'NotebookEdit'; cwd = $ph; tool_input = @{ notebook_path = "$phFwd/.claude/.disabled/require-plan-for-write"; new_source = 'x' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'protect-harness.ps1' $phNb
+Assert-Case -Name "protect-harness: NotebookEdit notebook_path 폴백 차단" -R $r -ExpectExit 2
+
+# =====================================================================
 # 3) 토글 메커니즘 (격리 홈 — 실제 상태 무영향)
 # =====================================================================
 & pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'require-plan-for-write' 'off' | Out-Null

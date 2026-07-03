@@ -29,7 +29,7 @@ $disabledDir = Join-Path $base '.claude/.disabled'
 New-Item -Force -ItemType Directory -Path $disabledDir | Out-Null
 
 # 토글 가능한 hook 화이트리스트
-# block-destructive 는 안전상 의도적으로 제외 (파괴적 명령 차단은 항상 동작)
+# block-destructive·protect-harness 는 안전상 의도적으로 제외 (파괴적 명령 차단·하니스 자기보호는 항상 동작)
 $known = @(
     'require-plan-for-write',
     'require-task-checkbox',
@@ -54,6 +54,7 @@ function Show-Status {
     }
     Write-Host ""
     Write-Host "  [ON]  block-destructive  (안전상 토글 불가)" -ForegroundColor DarkGray
+    Write-Host "  [ON]  protect-harness    (안전상 토글 불가)" -ForegroundColor DarkGray
     Write-Host ""
 }
 
@@ -71,7 +72,7 @@ if ($known -notcontains $Hook) {
     Write-Host "토글 가능한 hook:" -ForegroundColor Yellow
     foreach ($h in $known) { Write-Host "  - $h" }
     Write-Host ""
-    Write-Host "block-destructive 는 안전상 토글할 수 없습니다." -ForegroundColor DarkGray
+    Write-Host "block-destructive·protect-harness 는 안전상 토글할 수 없습니다." -ForegroundColor DarkGray
     Write-Host ""
     exit 1
 }

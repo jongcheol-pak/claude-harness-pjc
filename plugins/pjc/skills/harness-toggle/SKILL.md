@@ -30,7 +30,7 @@ argument-hint: "<hook 이름> <on|off|toggle|status>"
 | `warn-external-ops` | push·merge·tag·릴리즈·PR 등 외부·비가역 작업 경고 | "외부 작업 경고", "push 경고" |
 | `suggest-agents-record` | 빌드/테스트/DB 명령 실행 시 AGENTS.md 기록 제안 | "기록 제안", "AGENTS 제안" |
 
-**`block-destructive` 는 안전상 토글 불가** (파괴적 명령 차단은 항상 동작).
+**`block-destructive` 와 `protect-harness` 는 안전상 토글 불가** (파괴적 명령 차단·하니스 자기보호는 항상 동작). `protect-harness` 는 Write/Edit 도구로 `~/.claude/.disabled/` 게이트 파일이나 설치본 hook 스크립트·hooks.json 을 개조해 안전 게이트를 무력화하는 시도를 차단한다(에이전트 자기 감독 해제 방지).
 
 ## 실행 매뉴얼
 
@@ -79,6 +79,7 @@ Claude: [Bash 도구로 harness-toggle.ps1 "" status 실행]
         [ON]  warn-external-ops
         [ON]  suggest-agents-record
         [ON]  block-destructive (안전상 토글 불가)
+        [ON]  protect-harness (안전상 토글 불가)
 
 사용자: "plan 강제 다시 켜줘"
 Claude: [Bash 도구로 harness-toggle.ps1 require-plan-for-write on 실행]

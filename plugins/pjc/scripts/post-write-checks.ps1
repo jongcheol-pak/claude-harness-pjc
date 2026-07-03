@@ -41,7 +41,7 @@ $allMsgs = New-Object System.Collections.Generic.List[string]
 #   만들거나 hook 스크립트를 개조해 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만
 #   그 시도를 가시화한다. 정상 harness-toggle 경유 토글도 여기 걸리지만 경고(비차단)라 무해.
 $normFileH2 = $file -replace '\\', '/'
-$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|harness-toggle'
+$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|harness-toggle|protect-harness'
 if ($normFileH2 -match '/\.claude/\.disabled/\S') {
     $allMsgs.Add("[HARNESS] 게이트 비활성화 파일 생성 감지: $file")
     $allMsgs.Add("  안전 게이트(plan·checkbox 등)를 끄는 동작일 수 있습니다 — 의도된 것인지 확인하세요(정상 harness-toggle 경유면 무시).")
