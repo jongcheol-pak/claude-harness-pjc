@@ -51,7 +51,14 @@ $alwaysAllowedExts = @(
 )
 
 $ext = [System.IO.Path]::GetExtension($targetPath).ToLower()
-if ($alwaysAllowedExts -contains $ext) { exit 0 }
+# 실행 자산 예외 — .github/workflows/*.yml(CI: 임의 명령 실행)·package.json(scripts 실행)은
+#   문서·설정처럼 무조건 허용하지 않고 plan 게이트를 적용한다. CI 파이프라인·빌드 스크립트를
+#   plan 없이 바꾸는 구멍을 막는다. 일반 .json/.yml(tsconfig·docker-compose 등)은 계속 통과 —
+#   실행 자산 2종만 정밀 타깃해 오탐(설정 파일 대량 차단)을 피한다. 선행 [\\/] 선택으로 상대·절대경로 모두 매치.
+$execAssetName = [System.IO.Path]::GetFileName($targetPath)
+$isExecAsset = ($targetPath -match '(^|[\\/])\.github[\\/]workflows[\\/][^\\/]+\.ya?ml$') -or
+               ($execAssetName -eq 'package.json')
+if (-not $isExecAsset -and ($alwaysAllowedExts -contains $ext)) { exit 0 }
 
 # .env 템플릿(.env.example/.env.sample)은 plan 없이 허용 (실제 시크릿 파일 .env는 제외)
 $baseNameEarly = [System.IO.Path]::GetFileName($targetPath)
@@ -102,7 +109,9 @@ try {
 # docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다.
 # (폴더명 부분일치가 도메인 소스 폴더 — 예: src/Plans, src/build — 와 충돌해 소스가
 #  plan 없이 새는 것을 막는다. 소스면 아래 plan 검사로 떨어진다.)
-if (-not $isSourceCode -and (
+# 실행 자산 예외도 여기 전파한다 — dist/package.json·packages/plans/package.json 처럼 실행 자산이
+#  산출물/문서 디렉터리명과 겹치면 이 우회로 plan 게이트가 새므로($isExecAsset 무시 시), 함께 배제한다.
+if (-not $isExecAsset -and -not $isSourceCode -and (
         ($targetPath -match '[\\/]docs[\\/]') -or
         ($targetPath -match '[\\/]plans?[\\/]') -or
         ($targetPath -match '[\\/](dist|build)[\\/]'))) {
