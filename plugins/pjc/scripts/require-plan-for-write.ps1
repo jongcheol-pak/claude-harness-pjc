@@ -163,7 +163,10 @@ if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
         # 작은 변경(3줄 + 300자, 새 정의 없음) 또는 순수 값 치환 → trivial 통과
         if (($maxLines -le 3 -and $maxLen -le 300 -and -not $definesNewSymbol) -or $isPureValueSwap) {
             $why = if ($isPureValueSwap) { '순수 값 치환(리터럴만 변경, 구조 동일)' } else { '<=3줄, 새 정의 없음' }
-            [Console]::Error.WriteLine("[HARNESS] Trivial edit ($why): plan 검사 우회. 영향은 impact-warn hook이 검증합니다.")
+            # M7: 소스 파일의 3줄 이하 통과 중 상수·수치·로직 변경(타임아웃·한계·포트 등)은 plan 없이 새므로
+            #   impact-warn(사후 caller 검출)에 더해 검토 권장을 상기한다(차단 아님).
+            $extra = if ($isSourceCode) { ' 소스의 상수·수치·로직 변경이면 plan-feature 검토를 권장합니다.' } else { '' }
+            [Console]::Error.WriteLine("[HARNESS] Trivial edit ($why): plan 검사 우회. 영향은 impact-warn hook이 검증합니다.$extra")
             exit 0
         }
     }
@@ -253,9 +256,10 @@ foreach ($start in $searchStarts) {
 }
 
 if ($foundIn) {
-    # ---- 완료된 plan 비차단 경고 (G4) ----
-    # plan은 존재하지만 task 체크박스가 전부 [x](미완료 [ ]/[/] 0개)면, 이번 코드 변경이
-    # '완료된 옛 plan'에 기대고 있을 수 있다 → plan-feature로 새 계획 작성 권유 (차단 아님).
+    # ---- 완료된/빈 plan 비차단 경고 (G4 + H3) ----
+    # plan은 존재하지만 task 체크박스가 전부 [x](미완료 0)면 '완료된 옛 plan'에 기대는 변경일 수 있고,
+    # 체크박스가 아예 0개면 '빈/플레이스홀더 plan'(내용 없는 plan.md로 게이트 무력화)일 수 있다
+    # → 둘 다 plan-feature로 계획 작성/갱신 권유 (차단 아님).
     # 단일 plan 파일(plan.md/PLAN.md/docs/plan.md)만 판정한다. docs/plans 디렉터리(복수 plan)는
     # 어느 것이 이번 작업인지 모호하므로 경고하지 않는다(오탐 방지).
     $planFile = $null
@@ -274,6 +278,14 @@ if ($foundIn) {
                            "이번 코드 변경이 새 작업이면 plan-feature로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다."
                 [Console]::Error.WriteLine($warnMsg)
                 # PreToolUse additionalContext로 모델에 전달 (exit 0 비차단)
+                $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
+                [Console]::Out.WriteLine($payload)
+            } elseif ($incomplete -eq 0 -and $done -eq 0) {
+                # H3: task 체크박스(- [ ]/[x])가 하나도 없음 = 빈/플레이스홀더 plan.
+                #   0바이트·골격만 있는 plan.md 하나로 게이트를 무력화하는 약점을 가시화한다(비차단).
+                $warnMsg = "[HARNESS] 이 plan.md에 task 체크박스(- [ ] / - [x])가 하나도 없습니다 — 빈/플레이스홀더 plan일 수 있습니다. " +
+                           "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. plan-feature로 실제 task를 작성하세요."
+                [Console]::Error.WriteLine($warnMsg)
                 $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
                 [Console]::Out.WriteLine($payload)
             }

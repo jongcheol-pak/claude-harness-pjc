@@ -107,6 +107,8 @@ $withplan = Join-Path $work 'proj-plan';  New-Item -ItemType Directory $withplan
 "# plan`n- [ ] T1: work" | Set-Content (Join-Path $withplan 'plan.md')
 $doneplan = Join-Path $work 'proj-done';  New-Item -ItemType Directory $doneplan -Force | Out-Null
 "# plan`n- [x] T1: done" | Set-Content (Join-Path $doneplan 'plan.md')
+$emptyplan = Join-Path $work 'proj-empty';  New-Item -ItemType Directory $emptyplan -Force | Out-Null
+"# plan`n요약만 있고 task 체크박스가 하나도 없음" | Set-Content (Join-Path $emptyplan 'plan.md')
 
 function New-WriteJson([string]$cwd, [string]$file, [string]$tool = 'Write', [hashtable]$extra = @{}) {
     $ti = @{ file_path = $file; content = 'class A {}' } + $extra
@@ -121,6 +123,8 @@ $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $withplan (Join-Pat
 Assert-Case -Name "require-plan: plan 있으면 .cs 통과" -R $r -ExpectExit 0
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $doneplan (Join-Path $doneplan 'A.cs'))
 Assert-Case -Name "require-plan: 완료 plan 경고+비차단" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $emptyplan (Join-Path $emptyplan 'A.cs'))
+Assert-Case -Name "require-plan: 빈 plan(체크박스 0) 경고+비차단 (H3)" -R $r -ExpectExit 0 -ExpectContains '빈/플레이스홀더'
 $trivial = @{ tool_name = 'Edit'; cwd = $noplan; tool_input = @{ file_path = (Join-Path $noplan 'A.cs'); old_string = 'int x = 1;'; new_string = 'int x = 2;' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'require-plan-for-write.ps1' $trivial
 Assert-Case -Name "require-plan: trivial Edit 통과" -R $r -ExpectExit 0 -ExpectContains 'Trivial'
