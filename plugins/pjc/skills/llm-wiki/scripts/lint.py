@@ -136,7 +136,9 @@ def strip_code(text):
     줄바꿈은 보존해 다른 줄 단위 검사(예산 등)와 줄 수가 어긋나지 않게 한다(이 사본은 wikilink 추출 전용)."""
     blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))  # 줄바꿈만 남기고 공백화
     text = re.sub(r"```.*?```", blank, text, flags=re.S)   # 펜스 블록
-    text = re.sub(r"```[^\n]*\Z", blank, text, flags=re.S)  # 미닫힘 펜스 → 끝까지 코드 간주(보수적)
+    # 미닫힘 펜스 → 끝까지 코드 간주(보수적). `.`(re.S로 줄바꿈 포함)로 EOF까지 공백화한다 —
+    #   기존 `[^\n]*`는 줄바꿈을 못 넘어 파일 중간의 '여러 줄' 미닫힘 펜스를 공백화하지 못했다(T6).
+    text = re.sub(r"```.*\Z", blank, text, flags=re.S)
     text = re.sub(r"`[^`\n]*`", blank, text)                # 인라인 코드
     return text
 

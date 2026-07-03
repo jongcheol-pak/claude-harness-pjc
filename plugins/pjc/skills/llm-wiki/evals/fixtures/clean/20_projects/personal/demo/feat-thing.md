@@ -37,3 +37,9 @@ Thing 클래스가 처리한다[^src-thing].
 - 플레이스홀더: password: YOUR_PASSWORD_HERE
 
 [^src-thing]: [[10_sources/personal/src-demo\|소스: Demo]] — `src/Demo/Thing.cs`
+
+미닫힘(여러 줄) 코드펜스 안의 가짜 wikilink는 깨진 링크로 오탐되면 안 된다(T6 — strip_code가 EOF까지 공백화):
+```text
+예시 코드 블록(닫히지 않음)
+여기 [[20_projects/personal/없는파일|깨진링크예시]] 는 펜스 안이라 무시되어야 함
+다음 줄도 여전히 펜스 안
