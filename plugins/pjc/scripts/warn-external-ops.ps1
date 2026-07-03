@@ -40,8 +40,17 @@ $externalOps = @(
     @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*merge\b';  label = 'git merge (브랜치 병합)' },
     @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*tag\s+(--delete\b|-[asfmd]|[^\s-])';  label = 'git tag (태그 생성/삭제)' },
     @{ rx = 'gh\s+release\s+create';          label = 'gh release create (릴리즈 발행)' },
+    @{ rx = 'gh\s+release\s+delete';          label = 'gh release delete (릴리즈 삭제 — 비가역)' },
     @{ rx = 'gh\s+pr\s+create';               label = 'gh pr create (PR 생성)' },
-    @{ rx = 'gh\s+pr\s+merge';                label = 'gh pr merge (PR 병합)' }
+    @{ rx = 'gh\s+pr\s+merge';                label = 'gh pr merge (PR 병합)' },
+    # 패키지·이미지 배포 (공개 레지스트리 반영은 되돌리기 어려움 — H5 커버리지 확장).
+    # npm run publish-xxx 같은 스크립트 실행과 구분하기 위해 배포 동사가 CLI 바로 뒤일 때만 매칭.
+    @{ rx = '\b(npm|pnpm|yarn)\s+publish\b';  label = '패키지 배포 (npm/pnpm/yarn publish)' },
+    @{ rx = '\bdotnet\s+nuget\s+push\b';      label = 'NuGet 배포 (dotnet nuget push)' },
+    @{ rx = '(^|\s)nuget\s+push\b';           label = 'NuGet 배포 (nuget push)' },
+    @{ rx = '\bcargo\s+publish\b';            label = 'crates.io 배포 (cargo publish)' },
+    @{ rx = '\btwine\s+upload\b';             label = 'PyPI 배포 (twine upload)' },
+    @{ rx = '\bdocker\s+push\b';              label = '이미지 배포 (docker push)' }
 )
 
 $hits = New-Object System.Collections.Generic.List[string]

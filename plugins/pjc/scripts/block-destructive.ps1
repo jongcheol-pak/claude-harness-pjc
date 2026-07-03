@@ -10,6 +10,11 @@
 #   Write/Edit 도구라 여기서 안 잡힌다. 그런 코드는 plan-feature 승인 게이트 +
 #   code-quality-reviewer가 검토한다 (CLAUDE.md "DB 데이터 삭제는 승인 필수" 참조).
 #
+# ⚠️ 한계 (정규식 접근의 본질적 미탐 — 의도된 트레이드오프):
+#   명령치환·변수 간접 참조는 잡지 못한다 — 예: rm -rf $(echo /), X=/; rm -rf $X.
+#   문자열 평가를 하지 않는 정규식으로는 불가하며, 1차 방어선은 Claude Code 권한 시스템이다.
+#   (hook-cases.json에 '[알려진 미탐]' 케이스로 문서화 — 이 동작이 바뀌면 회귀로 검출됨.)
+#
 # ⚠️ 이 hook은 의도적으로 토글 불가합니다.
 #   - 다른 hook(require-plan-for-write, impact-warn 등)과 달리
 #     ~/.claude/.disabled/ 체크를 하지 않습니다.
@@ -67,6 +72,7 @@ $patterns = @(
     'git\s+filter-repo',
     'git\s+reflog\s+expire',
     'git\s+clean\s+(-[a-z]*f[a-z]*d|-[a-z]*d[a-z]*f|.*-f\b.*-d\b|.*-d\b.*-f\b)',  # git clean -fd/-df/-f -d (untracked 영구 삭제)
+    'gh\s+repo\s+delete',                               # GitHub 원격 저장소 영구 삭제 (외부·비가역)
     # (sudo 전면 차단은 제거 — sudo 자체는 파괴적이지 않고 위험은 뒤따르는 명령에 있으며
     #  그건 rm 컴파운드·다른 패턴이 잡는다. 예: 'sudo rm -rf /'는 rm 컴파운드가 차단,
     #  'sudo -l'·'sudo apt install'은 정상 통과. 전면 차단은 정당한 sudo까지 막던 오탐.)
@@ -74,7 +80,9 @@ $patterns = @(
     'DROP\s+DATABASE',                                  # DB 전체 삭제
     'DROP\s+SCHEMA',                                    # 스키마 삭제
     'TRUNCATE\s+TABLE',                                 # 테이블 전체 비우기
-    'TRUNCATE\s+(?!TABLE)',                             # TRUNCATE <table> (TABLE 키워드 생략형)
+    'TRUNCATE\s+(?!TABLE\b)(?!-)',                      # TRUNCATE <table> (TABLE 키워드 생략형). (?!-)로 coreutils
+                                                        #   'truncate -s 0 file'(대시 옵션 선행) 오탐 배제 — SQL은 식별자가 뒤따름.
+                                                        #   한계: 파일명 선행형 'truncate file -s 0'은 잔여 미배제(드문 형태).
     'DELETE\s+FROM\s+[^\s;]+\s*;',                      # DELETE FROM x; — WHERE 없는 전체 행 삭제
     'DELETE\s+FROM\s+[^\s;]+\s*$',                      # DELETE FROM x (문장 끝, WHERE 없음)
     'DELETE\s+FROM\s+\w+\s+WHERE\s+1\s*=\s*1',          # WHERE 1=1 = 사실상 전체 삭제
@@ -109,29 +117,60 @@ $patterns = @(
     '^\s*netsh\s+advfirewall\s+.*\b(set|add|delete|reset|import)\b'  # 방화벽 설정 변경(show/dump/export 조회는 통과)
 )
 
-# &&, ||, ;, | 로 분리 — 단, 따옴표 안의 구분자는 분리하지 않는다(quote-aware).
+# &&, ||, ;, |, 개행 으로 분리 — 단, 따옴표 안의 구분자는 분리하지 않는다(quote-aware).
 # (단순 -split '[;|&]'는 grep "DELETE FROM x;" 처럼 따옴표 안의 ;에서 명령을 쪼개
 #  따옴표가 깨지고, 그러면 데이터 인자 제거가 작동하지 못해 오탐이 난다.)
+# 개행도 최상위 구분자다(H1) — Bash 도구는 여러 줄 명령이 흔한데, 개행을 분리하지 않으면
+#  둘째 줄의 파괴 명령이 ^앵커 패턴(chmod 등)을 벗어나고 컴파운드 윈도우 계산도 빈 문자열이
+#  되어(선행 \n 매치) 'ls\nrm -rf /'가 통째로 미탐이었다. 따옴표 안 개행(멀티라인 커밋 메시지
+#  등 데이터)은 그대로 보존된다.
 function Split-TopLevel([string]$s) {
     $parts = New-Object System.Collections.Generic.List[string]
     $cur = ''
     $q = $null   # 현재 열린 따옴표 문자(' 또는 ") 또는 $null
-    foreach ($ch in $s.ToCharArray()) {
-        if ($q) {
+    # 인덱스 순회 — 백슬래시 이스케이프를 보려면 다음 문자를 함께 소비해야 하므로.
+    $chars = $s.ToCharArray()
+    for ($i = 0; $i -lt $chars.Length; $i++) {
+        $ch = $chars[$i]
+        if ($q -eq "'") {
+            # 작은따옴표 안: bash는 여기서 이스케이프가 없다 — 다음 ' 까지 전부 리터럴.
             $cur += $ch
-            if ($ch -eq $q) { $q = $null }
-        } elseif ($ch -eq '"' -or $ch -eq "'") {
-            $q = $ch; $cur += $ch
-        } elseif ($ch -eq ';' -or $ch -eq '|' -or $ch -eq '&') {
-            $parts.Add($cur); $cur = ''
+            if ($ch -eq "'") { $q = $null }
+        } elseif ($q -eq '"') {
+            # 큰따옴표 안: 백슬래시가 다음 문자를 이스케이프 → \" 가 인용을 닫지 않게 둘 다 리터럴 보존.
+            if ($ch -eq '\' -and $i + 1 -lt $chars.Length) {
+                $cur += $ch; $cur += $chars[$i + 1]; $i++
+            } else {
+                $cur += $ch
+                if ($ch -eq '"') { $q = $null }
+            }
         } else {
-            $cur += $ch
+            # 인용 밖: 백슬래시가 다음 문자를 이스케이프한다(H1 후속 D1). \"·\'·\; 등이 인용 열기·구분자로
+            #   오인되지 않게 둘 다 리터럴로 소비 — 이게 없으면 'echo \" ; rm -rf /'에서 \"가 따옴표를
+            #   열어 ;가 분리되지 않고 한 sub로 뭉쳐(→ echo 데이터 제거가 rm까지 삭제) 미탐이었다.
+            #   문자열 끝 단독 \ (다음 문자 없음)는 그대로 append. bash 시맨틱과 일치.
+            if ($ch -eq '\' -and $i + 1 -lt $chars.Length) {
+                $cur += $ch; $cur += $chars[$i + 1]; $i++
+            } elseif ($ch -eq '"' -or $ch -eq "'") {
+                $q = $ch; $cur += $ch
+            } elseif ($ch -eq ';' -or $ch -eq '|' -or $ch -eq '&' -or $ch -eq "`n" -or $ch -eq "`r") {
+                $parts.Add($cur); $cur = ''
+            } else {
+                $cur += $ch
+            }
         }
     }
     $parts.Add($cur)
     return $parts
 }
-$subs = Split-TopLevel $cmd
+# 줄-이음(PowerShell 백틱+개행, bash 백슬래시+개행)은 셸이 한 명령으로 잇는다 — 개행 분리 '전에'
+#  전역 1회 공백으로 합쳐, 이어진 명령(rm -rf \<개행>/)이 두 sub로 갈라져 미탐되는 것을 막는다.
+# 줄-이음은 백슬래시/백틱 '직후' 개행만 해당한다(D2). 중간에 공백이 있는 '\ <개행>'는 bash에서
+#  줄-이음이 아니라 '이스케이프된 공백 + 명령 종결 개행'이므로 결합하지 않는다 — 결합하면 다음 줄
+#  명령(chmod 등)이 앞 명령과 한 논리 줄로 붙어 ^앵커 패턴을 벗어나 미탐된다. 그래서 \s* 없이 \r?\n.
+$cmdJoined = $cmd -replace '`\r?\n', ' '
+$cmdJoined = $cmdJoined -replace '\\\r?\n', ' '
+$subs = Split-TopLevel $cmdJoined
 
 foreach ($sub in $subs) {
     $sub = $sub.Trim()
@@ -168,8 +207,8 @@ foreach ($sub in $subs) {
     #   결합되는 오탐을 막는다. 단, 줄-이음(PowerShell 백틱+개행 · bash 백슬래시+개행)은 셸이 한 명령으로
     #   잇는 것이라 먼저 공백으로 정규화해 한 논리 줄로 합친다 — 대상이 다음 물리 줄에 와도 차단되게 해
     #   미탐을 막는다(예: bash에서 rm -rf 뒤 백슬래시+개행+/ 는 실제 rm -rf / 로 실행됨).
-    $norm = $scan -replace '`\s*\r?\n', ' '       # PowerShell 백틱 줄-이음
-    $norm = $norm -replace '\\\s*\r?\n', ' '      # bash 백슬래시 줄-이음
+    $norm = $scan -replace '`\r?\n', ' '       # PowerShell 백틱 줄-이음(백틱 직후 개행만 — D2)
+    $norm = $norm -replace '\\\r?\n', ' '      # bash 백슬래시 줄-이음(백슬래시 직후 개행만 — D2)
     # 위험 대상(따옴표 선택): / /* // | POSIX 시스템 디렉터리(/usr /etc /bin … /opt /srv /run, 하위·글롭 포함) |
     #   ~ $HOME $env: | * | . ./ .* ./* | Windows 시스템 디렉터리(C:\Windows·Program Files·ProgramData — 네이티브 및
     #   MSYS /c/… · WSL /mnt/c/… 마운트(대소문자 무시 — /C/·/D/ 등도 매치), 하위 포함) | 드라이브 루트 C:\(글롭 포함). 루프 불변이라 밖에서 1회 정의.
@@ -177,8 +216,10 @@ foreach ($sub in $subs) {
     $dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
     $delMatches = [regex]::Matches($norm, '(^|\s)(rm|Remove-Item|ri|rmdir|rd|del|erase)(\s|$)')
     foreach ($dm in $delMatches) {
-        # 삭제 명령 토큰부터 다음 줄바꿈 전까지가 그 명령의 인자 윈도우
-        $win = $norm.Substring($dm.Index)
+        # 삭제 명령 토큰부터 다음 줄바꿈 전까지가 그 명령의 인자 윈도우.
+        # 선행 공백·개행을 먼저 제거한다(H1 방어) — 매치가 (^|\s)로 시작해 선행 \n을 포함하면
+        # 아래 줄바꿈 컷이 윈도우를 빈 문자열로 만들어(따옴표 안 개행이 sub에 남는 경우) 미탐이 된다.
+        $win = $norm.Substring($dm.Index).TrimStart()
         $nlIdx = $win.IndexOfAny([char[]]@("`n", "`r"))
         if ($nlIdx -ge 0) { $win = $win.Substring(0, $nlIdx) }
 

@@ -19,10 +19,36 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# 한글 출력이 cp949 콘솔에서 깨지지 않도록 UTF-8 (hook 스크립트들과 동일 규약)
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
 # 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
 $homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 
-$pluginRoot = Join-Path $homeBase ".claude/plugins/cache/pjc-harness/plugins/pjc"
+# 플러그인 설치 캐시 레이아웃은 Claude Code 버전에 따라 다르다 — 실재하는 쪽을 탐지한다:
+#   신: cache/pjc-harness/pjc/<버전>/  (버전 디렉터리 누적 — 최신 버전을 검사)
+#   구: cache/pjc-harness/plugins/pjc
+$cacheBase = Join-Path $homeBase ".claude/plugins/cache/pjc-harness"
+$pluginRoot = $null
+$verRoot = Join-Path $cacheBase "pjc"
+if (Test-Path -LiteralPath $verRoot) {
+    $verDirs = @(Get-ChildItem -LiteralPath $verRoot -Directory -ErrorAction SilentlyContinue)
+    # [version] 파싱 가능한 이름을 버전 순으로 정렬해 최신 채택 (파싱 불가만 있으면 이름 정렬 폴백)
+    $latest = $verDirs | Where-Object { $null -ne ($_.Name -as [version]) } |
+        Sort-Object { [version]$_.Name } | Select-Object -Last 1
+    if (-not $latest) { $latest = $verDirs | Sort-Object Name | Select-Object -Last 1 }
+    if ($latest -and (Test-Path -LiteralPath (Join-Path $latest.FullName ".claude-plugin/plugin.json"))) {
+        $pluginRoot = $latest.FullName
+    }
+}
+if (-not $pluginRoot) {
+    $legacy = Join-Path $cacheBase "plugins/pjc"
+    if (Test-Path -LiteralPath (Join-Path $legacy ".claude-plugin/plugin.json")) { $pluginRoot = $legacy }
+}
+if (-not $pluginRoot) {
+    # 어느 레이아웃도 없음 — 아래 Test-Item-Exists가 FAIL로 안내하도록 신 레이아웃 경로를 기본값으로
+    $pluginRoot = $verRoot
+}
 $marketplaceRoot = Join-Path $homeBase ".claude/plugins/marketplaces/pjc-harness"
 
 $pass = 0
@@ -69,6 +95,7 @@ function Test-Ps1-Bom {
 }
 
 Write-Host "=== pjc plugin 검증 시작 ===" -ForegroundColor Cyan
+Write-Host "검사 대상 plugin 경로: $pluginRoot" -ForegroundColor DarkGray
 Write-Host ""
 
 # 1. Plugin 디렉터리 구조

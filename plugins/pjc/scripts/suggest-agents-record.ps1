@@ -85,6 +85,13 @@ $agentsHay = ($agentsRaw -replace '\s+', ' ').ToLower()
 # ---- 상태 마커 준비 (세션·프로젝트·카테고리당 1회) ----
 $stateDir = Join-Path $base '.claude/.state/suggest-agents-record'
 try { New-Item -Force -ItemType Directory -Path $stateDir | Out-Null } catch {}
+# 30일 지난 마커 자동 정리 — 마커는 세션×프로젝트×카테고리당 1개라 방치하면 무한 축적된다(하우스키핑).
+# 오래된 마커 삭제로 같은 제안이 다시 뜰 수 있지만, 그 시점엔 세션도 오래돼 재제안이 오히려 유익하다.
+try {
+    Get-ChildItem -LiteralPath $stateDir -File -ErrorAction Stop |
+        Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+} catch {}
 $sid = if ($data.session_id) { [string]$data.session_id } else { '' }
 $projLeaf = Split-Path -Leaf $projDir
 # 파일명 안전 문자만 남김 (디렉터리명 공백·session_id 등)

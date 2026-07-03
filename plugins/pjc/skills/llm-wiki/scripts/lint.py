@@ -2,7 +2,8 @@
 """llm-wiki Lint 보조 스크립트.
 
 사용법: python lint.py "<vault_path>"
-검사: 깨진/경로 없는 wikilink / 예산 초과 / platform·origin·confidence 통제어휘 위반·누락
+검사: 깨진/경로 없는 wikilink / 예산 초과 / platform·origin·confidence·category 통제어휘 위반·누락
+      / updated 필드 누락(§7-9 — 신선도 추적 전제) / feature '## 구현 방법' 섹션 부재(§7-18 확장)
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
@@ -41,6 +42,11 @@ CONFIDENCE_VOCAB = {"high", "medium", "low"}
 DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
+# category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
+CATEGORY_VOCAB = {"personal", "work"}
+# updated 필수 타입 (§7-9 — 필드가 없으면 신선도(§7-3)·미래날짜 검사가 조용히 건너뛰어져 추적 사각.
+#  source-stub은 불변 스텁이라 ingested를 쓰므로 제외)
+UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, wiki-schema §4·§8)
 SPECIAL_BUDGET = {"log.md": 6000}
 # 신선도·고아·타입 검사에서 제외하는 인프라 타입 (위키 본문 페이지가 아님)
@@ -252,11 +258,17 @@ def main():
             # F1-ⓑ 폐기 안내 정합: deprecated인데 "코드에서 제거" 안내가 없으면 경고
             if "코드에서 제거" not in text:
                 warn(f"deprecated 표기 안내 누락: {r} ('⚠️ 코드에서 제거됨' 안내 권장, schema §2.3)", r)
-        # F2 구현 근거 각주 게이트: feature가 '## 구현 방법'을 갖는데 [^src-...] 각주가 0개면 얕은 feature
-        #  의심. 각주 '존재'는 여기서, 각주 경로의 레포 실존은 §7-20 블록(메인 루프 뒤)이 기계 검사;
-        #  서술↔코드 사실 정합은 §7-10(에이전트 표본)이 담당 (§7-18).
-        if typ == "feature" and not is_dep and not in_archive and "## 구현 방법" in text and "[^src-" not in text:
-            warn(f"구현 근거 각주 누락: {r} (## 구현 방법 있으나 [^src-...] 0개 — 얕은 feature 의심, schema §2.3)", r)
+        # F2 구현 근거 각주 게이트(§7-18): '## 구현 방법'은 필수 섹션(§2.3)이므로 ⓐ 섹션 자체가 없으면
+        #  WARN(섹션을 통째로 빼서 각주 게이트를 우회하는 구멍 차단), ⓑ 섹션이 있는데 [^src-...] 각주가
+        #  0개면 얕은 feature 의심 WARN. 각주 '존재'는 여기서, 각주 경로의 레포 실존은 §7-20 블록이
+        #  기계 검사; 서술↔코드 사실 정합은 §7-10(에이전트 표본)이 담당.
+        #  섹션 판정은 줄 시작 헤딩 정규식으로 — 산문이 '## 구현 방법'을 인용만 해도 존재로
+        #  오인하지 않게 한다(단순 포함 검사의 오탐).
+        if typ == "feature" and not is_dep and not in_archive:
+            if not re.search(r"(?m)^##\s*구현 방법\b", text):
+                warn(f"구현 방법 섹션 누락: {r} ('## 구현 방법'은 필수 섹션 — 얇게라도 유지, schema §2.3·§7-18)", r)
+            elif "[^src-" not in text:
+                warn(f"구현 근거 각주 누락: {r} (## 구현 방법 있으나 [^src-...] 0개 — 얕은 feature 의심, schema §2.3)", r)
 
         # wikilink: 깨진 링크(경로형) + 경로 없는 링크(명시적 경로 필수 위반)
         # 코드펜스/인라인코드 안 텍스트는 제외 — 추출·정규화는 wikilink_targets(§7-6·23과 공용)
@@ -293,6 +305,12 @@ def main():
         if plat and plat not in PLATFORM_VOCAB:
             errors.append(f"platform 통제어휘 위반: {r} -> '{plat}'")
 
+        # category 통제어휘 (§7-7): 값이 있는데 어휘 밖이면 ERR. 부재는 검사하지 않는다 —
+        #  경로 규약(20_projects/{personal|work}/)과 이중 검출을 피하고 값 오타만 잡는다.
+        cat = fm.get("category")
+        if cat and cat not in CATEGORY_VOCAB:
+            errors.append(f"category 통제어휘 위반: {r} -> '{cat}' (personal|work — schema §3)")
+
         # tech_stack 휘발성 버전 검사 (wiki-schema §2.1·§2.2·§7-11):
         #  ⓐ 소스 스텁 "기술 스택" 본문 줄, ⓑ project 허브 tech_stack frontmatter 값에서
         #  major.minor 이상 버전(\d+\.\d+) 발견 시 경고. ".NET 10"·"WinUI 3" 등 major-only는 미매칭(허용).
@@ -320,6 +338,10 @@ def main():
         upd = parse_date(raw_upd) if raw_upd else None
         if raw_upd and upd is None:
             warn(f"updated 형식 이상: {r} -> '{raw_upd}'", r)
+        # updated 누락 (§7-9): 필드가 아예 없으면 신선도(§7-3)·미래날짜 검사가 조용히 건너뛰어진다 —
+        #  origin/confidence 누락은 WARN인데 updated만 침묵하던 사각을 메운다.
+        if typ in UPDATED_REQUIRED_TYPES and not in_archive and not raw_upd:
+            warn(f"updated 누락: {r} (type={typ}) — 신선도 추적 불가 (schema §7-9)", r)
         if upd:
             if upd > today:
                 errors.append(f"미래 날짜: {r} updated={upd}")

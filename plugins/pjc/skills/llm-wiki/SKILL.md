@@ -275,9 +275,9 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 4. `[에이전트]` 모순 탐색 → question 기록
 5. `[에이전트]` 크로스참조 누락 (tech_stack ↔ `used_by`)
 6. `[기계]` 기능별 인덱스 동기화 (index.md 부재 시 ERR + 인덱스 검사 6·14·15·16·23 skip)
-7. `[기계]` 통제 어휘 위반 (`platform`)
+7. `[기계]` 통제 어휘 위반 (`platform`·`origin`·`confidence`·`category`)
 8. `[기계]` 고아 페이지·타입 미지정
-9. `[기계]` 미래/이상 날짜
+9. `[기계]` 미래/이상 날짜·`updated` 누락
 10. `[에이전트]` 코드 정합 샘플링 (feature 표본 서술↔코드)
 11. `[기계]` tech_stack 휘발성 버전
 12. `[기계]` (미검증)·미해결 question 집계 (INFO)
@@ -330,7 +330,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 2. 위키 실제 상태와 대조한다.
 3. 불일치를 실제 상태에 맞게 수정한다.
 4. 규칙 번들 수정 시 frontmatter `version`을 올린다.
-5. 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
+5. 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
 6. `log.md`: `- [YYYY-MM-DD] [SCHEMA] {요약}. (자동 갱신)`
 
 #### H-3. 범위 제한

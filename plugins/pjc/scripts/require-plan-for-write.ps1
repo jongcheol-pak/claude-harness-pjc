@@ -23,6 +23,7 @@ try {
     $data = $inputJson | ConvertFrom-Json
     $targetPath = $data.tool_input.path
     if (-not $targetPath) { $targetPath = $data.tool_input.file_path }
+    if (-not $targetPath) { $targetPath = $data.tool_input.notebook_path }   # NotebookEdit (.ipynb)
 } catch {
     # 파싱 실패 시 통과
     exit 0
@@ -87,6 +88,16 @@ if ($targetPath -match '[\\/]res[\\/](values|drawable|mipmap|layout|raw|xml|colo
 
 # .claude (하니스 설정·도구) — 무조건 허용
 if ($targetPath -match '[\\/]\.claude[\\/]') { exit 0 }
+
+# 시스템 임시 폴더(검증 스크립트·스크래치패드) — 무조건 허용 (의도된 완화).
+# 글로벌 지침·하니스가 검증용 임시 스크립트를 시스템 임시 폴더에 쓰도록 지시하므로,
+# plan 게이트(프로젝트 코드 보호)의 대상이 아니다 — 임시 산출물은 프로젝트에 커밋되지 않고,
+# 파괴적 '실행'은 block-destructive가 별도 차단한다.
+try {
+    $tempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
+    $tpNorm = $targetPath -replace '/', '\'
+    if ($tempRoot -and $tpNorm.StartsWith($tempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) { exit 0 }
+} catch { }
 
 # docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다.
 # (폴더명 부분일치가 도메인 소스 폴더 — 예: src/Plans, src/build — 와 충돌해 소스가
