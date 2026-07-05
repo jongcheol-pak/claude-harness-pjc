@@ -11,8 +11,6 @@
 # [노이즈 억제 2중]
 #   (1) AGENTS.md 본문에 그 명령이 이미 있으면 제안 안 함(self-terminating).
 #   (2) 세션·프로젝트·카테고리당 1회만(.state 마커).
-#
-# 토글: harness-toggle 로 비활성 가능 (suggest-agents-record).
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -21,10 +19,6 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 
 # ---- 홈 경로 (Claude Code 홈과 정합 — Windows는 USERPROFILE, 없으면 $HOME) ----
 $base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-
-# ---- 토글 체크 ----
-$disableFile = Join-Path $base ".claude/.disabled/suggest-agents-record"
-if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # ---- stdin JSON 읽기 (tool_input.command / cwd / session_id 제공 — 공식 hook 입력 스펙) ----
 $inputJson = [Console]::In.ReadToEnd()
