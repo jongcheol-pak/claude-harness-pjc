@@ -10,19 +10,11 @@
 #   발동하므로, 차단(exit 2)이나 대화-계속(additionalContext)으로 바꾸면 무관한 종료까지
 #   막거나 루프를 유발한다. 따라서 의도적으로 exit 0 + stderr 소프트 리마인더로 둔다
 #   (사용자가 transcript에서 보고 판단; 모델 강제는 안 함). 이 동작을 차단으로 바꾸지 말 것.
-#
-# 토글: harness-toggle 로 비활성 가능.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
 # 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
-
-# ---- 토글 체크 ----
-# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
-$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-$disableFile = Join-Path $base ".claude/.disabled/require-evidence"
-if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # stdin JSON에서 cwd 추출 (Claude Code가 hook을 어디서 실행하든 프로젝트 루트로 이동)
 $inputJson = [Console]::In.ReadToEnd()
