@@ -44,6 +44,14 @@ $allMsgs = New-Object System.Collections.Generic.List[string]
 #   그 시도를 가시화한다. 정상 harness-toggle 경유 토글도 여기 걸리지만 경고(비차단)라 무해.
 $normFileH2 = $file -replace '\\', '/'
 $harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|harness-toggle|protect-harness'
+# 8.3 단축명 마스킹 감지(H3) — protect-harness.ps1의 $suspect83과 동일 술어(탐지↔차단 대칭).
+#   실제 마스킹 형태(CLAUDE~N·DISABL~N) + 방어 키워드(.claude/.disabled/hook명) 잔존일 때만 감지 —
+#   일반 8.3 세그먼트(PROGRA~1·RUNNER~1)는 미매치라 개발 repo 편집에 무영향.
+$has83H2 = ($normFileH2 -match '(?i)/(CLAUDE|DISABL)~[0-9]+(/|$)')
+$suspect83H2 = $has83H2 -and (
+    ($normFileH2 -match '(?i)\.disabled(/|$)') -or
+    ($normFileH2 -match '(?i)\.claude(/|$)') -or
+    ($normFileH2 -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')))
 if ($normFileH2 -match '/\.claude/\.disabled/\S') {
     $allMsgs.Add("[HARNESS] 게이트 비활성화 파일 생성 감지: $file")
     $allMsgs.Add("  안전 게이트(plan·checkbox 등)를 끄는 동작일 수 있습니다 — 의도된 것인지 확인하세요(정상 harness-toggle 경유면 무시).")
@@ -51,6 +59,16 @@ if ($normFileH2 -match '/\.claude/\.disabled/\S') {
 } elseif ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hooks/hooks\.json$') {
     $allMsgs.Add("[HARNESS] 하니스 hook 스크립트 변경 감지: $file")
     $allMsgs.Add("  안전 hook을 개조/약화하는 변경일 수 있습니다 — 의도된 것인지, 골든 회귀(run-hook-evals.ps1)로 검증했는지 확인하세요.")
+    $allMsgs.Add("")
+} elseif ($suspect83H2) {
+    $allMsgs.Add("[HARNESS] 8.3 단축명(CLAUDE~1·DISABL~1) 마스킹 경로 감지: $file")
+    $allMsgs.Add("  하니스 경로를 단축명으로 숨긴 게이트 무력화 시도일 수 있습니다 — 의도된 것인지 확인하세요.")
+    $allMsgs.Add("")
+} elseif ($normFileH2 -match '/\.claude/settings\.json$') {
+    # M2: 홈·프로젝트 .claude/settings.json의 enabledPlugins는 하니스 전체를 끌 수 있다(hook보다 상위 무력화면).
+    #   settings.local.json은 $ 앵커 정확 매칭이라 여기 걸리지 않는다.
+    $allMsgs.Add("[HARNESS] .claude/settings.json 변경 감지: $file")
+    $allMsgs.Add("  enabledPlugins로 하니스 전체를 끄는 변경일 수 있습니다 — 의도된 설정 변경인지 확인하세요.")
     $allMsgs.Add("")
 }
 

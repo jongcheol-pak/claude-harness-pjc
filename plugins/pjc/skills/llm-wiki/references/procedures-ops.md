@@ -46,7 +46,7 @@
 
 #### F-2. 결과 보고
 - 결과를 **심각도 등급**(🔴 오류 / 🟡 경고 / 🔵 정보)으로 분류해 보고.
-- 이슈가 있으면 `30_knowledge/questions/lint-{YYYYMMDD}.md`에 리포트 페이지 작성(상세 보존), 요약은 사용자에게. (이 리포트는 발견 다건이면 길어지는 게 정상이라 lint 예산 검사에서 제외된다 — L-2, is_lint_report.)
+- 이슈가 있으면 `30_knowledge/questions/lint-{YYYYMMDD}.md`에 리포트 페이지 작성(상세 보존), 요약은 사용자에게. (이 리포트는 발견 다건이면 길어지는 게 정상이라 lint 예산 검사에서 제외된다 — is_lint_report.)
 - 사용자 승인 후 수정.
 - `log.md`: `- [YYYY-MM-DD] [LINT] 위키 점검. {발견}건 발견, {수정}건 수정. 표본: {코드 정합 샘플링 feature 목록}.` — 표본 명시는 다음 lint의 로테이션 근거다(F-1 10, schema §7-10).
 
@@ -59,7 +59,7 @@
 2b. **타임라인 질의**("언제 추가됐지 / 왜 안 하기로 했지 / 그동안 무슨 변화가 있었지" 같은 시간·이력 질문): 해당 프로젝트 `decisions.md` + 허브 "최근 주요 변경" + `log.md`(아카이브 인덱스로 관련 월을 특정해 그 파일만 — 전체 정독 금지, schema §8)를 모아 **시간순으로 합성**해 답한다. 보류·기각 여부는 decisions.md가 1차 출처다. **질문 기간이 현행 decisions.md 항목보다 오래됐으면 하단 `## 아카이브` 포인터의 아카이브 파일도 읽는다**(§2.8 롤오버 — 현행 파일만 보고 "기록 없음" 단정 금지). 같은 주제의 결정 항목이 여러 개면 최신 항목이 유효하다(§2.8). **기간형 질의("지난 1년" 등)는 그 기간의 월별 log 아카이브 파일을 모두 읽는 것이 허용**된다 — "전체 정독 금지"는 무관한 월까지 읽지 말라는 뜻이고, 기간 질의에서는 그 기간이 곧 "관련 월"이다.
 3. 출처를 각주로 명시(페이지 wikilink + 원 각주). **위키에 근거가 없으면 "위키에 없음"을 그대로 밝힌다 — 모델 지식으로 메운 추측 답변 금지.** 일반 지식으로 보조 답변이 가능하면 "위키에는 없고, 일반 지식으로는 …"처럼 **위키 출처가 아님을 명확히 구분**해 제시한다(위키 정보인 것처럼 표시 금지). 위키 근거가 일부만 있으면 근거 있는 부분과 없는 부분을 나눠 답한다.
 4. **파일백**: 답이 위키에 없던 유용한 종합이면 → 사용자에게 "이 답을 위키에 페이지로 저장할까요?" 제안(2개 실증 시 `30_knowledge/patterns/` concept, 아니면 관련 feature/guide 보강).
-5. 모순 발견 시 `30_knowledge/questions/q-{날짜}-{설명}.md` 생성.
+5. 모순 발견 시 `30_knowledge/questions/q-{날짜}-{설명}.md` 생성. 생성 시 `index.md` 미해결 질문에 등록(schema §2.7·§7-23).
 
 ### H. 지침 자동 갱신
 
@@ -85,7 +85,7 @@
 
 > **(참고) 승인 후 하네스 레포에서 번들을 실제로 수정할 때의 규칙** — 위키 세션이 아니라 plan-feature 승인을 거친 하네스 세션에서 적용:
 > - 규칙 번들 수정 시 frontmatter `version`을 올린다.
-> - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `SKILL.md` F-1에 동일 항목을 문서화한다.
+> - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `references/procedures-ops.md` F-1(이 파일)에 동일 항목을 문서화한다.
 
 #### H-3. 범위 제한 (SSOT 우선)
 - **SSOT 우선 판정**: 위키 실제 상태가 규칙과 다르면, 기본은 **규칙(SSOT)이 옳고 위키가 틀린 것**으로 본다 — 규칙을 위키에 맞추지 말고, 위키 콘텐츠를 규칙에 맞추거나(절차 B/F) 판단이 갈리면 사용자에게 확인한다. "위키가 이러니 규칙을 바꾸자"는 H-3 자기정당화 루프의 입구다.
@@ -98,5 +98,5 @@
 
 1. **백업 확인**: `90_archive/backup/`의 `{YYYY-MM-DD}` 폴더(수정 백업)에서 대상 파일의 사본을 찾는다. **삭제된 프로젝트/파일 복구라면 `{YYYY-MM-DD}-deleted/` 폴더도 함께 확인**한다(§8 삭제 백업 분리). 사용자가 시점을 지정하지 않았으면 존재하는 날짜 폴더 목록을 제시해 어느 시점으로 되돌릴지 확인한다. 사본이 없으면(백업 도입 전 수정분·신규 생성 파일·30일 지나 정리된 수정 백업) **복구 불가를 사실대로 보고**한다 — 있는 것처럼 지어내지 않는다.
 2. **차이 제시**: 현재 파일과 백업본의 차이를 사용자에게 보여주고, 복구 범위(파일 전체 되돌리기 / 특정 섹션만)를 확인받는다.
-3. **복구 실행 (사용자 확인 후)**: 복구 직전의 현재 상태를 먼저 **별도 폴더 `90_archive/backup/{YYYY-MM-DD}-pre-restore/`에 복사**한 뒤(복구 자체를 되돌릴 수 있게), 백업본을 원위치로 복사한다. **당일 원백업 `{YYYY-MM-DD}/`을 덮어쓰면 안 된다** — 오늘 아침 세션이 떠 둔 좋은 버전(복원하려던 대상)을 잘못된 현재본으로 덮어써 복구가 무효가 되기 때문이다(§8 H-1).
+3. **복구 실행 (사용자 확인 후)**: 복구 직전의 현재 상태를 먼저 **별도 폴더 `90_archive/backup/{YYYY-MM-DD}-pre-restore/`에 복사**한 뒤(복구 자체를 되돌릴 수 있게), 백업본을 원위치로 복사한다. **당일 원백업 `{YYYY-MM-DD}/`을 덮어쓰면 안 된다** — 오늘 아침 세션이 떠 둔 좋은 버전(복원하려던 대상)을 잘못된 현재본으로 덮어써 복구가 무효가 되기 때문이다(wiki-schema §8의 복구 시 당일 원백업 보존 규정).
 4. **후속 정합**: 복구로 인덱스·크로스링크·허브가 어긋날 수 있으면 lint(절차 F)를 권하고, `log.md`에 복구 기록 1줄을 남긴다 (`[YYYY-MM-DD] {파일} 을(를) {백업 날짜} 시점으로 복구`).

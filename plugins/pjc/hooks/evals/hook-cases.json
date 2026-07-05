@@ -529,6 +529,93 @@
       "name": "프로필 깊은 하위 dist 정리 통과 (M5 오탐 방지 — 2단계+ 제외)",
       "command": "Remove-Item C:\\Users\\jongc\\proj\\repo\\dist -Recurse -Force",
       "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "트레일링 슬래시 /home/jongc/ 차단 (v1.90.2 H1)",
+      "command": "rm -rf /home/jongc/",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "트레일링 슬래시 /home/ 차단 (v1.90.2 H1)",
+      "command": "rm -rf /home/",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "트레일링 백슬래시 C:\\Users\\ 차단 (v1.90.2 H1)",
+      "command": "rm -rf C:\\Users\\",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "홈 2단계+ 트레일링 슬래시 통과 (v1.90.2 H1 오탐 방지)",
+      "command": "rm -rf /home/jongc/proj/",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "프로필 2단계+ 트레일링 백슬래시 통과 (v1.90.2 H1 오탐 방지)",
+      "command": "rm -rf C:\\Users\\jongc\\proj\\",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "재귀 단독(-f 없음) 홈 삭제 차단 (v1.90.2 H2)",
+      "command": "rm -r /home/jongc",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "재귀 단독(-Force 없음) Users 삭제 차단 (v1.90.2 H2)",
+      "command": "Remove-Item C:\\Users\\x -Recurse -Confirm:$false",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "재귀 단독 상대경로 통과 (v1.90.2 H2 오탐 방지)",
+      "command": "rm -r ./build",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "sed 치환 스크립트 안 DROP TABLE 통과 (v1.90.2 L1 오탐 방지)",
+      "command": "sed -i 's/DROP TABLE//' x.sql",
+      "expect_exit": 0
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "git reset --hard 로컬 비가역 경고 (v1.90.2 M4)",
+      "command": "git reset --hard HEAD~1",
+      "expect_exit": 0,
+      "expect_contains": "reset --hard"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "git stash clear 로컬 비가역 경고 (v1.90.2 M4)",
+      "command": "git stash clear",
+      "expect_exit": 0,
+      "expect_contains": "stash clear"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "git stash list 조회 무경고 (v1.90.2 M4 오탐 방지)",
+      "command": "git stash list",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "git reset --soft 비파괴 무경고 (v1.90.2 M4 오탐 방지)",
+      "command": "git reset --soft HEAD~1",
+      "expect_exit": 0,
+      "expect_silent": true
     }
   ]
 }

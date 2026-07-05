@@ -1,7 +1,8 @@
 ﻿# PreToolUse hook - PowerShell 버전
-# Bash/PowerShell 도구로 '외부·비가역' 작업(push·merge·tag·gh release/pr) 실행 시
-# stderr + additionalContext 경고 (차단 X — 비차단). 자율 루프 권한 밖(규칙 12)이므로
-# 사용자에게 별도 승인받았는지 모델에 상기시킨다.
+# Bash/PowerShell 도구로 '외부·비가역' 작업(push·merge·tag·gh release/pr) 또는
+# '로컬 비가역' 작업(git reset --hard·stash clear·checkout -- — 미커밋 변경 영구 소실) 실행 시
+# stderr + additionalContext 경고 (차단 X — 비차단). 외부 작업은 자율 루프 권한 밖(규칙 12)이므로
+# 사용자에게 별도 승인받았는지, 로컬 비가역은 의도된 되돌리기인지 모델에 상기시킨다.
 #
 # [설계: 왜 비차단(exit 0)인가]
 #   일반 push는 사용자 승인 후 정당하게 일어나야 하므로 hard block하면 워크플로가 깨진다.
@@ -53,6 +54,16 @@ $externalOps = @(
     @{ rx = '\bdocker\s+push\b';              label = '이미지 배포 (docker push)' }
 )
 
+# ---- 로컬 비가역 작업 패턴 (M4 — 원격 반영은 아니지만 미커밋 변경을 영구 소실시킴) ----
+# 조회형(git stash list)·비파괴형(git reset --soft/--mixed)은 미매치. git restore는 --staged
+#   (언스테이징 = 비파괴) 오탐을 피하기 위해 의도적으로 제외한다(checkout 형만 경고).
+$localOps = @(
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*reset\s+.*--hard\b';        label = 'git reset --hard (워킹트리·인덱스 되돌리기)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*stash\s+clear\b';           label = 'git stash clear (스태시 전체 삭제)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+--\s';           label = 'git checkout -- <path> (워킹트리 변경 폐기)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\.(\s|$)';       label = 'git checkout . (워킹트리 전체 변경 폐기)' }
+)
+
 $hits = New-Object System.Collections.Generic.List[string]
 foreach ($op in $externalOps) {
     if ($cmd -match $op.rx) {
@@ -61,15 +72,31 @@ foreach ($op in $externalOps) {
         $hits.Add($op.label)
     }
 }
+$hitsLocal = New-Object System.Collections.Generic.List[string]
+foreach ($op in $localOps) {
+    if ($cmd -match $op.rx) { $hitsLocal.Add($op.label) }
+}
 
-if ($hits.Count -eq 0) { exit 0 }
+if ($hits.Count -eq 0 -and $hitsLocal.Count -eq 0) { exit 0 }
 
-# ---- 경고 출력 ----
-$lines = @("[EXTERNAL OP WARNING] 외부·비가역 작업이 감지되었습니다:")
-foreach ($h in $hits) { $lines += "  - $h" }
+# ---- 경고 출력 (external/local 분기 — external만 있으면 기존 출력과 동일해 골든 무회귀) ----
+$lines = @()
+if ($hits.Count -gt 0) {
+    $lines += "[EXTERNAL OP WARNING] 외부·비가역 작업이 감지되었습니다:"
+    foreach ($h in $hits) { $lines += "  - $h" }
+}
+if ($hitsLocal.Count -gt 0) {
+    $lines += "[LOCAL OP WARNING] 로컬 비가역 작업이 감지되었습니다:"
+    foreach ($h in $hitsLocal) { $lines += "  - $h" }
+}
 $lines += ""
-$lines += "이 작업들은 자율 루프 권한 밖입니다 (규칙 12 — push·병합·태그·릴리즈·PR)."
-$lines += "사용자에게 '그 행위를 이름으로 적어' 별도 승인받았는지 확인하세요. 승인 없이 실행하지 마세요."
+if ($hits.Count -gt 0) {
+    $lines += "이 작업들은 자율 루프 권한 밖입니다 (규칙 12 — push·병합·태그·릴리즈·PR)."
+    $lines += "사용자에게 '그 행위를 이름으로 적어' 별도 승인받았는지 확인하세요. 승인 없이 실행하지 마세요."
+}
+if ($hitsLocal.Count -gt 0) {
+    $lines += "로컬 비가역: 미커밋 변경이 영구 소실될 수 있습니다 — reflog로는 커밋된 것만 일부 복구됩니다. 진행 전 의도된 되돌리기인지 확인하세요."
+}
 $lines += "이 경고는 차단이 아닙니다. 끄려면: harness-toggle warn-external-ops off"
 $msg = $lines -join "`n"
 

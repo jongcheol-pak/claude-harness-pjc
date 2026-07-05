@@ -21,6 +21,10 @@
 또한 ⑥ wiki-schema.md 목차(부분 Read 인덱스)의 § 번호 ↔ 실제 '## N.' 헤딩 정합을 검사한다 —
 부분 Read 세션은 전체 정독이 금지라 목차가 낡아도 자가 교정 기회가 없으므로 기계로 잡는다.
 
+그리고 ⑦ procedures-ops.md F-1 실행 순서 인덱스 ↔ wiki-schema.md §7 검사 항목의 번호 집합
+1:1 정합을 검사한다 — F-1은 "번호 N = §7-N 정본" 규약인데 두 목록은 손으로 유지되므로,
+한쪽에만 항목을 추가하면 실행 인덱스와 정본이 조용히 어긋난다(검사 사각지대). 기계로 잡는다.
+
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
   - 불일치 → 항목별 소스 값 나열 + exit 1
@@ -45,6 +49,7 @@ EVALS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(EVALS_DIR)
 SKILL_MD = os.path.join(SKILL_DIR, "SKILL.md")
 SCHEMA_MD = os.path.join(SKILL_DIR, "references", "wiki-schema.md")
+OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
 LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
 
 # schema §2.x 헤딩 → 예산 키 (### 2.N 뒤 첫 토큰이 타입명)
@@ -284,6 +289,33 @@ def check_schema_toc(schema_text):
     return issues, len(toc | heads)
 
 
+def check_f1_schema7(ops_text, schema_text):
+    """⑦ F-1 실행 순서 인덱스 ↔ schema §7 검사 항목 번호 1:1 정합.
+
+    F-1(procedures-ops.md)은 'N. `[기계]`/`[에이전트]` ...' 실행 순서 인덱스이고 상세 정본은
+    §7-N(wiki-schema.md 'N. **...**')이다 — 규약상 번호가 1:1인데 둘 다 수동 목록이라 한쪽만
+    추가·삭제하면 조용히 어긋난다. 파싱 앵커는 각 섹션 내부로 한정한다(F-1은 다음 #### 전까지,
+    §7은 다음 '## N.' 전까지 — 다른 절의 번호 목록·표와 충돌하지 않게). 반환: (불일치 목록, 대조 수)."""
+    fm = re.search(r"^#### F-1\..*?\n(.*?)(?=^#### |\Z)", ops_text, re.M | re.S)
+    if not fm:
+        die("procedures-ops.md '#### F-1.' 섹션을 찾지 못함")
+    f1 = {int(n) for n in re.findall(r"^(\d+)\.\s+`\[(?:기계|에이전트)\]`", fm.group(1), re.M)}
+    if not f1:
+        die("F-1 인덱스에서 'N. `[기계]`/`[에이전트]`' 항목을 하나도 파싱하지 못함")
+    sm = re.search(r"^## 7\..*?\n(.*?)(?=^## \d|\Z)", schema_text, re.M | re.S)
+    if not sm:
+        die("wiki-schema.md '## 7.' 섹션을 찾지 못함")
+    s7 = {int(n) for n in re.findall(r"^(\d+)\.\s+\*\*", sm.group(1), re.M)}
+    if not s7:
+        die("schema §7에서 'N. **...**' 검사 항목을 하나도 파싱하지 못함")
+    issues = []
+    for n in sorted(f1 - s7):
+        issues.append(f"F-1 인덱스 {n}번이 schema §7에 없음 (정본 §7-{n} 부재 — 상세·판정 기준 없는 실행 항목)")
+    for n in sorted(s7 - f1):
+        issues.append(f"schema §7-{n} 검사 항목이 F-1 실행 순서 인덱스에 없음 (lint 세션이 이 검사를 건너뜀)")
+    return issues, len(f1 | s7)
+
+
 def parse_schema_vocab(text):
     out = {}
     for key, (rx, _attr) in VOCAB_LINES.items():
@@ -340,6 +372,10 @@ def main():
     checked += toc_checked
     mismatches.extend(toc_issues)
 
+    f1_issues, f1_checked = check_f1_schema7(read(OPS_MD), schema_text)
+    checked += f1_checked
+    mismatches.extend(f1_issues)
+
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
         for m in mismatches:
@@ -348,7 +384,8 @@ def main():
               f"H-2 규약(references/procedures-ops.md 하단 '(참고)' 블록)대로 관련 파일을 함께 갱신하세요.")
         sys.exit(1)
     print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 + "
-          f"절차 배치 {placement_checked}항목 + schema 목차 {toc_checked}§ — 항목당 소스 2~4곳 대조)")
+          f"절차 배치 {placement_checked}항목 + schema 목차 {toc_checked}§ + "
+          f"F-1↔§7 {f1_checked}항목 — 항목당 소스 2~4곳 대조)")
     sys.exit(0)
 
 

@@ -199,6 +199,14 @@ Assert-Case -Name "protect-harness: 일반 소스 통과" -R $r -ExpectExit 0 -E
 $phNb = @{ tool_name = 'NotebookEdit'; cwd = $ph; tool_input = @{ notebook_path = "$phFwd/.claude/.disabled/require-plan-for-write"; new_source = 'x' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'protect-harness.ps1' $phNb
 Assert-Case -Name "protect-harness: NotebookEdit notebook_path 폴백 차단" -R $r -ExpectExit 2
+# [v1.90.2 H3] 8.3 단축명 마스킹 우회 — CLAUDE~1/DISABL~1로 숨겨도 잔존 방어 키워드로 차단.
+#   무관 8.3 세그먼트(RUNNER~1 등)는 hook명이 있어도 통과(개발 repo 무영향 보장).
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/.disabled/require-plan-for-write")
+Assert-Case -Name "protect-harness: 8.3 마스킹 CLAUDE~1/.disabled 차단 (v1.90.2 H3)" -R $r -ExpectExit 2 -ExpectContains '8.3'
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/DISABL~1/require-plan-for-write")
+Assert-Case -Name "protect-harness: 8.3 마스킹 .claude/DISABL~1 차단 (v1.90.2 H3)" -R $r -ExpectExit 2 -ExpectContains '8.3'
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph 'C:/Users/RUNNER~1/myrepo/scripts/block-destructive.ps1')
+Assert-Case -Name "protect-harness: 무관 8.3(RUNNER~1)+hook명 통과 (v1.90.2 H3 오탐 방지)" -R $r -ExpectExit 0 -ExpectSilent $true
 
 # =====================================================================
 # 3) 토글 메커니즘 (격리 홈 — 실제 상태 무영향)
@@ -325,6 +333,13 @@ New-Item -ItemType Directory (Split-Path $hookPath) -Force | Out-Null
 [System.IO.File]::WriteAllText($hookPath, '# test', [System.Text.UTF8Encoding]::new($true))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $hookPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 하니스 hook 스크립트 변경 감지 (H2)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
+
+# ---- [v1.90.2 M2] .claude/settings.json 변경 감지 (enabledPlugins 하니스 전체 무력화면 — 비차단 경고) ----
+$setPath = Join-Path $pw '.claude/settings.json'
+New-Item -ItemType Directory (Split-Path $setPath) -Force | Out-Null
+[System.IO.File]::WriteAllText($setPath, '{}', [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $setPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: .claude/settings.json 변경 경고 (v1.90.2 M2)" -R $r -ExpectExit 0 -ExpectContains 'enabledPlugins'
 
 # ---- NotebookEdit — notebook_path 인식 후 검사 적용 (T1 매처·폴백 회귀 가드) ----
 $nbPath = Join-Path $pw 'analysis.ipynb'

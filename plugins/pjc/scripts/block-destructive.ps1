@@ -51,9 +51,11 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 #   /·따옴표·공백·끝이어야 매치돼 동음 접두(/etcetera·C:\WindowsApps·/c/Users)는 통과.
 # M5: 사용자 프로필 루트(C:\Users·C:\Users\<name>)만 위험대상 — 하위 임의 폴더(C:\Users\x\proj\dist 등 2단계+)는
 #   제외해 일상 정리 작업 오탐을 막는다(([\\/]+[^\\/\s]+)? 뒤 경계 요구).
+#   트레일링 구분자 표기(C:\Users\ · /home/jongc/)도 동일 대상이므로 [\\/]?로 함께 차단한다(H1 — 없으면
+#   끝 슬래시 하나로 뒤 경계가 깨져 통과했다). 2단계+ 하위(/home/jongc/proj)는 여전히 미매치.
 # /home: /home·/home/<user>만 위험대상 — /home/<user>/<하위>(프로젝트 폴더)는 제외(C:\Users와 동일 원리).
 #   /root와 달리 /home은 POSIX 그룹의 (/\S*)?(하위 전부 포함)에 넣으면 정상 하위 삭제까지 차단되므로 별도 알터네이션.
-$dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home([\\/]+[^\\/\s]+)?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+$dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home([\\/]+[^\\/\s]+)?[\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?[\\/]?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
 
 # 삭제 명령 별칭 세트 — 사전검사(find·열거 파이프)와 in-loop 컴파운드 검사가 **동일 집합을 공유**한다.
 #   한 곳만 좁으면(예: 사전검사가 ri/rmdir/rd 누락) 그 별칭으로 파이프 삭제 우회가 다시 열린다(T3 B1).
@@ -99,7 +101,7 @@ if (($beforePipe -match $enumSource) -and ($beforePipe -match $dangerTarget) -an
 }
 
 # 차단 패턴 (POSIX + Windows 둘 다 대응)
-# 주의: rm/Remove-Item/rmdir 계열의 '재귀 강제 삭제'는 옵션 순서·따옴표·글롭 변형이 많아
+# 주의: rm/Remove-Item/rmdir 계열의 '재귀 삭제'는 옵션 순서·따옴표·글롭 변형이 많아
 #   단일 정규식으로는 우회가 쉽다(예: rm -fr /, rm -rf /*, Remove-Item C:\ -Recurse -Force).
 #   → 이 패턴 배열이 아니라 아래 '컴파운드 검사'에서 플래그·대상을 분해해 판정한다.
 $patterns = @(
@@ -136,7 +138,7 @@ $patterns = @(
     'mkfs\.',                                           # 포맷
     'dd\s+if=.*of=/dev/',                               # dd to device
     # Windows 특화 위험 명령
-    # (Remove-Item/rmdir 재귀 강제 삭제는 아래 '컴파운드 검사'에서 인자 순서 무관하게 처리)
+    # (Remove-Item/rmdir 재귀 삭제는 아래 '컴파운드 검사'에서 인자 순서 무관하게 처리)
     'Format-Volume',                                    # 볼륨 포맷
     'Clear-RecycleBin\s+.*-Force',                      # 휴지통 강제 비우기
     # ---- 권한·보안 변경 (규칙 10) ----
@@ -215,7 +217,7 @@ foreach ($sub in $subs) {
     if ([string]::IsNullOrWhiteSpace($sub)) { continue }
 
     # ---- 오탐 완화: '데이터'(실행되지 않는) 인자를 스캔 대상에서 제거 ----
-    # git 커밋 메시지·echo/printf 출력·grep 검색 패턴은 텍스트일 뿐 실행되지 않으므로,
+    # git 커밋 메시지·echo/printf 출력·grep 검색 패턴·sed/awk 스크립트는 텍스트일 뿐 실행되지 않으므로,
     # 그 안의 'DROP TABLE'·'rm -rf /' 같은 문자열을 위험 명령으로 오인(오탐)하지 않게 제거.
     # 반대로 psql/mysql/bash -c/eval 등 '실행자'의 따옴표 내용은 실제 실행되므로 보존한다.
     # (경로 인자의 따옴표 — 예: rm -rf "/" — 는 보존: rm은 제거 대상이 아니므로 그대로 검사.)
@@ -228,20 +230,22 @@ foreach ($sub in $subs) {
         # echo/printf 출력 내용 제거 (명령 이후 전부 — 출력은 실행 아님)
         $scan = $scan -replace '(?i)(^|\s)(echo|printf)\b.*$', ' '
     }
-    if ($scan -match '(?i)(^|\s)(grep|egrep|fgrep|rg|ag|ack)(\s|$)') {
-        # grep 계열 검색 패턴(따옴표) 제거 (검색은 실행 아님)
+    if ($scan -match '(?i)(^|\s)(grep|egrep|fgrep|rg|ag|ack|sed|awk)(\s|$)') {
+        # grep 계열 검색 패턴 + sed/awk 스크립트(따옴표) 제거 — 텍스트 처리기라 따옴표 인자는
+        # 패턴/치환 스크립트일 뿐 SQL·명령을 실행하지 않는다(L1: sed -i 's/DROP TABLE//' 오탐 방지)
         $scan = ($scan -replace '"[^"]*"', ' ') -replace "'[^']*'", ' '
     }
 
-    # ---- 컴파운드 검사: 재귀 강제 삭제 (옵션 순서·따옴표·글롭 변형 무관) ----
-    # rm/Remove-Item/rmdir/rd/del 계열이 '재귀'+'강제' 플래그를 모두 갖고,
+    # ---- 컴파운드 검사: 재귀 삭제 (옵션 순서·따옴표·글롭 변형 무관) ----
+    # rm/Remove-Item/rmdir/rd/del 계열이 '재귀' 플래그를 갖고(강제 플래그 유무 무관 — H2:
+    #   위험루트 재귀 삭제는 -f 없이도 비가역이라 rm -r /home/user·rm -r * 가 통과하면 안 됨),
     # 대상이 위험 루트(/, /*, //, ~, $HOME, *, ., ./, 드라이브 루트 C:\, $env:) 또는
     #   시스템 디렉터리(POSIX /usr·/etc…, Windows C:\Windows·Program Files·ProgramData 및 /c/·/mnt/c/ 마운트)이면 차단.
-    # 단일 정규식이 못 잡던 변형을 포착: rm -fr /, rm -r -f /, rm --recursive --force /,
-    #   rm -rf /*, rm -rf "/", rm -rf //, Remove-Item C:\ -Recurse -Force(인자 순서) 등.
+    # 단일 정규식이 못 잡던 변형을 포착: rm -fr /, rm -r /, rm --recursive /,
+    #   rm -rf /*, rm -rf "/", rm -rf //, Remove-Item C:\ -Recurse(인자 순서) 등.
     #
     # [오탐 방지 — D2] 위험 판정을 '삭제 명령이 있는 그 줄(인자 윈도우)'에 연계한다. 명령 앞의
-    #   -replace 연산·변수 정의나 '다른 문장 줄'의 경로 구분자(/·C:/)가 재귀·강제 플래그와 잘못
+    #   -replace 연산·변수 정의나 '다른 문장 줄'의 경로 구분자(/·C:/)가 재귀 플래그와 잘못
     #   결합되는 오탐을 막는다. 단, 줄-이음(PowerShell 백틱+개행 · bash 백슬래시+개행)은 셸이 한 명령으로
     #   잇는 것이라 먼저 공백으로 정규화해 한 논리 줄로 합친다 — 대상이 다음 물리 줄에 와도 차단되게 해
     #   미탐을 막는다(예: bash에서 rm -rf 뒤 백슬래시+개행+/ 는 실제 rm -rf / 로 실행됨).
@@ -273,14 +277,10 @@ foreach ($sub in $subs) {
                       ($win -match '(^|\s)-(?!replace\b)[rR]e[a-z]*(\s|$)') -or    # -replace(문자열 연산자)만 제외, -re/-rec/-recurse 유지
                       ($win -match '--recursive\b') -or
                       ($win -match '\s/s\b')
-        # 강제 플래그: 짧은 묶음(-f/-rf/-fr) | -Force | PS 약어(-fo…) | --force | cmd /q
-        $hasForce   = ($win -match '(^|\s)-[rfRF]*f[rfRF]*(\s|$)') -or
-                      ($win -match '(^|\s)-Force\b') -or
-                      ($win -match '(^|\s)-[fF]o[a-z]*(\s|$)') -or    # PowerShell 약어 -fo/-for/-forc…(-f는 -Filter와 모호해 -fo부터)
-                      ($win -match '--force\b') -or
-                      ($win -match '\s/q\b')
-        if ($hasRecurse -and $hasForce -and ($win -match $dangerTarget)) {
-            [Console]::Error.WriteLine("BLOCKED: 재귀 강제 삭제 + 위험 루트 대상 감지")
+        # 강제 플래그는 요구하지 않는다(H2) — 위험루트 재귀 삭제는 -f 없이도 대부분 즉시 실행·비가역이다
+        #   (rm -r은 쓰기보호 파일에만 묻고, Remove-Item은 숨김/읽기전용 외엔 그냥 지운다).
+        if ($hasRecurse -and ($win -match $dangerTarget)) {
+            [Console]::Error.WriteLine("BLOCKED: 재귀 삭제 + 위험 루트 대상 감지")
             [Console]::Error.WriteLine("Command: $sub")
             [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
             exit 2

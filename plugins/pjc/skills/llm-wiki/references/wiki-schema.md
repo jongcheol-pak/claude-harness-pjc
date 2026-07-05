@@ -203,6 +203,7 @@ tags: [guide, recipe, 플랫폼태그]
 - **위치**: `30_knowledge/questions/`
 - **역할**: 미해결 질문, 모순, 탐구 필요 사항
 - **예산**: ~40줄
+- **생성 시 `index.md`의 `## 미해결 질문` 표에 행을 등록한다** — 미등록이면 질문이 카탈로그에서 유실돼 같은 질문을 재조사할 위험(lint §7-23이 open 미등록을 WARN).
 - resolved 시 관련 페이지에 내용을 흡수하고 frontmatter를 `status: resolved`로 표시한다(절차 B-2 3-1(`references/procedures-content.md`)의 `resolved: {날짜}` 필드 표기도 동등하게 닫힘으로 인정 — lint §7-12·§7-23 공통 판정). **페이지 자체는 삭제하지 않고 보존한다**(해결 이력도 지식 — 같은 질문 재조사 방지).
 
 ```yaml
