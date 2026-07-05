@@ -118,9 +118,6 @@ if ($Uninstall) {
     Write-Host ""
     Write-Host "Uninstall complete." -ForegroundColor Green
     Write-Host ""
-    Write-Info "토글 상태 파일은 남아있습니다. 완전 제거하려면:"
-    Write-Info "  Remove-Item -Recurse `"$homeBase/.claude/.disabled`""
-    Write-Host ""
     return
 }
 
@@ -146,7 +143,6 @@ if ($existingInstall) {
     } else {
         Write-Section "Existing Installation Detected — Auto Reinstall"
         Write-Info "기존 설치를 발견했습니다. 자동으로 재설치를 진행합니다."
-        Write-Info "(토글 상태(.disabled)는 보존됩니다.)"
 
         # 5-1. plugin uninstall
         try {
@@ -314,7 +310,6 @@ Write-Host "  주요 명령:" -ForegroundColor White
 Write-Host "    /pjc:plan-feature <설명>" -ForegroundColor Yellow
 Write-Host "    /pjc:implement-task <T번호>" -ForegroundColor Yellow
 Write-Host "    /pjc:pjc-systematic-debugging <증상>" -ForegroundColor Yellow
-Write-Host "    /pjc:harness-toggle <hook> <on|off|toggle|status>" -ForegroundColor Yellow
 Write-Host ""
 
 Write-Host "Installation complete." -ForegroundColor Green

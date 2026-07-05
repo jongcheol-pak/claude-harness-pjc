@@ -9,19 +9,11 @@
 #   force push·history rewrite 등 진짜 파괴적 작업은 block-destructive가 exit 2로 차단하고,
 #   이 hook은 '일반' 외부/비가역 작업에 "별도 승인 확인"을 모델에 상기시키는 soft 경고다.
 #   따라서 의도적으로 exit 0 + stderr + PreToolUse additionalContext로 둔다(차단으로 바꾸지 말 것).
-#
-# 토글: harness-toggle 로 비활성 가능 (warn-external-ops).
 
 $ErrorActionPreference = 'SilentlyContinue'
 
 # 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
-
-# ---- 토글 체크 ----
-# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
-$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-$disableFile = Join-Path $base ".claude/.disabled/warn-external-ops"
-if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # stdin JSON 읽기 (Bash·PowerShell 도구 모두 tool_input.command 필드를 가진다)
 $inputJson = [Console]::In.ReadToEnd()
@@ -104,7 +96,7 @@ if ($hits.Count -gt 0) {
 if ($hitsLocal.Count -gt 0) {
     $lines += "로컬 비가역: 미커밋 변경이 영구 소실될 수 있습니다 — reflog로는 커밋된 것만 일부 복구됩니다. 진행 전 의도된 되돌리기인지 확인하세요."
 }
-$lines += "이 경고는 차단이 아닙니다. 끄려면: harness-toggle warn-external-ops off"
+$lines += "이 경고는 차단이 아닙니다."
 $msg = $lines -join "`n"
 
 # stderr: 사용자 가시성용

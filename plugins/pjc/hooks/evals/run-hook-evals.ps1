@@ -5,14 +5,14 @@
 # 무엇을: scripts/*.ps1 hook을 격리 USERPROFILE·중립 cwd에서 stdin JSON으로 실행해
 #   exit code·출력 키워드를 대조한다. 케이스 정본은 두 곳 —
 #   ① hook-cases.json: 무상태(command 기반) 케이스 (block-destructive·warn-external-ops)
-#   ② 이 파일의 시나리오 섹션: 상태 필요(plan 폴더·git repo·AGENTS.md 마커·post-write 파일·토글)
+#   ② 이 파일의 시나리오 섹션: 상태 필요(plan 폴더·git repo·AGENTS.md 마커·post-write 파일)
 #
 # pending_fix 규약(red-green): pending_fix=true 케이스는 '수정 전 red(기대 미충족)'가 정상이다 —
 #   red면 "PENDING(red 기대대로)"로 exit 0에 포함하고, green이면 stale 마킹이므로 FAIL(마킹 제거 강제).
 #   마킹이 없는 케이스가 red면 FAIL(회귀). 해당 수정 task 완료 시 마킹을 제거한다.
 #
-# 격리: 실제 사용자 ~/.claude/.disabled(토글 상태)를 오염시키지 않도록 USERPROFILE을 임시 폴더로
-#   바꿔 자식 hook 프로세스에 상속시키고, 실행 전후 실제 .disabled 목록 무변화를 검증한다.
+# 격리: 실제 사용자 홈(~/.claude)을 오염시키지 않도록 USERPROFILE을 임시 폴더로 바꿔 자식 hook
+#   프로세스에 상속시킨다(suggest-agents-record의 .state 마커 등이 격리 홈에만 쓰이게). 종료 시 원복한다.
 #
 # 전제: pwsh 7 (개발 레포 전용 러너 — hook 자체의 5.1 폴백과 무관). git 부재 시 evidence 시나리오는 skip.
 
@@ -24,13 +24,8 @@ $pluginRoot = Split-Path (Split-Path $evalsDir -Parent) -Parent   # plugins/pjc
 $scriptsDir = Join-Path $pluginRoot 'scripts'
 $casesPath  = Join-Path $evalsDir 'hook-cases.json'
 
-# ---- 실제 토글 상태 스냅샷 (격리 검증용 — 러너가 사용자 상태를 오염시키지 않아야 함) ----
+# ---- 실제 홈 보관 (테스트는 USERPROFILE을 격리 홈으로 바꾸므로 종료 시 원복용) ----
 $realHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-$realDisabledDir = Join-Path $realHome '.claude/.disabled'
-$snapshotBefore = @()
-if (Test-Path -LiteralPath $realDisabledDir) {
-    $snapshotBefore = @(Get-ChildItem -LiteralPath $realDisabledDir -Name | Sort-Object)
-}
 
 # ---- 격리 환경 구성 ----
 # 홈 격리($iso)는 임시 폴더에 둬도 되지만, 시나리오 프로젝트($work)는 반드시 임시 폴더 '밖'이어야
@@ -42,7 +37,7 @@ $workBase = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $realHome }   # 
 $work = Join-Path $workBase ("pjc-hook-evals-" + $suffix)
 New-Item -ItemType Directory -Path $iso -Force | Out-Null
 New-Item -ItemType Directory -Path $work -Force | Out-Null
-$env:USERPROFILE = $iso            # 자식 hook 프로세스가 이 홈의 .claude/.disabled를 보게 함
+$env:USERPROFILE = $iso            # 자식 hook 프로세스가 이 격리 홈의 .claude를 보게 함(.state 마커 등)
 $env:CLAUDE_PROJECT_DIR = $null
 Set-Location $work                 # 중립 cwd — hook의 (Get-Location) 폴백이 레포 plan.md를 줍지 않게
 
@@ -167,13 +162,11 @@ Assert-Case -Name "require-plan: 상대경로 .github/workflows/rel.yml plan 없
 
 # =====================================================================
 # 2b) protect-harness 시나리오 (Write/Edit로 하니스 게이트 무력화 차단 — 경로 문자열만 검사, 무상태)
-#   .claude 하위 게이트 토글 파일·설치본 hook 스크립트·hooks.json만 차단.
+#   .claude 하위 설치본 hook 스크립트·hooks.json 개조만 차단.
 #   .claude 없는 개발 repo 소스·일반 .claude 설정은 통과(하니스 자기 개발은 plan 게이트로 관리).
 # =====================================================================
 $ph = Join-Path $work 'ph'; New-Item -ItemType Directory $ph -Force | Out-Null
 $fakeInstall = Join-Path $ph '.claude/plugins/cache/pjc-harness/pjc/1.89.0'
-$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph '.claude/.disabled/require-plan-for-write'))
-Assert-Case -Name "protect-harness: .disabled 토글 파일 Write 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/block-destructive.ps1'))
 Assert-Case -Name "protect-harness: 설치본 hook 스크립트 Write 차단" -R $r -ExpectExit 2
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/hooks.json'))
@@ -181,30 +174,25 @@ Assert-Case -Name "protect-harness: 설치본 hooks.json Write 차단" -R $r -Ex
 $phEdit = @{ tool_name = 'Edit'; cwd = $ph; tool_input = @{ file_path = (Join-Path $fakeInstall 'scripts/protect-harness.ps1'); old_string = 'exit 0'; new_string = 'exit 0 # x' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'protect-harness.ps1' $phEdit
 Assert-Case -Name "protect-harness: 자기 자신 Edit 차단 (self-protect)" -R $r -ExpectExit 2
-# 경로 표기 변형 우회 차단 (세그먼트 정규화 — B1): ./ · 이중슬래시 · ../ 삽입해도 차단
+# 경로 표기 변형 우회 차단 (세그먼트 정규화 — B1): ./ · 이중슬래시 · ../ 삽입해도 설치본 hook 경로를 차단
 $phFwd = $ph -replace '\\', '/'
-$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/./.disabled/require-plan-for-write")
-Assert-Case -Name "protect-harness: .disabled 우회(./) 차단 (B1)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
-$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude//.disabled/require-plan-for-write")
-Assert-Case -Name "protect-harness: .disabled 우회(이중슬래시) 차단 (B1)" -R $r -ExpectExit 2
-$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/foo/../.disabled/require-plan-for-write")
-Assert-Case -Name "protect-harness: .disabled 우회(../) 차단 (B1)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/./plugins/cache/pjc-harness/pjc/1.89.0/scripts/block-destructive.ps1")
+Assert-Case -Name "protect-harness: hook 경로 우회(./) 차단 (B1)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude//plugins/cache/pjc-harness/pjc/1.89.0/scripts/block-destructive.ps1")
+Assert-Case -Name "protect-harness: hook 경로 우회(이중슬래시) 차단 (B1)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/foo/../plugins/cache/pjc-harness/pjc/1.89.0/scripts/block-destructive.ps1")
+Assert-Case -Name "protect-harness: hook 경로 우회(../) 차단 (B1)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph '.claude/settings.json'))
 Assert-Case -Name "protect-harness: .claude/settings.json 통과(무경고)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/pjc/scripts/block-destructive.ps1'))
 Assert-Case -Name "protect-harness: 개발 repo hook 스크립트(.claude 없음) 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'src/app.ts'))
 Assert-Case -Name "protect-harness: 일반 소스 통과" -R $r -ExpectExit 0 -ExpectSilent $true
-# NotebookEdit — notebook_path 폴백으로 .disabled 게이트 파일 차단 (폴백 분기 검증)
-$phNb = @{ tool_name = 'NotebookEdit'; cwd = $ph; tool_input = @{ notebook_path = "$phFwd/.claude/.disabled/require-plan-for-write"; new_source = 'x' } } | ConvertTo-Json -Compress
+# NotebookEdit — notebook_path 폴백으로 설치본 hook 경로 차단 (폴백 분기 검증)
+$phNb = @{ tool_name = 'NotebookEdit'; cwd = $ph; tool_input = @{ notebook_path = "$phFwd/.claude/plugins/cache/pjc-harness/pjc/1.89.0/scripts/require-plan-for-write.ps1"; new_source = 'x' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'protect-harness.ps1' $phNb
 Assert-Case -Name "protect-harness: NotebookEdit notebook_path 폴백 차단" -R $r -ExpectExit 2
-# [v1.90.2 H3] 8.3 단축명 마스킹 우회 — CLAUDE~1/DISABL~1로 숨겨도 잔존 방어 키워드로 차단.
-#   무관 8.3 세그먼트(RUNNER~1 등)는 hook명이 있어도 통과(개발 repo 무영향 보장).
-$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/.disabled/require-plan-for-write")
-Assert-Case -Name "protect-harness: 8.3 마스킹 CLAUDE~1/.disabled 차단 (v1.90.2 H3)" -R $r -ExpectExit 2 -ExpectContains '8.3'
-$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/DISABL~1/require-plan-for-write")
-Assert-Case -Name "protect-harness: 8.3 마스킹 .claude/DISABL~1 차단 (v1.90.2 H3)" -R $r -ExpectExit 2 -ExpectContains '8.3'
+# [v1.90.2 H3] 8.3 단축명 마스킹 — 무관 8.3 세그먼트(RUNNER~1 등)는 hook명이 있어도 통과(개발 repo 무영향 보장).
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph 'C:/Users/RUNNER~1/myrepo/scripts/block-destructive.ps1')
 Assert-Case -Name "protect-harness: 무관 8.3(RUNNER~1)+hook명 통과 (v1.90.2 H3 오탐 방지)" -R $r -ExpectExit 0 -ExpectSilent $true
 # [v1.90.3 F2] CLAUDE~1 충돌 오탐 수정 — 'Claude…' 폴더의 8.3명 CLAUDE~1(이 repo 자신 포함) 아래 개발 소스
@@ -213,18 +201,6 @@ $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugi
 Assert-Case -Name "protect-harness: 8.3 CLAUDE~1 개발 repo 소스(캐시 밖) 통과 (v1.90.3 F2 오탐 수정)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.90.2/scripts/block-destructive.ps1")
 Assert-Case -Name "protect-harness: 8.3 마스킹 설치본(캐시 컨텍스트) 차단 (v1.90.3 F2)" -R $r -ExpectExit 2 -ExpectContains '8.3'
-
-# =====================================================================
-# 3) 토글 메커니즘 (격리 홈 — 실제 상태 무영향)
-# =====================================================================
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'require-plan-for-write' 'off' | Out-Null
-$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $noplan (Join-Path $noplan 'B.cs'))
-Assert-Case -Name "toggle: off 후 plan 없이 .cs 통과" -R $r -ExpectExit 0
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'require-plan-for-write' 'on' | Out-Null
-$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $noplan (Join-Path $noplan 'B.cs'))
-Assert-Case -Name "toggle: on 후 다시 차단" -R $r -ExpectExit 2
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'block-destructive' 'off' *> $null
-Assert-Case -Name "toggle: block-destructive off 거부" -R @{ code = $LASTEXITCODE; out = '' } -ExpectExit 1
 
 # =====================================================================
 # 4) require-evidence 시나리오 (git 필요 — 부재 시 skip)
@@ -328,12 +304,7 @@ $octnegPath = Join-Path $pw 'oct-neg.md'
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $octnegPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 옥텟 초과 999.x IP 무경고 (L5)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-# ---- [H2] 게이트 비활성화 파일·하니스 hook 스크립트 변경 감지 (비차단 경고) ----
-$disPath = Join-Path $pw '.claude/.disabled/require-plan-for-write'
-New-Item -ItemType Directory (Split-Path $disPath) -Force | Out-Null
-[System.IO.File]::WriteAllText($disPath, '', [System.Text.UTF8Encoding]::new($false))
-$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $disPath } } | ConvertTo-Json -Compress)
-Assert-Case -Name "post-write: .disabled 게이트끄기 파일 감지 (H2)" -R $r -ExpectExit 0 -ExpectContains '게이트 비활성화'
+# ---- [H2] 하니스 hook 스크립트 변경 감지 (비차단 경고) ----
 $hookPath = Join-Path $pw 'plugins/pjc/scripts/block-destructive.ps1'
 New-Item -ItemType Directory (Split-Path $hookPath) -Force | Out-Null
 [System.IO.File]::WriteAllText($hookPath, '# test', [System.Text.UTF8Encoding]::new($true))
@@ -353,16 +324,6 @@ $nbPath = Join-Path $pw 'analysis.ipynb'
 $nbj = @{ tool_name = 'NotebookEdit'; cwd = $pw; tool_input = @{ notebook_path = $nbPath; new_source = 'x' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'post-write-checks.ps1' $nbj
 Assert-Case -Name "post-write: NotebookEdit notebook_path 인식 — password 경고" -R $r -ExpectExit 0 -ExpectContains 'password'
-
-# ---- [T2] H2는 check-utf8·impact 두 토글이 모두 off여도 발화(토글 독립) ----
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'check-utf8-and-lines' 'off' | Out-Null
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'impact-warn' 'off' | Out-Null
-$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $disPath } } | ConvertTo-Json -Compress)
-Assert-Case -Name "post-write: 두 토글 off여도 H2 게이트끄기 감지 (T2)" -R $r -ExpectExit 0 -ExpectContains '게이트 비활성화'
-$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $ipnegPath } } | ConvertTo-Json -Compress)
-Assert-Case -Name "post-write: 두 토글 off + H2 비대상 파일 무출력 (T2)" -R $r -ExpectExit 0 -ExpectSilent $true
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'check-utf8-and-lines' 'on' | Out-Null
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'impact-warn' 'on' | Out-Null
 
 # =====================================================================
 # 7) impact-warn 시나리오 (git 필요 — caller 경고 양성·음성)
@@ -439,24 +400,10 @@ $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 
 Assert-Case -Name "rtc: QUICK=1 우회 (비차단 + 안내)" -R $r -ExpectExit 0 -ExpectContains 'QUICK'
 $env:CLAUDE_HARNESS_QUICK = $null
 
-# 토글 off → 통과, on → 다시 차단 (§3 패턴 재사용 — 격리 홈이라 실제 상태 무영향)
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'require-task-checkbox' 'off' | Out-Null
-$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
-Assert-Case -Name "rtc: 토글 off 후 통과" -R $r -ExpectExit 0 -ExpectSilent $true
-& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptsDir 'harness-toggle.ps1') 'require-task-checkbox' 'on' | Out-Null
-$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
-Assert-Case -Name "rtc: 토글 on 후 다시 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
-
 # =====================================================================
-# 격리 검증 + 결과 보고
+# USERPROFILE 원복 + 결과 보고
 # =====================================================================
 $env:USERPROFILE = $realHome
-$snapshotAfter = @()
-if (Test-Path -LiteralPath $realDisabledDir) {
-    $snapshotAfter = @(Get-ChildItem -LiteralPath $realDisabledDir -Name | Sort-Object)
-}
-$isoOk = (($snapshotBefore -join ',') -eq ($snapshotAfter -join ','))
-$results.Add(@{ ok = $isoOk; line = $(if ($isoOk) { "[PASS] 격리: 실제 ~/.claude/.disabled 무변화" } else { "[FAIL] 격리 위반: 실제 토글 상태가 변경됨!" }) })
 
 Set-Location $env:TEMP
 Remove-Item -Recurse -Force $iso -ErrorAction SilentlyContinue

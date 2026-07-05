@@ -12,19 +12,12 @@
 #   - plan에 해당 T<N> 체크박스 줄 자체가 없음 → 통과 (타 규약 프로젝트 보호)
 #
 # 우회: $env:CLAUDE_HARNESS_QUICK = '1'
-# 토글: harness-toggle 로 비활성 가능 (require-task-checkbox)
 # exit 2 = block.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
 # 한글 차단 사유가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
-
-# ---- 토글 체크 (harness-toggle skill로 on/off) ----
-# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
-$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-$disableFile = Join-Path $base ".claude/.disabled/require-task-checkbox"
-if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # stdin JSON 읽기 (Bash·PowerShell 도구 모두 tool_input.command 필드를 가진다)
 $inputJson = [Console]::In.ReadToEnd()
@@ -123,9 +116,7 @@ if ($foundLine.Length -gt 80) { $foundLine = $foundLine.Substring(0, 80) + '...'
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("해결 방법:")
 [Console]::Error.WriteLine("  1) plan의 해당 줄을 '- [x] T$taskNum ...'으로 갱신한 뒤 다시 commit")
-[Console]::Error.WriteLine("  2) 이 프로젝트가 pjc plan 규약(T<N> task)을 쓰지 않는다면:")
-[Console]::Error.WriteLine("     harness-toggle require-task-checkbox off")
-[Console]::Error.WriteLine("  3) 긴급 우회 (Claude Code 시작 전 PowerShell에서):")
+[Console]::Error.WriteLine("  2) 긴급 우회 (Claude Code 시작 전 PowerShell에서):")
 [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")
 
 exit 2

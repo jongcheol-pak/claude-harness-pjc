@@ -15,11 +15,8 @@
 #   문자열 평가를 하지 않는 정규식으로는 불가하며, 1차 방어선은 Claude Code 권한 시스템이다.
 #   (hook-cases.json에 '[알려진 미탐]' 케이스로 문서화 — 이 동작이 바뀌면 회귀로 검출됨.)
 #
-# ⚠️ 이 hook은 의도적으로 토글 불가합니다.
-#   - 다른 hook(require-plan-for-write, impact-warn 등)과 달리
-#     ~/.claude/.disabled/ 체크를 하지 않습니다.
-#   - 파괴적 명령 차단은 사용자 안전 보장의 마지막 방어선이므로
-#     harness-toggle skill로도 끌 수 없게 합니다.
+# ⚠️ 이 hook은 항상 동작합니다 (끌 수 없음).
+#   - 파괴적 명령 차단은 사용자 안전 보장의 마지막 방어선입니다.
 #   - 환경변수 CLAUDE_HARNESS_QUICK도 무시합니다.
 #   - 이 동작을 변경하지 마세요.
 

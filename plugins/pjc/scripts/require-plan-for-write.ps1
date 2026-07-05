@@ -2,19 +2,12 @@
 # Write/Edit 호출 시 plan.md (또는 docs/plans/) 부재면 차단.
 # 문서/설정 파일은 항상 허용.
 # 우회: $env:CLAUDE_HARNESS_QUICK = '1'
-# 토글: harness-toggle 로 비활성 가능
 # exit 2 = block.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
 # 한글 차단 사유가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
-
-# ---- 토글 체크 (harness-toggle skill로 on/off) ----
-# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
-$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-$disableFile = Join-Path $base ".claude/.disabled/require-plan-for-write"
-if (Test-Path -LiteralPath $disableFile) { exit 0 }
 
 # stdin JSON 읽기
 $inputJson = [Console]::In.ReadToEnd()

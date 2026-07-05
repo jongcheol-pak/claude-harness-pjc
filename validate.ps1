@@ -6,12 +6,11 @@
 # 검증 항목:
 #   1. plugin 디렉터리 존재
 #   2. plugin.json + marketplace.json 유효
-#   3. skill 9개 모두 등록
+#   3. skill 8개 모두 등록
 #   4. agent 6개 모두 등록
 #   5. hook 8개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
 #   7. JSON 파일 파싱 가능
-#   8. 토글 디렉터리 접근 가능
 
 param(
     [switch]$Verbose
@@ -112,7 +111,7 @@ Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" |
 Write-Host ""
 
 # 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
-$skills = @('plan-feature', 'implement-task', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'harness-toggle', 'bootstrap-agents-md', 'llm-wiki', 'record-project-fact')
+$skills = @('plan-feature', 'implement-task', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'bootstrap-agents-md', 'llm-wiki', 'record-project-fact')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"
@@ -149,7 +148,7 @@ Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
 $hooks = @('block-destructive.ps1', 'protect-harness.ps1', 'require-plan-for-write.ps1', 'require-task-checkbox.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1')
-$knownHelpers = @('harness-toggle.ps1')   # hook이 아닌 scripts/ 내 헬퍼 (미등록 탐지에서 제외)
+$knownHelpers = @()   # scripts/에 hook 외 헬퍼 없음 (있으면 아래 미등록 탐지가 경고)
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
     $hookPath = Join-Path $pluginRoot "scripts/$h"
@@ -171,37 +170,8 @@ foreach ($s in $actualScripts) {
 }
 Write-Host ""
 
-# 6. Harness toggle 헬퍼
-Write-Host "6. Harness toggle 헬퍼" -ForegroundColor Yellow
-$togglePath = Join-Path $pluginRoot "scripts/harness-toggle.ps1"
-if (Test-Item-Exists $togglePath "harness-toggle.ps1") {
-    if (-not (Test-Ps1-Bom $togglePath)) {
-        Write-Host "         [WARN] BOM 없음" -ForegroundColor DarkYellow
-        $script:warnings += "harness-toggle.ps1 에 UTF-8 BOM 없음"
-    }
-}
-Write-Host ""
-
-# 7. 토글 메커니즘 (hook 토글)
-Write-Host "7. 토글 메커니즘" -ForegroundColor Yellow
-$disabledDir = Join-Path $homeBase ".claude/.disabled"
-if (Test-Path -LiteralPath $disabledDir) {
-    $disabled = Get-ChildItem -LiteralPath $disabledDir -ErrorAction SilentlyContinue
-    if ($disabled.Count -gt 0) {
-        Write-Host "  [INFO] 현재 비활성화된 hook:" -ForegroundColor Cyan
-        foreach ($d in $disabled) {
-            Write-Host "         - $($d.Name)" -ForegroundColor DarkGray
-        }
-    } else {
-        Write-Host "  [OK]   토글 디렉터리 존재, 모든 hook 활성" -ForegroundColor Green
-    }
-} else {
-    Write-Host "  [OK]   토글 디렉터리 없음 (모든 hook 활성, 정상)" -ForegroundColor Green
-}
-Write-Host ""
-
-# 7-1. Plugin Enabled 상태 검증 (Claude Code 인식 여부)
-Write-Host "7-1. Plugin Enabled 상태" -ForegroundColor Yellow
+# 6. Plugin Enabled 상태 검증 (Claude Code 인식 여부)
+Write-Host "6. Plugin Enabled 상태" -ForegroundColor Yellow
 $userSettings = Join-Path $homeBase ".claude/settings.json"
 $enableStatus = "unknown"
 if (Test-Path -LiteralPath $userSettings) {
@@ -237,8 +207,8 @@ if (Test-Path -LiteralPath $userSettings) {
 }
 Write-Host ""
 
-# 8. bootstrap-agents-md templates 디렉터리 (번들 내)
-Write-Host "8. bootstrap-agents-md templates 디렉터리" -ForegroundColor Yellow
+# 7. bootstrap-agents-md templates 디렉터리 (번들 내)
+Write-Host "7. bootstrap-agents-md templates 디렉터리" -ForegroundColor Yellow
 $templatesDir = Join-Path $pluginRoot "skills/bootstrap-agents-md/templates"
 if (Test-Path -LiteralPath $templatesDir) {
     Write-Host "  [OK]   templates 디렉터리" -ForegroundColor Green
