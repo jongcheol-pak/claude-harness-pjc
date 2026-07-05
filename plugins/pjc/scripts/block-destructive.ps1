@@ -57,7 +57,13 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 #   폴더)는 제외한다(~[\\/]? · \$HOME[\\/]?). 이 cap이 없으면 ~\S*·$HOME\S*가 깊이 무제한이라, 강제
 #   플래그를 요구하지 않는(H2) 지금 rm -r ~/proj/dist 같은 정상 하위 정리가 등가 절대경로 /home/<user>/proj/dist
 #   (통과)와 달리 오차단된다(깊이 cap 비대칭 버그 수정).
-$dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home([\\/]+[^\\/\s]+)?[\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~[\\/]?|\$HOME[\\/]?|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?[\\/]?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+# 홈 내용물 글롭: 위 깊이 cap의 부작용으로, 홈 루트 직후 '전체 내용물 글롭'(~/* · ~/.* · $HOME/* ·
+#   /home/<user>/* · C:\Users\<user>\*)이 끝 경계 (\s|$)에서 깨져 통과하던 미탐을 별도 알터네이션으로 되살린다
+#   (~[\\/]\.?\*[\\/]? 등). 이 글롭들은 홈 자체 삭제(~ · /home/<user>)와 등가로 홈 전체를 쓸어버리므로 위험대상이다
+#   (형제 형태 ~ · /home/* · C:\Users\*는 이미 차단 — 일관성). 반면 타깃 글롭(~/*.log)·하위 폴더(~/proj/dist)는
+#   여전히 통과한다(글롭이 정확히 * 또는 .* 이고 그 뒤가 경계여야 매치 — 뒤에 이름·확장자가 붙으면 미매치). dotfile
+#   글롭(.*)도 숨김 파일·디렉터리를 쓸어 홈 소실 등가라 포함하고, 트레일링 슬래시(~/*/ )도 함께 잡는다.
+$dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home[\\/]+[^\\/\s]+[\\/]\.?\*[\\/]?|/home([\\/]+[^\\/\s]+)?[\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~[\\/]\.?\*[\\/]?|~[\\/]?|\$HOME[\\/]\.?\*[\\/]?|\$HOME[\\/]?|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s]+[\\/]\.?\*[\\/]?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?[\\/]?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
 
 # 삭제 명령 별칭 세트 — 사전검사(find·열거 파이프)와 in-loop 컴파운드 검사가 **동일 집합을 공유**한다.
 #   한 곳만 좁으면(예: 사전검사가 ri/rmdir/rd 누락) 그 별칭으로 파이프 삭제 우회가 다시 열린다(T3 B1).

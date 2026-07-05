@@ -25,6 +25,14 @@
 1:1 정합을 검사한다 — F-1은 "번호 N = §7-N 정본" 규약인데 두 목록은 손으로 유지되므로,
 한쪽에만 항목을 추가하면 실행 인덱스와 정본이 조용히 어긋난다(검사 사각지대). 기계로 잡는다.
 
+⑧ 산문 크로스파일 포인터 회귀 가드 — 지연 로드 분할 후 '절차 라벨이 어느 파일에 있는지'
+가리키는 파일-귀속 산문 포인터(references/procedures-*.md + 인접 절차 라벨)가 실제 헤딩 파일과
+어긋나면 잡는다. 이 부류(v1.90.1·v1.90.2에서 손으로 고쳐온 스테일)는 앵커·번호 집합 어디에도
+안 걸려 차기 재분할 시 조용히 재발하던 회귀 가드 공백을 메운다.
+
+⑨ templates.md ↔ schema §2 타입 집합 정합 — H-2 "타입 바뀌면 templates 동기" 규약을 기계로 잡는다.
+타입 신설·삭제·개명이라는 구조 드리프트만 대조(필드 단위 아님 — 오탐 방지).
+
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
   - 불일치 → 항목별 소스 값 나열 + exit 1
@@ -50,6 +58,7 @@ SKILL_DIR = os.path.dirname(EVALS_DIR)
 SKILL_MD = os.path.join(SKILL_DIR, "SKILL.md")
 SCHEMA_MD = os.path.join(SKILL_DIR, "references", "wiki-schema.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
+TEMPLATES_MD = os.path.join(SKILL_DIR, "references", "templates.md")
 LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
 
 # schema §2.x 헤딩 → 예산 키 (### 2.N 뒤 첫 토큰이 타입명)
@@ -295,7 +304,10 @@ def check_f1_schema7(ops_text, schema_text):
     F-1(procedures-ops.md)은 'N. `[기계]`/`[에이전트]` ...' 실행 순서 인덱스이고 상세 정본은
     §7-N(wiki-schema.md 'N. **...**')이다 — 규약상 번호가 1:1인데 둘 다 수동 목록이라 한쪽만
     추가·삭제하면 조용히 어긋난다. 파싱 앵커는 각 섹션 내부로 한정한다(F-1은 다음 #### 전까지,
-    §7은 다음 '## N.' 전까지 — 다른 절의 번호 목록·표와 충돌하지 않게). 반환: (불일치 목록, 대조 수)."""
+    §7은 다음 '## N.' 전까지 — 다른 절의 번호 목록·표와 충돌하지 않게). 반환: (불일치 목록, 대조 수).
+
+    한계(LOW-3): 번호 **집합**만 대조한다 — 같은 번호의 내용 정합(F-1 N의 의미 = §7-N의 의미)은
+    검사하지 않는다(번호를 보존한 채 두 항목의 의미만 맞바꾸면 통과). 내용 정합은 사람 몫."""
     fm = re.search(r"^#### F-1\..*?\n(.*?)(?=^#### |\Z)", ops_text, re.M | re.S)
     if not fm:
         die("procedures-ops.md '#### F-1.' 섹션을 찾지 못함")
@@ -314,6 +326,112 @@ def check_f1_schema7(ops_text, schema_text):
     for n in sorted(s7 - f1):
         issues.append(f"schema §7-{n} 검사 항목이 F-1 실행 순서 인덱스에 없음 (lint 세션이 이 검사를 건너뜀)")
     return issues, len(f1 | s7)
+
+
+# ⑧ 산문 크로스파일 포인터 회귀 가드용 정규식.
+# 파일 귀속이 명시된 포인터만 잡는다 — 파일명과 절차 라벨이 '인접'(의·따옴표·괄호·대시)해야 매치.
+#   라벨만 있거나 파일만 있는 언급, 범위 서술(`…md`(A~E·I) 처럼 괄호 안 나열)은 skip(오탐 방지).
+#   base 절차 문자 단위로만 대조 — 재분할 시 '절차가 다른 파일로 갔는데 포인터가 옛 파일 지칭'을 잡는 게 목적.
+# 경로는 문서 지배 관례가 백틱 래핑(`…md`)이라 선택적 백틱을 허용한다(안 그러면 L2F 다수를 놓침 — B1).
+_PROC_FILE = r"`?references/procedures-(?:content|ops)\.md`?"
+# base 문자는 [A-Z] 동적 캡처 — [A-L] 하드코딩 금지(파일 상단 ROUTING_LETTER_RX 원칙과 일관 — 절차 M+
+#   추가 시에도 매치되게, 미정의 문자는 letter_file.get()이 None이라 자연히 skip). 하위라벨(B-1 0·A-3a·B-2 3-1·K 5-1).
+_LABEL = r"([A-Z])(?:[-\s]\d+[a-z]?)*"
+# 파일→라벨: `…md의 B-1`, `…md "G"`, `…md F-1` (파일 뒤 구분자는 의/따옴표/공백만 — 괄호 불가로 `(A~E·I)` 범위서술 제외)
+POINTER_F2L_RX = re.compile(_PROC_FILE + r'(?:의)?\s*"?\s*' + _LABEL)
+# 라벨→파일: `B-1 0(`…md`)`, `B-1 0 — `…md``, `L(`…md`)`, `F-2(`…md`)` (라벨 뒤 괄호/대시 뒤 바로 파일, 백틱 포함)
+POINTER_L2F_RX = re.compile(r"(?<![A-Za-z0-9])" + _LABEL + r"\s*[(—-]\s*(?:—\s*)?" + _PROC_FILE)
+# 매치 문자열에서 '어느 파일'인지 되뽑기(content|ops)
+_WHICH_FILE_RX = re.compile(r"references/procedures-(content|ops)\.md")
+
+
+def build_letter_file_map():
+    """A~L 각 절차 문자의 실제 `### X.` 헤딩이 있는 파일을 {문자: {파일,…}}로 반환.
+    ⑤(check_procedure_placement)의 지역변수 found 대신 본체 + 분할 2파일을 직접 스캔한다
+    (독립 재계산 — 지역변수 공유 대신). PROC_HEADING_RX(### X. )를 ⑤와 동일하게 사용."""
+    result = {}
+    sources = {
+        "SKILL.md": read(SKILL_MD),
+        "references/procedures-content.md": read(
+            os.path.join(SKILL_DIR, "references", "procedures-content.md")),
+        "references/procedures-ops.md": read(OPS_MD),
+    }
+    for fname, text in sources.items():
+        for hm in PROC_HEADING_RX.finditer(text):
+            result.setdefault(hm.group(1), set()).add(fname)
+    return result
+
+
+def check_prose_pointers(skill_text, schema_text):
+    """⑧ 산문 크로스파일 포인터 회귀 가드.
+
+    지연 로드 분할 후, '절차 라벨이 어느 파일에 있는지' 가리키는 산문 포인터(references/procedures-*.md
+    + 인접 절차 라벨)가 실제 그 절차 헤딩이 있는 파일과 어긋나면 잡는다 — v1.90.1·v1.90.2에서
+    손으로 고쳐온 스테일 포인터 부류의 회귀를 기계로 예방한다. 이 부류는 앵커·번호 집합 어디에도
+    안 걸려 차기 재분할 시 조용히 재발한다(회귀 가드 공백).
+
+    보수적 스코프(오탐 방지): 파일명 AND 라벨이 '인접'(의·따옴표·괄호·대시로 직접 연결)할 때만
+    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 5-1(본체 SKILL.md)·
+    B-1 0(references/procedures-content.md)`처럼 서로 다른 귀속이 한 줄에 있어도 B만 content로
+    대조하고 K는 (procedures-*.md가 아니라 SKILL.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
+    — 하위라벨(B-1 0의 '1 0')까지 검증하진 않는다(재분할 파일 오귀속 포착이 목적).
+    반환: (불일치 목록, 대조 항목 수)."""
+    letter_file = build_letter_file_map()
+    docs = {
+        "SKILL.md": skill_text,
+        "references/procedures-content.md": read(
+            os.path.join(SKILL_DIR, "references", "procedures-content.md")),
+        "references/procedures-ops.md": read(OPS_MD),
+        "references/wiki-schema.md": schema_text,
+    }
+    issues = []
+    checked = 0
+    for fname, text in docs.items():
+        for line in text.splitlines():
+            pairs = []  # (which_file, base_letter) 인접쌍
+            for m in POINTER_F2L_RX.finditer(line):
+                wm = _WHICH_FILE_RX.search(m.group(0))
+                pairs.append((wm.group(1), m.group(1)))
+            for m in POINTER_L2F_RX.finditer(line):
+                wm = _WHICH_FILE_RX.search(m.group(0))
+                pairs.append((wm.group(1), m.group(1)))
+            for which, letter in pairs:
+                actual = letter_file.get(letter)
+                if not actual:
+                    continue  # 헤딩 못 찾음(J/K는 본체 SKILL.md, 또는 미정의) — 대조 대상 아님
+                checked += 1
+                claimed = "references/procedures-%s.md" % which
+                if claimed not in actual:
+                    issues.append(
+                        f"{fname} 산문 포인터: 절차 {letter}를 '{claimed}'로 귀속하나 "
+                        f"실제 `### {letter}.` 헤딩은 {sorted(actual)}에 있음")
+    return issues, checked
+
+
+def check_templates_types(schema_text):
+    """⑨ templates.md ↔ schema §2 타입 집합 정합.
+
+    H-2 규약은 "타입 템플릿·주석이 바뀌면 references/templates.md도 함께 동기"를 요구하나,
+    check_consistency는 SKILL·schema·lint만 대조하고 templates.md는 전혀 읽지 않아, 타입이
+    추가·제거·개명돼도 templates가 조용히 스테일될 수 있었다(검사 사각지대). templates의 각 타입
+    frontmatter `type:` 값 집합 ↔ schema §2.N 타입(SCHEMA_TYPE_HEADING_RX) 집합을 대조한다.
+
+    타입 **집합**만 대조한다(필드 단위 아님) — schema는 선택 필드까지 문서화하고 templates는
+    예시라 frontmatter 필드 집합이 정당하게 달라 필드 대조는 오탐이 크다. 타입 신설·삭제·개명이라는
+    구조 드리프트만 신뢰성 있게 잡는다. 반환: (불일치 목록, 대조 항목 수)."""
+    tmpl_text = read(TEMPLATES_MD)
+    tmpl_types = set(re.findall(r"^type:\s*([a-z][a-z-]*)$", tmpl_text, re.M))
+    if not tmpl_types:
+        die("templates.md에서 'type:' frontmatter 값을 하나도 찾지 못함")
+    schema_types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(schema_text)}
+    if not schema_types:
+        die("wiki-schema.md '### 2.N <type>' 헤딩을 찾지 못함(⑨)")
+    issues = []
+    for t in sorted(schema_types - tmpl_types):
+        issues.append(f"schema §2 타입 '{t}'가 templates.md에 없음(템플릿 누락 — H-2 동기 위반)")
+    for t in sorted(tmpl_types - schema_types):
+        issues.append(f"templates.md 타입 '{t}'가 schema §2에 없음(스키마 미정의 또는 개명 스테일)")
+    return issues, len(tmpl_types | schema_types)
 
 
 def parse_schema_vocab(text):
@@ -376,6 +494,14 @@ def main():
     checked += f1_checked
     mismatches.extend(f1_issues)
 
+    pointer_issues, pointer_checked = check_prose_pointers(skill_text, schema_text)
+    checked += pointer_checked
+    mismatches.extend(pointer_issues)
+
+    tmpl_issues, tmpl_checked = check_templates_types(schema_text)
+    checked += tmpl_checked
+    mismatches.extend(tmpl_issues)
+
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
         for m in mismatches:
@@ -385,7 +511,8 @@ def main():
         sys.exit(1)
     print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 + "
           f"절차 배치 {placement_checked}항목 + schema 목차 {toc_checked}§ + "
-          f"F-1↔§7 {f1_checked}항목 — 항목당 소스 2~4곳 대조)")
+          f"F-1↔§7 {f1_checked}항목 + 산문 포인터 {pointer_checked}건 + templates 타입 "
+          f"{tmpl_checked}종 — 항목당 소스 2~4곳 대조)")
     sys.exit(0)
 
 

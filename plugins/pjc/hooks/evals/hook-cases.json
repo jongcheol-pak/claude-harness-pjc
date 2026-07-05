@@ -233,6 +233,65 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "rm -rf ~/* 차단 (홈 내용물 글롭 — 홈 소실 등가, v1.92.0 HIGH)",
+      "command": "rm -rf ~/*",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf ~/.* 차단 (홈 dotfile 글롭 — 숨김 포함 홈 소실)",
+      "command": "rm -rf ~/.*",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf $HOME/* 차단 (홈 내용물 글롭)",
+      "command": "rm -rf $HOME/*",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf /home/jongc/* 차단 (홈 사용자 내용물 글롭)",
+      "command": "rm -rf /home/jongc/*",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf C:\\Users\\jongc\\* 차단 (프로필 내용물 글롭)",
+      "command": "rm -rf C:\\Users\\jongc\\*",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf ~/build.log 통과 (타깃 글롭 아님 — 단일 파일)",
+      "command": "rm -rf ~/build.log",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf ~/*.log 통과 (타깃 글롭 — 확장자 한정, 홈 전체 아님)",
+      "command": "rm -rf ~/*.log",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf ~/proj/dist 통과 (홈 하위 폴더 정상)",
+      "command": "rm -rf ~/proj/dist",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "rm -rf /home/jongc/proj 통과 (홈 하위 폴더 정상)",
+      "command": "rm -rf /home/jongc/proj",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "docker run --rm 통과 (--rm 플래그 오탐 방지)",
       "command": "docker run --rm my-image",
       "expect_exit": 0

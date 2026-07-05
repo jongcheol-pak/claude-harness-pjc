@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.91.0
+**버전**: 1.92.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -116,7 +116,7 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 
 작업 흐름과 별개로, **위험한 명령은 자동으로 차단**됩니다. 이건 끌 수 없습니다.
 
-- 파일 전체 삭제(`rm -rf /` 등), git 히스토리 파괴
+- 파일 전체 삭제(`rm -rf /`·`rm -rf ~/*` 등 홈·시스템 루트와 그 내용물 글롭), git 히스토리 파괴
 - **DB 데이터 삭제·변조**: 전체 삭제(`DELETE` WHERE 없이), 전체 변조(`UPDATE` WHERE 없이), `DROP`/`TRUNCATE`, ORM 대량 삭제 등
 - 단, `WHERE 조건`이 있는 일상적인 DB 작업은 그대로 통과합니다
 
