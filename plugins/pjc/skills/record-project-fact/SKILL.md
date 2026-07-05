@@ -1,6 +1,6 @@
 ---
 name: record-project-fact
-description: This skill should be used when recording a CONFIRMED project fact (build/run command, DB access method, file/artifact location, test/verify command) into an EXISTING AGENTS.md — either right after the suggest-agents-record hook emits "[AGENTS 기록 제안]" and the user accepts, or when the user explicitly asks to record such a fact. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘", or accepting the hook's suggestion. The fact may be added, updated, or removed. Do NOT trigger for — creating a new AGENTS.md from scratch (use bootstrap-agents-md), turning hooks on/off (use harness-toggle), planning or writing code (plan-feature/implement-task). Records into AGENTS.md ONLY — never the global/project CLAUDE.md — and ONLY after showing the exact change and getting user approval (no silent writes). Real secrets/connection strings/credentials are forbidden — environment variable names only.
+description: This skill should be used when recording a CONFIRMED project fact (build/run command, DB access method, file/artifact location, test/verify command) into an EXISTING AGENTS.md — either right after the suggest-agents-record hook emits "[AGENTS 기록 제안]" and the user accepts, or when the user explicitly asks to record such a fact. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘", or accepting the hook's suggestion. The fact may be added, updated, or removed. Do NOT trigger for — creating a new AGENTS.md from scratch (use bootstrap-agents-md), planning or writing code (plan-feature/implement-task). Records into AGENTS.md ONLY — never the global/project CLAUDE.md — and ONLY after showing the exact change and getting user approval (no silent writes). Real secrets/connection strings/credentials are forbidden — environment variable names only.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
@@ -20,7 +20,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 | 사용자가 직접 "이 명령 AGENTS.md에 기록해줘" 등 | 이 스킬로 추가·갱신 |
 | 사용자가 "AGENTS.md에서 이 항목 빼줘/제거" 등 (stale·오기록·시크릿 제거) | 이 스킬로 삭제 |
 
-bootstrap-agents-md(최초 생성)·harness-toggle(hook on/off)·plan-feature/implement-task(코드 작업)와 **역할이 다르다** — 이 스킬은 **이미 있는 AGENTS.md에 사실을 누적**하는 전담이다.
+bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)와 **역할이 다르다** — 이 스킬은 **이미 있는 AGENTS.md에 사실을 누적**하는 전담이다.
 
 ## 절대 규칙 (Hard Rules)
 

@@ -96,7 +96,7 @@ if ($hits.Count -gt 0) {
 if ($hitsLocal.Count -gt 0) {
     $lines += "로컬 비가역: 미커밋 변경이 영구 소실될 수 있습니다 — reflog로는 커밋된 것만 일부 복구됩니다. 진행 전 의도된 되돌리기인지 확인하세요."
 }
-$lines += "이 경고는 차단이 아닙니다. 끄려면: harness-toggle warn-external-ops off"
+$lines += "이 경고는 차단이 아닙니다."
 $msg = $lines -join "`n"
 
 # stderr: 사용자 가시성용

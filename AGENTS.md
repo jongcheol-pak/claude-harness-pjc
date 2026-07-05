@@ -38,7 +38,7 @@
 ├── plugins/pjc/
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop hook 배선
-│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record) + harness-toggle.ps1
+│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record)
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
 ├── validate.ps1                     # 설치본 검증
@@ -55,7 +55,7 @@
 
 ## DO NOT
 - 실제 비밀번호·API 키·토큰·시크릿·DB 연결문자열·내부 IP/호스트를 코드·문서·notes·plan에 기록(환경변수 이름만 적고 값은 `.env`로).
-- **`block-destructive.ps1`·`protect-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(토글 불가, 마지막 방어선). protect-harness는 `.claude/.disabled/` 게이트 파일·설치본 hook 스크립트·hooks.json을 Write/Edit로 개조해 안전장치를 무력화하는 시도를 차단한다. 헤더 경고 참조.
+- **`block-destructive.ps1`·`protect-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(끌 수 없음, 마지막 방어선). protect-harness는 설치본 hook 스크립트·hooks.json을 Write/Edit로 개조해 안전장치를 무력화하는 시도를 차단한다. 헤더 경고 참조.
 - 자동 생성·캐시 디렉터리(`__pycache__/`, lock 파일 등) 커밋.
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass`(백신이 공격 도구로 오인해 격리할 수 있음).
 

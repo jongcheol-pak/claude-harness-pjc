@@ -116,9 +116,7 @@ if ($foundLine.Length -gt 80) { $foundLine = $foundLine.Substring(0, 80) + '...'
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("해결 방법:")
 [Console]::Error.WriteLine("  1) plan의 해당 줄을 '- [x] T$taskNum ...'으로 갱신한 뒤 다시 commit")
-[Console]::Error.WriteLine("  2) 이 프로젝트가 pjc plan 규약(T<N> task)을 쓰지 않는다면:")
-[Console]::Error.WriteLine("     harness-toggle require-task-checkbox off")
-[Console]::Error.WriteLine("  3) 긴급 우회 (Claude Code 시작 전 PowerShell에서):")
+[Console]::Error.WriteLine("  2) 긴급 우회 (Claude Code 시작 전 PowerShell에서):")
 [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")
 
 exit 2
