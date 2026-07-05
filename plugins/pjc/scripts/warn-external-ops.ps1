@@ -57,11 +57,18 @@ $externalOps = @(
 # ---- 로컬 비가역 작업 패턴 (M4 — 원격 반영은 아니지만 미커밋 변경을 영구 소실시킴) ----
 # 조회형(git stash list)·비파괴형(git reset --soft/--mixed)은 미매치. git restore는 --staged
 #   (언스테이징 = 비파괴) 오탐을 피하기 위해 의도적으로 제외한다(checkout 형만 경고).
+# reset 패턴: reset과 --hard 사이는 [^&;|\r\n]*로 한정 — .*(탐욕적)이면 한 줄 안 뒤쪽 다른 명령
+#   (예: `git reset --soft HEAD~1 && git commit -m "undo --hard ..."`)의 커밋 메시지 속 --hard까지 스팬해
+#   비파괴 --soft에도 오경고했다. 셸 구분자(&&·;·|·개행)를 넘지 않아 실제 `git reset ... --hard` 세그먼트만 매치.
+# checkout 패턴: `checkout -- <path>`·`checkout .` 외에 `checkout <ref> -- <path>`(ref 지정 폐기)도 포함 —
+#   git checkout HEAD -- x·git checkout main -- x 도 미커밋 워킹트리 변경을 폐기하므로 경고 대상.
+#   `checkout -b`·`checkout <branch>`(-- 없음)는 브랜치 전환이라 미매치.
 $localOps = @(
-    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*reset\s+.*--hard\b';        label = 'git reset --hard (워킹트리·인덱스 되돌리기)' },
-    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*stash\s+clear\b';           label = 'git stash clear (스태시 전체 삭제)' },
-    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+--\s';           label = 'git checkout -- <path> (워킹트리 변경 폐기)' },
-    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\.(\s|$)';       label = 'git checkout . (워킹트리 전체 변경 폐기)' }
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*reset\s+[^&;|\r\n]*--hard\b';   label = 'git reset --hard (워킹트리·인덱스 되돌리기)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*stash\s+clear\b';              label = 'git stash clear (스태시 전체 삭제)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+--\s';              label = 'git checkout -- <path> (워킹트리 변경 폐기)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\S+\s+--\s';        label = 'git checkout <ref> -- <path> (워킹트리 변경 폐기)' },
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\.(\s|$)';          label = 'git checkout . (워킹트리 전체 변경 폐기)' }
 )
 
 $hits = New-Object System.Collections.Generic.List[string]

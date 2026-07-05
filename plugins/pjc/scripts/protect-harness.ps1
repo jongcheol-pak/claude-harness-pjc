@@ -27,8 +27,13 @@
 #
 # 8.3 단축명 처리(H3): Windows 8.3 단축명으로 `.claude`(CLAUDE~1)·`.disabled`(DISABL~1)를 마스킹해
 #   위 리터럴 매칭을 우회하는 경로도 잡는다 — 단 실제 마스킹 형태(CLAUDE~N·DISABL~N)에 한정하고
-#   방어 키워드(.claude/.disabled/hook명) 중 하나가 잔존할 때만 차단해, 8.3 유저명(RUNNER~1 등)이 낀
-#   개발 repo hook 소스 편집을 오차단하지 않는다(개발 repo 무영향 보장 유지).
+#   방어 키워드가 잔존할 때만 차단한다: (a) `.disabled` 리터럴(.claude만 마스킹), (b) `.claude` 리터럴
+#   (.disabled만 마스킹), (c) hook명 + `/plugins/cache/`(둘 다 마스킹된 설치본 hook 경로).
+#   ⚠️ hook명 단독으로 판정하면 안 된다 — `Claude…`로 시작하는 폴더는 8.3명이 CLAUDE~1(이 repo 자신 포함)이라
+#   개발 repo hook 소스(…/CLAUDE~1/plugins/pjc/scripts/*.ps1)를 오차단하기 때문. 실제 마스킹된 설치본 경로는
+#   항상 설치 캐시(.claude/plugins/cache/…)를 포함하므로 (c)에서 이를 게이트로 요구해 개발 repo 무영향을 지킨다.
+#   (남는 사각: `.claude`와 `.disabled`를 '동시에' 8.3로 숨긴 토글 경로 — 캐시 밖 — 는 미탐. 8.3 경로가
+#    도구 입력으로 전달되는 것 자체가 드물고, 원설계도 '둘 다 숨기기 불가'로 가정했던 극단 케이스.)
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -77,7 +82,11 @@ $has83 = ($norm -match '(?i)/(CLAUDE|DISABL)~[0-9]+(/|$)')
 $suspect83 = $has83 -and (
     ($norm -match '(?i)\.disabled(/|$)') -or                              # .claude를 8.3로 숨겼어도 .disabled가 남음
     ($norm -match '(?i)\.claude(/|$)') -or                                # .disabled를 8.3로 숨겼어도 .claude가 남음
-    ($norm -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')))      # 둘 다 숨겨도 hook명이 남음
+    (($norm -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')) -and # .claude·.disabled를 둘 다 숨겨도 hook명이 남음 —
+     ($norm -match '(?i)/plugins/cache/')))                               #   단 설치 캐시(.claude/plugins/cache/) 컨텍스트일 때만.
+                                                                          #   'Claude…'로 시작하는 폴더는 8.3명이 CLAUDE~1이라(이 repo 포함)
+                                                                          #   hook명만으로 판정하면 개발 repo 소스 편집을 오차단한다 — 실제 마스킹된
+                                                                          #   설치본 hook 경로는 항상 /plugins/cache/를 포함하므로 이를 게이트로 요구.
 
 if ($isDisabledToggle -or $isHookScript -or $suspect83) {
     $why = if ($isDisabledToggle) {

@@ -55,7 +55,12 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 #   끝 슬래시 하나로 뒤 경계가 깨져 통과했다). 2단계+ 하위(/home/jongc/proj)는 여전히 미매치.
 # /home: /home·/home/<user>만 위험대상 — /home/<user>/<하위>(프로젝트 폴더)는 제외(C:\Users와 동일 원리).
 #   /root와 달리 /home은 POSIX 그룹의 (/\S*)?(하위 전부 포함)에 넣으면 정상 하위 삭제까지 차단되므로 별도 알터네이션.
-$dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home([\\/]+[^\\/\s]+)?[\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~\S*|\$HOME\S*|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?[\\/]?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+# ~ · $HOME: 홈 축약 표기는 /home/<user>와 같은 '한 사용자의 홈'이므로 동일하게 깊이 제한한다 —
+#   ~ · ~/ · $HOME · $HOME/ (홈 루트 자체)만 위험대상이고, ~/proj · $HOME/proj/dist 등 하위(프로젝트
+#   폴더)는 제외한다(~[\\/]? · \$HOME[\\/]?). 이 cap이 없으면 ~\S*·$HOME\S*가 깊이 무제한이라, 강제
+#   플래그를 요구하지 않는(H2) 지금 rm -r ~/proj/dist 같은 정상 하위 정리가 등가 절대경로 /home/<user>/proj/dist
+#   (통과)와 달리 오차단된다(깊이 cap 비대칭 버그 수정).
+$dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home([\\/]+[^\\/\s]+)?[\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~[\\/]?|\$HOME[\\/]?|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?[\\/]?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
 
 # 삭제 명령 별칭 세트 — 사전검사(find·열거 파이프)와 in-loop 컴파운드 검사가 **동일 집합을 공유**한다.
 #   한 곳만 좁으면(예: 사전검사가 ri/rmdir/rd 누락) 그 별칭으로 파이프 삭제 우회가 다시 열린다(T3 B1).

@@ -616,6 +616,59 @@
       "command": "git reset --soft HEAD~1",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "~ 하위 재귀 삭제 통과 (v1.90.3 F1 — ~ 깊이 cap, 절대경로와 대칭)",
+      "command": "rm -r ~/projects/app/dist",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "$HOME 하위 재귀 삭제 통과 (v1.90.3 F1 — $HOME 깊이 cap)",
+      "command": "rm -r $HOME/projects/app/dist",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "~ 하위 Remove-Item 재귀 통과 (v1.90.3 F1)",
+      "command": "Remove-Item ~\\Downloads\\old -Recurse",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "~ 홈 루트 자체 재귀 삭제 차단 (v1.90.3 F1 — cap해도 루트는 유지)",
+      "command": "rm -rf ~",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "$HOME 홈 루트 재귀 삭제 차단 (v1.90.3 F1)",
+      "command": "rm -rf $HOME",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "reset --soft 뒤 커밋 메시지 속 --hard 오경고 방지 (v1.90.3 F3 — .* 탐욕 경계)",
+      "command": "git reset --soft HEAD~1 && git commit -m \"undo --hard changes\"",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "git checkout <ref> -- <path> 폐기 경고 (v1.90.3 F4 — ref 지정형 커버리지)",
+      "command": "git checkout HEAD -- src/foo.cs",
+      "expect_exit": 0,
+      "expect_contains": "checkout"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "git checkout -b 브랜치 생성 무경고 (v1.90.3 F4 오탐 방지)",
+      "command": "git checkout -b feature",
+      "expect_exit": 0,
+      "expect_silent": true
     }
   ]
 }

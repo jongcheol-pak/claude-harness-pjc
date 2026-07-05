@@ -44,14 +44,16 @@ $allMsgs = New-Object System.Collections.Generic.List[string]
 #   그 시도를 가시화한다. 정상 harness-toggle 경유 토글도 여기 걸리지만 경고(비차단)라 무해.
 $normFileH2 = $file -replace '\\', '/'
 $harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|harness-toggle|protect-harness'
-# 8.3 단축명 마스킹 감지(H3) — protect-harness.ps1의 $suspect83과 동일 술어(탐지↔차단 대칭).
-#   실제 마스킹 형태(CLAUDE~N·DISABL~N) + 방어 키워드(.claude/.disabled/hook명) 잔존일 때만 감지 —
-#   일반 8.3 세그먼트(PROGRA~1·RUNNER~1)는 미매치라 개발 repo 편집에 무영향.
+# 8.3 단축명 마스킹 감지(H3) — protect-harness.ps1의 $suspect83과 동일 술어(탐지↔차단 대칭, 함께 갱신).
+#   실제 마스킹 형태(CLAUDE~N·DISABL~N) + 방어 키워드 잔존일 때만 감지: (a) .disabled 리터럴, (b) .claude
+#   리터럴, (c) hook명 + /plugins/cache/(설치 캐시). hook명 단독 판정은 'Claude…' 폴더(8.3=CLAUDE~1, 이 repo
+#   포함)의 개발 소스 편집을 오탐하므로 캐시 컨텍스트를 게이트로 요구한다(protect-harness와 동일 근거).
 $has83H2 = ($normFileH2 -match '(?i)/(CLAUDE|DISABL)~[0-9]+(/|$)')
 $suspect83H2 = $has83H2 -and (
     ($normFileH2 -match '(?i)\.disabled(/|$)') -or
     ($normFileH2 -match '(?i)\.claude(/|$)') -or
-    ($normFileH2 -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')))
+    (($normFileH2 -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')) -and
+     ($normFileH2 -match '(?i)/plugins/cache/')))
 if ($normFileH2 -match '/\.claude/\.disabled/\S') {
     $allMsgs.Add("[HARNESS] 게이트 비활성화 파일 생성 감지: $file")
     $allMsgs.Add("  안전 게이트(plan·checkbox 등)를 끄는 동작일 수 있습니다 — 의도된 것인지 확인하세요(정상 harness-toggle 경유면 무시).")
