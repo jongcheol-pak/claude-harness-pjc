@@ -3,24 +3,14 @@
 #   [check-utf8-and-lines] BOM 검사 · 1500라인 초과 경고 · 영문 주석 비율 · 민감 정보
 #   [impact-warn]          변경된 public/internal 심볼의 caller 경고
 #
-# 두 검사는 각각 독립 토글로 끌 수 있다(.disabled/check-utf8-and-lines, .disabled/impact-warn).
 # 한 검사의 오류가 다른 검사를 막지 않도록 각 섹션을 try/catch로 격리한다.
 # 원래 2개 PostToolUse hook이 매 편집마다 PowerShell 프로세스를 2번 띄우던 것을 1번으로 통합(성능).
-# exit 2 차단 없음(비차단) — 경고만 stderr + additionalContext로 출력. 토글: harness-toggle.
+# exit 2 차단 없음(비차단) — 경고만 stderr + additionalContext로 출력.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
 # 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
-
-# ---- 토글 체크 (두 검사 각각 독립) ----
-# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
-$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-$disableUtf8   = Test-Path -LiteralPath (Join-Path $base ".claude/.disabled/check-utf8-and-lines")
-$disableImpact = Test-Path -LiteralPath (Join-Path $base ".claude/.disabled/impact-warn")
-# 두 토글이 모두 꺼져 있어도 조기 종료하지 않는다(T2) — 아래 H2(안전 게이트 자기 비활성화·hook 개조 감지)는
-#   토글과 무관하게 항상 발화해야 한다. 두 검사(섹션 1/2)는 각자 $disableUtf8/$disableImpact 로 개별 가드하고,
-#   H2만 토글 독립으로 stdin·경로 파싱 직후 실행한다. (둘 다 꺼졌고 H2 비대상이면 $allMsgs가 비어 무출력 exit 0.)
 
 # ---- stdin JSON 1회 읽기 (두 검사 공유 — 같은 입력을 두 번 읽지 않음) ----
 $inputJson = [Console]::In.ReadToEnd()
@@ -38,33 +28,26 @@ if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { exit 0 }
 # 두 검사의 경고를 합쳐 단일 stderr + 단일 additionalContext로 출력한다(모델 수신 정보는 분리 hook 때와 동일).
 $allMsgs = New-Object System.Collections.Generic.List[string]
 
-# ---- H2: 하니스 게이트 자기 비활성화·hook 개조 감지 (안전 게이트 감시, 비차단) ----
-# require-plan은 .claude 하위 쓰기를 무조건 허용하므로, 에이전트가 Write로 .disabled 게이트 끄기 파일을
-#   만들거나 hook 스크립트를 개조해 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만
-#   그 시도를 가시화한다. 정상 harness-toggle 경유 토글도 여기 걸리지만 경고(비차단)라 무해.
+# ---- H2: 하니스 hook 개조 감지 (안전 게이트 감시, 비차단) ----
+# require-plan은 .claude 하위 쓰기를 무조건 허용하므로, 에이전트가 Write로 설치본 hook 스크립트·hooks.json을
+#   개조해 안전 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만 그 시도를 가시화한다.
 $normFileH2 = $file -replace '\\', '/'
-$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|harness-toggle|protect-harness'
+$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness'
 # 8.3 단축명 마스킹 감지(H3) — protect-harness.ps1의 $suspect83과 동일 술어(탐지↔차단 대칭, 함께 갱신).
-#   실제 마스킹 형태(CLAUDE~N·DISABL~N) + 방어 키워드 잔존일 때만 감지: (a) .disabled 리터럴, (b) .claude
-#   리터럴, (c) hook명 + /plugins/cache/(설치 캐시). hook명 단독 판정은 'Claude…' 폴더(8.3=CLAUDE~1, 이 repo
-#   포함)의 개발 소스 편집을 오탐하므로 캐시 컨텍스트를 게이트로 요구한다(protect-harness와 동일 근거).
-$has83H2 = ($normFileH2 -match '(?i)/(CLAUDE|DISABL)~[0-9]+(/|$)')
-$suspect83H2 = $has83H2 -and (
-    ($normFileH2 -match '(?i)\.disabled(/|$)') -or
-    ($normFileH2 -match '(?i)\.claude(/|$)') -or
-    (($normFileH2 -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')) -and
-     ($normFileH2 -match '(?i)/plugins/cache/')))
-if ($normFileH2 -match '/\.claude/\.disabled/\S') {
-    $allMsgs.Add("[HARNESS] 게이트 비활성화 파일 생성 감지: $file")
-    $allMsgs.Add("  안전 게이트(plan·checkbox 등)를 끄는 동작일 수 있습니다 — 의도된 것인지 확인하세요(정상 harness-toggle 경유면 무시).")
-    $allMsgs.Add("")
-} elseif ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hooks/hooks\.json$') {
+#   실제 마스킹 형태(CLAUDE~N) + hook명 + /plugins/cache/(설치 캐시)일 때만 감지. hook명 단독 판정은
+#   'Claude…' 폴더(8.3=CLAUDE~1, 이 repo 포함)의 개발 소스 편집을 오탐하므로 캐시 컨텍스트를 게이트로
+#   요구한다(protect-harness와 동일 근거).
+$has83H2 = ($normFileH2 -match '(?i)/CLAUDE~[0-9]+(/|$)')
+$suspect83H2 = $has83H2 -and
+    ($normFileH2 -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')) -and
+    ($normFileH2 -match '(?i)/plugins/cache/')
+if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hooks/hooks\.json$') {
     $allMsgs.Add("[HARNESS] 하니스 hook 스크립트 변경 감지: $file")
     $allMsgs.Add("  안전 hook을 개조/약화하는 변경일 수 있습니다 — 의도된 것인지, 골든 회귀(run-hook-evals.ps1)로 검증했는지 확인하세요.")
     $allMsgs.Add("")
 } elseif ($suspect83H2) {
-    $allMsgs.Add("[HARNESS] 8.3 단축명(CLAUDE~1·DISABL~1) 마스킹 경로 감지: $file")
-    $allMsgs.Add("  하니스 경로를 단축명으로 숨긴 게이트 무력화 시도일 수 있습니다 — 의도된 것인지 확인하세요.")
+    $allMsgs.Add("[HARNESS] 8.3 단축명(CLAUDE~1) 마스킹 경로 감지: $file")
+    $allMsgs.Add("  설치본 hook 경로를 단축명으로 숨긴 개조 시도일 수 있습니다 — 의도된 것인지 확인하세요.")
     $allMsgs.Add("")
 } elseif ($normFileH2 -match '/\.claude/settings\.json$') {
     # M2: 홈·프로젝트 .claude/settings.json의 enabledPlugins는 하니스 전체를 끌 수 있다(hook보다 상위 무력화면).
@@ -77,8 +60,8 @@ if ($normFileH2 -match '/\.claude/\.disabled/\S') {
 # =====================================================================
 # 섹션 1: check-utf8-and-lines (BOM · 라인 수 · 영문 주석 · 민감 정보)
 #   절대경로($file)만 쓰므로 cwd에 의존하지 않는다 → 섹션 2의 Set-Location 앞에 둔다.
+#   (토글 제거 — 이 검사는 항상 실행된다.)
 # =====================================================================
-if (-not $disableUtf8) {
     try {
         $utf8Warnings = New-Object System.Collections.Generic.List[string]
 
@@ -188,13 +171,12 @@ if (-not $disableUtf8) {
     } catch {
         # 섹션 1 전체 실패는 섹션 2 실행을 막지 않는다(격리 — 분리 프로세스였을 때와 동일하게 독립).
     }
-}
 
 # =====================================================================
 # 섹션 2: impact-warn (변경된 public/internal 심볼의 caller 경고)
 #   git 명령이 .git을 찾도록 cwd로 이동(섹션 1은 절대경로라 cwd 무관 → 이동 순서 안전).
+#   (토글 제거 — 이 검사는 항상 실행된다.)
 # =====================================================================
-if (-not $disableImpact) {
     try {
         if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
             Set-Location -LiteralPath $data.cwd
@@ -307,7 +289,7 @@ if (-not $disableImpact) {
                             $allMsgs.Add("")
                             $allMsgs.Add("위 caller 파일들의 동작이 변경되었을 수 있습니다.")
                             $allMsgs.Add("각 파일을 Read로 열어 영향을 검증하고, 필요 시 함께 수정하세요.")
-                            $allMsgs.Add("이 경고는 차단이 아닙니다. 끄려면: harness-toggle impact-warn off")
+                            $allMsgs.Add("이 경고는 차단이 아닙니다 — 검토 후 진행하세요.")
                         }
                     }
                 }
@@ -316,7 +298,6 @@ if (-not $disableImpact) {
     } catch {
         # 섹션 2 실패는 섹션 1 결과(이미 $allMsgs에 있음)에 영향 없음(격리).
     }
-}
 
 # =====================================================================
 # 출력: 두 섹션 경고를 합쳐 단일 stderr + 단일 additionalContext (exit 0 비차단)
