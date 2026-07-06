@@ -128,7 +128,7 @@
         "고아",
         "미편집"
       ],
-      "rationale": "§7-8 — questions/lint-YYYYMMDD 리포트는 어디서도 링크되지 않는 게 정상이라 고아로 잡히지 않아야 함(is_lint_report 제외 — §7-12 집계·§7-23 등록과 동일 기준). 제외가 빠지면 매 lint 리포트가 자기 자신을 고아 WARN으로 오탐해 비-clean FAIL. **T5(§7-3)**: lint-20260101(186일 경과)이 신선도 '아카이브 후보(미편집)' INFO도 내지 않아야 함 — is_lint_report 신선도 제외가 빠지면 '90일+ 미편집'이 나온다(expect_clean은 INFO 허용이라 미편집 absent로 실증)"
+      "rationale": "§7-8 — questions/lint-YYYYMMDD 리포트는 어디서도 링크되지 않는 게 정상이라 고아로 잡히지 않아야 함(is_lint_report 제외 — §7-12 집계·§7-23 등록과 동일 기준). 제외가 빠지면 매 lint 리포트가 자기 자신을 고아 WARN으로 오탐해 비-clean FAIL. **T5(§7-3)**: lint-20260101(186일 경과)이 신선도 '아카이브 후보(미편집)' INFO도 내지 않아야 함 — is_lint_report 신선도 제외가 빠지면 '90일+ 미편집'이 나온다(expect_clean은 INFO 허용이라 미편집 absent로 실증). **추가(§7-3 question 전체 제외)**: q-resolved-old(resolved question, 186일 경과, 허브에서 링크됨)도 '미편집' INFO를 내지 않아야 함 — `typ != \"question\"` 신선도 제외가 빠지면 lint-*가 아닌 일반 resolved question이 '90일+ 미편집'으로 오탐된다(고아 아님·index 미등록 정상이므로 미편집 absent로만 실증)"
     },
     {
       "fixture": "archive-exempt",

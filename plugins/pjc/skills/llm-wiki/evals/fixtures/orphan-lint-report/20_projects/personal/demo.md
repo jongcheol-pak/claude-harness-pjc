@@ -15,6 +15,7 @@ tags: [project, personal, demo]
 데모 프로젝트 허브(픽스처용).
 
 - 소스 스텁: [[10_sources/personal/src-demo\|소스]]
+- 해결된 질문(오래됨): [[questions/q-resolved-old\|해결된 질문]]
 
 ## 기능 목록
 | 기능 | 설명 | 링크 |

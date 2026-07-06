@@ -407,7 +407,12 @@ def main():
             # status: paused·archived도 전체 면제 — 의도적으로 중단/보관한 frozen 상태라 미편집이 정상 (§8 예외 1)
             # lint 리포트(lint-YYYYMMDD, type: question)도 제외 — 갱신 안 되는 보존 스냅샷이라 90일 후 매 실행
             #   자기 자신을 '아카이브 후보'로 오탐한다(§7-8 고아 제외와 동일 계열, bcc6558 정합).
-            elif (typ not in INFRA_TYPES and typ != "decision-log" and not in_archive
+            # type: question 전체 제외 — resolved question은 동결된 이력 기록이라 편집이 정상적으로 멈춰
+            #   매 실행 '아카이브 후보'로 오탐되고, open question은 §7-12 집계가 이미 추적한다. 게다가
+            #   question은 confidence 필드가 없어(priority 사용, §2.7) '60일+ confidence 하락 후보' 라벨이
+            #   성립하지 않는다 — decision-log·lint-* 제외와 동일 계열(신선도는 confidence 있는 콘텐츠용).
+            elif (typ not in INFRA_TYPES and typ != "decision-log" and typ != "question"
+                  and not in_archive
                   and fm.get("status") not in ("paused", "archived") and not is_dep
                   and not is_lint_report(r)):
                 days = (today - upd).days

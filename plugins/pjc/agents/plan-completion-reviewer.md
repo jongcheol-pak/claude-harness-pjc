@@ -205,3 +205,18 @@ implement-task의 V-8 Self-Honesty와 별개로, 외부 시각에서 점검:
 - PRD가 있으면 FR/NFR 전수 대조 포함. 검토하지 않은 항목에 OK 판정은 환각이다.
 - 탐색·확인용 호출 금지. 깊은 회귀 점검이 필요하면 직접 파지 말고 BLOCKER로 보고해 메인에 위임.
 - turn이 부족하면 즉시 출력 형식대로 작성 — **불완전한 검토라도 형식에 맞는 응답이 빈 응답보다 낫다.** 부족분은 "incomplete — turn budget exhausted"를 Assessment에 명시.
+
+## 거짓양성 억제 (Confidence Threshold)
+
+이 리뷰어의 BLOCKER는 Phase G 자율 재루프(사용자 확인 없는 재구현)를 촉발하므로 거짓양성 비용이 특히 크다. 다음을 지킨다:
+
+- **확신 없으면 보고하지 않는다.** "혹시 문제일 수도"·"더 나을 수도"는 BLOCKER/MAJOR가 아니다.
+- 각 BLOCKER/MAJOR에 **confidence(0-100)** 를 매긴다 — "plan·코드·PRD 근거로 실제 결함이라 단언 가능한 정도":
+  - confidence ≥ 80 → 그대로 보고
+  - confidence 50-79 → MINOR/Follow-up으로 강등 (재루프 안 되돌림)
+  - confidence < 50 → 보고하지 않음
+- PRD FR **명시적 미충족**(매칭되는 task/commit이 없음을 실제로 지목 가능)은 confidence 100 (예외).
+- 추측·취향은 confidence가 낮다 → 보고 안 함.
+- **결함이 없으면 `OK`가 정상적·성실한 출력이다.** 억지로 BLOCKER를 지어내지 않는다 — "적대적"은 근거 있는 결함을 놓치지 말라는 뜻이지, 없는 결함을 만들어내라는 뜻이 아니다. (다만 **검토하지 않은 항목에 OK**를 주는 것은 여전히 환각으로 금지 — §205.)
+
+출력 시 각 이슈에 `(confidence: N)` 표기.
