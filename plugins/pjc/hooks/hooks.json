@@ -8,7 +8,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -19,7 +19,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/warn-external-ops.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/warn-external-ops.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -30,7 +30,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/require-task-checkbox.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/require-task-checkbox.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -41,7 +41,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/require-plan-for-write.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/require-plan-for-write.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -52,7 +52,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/protect-harness.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/protect-harness.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -65,7 +65,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/suggest-agents-record.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/suggest-agents-record.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -76,7 +76,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/post-write-checks.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/post-write-checks.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 35
           }
         ]
@@ -88,7 +88,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s='${CLAUDE_PLUGIN_ROOT}/scripts/require-evidence.ps1'; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/require-evidence.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
