@@ -98,4 +98,4 @@ Reason: diff에 2개 파일 변경 발견 (Type B 가정 위반). spec-complianc
 - Haiku 모델의 강점(빠름·저렴)을 살리고 약점(깊은 분석)을 인정.
 - 의심스러우면 무조건 Sonnet에 위임.
 - Type B는 본래 위험이 낮은 task이므로, prefilter가 PASS하면 충분.
-- Type B인데 ESCALATE 비율이 30% 넘으면 plan-feature의 Type 분류가 잘못된 것 — 보고에 반영.
+- Type B에서 ESCALATE가 잦으면 plan-feature의 Type 분류가 실제보다 가볍다는 신호다. **단 이 비율 집계·follow-up 기록은 prefilter가 아니라 메인(implement-task)의 몫**이다 — prefilter는 단일 task를 stateless로 PASS/ESCALATE만 판정하고, 여러 task에 걸친 ESCALATE 비율 관측은 implement-task Fast-Path의 'Type 오분류 피드백'이 담당한다. 이 prefilter가 plan 전체 비율을 계산하려 하지 않는다.

@@ -105,9 +105,10 @@ F-1 ~ F-6 중 어느 하나라도 결함 발견 → **추가 task 등록 후 Pha
 - BASE_SHA (implement-task 시작 전 커밋)
 - HEAD_SHA (마지막 task 완료 후 커밋)
 - AGENTS.md 위치
+- **PRD 경로** (plan.md 상단 `**PRD**:` 줄이 있을 때) — 이 경우 F-7은 plan Goal 검토에 더해 **PRD의 FR/NFR 전수 대조**를 수행한다(plan-completion-reviewer 역할에 포함). **Phase G가 이 F-7 대조 결과를 재사용**하므로(phase-g-detail G-1), PRD가 있으면 이 전달을 빠뜨리지 않는다.
 
 결과 처리:
-- **BLOCKER** 있음 → 추가 task 등록 후 Phase P 재진입 (이슈 0까지, 최대 3회)
+- **BLOCKER** 있음 → 추가 task 등록 후 Phase P 재진입 (이슈 0까지, 최대 3회 — 재진입 횟수는 plan.md `## Retry Ledger`에 기록해 압축·재개 후 이어 센다, 정본 `recovery.md`)
 - **MAJOR** 있음 → 동일 (또는 사용자 보고)
 - **MINOR** 있음 → plan.md follow-up에 기록하고 진행
 - **재호출 3회 연속 동일 BLOCKER** → Halt → 사용자에게 보고

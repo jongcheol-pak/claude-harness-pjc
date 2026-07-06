@@ -174,6 +174,8 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 
 **세 신호(Progress Log·git log·체크박스)가 어긋나면 git log를 신뢰한다.** git log는 매 task commit(`T<N>: ...`)으로 항상 최신이고, Progress Log는 2 task마다, 체크박스는 갱신 누락 가능성이 있다. 또 지정 task의 선행(`Depends on`) task가 git log에 안 보이면 그 선행부터 다시 확인한 뒤 진행한다.
 
+**Phase Ledger로 진행 위치 판정 (Phase F/G 중복 실행 방지).** plan.md에 `## Phase Ledger` 줄이 있으면 그것으로 **어느 Phase까지 왔는지**(예: `전 task 완료` / `Phase F 통과 (HEAD <sha>)` / `Phase G 재루프 N회차`)를 판정한다. **이미 Phase F를 통과한 상태로 재개하면**(예: Phase G가 추가한 task를 처리하다 압축된 경우) 남은 task만 P→I→V→D로 처리하고 **Phase F(F-7 Opus 포함)를 재실행하지 않는다** — Phase G 재루프는 완료 task 후 G-1 재대조만 하지 Phase F 전체를 다시 돌지 않기 때문이다(phase-g-detail G-2). 마커가 **없는** 기존 plan은 안전하게 "처음부터(전 미완료 task + Phase F/G)"로 폴백한다(무회귀). 마커가 git log·체크박스와 어긋나면 task 완료 판정은 git log를 신뢰하되, **Phase 진행 위치**는 마커 + Progress Log로 판정한다.
+
 **재개도 완전 자율 루프다.** "T6부터 계속"은 "T6 하나만"이 아니라 **"T6부터 마지막 task까지 + Phase F/G까지"를 의미한다.** 첫 세션의 T1 시작과 재개 세션의 T6 시작은 시작점만 다를 뿐 동일한 루프이며, 금지 표현 규칙("T7 진행할까요?" 금지)도 동일하게 적용된다. task 사이에 멈춰 사용자에게 묻는 것은 재개 세션에서도 위반이다. 단일 task만 실행하는 경우는 사용자가 "T6만" 처럼 명시적으로 한정했을 때뿐이다.
 
 **분할 plan 호출**: plan이 2개로 분할된 경우(plan-feature "긴 plan 분할" — `docs/plans/...-part1.md`/`-part2.md`), 각 part는 **plan 경로를 명시해 호출**한다(예: "`docs/plans/<날짜>-<slug>-part2.md` 구현"). `docs/plans` 복수 파일은 자동 plan 해소가 모호하므로 경로를 지정한다. 각 분할 plan은 자기 안에서 T1부터 시작하며(분할은 각 plan을 독립 실행), part1 완료 최종 보고가 part2 경로를 안내한다.
@@ -245,6 +247,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 #### Type A 빌드 판단
 - 순수 문서·주석·README·`.gitignore` 등 **빌드에 영향 없는 파일** → V-1도 skip, V-8만.
 - `.csproj`/`build.gradle`/`package.json` 등 **빌드 구성에 영향 주는 설정** → V-1 빌드 실행.
+- **동작 변경 Config 가드**: DI 배선·기능 플래그 기본값·라우팅 등 **런타임 동작을 바꾸는 설정**이 Type A로 분류돼 있으면 오분류다(plan-feature Step 5 Type A 가드). 순수 문서·비동작 설정만 Type A로 처리하고, diff가 런타임 동작을 바꾸면 최소 Type B로 격상해 V-5(prefilter)를 태운다 — Type A는 V-5/V-6이 없어 동작 변경이 무검증 통과되기 때문이다.
 
 #### Type B prefilter PASS 시 V-7 축소
 - spec-prefilter(Haiku)가 PASS → 변경 심볼이 trivial이므로 V-7을 **정방향(변경 심볼)·역방향(삭제된 호출부 심볼) 각 grep 1회**로 축소 (전체 재추적 불필요).
@@ -267,7 +270,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 - **AGENTS.md 없거나 test 명령 미정의** → 표식 파일 fallback:
   - `*.csproj` → `dotnet test`
   - `build.gradle*` → `./gradlew test`
-  - `package.json` (test script 있음) → `npm test`
+  - `package.json` (test script 있음) → `npm test`; **test script 없음 → skip** (V-1 빌드 fallback과 동일 — 테스트 없는 패키지는 Halt가 아니라 skip)
   - `pyproject.toml` → `pytest`
   - `go.mod` → `go test ./...`
   - `Cargo.toml` → `cargo test`
@@ -295,7 +298,7 @@ Task Type에 따라 다른 흐름:
 - ESCALATE → `spec-compliance-reviewer` (Sonnet) **단독** 호출 (Type B ESCALATE도 V-6 생략 → 병렬 대상 아님). BLOCKER/MAJOR → Phase I 복귀·수정 후 재호출, MINOR → follow-up, OK → V-7로.
 
 **Type C/D**: `spec-compliance-reviewer` (Sonnet) 호출.
-- 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA.
+- 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA, AGENTS.md 경로(V-6 병렬 시 quality reviewer의 컨벤션 대조 입력 — code-quality-reviewer 입력 계약).
 - **V-6이 함께 수행되는 경우(Type D 항상, Type C는 plan Type 라인에 `(quality-review)`가 있을 때)에는 V-5(compliance)와 V-6(quality)를 동일 BASE_SHA·HEAD_SHA에 병렬(한 turn 동시) 호출한다.** 두 리뷰는 독립 read-only라 동시 실행해도 충돌이 없다. V-6을 생략하는 경우(플래그 없는 Type C, 기본)는 V-5만 단독 호출.
 - **둘 중 하나라도 BLOCKER/MAJOR → Phase I로 복귀, 수정 후 (수행된) 리뷰를 다시 병렬 재실행.** 둘 다 OK/MINOR일 때만 다음 단계 (MINOR → follow-up 등록). **follow-up 등록은 최종 통과 run 기준** — 중간 run에서 본 MINOR는 최종 run에서 재평가하며(수정으로 위치가 바뀔 수 있음), 중간 결과로 중복 등록하지 않는다.
 - 두 리뷰는 항상 **최종 diff에 전체 수행** — 어느 것도 생략·약화하지 않는다 (단 아래 529 인프라 장애 fallback은 예외이며, 그 경우 약화 사실을 반드시 명시한다). 실패 경로에서 V-6이 재실행되는 토큰 비용은 품질 우선으로 감수한다.
@@ -304,7 +307,7 @@ Task Type에 따라 다른 흐름:
 
 ### V-6. Code Quality Review (subagent, Type D 항상 · Type C는 `(quality-review)` 플래그 시) — V-5와 병렬 수행
 - `code-quality-reviewer` subagent 호출 (위 V-5에서 **병렬로 함께 호출**). 자체 검토 금지.
-- 검토 기준: DDD, 환각, 한글 주석, 파일 응집도(1500은 분리 검토 신호), UTF-8, 보안, 동시성.
+- 검토 기준: DDD, 환각, 한글 주석, 파일 응집도(1500은 분리 검토 신호), UTF-8, 보안, 동시성, 사용자 노출 UI 문구 친화성(항목 I — `(quality-review)` 플래그 ⑤).
 - 결과 처리: V-5와 통합 — 둘 중 하나라도 BLOCKER/MAJOR면 수정 후 둘 다 재실행, 둘 다 OK일 때만 진행.
 
 ### V-7. Caller Re-verification
@@ -328,8 +331,8 @@ Task Type에 따라 다른 흐름:
 
 Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 
-- [ ] 빌드 명령을 실제로 실행했고 exit 0을 봤는가?
-- [ ] 테스트 명령을 실제로 실행했고 통과 수를 봤는가?
+- [ ] (V-1 수행 task) 빌드 명령을 실제로 실행했고 exit 0을 봤는가?
+- [ ] (V-2 수행 task) 테스트 명령을 실제로 실행했고 통과 수를 봤는가?
 - [ ] (V-3 수행 task) 신규 린트 경고 0을 실제로 확인했는가? — 리뷰 지적 수정 후에도 재확인.
 - [ ] acceptance 각 항목에 대해 diff 어디서 충족되는지 지목할 수 있는가?
 - [ ] 변경한 심볼의 caller가 모두 함께 갱신되었는가?
@@ -338,7 +341,7 @@ Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 - [ ] 이 task에서 추측으로 작성한 코드가 하나도 없는가?
 - [ ] 수정한 코드의 주석·docstring이 새 동작과 일치하는가 (옛 내용 그대로 둔 stale 주석이 없는가)?
 
-하나라도 "아니오" → Phase I 복귀.
+하나라도 "아니오" → Phase I 복귀. **단 해당 단계를 실행하지 않은 task의 "N/A"는 "아니오"가 아니다** — Fast-Path가 그 단계를 생략한 경우(예: Type A 순수 문서는 V-1/V-2 미실행이므로 빌드·테스트 박스가 N/A로 통과; V-3 미수행이면 린트 박스도 N/A). N/A와 "실행했어야 하는데 안 함(=아니오)"을 혼동하지 않는다: V-1/V-2/V-3을 **수행한** task는 반드시 "예"여야 한다.
 
 **자기기만 패턴**: "아마 동작할 것이다", "테스트는 안 돌렸지만 빌드 통과했으니 OK", "비슷한 코드를 본 적 있어서 맞을 것" → Phase I 즉시 복귀.
 
@@ -442,6 +445,7 @@ Elapsed: <Hm Ms> | Turn ~<N>
 - 단, **F-6.5(notes 기록 + 오래된 항목 아카이브 이동)는 Phase F가 생략·축소돼도 코드 변경이 있었으면 항상 수행**한다(빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따름) — 누락 빈발 지점이라 본문에 남긴다.
 - 구현 중 **새로 생긴** plan `## Deferred / Follow-up`(보류)·`## Out of Scope`(기각) 항목은 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 1줄씩 기록한다(vault 없으면 그 규약의 폴백) — 계획 시점에 큐잉된 결정과 중복이면 생략.
 - F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
+- **Phase Ledger 갱신**: Phase F를 통과하면 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를 기록한다 — 이후 Phase G 재루프 중 압축·재개가 발생해도 Phase F(F-7 Opus)를 중복 재실행하지 않기 위한 마커다('재개 진입'의 Phase Ledger 판정 규칙 참조).
 
 ## Phase G — 요구 재검증 (PRD 있을 때만)
 

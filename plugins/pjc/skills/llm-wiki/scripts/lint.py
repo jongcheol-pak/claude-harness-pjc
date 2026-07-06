@@ -402,8 +402,9 @@ def main():
             if upd > today:
                 errors.append(f"미래 날짜: {r} updated={upd}")
             # decision-log는 신선도 전체 면제(60·90 둘 다) — 이력 페이지는 미편집이 정상 (wiki-schema §2.8·§8 예외 1-2)
+            # status: paused·archived도 전체 면제 — 의도적으로 중단/보관한 frozen 상태라 미편집이 정상 (§8 예외 1)
             elif (typ not in INFRA_TYPES and typ != "decision-log" and not in_archive
-                  and fm.get("status") != "paused" and not is_dep):
+                  and fm.get("status") not in ("paused", "archived") and not is_dep):
                 days = (today - upd).days
                 if days >= 90 and typ not in ARCHIVE_EXEMPT_TYPES:
                     infos.append(f"90일+ 미편집(아카이브 후보): {r} ({days}일)")

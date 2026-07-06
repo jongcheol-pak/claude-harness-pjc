@@ -127,7 +127,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 **대규모가 아니면 이 단계를 건너뛰고 Step 1로** (일상 기능 추가·수정·버그는 plan.md만으로 충분).
 
 대규모 작업 PRD 절차:
-0. **기존 PRD 확인·귀속 판정 (초안 작성 전 필수)** — 새 PRD 작성 전 `docs/prd.md`·`docs/prds/`를 확인해 신규/기존 갱신/어느 파일 귀속인지 판정한다(없으면 분할 PRD에 중복 등록·오배치). **없음** → 신규 `docs/prd.md`(단일 기본). **있고 연장** → 기존 PRD 갱신(새 FR은 새 ID, active/REMOVED에 같은 요구 있으면 중복 생성 금지). **분할 다수**(`docs/prds/`) → 속하는 기능군 파일 갱신(없으면 새 분할 파일), 중복 확인은 분할 **모든** 파일 대상. **귀속 판정 원칙(4·6·7·8)은 `references/prd-template.md` 정본.** 어느 PRD든 그 경로를 plan.md 상단 `**PRD**:` 줄에 적는다(implement-task Phase G 진입 신호).
+0. **기존 PRD 확인·귀속 판정 (초안 작성 전 필수)** — 새 PRD 작성 전 `docs/prd.md`·`docs/prds/`를 확인해 신규/기존 갱신/어느 파일 귀속인지 판정한다(없으면 분할 PRD에 중복 등록·오배치). **없음** → 신규 `docs/prd.md`(단일 기본). **있고 연장** → 기존 PRD 갱신(새 FR은 새 ID, active/REMOVED에 같은 요구 있으면 중복 생성 금지). **분할 다수**(`docs/prds/`) → 속하는 기능군 파일 갱신(없으면 새 분할 파일), 중복 확인은 분할 **모든** 파일 대상. **귀속·중복 판정 원칙(폐기 표시 5·중복 금지 6·단일/분할 7·부활 새 ID 8; 새 FR ID 부여는 4)은 `references/prd-template.md` 정본.** 어느 PRD든 그 경로를 plan.md 상단 `**PRD**:` 줄에 적는다(implement-task Phase G 진입 신호).
 1. `references/prd-template.md` 템플릿으로 PRD 초안 작성 — 기능 요구(FR)·비기능 요구(NFR)·Out of Scope·성공 기준
 2. **질문 라운드 의무 (1회 이상).** 대규모 작업은 요구 위임 자체가 모호함을 의미한다 — "모호하지 않다"고 판단해 질문을 생략하는 것 금지. Step 8과 같은 형식(카테고리 묶음 + 추천 ★)으로:
    - Claude가 자명하게 도출한 Must 후보 → 사용자 확인 요청
@@ -152,7 +152,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
   - **신선도 경량 점검 (stale 탐지)**: AGENTS.md를 읽으면서, **이번 계획이 실제 참조하는** 명령·경로(빌드/테스트 명령이 가리키는 스크립트·파일, Repository Structure의 주요 디렉터리, Plan Location)가 실재하는지 가볍게 확인한다(Glob/Test-Path 수준의 존재 확인만 — **명령 실행 검증은 하지 않는다**, 부작용 위험). 기록 후 시간이 지나 코드와 어긋난 항목(stale)은 계획을 오도하므로: **즉시 수정하지 않고** Step 8 일괄 질문(또는 계획 보고)에 "AGENTS.md 갱신 제안"으로 모아, 사용자 승인 시 `pjc:record-project-fact`로 갱신한다(승인 게이트 준수). 전수 검증이 아니다 — 이번 작업과 무관한 항목·트리 아스키 아트의 기계 추출은 요구하지 않는다(과잉 방지). 어긋남 0건이면 조용히 통과하고, AGENTS.md가 없으면(위 bootstrap 경로) 이 점검은 해당 없음.
 - 관련 모듈/파일 식별
 - 기존 컨벤션, 테스트 위치, 빌드 명령 확인
-- **PRD 경량 확인 (PRD 있는 프로젝트의 소규모 후속 작업)**: 이번 작업이 Step 0.5 대상(대규모)이 아니어도 `docs/prd.md`(또는 `docs/prds/`)가 존재하면, 이번 변경이 **active FR/NFR에 닿는지 경량 확인**한다 — FR 제목·요약을 훑는 수준이며 전수 대조가 아니다. **닿으면** 사용자에게 PRD 갱신을 제안하고 plan 상단에 `**PRD**:` 줄을 연결한다 — 이 연결은 **의도된 escalation**이다(줄 연결로 implement-task Phase G 전수 대조가 활성화됨 — FR을 건드리는 이상 작은 작업이어도 요구 재검증을 받는 것이 목적). **안 닿으면 조용히 통과**한다(무관한 과거 PRD를 끌어오지 않는 Phase G 원칙 유지 — 이 확인은 "소규모 작업이 PRD 몰래 어긋나는" 공백만 메운다. 대규모 작업의 PRD 미연결은 plan-reviewer 12-b가 별도로 잡는다).
+- **PRD 경량 확인 (PRD 있는 프로젝트의 소규모 후속 작업)**: 이번 작업이 Step 0.5 대상(대규모)이 아니어도 `docs/prd.md`(또는 `docs/prds/`)가 존재하면, 이번 변경이 **active FR/NFR에 닿는지 경량 확인**한다 — FR 제목·요약을 훑는 수준이며 전수 대조가 아니다. **닿으면** 사용자에게 PRD 갱신을 제안하고 plan 상단에 `**PRD**:` 줄을 연결한다 — 이 연결은 **의도된 escalation**이다(줄 연결로 implement-task Phase G 재검증이 활성화됨 — FR을 건드리는 이상 작은 작업이어도 요구 재검증을 받는 것이 목적). **이때 `## PRD Coverage` 표에는 이번에 닿은 FR만 커버 대상으로 넣고, PRD의 나머지 active Must FR은 `이번 범위 외 (기구현/후속)` 행으로 명시한다** — 소규모 연결에서 Phase G·plan-reviewer 12-a 대조는 **커버 대상으로 선언한 FR + 명시적 범위 외 FR**에만 적용되므로(암묵 누락과 구분), 이전 세션에 이미 구현된 무관 FR을 이 작은 plan에서 재구현하도록 강요되지 않는다. **안 닿으면 조용히 통과**한다(무관한 과거 PRD를 끌어오지 않는 Phase G 원칙 유지 — 이 확인은 "소규모 작업이 PRD 몰래 어긋나는" 공백만 메운다. 대규모 작업의 PRD 미연결은 plan-reviewer 12-b가 별도로 잡는다).
 - **위키 참조 (llm-wiki skill 사용 중이고 vault가 존재하면)**: 구현할 기능과 관련된 feature/recipe/guide가 위키에 있으면 `pjc:llm-wiki`의 절차 K(read-only 조회)로 참조한다. **참조는 현재 프로젝트의 위키 등록 여부와 무관하다** — 현재 프로젝트가 아직 위키에 미등록(예: 신규 개발 중)이어도, **다른 프로젝트(A 등)의 관련 자료는 참조할 수 있다**. 위키 참조는 읽기 전용이므로 현재 프로젝트 등록을 전제로 하지 않는다. 이미 정제된 구현 지식·과거 결정·크로스-커팅 정보를 계획에 반영하면 재조사를 줄인다. 위키는 읽기만 하고 수정하지 않는다(위키 갱신·현재 프로젝트 등록은 별도 세션, 사용자가 원할 때만 — 신규 프로젝트는 등록을 강요하지 않는다). **위키 vault 자체가 없으면**(미설정) 건너뛴다. 관련 자료가 없으면 빠르게 마치고 진행한다. 계획 중 **pjc 스킬 자체의 결함·마찰**을 발견하면 `pjc:llm-wiki` 절차 K 5-1의 `[SKILL-IMPROVE]` 큐에 1줄 기록한다(vault 없으면 그 규약의 폴백). **대상 프로젝트의 결정 이력(`decisions.md`)도 함께 확인한다** — 과거에 보류·기각된 기획을 모르고 다시 계획하는 것을 방지(`pjc:llm-wiki` 절차 K 2).
 - **독립 read-only 조사(위치·패턴 찾기)가 2개 이상이면 `explorer` subagent 병렬 위임을 기본으로 한다** (메인 컨텍스트 보호). 단일·소규모라도 메인 컨텍스트를 아껴야 하면 위임 가능.
   - **서로 독립적인 조사 질문이 여러 개면 explorer를 한 turn에 병렬 호출한다** (예: "DI 등록 위치" + "기존 테마 처리 방식" + "테스트 구조" → 3개 동시). read-only라 충돌이 없고 대기 시간만 줄어든다. Step 4(영향 범위 조사)에서도 동일 — 기능별 독립 조사는 병렬로. **단 Step 4 위임은 후보 위치 찾기(grep locating)까지만이다 — 사용처를 전수 Read해 영향을 판단·확정하는 일은 메인이 직접 한다(아래 품질 경계).**
@@ -239,7 +239,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 | Type | 정의 |
 |---|---|
-| **A** (Doc/Config) | `.md`, `.json`, `.yml`, `.csproj`, `.editorconfig` 등 코드 외 파일만 |
+| **A** (Doc/Config) | `.md`, `.json`, `.yml`, `.csproj`, `.editorconfig` 등 코드 외 파일만. **단 동작을 바꾸는 Config는 Type A 아님** — DI 배선·기능 플래그 기본값·라우팅·빌드 산출에 영향 주는 설정은 런타임 동작을 바꾸므로 **Type B 이상**으로 본다(순수 문서·주석·비동작 설정만 A). Type A는 적대적 리뷰(V-5/V-6)를 건너뛰므로 동작 변경이 A로 숨으면 무검증 통과된다. |
 | **B** (Trivial Code) | 단일 코드 파일, 단일 메서드/필드, **호출자 변경 없음** (typo, 주석) |
 | **C** (Normal Code) | 단일 또는 2-3개 파일, caller 갱신 있음 |
 | **D** (Complex/Cross-cutting) | 다중 파일, 인터페이스 변경, 시그니처 변경, 직렬화 변경, DDD/아키텍처 영향 |
@@ -248,7 +248,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 확실하지 않으면 **한 단계 더 무거운 쪽 선택** (안전 우선).
 
-**Type C의 V-6(code-quality) 요청 플래그**: Type C task가 ① 보안·인증 관련 코드, ② 동시성·공유 상태, ③ 새 공개/내부 멤버(public/internal) 추가, ④ 파일 응집도 우려(1500줄 근접) 중 하나라도 해당하면 Type 라인에 `(quality-review)`를 붙여 V-6을 요청한다 (예: `**Type**: C (quality-review)`). 그 외 Type C는 V-6 생략(V-5 단독). Type D는 항상 V-6.
+**Type C의 V-6(code-quality) 요청 플래그**: Type C task가 ① 보안·인증 관련 코드, ② 동시성·공유 상태, ③ 새 공개/내부 멤버(public/internal) 추가, ④ 파일 응집도 우려(1500줄 근접), ⑤ **사용자에게 노출되는 UI 문구(레이블·버튼·오류·툴팁·플레이스홀더) 신규 추가·변경** 중 하나라도 해당하면 Type 라인에 `(quality-review)`를 붙여 V-6을 요청한다 (예: `**Type**: C (quality-review)`). 그 외 Type C는 V-6 생략(V-5 단독). Type D는 항상 V-6. (⑤ 근거: UI 문구 사용자 친화성 검토는 code-quality-reviewer 항목 I에만 있어, 이 플래그가 없으면 기술 용어 노출(`null`·열거형 값 등)을 어느 reviewer도 잡지 못한다.)
 
 #### 긴 plan 분할 권고 (컨텍스트 관리)
 
@@ -265,7 +265,7 @@ B) 2개 plan으로 분할 (앞부분 / 뒷부분)
 
 사용자가 A를 택하면 그대로 진행하되, implement-task가 Progress Log를 적극 활용.
 
-**B(분할) 선택 시 규약** (드문 경로 — 둘째 plan 망각·번호 충돌·절반 구현 오판 방지): 각 분할 plan은 **T1부터 재번호**(독립 실행 — implement-task "첫 실행 T1" 전제와 정합), 저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적(`Plan Location: plan.md` 덮어쓰기여도 override), 상호 포인터(`**다음 plan**:`/`**이전 plan**:` — reviewer가 이 표식으로 분할 인지)와 Goal 범위 한정(`**전체 목표**:` 별도 줄 + Deferred/Next Steps에 다음 part 상기), 시작 part는 경로 명시 호출. **전체 규약·템플릿(위치 가이드·분할 포인터·Goal 범위)은 `references/plan-template.md` 정본.**
+**B(분할) 선택 시 규약** (드문 경로 — 둘째 plan 망각·번호 충돌·절반 구현 오판 방지): 각 분할 plan은 **T1부터 재번호**(독립 실행 — implement-task "첫 실행 T1" 전제와 정합), 저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적(`Plan Location: plan.md` 덮어쓰기여도 override), 상호 포인터(`**다음 plan**:`/`**이전 plan**:` — implement-task(분할 plan 호출)·plan-completion-reviewer가 이 표식으로 분할을 인지; plan-reviewer는 분할 해석 로직이 없다)와 Goal 범위 한정(`**전체 목표**:` 별도 줄 + Deferred/Next Steps에 다음 part 상기), 시작 part는 경로 명시 호출. **전체 규약·템플릿(위치 가이드·분할 포인터·Goal 범위)은 `references/plan-template.md` 정본.**
 
 ### Step 6. Decision Points 발굴
 
@@ -300,7 +300,7 @@ B) 2개 plan으로 분할 (앞부분 / 뒷부분)
 
 ### Step 7.5. PRD 커버리지 확인 (PRD 있을 때만)
 
-PRD가 있으면 (Step 0.5에서 작성), plan이 PRD를 빠짐없이 반영하는지 **구현 전에** 확인한다. 여기서 일치시키면 Phase G(구현 후 재검증)에서 누락이 발견돼 재구현하는 비용을 막는다.
+PRD가 있으면 (Step 0.5에서 새로 작성했거나 Step 1에서 기존 PRD를 연결한 경우), plan이 PRD를 빠짐없이 반영하는지 **구현 전에** 확인한다. 여기서 일치시키면 Phase G(구현 후 재검증)에서 누락이 발견돼 재구현하는 비용을 막는다. (소규모 연결 plan도 이 표를 채운다 — Step 1에서 정한 커버 대상·범위 외 구분을 그대로 기록.)
 
 1. **FR/NFR → task 매핑표 작성** — PRD의 각 요구에 대응하는 plan task를 적는다:
    ```
@@ -310,9 +310,10 @@ PRD가 있으면 (Step 0.5에서 작성), plan이 PRD를 빠짐없이 반영하�
    | FR-2 | Must | T3 | ✅ 커버 |
    | FR-3 | Should | (없음) | ⚠️ 누락 |
    ```
-2. **일치 판정**:
-   - 모든 Must FR에 대응 task가 있으면 → plan과 PRD가 일치. Step 8로 진행.
-   - **Must FR에 대응 task가 없으면 → 누락**. plan에 task를 추가해 일치시킨 뒤 진행 (plan↔PRD 불일치 상태로 구현에 들어가지 않는다).
+2. **일치 판정** (대조 대상 = plan이 **커버 대상으로 선언한** Must FR):
+   - 커버 대상으로 선언한 모든 Must FR에 대응 task가 있으면 → plan과 PRD가 일치. Step 8로 진행.
+   - **커버 대상 Must FR에 대응 task가 없으면 → 누락**. plan에 task를 추가해 일치시킨 뒤 진행 (plan↔PRD 불일치 상태로 구현에 들어가지 않는다).
+   - **소규모 연결 plan**(Step 1에서 기존 PRD를 연결)은 이번에 닿지 않은 active Must FR을 `## PRD Coverage`에 `이번 범위 외 (기구현/후속)`로 명시하며, 그 FR은 이 대조에서 제외한다(기구현 FR을 이 작은 plan에서 재구현하도록 강요하지 않음). 단 **대규모 신규 작업(Step 0.5)은 이 제외를 쓰지 않고 전수 커버**한다 — 미대응 Must FR은 누락으로 본다.
    - Should/Could를 의도적으로 1차 범위에서 빼려면, PRD의 Out of Scope 또는 plan에 "이번 제외" 사유를 명시 (암묵적 누락과 명시적 제외를 구분).
 3. 매핑표는 plan.md에 `## PRD Coverage` 섹션으로 남긴다 (Phase G가 이 표를 기준으로 재대조).
 
@@ -367,6 +368,7 @@ Q5. ...
 
 Open Questions가 모두 해소돼 plan이 완성된 뒤 검토한다. **`plan-reviewer` subagent 호출.** 자체 검토 금지.
 - 결과가 BLOCKER 또는 MAJOR면 plan 수정 후 재호출 (최대 3회).
+- **3회 후에도 BLOCKER/MAJOR가 잔존하면 → 사용자에게 에스컬레이션**(plan-reviewer의 `RECURRING — escalate to user` 표시를 받아 그대로 보고): 무엇이 왜 3회 반복됐는지 + 선택지(수정 방향 승인 / 범위 축소 / 직접 지침)를 제시하고 지시를 기다린다. **자동 통과·무한 재시도 금지** — plan을 통과시키지 못한 채 implement-task로 넘어가지 않는다(교착 방지: 종결은 통과 아니면 에스컬레이션 둘 중 하나).
 - 리뷰 중 새 질문이 드러나면 Step 8(Open Questions)로 돌아가 해소한 뒤 다시 리뷰한다.
 - 통과 후에만 다음 단계.
 - **과부하(529) 시**: `plan-reviewer`는 Opus라 과부하가 잦을 수 있다. `implement-task`의 "Reviewer 과부하(529) 대응" 규칙을 따른다 — 재시도 후 계속 실패하면 Sonnet 대체 실행 + "검증 깊이 저하 가능" 명시.
@@ -402,9 +404,9 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 - [ ] Open Questions 모두 해결됨
 - [ ] 코드 작성 중 사용자에게 물을 결정 분기 0
 - [ ] 각 task에 Type(A/B/C/D) 분류 명시
-- [ ] 각 task에 Edge Cases 명시 (해당하는 모든 카테고리)
-- [ ] 각 task에 Halt Forecast 명시
-- [ ] 자율 실행 준비도 자문 3개 질문 모두 "예"
+- [ ] 각 task에 Edge Cases 명시 (Type 게이트 6.5-A — Type A skip, B 빈/null·경계값, C/D 해당 카테고리)
+- [ ] 각 task에 Halt Forecast 명시 (Type 게이트 6.5-B — Type C/D 필수, A/B는 파괴적·의존성·외부 유발 시만)
+- [ ] 자율 실행 준비도 자문 3개 질문 모두 "예" (Type 게이트 6.5-C — Type B 이상; Type A는 자명 충족)
 
 ## 참조 문서
 

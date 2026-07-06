@@ -18,7 +18,10 @@ git reset --hard <checkpoint hash>
 - 같은 BLOCKER/MAJOR가 **3회 연속 지적** → Halt (reviewer의 RECURRING 태그도 이 카운터에 포함).
 - 같은 task에서 **리뷰 지적(BLOCKER/MAJOR) 수정 사이클이 누적 5회** → Halt. 매 사이클 지적이 서로 달라 '동일 3회'에 안 걸려도, 5번 고치고도 새 결함이 계속 나오면 구현 방향이 근본적으로 틀린 신호다(무한 수정 루프 방지).
 - 빌드/테스트 **5회 연속 실패**, 원인 미상 → Halt.
-- **카운터 영속화 (압축 생존, G5).** 위 카운터(복구 2회·동일 BLOCKER/MAJOR 3회·수정 사이클 누적 5회)는 대화 컨텍스트에만 두면 auto-compact·재개 시 리셋된다 → **재시도 발생 시 plan.md `## Retry Ledger`에 카운트를 기록**하고, 압축·재개 후 그 값에서 이어 센다 (SKILL.md 재시도 한계와 동일 규칙). 아래 "Failed attempts"가 무엇이 왜 실패했는지를 남긴다면, Retry Ledger는 몇 번째인지(카운트)를 남겨 둘이 보완한다.
+- **카운터 영속화 (압축 생존, G5).** 다음 카운터는 대화 컨텍스트에만 두면 auto-compact·재개 시 리셋된다 → **발생 시 plan.md `## Retry Ledger`에 카운트를 기록**하고, 압축·재개 후 그 값에서 이어 센다 (SKILL.md 재시도 한계와 동일 규칙):
+  - **task 단위**: checkpoint 복구 2회·동일 BLOCKER/MAJOR 3회·수정 사이클 누적 5회.
+  - **Phase 단위 재루프**: Phase G 재루프 최대 2회(`phase-g-detail.md` G-3)·Phase F-7 재진입 최대 3회(`phase-f-detail.md` F-7). 이 둘도 규칙 4의 "압축 통과" 시나리오 안에서 도는 루프이므로 함께 영속화하지 않으면 압축이 카운트를 0으로 리셋해 "최대 2회·3회" 무한루프 가드가 무력화된다.
+  아래 "Failed attempts"가 무엇이 왜 실패했는지를 남긴다면, Retry Ledger는 몇 번째인지(카운트)를 남겨 둘이 보완한다.
 
 ## checkpoint 구조
 

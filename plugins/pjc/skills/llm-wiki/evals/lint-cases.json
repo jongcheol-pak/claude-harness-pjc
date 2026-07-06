@@ -141,6 +141,16 @@
         "Traceback"
       ],
       "rationale": "M-2 — 비 UTF-8(CP949) 파일 1개가 전체 lint를 크래시시키지 않고 그 파일만 ERR로 격리, 나머지 검사 계속"
+    },
+    {
+      "fixture": "archived-fresh",
+      "expect_keywords": [
+        "오류 0건"
+      ],
+      "expect_absent": [
+        "미편집"
+      ],
+      "rationale": "T9(F1) §8 예외 1 — status: archived 페이지는 updated가 90일+ 과거여도 시간기반 신선도 INFO(미편집)를 내지 않아야 함(paused 동급, 절차 D로 20_projects/에 남은 archived 프로젝트의 영구 노이즈 방지). ERR 0 확인 + '미편집' 부재. status를 active로 바꾸면 '90일+ 미편집'이 나오는 fixture라 면제가 실제 작동함을 검증(expect_clean은 INFO를 허용하므로 expect_keywords로 expect_absent를 활성화)"
     }
   ]
 }

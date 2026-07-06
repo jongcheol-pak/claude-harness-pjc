@@ -379,7 +379,7 @@ tags: [decision-log, 프로젝트태그]
 ### 검사 항목
 1. **참조 무결성**: 깨진 wikilink 탐색 및 수정/제거 (`20_projects/{proj}/`, `40_guides/` 포함)
 2. **예산 준수**: 모든 파일 줄 수 확인, 초과 시 압축/분리
-3. **신선도**: `updated` 기준 60일 미편집 → confidence 하락, 90일 → 아카이브 후보 제시. **feature/guide는 검색형 핵심 콘텐츠이므로 시간기반 아카이브 제외**(confidence 하락만, 이동 금지). **decision-log는 60/90일 전체 면제**(§2.8 — 이력 페이지, deprecated·paused 동급)
+3. **신선도**: `updated` 기준 60일 미편집 → confidence 하락, 90일 → 아카이브 후보 제시. **feature/guide는 검색형 핵심 콘텐츠이므로 시간기반 아카이브 제외**(confidence 하락만, 이동 금지). **decision-log는 60/90일 전체 면제**(§2.8 — 이력 페이지, deprecated·paused·archived 동급)
 4. **모순 탐색**: 동일 주제 상충 기술 → question 페이지 생성
 5. **크로스참조 품질**: 누락된 연결 제안, 프로젝트 tech_stack ↔ entity `used_by` 일치 확인
 6. **기능별 인덱스 동기화**: `index.md` 기능별 인덱스 ↔ 실제 feature 페이지 일치 확인. vault 루트에 `index.md` 자체가 없으면 **ERR 1건** 보고 후 인덱스 기반 검사(§7-6·14·15·16·23)를 건너뛴다(침묵 통과 방지). (lint.py 검사)
@@ -442,7 +442,7 @@ tags: [decision-log, 프로젝트태그]
 - 60일 미편집: confidence 한 단계 하락 (high → medium → low)
 - confidence 하락은 `confidence` 필드를 보유한 모든 타입(project·feature 포함)에 적용된다
 - 90일 미편집: `90_archive/`로 이동 후보 제시 (사용자 승인 후 이동)
-- **예외 1**: `status: paused`인 페이지는 시간 기반 신선도 처리 전체(60일 confidence 하락, 90일 아카이브)에서 제외
+- **예외 1**: `status: paused` 또는 `status: archived`인 페이지는 시간 기반 신선도 처리 전체(60일 confidence 하락, 90일 아카이브)에서 제외 — 둘 다 의도적으로 중단/보관한 frozen 상태라 미편집이 정상이다(절차 D로 archived가 된 프로젝트가 `20_projects/`에 남아도 신선도 노이즈를 내지 않게)
 - **예외 1-1**: 폐기 표시(`status: deprecated` 또는 `deprecated:` 필드, §2.3) 페이지도 시간 기반 신선도 처리에서 제외 — 코드에서 제거된 frozen 이력이라 미편집이 정상이다(lint §7-17ⓒ)
 - **예외 1-2**: `decision-log` 타입도 시간 기반 신선도 처리 전체에서 제외 — 결정 이력은 미편집이 정상이다(§2.8)
 - **예외 2**: `feature`·`guide` 타입은 시간 기반 아카이브 제외 (confidence 하락만 적용, 이동하지 않음)
