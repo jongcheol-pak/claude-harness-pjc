@@ -3,7 +3,7 @@
 ## 목차
 - [위치 결정 가이드](#위치-결정-가이드)
 - [작성 시 주의 — 민감 정보](#작성-시-주의--민감-정보)
-- [Template](#template) — 내장 섹션: 요구 이해 / Goal / PRD Coverage / Out of Scope / Deferred·Follow-up / Investigation Log / Risks & Unknowns / Impact Analysis / Decisions / Tasks / 사전 승인 항목 / 불가피한 Halt / Known Workarounds / Verification Strategy / Retry Ledger / Progress Log / Next Steps / Open Questions
+- [Template](#template) — 내장 섹션: 요구 이해 / Goal / PRD Coverage / Out of Scope / Deferred·Follow-up / Investigation Log / Risks & Unknowns / Impact Analysis / Decisions / 시각 요소 분해(디자인 정합 시) / Tasks / 사전 승인 항목 / 불가피한 Halt / Known Workarounds / Verification Strategy / Phase Ledger / Retry Ledger / Progress Log / Next Steps / Open Questions
 
 ## 위치 결정 가이드
 
@@ -116,6 +116,13 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 - **Rationale**: ...
 - **Source**: ...
 
+## 시각 요소 분해 (디자인 정합 작업만)
+<!-- Step 2.5 발동 시에만 이 표준 제목으로 만든다. implement-task V-9가 이 섹션의 존재로
+     시각 충실도 검증을 트리거하므로 task 본문에 표를 묻지 말 것. 비디자인 작업이면 섹션 자체를 생략. -->
+<!-- | 요소 | 속성 | 디자인 값 | 현재 값 | 일치 |
+     |------|------|----------|---------|------|
+     | 헤더 | font-size | 14px | 11.5px | ❌ | -->
+
 ## Tasks
 <!-- 반드시 T1, T2, ... 형식. "Phase 1", "단계 1", "Step 1" 등으로 쓰지 말 것
      (implement-task 자율 루프가 T<N>를 전제, pjc 내부 Phase와 혼동 방지).
@@ -173,6 +180,11 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 - 단위 테스트: `<명령>`
 - 통합 테스트: `<있다면>`
 - 수동 검증 (필요 시): `<절차>`
+
+## Phase Ledger
+<!-- implement-task가 Phase 진행 위치를 기록 (압축/재개 시 Phase F/G 중복 실행 방지). 계획 단계에서는 비움.
+     형식 예: 'Phase F 통과 (HEAD abc123)' → PRD plan은 이어서 'Phase G 통과 (Must 100%)' 또는
+     'Phase G 재루프 N회차'. 새 세션 plan-feature Step 0.2가 'Phase G 통과' 마커로 PRD plan의 완료를 판정한다. -->
 
 ## Retry Ledger
 <!-- implement-task가 재시도 발생 시 기록 (G5 — 압축/재개 생존). 첫 시도·재시도 없으면 비움.

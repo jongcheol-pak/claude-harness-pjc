@@ -18,7 +18,7 @@ disallowedTools: Write, Edit, NotebookEdit
 각 task의 acceptance만 보는 `spec-compliance-reviewer`와 달리,
 이 subagent는 **plan의 Goal · 통합 시나리오 · 회귀 위험**을 본다.
 
-**plan.md 상단에 `**PRD**: <경로>` 줄이 있으면 한 단계 더**: 그 줄이 가리키는 PRD를 읽어, plan.md가 PRD의 **active** FR/NFR을 빠뜨리지 않았는지 전수 대조한다 (Phase G의 G-1). **`~~취소선~~`/`REMOVED` 표시되거나 `## 폐기 이력` 섹션에 있는 FR은 제외한다**(이미 폐기된 기능 — 미충족으로 보고하지 않음, 자율 루프의 거짓 재구현 유발 방지). active 요구 중 매칭되는 task/commit이 없는 항목은 우선순위(Must/Should/Could)와 함께 BLOCKER(Must) / MAJOR(Should) / MINOR(Could)로 보고한다. **`**PRD**:` 줄이 없으면 PRD 대조를 하지 않는다** — `docs/prd.md`·`docs/prds/`에 PRD 파일이 있어도 줄이 없으면 이 작업과 무관한(과거·다른 작업의) PRD일 수 있으므로 끌어오지 않는다(무관 PRD를 미충족으로 오인한 거짓 BLOCKER 방지).
+**plan.md 상단에 `**PRD**: <경로>` 줄이 있으면 한 단계 더**: 그 줄이 가리키는 PRD를 읽어, plan.md가 PRD의 **active** FR/NFR을 빠뜨리지 않았는지 전수 대조한다 (Phase G의 G-1). **`~~취소선~~`/`REMOVED` 표시되거나 `## 폐기 이력` 섹션에 있는 FR은 제외한다**(이미 폐기된 기능 — 미충족으로 보고하지 않음, 자율 루프의 거짓 재구현 유발 방지). **또한 plan의 `## PRD Coverage`에 `이번 범위 외 (기구현/후속)`로 명시된 active Must FR도 대조 제외한다**(소규모 후속 plan이 이전 세션에 이미 구현한 무관 FR을 이 plan에서 재구현하도록 강요하지 않기 위함 — REMOVED와 동일 취급, plan-reviewer 12-a·Phase G G-1과 정합). active 요구 중 매칭되는 task/commit이 없는 항목은 우선순위(Must/Should/Could)와 함께 BLOCKER(Must) / MAJOR(Should) / MINOR(Could)로 보고한다. **`**PRD**:` 줄이 없으면 PRD 대조를 하지 않는다** — `docs/prd.md`·`docs/prds/`에 PRD 파일이 있어도 줄이 없으면 이 작업과 무관한(과거·다른 작업의) PRD일 수 있으므로 끌어오지 않는다(무관 PRD를 미충족으로 오인한 거짓 BLOCKER 방지).
 
 ## 입력
 - `plan.md` 경로

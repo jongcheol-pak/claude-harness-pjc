@@ -278,7 +278,7 @@ def main():
         # binary 읽기는 text-mode의 universal-newline 변환을 하지 않으므로 CRLF→LF로 정규화한다 —
         #   frontmatter '^---\n' 매치·줄 수 계산이 CRLF 파일에서 깨지지 않게(text-mode 열기와 동등).
         text = text.replace("\r\n", "\n").replace("\r", "\n")
-        if raw_bytes.startswith(b"\xef\xbb\xbf"):
+        if raw_bytes.startswith(b"\xef\xbb\xbf") and not r.startswith("90_archive/"):
             warn(f"UTF-8 BOM 발견: {r} — BOM 없이 저장 권장(인코딩 규약)", r)
         lines = text.count("\n") + 1
         fm = frontmatter(text)
@@ -356,15 +356,16 @@ def main():
                         if typ == "decision-log" else "")
                 warn(f"예산 초과: {r} {lines}/{budget}줄 (type={typ}){hint}", r)
 
-        # platform 통제어휘
+        # platform 통제어휘 (90_archive/ 제외 — 동결 백업은 wiki-schema §2.8·§8 자동 제외 원칙)
         plat = fm.get("platform")
-        if plat and plat not in PLATFORM_VOCAB:
+        if plat and plat not in PLATFORM_VOCAB and not in_archive:
             errors.append(f"platform 통제어휘 위반: {r} -> '{plat}'")
 
         # category 통제어휘 (§7-7): 값이 있는데 어휘 밖이면 ERR. 부재는 검사하지 않는다 —
         #  경로 규약(20_projects/{personal|work}/)과 이중 검출을 피하고 값 오타만 잡는다.
+        #  (90_archive/ 제외 — 통제어휘 축소 시 동결 백업이 영구 ERR로 exit 1을 유발하지 않게)
         cat = fm.get("category")
-        if cat and cat not in CATEGORY_VOCAB:
+        if cat and cat not in CATEGORY_VOCAB and not in_archive:
             errors.append(f"category 통제어휘 위반: {r} -> '{cat}' (personal|work — schema §3)")
 
         # tech_stack 휘발성 버전 검사 (wiki-schema §2.1·§2.2·§7-11):
@@ -375,7 +376,7 @@ def main():
                 if "기술 스택" in line and re.search(r"\d+\.\d+", line):
                     warn(f"소스 스텁 휘발성 버전 기재: {r} (기술 스택은 이름만, 버전 제외)", r)
                     break
-        if typ == "project":
+        if typ == "project" and not in_archive:
             ts = fm.get("tech_stack", "")
             if re.search(r"\d+\.\d+", ts):
                 warn(f"허브 tech_stack 휘발성 버전 기재: {r} (이름만, 버전 진실원천은 코드)", r)
@@ -399,12 +400,16 @@ def main():
         if typ in UPDATED_REQUIRED_TYPES and not in_archive and not raw_upd:
             warn(f"updated 누락: {r} (type={typ}) — 신선도 추적 불가 (schema §7-9)", r)
         if upd:
-            if upd > today:
+            if upd > today and not in_archive:
+                # 미래 날짜 ERR도 90_archive/ 제외 — 동결 백업이 exit 1을 유발하지 않게 (§2.8·§8 자동 제외)
                 errors.append(f"미래 날짜: {r} updated={upd}")
             # decision-log는 신선도 전체 면제(60·90 둘 다) — 이력 페이지는 미편집이 정상 (wiki-schema §2.8·§8 예외 1-2)
             # status: paused·archived도 전체 면제 — 의도적으로 중단/보관한 frozen 상태라 미편집이 정상 (§8 예외 1)
+            # lint 리포트(lint-YYYYMMDD, type: question)도 제외 — 갱신 안 되는 보존 스냅샷이라 90일 후 매 실행
+            #   자기 자신을 '아카이브 후보'로 오탐한다(§7-8 고아 제외와 동일 계열, bcc6558 정합).
             elif (typ not in INFRA_TYPES and typ != "decision-log" and not in_archive
-                  and fm.get("status") not in ("paused", "archived") and not is_dep):
+                  and fm.get("status") not in ("paused", "archived") and not is_dep
+                  and not is_lint_report(r)):
                 days = (today - upd).days
                 if days >= 90 and typ not in ARCHIVE_EXEMPT_TYPES:
                     infos.append(f"90일+ 미편집(아카이브 후보): {r} ({days}일)")

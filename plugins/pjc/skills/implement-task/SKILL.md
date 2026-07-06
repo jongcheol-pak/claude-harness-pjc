@@ -241,7 +241,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 
 **Task Type 미명시** → D로 간주 (안전 우선).
 **V-4(PostToolUse hook)는 자동 실행** — 모든 Type에서 작동 (UTF-8 + impact-warn).
-**V-9(시각 충실도)는 Type과 무관하게 조건부** — plan에 Step 2.5 시각 요소 분해 표가 있는 디자인 정합 작업일 때만 수행 (없으면 모든 Type에서 생략).
+**V-9(시각 충실도)는 Type과 무관하게 조건부** — plan에 `## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있는 디자인 정합 작업일 때만 수행 (없으면 모든 Type에서 생략).
 **V-5·V-6 병렬** — Type D(및 `(quality-review)` 플래그가 붙은 Type C)에서 V-5(compliance)·V-6(quality)는 동일 BASE/HEAD에 병렬 호출하고, 둘 다 OK일 때만 진행한다 (상세는 V-5).
 
 #### Type A 빌드 판단
@@ -347,7 +347,7 @@ Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 
 ### V-9. 시각 충실도 검증 (디자인 정합 작업만)
 
-plan에 Step 2.5의 **시각 요소 분해 표가 있을 때만** 수행한다 (디자인 정합 작업이 아니면 건너뜀).
+plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만** 수행한다 (디자인 정합 작업이 아니면 건너뜀 — 이 표준 제목으로 트리거를 판정한다).
 
 1. **요소 전수 대조**: 분해 표의 각 요소·속성을 구현 결과와 하나씩 대조한다. 공유·재사용 컴포넌트도 빠짐없이 — "행만 맞추고 헤더·검색·칩은 맞겠지" 금지. 표의 "현재 값"·"일치" 칸을 실제 구현으로 채운다.
 2. **빌드 ≠ 시각 일치를 명시**: 빌드 통과·테스트·코드리뷰는 **CSS 시각 충실도를 검증하지 못한다** (폰트 크기, 간격, 정렬, 아이콘 유무, 레이아웃 어긋남은 빌드가 못 잡는다). 따라서 빌드만으로 "디자인과 동일"을 선언하지 않는다.
@@ -445,7 +445,7 @@ Elapsed: <Hm Ms> | Turn ~<N>
 - 단, **F-6.5(notes 기록 + 오래된 항목 아카이브 이동)는 Phase F가 생략·축소돼도 코드 변경이 있었으면 항상 수행**한다(빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따름) — 누락 빈발 지점이라 본문에 남긴다.
 - 구현 중 **새로 생긴** plan `## Deferred / Follow-up`(보류)·`## Out of Scope`(기각) 항목은 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 1줄씩 기록한다(vault 없으면 그 규약의 폴백) — 계획 시점에 큐잉된 결정과 중복이면 생략.
 - F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
-- **Phase Ledger 갱신**: Phase F를 통과하면 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를 기록한다 — 이후 Phase G 재루프 중 압축·재개가 발생해도 Phase F(F-7 Opus)를 중복 재실행하지 않기 위한 마커다('재개 진입'의 Phase Ledger 판정 규칙 참조).
+- **Phase Ledger 갱신**: Phase F를 통과하면 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를 기록한다 — 이후 Phase G 재루프 중 압축·재개가 발생해도 Phase F(F-7 Opus)를 중복 재실행하지 않기 위한 마커다('재개 진입'의 Phase Ledger 판정 규칙 참조). **PRD 연결 plan은 Phase G까지 통과하면 추가로 `Phase G 통과 (Must 100%)`를 기록한다**(phase-g-detail G-4 — 새 세션 plan-feature Step 0.2가 완료를 판정하는 신호).
 
 ## Phase G — 요구 재검증 (PRD 있을 때만)
 
