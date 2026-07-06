@@ -148,7 +148,7 @@ Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
 $hooks = @('block-destructive.ps1', 'protect-harness.ps1', 'require-plan-for-write.ps1', 'require-task-checkbox.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1')
-$knownHelpers = @()   # scripts/에 hook 외 헬퍼 없음 (있으면 아래 미등록 탐지가 경고)
+$knownHelpers = @('secret-patterns.ps1')   # hook 아닌 dot-source 헬퍼 (post-write-checks·warn-commit-secrets가 공유). 미등록 탐지 경고 제외.
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
     $hookPath = Join-Path $pluginRoot "scripts/$h"
