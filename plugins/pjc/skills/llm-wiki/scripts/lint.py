@@ -722,9 +722,11 @@ def main():
                         else "이동·삭제·오기 가능 — 갱신 필요"
                     warn(f"{label} 레포에 없음: {r} -> '{t}' ({detail}, schema {sec})", r)
 
-    # 고아 페이지(간이): 어디서도 링크되지 않는 페이지 (루트 인프라·아카이브 제외)
+    # 고아 페이지(간이): 어디서도 링크되지 않는 페이지 (루트 인프라·아카이브·lint 리포트 제외)
+    #  lint-YYYYMMDD 리포트(questions/, type: question)는 어디서도 링크되지 않는 게 정상이라
+    #  §7-12 집계·§7-23 등록과 같은 기준(is_lint_report)으로 고아 검사에서도 제외한다(매 실행 오탐 방지).
     for r, (fm, typ, _) in sorted(pages.items()):
-        if "/" not in r or r.startswith("90_archive/") or typ in INFRA_TYPES:
+        if "/" not in r or r.startswith("90_archive/") or typ in INFRA_TYPES or is_lint_report(r):
             continue
         if r[:-3].casefold() not in link_targets:  # link_targets는 casefold 정규화값(M-3/L-1과 정합)
             warn(f"고아 페이지(어디서도 링크되지 않음): {r}", r)
