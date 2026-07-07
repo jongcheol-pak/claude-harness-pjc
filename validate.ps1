@@ -8,7 +8,7 @@
 #   2. plugin.json + marketplace.json 유효
 #   3. skill 8개 모두 등록
 #   4. agent 6개 모두 등록
-#   5. hook 8개 모두 등록 + BOM 확인
+#   5. hook 9개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
 #   7. JSON 파일 파싱 가능
 
@@ -147,7 +147,7 @@ foreach ($a in $actualAgents) {
 Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
-$hooks = @('block-destructive.ps1', 'protect-harness.ps1', 'require-plan-for-write.ps1', 'require-task-checkbox.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1')
+$hooks = @('block-destructive.ps1', 'protect-harness.ps1', 'require-plan-for-write.ps1', 'require-task-checkbox.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1', 'warn-commit-secrets.ps1')
 $knownHelpers = @('secret-patterns.ps1')   # hook 아닌 dot-source 헬퍼 (post-write-checks·warn-commit-secrets가 공유). 미등록 탐지 경고 제외.
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
