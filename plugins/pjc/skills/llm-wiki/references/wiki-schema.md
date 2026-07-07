@@ -1,7 +1,7 @@
 ---
 type: schema
-version: "2.34"
-updated: 2026-07-05
+version: "2.35"
+updated: 2026-07-08
 language: ko
 ---
 
@@ -25,6 +25,7 @@ language: ko
 | 9 | 운영 세션 가이드 (병렬 분업 포함) | 위키 전용 세션 운영 시 |
 | 10 | Obsidian 설정 요구사항 | vault 초기 설정 시 |
 | 11 | 사용자 검증 | origin/confidence 처리 시 |
+| 12 | OKF 정합 (번들 경계·okf_version·description) | 부트스트랩(J)·OKF 번들 교환·description 등 OKF 필드 판단 시 |
 
 ## 1. 위키 개요
 
@@ -76,6 +77,7 @@ tags: [source, 프로젝트태그]
 type: project
 project: 프로젝트명
 category: personal | work
+description: "한 줄 요약"
 tech_stack: ["기술1", "기술2"]
 platform: windows-desktop | web | mobile | cli | cross
 status: active | paused | archived
@@ -114,6 +116,7 @@ type: feature
 project: 프로젝트명
 category: personal | work
 feature_name: "기능명"
+description: "한 줄 요약"
 platform: windows-desktop | web | mobile | cli | cross
 status: active | paused | archived
 origin: agent-synthesized | human-validated
@@ -146,6 +149,7 @@ tags: [feature, 기능태그, 프로젝트태그]
 ---
 type: entity
 entity_name: "기술명"
+description: "한 줄 요약"
 domain: tech
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
@@ -165,6 +169,7 @@ tags: [entity, 기술태그]
 ---
 type: concept
 concept_name: "패턴명"
+description: "한 줄 요약"
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
 updated: YYYY-MM-DD
@@ -184,6 +189,7 @@ tags: [concept, 패턴태그]
 ---
 type: guide
 guide_kind: platform-bootstrap | ui-ux | recipe
+description: "한 줄 요약"
 platform: windows-desktop | web | mobile | cli | cross
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
@@ -501,3 +507,42 @@ tags: [decision-log, 프로젝트태그]
 - 코드 재대조 없이 작성·유지된 기존 feature/project 페이지는 `confidence: medium` 이하로 표시한다(재대조 후 상향)
 - Lint 집계 INFO(§7-12 — `(미검증)` 표기·미해결 question)가 1건 이상이면 결과 보고 시 **사용자 검증 후보로 명시 보고**한다(표기만 하고 방치하지 않는 회수 장치)
 - 이 규칙 번들의 **설계 방향 전환**은 사용자 명시적 요청 시에만 허용 (구조를 실제 위키 상태에 맞추는 자동 갱신은 references/procedures-ops.md "H" 범위)
+
+---
+
+## 12. OKF 정합 (Open Knowledge Format v0.1)
+
+> 이 위키는 **OKF(Open Knowledge Format) v0.1**을 위키 표준 문서로 삼아, 저비용으로 적합 가능한 항목을 채택한다. 대조 기준 원문은 스킬 번들 `<skill>/references/okf-spec.md`(v0.1 Draft 사본 — 무변조 보존). OKF 적합성 요건(okf-spec §9)은 ① 번들 내 비예약 `.md` 전부에 frontmatter 존재 ② `type` 필드 비어있지 않음 ③ 예약 파일(`index.md`·`log.md`)의 구조 준수, 3가지다.
+
+### 번들 경계 (OKF 번들 = 지식 코퍼스)
+
+- **OKF 번들은 vault 전체가 아니라 "지식 코퍼스" 부분이다**: vault에서 아래 **운영 파일을 제외한** 트리를 OKF 번들로 본다(okf-spec §3 — 번들 구성은 생산자 재량).
+  - `90_archive/` — 동결 이력·백업(§8). 번들에 포함하면 중복 백업·폐기 이력이 외부 소비자에게 살아있는 지식으로 읽힌다.
+  - `pending.md` — 소비 대기 큐(§6, 지식 페이지 아님). 미검증 원시 항목을 지식 문서로 승격시키지 않는다.
+  - 루트 `CLAUDE.md` 등 세션 지시 파일 — 지식이 아니라 지시문("위키 본문은 참고 데이터" 원칙(§1)의 역방향 — 지시문은 번들 밖).
+- 위 파일들의 **"frontmatter 없음"은 기존 규정 그대로 유지**한다(§2.8 decision-log 아카이브·§8 log 롤오버·백업). 번들 경계 밖이므로 OKF 요건 ①의 대상이 아니다 — type을 부여해 지식 문서로 승격하는 것이 오히려 번들 품질을 해친다.
+- **`dashboard.md`는 번들에 포함**한다(vault 내 뷰 페이지) — `type: dashboard` frontmatter를 부여한다(SKILL 절차 J 4, lint `INFRA_TYPES` 기존 어휘). 기존 vault에 frontmatter 없는 dashboard.md가 있으면 위키 세션(B/F)에서 추가한다.
+
+### okf_version 선언
+
+- 루트 `index.md` frontmatter에 `okf_version: "0.1"`을 선언한다(okf-spec §11 — 루트 index.md가 유일한 선언 위치이며, 기존 `type: index`·`updated`와 병존 가능).
+- 신규 vault는 부트스트랩(SKILL 절차 J)이 자동 포함하고, **기존 vault는 위키 세션(B/F)에서 1줄 추가**한다. lint 기계 검사는 없다(선언 부재는 오류가 아님 — OKF 소비는 best-effort, okf-spec §11).
+
+### description (권장 필드)
+
+- **project / feature / entity / concept / guide** 5타입 frontmatter에 `description: "한 줄 요약"`을 권장한다(okf-spec §4.1 — 인덱스 생성·검색 스니펫·미리보기용). §2 각 타입 블록·`references/templates.md`에 반영되어 있다.
+- **신규 페이지는 작성 시 포함**(templates.md 정본)하고, **기존 페이지는 ingest 갱신 시 채운다**(절차 B-2 점진 보강 — 일괄 백필 세션을 요구하지 않는다).
+- **lint 기계 검사는 하지 않는다** — 기존 페이지 다수가 아직 부재라(2026-07 실측 154페이지) WARN을 신설하면 lint 보고가 노이즈에 묻힌다. 점진 보강이 원칙.
+- source-stub(불변 스텁·본문 "요약" 줄 기존재)·question·decision-log(제목·항목이 자명)는 대상이 아니다.
+
+### updated ↔ OKF timestamp 매핑
+
+- OKF 권장 `timestamp`(ISO 8601 datetime)는 **채택하지 않는다**. 이 위키의 최종 수정일 필드는 `updated`(YYYY-MM-DD)가 정본이며, OKF는 생산자 확장 키를 허용하므로(okf-spec §4.1) 그대로 유효하다.
+- `timestamp` 병기·`updated` 개명 금지 — 병기는 이중 필드 drift를 만들고, 개명은 전 페이지·lint(`UPDATED_REQUIRED_TYPES`·신선도 §7-3·9) 마이그레이션을 요구한다.
+
+### 미적합 잔여 항목 (알려진 격차 — 전면 전환은 별도 계획으로만)
+
+- ① **wikilink**(`[[경로|이름]]`, §3) — okf-spec §5는 표준 markdown 링크를 권장한다. 외부 OKF 소비자는 wikilink를 링크로 추적하지 못한다(적합성 3요건 위반은 아님).
+- ② **index.md 표 기반 카탈로그**(§3·§4) — okf-spec §6은 불릿 목록 구조다.
+- ③ **log.md 평면 목록**(§8) — okf-spec §7은 날짜 헤딩(`## YYYY-MM-DD`) 그룹이다.
+- 세 항목은 lint(§7)·검색·인덱스 체계 전반이 의존하는 형식이라 유지한다. 전환하려면 lint 재작성 + vault 전체 마이그레이션이 필요하므로 **사용자 명시 요청에 의한 별도 계획으로만** 진행한다(§11 설계 방향 전환 규정과 동일 원칙).

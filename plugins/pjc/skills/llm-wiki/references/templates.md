@@ -41,6 +41,7 @@ tags: [source, 프로젝트태그]
 type: project
 project: 프로젝트명
 category: personal | work
+description: "한 줄 요약 (권장 — wiki-schema §12, 검색·인덱스 스니펫용)"
 tech_stack: ["기술1", "기술2"]
 platform: windows-desktop | web | mobile | cli | cross
 status: active
@@ -85,6 +86,7 @@ type: feature
 project: 프로젝트명
 category: personal | work
 feature_name: "기능명"
+description: "한 줄 요약 (권장 — wiki-schema §12)"
 platform: windows-desktop | web | mobile | cli | cross
 status: active   # 코드에서 제거 시 deprecated: YYYY-MM-DD 추가 (폐기 보존, wiki-schema §2.3)
 origin: agent-synthesized | human-validated
@@ -129,6 +131,7 @@ tags: [feature, 기능태그, 프로젝트태그]
 ---
 type: entity
 entity_name: "기술명"
+description: "한 줄 요약 (권장 — wiki-schema §12)"
 domain: tech
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
@@ -155,6 +158,7 @@ tags: [entity, 기술태그]
 ---
 type: concept
 concept_name: "패턴명"
+description: "한 줄 요약 (권장 — wiki-schema §12)"
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
 updated: YYYY-MM-DD
@@ -179,6 +183,7 @@ tags: [concept, 패턴태그]
 ---
 type: guide
 guide_kind: platform-bootstrap | ui-ux | recipe
+description: "한 줄 요약 (권장 — wiki-schema §12)"
 platform: windows-desktop | web | mobile | cli | cross
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
