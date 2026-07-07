@@ -401,6 +401,59 @@ Assert-Case -Name "rtc: QUICK=1 우회 (비차단 + 안내)" -R $r -ExpectExit 0
 $env:CLAUDE_HARNESS_QUICK = $null
 
 # =====================================================================
+# 9) warn-commit-secrets 시나리오 (git 필요 — 커밋 시점 스테이징 스캔)
+# =====================================================================
+# 무상태 음성(비커밋·--dry-run)은 스테이징 상태가 필요 없지만, 양성(스테이징 시크릿·-am)은 git 상태 필요.
+# 러너 파일 자체가 자사 시크릿 스캐너·post-write hook에 오탐되지 않게 가짜 값은 문자열 연결로 분리 기재.
+if ($gitOk) {
+    $wcs = Join-Path $work 'wcsrepo'; New-Item -ItemType Directory $wcs -Force | Out-Null
+    Push-Location $wcs
+    git init -q; git config user.email t@t; git config user.name t
+    'v=1' | Set-Content app.js; git add .; git commit -qm init
+    Pop-Location
+    $fakeApi = 'api_key = "' + 'ABCDEF1234567890' + '"'
+    $wcsJson = @{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m test' } } | ConvertTo-Json -Compress
+
+    # 1) staged 시크릿 → 경고
+    Push-Location $wcs; Set-Content secret.js $fakeApi; git add secret.js; Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsJson
+    Assert-Case -Name "commit-secrets: staged 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+
+    # 2) --dry-run → 스킵(무출력)
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit --dry-run' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: --dry-run 스킵(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 3) .env 스테이징 → 파일명 경고
+    Push-Location $wcs; Set-Content .env 'v=1'; git add -f .env; Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsJson
+    Assert-Case -Name "commit-secrets: .env 스테이징 경고" -R $r -ExpectExit 0 -ExpectContains '.env'
+
+    # 4) 클린 스테이징(시크릿·.env 제거) → 무출력(음성)
+    Push-Location $wcs
+    git rm -q --cached secret.js .env; Remove-Item secret.js, .env -Force
+    'clean=1' | Set-Content ok.txt; git add ok.txt; git commit -qm clean
+    Pop-Location
+    Push-Location $wcs; 'more=1' | Set-Content ok.txt; git add ok.txt; Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsJson
+    Assert-Case -Name "commit-secrets: 클린 스테이징 무출력(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 5) -am 자동 스테이징분(추적 파일 시크릿) → 경고
+    Push-Location $wcs; git commit -qm ok2; Add-Content app.js $fakeApi; Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -am update' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: -am 자동스테이징 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+
+    # 6) 같은 미스테이징 변경 + -m(자동스테이징 아님) → 무출력(음성 — 메시지 속 -a 오탐 없음 포함)
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m update' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: -m 미스테이징 미탐(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 7) git commit 아님 → 통과(무출력, fast path)
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: git commit 아님 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+} else {
+    Write-Host "[SKIP] warn-commit-secrets 시나리오 (git 없음)"
+}
+
+# =====================================================================
 # USERPROFILE 원복 + 결과 보고
 # =====================================================================
 $env:USERPROFILE = $realHome
