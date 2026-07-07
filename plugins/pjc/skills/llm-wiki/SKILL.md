@@ -94,11 +94,13 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 `<vault>`가 비었거나 골격이 없으면 생성한다(이미 있으면 건너뜀). §0-2에서 트리거.
 
 1. **디렉터리**: `10_sources/{personal,work}`, `20_projects/{personal,work}`, `30_knowledge/{tech,patterns,questions}`, `40_guides/{platforms,ui-ux,recipes}`, `90_archive`
-2. **`index.md`**: 빈 카탈로그 골격 — 섹션: `## 개인 프로젝트` / `## 업무 프로젝트` / `## 기능별 인덱스` / `## 가이드 / 레시피` / `## 기술 스택 지식 (tech/)` / `## 범용 패턴 (patterns/)` / `## 미해결 질문` / `## 참조`. 표는 헤더만, 내용은 "아직 없음" 주석. 참조 섹션은 **실제 존재하는 파일만** 링크(log/dashboard).
+2. **`index.md`**: 빈 카탈로그 골격 — **frontmatter 포함**: `type: index` · `okf_version: "0.1"` · `updated: YYYY-MM-DD` (OKF 버전 선언 위치는 루트 index.md 뿐 — wiki-schema §12). 섹션: `## 개인 프로젝트` / `## 업무 프로젝트` / `## 기능별 인덱스` / `## 가이드 / 레시피` / `## 기술 스택 지식 (tech/)` / `## 범용 패턴 (patterns/)` / `## 미해결 질문` / `## 참조`. 표는 헤더만, 내용은 "아직 없음" 주석. 참조 섹션은 **실제 존재하는 파일만** 링크(log/dashboard).
 3. **`log.md`**: `## 최근 변경` + `- [YYYY-MM-DD] [INIT] 위키 초기 골격 생성 (llm-wiki 스킬).` + `## 아카이브 인덱스`(빈 목록 — 6000자 초과 시 월별 롤오버 항목을 `- {YYYY-MM}.md: {키워드}`로 등록, wiki-schema §8). `90_archive/log/`는 첫 롤오버 시 생성(미리 만들지 않음).
-4. **`dashboard.md`** (선택): Dataview 쿼리(프로젝트/feature/guide/신선도/질문).
+4. **`dashboard.md`** (선택): `type: dashboard` frontmatter(번들 포함 뷰 페이지 — wiki-schema §12) + Dataview 쿼리(프로젝트/feature/guide/신선도/질문).
 5. **규칙은 vault에 복사하지 않는다** — 진실원천은 스킬 번들 `references/wiki-schema.md` 뿐. index `## 참조`에는 번들 경로를 텍스트로 안내한다(vault에 SCHEMA.md를 만들지 말 것).
 6. 부트스트랩 완료 후 본래 요청(A~I)을 이어서 진행한다.
+
+> OKF 정합 상세(번들 경계·okf_version·description 권장 필드)는 wiki-schema §12가 정본이다.
 
 ### K. 작업 참조 (코드 작업 세션 read-only 조회)
 
