@@ -104,6 +104,10 @@ $doneplan = Join-Path $work 'proj-done';  New-Item -ItemType Directory $doneplan
 "# plan`n- [x] T1: done" | Set-Content (Join-Path $doneplan 'plan.md')
 $emptyplan = Join-Path $work 'proj-empty';  New-Item -ItemType Directory $emptyplan -Force | Out-Null
 "# plan`n요약만 있고 task 체크박스가 하나도 없음" | Set-Content (Join-Path $emptyplan 'plan.md')
+# 별표('*') 불릿으로 완료된 plan — G4/H3 카운팅이 '-'만 보던 버그 회귀 가드:
+#   '*' 불릿을 못 세면 done=0으로 오판해 H3 '빈 plan'을 오탐한다. 통일 후엔 G4 '완료 plan'이어야 한다.
+$starplan = Join-Path $work 'proj-star';  New-Item -ItemType Directory $starplan -Force | Out-Null
+"# plan`n* [x] T1: done" | Set-Content (Join-Path $starplan 'plan.md')
 
 function New-WriteJson([string]$cwd, [string]$file, [string]$tool = 'Write', [hashtable]$extra = @{}) {
     $ti = @{ file_path = $file; content = 'class A {}' } + $extra
@@ -117,9 +121,11 @@ Assert-Case -Name "require-plan: plan 없이 .md 통과" -R $r -ExpectExit 0
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $withplan (Join-Path $withplan 'A.cs'))
 Assert-Case -Name "require-plan: plan 있으면 .cs 통과" -R $r -ExpectExit 0
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $doneplan (Join-Path $doneplan 'A.cs'))
-Assert-Case -Name "require-plan: 완료 plan 경고+비차단" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
+Assert-Case -Name "require-plan: 완료 plan 경고+비차단 (in-scope 후속 안내 포함)" -R $r -ExpectExit 0 -ExpectContains '범위 내 후속'
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $emptyplan (Join-Path $emptyplan 'A.cs'))
 Assert-Case -Name "require-plan: 빈 plan(체크박스 0) 경고+비차단 (H3)" -R $r -ExpectExit 0 -ExpectContains '빈/플레이스홀더'
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $starplan (Join-Path $starplan 'A.cs'))
+Assert-Case -Name "require-plan: 별표('*') 완료 plan은 G4(완료)로 판정, H3(빈) 오탐 아님" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
 $trivial = @{ tool_name = 'Edit'; cwd = $noplan; tool_input = @{ file_path = (Join-Path $noplan 'A.cs'); old_string = 'int x = 1;'; new_string = 'int x = 2;' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'require-plan-for-write.ps1' $trivial
 Assert-Case -Name "require-plan: trivial Edit 통과" -R $r -ExpectExit 0 -ExpectContains 'Trivial'

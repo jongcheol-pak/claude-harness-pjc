@@ -272,12 +272,15 @@ if ($foundIn) {
     if ($planFile) {
         try {
             $planText = Get-Content -LiteralPath $planFile -Raw -Encoding UTF8
-            # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] (줄 시작의 '- [ ]' 형태만)
-            $incomplete = [regex]::Matches($planText, '(?m)^\s*-\s*\[[ /]\]').Count
-            $done = [regex]::Matches($planText, '(?m)^\s*-\s*\[[xX]\]').Count
+            # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] (줄 시작의 '- [ ]'/'* [ ]' 형태).
+            # 불릿은 마크다운 표준 '-'·'*' 둘 다 인식한다(require-task-checkbox M6와 정합 —
+            #   '* [ ]' 불릿 plan을 체크박스 0개로 오판해 H3 '빈/플레이스홀더' 경고를 오탐하던 구멍 보완).
+            $incomplete = [regex]::Matches($planText, '(?m)^\s*[-*]\s*\[[ /]\]').Count
+            $done = [regex]::Matches($planText, '(?m)^\s*[-*]\s*\[[xX]\]').Count
             if ($incomplete -eq 0 -and $done -ge 1) {
                 $warnMsg = "[HARNESS] 이 plan은 완료된 것으로 보입니다 (task 체크박스 ${done}개 전부 [x], 미완료 0). " +
-                           "이번 코드 변경이 새 작업이면 plan-feature로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다."
+                           "이번 코드 변경이 이 완료된 plan의 범위 내 후속 작업(리뷰 지적 수정·마무리·문서 갱신 등)이면 새 plan 없이 그대로 진행하세요. " +
+                           "완료된 plan과 무관한 '새 작업'일 때만 plan-feature로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다."
                 [Console]::Error.WriteLine($warnMsg)
                 # PreToolUse additionalContext로 모델에 전달 (exit 0 비차단)
                 $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
