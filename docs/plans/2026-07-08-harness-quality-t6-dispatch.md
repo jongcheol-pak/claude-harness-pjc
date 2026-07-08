@@ -135,7 +135,7 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
     - (i) $harnessHookName 누락 → T4 protect-harness 골든이 검출
   - **Depends on**: T2
 
-- [ ] T4. 동등성 골든 + 자기보호 골든 (무회귀 실증)
+- [x] T4. 동등성 골든 + 자기보호 골든 (무회귀 실증)
   - **Type**: C
   - **Acceptance**: Given 골든 러너, When 실행, Then ① **디스패처 전수 동등성(리뷰 m4)** — warn-external-ops·require-task-checkbox·warn-commit-secrets 관련 **기존 케이스 전량**을 같은 stdin JSON으로 `pre-bash-dispatch.ps1`에도 재공급하는 루프를 추가해, 각 케이스의 exit code·keyword가 개별 hook 경유와 일치함을 실증(대표 선별이 아닌 전수 — 프로덕션 배선이 디스패처이므로). 단 warn 병합 케이스는 관측 동작 동등(keyword+exit) 기준(바이트 동일 아님) ② block+warn 동시 exit 2·warn 2개 병합·전 검사 무hit 무출력 등 디스패처 고유 분기 케이스 추가 ③ 기존 개별 케이스(래퍼 경유) 전부 유지 PASS ④ protect-harness 골든에 설치본 `pre-bash-dispatch.ps1`·`bash-hook-lib.ps1` Write 차단(exit 2) 2건 신설 ⑤ 전 골든 PASS ⑥ validate.ps1 green(WARN 0 — 신규 2파일 등록 확인)
   - **Files**:
@@ -177,7 +177,10 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
 
 ## Progress Log
 - T1 완료 (커밋 4e86483): bash-hook-lib.ps1 모듈(3함수) + 3 스크립트 래퍼화. 골든 241/241 무회귀(래퍼 경유). spec/quality 리뷰 진행 중.
-- T2 완료 (커밋 대기): pre-bash-dispatch.ps1 디스패처 — 3함수 순차 호출, block 우선 exit 2·warn 병합. 스모크 6케이스(push 경고·클린·merge-abort·커밋메시지·rtc 차단/통과) 개별 hook과 동일. 전수 동등성은 T4 골든.
+- T2 완료 (커밋 5d62004): pre-bash-dispatch.ps1 디스패처 — 3함수 순차 호출, block 우선 exit 2·warn 병합. 스모크 6케이스 개별 hook과 동일.
+- T3 완료 (커밋 f781328): hooks.json Bash 4→2(block-destructive 독립+dispatch), validate·$harnessHookName 갱신. T1 계약 B1 문서 정합(D2-1). block-destructive diff 0.
+- T4 완료 (커밋 대기): 디스패처 전수 동등성 골든(3 hook stateless 36건 재공급 + rtc/commit-secrets stateful) + 고유 분기(block 우선·warn 병합·D4 트레이드오프) + protect-harness 신규 2파일 개조 차단. 골든 287/287.
+  - 결정: 디스패처 동등성은 합산 상위집합이라 silent 강제 대신 exit 일치+keyword 상위집합으로 판정('git merge' 같은 명령이 rtc엔 무관해도 warn-external을 건드리는 게 정상). validate.ps1(WARN 0)은 설치 캐시 검사라 재설치 후 확인(목록 갱신은 코드로 확인 완료).
 
 ## Next Steps
 - plan 승인 후 `pjc:implement-task`를 이 경로로 호출

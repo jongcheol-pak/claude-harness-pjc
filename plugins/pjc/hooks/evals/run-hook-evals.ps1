@@ -92,6 +92,23 @@ foreach ($c in $cases) {
         -ExpectContains ([string]($c.expect_contains ?? '')) `
         -ExpectSilent ([bool]($c.expect_silent ?? $false)) `
         -PendingFix ([bool]($c.pending_fix ?? $false))
+
+    # [v1.99.0 T6] 디스패처 전수 동등성 — 3 hook의 stateless 케이스를 pre-bash-dispatch.ps1에도
+    #   같은 stdin으로 재공급해 개별 hook 경유와 일치하는지 실증(프로덕션 배선이 디스패처이므로
+    #   대표 선별이 아닌 전수). block-destructive는 디스패처 무포함이라 제외.
+    #   디스패처는 3 hook을 합산하므로 출력은 개별 hook의 상위집합이다 — 동등성 판정은
+    #   ① exit code 일치(차단은 rtc만 유발, warn 2종은 항상 0이라 개별 exit와 동일) +
+    #   ② 개별이 keyword를 요구하면 디스패처도 그 keyword 포함(상위집합). 개별 '무출력' 케이스는
+    #   같은 명령이 다른 hook(예: 'git merge'가 warn-external)을 건드리면 디스패처 출력이 생기므로
+    #   silent를 강제하지 않고 exit 0만 확인한다(그게 올바른 합산 동등성).
+    #   pending_fix 케이스는 개별 hook 쪽에서만 판정(수정 전 red 실증용 — 디스패처 중복 불필요).
+    if (-not [bool]($c.pending_fix ?? $false) -and
+        $c.hook -in @('warn-external-ops.ps1', 'require-task-checkbox.ps1', 'warn-commit-secrets.ps1')) {
+        $rd = Invoke-Hook 'pre-bash-dispatch.ps1' $json
+        Assert-Case -Name "dispatch=$($c.hook): $($c.name)" -R $rd `
+            -ExpectExit ([int]($c.expect_exit ?? 0)) `
+            -ExpectContains ([string]($c.expect_contains ?? ''))
+    }
 }
 
 # =====================================================================
@@ -244,6 +261,12 @@ $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstal
 Assert-Case -Name "protect-harness: 설치본 warn-commit-secrets Write 차단 (v1.97.2 집합 합류)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/secret-patterns.ps1'))
 Assert-Case -Name "protect-harness: 설치본 secret-patterns 헬퍼 Write 차단 (v1.97.2 등가 우회 봉쇄)" -R $r -ExpectExit 2
+# [v1.99.0 T6] 디스패처·공유 lib 이름 집합 합류 — pre-bash-dispatch(hook)·bash-hook-lib(3 hook 검사 로직
+#   헬퍼, 개조 시 3 게이트 등가 무력화) 설치본 개조 차단. 집합 누락 재발 시 이 두 케이스가 잡는다.
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/pre-bash-dispatch.ps1'))
+Assert-Case -Name "protect-harness: 설치본 pre-bash-dispatch Write 차단 (v1.99.0 T6 집합 합류)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/bash-hook-lib.ps1'))
+Assert-Case -Name "protect-harness: 설치본 bash-hook-lib 헬퍼 Write 차단 (v1.99.0 T6 등가 우회 봉쇄)" -R $r -ExpectExit 2
 
 # =====================================================================
 # 4) require-evidence 시나리오 (git 필요 — 부재 시 skip)
@@ -543,6 +566,14 @@ $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 
 Assert-Case -Name "rtc: QUICK=1 우회 (비차단 + 안내)" -R $r -ExpectExit 0 -ExpectContains 'QUICK'
 $env:CLAUDE_HARNESS_QUICK = $null
 
+# ---- [v1.99.0 T6] rtc 스테이트풀 케이스 디스패처 동등성 (plan cwd 필요분) ----
+$r = Invoke-Hook 'pre-bash-dispatch.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
+Assert-Case -Name "dispatch=rtc: 미완료 [ ] T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$r = Invoke-Hook 'pre-bash-dispatch.ps1' (New-CommitJson $rtcOk 'T3: 검색 요약')
+Assert-Case -Name "dispatch=rtc: 완료 [x] T3 커밋 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'pre-bash-dispatch.ps1' (New-CommitJson $rtcUn '문서: 릴리즈 노트 (T3: 반영)')
+Assert-Case -Name "dispatch=rtc: 제목 아닌 T3 언급 통과 (제목 한정)" -R $r -ExpectExit 0 -ExpectSilent $true
+
 # =====================================================================
 # 9) warn-commit-secrets 시나리오 (git 필요 — 커밋 시점 스테이징 스캔)
 # =====================================================================
@@ -592,6 +623,25 @@ if ($gitOk) {
     # 7) git commit 아님 → 통과(무출력, fast path)
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: git commit 아님 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # ---- [v1.99.0 T6] 디스패처 동등성 + 디스패처 고유 분기 (git repo 필요) ----
+    # 현재 $wcs 상태: app.js에 시크릿(-am 자동스테이징 대상), ok.txt 미스테이징. 명시 스테이징 시크릿을 다시 심는다.
+    Push-Location $wcs; Set-Content secret2.js $fakeApi; git add secret2.js; Pop-Location
+    # (a) commit-secrets 양성 → 디스패처 경유도 경고 유지
+    $r = Invoke-Hook 'pre-bash-dispatch.ps1' $wcsJson
+    Assert-Case -Name "dispatch=commit-secrets: staged 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+    # (b) 디스패처 고유: block(rtc 미완료) + warn(commit-secrets) 동시 → block 우선 exit 2, warn 경고는 버림(D4)
+    "# plan`n- [ ] T7. 미완료" | Set-Content (Join-Path $wcs 'plan.md')
+    $r = Invoke-Hook 'pre-bash-dispatch.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m "T7: 완료"' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "dispatch: block(rtc)+warn(secret) 동시 → exit 2 차단 우선" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    if (($r.out -match 'COMMIT SECRET')) { $script:results.Add(@{ ok = $false; line = "[FAIL] dispatch: block 시 warn 경고 버림(D4) — COMMIT SECRET가 출력됨" }) }
+    else { $script:results.Add(@{ ok = $true; line = "[PASS] dispatch: block 시 warn 경고 버림(D4 트레이드오프)" }) }
+    Remove-Item (Join-Path $wcs 'plan.md') -Force -ErrorAction SilentlyContinue
+    # (c) 디스패처 고유: warn 2개(external push + commit secret) 병합 → exit 0 + 두 keyword 모두
+    $r = Invoke-Hook 'pre-bash-dispatch.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m x && git push origin main' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "dispatch: warn 2개 병합 (external) — exit 0" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
+    if (($r.out -match 'COMMIT SECRET') -and ($r.out -match 'EXTERNAL OP')) { $script:results.Add(@{ ok = $true; line = "[PASS] dispatch: warn 2개(secret+external) additionalContext 병합" }) }
+    else { $script:results.Add(@{ ok = $false; line = "[FAIL] dispatch: warn 병합 누락 | 출력: $(($r.out -split "`r?`n" | Select-Object -First 2) -join ' / ')" }) }
 } else {
     Write-Host "[SKIP] warn-commit-secrets 시나리오 (git 없음)"
 }
