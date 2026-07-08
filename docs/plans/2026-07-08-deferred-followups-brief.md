@@ -10,6 +10,15 @@
 
 ## 후속 1. explorer 모델 상향 검토 (D5 잔여)
 
+### 결론 (2026-07-08 종결)
+
+- **결정: 현행 유지 (A안 — `model: haiku`, `effort: medium`).** D5 Deferred는 "검토 완료, 현행 유지"로 종결한다.
+- **근거**:
+  - effort medium 반영(part2 T3, v1.100.0)이 **2026-07-08 14:37 커밋**으로 검토 당일이라, "medium이 부족하다"는 반영 후 관찰 근거가 존재할 수 없음(관찰 기간 0).
+  - 사용자 확인(plan Step 8): explorer가 locating을 놓치거나 부정확하게 답한 관찰 사례 **없음**.
+  - 브리프 자체 원칙("근거 없으면 상향하지 않는다 — 비용만 증가")과 일치. C안(agent 분리)은 브리프도 비권장.
+- **재검토 조건**: plan-feature locating 위임에서 explorer가 위치·패턴을 놓치거나 부정확하게 답한 **실사례가 관찰되면**, 그때 `model: sonnet` 상향(B안)을 새 논의로 시작한다(README 모델 라우팅 표 동기 포함). 상시 대기 항목이 아니다.
+
 ### 배경
 - part2 T3에서 `plugins/pjc/agents/explorer.md`를 `effort: low → medium`으로 올리고, 문구("완결적으로 답하되 코드 덤프 금지")·Bash 범위(조회형 git만, 빌드/테스트 제외)를 정비했다.
 - **모델 상향(`haiku` → 상위)은 그때 Deferred**했다 — effort medium만으로 locating 품질이 충분한지 **관찰 후 판단**하기로 함.
