@@ -22,6 +22,12 @@
 - 재루프: <0-2>회
 - ⏳ 사용자 확인 필요 (HUMAN-VERIFY): <FR-x UI 체감, ...> ← 기계 검증 불가 항목, 직접 확인 부탁
 
+**Plan 변경 내역** (구현 중 plan.md에 가해진 수정 — 사용자가 plan.md를 열지 않고도 계획이 잘 갱신됐는지 검수할 수 있게. 아래 4줄 중 변경이 하나도 없으면 전체를 "계획 원안대로 완료 (plan 수정 없음)" 1줄로 대체)
+- 추가된 task: <구현 중 추가된 T<N> + 사유 (Phase G 갭, F 결함 보강, caller 연쇄 등) — 없으면 "없음">
+- Files 추가: <P-3 caller 누락 발견 등으로 task Files에 추가된 파일 — 없으면 "없음">
+- 신규 Deferred / Decisions: <구현 중 새로 생긴 항목 요약 (상세는 아래 Follow-ups) — 없으면 "없음">
+- 체크박스: <N>/<N> [x] 확인
+
 **Execution stats**
 - Elapsed (total): <Hm Ms>
 - Turns: ~<N>
