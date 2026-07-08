@@ -36,12 +36,21 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 #   불가능하다 → 통과(fail-open 유지). 파일 메시지 커밋은 드물고, 오차단 위험이 더 크므로 감수한다.
 if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { exit 0 }
 
-# ---- 완료 커밋 판정: 첫 'T<N>:' 매치만 사용 ----
-# 대소문자 구분([regex]::Match 기본) — Phase D 규약은 대문자 T. 첫 매치만 보는 이유:
-# Phase D 커밋 제목이 'T<N>: <요약>'으로 시작하고, 본문(Type:/Build:/Tests: 등)에는
-# 'T<N>:' 패턴이 없어 첫 매치가 곧 제목이다. 본문의 타 task 언급 오탐을 막는다.
-# 'checkpoint: T3 start'는 N 뒤에 콜론이 없어 자연 불일치. 'T1\b'은 T10을 오매치하지 않는다.
-$m = [regex]::Match($cmd, '\bT(\d+)\s*:')
+# ---- 완료 커밋 판정: 커밋 메시지 '제목(첫 줄)'이 'T<N>:'로 시작할 때만 ----
+# (v1.98.0) 종전엔 $cmd 전체의 첫 'T<N>:' 매치를 썼는데, 이는 제목이 아닌 메시지 본문·괄호 언급
+#   (예: 'git commit -m "문서: 릴리즈 노트 (T3: 반영)"')의 T3까지 완료 커밋으로 오판해, 무관한
+#   문서 커밋을 차단하고 "T3 체크박스를 [x]로 갱신하라"는 안내가 아직 미완료인 T3의 조기 [x]를
+#   유도했다. Phase D 규약의 완료 커밋은 제목이 'T<N>:'로 시작한다 → -m 값의 첫 줄만 판정한다.
+# -m 값 추출: 첫 -m/--message의 따옴표/비따옴표 값. 없으면(-F 파일 메시지 등) 판정 불가 → 통과.
+$msgMatch = [regex]::Match($cmd, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
+if (-not $msgMatch.Success) { exit 0 }
+$msgVal = if ($msgMatch.Groups[1].Success) { $msgMatch.Groups[1].Value }
+          elseif ($msgMatch.Groups[2].Success) { $msgMatch.Groups[2].Value }
+          else { $msgMatch.Groups[3].Value }
+$msgTitle = ($msgVal -split '\r?\n', 2)[0]
+# 제목이 'T<N>:'로 시작할 때만(선행 공백 허용). 대문자 T(Phase D 규약). 'checkpoint: T3 start'는
+#   제목이 'checkpoint'로 시작해 불일치. 'T1:'은 T10을 오매치하지 않는다(\d+ 뒤 콜론 요구).
+$m = [regex]::Match($msgTitle, '^\s*T(\d+)\s*:')
 if (-not $m.Success) { exit 0 }
 $taskNum = $m.Groups[1].Value
 

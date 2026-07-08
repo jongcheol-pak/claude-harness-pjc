@@ -889,6 +889,55 @@
       "command": "find . -type f | xargs rm -f",
       "expect_exit": 2,
       "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5 커밋 메시지 속 git push 언급 무경고 (-m 값 스트립)",
+      "command": "git commit -m \"다음 단계: git push 후 릴리즈\"",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5 실제 git push 경고 유지",
+      "command": "git push origin main",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5 git merge --abort 무경고 (복구 명령)",
+      "command": "git merge --abort",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5 git merge --continue 무경고",
+      "command": "git merge --continue",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5 실제 git merge 경고 유지",
+      "command": "git merge feature-branch",
+      "expect_exit": 0,
+      "expect_contains": "git merge"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5 npm publish --dry-run 무경고 (배포 dry-run 확장)",
+      "command": "npm publish --dry-run",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5 실제 npm publish 경고 유지",
+      "command": "npm publish",
+      "expect_exit": 0,
+      "expect_contains": "패키지 배포"
     }
   ]
 }

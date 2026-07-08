@@ -20,6 +20,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 - **다음 분할 plan**: docs/plans/2026-07-08-harness-quality-part2.md — T1~T7 (스킬·에이전트 지침 수정, 미실행)
 - block-destructive 기존 한계(T1 재리뷰에서 확인, 이번 diff 이전부터 존재): `cat <<EOF > script.sh`(데이터 싱크로 스트립) 후 같은 Bash 호출에서 `bash script.sh` 즉시 실행 시 위험 본문이 스캔에서 빠짐 — "파일 작성 + 동일 호출 실행" 조합 감지 개선 후보
 - suggest-agents-record가 커밋 메시지(-m 값) 속 명령 문자열을 실행으로 오인(세션 중 실측) — -m 값 스트립 적용 후보
+- .state 디듑 마커(post-write-warn·require-plan-warn·suggest-agents-record) 누적 정리 정책 부재(TTL/청소) — 공통 이슈, 별도 plan (T4 리뷰 m1)
 - llm-wiki 본체에서 절차 K 초경량 분리 (Q9 — check_consistency 93항목·라우팅 표 연쇄라 별도 plan)
 - 재설치(install.ps1) — 릴리즈 후 설치 캐시 갱신 전까지 설치본은 구 동작(기존 이월과 동일)
 
@@ -166,7 +167,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
     - (i) 디듑이 서로 다른 심볼의 경고까지 삼킴 → 마커 키를 파일+심볼 단위로 (acceptance ③이 검증)
   - **Depends on**: -
 
-- [ ] T5. warn-external-ops·require-evidence·require-task-checkbox 정밀화
+- [x] T5. warn-external-ops·require-evidence·require-task-checkbox 정밀화
   - **Type**: C
   - **Acceptance**: ① warn-external-ops: `git commit -m "다음: git push 후 릴리즈"` 무경고(-m 값 스트립), `git merge --abort|--continue|--quit` 무경고, `npm publish --dry-run`·`dotnet nuget push … --dry-run`? 등 배포 계열 dry-run 무경고 — 실 push/merge/publish 경고 유지 ② require-task-checkbox: `git commit -m "문서: 릴리즈 노트 (T3: 반영)"`은 판정 제외(제목 첫 줄이 `^T\d+:`로 시작할 때만 게이트), `git commit -m "T3: 구현"` 게이트 유지 ③ require-evidence: traceRx에 스크립트 빌드(`./build.ps1`·`build.sh`·`python … build`·`tsc`·`make`·`gradle`·`mvn`) 추가, 미커밋 경고는 transcript에 Write/Edit 사용 흔적이 있을 때만 ④ 골든 기존+신규 PASS·parse OK
   - **Files**:

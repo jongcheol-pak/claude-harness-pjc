@@ -156,7 +156,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
 
                 # 세션·파일당 1회 (v1.98.0): 의도적으로 영어를 쓰는 프로젝트(OSS 등)에서 그 파일을 만질
                 #   때마다 반복 주입돼 기존 영어 주석의 한글화(범위 초과 수정)로 오도하던 것 억제.
-                if ($engComments -gt ($totalComments / 2) -and (Test-WarnOnce ('engcomment|' + $file))) {
+                if ($engComments -gt ($totalComments / 2) -and (Test-WarnOnce ('engcomment|' + ($file -replace '\\', '/')))) {
                     $utf8Warnings.Add("주석이 대부분 영문($engComments/$totalComments). 한글 주석 규칙 위반 가능 — 단 프로젝트가 의도적으로 영어 주석을 쓰면 그 관례를 따르세요(기존 주석의 일괄 한글화는 범위 초과). (세션·파일당 1회)")
                 }
             }

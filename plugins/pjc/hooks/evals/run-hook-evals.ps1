@@ -504,6 +504,12 @@ $rtcNo = Join-Path $work 'rtc-noplan'; New-Item -ItemType Directory $rtcNo -Forc
 $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcNo 'T3: 검색 요약')
 Assert-Case -Name "rtc: plan 파일 없음 통과(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+# ---- [P1T5] 제목이 아닌 본문·괄호의 T<N>: 언급은 판정 제외 (제목 첫 줄만) ----
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn '문서: 릴리즈 노트 (T3: 스키마 변경 반영)')
+Assert-Case -Name "rtc: 제목이 '문서:'이고 괄호에 T3 언급 → 통과 (P1T5 제목 한정)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 실제 완료 커밋')
+Assert-Case -Name "rtc: 제목이 T3:로 시작 → 미완료 차단 유지 (P1T5)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
 # QUICK 우회 — 별도 stderr 안내 출력이 있는 독립 분기 (silent 아님, exit 0)
 $env:CLAUDE_HARNESS_QUICK = '1'
 $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')

@@ -74,7 +74,10 @@ if ($hasEvidence) {
         $tp = if ($data) { $data.transcript_path } else { $null }
         if ($tp -and (Test-Path -LiteralPath $tp -PathType Leaf)) {
             $tail = Get-Content -LiteralPath $tp -Tail 3000 -ErrorAction Stop
-            $traceRx = '"command"\s*:\s*".{0,600}?(dotnet (build|test)|npm (test|run )|npx |yarn |pnpm |pytest|cargo (build|test)|gradlew?\b|go (build|test)|mvn |msbuild|make |ctest|python(3)? -m (py_compile|build|pytest)|ParseFile)'
+            # 표준 빌드/테스트 + 스크립트 기반 검증(build.ps1/sh/py·tsc·프로젝트 정적검사 스크립트)까지
+            #   포함한다(v1.98.0) — 종전엔 표준 명령만 있어 './build.ps1'·'tsc'로 검증한 정직한 세션이
+            #   실행 흔적 없음으로 오경고됐다.
+            $traceRx = '"command"\s*:\s*".{0,600}?(dotnet (build|test)|npm (test|run )|npx |yarn |pnpm |pytest|cargo (build|test)|gradlew?\b|go (build|test)|mvn |msbuild|make |ctest|python(3)? -m (py_compile|build|pytest)|ParseFile|[.\\/]*build\.(ps1|sh|py|js)|\btsc\b|\brun-hook-evals\b|check_consistency|\brun_lint_evals\b)'
             if (-not (($tail -join "`n") -match $traceRx)) {
                 [Console]::Error.WriteLine("STOP WARNING: 커밋에 검증 증거 텍스트는 있으나 이 세션 transcript에서 빌드/테스트 실행 흔적을 찾지 못했습니다.")
                 [Console]::Error.WriteLine("증거가 실행 없이 적혔을 수 있습니다 - 실제로 빌드/테스트를 실행했는지 확인하세요 (이전 세션에서 실행했으면 무시).")
@@ -85,8 +88,19 @@ if ($hasEvidence) {
 
 # 3. 코드 파일 미커밋 변경 검출 (G6) — 구현 후 commit 누락 가능성 경고 (비차단)
 # 일반 대화·문서(.md)만 변경한 종료에는 안 뜨도록 '코드 확장자' 변경만 본다.
+# (v1.98.0) 세션 성격 가드: 원래 dirty한 워킹트리에서 질문·리뷰만 한 세션에도 매 종료마다 뜨던
+#   반복 노이즈를 줄인다 — 이 세션 transcript에 Write/Edit 도구 사용 흔적이 있을 때만 경고한다
+#   (transcript 없거나 읽기 실패면 종전대로 경고 — fail-open, 안전측).
+$sessionEdited = $true
+try {
+    $tp3 = if ($data) { $data.transcript_path } else { $null }
+    if ($tp3 -and (Test-Path -LiteralPath $tp3 -PathType Leaf)) {
+        $tail3 = Get-Content -LiteralPath $tp3 -Tail 3000 -ErrorAction Stop
+        $sessionEdited = (($tail3 -join "`n") -match '"name"\s*:\s*"(Write|Edit|MultiEdit|NotebookEdit)"')
+    }
+} catch { }
 $codeExts = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift', '.vb', '.razor', '.xaml', '.vue', '.svelte')
-$porcelain = & git status --porcelain 2>$null
+$porcelain = if ($sessionEdited) { & git status --porcelain 2>$null } else { $null }
 if ($porcelain) {
     $codeChanges = New-Object System.Collections.Generic.List[string]
     foreach ($pl in $porcelain) {

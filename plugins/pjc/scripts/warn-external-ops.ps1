@@ -26,11 +26,22 @@ try {
 }
 if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
+# ---- 커밋 메시지(-m 값) 스트립 (v1.98.0) ----
+# 'git commit -m "다음: git push 후 릴리즈"'처럼 메시지 안에 push·merge 같은 명령어가 텍스트로
+#   들어가면 실행 아님에도 경고가 오발동해, 지금 커밋만 하려는데 push 승인을 묻는 흐름 꼬임이
+#   생겼다. block-destructive의 검증된 -m 값 스트립 기법을 선행해 데이터 인자를 제거한다
+#   (플래그 토큰은 보존 — 값만 제거). commit이 아닌 명령엔 영향 없다(git -m은 commit 계열뿐).
+$scanCmd = $cmd
+if ($scanCmd -match '(?i)(^|\s)git(\s|$)') {
+    $scanCmd = $scanCmd -replace '(?i)(^|\s)(-[a-z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
+}
+
 # ---- 외부·비가역 작업 패턴 (변경형만 — 조회는 제외) ----
 # git tag: 조회(git tag / git tag -l / git tag -n)는 제외, 생성/삭제(-a/-s/-f/-m/-d/태그명)만.
 $externalOps = @(
     @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*push\b';   label = 'git push (원격 반영)' },
-    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*merge\b';  label = 'git merge (브랜치 병합)' },
+    # merge: --abort/--continue/--quit는 실패 병합 복구·진행이라 병합 실행이 아님 — 제외(오경고 방지).
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*merge\b(?![^\r\n]*\s--(abort|continue|quit)\b)';  label = 'git merge (브랜치 병합)' },
     @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*tag\s+(--delete\b|-[asfmd]|[^\s-])';  label = 'git tag (태그 생성/삭제)' },
     @{ rx = 'gh\s+release\s+create';          label = 'gh release create (릴리즈 발행)' },
     @{ rx = 'gh\s+release\s+delete';          label = 'gh release delete (릴리즈 삭제 — 비가역)' },
@@ -65,15 +76,15 @@ $localOps = @(
 
 $hits = New-Object System.Collections.Generic.List[string]
 foreach ($op in $externalOps) {
-    if ($cmd -match $op.rx) {
-        # git push --dry-run 은 조회성(원격 반영 아님) — 제외
-        if ($op.label -like 'git push*' -and $cmd -match '--dry-run') { continue }
+    if ($scanCmd -match $op.rx) {
+        # --dry-run은 조회성(실제 반영 아님) — push·배포 계열 전체에 제외 적용(v1.98.0: 종전 push 한정 확장).
+        if ($cmd -match '--dry-run') { continue }
         $hits.Add($op.label)
     }
 }
 $hitsLocal = New-Object System.Collections.Generic.List[string]
 foreach ($op in $localOps) {
-    if ($cmd -match $op.rx) { $hitsLocal.Add($op.label) }
+    if ($scanCmd -match $op.rx) { $hitsLocal.Add($op.label) }
 }
 
 if ($hits.Count -eq 0 -and $hitsLocal.Count -eq 0) { exit 0 }
