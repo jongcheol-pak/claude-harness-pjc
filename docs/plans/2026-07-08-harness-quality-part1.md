@@ -22,6 +22,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 - block-destructive 기존 한계(T1 재리뷰에서 확인, 이번 diff 이전부터 존재): `cat <<EOF > script.sh`(데이터 싱크로 스트립) 후 같은 Bash 호출에서 `bash script.sh` 즉시 실행 시 위험 본문이 스캔에서 빠짐 — "파일 작성 + 동일 호출 실행" 조합 감지 개선 후보
 - suggest-agents-record가 커밋 메시지(-m 값) 속 명령 문자열을 실행으로 오인(세션 중 실측) — -m 값 스트립 적용 후보
 - .state 디듑 마커(post-write-warn·require-plan-warn·suggest-agents-record) 누적 정리 정책 부재(TTL/청소) — 공통 이슈, 별도 plan (T4 리뷰 m1)
+- (저신뢰 audit, F-7) 열거 `.` 제외의 이름필터 판정에서 콤마-배열 `-Include *.tmp,*`의 catch-all 원소(`*`) 통과 여지 — 매우 인위적, 실차단 갭 미확인. 차기 hook 정비 때 감사 케이스로 검토
 - llm-wiki 본체에서 절차 K 초경량 분리 (Q9 — check_consistency 93항목·라우팅 표 연쇄라 별도 plan)
 - 재설치(install.ps1) — 릴리즈 후 설치 캐시 갱신 전까지 설치본은 구 동작(기존 이월과 동일)
 
@@ -220,6 +221,11 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 - 통합(재설치 후): `pwsh ./validate.ps1` — 릴리즈·재설치 후 별도
 
 ## Phase Ledger
+- 전 task 완료 (T6 스킵→별도 plan). Phase F 통과 (HEAD bc858ec) — plan-completion-reviewer OK, BLOCKER/MAJOR/MINOR 0
+
+## Next Steps
+- 권장 다음 액션: 사용자 승인 시 push·릴리즈 v1.98.0 → 그 후 part2(`docs/plans/2026-07-08-harness-quality-part2.md`) 실행
+- Suggested skills: pjc:implement-task (part2), 공식 /code-review (PR 시)
 
 ## Retry Ledger
 - T1: quality BLOCKER 2건(B1 heredoc 실행자 우회·B2 무필터 열거 삭제) → 수정 2dc1a56, 재리뷰 OK (수정 사이클 1/5, 종결)
