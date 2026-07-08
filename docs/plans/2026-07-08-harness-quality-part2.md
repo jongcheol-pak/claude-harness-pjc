@@ -129,7 +129,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
     - (i) checkpoint 이중화로 recovery reset 지점 혼동 → recovery.md에 "reset 대상은 직전 checkpoint(start)·pre-review 중 명시된 쪽" 규정 추가로 해소
   - **Depends on**: -
 
-- [ ] T2. implement-task — 과잉 절차 완화·모호 규정 정리 (D2·D3·D6)
+- [x] T2. implement-task — 과잉 절차 완화·모호 규정 정리 (D2·D3·D6)
   - **Type**: D
   - **Acceptance**: ① V-2 조건부 축소(D6 문구 — 전체는 F-2 보장·축소 시 Tests: 줄 범위 명시) ② P-3/V-7 읽기 비례 원칙: "hit 30건 초과 시 grep -C 문맥으로 영향 판정, 영향 의심 파일만 전체 Read(판정 근거 로그 남김)" — 위임 금지 가드는 유지 ③ 커밋 양식·final-report에서 Elapsed/Turn 삭제 ④ "Task Type 미명시 → D" 앞에 "메인이 diff 예상 규모로 B/C/D 1줄 판정해 plan에 기입(판정 불가 시 D)" 추가 ⑤ 브랜치 규약 "plan당 1개(첫 task에서 생성, 이후 동일 브랜치)" 명시 ⑥ 공통화 3회에 글로벌 관계 주석 ⑦ phase-g-detail G-2 재루프 task 완료 최소 세트 "G-1 재대조 + F-2 전체 테스트 1회(F-7 Opus만 면제)" + halt-conditions 표에 "Phase G Should 갭 — 조건부 보고" 행 추가 ⑧ grep 검증: `Elapsed|Turn ~` 잔존 0
   - **Files**:
@@ -204,12 +204,17 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - 역대조: 검토 발견 목록 ↔ 반영 task 전수 대조 표 (T7)
 
 ## Phase Ledger
+- T2까지 완료. Phase F/G 미도달 (전 task 완료 후 진입).
 
 ## Retry Ledger
+- (해당 없음 — checkpoint 복구·재루프 없음)
 
 ## Progress Log
+- T1: implement-task pre-review 커밋 계약·압축 재읽기·지적 이의 절차·재시도 단일화. Phase D를 ①리뷰수정판정→②체크박스→③분기커밋(clean=amend/dirty=새커밋)으로 재배치. spec OK, quality OK(M1 MAJOR+2 MINOR 수정 후). 커밋 579219e.
+- T2: V-2 조건부 축소(D6)·P-3/V-7 읽기 비례 원칙·Elapsed·Turn 삭제(D2)·Type 판정 문구·브랜치 규약(plan당 1개)·공통화 3회 글로벌 주석(D3)·G-2 재루프 최소세트(F-2 전체테스트 유지, F-7만 면제)·halt-conditions "Phase G Should 갭" 행. spec OK, quality OK(M1·M2 MAJOR 수정 후).
 
 ## Next Steps
+- T3(reviewer agents 4종)부터 이어 진행. part2 전 task 완료 후 Phase F → (PRD 없음 → Phase G 미해당) → 최종 보고.
 - part1 완료 후 이 plan을 `pjc:implement-task`로 실행
 
 ## Open Questions

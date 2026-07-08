@@ -50,7 +50,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 ### 아키텍처·코드 규율
 5. **DDD 준수 + YAGNI.**
    - 비즈니스 로직은 Domain 레이어 (AGENTS.md가 다른 아키텍처를 명시하면 우선 적용).
-   - 사용처 1곳인 헬퍼는 인라인. 3회 반복 확인된 코드만 공통화.
+   - 사용처 1곳인 헬퍼는 인라인. **3회 반복 확인된 코드만 공통화** (글로벌 CLAUDE.md의 "2회 이상" 문턱을 이 스킬이 강화한 값 — 성급한 DRY로 인한 과추상화를 더 늦게 트리거해 추적성을 우선한다. 지침 우선순위상 발동 스킬 규칙이 글로벌보다 우선하므로 자율 루프에서는 3회를 적용한다. code-quality-reviewer 항목 D도 동일 기준).
 
 5-1. **명시적·직접적 코드 우선 (추적성).** 영리한 추상화보다 한눈에 동작이 보이는 코드(**"약간 장황해도 추측 없이 파악되는"**)를 쓴다 — 과한 간접화(불필요한 패턴·메타프로그래밍·깊은 제네릭·성급한 DRY)는 이후 수정 시 실제 동작 추적을 위해 여러 파일을 오가게 만들어 누락·환각·재작업을 늘린다. 단 좋은 이름·명시적 타입·명확한 구조·관련 로직의 지역성은 유지한다(명료성 훼손이 아님). 간접화가 정당한 경우(3회+ 반복·도메인 필수)는 예외 — 판단 기준은 "이 추상화를 빼면 코드가 더 단순해지는가".
 
@@ -192,6 +192,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 ### P-3. 심볼 사용처 전수 추적
 - 변경 대상 심볼에 대해 `grep -rn "\b<symbol>\b"` 실행.
 - 결과를 모두 Read로 확인.
+- **읽기 비례 원칙 (hit 과다 시).** hit가 **30건을 초과**하면 전건 전체 Read 대신, 먼저 `grep -rn -C <n>`(문맥 포함)으로 각 hit의 **영향 여부를 1차 판정**한다 — 영향이 의심되는 파일만 전체 Read로 정밀 확인한다. **판정 근거를 남긴다**(예: "hit 47건 중 12건이 시그니처 호출부 → 전체 Read, 나머지 35건은 문자열 매칭/주석 → 문맥으로 영향 없음 확인"). 단순 grep 카운트만으로 끝내는 것은 금지(영향 판정이 반드시 있어야 함). **위임 금지 가드는 유지** — 이 축약은 메인이 직접 수행하며 explorer 등에 넘기지 않는다(아래 가드). hit가 30건 이하면 종전대로 전건 Read.
 - task의 Files 목록과 대조 → 누락된 caller 발견 시 **자율 처리가 기본**: plan.md의 해당 task Files에 누락 caller를 추가하고 함께 수정한다 (멈추지 않음). caller 갱신은 절대 규칙 3(Cross-File Consistency)의 정상 작업이다.
   - **예외 (Halt → 재승인)**: ① 누락 caller가 여러 모듈로 연쇄(대략 5개 파일 이상)해 plan 범위를 크게 벗어나거나, ② plan에 없던 **공개(public) 멤버 시그니처 변경**이 새로 필요해지거나(공개 API 계약 변경은 plan 승인 범위 밖 — 글로벌 "공개 멤버 시그니처 변경 승인 필요"와 정합), ③ 파괴적 변경·새 의존성을 유발하는 경우에는 Halt해 재승인받는다. plan이 이미 의도한 변경의 **단순 caller 갱신(시그니처 동일·내부 호출부 수정)**은 Cross-File Consistency의 정상 작업이라 Halt 아님.
 
@@ -202,7 +203,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 ### P-5. 변경 전략 명시
 - 어떤 순서로 변경할지 한 줄로 작성 (자기 점검용).
 
-> **위임 금지 가드 (품질-임계 읽기).** P-2(Files 정독)·P-3(caller 전수 추적)·V-7(caller 재검증)은 `explorer` 등 발췌-읽기 subagent에 **위임하지 않는다**. explorer는 haiku로 "필요한 파일만 Read(전체 읽기 지양)"하므로 전체 판단·cross-file 검증에 부적합 — 이 단계는 메인이 직접 전체 Read한다. (병렬 위임은 plan 단계의 위치·패턴 찾기에서만; 구현 단계의 caller 검증은 메인 직접.)
+> **위임 금지 가드 (품질-임계 읽기).** P-2(Files 정독)·P-3(caller 전수 추적)·V-7(caller 재검증)은 `explorer` 등 발췌-읽기 subagent에 **위임하지 않는다**. explorer는 haiku로 "필요한 파일만 Read(전체 읽기 지양)"하므로 전체 판단·cross-file 검증에 부적합 — 이 단계는 메인이 직접 Read한다(hit가 과다하면 P-3의 "읽기 비례 원칙"으로 축약하되, 그 축약도 메인이 직접 수행하고 explorer에 넘기지 않는다 — 위임 금지의 핵심은 "누가 판단하나"이지 "전건을 다 읽나"가 아니다). (병렬 위임은 plan 단계의 위치·패턴 찾기에서만; 구현 단계의 caller 검증은 메인 직접.)
 
 ## Phase I — Implement
 
@@ -212,6 +213,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
   git checkout -b task/<id>-<slug>      # 작업 브랜치 (이미 있으면 스킵)
   git commit --allow-empty -m "checkpoint: T<N> start"
   ```
+  **브랜치 규약: plan당 1개.** 작업 브랜치는 **첫 task(T1)의 Phase I에서 한 번 생성**하고, 이후 모든 task는 **같은 브랜치에 이어 커밋**한다(task마다 새 브랜치를 파지 않는다). 재개 세션에서 브랜치가 이미 있으면 `checkout -b`는 스킵하고 그 브랜치에서 계속한다. 브랜치명 `<slug>`는 plan 기준(첫 task 또는 plan slug)으로 정한다.
 - 기존 코딩 컨벤션 따름 (AGENTS.md > 주변 코드 모방)
 - 최소 변경 원칙
 - 변경 후 즉시 빌드. 오류는 다음 변경 전에 해결.
@@ -249,7 +251,7 @@ git commit -m "checkpoint: T<N> pre-review"
 | **C** (Normal Code) | V-1 + V-2 + V-3 + V-5(compliance Sonnet) + V-7 + V-8 | V-6 (plan에 `(quality-review)` 없으면 생략) |
 | **D** (Complex/Cross-cutting) | V-1 ~ V-8 **전체** (V-5는 compliance Sonnet) | 생략 없음 |
 
-**Task Type 미명시** → D로 간주 (안전 우선).
+**Task Type 판정**: plan이 Type을 명시하면 그것을 따른다. **plan에 Type이 없으면 메인이 diff 예상 규모로 B/C/D를 1줄로 판정해 plan.md 해당 task에 기입**한다(예: "단일 파일·caller 없음 → B", "다중 파일·시그니처 변경 → D"). 규모를 가늠하기 어렵거나 판정이 애매하면 **D로 간주**(안전 우선 — 무거운 쪽).
 **V-4(PostToolUse hook)는 자동 실행** — 모든 Type에서 작동 (UTF-8 + impact-warn).
 **V-9(시각 충실도)는 Type과 무관하게 조건부** — plan에 `## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있는 디자인 정합 작업일 때만 수행 (없으면 모든 Type에서 생략).
 **V-5·V-6 병렬** — Type D(및 `(quality-review)` 플래그가 붙은 Type C)에서 V-5(compliance)·V-6(quality)는 동일 BASE/HEAD에 병렬 호출하고, 둘 다 OK일 때만 진행한다 (상세는 V-5).
@@ -277,6 +279,7 @@ git commit -m "checkpoint: T<N> pre-review"
 
 ### V-2. 테스트
 - AGENTS.md의 test 명령 실행. 통과 케이스 수 기록.
+- **조건부 축소 (큰 스위트 대비)**: AGENTS.md에 **영향 범위 필터 명령**(변경 모듈만 도는 test 명령)이 있거나 전체 스위트가 **크면(대략 3분 초과)**, 이 task에서는 **변경 영향 모듈만** 테스트한다. 전체 스위트는 **Phase F-2에서 1회 보장**되므로 매 task 전량 실행은 중복이다. **축소한 경우 커밋 메시지 `Tests:` 줄에 범위를 명시**한다(예: `Tests: 12/12 passed (module X만 — 전체는 F-2)`). 필터 명령이 없고 스위트도 작으면 그냥 전체를 돈다(기존 동작).
 - **AGENTS.md 없거나 test 명령 미정의** → 표식 파일 fallback:
   - `*.csproj` → `dotnet test`
   - `build.gradle*` → `./gradlew test`
@@ -326,6 +329,7 @@ Task Type에 따라 다른 흐름:
 **정방향 검사 (caller 갱신 확인)** — 변경된 모든 public/internal 심볼에 대해:
 - `grep -rn "\b<symbol>\b"` 실행.
 - hit 위치가 모두 diff에 포함되어 있거나, 변경 영향 없음이 명백한가.
+- **hit 과다(30건 초과) 시 P-3의 "읽기 비례 원칙"을 동일 적용** — 문맥 grep으로 1차 판정 후 영향 의심분만 전체 Read(판정 근거 로그). 위임 금지 가드는 유지.
 - 누락 발견 → Phase I 복귀.
 
 빌드가 통과해도 잡는 cross-file 마지막 관문.
@@ -412,14 +416,12 @@ Tests: <X/Y passed>
 Review: spec OK (prefilter: <PASS/ESCALATE→OK>), quality <OK/SKIPPED>
 Caller-recheck: <확인한 심볼 수>개 심볼, 누락 0
 Self-honesty: PASS
-Elapsed: <Hm Ms> | Turn ~<N>
 ```
 
 진행 보고 (각 task 1줄, 사용자 확인 요청 금지):
 ```
 ✅ T<N> 완료 (<N>/<TOTAL>)  →  T<N+1> 시작
    Type: <A/B/C/D> | Tests: <X/Y> | Phase V: <적용 단계 요약>
-   Elapsed (cumulative): <Hm Ms> | Turn ~<N>
 ```
 
 이 보고는 **알림**이지 **확인 요청이 아니다**. 사용자 응답을 기다리지 말고 즉시 T<N+1>의 Phase P를 시작한다.

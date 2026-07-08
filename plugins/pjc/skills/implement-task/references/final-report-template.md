@@ -29,8 +29,6 @@
 - 체크박스: <N>/<N> [x] 확인
 
 **Execution stats**
-- Elapsed (total): <Hm Ms>
-- Turns: ~<N>
 - Type 분포: A=<n>, B=<n>, C=<n>, D=<n>
 - Prefilter PASS율 (Type B): <n/n>
 
