@@ -55,6 +55,8 @@
 | 권한·인증 정보 필요 | Open Question로 미리 받기 |
 | 기존 코드가 plan 가정과 다름 | Investigation Log에서 실측으로 검증 완료해야 함 |
 
+> **확인 이연 금지**: 위 표의 확인들 중 **설계·acceptance의 성립 여부를 좌우하는 확인**(부정되면 task 자체가 성립 불가)은 "구현 첫 단계에서 확인"으로 미루지 말고 계획 단계에서 완료한다 — plan-feature Step 6.5·plan-reviewer 항목 9와 정합(성립이 아니라 진행 방식만 바꾸는 확인은 이연 허용).
+
 ### 기록 형식
 
 ```markdown
