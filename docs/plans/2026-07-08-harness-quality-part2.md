@@ -179,7 +179,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
     - (i) consistency 검사 실패 → 산문 한정 수정 원칙 + 매 파일 수정 후 즉시 재실행으로 원인 국소화
   - **Depends on**: T4 (plan-feature 문구 확정 후 큐잉 정합)
 
-- [ ] T7. 버전·문서·통합 검증 (D9)
+- [x] T7. 버전·문서·통합 검증 (D9)
   - **Type**: C
   - **Acceptance**: ① plugin.json·README 1.99.0→1.100.0 ② README의 검토자·워크플로 서술이 변경 반영(리뷰 이의 절차·테스트 축소 조건 등 사용자 노출 변경만) ③ 통합 재검증: check_consistency 93항목 OK·hook 골든 전 케이스 PASS(무회귀 확인)·JSON 3종 OK·BOM 규약(md 무BOM) ④ notes.md 기록 ⑤ 검토 보고의 40개 발견 ↔ part1/part2 task 역대조 표를 notes에 포함(누락·의도적 제외 구분)
   - **Files**:
@@ -204,7 +204,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - 역대조: 검토 발견 목록 ↔ 반영 task 전수 대조 표 (T7)
 
 ## Phase Ledger
-- T6까지 완료. Phase F/G 미도달 (전 task 완료 후 진입 — T7 후 Phase F).
+- T1~T7 전 task 완료. Phase F 진입 대상 (PRD 없음 → Phase G 미해당).
 
 ## Retry Ledger
 - (해당 없음 — checkpoint 복구·재루프 없음)
