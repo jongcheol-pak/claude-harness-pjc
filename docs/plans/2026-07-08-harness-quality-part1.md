@@ -98,8 +98,10 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 - **Rationale**: 양방향 모두 비용이 있는 트레이드오프 — 차단 확대는 오탐(이번 작업의 반대 방향), 해제는 약화. 현상 유지 + 문서화가 최소 침습.
 
 ### D2-보완. 열거 파이프 — delRecurseForce의 afterPipe 한정은 미적용 (구현 중 결정)
-- **Chosen**: D2 ②의 "delRecurseForce를 파이프 뒤 세그먼트에만 적용"은 구현하지 않음. 단독 `.`/`./` 토큰 제외만으로 acceptance의 오탐 전부가 해소되고, afterPipe 한정은 `Get-ChildItem C:\ -Recurse | Remove-Item`(강제 플래그 없는 삭제측) 차단을 잃는 **약화**임을 구현 중 확인.
-- **Rationale**: 더 안전한 쪽 선택(오탐 해소는 동일, 검출 약화 없음). 골든 음성 대조로 실증.
+- **Chosen**: D2 ②의 "delRecurseForce를 파이프 뒤 세그먼트에만 적용"은 구현하지 않음. 단독 `.`/`./` 토큰 제외로 acceptance의 오탐이 해소되고, afterPipe 한정은 `Get-ChildItem C:\ -Recurse | Remove-Item`(강제 플래그 없는 삭제측) 차단을 잃는 **약화**임을 구현 중 확인.
+- **Rationale**: 더 안전한 쪽 선택. 골든 음성 대조로 실증.
+- **리뷰 B2 보강**: 무조건 `.` 제외는 무필터 전체 삭제(`Get-ChildItem . -Recurse | Remove-Item -Force` = `rm -rf ./*` 등가)까지 통과시키는 약화임이 code-quality 리뷰에서 실행 대조로 실증됨 → `.` 제외를 **이름 필터(-Filter/-Include/-Exclude/-name/-iname) 있는 선택적 열거로 한정**(-type f는 비선택 — 전 파일 삭제). 무필터 차단 유지 골든 2건 추가.
+- **리뷰 B1 보강**: heredoc 스트립의 `>` 존재 판정이 `bash <<EOF > log.txt`(실행자 + stdout 리다이렉트) 우회를 만들던 것 → 스트립을 데이터-싱크(cat+`>`, tee) 허용목록으로 한정. 차단 유지·tee 통과 골든 2건 추가.
 
 ### D7. 경고 디듑 방식
 - **Chosen**: suggest-agents-record의 `.state` 세션 마커 패턴 재사용. G4/H3(require-plan)·impact-warn 심볼·영문 주석·hook 소스 경고에 "세션당 1회(또는 파일·심볼당 1회)" 적용.

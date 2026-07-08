@@ -861,6 +861,34 @@
       "command": "Set-Content -Path m.sql -Value 'DROP TABLE old_schema;'",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1-B1 실행자 heredoc + stdout 리다이렉트 차단 유지 (bash <<EOF > log — 본문 실행됨)",
+      "command": "bash <<EOF > log.txt\nrm -rf ~\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1-B1 tee heredoc 데이터 통과 (파일 기록 싱크)",
+      "command": "tee migrations/002.sql <<EOF\nDROP TABLE old_schema;\nEOF",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1-B2 무필터 열거 재귀 삭제 차단 유지 (rm -rf ./* 등가)",
+      "command": "Get-ChildItem . -Recurse | Remove-Item -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1-B2 무필터 find . xargs rm 차단 유지 (-type f는 선택 필터 아님)",
+      "command": "find . -type f | xargs rm -f",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
     }
   ]
 }

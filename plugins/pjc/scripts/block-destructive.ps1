@@ -44,12 +44,17 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 # 'cat <<EOF > m.sql … DROP TABLE …; EOF'처럼 heredoc이 '파일로 리다이렉트'되면 본문은 기록될
 #   데이터일 뿐 실행되지 않는다 — Split-TopLevel이 개행에서 본문을 별도 sub로 쪼개 $patterns
 #   (DROP TABLE 등)에 오탐되던 것을 막는다(마이그레이션 SQL '작성'까지 차단되던 오탐 수정).
-# 반면 실행자로 파이프되는 heredoc(psql <<SQL … / bash <<EOF …)은 본문이 실제 실행되므로 보존한다
-#   — 시작 줄에 '>' 파일 리다이렉트가 있는 경우에만 본문·종결자를 제거한다.
+# 반면 실행자로 파이프되는 heredoc(psql <<SQL … / bash <<EOF …)은 본문이 실제 실행되므로 보존한다.
+# 스트립 조건(T1 리뷰 B1 반영): '>' 존재만으로 판정하면 'bash <<EOF > log.txt'(본문 실행 + stdout만
+#   파일로)가 스트립돼 위험 본문이 비가시화되는 우회가 생긴다 — heredoc을 소비하는 명령이
+#   데이터-싱크(cat + '>' 리다이렉트, 또는 tee)일 때만 스트립한다. 그 외 명령(bash/psql/python 등
+#   실행자)은 '>'가 있어도 본문을 보존해 검사한다(허용목록 방식 — 모르는 명령은 보존이 기본).
 $heredocRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
 $cmd = [regex]::Replace($cmd, $heredocRx, {
     param($m)
-    if ($m.Groups['line'].Value -match '>\s*\S') { $m.Groups['line'].Value } else { $m.Value }
+    $line = $m.Groups['line'].Value
+    $isDataSink = ($line -match '(?i)^\s*cat\b' -and $line -match '>\s*\S') -or ($line -match '(?i)^\s*tee\b')
+    if ($isDataSink) { $line } else { $m.Value }
 })
 
 # ---- 위험 대상($dangerTarget) — 루프 밖에서 1회 정의(사전검사 2종·in-loop 컴파운드 검사 공유) ----
@@ -114,16 +119,21 @@ if ($cmd -match $findDangerRoot -and (
 # 오탐 방지: 위험 판정은 '첫 파이프 앞(열거 소스 인자)'에만 $dangerTarget을 적용한다 — 상대경로(./build)·
 #   사용자 하위 2단계+(C:\Users\me\proj\dist)는 $dangerTarget 미매치라 통과. 삭제측은 재귀·강제 플래그
 #   (또는 xargs rm)를 요구해 단순 조회 파이프는 통과시킨다. printf/echo 소스는 목록에서 제외(데이터 오탐 — M3 Deferred).
-# 단독 . · ./ 토큰 제외 (v1.98.0): 열거 소스의 cwd 상대 열거(Get-ChildItem . -Recurse | Remove-Item /
-#   find . | xargs rm)는 로컬 정리라 위험루트가 아니다 — find 사전검사의 "'find .' 제외"와 동일 원칙인데
-#   이 검사만 $dangerTarget의 . 알터네이션에 걸려 오차단하던 자기모순을 해소한다. 글롭(* · ./*)은
-#   cwd 전체 소실 등가(rm -rf * 차단과 일관)라 위험대상 유지.
+# 단독 . · ./ 토큰 제외 (v1.98.0, T1 리뷰 B2 반영): 열거 소스의 cwd 상대 '선택적' 열거
+#   (Get-ChildItem . -Recurse -Filter *.tmp | Remove-Item / find . -name "*.pyc" | xargs rm)는 로컬
+#   정리라 위험루트가 아니다 — find 사전검사의 "'find .' 제외"와 동일 원칙인데 이 검사만
+#   $dangerTarget의 . 알터네이션에 걸려 오차단하던 자기모순을 해소한다.
+#   단 이름 필터(-Filter/-Include/-Exclude/-name/-iname) 없는 무차별 열거 삭제
+#   (Get-ChildItem . -Recurse | Remove-Item -Force)는 rm -rf ./* 등가(cwd 전체 소실)이므로
+#   . 제외를 적용하지 않고 차단을 유지한다(-type f 같은 종류 필터는 선택적이 아님 — 전 파일 삭제).
+#   글롭(* · ./*)도 위험대상 유지(rm -rf * 차단과 일관).
 $enumSource      = '(?i)(^|\s|\|)(Get-ChildItem|gci|ls|dir|find)\b'
 $pipeToDelete    = '(?i)\|\s*[^|]*\b(' + $delCmdAlt + ')\b'
 $pipeXargsRm     = '(?i)\|\s*xargs\b[^|]*\b(' + $delCmdAlt + ')\b'
 $delRecurseForce = '(?i)(-Recurse\b|-Force\b|--recursive\b|--force\b|(^|\s)-[rfRF]+(\s|$)|\s/[sq]\b)'
 $beforePipe = ($cmd -split '\|', 2)[0]   # 첫 파이프 앞 = 열거 소스 인자 영역(여기서만 위험루트 판정)
-$enumSrcScan = $beforePipe -replace '(^|\s)\.[\\/]?(?=\s|$)', ' '   # 단독 .·./ 토큰만 제거(글롭 변형은 보존)
+$hasNameFilter = $beforePipe -match '(?i)\s-(Filter|Include|Exclude|i?name)\b'
+$enumSrcScan = if ($hasNameFilter) { $beforePipe -replace '(^|\s)\.[\\/]?(?=\s|$)', ' ' } else { $beforePipe }   # 선택적 열거만 .·./ 제외
 if (($beforePipe -match $enumSource) -and ($enumSrcScan -match $dangerTarget) -and (
         (($cmd -match $pipeToDelete) -and ($cmd -match $delRecurseForce)) -or
         ($cmd -match $pipeXargsRm))) {
