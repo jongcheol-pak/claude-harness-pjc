@@ -107,7 +107,7 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
     - (ii-a) 구조 변경(신규 lib 파일·3 스크립트 재구성) → `## 사전 승인 항목`
   - **Depends on**: -
 
-- [ ] T2. pre-bash-dispatch.ps1 디스패처 (D4)
+- [x] T2. pre-bash-dispatch.ps1 디스패처 (D4)
   - **Type**: D
   - **Acceptance**: Given Bash 도구 호출, When 디스패처 실행, Then ① stdin 1회 읽기+파싱 후 lib 함수 3개를 순서(warn-external→require-task-checkbox→warn-commit-secrets)대로 호출, 각 try/catch 격리 ② Action=block 있으면 그 stderr + `exit 2`(도구 차단), 없으면 warn Context 병합 단일 additionalContext JSON + `exit 0` ③ 클린 명령 무출력 exit 0 ④ block-destructive는 이 디스패처와 무관(별도 엔트리) ⑤ parse OK·BOM
   - **Files**:
@@ -171,6 +171,8 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
 ## Retry Ledger
 
 ## Progress Log
+- T1 완료 (커밋 4e86483): bash-hook-lib.ps1 모듈(3함수) + 3 스크립트 래퍼화. 골든 241/241 무회귀(래퍼 경유). spec/quality 리뷰 진행 중.
+- T2 완료 (커밋 대기): pre-bash-dispatch.ps1 디스패처 — 3함수 순차 호출, block 우선 exit 2·warn 병합. 스모크 6케이스(push 경고·클린·merge-abort·커밋메시지·rtc 차단/통과) 개별 hook과 동일. 전수 동등성은 T4 골든.
 
 ## Next Steps
 - plan 승인 후 `pjc:implement-task`를 이 경로로 호출
