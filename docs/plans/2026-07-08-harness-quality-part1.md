@@ -142,7 +142,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
     - (i) 제외 조건이 실 시크릿을 놓침 → 양성 케이스(평문 값) 골든 유지로 검출
   - **Depends on**: -
 
-- [ ] T3. require-plan-for-write — 신규 파일 trivial·확장자 추가·경고 디듑·QUICK 문구 (D5·D7)
+- [x] T3. require-plan-for-write — 신규 파일 trivial·확장자 추가·경고 디듑·QUICK 문구 (D5·D7)
   - **Type**: C
   - **Acceptance**: Given plan 없는 repo, When Write, Then ① `tests/repro_bug.py`(20줄) 통과, `src/service.py`(20줄 신규) 차단 유지, 31줄 `tests/` 파일 차단 ② `.xml`/`.html`/`.css` Write/Edit 통과 ③ Given 완료 plan(전부 `[x]`), When 소스 Edit 3회, Then G4 경고는 세션당 1회만 additionalContext 주입(2·3회차 무경고) ④ 차단 메시지의 QUICK 안내에 "사용자만 설정 가능 — Claude가 Bash로 설정해도 hook에 전파되지 않음" 명시 ⑤ 골든 기존+신규 PASS·parse OK
   - **Files**:

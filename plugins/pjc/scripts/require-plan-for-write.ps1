@@ -38,7 +38,12 @@ $alwaysAllowedExts = @(
     # 이미지
     '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.bmp',
     # 리소스
-    '.resx', '.resw'
+    '.resx', '.resw',
+    # 마크업·스타일 (v1.98.0): .xml(설정·리소스 — strings.xml만 예외이던 것을 일반화)·
+    #   .html/.htm(정적 페이지)·.css/.scss(스타일)는 오차단 비용 > 게이트 가치라 문서·설정과
+    #   동급으로 허용한다(로직·구조 위험이 낮고, 시각 결과는 화면에서 즉시 드러남).
+    #   .xaml은 코드 결합(바인딩·이벤트)이 강해 소스 코드로 유지.
+    '.xml', '.html', '.htm', '.css', '.scss'
     # 참고: .env.example/.env.sample은 GetExtension이 '.example'/'.sample'을 반환해
     #       확장자 매칭이 안 되므로 아래 파일명 기반 예외에서 처리한다(실제 .env는 제외).
 )
@@ -174,6 +179,22 @@ if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
     }
 }
 
+# ---- 신규 파일 Trivial 통과 (Write — 테스트·재현 스크립트, v1.98.0) ----
+# 종전엔 trivial 우회가 Edit/MultiEdit 전용이라 5줄짜리 재현 스크립트·단위테스트 신규 작성도
+#   plan 없이는 불가했다 — 그 경우 모델의 최저비용 합법 경로가 "빈 plan.md 급조"(형식적 plan 생산)가
+#   되는 역효과가 있었다. 신규 파일도 ①내용 30줄 이하 ②경로가 테스트 디렉터리이거나 파일명이
+#   repro/scratch/tmp 네이밍일 때만 조건부 통과한다(일반 소스 디렉터리 신규 파일은 여전히 게이트).
+if ($data.tool_name -eq 'Write' -and $null -ne $data.tool_input.content) {
+    $wContent = [string]$data.tool_input.content
+    $wLines = ($wContent -split "`n").Count
+    $isTestPath = ($targetPath -match '(?i)[\\/](tests?|__tests__|spec)[\\/]') -or
+                  ($baseName -match '(?i)^(repro|scratch|tmp)[\w.-]*$')
+    if ($wLines -le 30 -and $isTestPath) {
+        [Console]::Error.WriteLine("[HARNESS] Trivial write (테스트·재현 파일, ${wLines}줄 <= 30): plan 검사 우회. 영향은 impact-warn hook이 검증합니다.")
+        exit 0
+    }
+}
+
 # ---- 우회 환경변수 ----
 if ($env:CLAUDE_HARNESS_QUICK -eq '1') {
     [Console]::Error.WriteLine("[HARNESS] QUICK 모드: plan 검사 우회")
@@ -271,6 +292,21 @@ if ($foundIn) {
     }
     if ($planFile) {
         try {
+            # 세션당 1회 디듑 (v1.98.0): G4(완료 plan)·H3(빈 plan) 경고가 상태 변화 없이 편집마다
+            #   반복 주입되던 것을 suggest-agents-record와 동일한 .state 세션 마커로 억제한다 —
+            #   같은 세션·같은 plan 파일·같은 경고 종류는 1회만. 반복 주입은 컨텍스트를 낭비하고
+            #   "plan을 갱신하라"는 문구의 반복 노출이 불필요한 plan 재작성으로 오도할 수 있다.
+            $warnStateDir = Join-Path $env:USERPROFILE '.claude/.state/require-plan-warn'
+            try { New-Item -Force -ItemType Directory -Path $warnStateDir | Out-Null } catch {}
+            $sidW = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
+            $planKey = ($planFile -replace '[^\w.-]', '_')
+            function Test-WarnOnce {
+                param([string]$Kind)
+                $mk = Join-Path $warnStateDir ($sidW + '_' + $Kind + '_' + $planKey)
+                if (Test-Path -LiteralPath $mk) { return $false }
+                try { New-Item -Force -ItemType File -Path $mk | Out-Null } catch {}
+                return $true
+            }
             $planText = Get-Content -LiteralPath $planFile -Raw -Encoding UTF8
             # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] (줄 시작의 '- [ ]'/'* [ ]' 형태).
             # 불릿은 마크다운 표준 '-'·'*' 둘 다 인식한다(require-task-checkbox M6와 정합 —
@@ -278,21 +314,26 @@ if ($foundIn) {
             $incomplete = [regex]::Matches($planText, '(?m)^\s*[-*]\s*\[[ /]\]').Count
             $done = [regex]::Matches($planText, '(?m)^\s*[-*]\s*\[[xX]\]').Count
             if ($incomplete -eq 0 -and $done -ge 1) {
-                $warnMsg = "[HARNESS] 이 plan은 완료된 것으로 보입니다 (task 체크박스 ${done}개 전부 [x], 미완료 0). " +
-                           "이번 코드 변경이 이 완료된 plan의 범위 내 후속 작업(리뷰 지적 수정·마무리·문서 갱신 등)이면 새 plan 없이 그대로 진행하세요. " +
-                           "완료된 plan과 무관한 '새 작업'일 때만 plan-feature로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다."
-                [Console]::Error.WriteLine($warnMsg)
-                # PreToolUse additionalContext로 모델에 전달 (exit 0 비차단)
-                $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
-                [Console]::Out.WriteLine($payload)
+                if (Test-WarnOnce -Kind 'G4') {
+                    $warnMsg = "[HARNESS] 이 plan은 완료된 것으로 보입니다 (task 체크박스 ${done}개 전부 [x], 미완료 0). " +
+                               "이번 코드 변경이 이 완료된 plan의 범위 내 후속 작업(리뷰 지적 수정·마무리·문서 갱신 등)이면 새 plan 없이 그대로 진행하세요. " +
+                               "완료된 plan과 무관한 '새 작업'일 때만 plan-feature로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다. (이 경고는 세션당 1회)"
+                    [Console]::Error.WriteLine($warnMsg)
+                    # PreToolUse additionalContext로 모델에 전달 (exit 0 비차단)
+                    $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
+                    [Console]::Out.WriteLine($payload)
+                }
             } elseif ($incomplete -eq 0 -and $done -eq 0) {
                 # H3: task 체크박스(- [ ]/[x])가 하나도 없음 = 빈/플레이스홀더 plan.
                 #   0바이트·골격만 있는 plan.md 하나로 게이트를 무력화하는 약점을 가시화한다(비차단).
-                $warnMsg = "[HARNESS] 이 plan.md에 task 체크박스(- [ ] / - [x])가 하나도 없습니다 — 빈/플레이스홀더 plan일 수 있습니다. " +
-                           "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. plan-feature로 실제 task를 작성하세요."
-                [Console]::Error.WriteLine($warnMsg)
-                $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
-                [Console]::Out.WriteLine($payload)
+                if (Test-WarnOnce -Kind 'H3') {
+                    $warnMsg = "[HARNESS] 이 plan.md에 task 체크박스(- [ ] / - [x])가 하나도 없습니다 — 빈/플레이스홀더 plan일 수 있습니다. " +
+                               "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. plan-feature로 실제 task를 작성하세요. " +
+                               "(단 이 plan.md가 분할 plan 포인터·스텁이면 실제 task는 docs/plans/ 하위 plan에 있으니 무시하세요. 이 경고는 세션당 1회)"
+                    [Console]::Error.WriteLine($warnMsg)
+                    $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
+                    [Console]::Out.WriteLine($payload)
+                }
             }
         } catch {
             # plan 읽기 실패는 무시 (통과 자체는 유지)
@@ -318,8 +359,10 @@ foreach ($s in $searchStarts) {
 [Console]::Error.WriteLine("  1) plan-feature skill 호출:")
 [Console]::Error.WriteLine("     사용자에게 '계획 작성해줘' 라고 요청하거나 /plan-feature <설명>")
 [Console]::Error.WriteLine("")
-[Console]::Error.WriteLine("  2) 긴급 1줄 수정 우회 (Claude Code 시작 전 PowerShell에서):")
+[Console]::Error.WriteLine("  2) 긴급 1줄 수정 우회 — 사용자만 설정 가능 (Claude Code 시작 전 터미널에서):")
 [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")
+[Console]::Error.WriteLine("     ※ Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다 — 시도하지 말고,")
+[Console]::Error.WriteLine("       필요하면 사용자에게 위 설정(후 Claude Code 재시작)을 안내하세요.")
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("  3) plan.md 위치 확인:")
 [Console]::Error.WriteLine("     루트의 plan.md 파일 위치와 검색 시작점이 다른 경로일 수 있습니다.")
