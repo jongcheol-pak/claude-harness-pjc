@@ -460,9 +460,11 @@ def main():
         # (미검증)·미해결 question 집계 (§7-12) — 20_/30_/40_ 본문만(frontmatter 제외),
         # 10_sources(불변 스텁, 검증 루프 대상 아님)·90_archive·루트 인프라는 범위 밖.
         # resolved 판정·lint-* 제외는 §7-23과 공용 헬퍼로 동일 기준(집계↔등록 요구 모순 방지).
+        # lint-* 리포트는 (미검증) 표기 집계(ⓐ)에서도 제외 — 리포트가 발견 내역을 원문 인용으로
+        # 보존하므로 표기가 본문에 남아 자기참조 오집계가 된다(§7-12).
         if r.startswith(("20_", "30_", "40_")):
             body = re.sub(r"^---\n.*?\n---", "", text, count=1, flags=re.S)
-            hits = body.count("(미검증)")
+            hits = 0 if is_lint_report(r) else body.count("(미검증)")
             if hits:
                 unverified_hits += hits
                 unverified_files += 1
