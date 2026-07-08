@@ -172,8 +172,10 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
 - 무수정 실증: block-destructive.ps1 `git diff` 0
 
 ## Phase Ledger
+- 전 task(T1~T5) 완료. Phase F 통과 (HEAD 3b82ebd) — plan-completion-reviewer OK, BLOCKER/MAJOR/MINOR 0
 
 ## Retry Ledger
+- T1: spec BLOCKER 1건(계약 문서 드리프트 Action/ExitCode vs Block) → plan 정합(D2-1) 후 재검증 OK (수정 사이클 1/5, 종결)
 
 ## Progress Log
 - T1 완료 (커밋 4e86483): bash-hook-lib.ps1 모듈(3함수) + 3 스크립트 래퍼화. 골든 241/241 무회귀(래퍼 경유). spec/quality 리뷰 진행 중.
@@ -183,8 +185,8 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
   - 결정: 디스패처 동등성은 합산 상위집합이라 silent 강제 대신 exit 일치+keyword 상위집합으로 판정('git merge' 같은 명령이 rtc엔 무관해도 warn-external을 건드리는 게 정상). validate.ps1(WARN 0)은 설치 캐시 검사라 재설치 후 확인(목록 갱신은 코드로 확인 완료).
 
 ## Next Steps
-- plan 승인 후 `pjc:implement-task`를 이 경로로 호출
-- 완료 후: v1.99.0 push·릴리즈(part1+T6 합류) 별도 승인 → part2 실행
+- 권장 다음 액션: 사용자 승인 시 push·main 병합·릴리즈 v1.99.0(part1 v1.98.0 + T6 합류) → 그 후 part2(`docs/plans/2026-07-08-harness-quality-part2.md`) 실행
+- Suggested skills: pjc:implement-task (part2), 공식 /code-review (PR 시)
 
 ## Open Questions
 - (없음 — 결정 B 사용자 확정, 나머지 자체 확정)
