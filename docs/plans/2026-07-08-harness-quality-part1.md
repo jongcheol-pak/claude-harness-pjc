@@ -130,7 +130,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
   - **비고(리뷰 MINOR m1 등록)**: 4개 의미 변경(D2·D3·D4·D6)을 한 task로 묶음 — 골든 케이스 단위 격리로 수용, 특정 변경이 반복 실패하면 그 변경만 분리해 진행
   - **Depends on**: -
 
-- [ ] T2. secret-patterns 오탐 정밀화 (password 값 제외 조건·IP 전체 순회)
+- [x] T2. secret-patterns 오탐 정밀화 (password 값 제외 조건·IP 전체 순회)
   - **Type**: C
   - **Acceptance**: Given `Get-SecretMatches`, When 스캔, Then ① 미경고: `password: string`(타입 선언)·`pwd = os.getcwd()`·`password = os.getenv('DB_PASSWORD')`·`process.env.PASSWORD`·`password = None/null/true` ② 경고 유지: 평문 값(`password = "hunter2"`·`pwd: s3cret!`) ③ IP: 첫 매치가 127.0.0.1이어도 뒤따르는 비예외 IP 검출(전체 매치 순회), 사설대역(10./192.168./172.16-31.)은 `IP 주소(사설)` 라벨로 구분 ④ post-write·warn-commit-secrets 골든의 기존 양성/음성 케이스 전부 PASS + 신규 케이스 추가 ⑤ parse OK
   - **Files**:
