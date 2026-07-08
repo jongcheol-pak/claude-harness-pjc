@@ -149,7 +149,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
   - **Halt Forecast**: (없음 — 문구 계약 수정)
   - **Depends on**: T1 (V-5 계약 확정 후 리뷰어 diff 명령 서술 정합)
 
-- [ ] T4. plan-feature — 규칙 모순·과잉 정리 (D4)
+- [x] T4. plan-feature — 규칙 모순·과잉 정리 (D4)
   - **Type**: D
   - **Acceptance**: ① 절대 규칙 1을 "코드 파일을 작성·수정하지 않는다. 계획 산출물은 plan.md(+해당 시 PRD)·규약이 정한 큐 기록"으로 정정 ② 절대 규칙 2·Step 4에 읽기 비례 원칙(T2 ②와 동일 문구 — hit 30+ 시 축약 경로, Halt 조건 "단순 grep 카운트만" 판정과 정합) ③ 절대 규칙 4에 "코드·AGENTS.md 근거로 결정 가능한 항목은 Decisions에 Source와 함께 자체 확정 — 질문은 근거로 결정 불가한 항목만" + "구현 도중 결정 분기 0"의 대상을 "외부 관찰 가능 계약(API·스키마·UX·의존성)"으로 한정(내부 세부는 컨벤션 위임 허용) ④ Step 1 explorer 결과 취급(D5 문구) ⑤ Step 2.5 표에서 "현재 값·일치" 열 제거(디자인 값+확인 방법까지만 — 현재 값 대조는 V-9로 이관, plan-template 예시 동기) ⑥ Step 0.2 PRD 완료 판정을 "마커 상태→행동" 표로 치환 ⑦ Step 5 "1–4시간"을 "독립 검증 가능 + 주 파일 5개 이내" 구조 기준으로 ⑧ Step 9에 "Type A/B만으로 구성된 plan은 메인 자체 체크리스트 검토로 대체 가능" 예외 ⑨ 통과 체크리스트 "아마도/보통 0회"를 "근거 없는 단정 0(주장↔Investigation Log 매칭)"으로 교체 ⑩ 상호 참조 grep: plan-reviewer(T3)·edge-cases·plan-template·implement-task V-9와 어긋남 0
   - **Files**:
@@ -204,7 +204,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - 역대조: 검토 발견 목록 ↔ 반영 task 전수 대조 표 (T7)
 
 ## Phase Ledger
-- T3까지 완료. Phase F/G 미도달 (전 task 완료 후 진입).
+- T4까지 완료. Phase F/G 미도달 (전 task 완료 후 진입).
 
 ## Retry Ledger
 - (해당 없음 — checkpoint 복구·재루프 없음)
@@ -213,9 +213,10 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - T1: implement-task pre-review 커밋 계약·압축 재읽기·지적 이의 절차·재시도 단일화. Phase D를 ①리뷰수정판정→②체크박스→③분기커밋(clean=amend/dirty=새커밋)으로 재배치. spec OK, quality OK(M1 MAJOR+2 MINOR 수정 후). 커밋 579219e.
 - T2: V-2 조건부 축소(D6)·P-3/V-7 읽기 비례 원칙·Elapsed·Turn 삭제(D2)·Type 판정 문구·브랜치 규약(plan당 1개)·공통화 3회 글로벌 주석(D3)·G-2 재루프 최소세트(F-2 전체테스트 유지, F-7만 면제)·halt-conditions "Phase G Should 갭" 행. spec OK, quality OK(M1·M2 MAJOR 수정 후).
 - T3: reviewer 4종 — spec-compliance·code-quality diff 가드(HEAD_SHA 미전달·빈 diff→incomplete, D1 리뷰어측)·spec-prefilter 값 대조/turn-exhaust ESCALATE·spec-compliance H 테스트 인프라 예외·plan-reviewer(grep 상한 10심볼·BLOCKER 강등 예외·항목1 D4 근거매칭·항목11 근거통과·항목 우선순위 3·9)·explorer effort medium+빌드/테스트 제외(D5)·code-quality D 공통화 3회(D3). spec OK, quality MINOR 2(서식) 수정.
+- T4: plan-feature — 절대규칙 1(코드 미수정+PRD·큐 허용)·규칙2 읽기 비례·규칙4 자체확정/계약 한정(D4)·Step1 explorer 후보 취급(D5)·Step2.5 시각표 현재값·일치 열 제거·Step0.2 PRD 완료 판정 표·Step5 구조 기준(파일 5개)·Step9 Type A/B 자체검토 예외·통과 체크리스트 근거매칭. 동반 plan-template·edge-cases·implement-task V-9 정합. spec OK, quality OK.
 
 ## Next Steps
-- T4(plan-feature 규칙 정리)부터 이어 진행. part2 전 task 완료 후 Phase F → (PRD 없음 → Phase G 미해당) → 최종 보고.
+- T5(pjc-systematic-debugging)부터 이어 진행. part2 전 task 완료 후 Phase F → (PRD 없음 → Phase G 미해당) → 최종 보고.
 - part1 완료 후 이 plan을 `pjc:implement-task`로 실행
 
 ## Open Questions
