@@ -17,7 +17,7 @@
 | 루프 실패 | 같은 task의 리뷰 지적(BLOCKER/MAJOR) 수정 사이클이 누적 5회 (매번 다른 지적이어도 — 무한 수정 루프 방지) |
 | 루프 실패 | 빌드/테스트 5회 연속 실패, 원인 미상 |
 | 범위 초과 | 변경이 plan.md에 없는 모듈로 번짐 |
-| 파괴적 작업 | force push, history rewrite, 데이터·파일·대량 삭제(DB DROP/TRUNCATE·WHERE 없는 DELETE/UPDATE·스키마 삭제·migration reset, rm -rf 등 재귀·대량 또는 plan에 없는 파일/디렉터리 삭제, plan에 없는 대량 코드 삭제), 권한·보안 설정 변경 |
+| 파괴적 작업 | force push, history rewrite, 데이터·파일·대량 삭제(DB DROP/TRUNCATE·WHERE 없는 DELETE/UPDATE·스키마 삭제·migration reset, rm -rf 등 재귀·대량 또는 plan에 없는 파일/디렉터리 삭제, plan에 없는 대량 코드 삭제), 권한·보안 설정 변경. **history rewrite는 공유·push된 이력 대상** — 로컬 미push 작업 브랜치의 Phase D ③ pre-review 커밋 amend는 해당 없음(amend에 한정, 다른 항목으로 확대 해석 금지) |
 | 외부 의존 | 새 라이브러리·외부 서비스·인증정보 도입 필요 |
 | 외부 부작용 | 기존 외부 서비스로의 **비가역 부작용 호출**(운영 API 쓰기·이메일/알림/SMS 발송·결제·외부 상태 변경) — 신규 도입이 아니어도 plan에 명시·승인되지 않았으면 |
 | 환경 의존 | 검증을 위한 실제 디바이스·환경 접근 필요 |
@@ -33,7 +33,7 @@
 | 구분 | 항목 |
 |---|---|
 | **위임 O** (Phase 0 일괄 승인 — 그 지점에서 Halt 안 함) | 비파괴 패키지/라이브러리 의존성 추가·버전 변경 · 구조 변경(파일 분리·병합에 따른 **계획된 표적 파일 삭제·이동** 포함) · 비파괴 스키마 CREATE/ADD. (위 '외부 의존' 행 중 **비파괴 패키지/라이브러리 의존성 부분만** carve-out — 규칙 10(b) 정합. **인증정보 필요 신규 외부 서비스는 carve-out 제외** — 사전승인돼도 아래 '항상 Halt'다.) |
-| **항상 Halt** (위임 불가 — plan `## 사전 승인 항목`에 적혀 있어도) | 위 **'파괴적 작업' 행**(force push·history rewrite·rm -rf 등 재귀/대량 또는 plan에 없는 삭제·DB DROP/TRUNCATE·WHERE 없는 DELETE/UPDATE·스키마 삭제·migration reset·권한/보안 변경) · 외부/비가역 git(push·main 병합·태그·릴리즈·PR — 규칙 12) · 인증정보 필요 신규 외부 서비스 · 돌발 중대 결정(규칙 11) |
+| **항상 Halt** (위임 불가 — plan `## 사전 승인 항목`에 적혀 있어도) | 위 **'파괴적 작업' 행**(force push·history rewrite(공유·push된 이력 대상 — 로컬 미push 브랜치의 Phase D ③ amend 제외)·rm -rf 등 재귀/대량 또는 plan에 없는 삭제·DB DROP/TRUNCATE·WHERE 없는 DELETE/UPDATE·스키마 삭제·migration reset·권한/보안 변경) · 외부/비가역 git(push·main 병합·태그·릴리즈·PR — 규칙 12) · 인증정보 필요 신규 외부 서비스 · 돌발 중대 결정(규칙 11) |
 | **조건부 Halt** | 위 **'외부 부작용' 행**(기존 외부 서비스로의 비가역 호출)은 **plan에 명시·승인되지 않았을 때만** Halt(사전 승인 철학과 정합 — '항상 Halt'로 바꾸지 않음) |
 
 즉 '파괴적 작업' 행의 "파일/디렉터리 삭제"는 **rm -rf 등 재귀·대량 또는 plan에 없는 삭제**를 가리키고, plan 사전승인의 **계획된 표적 파일 삭제(구조 변경)는 위임 대상**이다.
