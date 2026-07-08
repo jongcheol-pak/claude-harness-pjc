@@ -41,7 +41,9 @@ if ($scanCmd -match '(?i)(^|\s)git(\s|$)') {
 $externalOps = @(
     @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*push\b';   label = 'git push (원격 반영)' },
     # merge: --abort/--continue/--quit는 실패 병합 복구·진행이라 병합 실행이 아님 — 제외(오경고 방지).
-    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*merge\b(?![^\r\n]*\s--(abort|continue|quit)\b)';  label = 'git merge (브랜치 병합)' },
+    # lookahead는 셸 구분자(&&·;·|·개행)를 넘지 않는다([^&;|\r\n]*) — 넘으면 뒤 세그먼트의
+    #   '--continue' 같은 텍스트가 앞의 실제 merge 경고까지 삼킨다(리뷰 B2).
+    @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*merge\b(?![^&;|\r\n]*\s--(abort|continue|quit)\b)';  label = 'git merge (브랜치 병합)' },
     @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*tag\s+(--delete\b|-[asfmd]|[^\s-])';  label = 'git tag (태그 생성/삭제)' },
     @{ rx = 'gh\s+release\s+create';          label = 'gh release create (릴리즈 발행)' },
     @{ rx = 'gh\s+release\s+delete';          label = 'gh release delete (릴리즈 삭제 — 비가역)' },
@@ -74,17 +76,25 @@ $localOps = @(
     @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\.(\s|$)';          label = 'git checkout . (워킹트리 전체 변경 폐기)' }
 )
 
+# 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정한다(v1.98.0, 리뷰 B1) —
+#   외부 op 매치·--dry-run 예외를 '같은 세그먼트' 안에서만 보아, 커밋 메시지나 뒤 세그먼트의
+#   '--dry-run' 텍스트가 앞 세그먼트의 실제 push/publish 경고를 삼키는 것을 막는다.
+#   (-m 값은 위에서 이미 스트립됐으므로 세그먼트 분할이 데이터 인용을 오분할하지 않는다.)
+$segments = $scanCmd -split '(\|\||&&|[;|]|\r?\n)'
 $hits = New-Object System.Collections.Generic.List[string]
-foreach ($op in $externalOps) {
-    if ($scanCmd -match $op.rx) {
-        # --dry-run은 조회성(실제 반영 아님) — push·배포 계열 전체에 제외 적용(v1.98.0: 종전 push 한정 확장).
-        if ($cmd -match '--dry-run') { continue }
-        $hits.Add($op.label)
-    }
-}
 $hitsLocal = New-Object System.Collections.Generic.List[string]
-foreach ($op in $localOps) {
-    if ($scanCmd -match $op.rx) { $hitsLocal.Add($op.label) }
+foreach ($seg in $segments) {
+    if ([string]::IsNullOrWhiteSpace($seg)) { continue }
+    $segHasDryRun = $seg -match '--dry-run'
+    foreach ($op in $externalOps) {
+        if ($seg -match $op.rx) {
+            if ($segHasDryRun) { continue }   # 조회성(실제 반영 아님) — 같은 세그먼트 dry-run만 인정
+            if (-not $hits.Contains($op.label)) { $hits.Add($op.label) }
+        }
+    }
+    foreach ($op in $localOps) {
+        if ($seg -match $op.rx -and -not $hitsLocal.Contains($op.label)) { $hitsLocal.Add($op.label) }
+    }
 }
 
 if ($hits.Count -eq 0 -and $hitsLocal.Count -eq 0) { exit 0 }

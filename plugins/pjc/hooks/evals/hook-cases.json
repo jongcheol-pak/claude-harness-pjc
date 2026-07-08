@@ -938,6 +938,27 @@
       "command": "npm publish",
       "expect_exit": 0,
       "expect_contains": "패키지 배포"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5-B1 다른 세그먼트 --dry-run이 실제 push 경고를 삼키지 않음",
+      "command": "git commit -m \"release notes mention --dry-run flag\" && git push origin main",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5-B1 같은 세그먼트 push --dry-run은 무경고 유지",
+      "command": "git push origin main --dry-run",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "P1T5-B2 뒤 세그먼트 --continue가 실제 merge 경고를 삼키지 않음",
+      "command": "git merge feature-branch && echo done --continue",
+      "expect_exit": 0,
+      "expect_contains": "git merge"
     }
   ]
 }
