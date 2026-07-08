@@ -139,7 +139,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
   - **Halt Forecast**: (없음 — 전부 사전 결정 완료된 문구 계약 수정. 파괴적·외부 요소 없음)
   - **Depends on**: T1 (같은 파일 — 순차 수정으로 충돌 방지)
 
-- [ ] T3. reviewer agents 4종 — 검증 구멍·예산·강등 규칙 (D4·D5)
+- [x] T3. reviewer agents 4종 — 검증 구멍·예산·강등 규칙 (D4·D5)
   - **Type**: D
   - **Acceptance**: ⓪ spec-compliance·code-quality의 diff 실행 서술에 "HEAD_SHA 미전달·빈 diff면 즉시 incomplete 반환(임의 워킹트리 diff 금지)" 절 추가(D1 리뷰어측 가드) ① spec-prefilter: 체크 1을 "acceptance의 구체 값·조건을 diff 실값과 대조(키워드 존재만으로 PASS 금지)"로, 체크 4의 리터럴 값은 "grep 생략 가능하되 값 대조는 필수", "turn 소진·판정 미완 → 무조건 ESCALATE" 1줄 추가 ② spec-compliance H항목에 예외 — "프로젝트에 테스트 인프라가 없거나 plan이 테스트 제외를 명시하면 MAJOR/BLOCKER 대신 MINOR+사유" ③ plan-reviewer: grep 상한을 "변경 심볼당 1회(상한 심볼 10개, 초과분은 미검증 명시)"로, confidence 강등 규칙에 "BLOCKER 후보(호출자 누락·acceptance 미충족급)는 강등 금지 — 심각도 유지+확인 요청 표시", 항목 11을 "없음+판단 근거 1줄이면 Type 무관 통과"로, 항목 1 판정 기준을 D4(근거 매칭)로, 검토 항목에 우선순위(3·9 필수 완주, 미검토 항목 결과에 명시) ④ explorer: effort medium·문구 교체·빌드/테스트 제외(D5) ⑤ 상호 참조 grep: implement-task V-5의 prefilter 서술·plan-feature Step 9 서술과 어긋남 0
   - **Files**:
@@ -204,7 +204,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - 역대조: 검토 발견 목록 ↔ 반영 task 전수 대조 표 (T7)
 
 ## Phase Ledger
-- T2까지 완료. Phase F/G 미도달 (전 task 완료 후 진입).
+- T3까지 완료. Phase F/G 미도달 (전 task 완료 후 진입).
 
 ## Retry Ledger
 - (해당 없음 — checkpoint 복구·재루프 없음)
@@ -212,9 +212,10 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 ## Progress Log
 - T1: implement-task pre-review 커밋 계약·압축 재읽기·지적 이의 절차·재시도 단일화. Phase D를 ①리뷰수정판정→②체크박스→③분기커밋(clean=amend/dirty=새커밋)으로 재배치. spec OK, quality OK(M1 MAJOR+2 MINOR 수정 후). 커밋 579219e.
 - T2: V-2 조건부 축소(D6)·P-3/V-7 읽기 비례 원칙·Elapsed·Turn 삭제(D2)·Type 판정 문구·브랜치 규약(plan당 1개)·공통화 3회 글로벌 주석(D3)·G-2 재루프 최소세트(F-2 전체테스트 유지, F-7만 면제)·halt-conditions "Phase G Should 갭" 행. spec OK, quality OK(M1·M2 MAJOR 수정 후).
+- T3: reviewer 4종 — spec-compliance·code-quality diff 가드(HEAD_SHA 미전달·빈 diff→incomplete, D1 리뷰어측)·spec-prefilter 값 대조/turn-exhaust ESCALATE·spec-compliance H 테스트 인프라 예외·plan-reviewer(grep 상한 10심볼·BLOCKER 강등 예외·항목1 D4 근거매칭·항목11 근거통과·항목 우선순위 3·9)·explorer effort medium+빌드/테스트 제외(D5)·code-quality D 공통화 3회(D3). spec OK, quality MINOR 2(서식) 수정.
 
 ## Next Steps
-- T3(reviewer agents 4종)부터 이어 진행. part2 전 task 완료 후 Phase F → (PRD 없음 → Phase G 미해당) → 최종 보고.
+- T4(plan-feature 규칙 정리)부터 이어 진행. part2 전 task 완료 후 Phase F → (PRD 없음 → Phase G 미해당) → 최종 보고.
 - part1 완료 후 이 plan을 `pjc:implement-task`로 실행
 
 ## Open Questions

@@ -26,6 +26,8 @@ git diff <BASE_SHA> <HEAD_SHA>
 git log --oneline <BASE_SHA>..<HEAD_SHA>
 ```
 
+**diff 가드 (빈 diff·SHA 미전달 방지).** HEAD_SHA가 전달되지 않았거나, `git diff <BASE_SHA> <HEAD_SHA>`가 **빈 결과**이면(리뷰 대상 스냅숏이 커밋되지 않은 상태) — **임의로 워킹트리 diff(`git diff` / `git diff HEAD`)를 대신 쓰지 말고 즉시 `incomplete`로 반환**한다("HEAD_SHA 미전달 또는 빈 diff — 리뷰 대상 커밋(pre-review checkpoint) 없음. 메인이 pre-review 커밋 후 재호출 요망"). 워킹트리 diff는 비결정적(메인의 이후 편집에 흔들림)이라 리뷰 근거가 될 수 없다. 이는 implement-task의 pre-review 커밋 계약(HEAD_SHA = pre-review 커밋 SHA)의 리뷰어측 짝이다.
+
 ### Step 2. plan.md 해당 task 확인
 - Acceptance 기준
 - 예상 변경 파일 (Files)
@@ -114,6 +116,8 @@ implementer가 "테스트 통과"라고 보고했다고 그냥 믿지 않는다.
 - [ ] 기존 테스트가 **실제로 변경에 영향 받는데도** 갱신 안 됐다면 BLOCKER
 - [ ] **"확인됨"이라고 말한 동작이 코드로 입증되는가**
   - acceptance에 "X 화면이 표시됨"이 있는데 diff에는 라우팅 등록만 있고 화면 호출 위치는 변경 안 됨 → BLOCKER
+
+> **테스트 인프라 부재·명시적 제외 예외.** 위 "테스트 없음 → MAJOR/BLOCKER" 항목들은, 프로젝트에 **테스트 인프라 자체가 없거나**(테스트 프레임워크·테스트 디렉터리 부재 — 예: 순수 문서/설정 repo, 컴파일 없는 스킬 문서), plan이 **테스트 제외를 명시**(acceptance나 Decisions에 "테스트 없음/제외")한 경우에는 그대로 적용하지 않고 **MINOR + 사유**("프로젝트에 테스트 인프라 없음" / "plan이 테스트 제외 명시")로 낮춘다. 없는 인프라를 이유로 자율 루프를 되돌리는 것은 거짓양성이다. 단 **테스트 인프라가 있는데 이번만 안 짠 경우는 예외 아님**(원래 등급 유지).
 
 **자기기만 패턴 (실제 동작 안 함에도 "됐다"고 보고하는 경우)**:
 - 빌드만 통과하고 테스트는 안 돌렸으면서 "검증 완료" → BLOCKER
