@@ -264,6 +264,33 @@ if ($gitOk) {
     Push-Location $repo; 'z' | Set-Content a.txt; git add .; git commit -qm "T2: done`n`nBuild OK, Tests 3/3 passed"; 'w' | Set-Content b.cs; Pop-Location
     $r = Invoke-Hook 'require-evidence.ps1' $json
     Assert-Case -Name "evidence: 미커밋 코드(.cs) 경고" -R $r -ExpectExit 0 -ExpectContains '커밋되지 않은 코드'
+
+    # ---- [P1T5] require-evidence 신규 동작 골든 (traceRx 스크립트 빌드 · 세션 Write/Edit 게이트) ----
+    # 깨끗한 트리 + 증거 있는 T커밋으로 재설정(미커밋·checkpoint 경고 배제하고 traceRx만 검증).
+    $ev2 = Join-Path $work 'evrepo2'; New-Item -ItemType Directory $ev2 -Force | Out-Null
+    Push-Location $ev2
+    git init -q; git config user.email t@t; git config user.name t
+    'x' | Set-Content a.txt; git add .; git commit -qm "T1: done`n`nBuild OK, Tests 2/2 passed"
+    Pop-Location
+    # (A1) transcript에 표준·스크립트 빌드 흔적 없음 → '실행 흔적 못 찾음' 경고 발생
+    $trA1 = Join-Path $work 'tr-a1.jsonl'
+    '{"type":"tool_use","name":"Bash","input":{"command":"git status"}}' | Set-Content -Encoding UTF8 $trA1
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev2; transcript_path = $trA1 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: transcript에 빌드 흔적 없음 → 실행흔적 경고 (P1T5 대조군)" -R $r -ExpectExit 0 -ExpectContains '실행 흔적'
+    # (A2) transcript에 스크립트 빌드(build.ps1) 흔적 → 실행흔적 경고 억제(traceRx 확장 검증). 깨끗한 트리라 전체 무출력.
+    $trA2 = Join-Path $work 'tr-a2.jsonl'
+    '{"type":"tool_use","name":"Bash","input":{"command":"pwsh -NoProfile -File ./build.ps1"}}' | Set-Content -Encoding UTF8 $trA2
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev2; transcript_path = $trA2 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: transcript에 build.ps1 흔적 → 실행흔적 경고 억제 (P1T5 traceRx)" -R $r -ExpectExit 0 -ExpectSilent $true
+    # (B) 미커밋 .cs + transcript에 Write/Edit 없음 → 미커밋 경고 억제(세션 게이트). build.ps1 흔적으로 실행흔적 경고도 배제.
+    Push-Location $ev2; 'w' | Set-Content orphan.cs; Pop-Location
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev2; transcript_path = $trA2 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 미커밋 .cs + Write/Edit 없는 세션 → 미커밋 경고 억제 (P1T5 세션 게이트)" -R $r -ExpectExit 0 -ExpectSilent $true
+    # (B 대조군) 같은 미커밋 상태 + transcript에 Write 흔적 → 미커밋 경고 발생(억제가 무차별 아님)
+    $trB2 = Join-Path $work 'tr-b2.jsonl'
+    @('{"type":"tool_use","name":"Bash","input":{"command":"pwsh -File ./build.ps1"}}', '{"type":"tool_use","name":"Write","input":{"file_path":"orphan.cs"}}') | Set-Content -Encoding UTF8 $trB2
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev2; transcript_path = $trB2 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 미커밋 .cs + Write 흔적 세션 → 미커밋 경고 유지 (P1T5 게이트 무차별 아님)" -R $r -ExpectExit 0 -ExpectContains '커밋되지 않은 코드'
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
