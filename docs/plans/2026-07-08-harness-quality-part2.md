@@ -168,12 +168,12 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
   - **Halt Forecast**: (없음)
   - **Depends on**: -
 
-- [ ] T6. llm-wiki 경량 완화 + 기타 스킬 5건 (D7)
+- [x] T6. llm-wiki 경량 완화 + 기타 스킬 5건 (D7)
   - **Type**: C (quality-review)
   - **Acceptance**: ① llm-wiki: D7 ①~④ 반영(K 5-2 트리거 문구·B-1 0 동의 게이트·B-1a 생략 조건·F-0 시점) + `check_consistency.py` 93항목 exit 0 + plan-feature:394·implement-task:446 문구와 정합(grep) ② record-project-fact: "hook 제안과 변경안이 동일하면 수락을 Step 3 승인으로 간주(변경안 제시는 유지, 재문답 생략)" ③ bootstrap-agents-md: 표식 검색에 `-Recurse -Depth 3` (csproj 검사와 방식 통일) ④ add-domain-service: IUnitOfWork 줄에 조건 주석("UnitOfWork 패턴이 있을 때만 — 없으면 기존 영속화 컨벤션"), Halt를 "영속화 수반 Application Service인데 트랜잭션 경계 미명시"로 한정, description near-miss에 "레이어 분리 없는 단일 프로젝트·스크립트는 비대상" ⑤ add-viewmodel: WPF 차이 주석에 "RowDefinitions 축약·Grid Padding 불가 — `<Grid.RowDefinitions>` 전개+Margin", Halt의 ServiceLocator를 "제3자 라이브러리/전역 정적 컨테이너 남용"으로 구체화(App.GetService 관례 허용 명시) ⑥ AUTHORING: "pushy는 저빈도·전문 어휘에 한정 — 일상 고빈도 단어(fix/에러/추가)는 단독 트리거 금지, 맥락 조건과 결합"
   - **Files**:
     - 주: `plugins/pjc/skills/llm-wiki/SKILL.md`·`references/procedures-content.md`·`references/procedures-ops.md`
-    - 동반: `plugins/pjc/skills/record-project-fact/SKILL.md`·`plugins/pjc/skills/bootstrap-agents-md/SKILL.md`·`plugins/pjc/skills/add-domain-service/SKILL.md`·`plugins/pjc/skills/add-viewmodel/SKILL.md`·`plugins/pjc/skills/AUTHORING.md`·`plugins/pjc/skills/plan-feature/SKILL.md`(:394 큐잉 문구)·`plugins/pjc/skills/implement-task/SKILL.md`(:446 문구)
+    - 동반: `plugins/pjc/skills/record-project-fact/SKILL.md`·`plugins/pjc/skills/bootstrap-agents-md/SKILL.md`·`plugins/pjc/skills/add-domain-service/SKILL.md`·`plugins/pjc/skills/add-viewmodel/SKILL.md`·`plugins/pjc/skills/AUTHORING.md`·`plugins/pjc/skills/plan-feature/SKILL.md`(:394 큐잉 문구 — 이미 정합해 무변경)·`plugins/pjc/skills/implement-task/SKILL.md`(:446 문구 — 이미 정합해 무변경)·`plugins/pjc/skills/llm-wiki/references/wiki-schema.md`(§2.8·§7-25 소비 서술 — Edge Cases 인가)·`plugins/pjc/skills/llm-wiki/scripts/lint.py`(INFO 문구 — F-0 소비 흐름 Cross-File 정합)
   - **Edge Cases**: llm-wiki 라우팅 표·절차 헤딩은 무변경(산문만 — consistency 파싱 앵커 보존), wiki-schema:238의 수집·소비 서술과 어긋나면 그 줄도 동기
   - **Halt Forecast**:
     - (i) consistency 검사 실패 → 산문 한정 수정 원칙 + 매 파일 수정 후 즉시 재실행으로 원인 국소화
@@ -204,7 +204,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - 역대조: 검토 발견 목록 ↔ 반영 task 전수 대조 표 (T7)
 
 ## Phase Ledger
-- T5까지 완료. Phase F/G 미도달 (전 task 완료 후 진입).
+- T6까지 완료. Phase F/G 미도달 (전 task 완료 후 진입 — T7 후 Phase F).
 
 ## Retry Ledger
 - (해당 없음 — checkpoint 복구·재루프 없음)
@@ -215,9 +215,10 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - T3: reviewer 4종 — spec-compliance·code-quality diff 가드(HEAD_SHA 미전달·빈 diff→incomplete, D1 리뷰어측)·spec-prefilter 값 대조/turn-exhaust ESCALATE·spec-compliance H 테스트 인프라 예외·plan-reviewer(grep 상한 10심볼·BLOCKER 강등 예외·항목1 D4 근거매칭·항목11 근거통과·항목 우선순위 3·9)·explorer effort medium+빌드/테스트 제외(D5)·code-quality D 공통화 3회(D3). spec OK, quality MINOR 2(서식) 수정.
 - T4: plan-feature — 절대규칙 1(코드 미수정+PRD·큐 허용)·규칙2 읽기 비례·규칙4 자체확정/계약 한정(D4)·Step1 explorer 후보 취급(D5)·Step2.5 시각표 현재값·일치 열 제거·Step0.2 PRD 완료 판정 표·Step5 구조 기준(파일 5개)·Step9 Type A/B 자체검토 예외·통과 체크리스트 근거매칭. 동반 plan-template·edge-cases·implement-task V-9 정합. spec OK, quality OK.
 - T5: pjc-systematic-debugging — 경량 경로(원인 자명 시 1-A+Phase4 축약)·Phase2 단일 원인 확정 예외·4-A RED 예외(빌드/컴파일 실패)·4-D 경량 검증(단일 파일 10줄+회귀 GREEN→prefilter)·로그 언어 관례 우선(D8) + description near-miss + STOP 조건 정합. Iron Law 모순 0. spec OK(Type C, V-6 생략).
+- T6: llm-wiki K 5-2 트리거 2배치 축소·B-1 0 타프로젝트 [DECISION] 동의 게이트·B-1a 14일/5파일 축소·F-0 보고만+F-2 소비 합류(D7) + record-project-fact hook 수락 간소화·bootstrap -Recurse -Depth 3·add-domain-service IUnitOfWork 조건·add-viewmodel WPF/ServiceLocator·AUTHORING pushy 완화. B1(wiki-schema stale) 수정 위해 wiki-schema §2.8/§7-25·lint.py INFO 문구 Cross-File 정합(Files 확장). check_consistency 94항목·lint 골든 21/21 무회귀. spec OK, quality OK.
 
 ## Next Steps
-- T6(llm-wiki + 기타 스킬 5건)부터 이어 진행. part2 전 task 완료 후 Phase F → (PRD 없음 → Phase G 미해당) → 최종 보고.
+- T7(버전·문서·통합 검증)부터 이어 진행. T7 후 Phase F(PRD 없음 → Phase G 미해당) → 최종 보고(릴리즈는 별도 승인).
 - part1 완료 후 이 plan을 `pjc:implement-task`로 실행
 
 ## Open Questions

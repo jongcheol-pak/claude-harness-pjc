@@ -605,14 +605,14 @@ def main():
         parts = []
         for tag, label in (("K-DRIFT", "K-DRIFT {n}건"),
                            ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)"),
-                           ("DECISION", "DECISION {n}건(결정 이력 — ingest 세션이 decisions.md로 소비)")):
+                           ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비)")):
             n = sum(1 for line in pend_text.splitlines()
                     if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[" + tag + r"\]", line))
             if n:
                 parts.append(label.format(n=n))
         if parts:
             infos.append("pending.md 미처리 잔량 — " + " / ".join(parts)
-                         + " — 다음 ingest(절차 B-1 0)/lint(F-0)에서 소비")
+                         + " — ingest(절차 B-1 0) 또는 lint(F-0 보고 후 F-2 승인 시)에서 소비")
 
     # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
     #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시

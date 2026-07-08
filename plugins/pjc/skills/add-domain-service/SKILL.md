@@ -1,6 +1,6 @@
 ---
 name: add-domain-service
-description: This skill should be used when the user requests adding business logic, a domain service, an application service, or any logic that should live in the Domain or Application layer of a DDD project. Triggers on phrases like "서비스 추가", "도메인 로직", "비즈니스 로직", "use case 추가", "add service", "add use case". Generates Domain interface + implementation + DI registration + unit test scaffold. Do NOT trigger for logic that belongs inside a single Aggregate (add a method to the Aggregate instead), for pure UI/ViewModel work (use add-viewmodel), or for infrastructure/config-only changes.
+description: This skill should be used when the user requests adding business logic, a domain service, an application service, or any logic that should live in the Domain or Application layer of a DDD project. Triggers on phrases like "서비스 추가", "도메인 로직", "비즈니스 로직", "use case 추가", "add service", "add use case". Generates Domain interface + implementation + DI registration + unit test scaffold. Do NOT trigger for logic that belongs inside a single Aggregate (add a method to the Aggregate instead), for pure UI/ViewModel work (use add-viewmodel), for infrastructure/config-only changes, or for projects without a Domain/Application layer split (single-project apps, scripts, or utilities with no DDD layering — forcing a nonexistent layer is wrong; implement directly per the project's structure).
 argument-hint: "<서비스 이름 또는 목적>"
 ---
 
@@ -140,6 +140,9 @@ public sealed record <Name>Response(/* fields */);
 /// </summary>
 public sealed class <Name>Handler
 {
+    // 아래 스캐폴드는 프로젝트에 UnitOfWork 패턴이 이미 있음을 전제로 한다.
+    // 없으면(리포지토리가 직접 SaveChanges, DbContext 주입 등) IUnitOfWork 관련 줄(_uow 필드·생성자 인자·_uow.SaveChangesAsync 호출)을
+    // 그 프로젝트의 기존 영속화 컨벤션으로 대체한다 — IUnitOfWork를 새로 도입하지 말 것.
     private readonly I<Name>Service _domainService;
     private readonly IUnitOfWork _uow;
     private readonly ILogger<<Name>Handler> _logger;
@@ -292,6 +295,6 @@ public class <Name>ServiceTests
 - Domain 레이어 csproj에 인프라 의존성 발견 (→ "Domain 의존 방향 검증" 섹션대로 즉시 Halt — 그 섹션이 금지/허용·Halt 정본)
 - 기존 서비스들이 일관된 패턴을 따르지 않음 (혼란 — 사용자 확인 필요)
 - Aggregate 경계가 불명확
-- 트랜잭션 경계가 plan.md에 명시되지 않음
+- **영속화를 수반하는 Application Service인데 트랜잭션 경계가 plan.md에 명시되지 않음** (순수 도메인 계산·조회 등 영속화가 없는 서비스는 이 Halt 대상이 아니다 — 트랜잭션이 필요 없으므로)
 - 동일 이름의 서비스가 이미 존재
 - **프로젝트에 Domain/Application 레이어가 없음(비-DDD)** — 존재하지 않는 `src/<Project>.Domain/`·`.Application/` 구조를 새로 강요하지 말고, 어디에 둘지(또는 단순 서비스 클래스로 둘지)를 사용자에게 확인

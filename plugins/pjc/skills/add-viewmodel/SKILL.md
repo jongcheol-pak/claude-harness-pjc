@@ -145,7 +145,7 @@ XAML (`<Name>Page.xaml`):
 </Page>
 ```
 
-> **WPF 차이**: WPF에는 `x:Bind`·`ProgressRing`·`TitleTextBlockStyle`이 없다. WPF View는 `{Binding Title}`(DataContext에 VM 주입), `ProgressRing` 대신 `ProgressBar IsIndeterminate="True"`, namespace는 `System.Windows.Controls.Page`, Style은 프로젝트/WPF-UI 리소스를 사용한다.
+> **WPF 차이**: WPF에는 `x:Bind`·`ProgressRing`·`TitleTextBlockStyle`이 없다. WPF View는 `{Binding Title}`(DataContext에 VM 주입), `ProgressRing` 대신 `ProgressBar IsIndeterminate="True"`, namespace는 `System.Windows.Controls.Page`, Style은 프로젝트/WPF-UI 리소스를 사용한다. 또한 WPF는 **`Grid`의 `RowDefinitions="Auto,*"` 축약 문법과 `Grid Padding`을 지원하지 않는다** — `<Grid.RowDefinitions>`를 전개해 `<RowDefinition Height="Auto"/><RowDefinition Height="*"/>`로 쓰고, `Padding` 대신 자식 요소에 `Margin`을 준다(또는 Grid를 `Border Padding`으로 감싼다).
 
 > **MAUI 차이**: MAUI는 `Page` 대신 `ContentPage`(`Microsoft.Maui.Controls`). `x:Bind`가 없어 `{Binding Title}`(BindingContext에 VM 주입, `x:DataType`으로 컴파일 바인딩 권장), `ProgressRing` 대신 `ActivityIndicator`, 코드비하인드 namespace는 `Microsoft.Maui.Controls`, DI는 `MauiProgram`의 `builder.Services`(`App.GetService` 대신 생성자 주입). ViewModel(Step 2)은 CommunityToolkit.Mvvm 그대로 사용한다.
 
@@ -304,7 +304,7 @@ public sealed partial class <Name>Dialog : ContentDialog
 다음 발견 시 사용자에게 보고하고 중지:
 
 - 기존 ViewModel이 다른 베이스 클래스(`BindableBase`, `ReactiveObject` 등)를 쓰고 있음
-- DI 컨테이너가 없거나 ServiceLocator 패턴을 쓰고 있음
+- DI 컨테이너가 없거나, **ServiceLocator를 남용**하고 있음(제3자 Service Locator 라이브러리·전역 정적 컨테이너를 여기저기서 직접 뒤지는 안티패턴). 단 **`App.GetService<T>()` 같은 프로젝트 관례의 정적 헬퍼는 남용이 아니다** — WinUI 3 템플릿의 표준 패턴이므로 그대로 사용한다(생성자 주입이 기본이되, View 코드비하인드에서 VM을 얻는 App.GetService 관례는 허용). Halt는 "관례 없는 전역 로케이터 남용"에 한한다
 - 네비게이션 패턴이 plan.md에 명시되지 않았고 코드베이스에서도 단일 패턴이 보이지 않음
 - View가 코드 생성기로 만들어지는 경우 (`*.Generated.*`)
 - **`CommunityToolkit.Mvvm` 패키지가 프로젝트에 없음** — `[ObservableProperty]`·`[RelayCommand]`·`ObservableObject`가 컴파일되지 않는다. 의존성 추가는 승인 필요이므로 임의로 추가하지 말고 사용자에게 확인(또는 plan에 패키지 추가를 명시)

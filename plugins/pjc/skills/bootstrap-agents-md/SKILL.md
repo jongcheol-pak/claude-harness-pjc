@@ -66,7 +66,8 @@ $markers = @{
 $detected = @()
 foreach ($stack in $markers.Keys) {
     foreach ($pattern in $markers[$stack]) {
-        if (Get-ChildItem -Filter $pattern -ErrorAction SilentlyContinue) {
+        # -Recurse -Depth 3: 표식이 루트가 아닌 하위(src/, 모듈 폴더 등)에 있어도 감지. 아래 csproj UI 검사와 방식 통일(둘 다 재귀 탐색, 깊이 3으로 상한).
+        if (Get-ChildItem -Filter $pattern -Recurse -Depth 3 -ErrorAction SilentlyContinue) {
             $detected += $stack
             break
         }
@@ -75,7 +76,7 @@ foreach ($stack in $markers.Keys) {
 
 # WinUI 3 / WPF / MAUI 우선 판정: csproj의 UI 플래그로 dotnet → winui3/wpf/maui 승격
 if ($detected -contains 'dotnet') {
-    $csprojContent = Get-ChildItem -Filter '*.csproj' -Recurse -ErrorAction SilentlyContinue |
+    $csprojContent = Get-ChildItem -Filter '*.csproj' -Recurse -Depth 3 -ErrorAction SilentlyContinue |
                      Get-Content -Raw -ErrorAction SilentlyContinue
     $isWinUI = $csprojContent | Select-String -Pattern '<UseWinUI>\s*true\s*</UseWinUI>' -Quiet
     $isWPF   = $csprojContent | Select-String -Pattern '<UseWPF>\s*true\s*</UseWPF>' -Quiet
