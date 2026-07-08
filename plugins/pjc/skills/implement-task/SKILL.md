@@ -268,26 +268,12 @@ git commit -m "checkpoint: T<N> pre-review"
 
 ### V-1. 빌드
 - AGENTS.md의 build 명령 실행. exit 0 확인. 오류 시 Phase I로 복귀해 수정 후 재시도(한도: recovery.md 빌드 5회 연속 실패 카운터).
-- **AGENTS.md 없거나 build 명령 미정의** → 표식 파일로 자동 추론:
-  - `*.csproj`/`*.sln` → `dotnet build`
-  - `build.gradle*` → `./gradlew assembleDebug`
-  - `package.json` → `npm run build` (script 있을 때) 또는 skip
-  - `pyproject.toml` → `python -m build`
-  - `go.mod` → `go build ./...`
-  - `Cargo.toml` → `cargo build`
-  - 위 어느 것도 아님 → AGENTS.md에 build 명령이 있으면 그것 사용. 없으면 Halt → 사용자에게 build 명령 요청 (또는 `pjc:bootstrap-agents-md`로 AGENTS.md 생성 제안)
+- **AGENTS.md 없거나 build 명령 미정의** → 표식 파일로 자동 추론 — **fallback 표(csproj→`dotnet build` 등 6종 + 그 외 Halt 규칙)는 `references/authoring-detail.md` "빌드/테스트 fallback 표" 정본** (저빈도 경로 — AGENTS.md에 명령이 있으면 이 표를 볼 일이 없다).
 
 ### V-2. 테스트
 - AGENTS.md의 test 명령 실행. 통과 케이스 수 기록.
 - **조건부 축소 (큰 스위트 대비)**: AGENTS.md에 **영향 범위 필터 명령**(변경 모듈만 도는 test 명령)이 있거나 전체 스위트가 **크면(대략 3분 초과)**, 이 task에서는 **변경 영향 모듈만** 테스트한다. 전체 스위트는 **Phase F-2에서 1회 보장**되므로 매 task 전량 실행은 중복이다. **축소한 경우 커밋 메시지 `Tests:` 줄에 범위를 명시**한다(예: `Tests: 12/12 passed (module X만 — 전체는 F-2)`). 필터 명령이 없고 스위트도 작으면 그냥 전체를 돈다(기존 동작).
-- **AGENTS.md 없거나 test 명령 미정의** → 표식 파일 fallback:
-  - `*.csproj` → `dotnet test`
-  - `build.gradle*` → `./gradlew test`
-  - `package.json` (test script 있음) → `npm test`; **test script 없음 → skip** (V-1 빌드 fallback과 동일 — 테스트 없는 패키지는 Halt가 아니라 skip)
-  - `pyproject.toml` → `pytest`
-  - `go.mod` → `go test ./...`
-  - `Cargo.toml` → `cargo test`
-  - 위 어느 것도 아님 → Halt
+- **AGENTS.md 없거나 test 명령 미정의** → 표식 파일 fallback — **표(`dotnet test` 등 6종·package.json test script 없음은 skip·그 외 Halt)는 `references/authoring-detail.md` "빌드/테스트 fallback 표" 정본.**
 
 ### V-3. 린트/정적 분석
 - 프로젝트 표준 도구 실행. 신규 경고 0 확인.
@@ -500,7 +486,7 @@ Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 �
 - 중단 조건 + 보고 양식: `references/halt-conditions.md`
 - 복구 메커니즘 + Reviewer 과부하(529) 매트릭스: `references/recovery.md`
 - 안티패턴 표: `references/antipatterns.md`
-- 저빈도 상세(UI 문구 · 검증 스크립트 Windows 보안): `references/authoring-detail.md`
+- 저빈도 상세(빌드/테스트 fallback 표 · UI 문구 · 검증 스크립트 Windows 보안): `references/authoring-detail.md`
 - Phase F 상세: `references/phase-f-detail.md`
 - Phase G 상세: `references/phase-g-detail.md`
 - 최종 보고 양식: `references/final-report-template.md`

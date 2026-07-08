@@ -1,5 +1,25 @@
 # 저빈도 상세 규칙 — implement-task
 
+## 빌드/테스트 fallback 표 (V-1·V-2 — AGENTS.md에 명령이 없을 때만)
+
+**V-1 빌드** — AGENTS.md 없거나 build 명령 미정의 시 표식 파일로 자동 추론:
+  - `*.csproj`/`*.sln` → `dotnet build`
+  - `build.gradle*` → `./gradlew assembleDebug`
+  - `package.json` → `npm run build` (script 있을 때) 또는 skip
+  - `pyproject.toml` → `python -m build`
+  - `go.mod` → `go build ./...`
+  - `Cargo.toml` → `cargo build`
+  - 위 어느 것도 아님 → AGENTS.md에 build 명령이 있으면 그것 사용. 없으면 Halt → 사용자에게 build 명령 요청 (또는 `pjc:bootstrap-agents-md`로 AGENTS.md 생성 제안)
+
+**V-2 테스트** — AGENTS.md 없거나 test 명령 미정의 시 표식 파일 fallback:
+  - `*.csproj` → `dotnet test`
+  - `build.gradle*` → `./gradlew test`
+  - `package.json` (test script 있음) → `npm test`; **test script 없음 → skip** (V-1 빌드 fallback과 동일 — 테스트 없는 패키지는 Halt가 아니라 skip)
+  - `pyproject.toml` → `pytest`
+  - `go.mod` → `go test ./...`
+  - `Cargo.toml` → `cargo test`
+  - 위 어느 것도 아님 → Halt
+
 hot-path(SKILL 본문)에서 참조로 뺀 상황별 상세. **해당 상황에서만 읽는다** — 트리거·요지는 SKILL 본문에 남아 있다.
 
 ## UI 문구 사용자 친화 (규칙 7-2 상세)

@@ -40,6 +40,12 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 
 ## description 작성 (트리거 메타데이터)
 
+**공식 한도 (Agent Skills 표준 — agentskills.io/specification + code.claude.com/docs/en/plugins.md, 2026-07-08 확인)**:
+- `name`: 1-64자, 소문자·숫자·하이픈만, **스킬 디렉터리명과 일치**.
+- `description`: **1-1,024자 (하드 제약)** — 초과분은 잘리거나 무효가 될 수 있다. 트리거 어휘·near-miss 경계는 유지한 채 산문 연결부를 압축해 맞춘다(v1.100.0에서 1,230자로 초과된 전례 — 개정 때마다 자수 재측정).
+- SKILL.md 본문: **500줄 미만 권장** — 초과하면 저빈도 상세를 `references/`로 분리(progressive disclosure). 5,000토큰 권장은 대형 스킬(implement-task 등)에서 의도적으로 초과 수용(자율 루프 품질 우선 — 분리 시 최빈 경로 토큰 중립 + Read 지연만 추가).
+- 측정: python으로 frontmatter `description:` 값 길이·본문 행수를 잰다(공백 포함 문자 수 기준).
+
 스킬 트리거의 1차 메커니즘이다(skill-creator 가이드 정합):
 - **무엇을 하는가 + 언제 트리거되는가**를 모두 담는다.
 - 구체적 트리거 표현(한/영)을 나열해 undertriggering을 막는다(약간 pushy하게).
