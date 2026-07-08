@@ -268,6 +268,16 @@ Assert-Case -Name "protect-harness: 설치본 pre-bash-dispatch Write 차단 (v1
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/bash-hook-lib.ps1'))
 Assert-Case -Name "protect-harness: 설치본 bash-hook-lib 헬퍼 Write 차단 (v1.99.0 T6 등가 우회 봉쇄)" -R $r -ExpectExit 2
 
+# [v1.101.0 T4] 디스패처 로드 가드 — bash-hook-lib.ps1 부재(로드 실패) 시 침묵 fail-open 대신
+#   stderr 경고 1줄 + exit 0(비차단)을 실증한다. lib 없는 임시 사본에서 디스패처를 단독 실행
+#   (Invoke-Hook은 $scriptsDir 고정이라 lib가 항상 옆에 있음 — 부재 상황은 사본으로만 재현 가능).
+$noLib = Join-Path $work 'dispatch-nolib'; New-Item -ItemType Directory $noLib -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir 'pre-bash-dispatch.ps1') $noLib -Force
+$noLibJson = @{ tool_name = 'Bash'; tool_input = @{ command = 'git commit -m "T1: x"' } } | ConvertTo-Json -Compress
+$outNoLib = $noLibJson | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $noLib 'pre-bash-dispatch.ps1') 2>&1
+$rNoLib = @{ code = $LASTEXITCODE; out = (($outNoLib | Out-String)).Trim() }
+Assert-Case -Name "pre-bash-dispatch: lib 부재 시 로드 가드 경고 + exit 0 (v1.101.0 T4 fail-open 가시화)" -R $rNoLib -ExpectExit 0 -ExpectContains '로드 실패'
+
 # =====================================================================
 # 4) require-evidence 시나리오 (git 필요 — 부재 시 skip)
 # =====================================================================

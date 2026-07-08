@@ -6,6 +6,11 @@
 # block-destructive는 이 디스패처에 포함하지 않는다 — "끌 수 없는 마지막 방어선"이라 hooks.json
 #   독립 엔트리로 직접 실행 유지(결정 B). 이 디스패처의 로드 실패가 block-destructive에 영향 없음.
 #
+# 트레이드오프(수용됨 — 결정 B의 이면): require-task-checkbox는 차단(exit 2) 게이트인데 이 디스패처의
+#   lib 로드에 결합돼 있어, bash-hook-lib.ps1 로드 실패 시 3검사가 모두 수행되지 않는다(fail-open —
+#   독립 실행이 보존된 것은 block-destructive뿐). 아래 로드 가드가 이 상태를 stderr 경고로 가시화한다
+#   (비차단 유지 — "검사 실패가 차단보다 안전" 원칙 동일, 골든 케이스가 회귀 방지).
+#
 # 각 검사는 bash-hook-lib.ps1 함수를 호출하며(래퍼 스크립트와 동일 함수 — 동작 단일 출처),
 #   호출을 try/catch로 격리해 한 검사의 예외가 나머지를 막지 않는다.
 #
@@ -25,6 +30,13 @@ try {
 }
 
 . (Join-Path $PSScriptRoot 'bash-hook-lib.ps1')
+
+# 로드 가드: lib 로드 실패(파일 누락·손상) 시 3검사가 침묵 fail-open되는 것을 가시화한다 —
+#   차단 게이트(require-task-checkbox)까지 실리는 지점이라 경고 없이 통과시키지 않는다(비차단 유지).
+if (-not (Get-Command Invoke-WarnExternalOps -ErrorAction SilentlyContinue)) {
+    [Console]::Error.WriteLine('[pre-bash-dispatch] bash-hook-lib.ps1 로드 실패 — 검사 3종(외부작업 경고·task 체크박스 게이트·시크릿 경고) 미수행(fail-open). 플러그인 재설치를 권장합니다.')
+    exit 0
+}
 
 # 순서: 원 hooks.json 순서에서 block-destructive(독립)만 앞으로 뺀 나머지 3종.
 $checks = @('Invoke-WarnExternalOps', 'Invoke-RequireTaskCheckbox', 'Invoke-WarnCommitSecrets')
