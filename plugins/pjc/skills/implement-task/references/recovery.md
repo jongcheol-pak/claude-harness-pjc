@@ -25,14 +25,15 @@ git reset --hard <checkpoint hash>
 
 ## checkpoint 구조
 
-각 task의 Phase I 시작 시 `git commit --allow-empty -m "checkpoint: T<N> start"` 생성.
+각 task의 Phase I 시작 시 `git commit --allow-empty -m "checkpoint: T<N> start"`(빈 커밋) 생성.
+구현 완료 후 Phase V 진입 직전 `git commit -m "checkpoint: T<N> pre-review"`(실변경 — 리뷰 대상 diff 고정, SKILL Phase V 서두) 생성.
 중간에 큰 변경 후 추가 checkpoint 가능:
 
 ```bash
 git commit -m "checkpoint: T<N> partial — <어디까지>"
 ```
 
-복구 시 가장 최근 checkpoint로 reset. 그 이후 변경은 모두 폐기.
+**복구 reset 대상**: 회복 불가 판단 시점에 따라 다르다 — 구현 자체를 폐기하고 다시 짜야 하면 `checkpoint: T<N> start`(빈 커밋)로, 리뷰 지적 수정이 꼬여 pre-review 시점으로만 되돌리면 되는 경우엔 `checkpoint: T<N> pre-review`로 reset한다(가장 최근의 적절한 checkpoint). 그 이후 변경은 모두 폐기.
 
 ## 복구 후 행동
 

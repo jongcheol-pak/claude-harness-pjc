@@ -118,7 +118,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 
 ## Tasks
 
-- [ ] T1. implement-task — V-5 diff 계약·재읽기·반박 채널·재시도 단일화 (D1)
+- [x] T1. implement-task — V-5 diff 계약·재읽기·반박 채널·재시도 단일화 (D1)
   - **Type**: D
   - **Acceptance**: ① Phase V 서두에 pre-review checkpoint 커밋 단계 신설 + V-5 전달문·Phase I·Phase D 서술 정합(“checkpoint(빈 커밋)→구현→pre-review 커밋(실변경)→리뷰→수정분은 Phase D에서 최종화” 흐름이 한 번에 읽힘) ② 컨텍스트 관리 규칙의 압축 후 재읽기 목록에 "이 SKILL.md + 진행 중 Phase의 reference 파일" 추가 ③ V-5/V-6 결과 처리에 이의 절차 1개 신설 — "지적이 사실 오류임을 파일:라인 인용으로 반증 가능하면 코드 수정 없이 반증 첨부 재호출 1회, 재차 동일 지적이면 Halt(사용자 판단)" + antipatterns.md "묵살 금지"와 상충하지 않게 그 항목에 예외 각주 ④ "1회 복귀" 문구 2곳을 "실패 시 Phase I 복귀 반복 — 한도는 recovery.md 카운터"로 교체 ⑤ grep 검증: `HEAD_SHA`·`1회 복귀` 전 출현 위치가 새 계약과 정합
   - **Files**:

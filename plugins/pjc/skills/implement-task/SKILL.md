@@ -140,7 +140,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
    - plan.md의 `## Progress Log`에 완료 task 요약 1-2줄 기록.
    - 이후 task는 전체 대화 history 대신 이 요약 + git log 참조.
 
-4. **컨텍스트 한계 근접 시 멈추지 않는다 — 압축을 통과해 계속 진행한다.** 현재 task를 Phase V/D까지 완료(중간 절단 금지 — 절반 수정 상태는 복구 불완전)하고 plan.md에 상태를 완전 기록(Progress Log + Next Steps + 다음 task 시작점)한 뒤, 사용자 보고 없이 계속 진행한다(auto-compact가 대화 히스토리만 요약, plan.md는 보존). 압축 감지 시 첫 행동은 plan.md + AGENTS.md 재읽기(요약 기억만으로 이어가지 않음). 컨텍스트 한계 자체는 Halt 사유가 아니다(파괴적 작업·동일 실패 반복 등 다른 Halt 조건만 해당 — `references/halt-conditions.md`).
+4. **컨텍스트 한계 근접 시 멈추지 않는다 — 압축을 통과해 계속 진행한다.** 현재 task를 Phase V/D까지 완료(중간 절단 금지 — 절반 수정 상태는 복구 불완전)하고 plan.md에 상태를 완전 기록(Progress Log + Next Steps + 다음 task 시작점)한 뒤, 사용자 보고 없이 계속 진행한다(auto-compact가 대화 히스토리만 요약, plan.md는 보존). **압축 감지 시 첫 행동은 이 SKILL.md(implement-task) + plan.md + AGENTS.md 재읽기다** — 긴 루프에서 압축되면 이 지침 본문(V-5~V-8 절차·Halt 조건·재시도 카운터 규칙)이 요약으로 뭉개져 후반 task에서 규칙이 유실되므로, plan/AGENTS뿐 아니라 지침 자체를 다시 읽어 요약 기억만으로 이어가지 않는다(진행 중 Phase가 reference를 참조하면 그 reference 파일도 함께 재읽기 — 예: Phase F 중이면 `references/phase-f-detail.md`). 컨텍스트 한계 자체는 Halt 사유가 아니다(파괴적 작업·동일 실패 반복 등 다른 Halt 조건만 해당 — `references/halt-conditions.md`).
 
 ### 진행 흐름
 
@@ -174,6 +174,8 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 
 **세 신호(Progress Log·git log·체크박스)가 어긋나면 git log를 신뢰한다.** git log는 매 task commit(`T<N>: ...`)으로 항상 최신이고, Progress Log는 2 task마다, 체크박스는 갱신 누락 가능성이 있다. 또 지정 task의 선행(`Depends on`) task가 git log에 안 보이면 그 선행부터 다시 확인한 뒤 진행한다.
 
+**task 내부 재개 판정 (checkpoint 커밋으로).** git log 마지막 커밋이 그 task의 완료 커밋(`T<N>: ...`)이 아니라 checkpoint면 task가 미완료 중단된 것이다 — `checkpoint: T<N> start`(빈 커밋)면 구현부터, **`checkpoint: T<N> pre-review`면 구현은 끝났고 V-5/V-6 리뷰가 미완료**인 것으로 보고 그 task의 Phase V부터 재개한다(구현을 다시 하지 않는다). Phase Ledger 마커는 Phase F/G 위치만 다루므로, task 내부의 이 판정은 마지막 checkpoint 커밋 종류로 한다.
+
 **Phase Ledger로 진행 위치 판정 (Phase F/G 중복 실행 방지).** plan.md에 `## Phase Ledger` 줄이 있으면 그것으로 **어느 Phase까지 왔는지**(예: `전 task 완료` / `Phase F 통과 (HEAD <sha>)` / `Phase G 재루프 N회차`)를 판정한다. **이미 Phase F를 통과한 상태로 재개하면**(예: Phase G가 추가한 task를 처리하다 압축된 경우) 남은 task만 P→I→V→D로 처리하고 **Phase F(F-7 Opus 포함)를 재실행하지 않는다** — Phase G 재루프는 완료 task 후 G-1 재대조만 하지 Phase F 전체를 다시 돌지 않기 때문이다(phase-g-detail G-2). 마커가 **없는** 기존 plan은 안전하게 "처음부터(전 미완료 task + Phase F/G)"로 폴백한다(무회귀). 마커가 git log·체크박스와 어긋나면 task 완료 판정은 git log를 신뢰하되, **Phase 진행 위치**는 마커 + Progress Log로 판정한다.
 
 **재개도 완전 자율 루프다.** "T6부터 계속"은 "T6 하나만"이 아니라 **"T6부터 마지막 task까지 + Phase F/G까지"를 의미한다.** 첫 세션의 T1 시작과 재개 세션의 T6 시작은 시작점만 다를 뿐 동일한 루프이며, 금지 표현 규칙("T7 진행할까요?" 금지)도 동일하게 적용된다. task 사이에 멈춰 사용자에게 묻는 것은 재개 세션에서도 위반이다. 단일 task만 실행하는 경우는 사용자가 "T6만" 처럼 명시적으로 한정했을 때뿐이다.
@@ -204,7 +206,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 
 ## Phase I — Implement
 
-- 시작 시 **checkpoint** 생성:
+- 시작 시 **checkpoint** 생성 (빈 커밋 — 구현 시작점 표시, recovery reset 대상):
   ```bash
   git status                            # clean 확인
   git checkout -b task/<id>-<slug>      # 작업 브랜치 (이미 있으면 스킵)
@@ -213,6 +215,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 - 기존 코딩 컨벤션 따름 (AGENTS.md > 주변 코드 모방)
 - 최소 변경 원칙
 - 변경 후 즉시 빌드. 오류는 다음 변경 전에 해결.
+- 구현이 끝나면 **Phase V 진입 직전에 pre-review 커밋을 만든다**(아래 Phase V 서두) — 리뷰어가 볼 diff를 커밋으로 고정하기 위함. Type A(리뷰 생략)는 이 커밋이 불필요하며 Phase D에서 바로 최종 커밋한다.
 
 ### Sub-skill 호출 (해당 시)
 
@@ -226,7 +229,14 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 
 ## Phase V — Validate
 
-순서대로 실행. 실패 시 Phase I로 1회 복귀 후 재시도.
+**V 진입 직전 — pre-review 커밋 (리뷰 대상 diff 고정).** Type B/C/D(리뷰가 있는 Type)는 Phase V 리뷰(V-5/V-6) 전에 구현 변경을 커밋한다:
+```bash
+git add -A
+git commit -m "checkpoint: T<N> pre-review"
+```
+이 커밋의 SHA를 V-5/V-6 리뷰어에게 **HEAD_SHA로 전달**한다. **이유**: 리뷰어는 `git diff <BASE_SHA> <HEAD_SHA>`로 변경을 보는데, 구현 변경이 워킹트리에만 있고 미커밋이면(과거 결함) HEAD가 직전 `checkpoint: T<N> start`(빈 커밋)를 가리켜 리뷰어가 **빈 diff**를 보고 거짓 BLOCKER를 내거나 임의로 워킹트리 diff를 쓰게 된다. pre-review 커밋으로 리뷰 대상 스냅숏을 고정하면 결정적·재현 가능하다. BASE_SHA는 `checkpoint: T<N> start`(또는 직전 task 최종 커밋). **리뷰 지적 수정분은 Phase I로 돌아가 고친 뒤 pre-review 커밋에 이어 커밋**(amend 아님 — 추가 커밋)하고, 그 새 HEAD로 재리뷰한다. Phase D의 최종 커밋은 pre-review 커밋(+수정분)을 task 완료 커밋으로 정리하는 단계다(수정분이 없으면 pre-review 커밋에 amend해 메시지만 승격, 있으면 그 위 추가 커밋 — 판정·명령은 Phase D ③). Type A는 이 커밋을 건너뛰고 Phase D에서 바로 최종 커밋한다.
+
+순서대로 실행. 실패 시 Phase I로 복귀해 수정 후 재시도한다 — 반복 한도는 `references/recovery.md`의 카운터(빌드/테스트 5회 연속 실패·리뷰 수정 사이클 5회·복구 2회)를 따른다(카운터 없이 무한 반복하지 않으며, "1회만"이라는 뜻도 아니다).
 
 > **검증 스크립트 Windows 보안 (PowerShell).** 임시 검증 스크립트는 자격증명 하드코딩(→환경변수 `$env:TEST_PW`)·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass`를 피한다 — 이 위험 신호가 한 스크립트에 모이면 Windows Defender가 공격 도구로 오인해 격리(삭제)할 수 있다(빌드 검증과 로그인/런타임 테스트는 분리). 격리 시 사용자에게 Defender 예외 추가를 **안내만** 한다(설정 변경은 사용자 직접). **상세: `references/authoring-detail.md`.**
 
@@ -255,7 +265,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 - **Type 오분류 피드백 (경미)**: spec-prefilter가 Type B task에서 ESCALATE를 반복(여러 task에 걸쳐 잦게)하면 plan의 Type 분류가 실제보다 가볍다는 신호다 — 해당 task는 그대로 진행하되 plan.md `## Deferred / Follow-up`에 "Type 분류 재검토 (prefilter ESCALATE 잦음)"를 1줄 남긴다(다음 계획 단계 강화용, 루프는 멈추지 않음).
 
 ### V-1. 빌드
-- AGENTS.md의 build 명령 실행. exit 0 확인. 오류 시 Phase I로 1회 복귀 후 재시도.
+- AGENTS.md의 build 명령 실행. exit 0 확인. 오류 시 Phase I로 복귀해 수정 후 재시도(한도: recovery.md 빌드 5회 연속 실패 카운터).
 - **AGENTS.md 없거나 build 명령 미정의** → 표식 파일로 자동 추론:
   - `*.csproj`/`*.sln` → `dotnet build`
   - `build.gradle*` → `./gradlew assembleDebug`
@@ -293,17 +303,18 @@ reviewer subagent 호출이 **과부하(HTTP 529)로 실패**하면(V-5/V-6·F-7
 
 Task Type에 따라 다른 흐름:
 
-**Type B**: `spec-prefilter` (Haiku) 먼저 호출.
+**Type B**: `spec-prefilter` (Haiku) 먼저 호출 (BASE_SHA·HEAD_SHA는 Type C/D와 동일 — HEAD_SHA = Phase V 서두의 **pre-review 커밋** SHA. prefilter도 그 diff를 본다).
 - PASS → V-5 완료, **V-7(축소)·V-8 진행** (Type B는 V-6 생략 — Sonnet 호출 안 함. Fast-Path 표와 일치).
 - ESCALATE → `spec-compliance-reviewer` (Sonnet) **단독** 호출 (Type B ESCALATE도 V-6 생략 → 병렬 대상 아님). BLOCKER/MAJOR → Phase I 복귀·수정 후 재호출, MINOR → follow-up, OK → V-7로.
 
 **Type C/D**: `spec-compliance-reviewer` (Sonnet) 호출.
-- 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA, AGENTS.md 경로(V-6 병렬 시 quality reviewer의 컨벤션 대조 입력 — code-quality-reviewer 입력 계약).
+- 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA(= **pre-review 커밋** SHA — Phase V 서두에서 만든 것, 빈 checkpoint가 아님), AGENTS.md 경로(V-6 병렬 시 quality reviewer의 컨벤션 대조 입력 — code-quality-reviewer 입력 계약).
 - **V-6이 함께 수행되는 경우(Type D 항상, Type C는 plan Type 라인에 `(quality-review)`가 있을 때)에는 V-5(compliance)와 V-6(quality)를 동일 BASE_SHA·HEAD_SHA에 병렬(한 turn 동시) 호출한다.** 두 리뷰는 독립 read-only라 동시 실행해도 충돌이 없다. V-6을 생략하는 경우(플래그 없는 Type C, 기본)는 V-5만 단독 호출.
 - **둘 중 하나라도 BLOCKER/MAJOR → Phase I로 복귀, 수정 후 (수행된) 리뷰를 다시 병렬 재실행.** 둘 다 OK/MINOR일 때만 다음 단계 (MINOR → follow-up 등록). **follow-up 등록은 최종 통과 run 기준** — 중간 run에서 본 MINOR는 최종 run에서 재평가하며(수정으로 위치가 바뀔 수 있음), 중간 결과로 중복 등록하지 않는다.
 - 두 리뷰는 항상 **최종 diff에 전체 수행** — 어느 것도 생략·약화하지 않는다 (단 아래 529 인프라 장애 fallback은 예외이며, 그 경우 약화 사실을 반드시 명시한다). 실패 경로에서 V-6이 재실행되는 토큰 비용은 품질 우선으로 감수한다.
 - **529 과부하는 각 reviewer에 독립 적용** — 병렬 중 한쪽만 529면 그 reviewer만 "Reviewer 과부하(529) 대응" fallback을 따른다 (다른 쪽 결과 유지).
 - **reviewer가 "incomplete"(turn 예산 소진 등으로 acceptance 일부만 검토)로 응답하면 통과(OK)로 보지 않는다** — 미검토 항목을 메인이 diff에서 직접 대조(해당 acceptance가 충족되는 위치 지목)하거나 reviewer를 재호출해 나머지를 마저 검토한 뒤에야 다음 단계로 간다. incomplete를 조용히 OK 처리하고 다음 task로 넘어가는 것은 금지. (Phase G의 incomplete 처리 원칙을 per-task V-5/V-6에도 동일 적용 — Type B ESCALATE의 spec-compliance-reviewer 호출 포함 모든 reviewer 응답에 적용.)
+- **지적 이의 절차 (사실 오류 반증 — 무조건 수용 방지).** 리뷰 지적을 코드 수정으로 반영하는 것이 기본이지만, 메인이 그 지적을 **사실 오류로 판단하고 파일:라인 인용으로 반증할 수 있으면**(예: 리뷰어가 "caller 누락"이라 했으나 그 caller가 리플렉션·다른 파일에서 실제로 갱신됨을 grep으로 제시), 코드를 바꾸지 않고 **반증 근거를 첨부해 같은 리뷰어를 1회 재호출**한다. 재호출에도 리뷰어가 같은 지적을 유지하면 그 지적을 수용해 수정하거나(반증이 틀렸을 수 있음), 반증이 확실하면 Halt해 사용자 판단을 받는다(무한 반박 금지 — 이 반증 재호출은 재시도 한계의 "수정 사이클"에 포함). 이 절차는 antipatterns.md "Review 묵살 금지"의 예외다 — **묵살(근거 없이 무시)이 아니라 근거 있는 반증**이며, 반증이 기각되면 수용한다. 반증 없이 "내 판단엔 틀렸다"로 넘어가는 것은 여전히 금지.
 
 ### V-6. Code Quality Review (subagent, Type D 항상 · Type C는 `(quality-review)` 플래그 시) — V-5와 병렬 수행
 - `code-quality-reviewer` subagent 호출 (위 V-5에서 **병렬로 함께 호출**). 자체 검토 금지.
@@ -365,15 +376,34 @@ plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만*
 
 ## Phase D — Done
 
-**① plan.md 체크박스 갱신 (매 task, 필수 — commit보다 먼저)**: 이 task의 본체 체크박스를 `[ ]`/`[/]` → `[x]`로 바꾼 **뒤에** commit한다. 재개 시 미완료 task 식별의 1차 신호이므로 **task 완료마다 즉시** 갱신한다(Progress Log는 2 task마다지만 체크박스는 매 task). 이 단계를 빠뜨리면 재개('재개 진입')에서 체크박스가 전부 `[ ]`로 남아 git log·Progress Log와 어긋난다. 글로벌 CLAUDE.md에도 동일 규칙이 있으나, 이 스킬은 그에 의존하지 않고 자체적으로 강제한다.
+**① 리뷰 수정분 유무 판정 (체크박스 갱신 전 — 먼저 실행)**: Phase D 진입 직후, **plan.md 체크박스를 아직 건드리기 전에** `git status --porcelain`으로 pre-review 커밋 이후 리뷰 지적 수정이 있었는지 판정해 둔다.
+- **clean** = 리뷰가 첫 판에 OK라 pre-review 커밋이 곧 최종 코드(추가 수정 없음).
+- **dirty** = 리뷰 지적 수정분이 워킹트리에 있음.
+- **이 판정을 ②(체크박스 갱신)보다 먼저 하는 이유**: 체크박스 갱신은 plan.md를 **항상** 수정하므로(plan.md가 tracked인 통상 케이스), 갱신 뒤에 판정하면 `git status`가 리뷰 수정 유무와 무관하게 늘 dirty가 되어 ③의 amend(clean) 분기가 죽는다. 판정을 앞당겨 체크박스 변경이 판정을 오염시키지 않게 한다. (plan.md가 gitignore인 repo면 체크박스 변경은 git에 안 보이므로 어느 순서든 무방하지만, 규칙은 tracked 기준으로 통일한다.)
+
+**② plan.md 체크박스 갱신 (매 task, 필수 — commit보다 먼저)**: 이 task의 본체 체크박스를 `[ ]`/`[/]` → `[x]`로 바꾼 **뒤에** commit한다. 재개 시 미완료 task 식별의 1차 신호이므로 **task 완료마다 즉시** 갱신한다(Progress Log는 2 task마다지만 체크박스는 매 task). 이 단계를 빠뜨리면 재개('재개 진입')에서 체크박스가 전부 `[ ]`로 남아 git log·Progress Log와 어긋난다. 글로벌 CLAUDE.md에도 동일 규칙이 있으나, 이 스킬은 그에 의존하지 않고 자체적으로 강제한다.
 - **`require-task-checkbox` hook이 이 순서를 기계 강제한다** — `T<N>:` 완료 커밋 시 plan의 해당 체크박스가 [x]가 아니면 commit이 차단(exit 2)된다. 지침 준수 부탁이 아니라 구조적 게이트다.
 - 주의(stale [x]): 체크박스를 [x]로 바꾼 뒤 commit이 실패하면 체크박스만 [x]로 남을 수 있고, **plan.md가 gitignore인 repo에선 `git reset --hard <checkpoint>` 복구도 이를 되돌리지 못한다** — 이 신호 충돌은 '재개 진입'의 "git log 신뢰" 원칙이 그대로 해소한다(체크박스는 어긋날 수 있는 신호, git log가 진실).
 
-**② commit**:
+**③ commit** — Phase V 서두에서 만든 `checkpoint: T<N> pre-review` 커밋을 이 task 완료 커밋으로 마무리한다. **①의 판정으로 분기**한다:
 
-```bash
-git add -A
-git commit -m "T<N>: <한 줄 요약>
+- **①이 clean이면**(리뷰 수정분 없음) → 새 커밋 대신 **pre-review 커밋에 amend**한다(체크박스 변경만 흡수되고 메시지가 완료 메시지로 승격):
+  ```bash
+  git add -A                    # ②의 체크박스 변경만 staged됨
+  git commit --amend -m "T<N>: <한 줄 요약>
+  ... (아래 완료 메시지 본문) ..."
+  ```
+- **①이 dirty이면**(리뷰 지적 수정분 있음) → 그대로 새 완료 커밋을 만든다. pre-review 커밋은 그 앞 단계로 남는다(squash하지 않음 — 리뷰 대상 diff 고정 이력 보존):
+  ```bash
+  git add -A                    # 리뷰 수정분 + ②의 체크박스 변경
+  git commit -m "T<N>: <한 줄 요약>
+  ... (아래 완료 메시지 본문) ..."
+  ```
+
+완료 메시지 본문(두 경로 공통):
+
+```
+T<N>: <한 줄 요약>
 
 <변경 요약>
 Type: <A/B/C/D>
@@ -383,7 +413,6 @@ Review: spec OK (prefilter: <PASS/ESCALATE→OK>), quality <OK/SKIPPED>
 Caller-recheck: <확인한 심볼 수>개 심볼, 누락 0
 Self-honesty: PASS
 Elapsed: <Hm Ms> | Turn ~<N>
-"
 ```
 
 진행 보고 (각 task 1줄, 사용자 확인 요청 금지):
