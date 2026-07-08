@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.97.2
+**버전**: 1.98.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -368,6 +368,8 @@ Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요. 그래�
 <summary>안전장치(hook)가 너무 자주 막아요</summary>
 
 하니스의 hook은 항상 켜져 있어 끌 수 없습니다. 정상 작업인데 막혔다면, 계획(plan)을 먼저 만들거나 명령을 더 구체적으로(예: 삭제 명령에 `WHERE 조건` 추가) 바꾸면 통과합니다. 위험한 명령 차단(파일 삭제·DB 삭제 등)은 안전을 위한 것이니, 정말 필요한 작업이면 더 좁은 범위로 나눠 실행하세요.
+
+> v1.98.0에서 정상 작업 오차단을 줄였습니다 — 임시 폴더 정리(`$env:TEMP\...` 하위), 프로젝트 내 단일 파일 `chmod +x`, 현재 폴더 상대 정리(`Get-ChildItem . -Recurse | ...`), 테스트/재현용 신규 파일(`tests/`·`repro*`, 30줄 이하), 마크업·스타일 파일(`.xml`/`.html`/`.css`)이 이제 계획 없이 통과합니다. 위험 차단(홈·시스템 삭제, DB 파괴 등)은 그대로입니다.
 
 </details>
 

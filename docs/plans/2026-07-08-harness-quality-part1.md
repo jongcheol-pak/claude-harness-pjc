@@ -18,6 +18,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 
 ## Deferred / Follow-up
 - **다음 분할 plan**: docs/plans/2026-07-08-harness-quality-part2.md — T1~T7 (스킬·에이전트 지침 수정, 미실행)
+- **hook 검사 로직 in-process 통합(T6 이관)**: 4개 Bash-계열 hook(block-destructive·warn-external-ops·require-task-checkbox·warn-commit-secrets) 검사 로직을 함수 모듈로 리팩토링해 단일 pwsh 프로세스에서 dot-source 실행 → 도구 호출당 pwsh 콜드 스타트 4회를 1회로. 안전 임계 스크립트 구조 변경이므로 동등성 골든을 촘촘히 깐 별도 plan에서 진행(자식 spawn 방식은 성능·안전 모두 불리하므로 채택 안 함).
 - block-destructive 기존 한계(T1 재리뷰에서 확인, 이번 diff 이전부터 존재): `cat <<EOF > script.sh`(데이터 싱크로 스트립) 후 같은 Bash 호출에서 `bash script.sh` 즉시 실행 시 위험 본문이 스캔에서 빠짐 — "파일 작성 + 동일 호출 실행" 조합 감지 개선 후보
 - suggest-agents-record가 커밋 메시지(-m 값) 속 명령 문자열을 실행으로 오인(세션 중 실측) — -m 값 스트립 적용 후보
 - .state 디듑 마커(post-write-warn·require-plan-warn·suggest-agents-record) 누적 정리 정책 부재(TTL/청소) — 공통 이슈, 별도 plan (T4 리뷰 m1)
@@ -178,7 +179,8 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
     - (i) -m 스트립이 플래그 토큰까지 지움 → block-destructive의 검증된 스트립 기법 재사용(값만 제거·토큰 보존)
   - **Depends on**: -
 
-- [ ] T6. hooks.json Bash 계열 PreToolUse 4종 단일 디스패처 통합 (D8)
+- [~] T6. hooks.json Bash 계열 PreToolUse 4종 단일 디스패처 통합 (D8) — **스킵(별도 plan으로 이관)**
+  - **스킵 사유(구현 착수 중 발견, 사용자 확인)**: 4개 스크립트가 전부 `[Console]::In.ReadToEnd()`로 stdin을 소비하고 `exit 2`로 종료하므로, "무수정" 제약에서 통합하려면 디스패처가 각 스크립트를 자식 프로세스로 재spawn해야 한다(in-process 격리 불가). 그 결과 ① 성능 목표 역행 — 무거운 비용인 pwsh 콜드 스타트 4회가 그대로 남고 디스패처 1개가 추가됨(4→5), 절감되는 건 셸 래퍼·pwsh 프로브뿐 ② 안전 저하 — 마지막 방어선(block-destructive) 앞에 단일 장애점(디스패처 crash→4게이트 fail-open) 신설. 진짜 이득(pwsh 4→1)은 4스크립트 로직을 함수 모듈로 리팩토링해 in-process dot-source하는 별도 설계로만 가능하며, 안전 임계 스크립트 구조 변경이라 이번 오탐 배치와 분리한다.
   - **Type**: D
   - **Acceptance**: Given Bash 도구 호출 1회, When PreToolUse, Then ① PowerShell 프로세스 1개만 기동(디스패처) ② 위험 명령은 exit 2 즉시 전파(후속 스크립트 미실행 — block-destructive 우선 순서 유지) ③ 경고 hook들의 stderr/컨텍스트 출력이 병합 전달 ④ 클린 명령 exit 0 ⑤ 개별 스크립트 무수정(파일 해시 대조) ⑥ 골든: 기존 4 hook의 대표 차단/경고/클린 케이스를 디스패처 경유로 재실행하는 동등성 케이스 신설 + 기존 개별 케이스 전부 PASS ⑦ validate.ps1이 새 배선(hooks.json 1항목 + 디스패처 등록)을 정상 인식
   - **Files**:
@@ -191,7 +193,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
     - (ii-b) 통합 후 골든 동등성 실패가 반복되어 설계 자체 재검토 필요 시 → hooks.json 원복 후 사용자 보고(무리한 강행 금지)
   - **Depends on**: T1·T5 (개별 스크립트 수정 확정 후 배선 통합 — 순서 역전 시 골든 이중 갱신)
 
-- [ ] T7. 버전·문서·통합 검증 (D9)
+- [x] T7. 버전·문서·통합 검증 (D9)
   - **Type**: C
   - **Acceptance**: ① plugin.json·README 버전 1.97.2→1.98.0 ② README 안전장치·트러블슈팅 서술이 변경 반영(chmod 조건화·신규 파일 trivial·디스패처) ③ AGENTS.md DO NOT에 "오탐 수정은 골든 실증 하에 허용(2026-07-08 승인)" 단서 + scripts 목록에 pre-bash-dispatch 추가 ④ 통합 재검증: 전 ps1 parse OK·JSON 매니페스트 3종 OK·hook 골든 전 케이스 PASS ⑤ notes.md 기록
   - **Files**:
@@ -220,7 +222,8 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 ## Phase Ledger
 
 ## Retry Ledger
-- T1: quality BLOCKER 2건(B1 heredoc 실행자 우회·B2 무필터 열거 삭제) 1회 발생 → 수정 커밋 2dc1a56, 재리뷰 진행 중 (수정 사이클 1/5)
+- T1: quality BLOCKER 2건(B1 heredoc 실행자 우회·B2 무필터 열거 삭제) → 수정 2dc1a56, 재리뷰 OK (수정 사이클 1/5, 종결)
+- T5: spec MAJOR 1건(require-evidence 골든 누락) → 수정 a319783 / quality BLOCKER 2건(B1 dry-run·B2 merge 세그먼트 누수) → 수정 dfa89b6, 재검증 진행 중 (수정 사이클 2/5)
 
 ## Progress Log
 - T1 완료 (커밋 fbc6835 + 수정 2dc1a56): block-destructive 오탐 4건+chmod 조건화+reset 등가. 리뷰 B1(heredoc 데이터-싱크 한정)·B2(. 제외 필터 조건화) 반영. 골든 212/212, 음성 대조 9건 OLD=2→NEW=0. spec OK.
