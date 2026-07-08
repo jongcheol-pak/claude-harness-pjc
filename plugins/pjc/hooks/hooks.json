@@ -19,30 +19,8 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/warn-external-ops.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/require-task-checkbox.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/warn-commit-secrets.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
-            "timeout": 10
+            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/pre-bash-dispatch.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "timeout": 15
           }
         ]
       },

@@ -48,7 +48,7 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
 | secret-patterns.ps1 dot-source(`$PSScriptRoot`) | warn-commit-secrets 함수가 lib로 이동해도 `$PSScriptRoot`=scripts/ 동일 | 무영향(확인) |
 
 ### 4-B. 계약·직렬화 변경
-- hook stdin JSON 계약 불변. 함수 반환 계약 신설(내부): `@{ Action='block'|'warn'|'pass'; ExitCode; Stderr=[string[]]; Context=[string] }`. 래퍼·디스패처가 이를 stderr/stdout JSON/exit로 번역 — 외부(Claude Code) 관측 동작은 불변.
+- hook stdin JSON 계약 불변. 함수 반환 계약 신설(내부): `@{ Block=[bool]; Stderr=[string[]]; Context=[string] }` (구현 단순화 — 아래 D2-1). `Block=$true`면 도구 차단(exit 2), `Stderr`는 항상 출력, `Context`는 있으면 additionalContext JSON. 래퍼·디스패처가 이를 stderr/stdout JSON/exit로 번역 — 외부(Claude Code) 관측 동작은 불변.
 
 ### 4-C. 테스트 파일
 - `run-hook-evals.ps1` + `hook-cases.json`: 기존 warn-external-ops·require-task-checkbox·warn-commit-secrets 케이스는 래퍼 경유로 그대로 통과(무회귀) + 디스패처 경유 동등성 케이스 신설.
@@ -74,6 +74,11 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
 - **Rationale**: 래퍼 경유(개별)와 디스패처 경유 두 경로가 같은 lib 함수를 호출 → 동작 단일 출처.
 - **Source**: 자체 확정(골든 무회귀 최우선).
 
+### D2-1. 결과 객체 계약 단순화 (구현 중 확정)
+- **Chosen**: 함수 반환을 `@{ Block=[bool]; Stderr=[string[]]; Context=[string] }` 3필드로 한다(초안의 `Action='block'/'warn'/'pass'`+`ExitCode` 4필드 대신). block 가능한 검사는 require-task-checkbox뿐이고 나머지 2개는 항상 비차단이라 `Block` bool로 충분 — `ExitCode`는 `Block`에서 파생(true→2/false→0)돼 중복. warn/pass 구분은 `Context`/`Stderr` 유무로 자연 표현.
+- **Rationale**: 3상태 enum·별도 ExitCode는 이 도메인에서 불필요한 간접화(규칙 5-1 — 빼면 더 단순). 래퍼·디스패처의 번역이 `if ($r.Block)`·`if ($r.Context)`로 직접적.
+- **Source**: 구현 중 확정(T1 spec 리뷰 B1으로 문서 정합).
+
 ### D3. cwd 격리 (warn-commit-secrets)
 - **Chosen**: WarnCommitSecrets 함수는 내부에서 `Push-Location $cwd` / `try { ... } finally { Pop-Location }`로 자기완결. 디스패처·다른 함수에 cwd 잔존 안 함.
 - **Source**: 코드 확인(Set-Location:43-47) — 자체 확정.
@@ -96,7 +101,7 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
 
 - [x] T1. bash-hook-lib.ps1 모듈 추출 + 3개 스크립트를 얇은 래퍼로 전환 (D2·D3)
   - **Type**: D
-  - **Acceptance**: Given 3 hook, When lib로 로직 이관, Then ① `bash-hook-lib.ps1` 신설 — `Invoke-WarnExternalOps($data)`·`Invoke-RequireTaskCheckbox($data)`·`Invoke-WarnCommitSecrets($data)`가 각 스크립트의 검사 로직을 **문장 단위 이동**(재작성 아님)해 결과 객체 반환(`Action`/`ExitCode`/`Stderr`/`Context`), `exit`→`return`, `[Console]` 직접 출력 제거 ② WarnCommitSecrets는 Push/finally Pop-Location으로 cwd 자기완결 ③ 3개 스크립트는 stdin 읽기+파싱+lib 함수 호출+결과 번역만 남은 래퍼 ④ **기존 골든(warn-external-ops·require-task-checkbox·warn-commit-secrets 관련 전 케이스)이 래퍼 경유로 무수정 통과** ⑤ 전 ps1 parse OK, .ps1 UTF-8 BOM 유지
+  - **Acceptance**: Given 3 hook, When lib로 로직 이관, Then ① `bash-hook-lib.ps1` 신설 — `Invoke-WarnExternalOps($data)`·`Invoke-RequireTaskCheckbox($data)`·`Invoke-WarnCommitSecrets($data)`가 각 스크립트의 검사 로직을 **문장 단위 이동**(재작성 아님)해 결과 객체 반환(`@{Block;Stderr;Context}` — D2-1), `exit`→`return`, `[Console]` 직접 출력 제거 ② WarnCommitSecrets는 cwd를 try/finally로 복원해 자기완결 ③ 3개 스크립트는 stdin 읽기+파싱+lib 함수 호출+결과 번역만 남은 래퍼 ④ **기존 골든(warn-external-ops·require-task-checkbox·warn-commit-secrets 관련 전 케이스)이 래퍼 경유로 무수정 통과** ⑤ 전 ps1 parse OK, .ps1 UTF-8 BOM 유지
   - **Files**:
     - 주: `plugins/pjc/scripts/bash-hook-lib.ps1`(신규)
     - 동반: `plugins/pjc/scripts/warn-external-ops.ps1`·`require-task-checkbox.ps1`·`warn-commit-secrets.ps1`(→래퍼)
@@ -119,7 +124,7 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
     - (i) additionalContext 병합/exit 전파 오류 → T4 동등성 골든이 검출
   - **Depends on**: T1
 
-- [ ] T3. hooks.json 재배선 + validate·자기보호 집합 갱신 (D5)
+- [x] T3. hooks.json 재배선 + validate·자기보호 집합 갱신 (D5)
   - **Type**: C
   - **Acceptance**: ① hooks.json PreToolUse Bash|PowerShell = block-destructive(무변경) + pre-bash-dispatch 2엔트리(warn-external-ops·require-task-checkbox·warn-commit-secrets 개별 엔트리 제거) — 래퍼 스크립트 파일은 존치 ② validate.ps1 `$hooks`에 `pre-bash-dispatch.ps1` 추가(3 래퍼는 목록 유지)·`$knownHelpers`에 `bash-hook-lib.ps1` 추가 ③ protect-harness.ps1·post-write-checks.ps1 `$harnessHookName`에 `pre-bash-dispatch`·`bash-hook-lib` 추가(두 파일 동일 문자열) ④ block-destructive.ps1 diff 0(무수정 확인) ⑤ JSON 매니페스트 파싱 OK
   - **Files**:
