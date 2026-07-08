@@ -1,4 +1,7 @@
-# Plan: 하니스 품질 검토 후속 — part2: 스킬·에이전트 지침 결함 수정 (v1.99.0)
+# Plan: 하니스 품질 검토 후속 — part2: 스킬·에이전트 지침 결함 수정 (v1.100.0)
+
+<!-- 버전 메모: 초안은 1.98.0→1.99.0였으나, T6 이관분이 1.99.0을 사용해 part2는 1.99.0→1.100.0으로 순증(minor). -->
+
 
 **이전 plan**: docs/plans/2026-07-08-harness-quality-part1.md
 
@@ -110,7 +113,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - **Source**: 자체 확정 목록 사전 고지(가설 조작·RED 불능은 규칙이 스스로 모순).
 
 ### D9. 버전
-- **Chosen**: part2 완료 시 1.98.0 → **1.99.0** (minor — 절차 계약 변경 다수).
+- **Chosen**: part2 완료 시 1.99.0 → **1.100.0** (minor — 절차 계약 변경 다수. T6가 1.99.0 사용해 순증).
 - **Source**: 저장소 관례 — 자체 확정.
 
 ## Tasks
@@ -178,10 +181,10 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 
 - [ ] T7. 버전·문서·통합 검증 (D9)
   - **Type**: C
-  - **Acceptance**: ① plugin.json·README 1.98.0→1.99.0 ② README의 검토자·워크플로 서술이 변경 반영(리뷰 이의 절차·테스트 축소 조건 등 사용자 노출 변경만) ③ 통합 재검증: check_consistency 93항목 OK·hook 골든 전 케이스 PASS(무회귀 확인)·JSON 3종 OK·BOM 규약(md 무BOM) ④ notes.md 기록 ⑤ 검토 보고의 40개 발견 ↔ part1/part2 task 역대조 표를 notes에 포함(누락·의도적 제외 구분)
+  - **Acceptance**: ① plugin.json·README 1.99.0→1.100.0 ② README의 검토자·워크플로 서술이 변경 반영(리뷰 이의 절차·테스트 축소 조건 등 사용자 노출 변경만) ③ 통합 재검증: check_consistency 93항목 OK·hook 골든 전 케이스 PASS(무회귀 확인)·JSON 3종 OK·BOM 규약(md 무BOM) ④ notes.md 기록 ⑤ 검토 보고의 40개 발견 ↔ part1/part2 task 역대조 표를 notes에 포함(누락·의도적 제외 구분)
   - **Files**:
     - 주: `plugins/pjc/.claude-plugin/plugin.json`·`README.md`·`notes.md`
-  - **Edge Cases**: part1이 먼저 릴리즈되지 않은 상태로 part2가 끝나는 경우 — 버전은 로컬 순증(1.98.0→1.99.0), 릴리즈는 최종 보고에서 일괄 승인
+  - **Edge Cases**: part1·T6가 먼저 릴리즈되지 않은 상태로 part2가 끝나는 경우 — 버전은 로컬 순증(1.99.0→1.100.0), 릴리즈는 최종 보고에서 일괄 승인(part1 1.98.0 + T6 1.99.0 + part2 1.100.0 합류)
   - **Halt Forecast**: (없음)
   - **Depends on**: T1~T6
 
@@ -191,7 +194,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - 각 task 완료 시 로컬 작업 브랜치 commit (implement-task 규약 위임 범위)
 
 ## 불가피한 Halt (위임 불가 — 일괄 사전승인 불가)
-- push·main 병합·태그·GitHub 릴리즈 v1.99.0 — 최종 보고에서 별도 승인
+- push·main 병합·태그·GitHub 릴리즈 v1.100.0 — 최종 보고에서 별도 승인
 
 ## Verification Strategy
 - 정적: 전 ps1 parse(무변경 확인용)·JSON 매니페스트 3종
