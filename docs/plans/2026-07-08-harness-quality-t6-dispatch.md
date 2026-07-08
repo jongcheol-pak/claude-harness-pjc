@@ -146,7 +146,7 @@ Bash 도구 호출당 pwsh 콜드스타트를 4→2로 줄이되, block-destruct
     - (i) 동등성 불일치 → 원인 국소화(어느 함수/번역 단계인지 케이스가 지목), 반복 실패 시 recovery 카운터
   - **Depends on**: T3
 
-- [ ] T5. 버전·문서·통합 검증 (D6)
+- [x] T5. 버전·문서·통합 검증 (D6)
   - **Type**: C
   - **Acceptance**: ① plugin.json·README 1.98.0→1.99.0 ② README Hooks/호환환경 서술이 디스패처 반영(Bash hook 프로세스 절감·block-destructive 독립)·AGENTS.md Repository Structure scripts 목록에 pre-bash-dispatch·bash-hook-lib 추가 ③ 통합 재검증: 전 ps1 parse OK·JSON 매니페스트 3종·hook 골든 전 케이스 PASS·validate.ps1 WARN 0 ④ notes.md 기록 + part1 plan의 T6 항목·Deferred 갱신(이관 완료 표시) ⑤ part2 버전 재부여 메모
   - **Files**:

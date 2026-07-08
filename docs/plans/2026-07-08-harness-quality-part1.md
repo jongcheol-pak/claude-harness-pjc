@@ -18,7 +18,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 
 ## Deferred / Follow-up
 - **다음 분할 plan**: docs/plans/2026-07-08-harness-quality-part2.md — T1~T7 (스킬·에이전트 지침 수정, 미실행)
-- **hook 검사 로직 in-process 통합(T6 이관)**: 4개 Bash-계열 hook(block-destructive·warn-external-ops·require-task-checkbox·warn-commit-secrets) 검사 로직을 함수 모듈로 리팩토링해 단일 pwsh 프로세스에서 dot-source 실행 → 도구 호출당 pwsh 콜드 스타트 4회를 1회로. 안전 임계 스크립트 구조 변경이므로 동등성 골든을 촘촘히 깐 별도 plan에서 진행(자식 spawn 방식은 성능·안전 모두 불리하므로 채택 안 함).
+- ~~hook 검사 로직 in-process 통합(T6 이관)~~ → **완료(별도 plan `docs/plans/2026-07-08-harness-quality-t6-dispatch.md`, v1.99.0)**: 결정 B로 구현 — block-destructive는 독립 유지, 나머지 3개(warn-external-ops·require-task-checkbox·warn-commit-secrets)를 bash-hook-lib 함수 모듈+pre-bash-dispatch 디스패처로 통합해 pwsh 콜드스타트 4→2. 동등성 골든 287/287.
 - block-destructive 기존 한계(T1 재리뷰에서 확인, 이번 diff 이전부터 존재): `cat <<EOF > script.sh`(데이터 싱크로 스트립) 후 같은 Bash 호출에서 `bash script.sh` 즉시 실행 시 위험 본문이 스캔에서 빠짐 — "파일 작성 + 동일 호출 실행" 조합 감지 개선 후보
 - suggest-agents-record가 커밋 메시지(-m 값) 속 명령 문자열을 실행으로 오인(세션 중 실측) — -m 값 스트립 적용 후보
 - .state 디듑 마커(post-write-warn·require-plan-warn·suggest-agents-record) 누적 정리 정책 부재(TTL/청소) — 공통 이슈, 별도 plan (T4 리뷰 m1)
