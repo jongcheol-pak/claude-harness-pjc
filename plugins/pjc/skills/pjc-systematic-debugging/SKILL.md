@@ -1,6 +1,6 @@
 ---
 name: pjc-systematic-debugging
-description: This skill should be used whenever the user reports any bug, defect, test failure, build failure, runtime error, exception, crash, unexpected behavior, performance regression, memory leak, race condition, deadlock, or CI/CD issue. Triggers on Korean phrases ("버그", "에러", "오류", "예외", "크래시", "안 됨", "동작 안 함", "이상해", "왜 이래", "왜 안 돼", "이상한 현상", "테스트 실패", "빌드 실패", "재현", "디버깅") and English equivalents ("bug", "fix", "debug", "error", "exception", "crash", "fails", "broken", "regression"). Use even for single-symptom reports - root cause investigation is mandatory before any patch. Skip ONLY when the user explicitly asks to apply a known fix they have already diagnosed (e.g., "그냥 이 한 줄만 수정해줘, 원인 다 안다"). This is the pjc/DDD-integrated variant (regression-test-first fix, spec-compliance review, cross-project llm-wiki lookup); prefer it over the generic systematic-debugging skill inside pjc-managed projects.
+description: This skill should be used whenever the user reports any bug, defect, test failure, build failure, runtime error, exception, crash, unexpected behavior, performance regression, memory leak, race condition, deadlock, or CI/CD issue. Triggers on Korean phrases ("버그", "에러", "오류", "예외", "크래시", "안 됨", "동작 안 함", "이상해", "왜 이래", "왜 안 돼", "이상한 현상", "테스트 실패", "빌드 실패", "재현", "디버깅") and English equivalents ("bug", "fix", "debug", "error", "exception", "crash", "fails", "broken", "regression"). Use even for single-symptom reports - root cause investigation is mandatory before any patch. When the cause is already pinpointed by the compiler/stack trace (exact file·line·reason) and the fix is a small single-file change, use the lightweight path (abbreviated 1-A + Phase 4) rather than skipping the skill. Not for non-bug "fix" requests like reformatting or renaming (those are trivial edits, not debugging). Skip ONLY when the user explicitly asks to apply a known fix they have already diagnosed (e.g., "그냥 이 한 줄만 수정해줘, 원인 다 안다"). This is the pjc/DDD-integrated variant (regression-test-first fix, spec-compliance review, cross-project llm-wiki lookup); prefer it over the generic systematic-debugging skill inside pjc-managed projects.
 argument-hint: "<버그 또는 에러 설명>"
 ---
 
@@ -17,7 +17,18 @@ Superpowers `systematic-debugging` skill의 4-phase 방법론을 한글·DDD 컨
 > 95%의 "근본 원인 없음" 사례는 **불충분한 조사**의 결과다.
 
 이 원칙을 어기는 것은 디버깅의 정신을 위반하는 것이다.
-Phase 1을 완료하지 않은 채 Phase 4(수정)로 건너뛰지 않는다.
+**추측으로** 원인을 정한 채 Phase 4(수정)로 건너뛰지 않는다 — 원인은 증거로 확정돼야 한다(아래 "경량 경로"는 이 원칙의 예외가 아니라, 컴파일러·스택트레이스가 이미 원인을 확정해 준 경우라 조사가 자명하게 끝난 것이다).
+
+### 경량 경로 (원인이 이미 확정된 경우)
+
+**Iron Law의 목적은 "조사 없이 추측으로 고치는 것"을 막는 것**이다 — 조사가 이미 자명하게 끝난 경우까지 전체 4단계를 강제하려는 게 아니다. 다음을 **모두** 만족하면 축약 경로를 쓴다:
+
+- **컴파일러/스택트레이스가 원인을 특정**한다 — 파일·라인·원인이 메시지에 그대로 드러남(예: "CS0103: 'foo' 없음", NullReferenceException at File.cs:42의 명백한 미초기화). 추측이 아니라 도구가 원인을 짚어 준 경우.
+- **수정이 단일 파일·소규모**다(다중 파일 파급·설계 변경 없음).
+
+이때 **1-A(에러·스택 정독으로 원인 확인) + Phase 4(회귀 테스트·최소 수정·검증)**로 축약한다(Phase 1-B~1-D·2·3 생략 — 원인이 이미 확정이라 가설 나열·검증이 불필요). **축약 경로를 쓰면 보고에 "경량 경로"를 명시**한다(어떤 단계를 왜 생략했는지 드러나게). 조건을 하나라도 못 채우면(원인 불명확·다중 파일·미스터리) 표준 4단계 전체를 따른다.
+
+> **경량 경로 중 승격**: 경량 경로로 시작했더라도 수정 중 **다중 파일 파급이 드러나거나 원인이 처음 판단과 불일치**하면(컴파일러가 짚은 것이 진짜 원인이 아니었음), 즉시 표준 경로(Phase 1 전체 + 2·3)로 **승격**한다 — 경량 경로는 원인 확정이 전제이므로, 전제가 깨지면 축약을 유지하지 않는다.
 
 ## Phase 1 — 근본 원인 조사 (Root Cause Investigation)
 
@@ -129,6 +140,8 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 - [ ] 최소 2개 이상의 가설이 있고, 각각의 검증 방법이 정의됨
 - [ ] 가설 중 하나가 "환경/타이밍/외부"라면, 내부 원인 가설을 적어도 하나 더 작성
 
+> **단일 원인 확정 예외.** 증거(스택트레이스·로그·재현 결과)가 **단일 원인을 확정적으로 지목**하면 — 여러 가설을 나열할 필요 없이 **가설 1개 + 그것이 원인임을 확정하는 근거**로 Phase 2를 통과한다. "가설 2개 이상"은 원인이 불명확할 때 조기 결론을 막기 위한 장치이지, 증거가 이미 원인을 확정한 경우까지 억지 가설을 만들라는 뜻이 아니다. 단 "확정"은 증거로 뒷받침돼야 한다 — "그럴 것 같다"는 확정이 아니다(그 경우 가설 2개 이상 유지).
+
 ## Phase 3 — 가설 검증 (Hypothesis Testing)
 
 각 가설을 **최소 변경**으로 검증한다. 수정이 아니라 **진단**.
@@ -183,6 +196,8 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 
 테스트 작성이 어려운 경우 (UI, 환경 의존 등)는 수동 재현 절차를 plan.md에 남긴다.
 
+> **RED 예외 — 빌드/컴파일 실패.** 버그가 **빌드·컴파일 실패**(테스트 실행 자체가 불가능)면 RED를 먼저 만들 수 없다 — 컴파일이 안 되면 테스트도 못 돈다. 이때는 "RED 테스트 → GREEN" 순서 대신, **수정으로 컴파일을 통과시킨 뒤(빌드 GREEN) 관련 테스트가 통과함을 확인**하는 것으로 대체한다. 가능하면 그 컴파일 오류를 재발 차단하는 테스트/검증(예: 삭제된 심볼 참조가 없는지 확인하는 테스트)을 추가하되, 컴파일 실패 자체는 "빌드 통과"가 곧 첫 검증선임을 인정한다(RED 불능은 우회가 아니라 물리적 제약).
+
 ### 4-B. 최소 수정
 
 - 근본 원인에만 직접 대응하는 변경
@@ -204,6 +219,8 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 - 빌드 / 테스트 / 린트
 - spec-compliance-reviewer + code-quality-reviewer subagent
 - BLOCKER 0까지 반복
+
+> **경량 검증 허용 (소규모 수정).** 수정이 **단일 파일·10줄 이하**이고 **회귀 테스트가 GREEN**(4-A에서 버그를 재현하던 테스트가 이제 통과)이면, full Sonnet 리뷰(spec-compliance + code-quality) 대신 **`spec-prefilter`(Haiku) 경량 검증**으로 대체할 수 있다(Type B 수준의 저위험 수정과 동일 기준). prefilter가 ESCALATE하면 정상 full 리뷰로 올린다. 수정이 다중 파일이거나 10줄을 넘거나 회귀 테스트가 없으면 이 경량 대체를 쓰지 않고 full 리뷰를 수행한다.
 
 > **plan.md 없이 디버깅한 경우(별도 `debug-*.md`만 작성)**: spec-compliance-reviewer는 plan.md task의 acceptance를 기준으로 검증하므로, plan.md가 없으면 task 섹션 대신 **변경 파일 목록 + 4-A의 회귀 테스트를 acceptance 기준으로** 전달한다("이 버그가 회귀 테스트로 차단되는가 + cross-file caller 일관"이 검증 기준 — spec-compliance 입력의 "또는 변경 파일 목록" 경로). plan-feature를 거쳐 plan.md가 있으면 평소대로 해당 task 섹션을 전달한다.
 
@@ -236,7 +253,7 @@ llm-wiki 사용 중이고 이 프로젝트가 등록돼 있으면(등록 여부�
 - "아마 ~ 때문일 거야"라는 표현으로 수정에 진입하려 함
 - 에러 메시지를 끝까지 읽지 않고 첫 줄만으로 결론
 - 재현 절차가 확정되지 않은 채 수정
-- 가설이 1개뿐
+- 가설이 1개뿐 **인데 그 원인이 증거로 확정되지 않음**(추측 기반 단일 가설 — STOP. 단 스택트레이스·로그가 단일 원인을 확정적으로 지목한 경우는 "단일 원인 확정 예외"라 STOP 아님, Phase 2 통과 조건 참조)
 - 수정 코드가 try-catch로 에러를 가리고 있음
 - 테스트 없이 수정만 했고 "이제 될 거다"라고 판단
 
@@ -252,7 +269,7 @@ llm-wiki 사용 중이고 이 프로젝트가 등록돼 있으면(등록 여부�
 | 라이브러리 버전 다운그레이드로 우회 | upgrade 사유와 충돌 원인 분석 |
 | 캐시 클리어, 재부팅으로 "해결" | 왜 그 상태가 되는지 추적 |
 | "환경 차이" 결론으로 종결 | 환경 차이의 구체적 메커니즘 명시 |
-| 영문 디버깅 로그 | 한글 로그 (프로젝트 규칙) |
+| 프로젝트 로그 관례를 무시한 로그 | 프로젝트 기존 로그 관례 우선(영/한 혼용·구조화 로그 등), 관례가 없으면 한글 |
 
 ## 조사 로그 형식
 

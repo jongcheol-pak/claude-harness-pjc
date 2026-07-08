@@ -159,7 +159,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
   - **Halt Forecast**: (없음)
   - **Depends on**: T3 (plan-reviewer 기준 확정 후 체크리스트 정합)
 
-- [ ] T5. pjc-systematic-debugging — 경량 경로·가설·RED 예외 (D8)
+- [x] T5. pjc-systematic-debugging — 경량 경로·가설·RED 예외 (D8)
   - **Type**: C
   - **Acceptance**: D8의 ①~⑤가 각각 해당 절(Phase 개요·Phase 2 통과 조건·즉시 STOP 조건·4-A·4-D·안티패턴 표)에 반영되고, description near-miss에 "원인 자명한 단순 오류(컴파일러가 위치·원인 특정)는 경량 경로 / 비버그 'fix'(포매팅 등)는 비대상" 경계 추가. 축약·완화 문구가 "근본 원인 조사 의무" 원칙 서술과 모순되지 않게 예외 조건이 명시적(grep으로 상충 표현 0 확인).
   - **Files**:
@@ -204,7 +204,7 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - 역대조: 검토 발견 목록 ↔ 반영 task 전수 대조 표 (T7)
 
 ## Phase Ledger
-- T4까지 완료. Phase F/G 미도달 (전 task 완료 후 진입).
+- T5까지 완료. Phase F/G 미도달 (전 task 완료 후 진입).
 
 ## Retry Ledger
 - (해당 없음 — checkpoint 복구·재루프 없음)
@@ -214,9 +214,10 @@ implement-task 자율 루프의 검증 게이트가 결정적으로 동작하고
 - T2: V-2 조건부 축소(D6)·P-3/V-7 읽기 비례 원칙·Elapsed·Turn 삭제(D2)·Type 판정 문구·브랜치 규약(plan당 1개)·공통화 3회 글로벌 주석(D3)·G-2 재루프 최소세트(F-2 전체테스트 유지, F-7만 면제)·halt-conditions "Phase G Should 갭" 행. spec OK, quality OK(M1·M2 MAJOR 수정 후).
 - T3: reviewer 4종 — spec-compliance·code-quality diff 가드(HEAD_SHA 미전달·빈 diff→incomplete, D1 리뷰어측)·spec-prefilter 값 대조/turn-exhaust ESCALATE·spec-compliance H 테스트 인프라 예외·plan-reviewer(grep 상한 10심볼·BLOCKER 강등 예외·항목1 D4 근거매칭·항목11 근거통과·항목 우선순위 3·9)·explorer effort medium+빌드/테스트 제외(D5)·code-quality D 공통화 3회(D3). spec OK, quality MINOR 2(서식) 수정.
 - T4: plan-feature — 절대규칙 1(코드 미수정+PRD·큐 허용)·규칙2 읽기 비례·규칙4 자체확정/계약 한정(D4)·Step1 explorer 후보 취급(D5)·Step2.5 시각표 현재값·일치 열 제거·Step0.2 PRD 완료 판정 표·Step5 구조 기준(파일 5개)·Step9 Type A/B 자체검토 예외·통과 체크리스트 근거매칭. 동반 plan-template·edge-cases·implement-task V-9 정합. spec OK, quality OK.
+- T5: pjc-systematic-debugging — 경량 경로(원인 자명 시 1-A+Phase4 축약)·Phase2 단일 원인 확정 예외·4-A RED 예외(빌드/컴파일 실패)·4-D 경량 검증(단일 파일 10줄+회귀 GREEN→prefilter)·로그 언어 관례 우선(D8) + description near-miss + STOP 조건 정합. Iron Law 모순 0. spec OK(Type C, V-6 생략).
 
 ## Next Steps
-- T5(pjc-systematic-debugging)부터 이어 진행. part2 전 task 완료 후 Phase F → (PRD 없음 → Phase G 미해당) → 최종 보고.
+- T6(llm-wiki + 기타 스킬 5건)부터 이어 진행. part2 전 task 완료 후 Phase F → (PRD 없음 → Phase G 미해당) → 최종 보고.
 - part1 완료 후 이 plan을 `pjc:implement-task`로 실행
 
 ## Open Questions
