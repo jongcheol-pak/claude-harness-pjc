@@ -423,9 +423,46 @@ if ($gitOk) {
     $ij2 = @{ tool_name = 'Write'; cwd = $imp; tool_input = @{ file_path = (Join-Path $imp 'Lonely.cs') } } | ConvertTo-Json -Compress
     $r = Invoke-Hook 'post-write-checks.ps1' $ij2
     Assert-Case -Name "impact: caller 없는 심볼 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # ---- [P1T4] stop-list 흔한 식별자 제외 (Name/Type 등 — 무관 파일 다독 유도 방지) ----
+    $imp2 = Join-Path $work 'imprepo-stop'; New-Item -ItemType Directory $imp2 -Force | Out-Null
+    Push-Location $imp2
+    git init -q; git config user.email t@t; git config user.name t
+    'namespace D { class X { } }' | Set-Content Model.cs
+    "// Name 은 여기저기 쓰인다`nvar a = ""Name"";`nvar b = Name;" | Set-Content Uses.cs
+    git add .; git commit -qm base
+    "public class Model {`n    public string Name { get; set; }`n}" | Set-Content Model.cs
+    Pop-Location
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $imp2; tool_input = @{ file_path = (Join-Path $imp2 'Model.cs') } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "impact: stop-list 심볼(Name) 무경고 (P1T4)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # ---- [P1T4] 세션·심볼당 1회 디듑 (같은 파일 2회 편집 시 2회차 impact 무경고) ----
+    $imp3 = Join-Path $work 'imprepo-dedup'; New-Item -ItemType Directory $imp3 -Force | Out-Null
+    Push-Location $imp3
+    git init -q; git config user.email t@t; git config user.name t
+    'namespace D { }' | Set-Content Widget.cs
+    'var s = RefreshCache();' | Set-Content Caller.cs
+    git add .; git commit -qm base
+    "public class Svc {`n    public static void RefreshCache() { }`n}" | Set-Content Widget.cs
+    Pop-Location
+    $ijd = @{ tool_name = 'Write'; cwd = $imp3; session_id = 'dedup-sess'; tool_input = @{ file_path = (Join-Path $imp3 'Widget.cs') } } | ConvertTo-Json -Compress
+    $r = Invoke-Hook 'post-write-checks.ps1' $ijd
+    Assert-Case -Name "impact: RefreshCache 1회차 경고 (P1T4 디듑 전제)" -R $r -ExpectExit 0 -ExpectContains 'RefreshCache'
+    $r = Invoke-Hook 'post-write-checks.ps1' $ijd
+    Assert-Case -Name "impact: RefreshCache 2회차 무경고 (P1T4 세션 디듑)" -R $r -ExpectExit 0 -ExpectSilent $true
 } else {
     Write-Host "[SKIP] impact-warn 시나리오 (git 없음)"
 }
+
+# ---- [P1T4] C# 전처리 지시문(#region/#if)은 영문 주석 오집계 제외 ----
+$prePath = Join-Path $pw 'Pre.cs'
+# 영문 // 주석 3줄(≤5) + 전처리 지시문 6개 — 종전 '//|#' 판정이면 지시문까지 세어 9줄(>5)로
+# 영문주석 경고를 오탐했을 것. 새 판정(.cs는 //만)이면 3줄뿐이라 >5 미달로 무경고여야 한다.
+# .cs이지만 BOM 없이 저장(BOM 경고와 분리해 영문주석 판정만 검증).
+$preBody = @('#region Helpers', '#if DEBUG', '#pragma warning disable', '// one', '// two', '// three', '#else', '#endif', '#endregion') -join "`n"
+[System.IO.File]::WriteAllText($prePath, $preBody, [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; session_id = 'pre-sess'; tool_input = @{ file_path = $prePath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: C# 전처리 지시문 영문주석 오집계 제외 (P1T4 — //3줄뿐이라 >5 미달로 무경고)" -R $r -ExpectExit 0 -ExpectSilent $true
 
 # =====================================================================
 # 8) require-task-checkbox 시나리오 (plan 체크박스 게이트 — git 불요, plan 파일만)

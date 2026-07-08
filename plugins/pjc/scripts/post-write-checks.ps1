@@ -28,6 +28,26 @@ if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { exit 0 }
 # 두 검사의 경고를 합쳐 단일 stderr + 단일 additionalContext로 출력한다(모델 수신 정보는 분리 hook 때와 동일).
 $allMsgs = New-Object System.Collections.Generic.List[string]
 
+# ---- 경고 디듑 마커 (세션당 1회 — v1.98.0) ----
+# impact-warn의 diff 기준이 HEAD 누적이라 같은 파일을 여러 번 편집하면 이미 경고한 심볼의 caller
+#   목록이 커밋 전까지 매 편집 반복 주입됐다(컨텍스트 오염 — 무관 파일 다독 유도). 영문 주석·hook 소스
+#   경고도 상태 변화 없이 반복됐다. suggest-agents-record와 동일한 .state 세션 마커로 "세션당 1회"를
+#   강제한다(키가 길어질 수 있어 MD5 해시로 파일명화 — 보안 아닌 디듑 용도).
+$pwStateDir = Join-Path $env:USERPROFILE '.claude/.state/post-write-warn'
+try { New-Item -Force -ItemType Directory -Path $pwStateDir | Out-Null } catch {}
+$pwSid = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
+function Test-WarnOnce {
+    param([string]$Key)
+    try {
+        $md5 = [System.Security.Cryptography.MD5]::Create()
+        $hash = ($md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Key)) | ForEach-Object { $_.ToString('x2') }) -join ''
+        $mk = Join-Path $pwStateDir ($pwSid + '_' + $hash)
+        if (Test-Path -LiteralPath $mk) { return $false }
+        New-Item -Force -ItemType File -Path $mk | Out-Null
+        return $true
+    } catch { return $true }   # 마커 실패 시 경고 누락보다 중복이 낫다(fail-open)
+}
+
 # ---- H2: 하니스 hook 개조 감지 (안전 게이트 감시, 비차단) ----
 # require-plan은 .claude 하위 쓰기를 무조건 허용하므로, 에이전트가 Write로 설치본 hook 스크립트·hooks.json을
 #   개조해 안전 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만 그 시도를 가시화한다.
@@ -43,9 +63,13 @@ $suspect83H2 = $has83H2 -and
     ($normFileH2 -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')) -and
     ($normFileH2 -match '(?i)/plugins/cache/')
 if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hooks/hooks\.json$') {
-    $allMsgs.Add("[HARNESS] 하니스 hook 스크립트 변경 감지: $file")
-    $allMsgs.Add("  안전 hook을 개조/약화하는 변경일 수 있습니다 — 의도된 것인지, 골든 회귀(run-hook-evals.ps1)로 검증했는지 확인하세요.")
-    $allMsgs.Add("")
+    # 문구 중립화 + 세션·파일당 1회 (v1.98.0): 개발 repo의 정상 hook 개발 편집에도 "개조 시도" 프레임이
+    #   매번 붙던 것을 검증 리마인더로 낮춘다(설치본 개조 '차단'은 protect-harness 소관 — 여긴 리마인더).
+    if (Test-WarnOnce ('hooksrc|' + $normFileH2)) {
+        $allMsgs.Add("[HARNESS] 하니스 hook 스크립트 변경: $file")
+        $allMsgs.Add("  hook 동작 변경은 골든 회귀(run-hook-evals.ps1)로 검증하세요. (세션·파일당 1회 리마인더)")
+        $allMsgs.Add("")
+    }
 } elseif ($suspect83H2) {
     $allMsgs.Add("[HARNESS] 8.3 단축명(CLAUDE~1) 마스킹 경로 감지: $file")
     $allMsgs.Add("  설치본 hook 경로를 단축명으로 숨긴 개조 시도일 수 있습니다 — 의도된 것인지 확인하세요.")
@@ -119,8 +143,10 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         $codeExtsComment = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')
 
         if (($codeExtsComment -contains $extComment) -and $null -ne $content) {
-            # 내용은 위에서 1회 읽은 $content 재사용 (// 또는 # 로 시작하는 라인)
-            $commentLines = $content | Where-Object { $_ -match '^\s*(//|#)' }
+            # 언어별 주석 접두 (v1.98.0): 종전 '// 또는 #' 일괄 판정은 C 계열의 전처리 지시문
+            #   (#region/#if/#pragma — 주석 아님)을 영문 주석으로 오집계했다. .py만 #, 나머지는 //.
+            $commentPrefix = if ($extComment -eq '.py') { '^\s*#' } else { '^\s*//' }
+            $commentLines = $content | Where-Object { $_ -match $commentPrefix }
             $totalComments = @($commentLines).Count
 
             if ($totalComments -gt 5) {
@@ -128,8 +154,10 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                 $hangulRegex = [regex]'[가-힯]'
                 $engComments = @($commentLines | Where-Object { -not $hangulRegex.IsMatch($_) }).Count
 
-                if ($engComments -gt ($totalComments / 2)) {
-                    $utf8Warnings.Add("주석이 대부분 영문($engComments/$totalComments). 한글 주석 규칙 위반 가능.")
+                # 세션·파일당 1회 (v1.98.0): 의도적으로 영어를 쓰는 프로젝트(OSS 등)에서 그 파일을 만질
+                #   때마다 반복 주입돼 기존 영어 주석의 한글화(범위 초과 수정)로 오도하던 것 억제.
+                if ($engComments -gt ($totalComments / 2) -and (Test-WarnOnce ('engcomment|' + $file))) {
+                    $utf8Warnings.Add("주석이 대부분 영문($engComments/$totalComments). 한글 주석 규칙 위반 가능 — 단 프로젝트가 의도적으로 영어 주석을 쓰면 그 관례를 따르세요(기존 주석의 일괄 한글화는 범위 초과). (세션·파일당 1회)")
                 }
             }
         }
@@ -212,8 +240,12 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             $m = [regex]::Match($line, $pattern)
                             if ($m.Success) {
                                 $sym = $m.Groups['sym'].Value
-                                # 너무 짧거나 일반적인 이름은 제외 (false positive 방지)
-                                if ($sym.Length -ge 4 -and $sym -notmatch '^(get|set|is|has)$') {
+                                # 너무 짧거나 일반적인 이름은 제외 (false positive 방지).
+                                # stop-list (v1.98.0): Name·Type·Data 같은 초고빈도 식별자는 repo 전역 단어
+                                #   매치가 주석·문자열·무관 심볼까지 잡아 무관 파일 다독을 유도하므로 제외
+                                #   — 이런 심볼의 caller 검증은 grep 단어 매치로는 신호가 없다.
+                                if ($sym.Length -ge 4 -and
+                                    $sym -notmatch '^(?i)(get|set|is|has|name|type|data|text|value|item|key|count|index|result|state|status|title|content|message)$') {
                                     [void]$symbols.Add($sym)
                                 }
                             }
@@ -258,6 +290,16 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             }
 
                             if ($callers.Count -gt 0) {
+                                # 세션·파일·심볼당 1회 (v1.98.0): diff 기준이 HEAD 누적이라 커밋 전까지
+                                #   같은 심볼 경고가 편집마다 반복 주입되던 것 억제(마커는 경고할 때만 생성 —
+                                #   caller 0인 심볼은 마커를 안 만들어 나중에 caller가 생기면 경고된다).
+                                if (-not (Test-WarnOnce ('impact|' + $normalizedFile + '|' + $sym))) { continue }
+                                # 매치 상한 (v1.98.0): 참조 30건 초과는 흔한 이름/광범위 심볼 — caller 나열이
+                                #   무관 파일 다독을 유도하므로 나열 대신 요약 1줄만 남긴다.
+                                if ($callers.Count -gt 30) {
+                                    $impactWarnings.Add("심볼 '$sym' 참조 $($callers.Count)건 (>30) — 흔한 이름이거나 광범위 심볼로 판단해 caller 나열을 생략합니다. 시그니처·계약을 바꿨다면 직접 grep으로 확인하세요.")
+                                    continue
+                                }
                                 $impactWarnings.Add("심볼 '$sym' 참조 발견 (caller가 함께 갱신되었는지 확인):")
                                 foreach ($c in ($callers | Select-Object -First 8)) {
                                     $impactWarnings.Add("  - $c")

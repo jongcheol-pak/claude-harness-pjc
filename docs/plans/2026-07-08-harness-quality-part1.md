@@ -18,6 +18,8 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 
 ## Deferred / Follow-up
 - **다음 분할 plan**: docs/plans/2026-07-08-harness-quality-part2.md — T1~T7 (스킬·에이전트 지침 수정, 미실행)
+- block-destructive 기존 한계(T1 재리뷰에서 확인, 이번 diff 이전부터 존재): `cat <<EOF > script.sh`(데이터 싱크로 스트립) 후 같은 Bash 호출에서 `bash script.sh` 즉시 실행 시 위험 본문이 스캔에서 빠짐 — "파일 작성 + 동일 호출 실행" 조합 감지 개선 후보
+- suggest-agents-record가 커밋 메시지(-m 값) 속 명령 문자열을 실행으로 오인(세션 중 실측) — -m 값 스트립 적용 후보
 - llm-wiki 본체에서 절차 K 초경량 분리 (Q9 — check_consistency 93항목·라우팅 표 연쇄라 별도 plan)
 - 재설치(install.ps1) — 릴리즈 후 설치 캐시 갱신 전까지 설치본은 구 동작(기존 이월과 동일)
 
@@ -153,7 +155,7 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
     - (i) 신규 허용 경로가 소스 코드 게이트를 실질 무력화 → 30줄+디렉터리/네이밍 이중 조건으로 한정, 차단 유지 케이스 골든 명시
   - **Depends on**: -
 
-- [ ] T4. post-write-checks — impact-warn 상한·stop-list·디듑, 영문 주석 정밀화, hook 소스 경고 중립화 (D7)
+- [x] T4. post-write-checks — impact-warn 상한·stop-list·디듑, 영문 주석 정밀화, hook 소스 경고 중립화 (D7)
   - **Type**: C
   - **Acceptance**: Given 흔한 식별자(`Name` 등) 포함 클래스 편집, When PostToolUse, Then ① 심볼별 repo 매치 30건 초과 시 caller 나열 대신 "흔한 이름 — 생략" 1줄 ② stop-list(`Name|Type|Data|Text|Value|Id|Key|Item|Count|Get|Set` 등 단독 식별자) 제외 ③ 같은 파일·같은 심볼 경고는 세션당 1회(HEAD 누적 diff로 인한 반복 주입 제거) ④ `.cs`의 `#region`/`#if`/`#pragma` 등 전처리 지시문은 영문 주석 집계 제외 + 영문 주석 경고 파일당 세션 1회 ⑤ hook 소스 편집 경고 문구를 개발/설치본 중립("검증 리마인더")으로 + 세션당 1회 ⑥ 골든 기존+신규 PASS·parse OK
   - **Files**:
@@ -217,8 +219,14 @@ Bash/Write 도구 호출을 막거나 오염시키던 hook 오탐·반복 경고
 ## Phase Ledger
 
 ## Retry Ledger
+- T1: quality BLOCKER 2건(B1 heredoc 실행자 우회·B2 무필터 열거 삭제) 1회 발생 → 수정 커밋 2dc1a56, 재리뷰 진행 중 (수정 사이클 1/5)
 
 ## Progress Log
+- T1 완료 (커밋 fbc6835 + 수정 2dc1a56): block-destructive 오탐 4건+chmod 조건화+reset 등가. 리뷰 B1(heredoc 데이터-싱크 한정)·B2(. 제외 필터 조건화) 반영. 골든 212/212, 음성 대조 9건 OLD=2→NEW=0. spec OK.
+- T2 완료 (커밋 82d1845): secret-patterns password lookahead 제외·IP 전체 순회·사설 라벨. 골든 4케이스. spec OK.
+- T3 완료 (커밋 407b3da): require-plan 신규 파일 trivial(30줄+tests/repro)·xml/html/css 허용·G4/H3 세션 디듑·QUICK 문구. 골든 9케이스, 221/221. spec OK.
+  - 결정: 디듑 마커는 suggest-agents-record와 동일한 $env:USERPROFILE/.claude/.state 방식(러너 격리 홈이 실행마다 재생성돼 골든 간섭 없음 확인).
+- T1 재리뷰 OK (실행 대조로 B1·B2 해소 확인 — old 미탐 재현·HEAD 차단). T4 완료 (커밋 대기): impact 매치 상한 30·stop-list(Name/Type 등)·세션 심볼당 디듑·영문주석 .cs //만·hook 소스 경고 중립화+1회. 골든 7케이스, 225/225.
 
 ## Next Steps
 - plan 승인 후 `pjc:implement-task`를 이 파일 경로로 호출
