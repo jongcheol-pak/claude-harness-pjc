@@ -40,6 +40,18 @@ try {
 
 if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
+# ---- heredoc 파일-리다이렉트 본문 스트립 (모든 검사 전, v1.98.0) ----
+# 'cat <<EOF > m.sql … DROP TABLE …; EOF'처럼 heredoc이 '파일로 리다이렉트'되면 본문은 기록될
+#   데이터일 뿐 실행되지 않는다 — Split-TopLevel이 개행에서 본문을 별도 sub로 쪼개 $patterns
+#   (DROP TABLE 등)에 오탐되던 것을 막는다(마이그레이션 SQL '작성'까지 차단되던 오탐 수정).
+# 반면 실행자로 파이프되는 heredoc(psql <<SQL … / bash <<EOF …)은 본문이 실제 실행되므로 보존한다
+#   — 시작 줄에 '>' 파일 리다이렉트가 있는 경우에만 본문·종결자를 제거한다.
+$heredocRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
+$cmd = [regex]::Replace($cmd, $heredocRx, {
+    param($m)
+    if ($m.Groups['line'].Value -match '>\s*\S') { $m.Groups['line'].Value } else { $m.Value }
+})
+
 # ---- 위험 대상($dangerTarget) — 루프 밖에서 1회 정의(사전검사 2종·in-loop 컴파운드 검사 공유) ----
 # 위험 대상(따옴표 선택): / /* // | POSIX 시스템 디렉터리(/usr /etc /bin … /opt /srv /run, 하위·글롭 포함) |
 #   ~ $HOME $env: | * | . ./ .* ./* | Windows 시스템 디렉터리(C:\Windows·Program Files·ProgramData — 네이티브 및
@@ -63,7 +75,12 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 #   (형제 형태 ~ · /home/* · C:\Users\*는 이미 차단 — 일관성). 반면 타깃 글롭(~/*.log)·하위 폴더(~/proj/dist)는
 #   여전히 통과한다(글롭이 정확히 * 또는 .* 이고 그 뒤가 경계여야 매치 — 뒤에 이름·확장자가 붙으면 미매치). dotfile
 #   글롭(.*)도 숨김 파일·디렉터리를 쓸어 홈 소실 등가라 포함하고, 트레일링 슬래시(~/*/ )도 함께 잡는다.
-$dangerTarget = '(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home[\\/]+[^\\/\s]+[\\/]\.?\*[\\/]?|/home([\\/]+[^\\/\s]+)?[\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~[\\/]\.?\*[\\/]?|~[\\/]?|\$HOME[\\/]\.?\*[\\/]?|\$HOME[\\/]?|\$env:\S*|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s]+[\\/]\.?\*[\\/]?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?[\\/]?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
+# $env: 깊이 cap (v1.98.0): $env:\S*(깊이 무제한)는 ~·$HOME·C:\Users에 준 깊이 cap의 유일한 예외라,
+#   하니스 자신의 임시폴더 규약(시스템 임시 폴더에 만들고 정리)인 rm -r $env:TEMP\claude\<세션>\… 정리가
+#   오차단되고 등가 절대경로는 통과하는 비대칭이 있었다 — 홈과 동일 규칙으로 정리:
+#   $env:NAME(루트)·트레일링 슬래시·직속 전체글롭($env:NAME/* · $env:NAME\.*)만 위험대상,
+#   하위 경로($env:TEMP\claude\…)는 통과.
+$dangerTarget ='(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home[\\/]+[^\\/\s]+[\\/]\.?\*[\\/]?|/home([\\/]+[^\\/\s]+)?[\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~[\\/]\.?\*[\\/]?|~[\\/]?|\$HOME[\\/]\.?\*[\\/]?|\$HOME[\\/]?|\$env:\w+[\\/]\.?\*[\\/]?|\$env:\w+[\\/]?|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s]+[\\/]\.?\*[\\/]?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?[\\/]?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
 
 # 삭제 명령 별칭 세트 — 사전검사(find·열거 파이프)와 in-loop 컴파운드 검사가 **동일 집합을 공유**한다.
 #   한 곳만 좁으면(예: 사전검사가 ri/rmdir/rd 누락) 그 별칭으로 파이프 삭제 우회가 다시 열린다(T3 B1).
@@ -76,6 +93,9 @@ $delCmdAlt = 'rm|Remove-Item|ri|rmdir|rd|del|erase'
 # 오탐 방지: 'find .'(상대 경로 로컬 정리)은 제외하고, 위험 루트로 시작하는 find만 차단한다
 #   — 절대(/…), 홈(~…/$HOME…), $env:…, 드라이브 루트(C:\…). (chmod xargs 미탐과 달리 삭제는 비가역이라 차단.)
 # 한계(의도): echo "find / | xargs rm"처럼 문자열 안에 있어도 차단될 수 있으나 — 차단돼도 무해(echo는 직접 실행).
+# 알려진 비대칭(의도, v1.98.0 D6 문서화): 상대경로 find 삭제(find . -mindepth 1 -delete 등)는
+#   rm -rf *(차단)와 등가일 수 있으나 통과한다 — 로컬 정리(find . -name "*.pyc" -delete) 오탐 방지를
+#   우선한 트레이드오프. 차단 확대(오탐)도 rm -rf * 해제(약화)도 하지 않고 현상 유지로 종결.
 $findDangerRoot = '(?i)\bfind\s+(/\S*|~\S*|\$HOME\S*|\$env:\S*|[A-Za-z]:[\\/]\S*)'
 if ($cmd -match $findDangerRoot -and (
         ($cmd -match ('(?i)\|\s*xargs\b[^|]*\b(' + $delCmdAlt + ')\b')) -or
@@ -94,12 +114,17 @@ if ($cmd -match $findDangerRoot -and (
 # 오탐 방지: 위험 판정은 '첫 파이프 앞(열거 소스 인자)'에만 $dangerTarget을 적용한다 — 상대경로(./build)·
 #   사용자 하위 2단계+(C:\Users\me\proj\dist)는 $dangerTarget 미매치라 통과. 삭제측은 재귀·강제 플래그
 #   (또는 xargs rm)를 요구해 단순 조회 파이프는 통과시킨다. printf/echo 소스는 목록에서 제외(데이터 오탐 — M3 Deferred).
+# 단독 . · ./ 토큰 제외 (v1.98.0): 열거 소스의 cwd 상대 열거(Get-ChildItem . -Recurse | Remove-Item /
+#   find . | xargs rm)는 로컬 정리라 위험루트가 아니다 — find 사전검사의 "'find .' 제외"와 동일 원칙인데
+#   이 검사만 $dangerTarget의 . 알터네이션에 걸려 오차단하던 자기모순을 해소한다. 글롭(* · ./*)은
+#   cwd 전체 소실 등가(rm -rf * 차단과 일관)라 위험대상 유지.
 $enumSource      = '(?i)(^|\s|\|)(Get-ChildItem|gci|ls|dir|find)\b'
 $pipeToDelete    = '(?i)\|\s*[^|]*\b(' + $delCmdAlt + ')\b'
 $pipeXargsRm     = '(?i)\|\s*xargs\b[^|]*\b(' + $delCmdAlt + ')\b'
 $delRecurseForce = '(?i)(-Recurse\b|-Force\b|--recursive\b|--force\b|(^|\s)-[rfRF]+(\s|$)|\s/[sq]\b)'
 $beforePipe = ($cmd -split '\|', 2)[0]   # 첫 파이프 앞 = 열거 소스 인자 영역(여기서만 위험루트 판정)
-if (($beforePipe -match $enumSource) -and ($beforePipe -match $dangerTarget) -and (
+$enumSrcScan = $beforePipe -replace '(^|\s)\.[\\/]?(?=\s|$)', ' '   # 단독 .·./ 토큰만 제거(글롭 변형은 보존)
+if (($beforePipe -match $enumSource) -and ($enumSrcScan -match $dangerTarget) -and (
         (($cmd -match $pipeToDelete) -and ($cmd -match $delRecurseForce)) -or
         ($cmd -match $pipeXargsRm))) {
     [Console]::Error.WriteLine("BLOCKED: 위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지")
@@ -142,6 +167,8 @@ $patterns = @(
     '\.delete_all\b',                                   # ActiveRecord/Django 전체 삭제
     'migrate\s+reset',                                  # prisma/이주 리셋 (데이터 손실)
     'db\s+reset',                                       # 일부 ORM CLI
+    'db\s+push\s+[^\r\n]*--force-reset',                # prisma db push --force-reset — migrate reset과 등가 파괴(DB 초기화)인데
+                                                        #   통과하던 비대칭 해소(v1.98.0 — 약화 없이 대칭 강화)
     'database\s+drop',                                  # dotnet ef database drop
     'mkfs\.',                                           # 포맷
     'dd\s+if=.*of=/dev/',                               # dd to device
@@ -155,7 +182,16 @@ $patterns = @(
     # 조회형(icacls 경로만·attrib 인자 없음)은 변경 인자가 없어 통과한다.
     # 한계(의도된 트레이드오프): 'xargs chmod'·'find -exec chmod'·'env X=Y chmod'처럼 권한 명령이
     # sub 선두가 아닌 우회는 미탐 — 검색 오탐 방지를 우선한 것. plan 승인·리뷰가 2차 방어선.
-    '^\s*(sudo\s+)?chmod\s',                            # POSIX 권한 변경
+    # chmod 조건부 차단 (v1.98.0): 전면 차단은 'chmod +x build.sh'(방금 만든 스크립트 실행권한 —
+    #   macOS/Linux·Git Bash 일상 작업, 비가역 아님)까지 막고 QUICK 우회도 안 통해 과잉이었다.
+    #   위험 조합만 차단으로 정밀화: ① 재귀(-R/--recursive) ② 위험 모드(777·666 세계-쓰기,
+    #   +s setuid/setgid) ③ 대상이 위험 루트·시스템 경로($dangerTarget 재사용).
+    #   프로젝트 내 단일 파일 +x·755는 통과. chown/takeown/icacls/attrib은 현행 유지(빈도·필요성이
+    #   확인된 chmod만 완화 — plan Out of Scope).
+    '^\s*(sudo\s+)?chmod\b[^\r\n]*(\s--recursive\b|\s-(?-i:[a-zA-Z]*R[a-zA-Z]*)(\s|$))',  # chmod 재귀
+    '^\s*(sudo\s+)?chmod\b[^\r\n]*\s0?(777|666)\b',                                       # 세계-쓰기 모드
+    '^\s*(sudo\s+)?chmod\b[^\r\n]*\s[ugoa]*\+[rwxXt]*s',                                  # setuid/setgid 부여
+    ('^\s*(sudo\s+)?chmod\b[^\r\n]*' + $dangerTarget),                                    # 시스템·위험 루트 대상
     '^\s*(sudo\s+)?chown\s',                            # POSIX 소유자 변경
     '^\s*(sudo\s+)?takeown\b',                          # Windows 소유권 탈취
     '^\s*Set-Acl\b',                                    # PowerShell ACL 변경
@@ -243,6 +279,11 @@ foreach ($sub in $subs) {
         # 패턴/치환 스크립트일 뿐 SQL·명령을 실행하지 않는다(L1: sed -i 's/DROP TABLE//' 오탐 방지)
         $scan = ($scan -replace '"[^"]*"', ' ') -replace "'[^']*'", ' '
     }
+    if ($scan -match '(?i)(^|\s)(Set-Content|Add-Content|Out-File)(\s|$)') {
+        # Set-Content/Add-Content -Value의 따옴표 인자는 파일에 기록될 데이터 — 실행되지 않으므로
+        # 스트립한다(heredoc 파일-리다이렉트와 동일 원리, v1.98.0 — SQL 마이그레이션 '작성' 오차단 방지)
+        $scan = $scan -replace '(?i)(^|\s)-Value(\s+|:)("[^"]*"|''[^'']*'')', ' '
+    }
 
     # ---- 컴파운드 검사: 재귀 삭제 (옵션 순서·따옴표·글롭 변형 무관) ----
     # rm/Remove-Item/rmdir/rd/del 계열이 '재귀' 플래그를 갖고(강제 플래그 유무 무관 — H2:
@@ -272,6 +313,11 @@ foreach ($sub in $subs) {
     #   이는 과소 차단보다 과잉 차단을 택하는 안전 hook 설계 방향과 일치 — 오차단 시 사용자가 직접 실행하면 됨.
     $delMatches = [regex]::Matches($norm, '(?i)(^|\s|["''])(' + $delCmdAlt + ')(\s|$)')
     foreach ($dm in $delMatches) {
+        # git rm 제외 (v1.98.0): git rm은 git 인덱스가 추적해 git restore로 복구 가능한 비파괴 작업 —
+        #   'git rm -r --cached .'의 rm+.(위험대상) 조합이 컴파운드 검사에 오차단되던 것을 해소.
+        #   직전 토큰이 git(선행 -c/-C 옵션 허용)일 때만 제외 — 단독 rm은 그대로 검사.
+        if ($dm.Groups[2].Value -ieq 'rm' -and
+            $norm.Substring(0, $dm.Index + $dm.Groups[1].Length) -match '(?i)(^|[\s;&|])git\s+((-c|-C)\s+\S+\s+)*$') { continue }
         # 삭제 명령 토큰부터 다음 줄바꿈 전까지가 그 명령의 인자 윈도우.
         # 선행 공백·개행을 먼저 제거한다(H1 방어) — 매치가 (^|\s)로 시작해 선행 \n을 포함하면
         # 아래 줄바꿈 컷이 윈도우를 빈 문자열로 만들어(따옴표 안 개행이 sub에 남는 경우) 미탐이 된다.

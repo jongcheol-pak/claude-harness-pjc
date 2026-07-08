@@ -728,6 +728,139 @@
       "command": "git checkout -b feature",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 $env: 루트 재귀 삭제 차단 (깊이 cap 후에도 루트는 위험)",
+      "command": "rm -rf $env:TEMP",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 $env:USERPROFILE 재귀 삭제 차단",
+      "command": "Remove-Item $env:USERPROFILE -Recurse -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 $env: 직속 전체글롭 차단 (루트 소실 등가)",
+      "command": "rm -rf $env:TEMP/*",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 $env: 하위 경로 정리 통과 (깊이 cap — 하니스 임시폴더 규약)",
+      "command": "Remove-Item -Recurse -Force $env:TEMP\\claude\\sess-1\\scratchpad",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 $env: 하위 경로 rm 통과",
+      "command": "rm -r $env:TEMP/claude/sess-1",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 열거 파이프 cwd 상대 정리 통과 (단독 . 제외)",
+      "command": "Get-ChildItem . -Recurse -Filter *.tmp | Remove-Item -Force",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 find . xargs rm 로컬 정리 통과 (find 사전검사와 자기모순 해소)",
+      "command": "find . -name \"*.pyc\" | xargs rm -f",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 열거 파이프 위험 루트 차단 유지 (. 제외가 약화 아님)",
+      "command": "Get-ChildItem C:\\ -Recurse | Remove-Item -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 chmod +x 단일 파일 통과 (조건부 차단)",
+      "command": "chmod +x build.sh",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 chmod 755 단일 파일 통과",
+      "command": "chmod 755 scripts/deploy.sh",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 chmod -R 재귀 차단",
+      "command": "chmod -R 755 src",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 chmod 777 세계-쓰기 차단",
+      "command": "chmod 777 script.sh",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 chmod u+s setuid 차단",
+      "command": "chmod u+s ./tool",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 chmod 시스템 경로 차단",
+      "command": "chmod 644 /etc/passwd",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 prisma db push --force-reset 차단 (migrate reset 등가 대칭)",
+      "command": "prisma db push --force-reset",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 git rm -r --cached . 통과 (git 추적 — 복구 가능)",
+      "command": "git rm -r --cached .",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 heredoc 파일 리다이렉트 SQL 작성 통과 (본문은 데이터)",
+      "command": "cat <<EOF > migrations/001.sql\nDROP TABLE old_schema;\nEOF",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 heredoc 실행자 파이프 DROP 차단 유지 (psql은 본문 실행)",
+      "command": "psql -d appdb <<SQL\nDROP TABLE old_schema;\nSQL",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "P1T1 Set-Content -Value 데이터 통과 (기록용 SQL 문자열)",
+      "command": "Set-Content -Path m.sql -Value 'DROP TABLE old_schema;'",
+      "expect_exit": 0,
+      "expect_silent": true
     }
   ]
 }
