@@ -1,5 +1,5 @@
 {
-  "description": "pjc harness hooks (pwsh 7 / Windows PowerShell) — cross-platform; Windows verified, macOS/Linux experimental",
+  "description": "pjc harness hooks — 스크립트를 hook 셸에서 직접 실행(자식 셸 재기동 없음 — v1.108.0. 실행 셸은 Claude Code의 powershell 해석을 따름: 실측 pwsh 우선·NoProfile, 스크립트는 5.1 호환 유지); cross-platform; Windows verified, macOS/Linux experimental",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,7 +8,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -19,7 +19,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/pre-bash-dispatch.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-bash-dispatch.ps1\"; exit $LASTEXITCODE",
             "timeout": 15
           }
         ]
@@ -30,7 +30,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/require-plan-for-write.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/require-plan-for-write.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -41,7 +41,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/protect-harness.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-harness.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -54,7 +54,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/suggest-agents-record.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/suggest-agents-record.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -65,7 +65,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/post-write-checks.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/post-write-checks.ps1\"; exit $LASTEXITCODE",
             "timeout": 35
           }
         ]
@@ -78,7 +78,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/warn-version-drift.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/warn-version-drift.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -90,7 +90,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "$s=\"${CLAUDE_PLUGIN_ROOT}/scripts/require-evidence.ps1\"; $p=if(Get-Command pwsh -ErrorAction SilentlyContinue){'pwsh'}else{'powershell'}; & $p -NoProfile -ExecutionPolicy Bypass -File $s; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/require-evidence.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
