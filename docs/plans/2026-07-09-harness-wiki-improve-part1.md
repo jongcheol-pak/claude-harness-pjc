@@ -173,7 +173,7 @@
   - **Halt Forecast**: (해당 없음 — 순수 스킬 문서 편집, 파괴적·외부·의존성 요소 없음)
   - **Depends on**: -
 
-- [ ] T4. 검증 매핑 표 (AGENTS.md + V-2 인식)
+- [x] T4. 검증 매핑 표 (AGENTS.md + V-2 인식)
   - **Type**: C
   - **Acceptance**: AGENTS.md Build & Test에 `### 검증 매핑` 표(변경 파일 패턴 → 필수 검증 — 기존 산문 조건과 모순 0, hook 골든·check_consistency·run_lint_evals·JSON·parse 전 명령 포함). implement-task V-2(:275)에 매핑 표 인식 1문장(전체는 F-2 보장 문구 유지, SKILL.md ≤500줄).
   - **Files**:

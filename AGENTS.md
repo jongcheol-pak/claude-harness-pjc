@@ -31,6 +31,17 @@
   네 곳의 공유 상수(파일 예산·통제 어휘)와 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치 — 절차 문자는 표에서 동적 캡처(신규 절차도 자동 검사), 체크리스트 등 비문자 행·중복 행·표에 없는 스트레이 헤딩 포함), wiki-schema 목차(부분 Read 인덱스) § ↔ `## N.` 헤딩 정합, procedures-ops F-1 실행 순서 인덱스 ↔ wiki-schema §7 검사 항목 번호 1:1 정합, 산문 크로스파일 포인터(파일-귀속 절차 라벨 ↔ 실제 `### X.` 헤딩 파일), templates.md 타입 ↔ schema §2 타입 집합을 기계 대조한다 — 전부 일치 exit 0, 불일치 exit 1, 파싱 앵커 실패 exit 2.
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
+### 검증 매핑 (task 검증 선택)
+task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 패턴에 걸치면 해당 행 전부 — 합집합). 전체 검증은 Phase F-2가 1회 보장하므로 매 task 전량 실행은 중복이다(implement-task V-2 조건부 축소의 결정론화 — 위 산문 조건과 동일 내용의 표 형식).
+
+| 변경 파일 패턴 | 필수 검증 |
+|---|---|
+| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 |
+| `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals |
+| JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
+| `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
+| 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) — 기본값 |
+
 ## Repository Structure
 ```
 <repo>/
