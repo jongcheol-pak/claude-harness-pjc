@@ -2,6 +2,12 @@
 
 **이전 plan**: docs/plans/2026-07-09-harness-wiki-improve-part1.md
 
+## 이전 part 핸드오프
+- 함정: bash 도구로 `pwsh -Command "$var..."` 실행 시 `$` 변수를 bash가 삼킨다 — BOM 부여·파일 조작은 PowerShell 도구로 직접 실행할 것 (part1에서 1회 실패 후 전환).
+- 함정: F-7 plan-completion-reviewer에게 골든·lint 러너 재실행을 시키지 말 것 — 장시간 명령으로 600초 스톨 발생(part1 실증). 검증 결과는 메인이 실행해 프롬프트로 전달.
+- 기각된 접근: 시크릿 마스킹의 "값 치환" — Get-SecretMatches(secret-patterns.ps1)는 라벨만 반환하고 매치 위치를 주지 않아, cmd 필드 생략(fail-closed)으로 대체했다(part2 T2에서 secret 관련 로직 재사용 시 참고).
+- 검증 지름길: AGENTS.md `### 검증 매핑` 표(part1 T4 신설) — `skills/llm-wiki/**` 변경은 check_consistency + run_lint_evals만 task 검증으로 충분(전체는 F-2).
+
 ## 요구 이해
 - **원문 요청**: "위키, 하니스 모두 수정해줘" — 직전 대화에서 Claude가 제안한 개선 항목(하네스 5건 + 위키 4건)을 반영. 질문 라운드에서 사용자 확정: 전 항목 진행, plan 2분할(part1 하네스 / part2 위키).
 - **이해한 요구**: llm-wiki 스킬에 ① 절차 K에서 위키 자료를 찾았는데 없었던 "미스"를 `[K-MISS]` 태그로 pending.md에 큐잉해 다음 ingest가 수요 기반으로 페이지를 만들게 하고, ② lint.py에 `--fix` 모드(판단 불필요한 참조 무결성 3종 한정)를 추가하고, ③ 풀 ingest/lint 없이 pending 큐만 소비하는 경량 절차 M을 신설하고, ④ plan-feature Step 1의 절차 K 참조 결과를 plan.md Investigation Log에 기록하게 한다.

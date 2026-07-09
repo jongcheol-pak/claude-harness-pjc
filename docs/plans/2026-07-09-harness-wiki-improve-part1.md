@@ -228,6 +228,7 @@
 - 수동 검증: SessionStart hook의 실 세션 발동은 재설치 후에만 가능 — "골든 통과 + 재설치 후 실동작은 사용자 확인 필요"로 구분 보고(빌드 통과 ≠ 동작 확인 원칙)
 
 ## Phase Ledger
+- Phase F 통과 (HEAD e586281) — F-2 전체 검증 green(parse·JSON 3종·골든 297/297·check_consistency 94항목), F-7 plan-completion-reviewer OK(이슈 0)
 
 ## Retry Ledger
 
@@ -236,7 +237,8 @@
 - T3-T5 완료 (커밋 ca4b5b5·ec7cbdb·T5 amend): 핸드오프 섹션 규약(final-report-template 생성 + SKILL :183 읽기 + plan-template 주석, 3-part 일반화 MINOR 즉시 반영) / AGENTS 검증 매핑 표 + V-2 표 인식 / agent 5종 LSP(tools+조건화 가이드, prefilter·disallowedTools 무변경). 리뷰 3건 전부 OK.
 
 ## Next Steps
-- 이 plan(part1) 완료 후: 남은 분할 plan `docs/plans/2026-07-09-harness-wiki-improve-part2.md` — pjc:implement-task로 별도 실행
+- part1 완료 (T1~T6 + Phase F 통과). 남은 분할 plan: `docs/plans/2026-07-09-harness-wiki-improve-part2.md` — pjc:implement-task로 별도 실행 (`/clear` 후 "docs/plans/2026-07-09-harness-wiki-improve-part2.md 구현" 붙여넣기)
+- push·main 병합·릴리즈 v1.105.0은 별도 승인 대기 (part2 완료 후 v1.106.0과 합류 발행도 선택 가능)
 
 ## Open Questions
 - (없음 — Q1~Q4 사용자 확정 반영 완료)
