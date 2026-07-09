@@ -97,6 +97,18 @@
       "query": "승인된 plan 이대로 구현 진행해",
       "should_trigger": false,
       "rationale": "승인된 plan.md 실행 요청 — implement-task 영역. plan-feature는 plan 작성용이지 실행용 아님"
+    },
+    {
+      "id": 17,
+      "query": "설정 화면 카드 3개 padding 16px로, 제목 font-size 18px로, 포인트 색 #336699로 바꿔줘. 구조나 로직은 그대로 두고 값만.",
+      "should_trigger": false,
+      "rationale": "다건 순수 값 치환 — 개수 무관 trivial(Trivial Bypass 예외), 직접 수정 대상"
+    },
+    {
+      "id": 18,
+      "query": "리스트 아이템 간격 좀 넓히고 스크롤바도 항상 보이게 바꿔줘",
+      "should_trigger": true,
+      "rationale": "값 치환+동작성 변경 혼재 경계 — 애매 3갈래(A/B 질문) 규칙 적용 대상이라 스킬 참조 필요"
     }
   ]
 }
