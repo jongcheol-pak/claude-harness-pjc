@@ -24,6 +24,7 @@
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
   격리 USERPROFILE에서 hook 10종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
+  부분 실행 `-Filter <hook명>`(쉼표 복수, `.ps1` 생략 가능)은 **구현 중 반복 확인 전용** — task 검증(아래 검증 매핑 표의 "Hook 골든 회귀")과 Phase F-2는 무인자 **전체 실행**이 정본이다(부분 실행 결과로 검증 판정 금지 — 골든 케이스가 hook 간 얽혀 있어 부분 실행은 커버리지가 좁다).
 - **llm-wiki 상수·배치 정합 셀프체크 (SKILL.md 예산표·라우팅 표·references/procedures-*.md·wiki-schema §2/§3/§4·목차·lint.py 상수 수정 시 필수)**:
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
