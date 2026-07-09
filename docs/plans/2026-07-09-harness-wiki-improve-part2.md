@@ -128,7 +128,7 @@
 
 ## Tasks
 
-- [ ] T1. [K-MISS] 큐 태그 신설 (큐잉 K 5-4 + 소비 B-1 0 + 열거 정합 + lint 집계 + 골든)
+- [x] T1. [K-MISS] 큐 태그 신설 (큐잉 K 5-4 + 소비 B-1 0 + 열거 정합 + lint 집계 + 골든)
   - **Type**: D
   - **Acceptance**: Given 절차 K 3에서 한/영 양방향 검색 후 무매칭, When 작업에 실제 필요했던 지식이면, Then `- [YYYY-MM-DD] [K-MISS] {프로젝트}: {찾으려던 지식 1줄}`이 pending.md에 append되는 규약이 SKILL.md K 5-4에 존재(중복 억제·vault 폴백·하네스 레포 예외는 5-2와 동형 참조). And 태그 열거 지점 9곳(Investigation Log 목록) 전부에 [K-MISS] 합류. And `python evals/check_consistency.py` exit 0. And lint 골든에 pending-backlog K-MISS 집계 케이스 1건 추가돼 `run_lint_evals.py` 전 케이스 PASS.
   - **Files**:

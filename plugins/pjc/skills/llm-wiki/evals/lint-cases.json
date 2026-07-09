@@ -179,9 +179,10 @@
       "expect_keywords": [
         "pending.md 미처리 잔량",
         "PROJECT-FACT 1건",
-        "DECISION 1건"
+        "DECISION 1건",
+        "K-MISS 1건"
       ],
-      "rationale": "§7-25 pending 잔량 집계 INFO — [PROJECT-FACT] 태그 합류(v1.102.0 T3) 실증 + 기존 태그(DECISION) 집계 무회귀"
+      "rationale": "§7-25 pending 잔량 집계 INFO — [PROJECT-FACT](v1.102.0 T3)·[K-MISS](v1.106.0 T1) 태그 합류 실증 + 기존 태그(DECISION) 집계 무회귀"
     }
   ]
 }
