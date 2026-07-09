@@ -40,6 +40,10 @@ ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
 # decision-log 항목 결정 어휘 (wiki-schema §2.8·§3 — 어긋나면 타임라인 합성·번복 추적 누락)
 DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
+
+# decisions '## 아카이브' 포인터 패턴 — §7-24 판정(main)과 --fix(apply_fixes)가 같은 대상을 보도록
+#  단일 출처로 둔다(한쪽만 고치면 lint 판정과 fix 대상이 조용히 어긋나는 드리프트 방지 — T2 리뷰 m1).
+DEC_PTR_RX = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
@@ -331,8 +335,8 @@ def apply_fixes(vault):
         except OSError as e:
             failed.append(f"index.md 수정 실패({type(e).__name__}) — 건너뜀")
 
-    # ── ② §7-24 decisions '## 아카이브' 포인터 동기 ──────────────────
-    dec_rx = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
+    # ── ② §7-24 decisions '## 아카이브' 포인터 동기 (패턴 단일 출처: DEC_PTR_RX) ──
+    dec_rx = DEC_PTR_RX
     for r in sorted(pages):
         fm, typ, norm = pages[r]
         if typ != "decision-log" or r.startswith("90_archive/"):
@@ -800,7 +804,7 @@ def main():
     # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
     #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시
     #  조회(K 2·G 2b)가 현행 파일만 읽고 "기록 없음"으로 침묵 오답하므로 기계 검사한다.
-    dec_ptr_rx = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
+    dec_ptr_rx = DEC_PTR_RX   # 패턴 단일 출처(모듈 상수) — apply_fixes와 동일 대상 보장
     dec_item_rx = re.compile(r"^-\s*\[\d{4}-\d{2}-\d{2}\]")
     dec_vocab_rx = re.compile(r"\*\*(" + "|".join(DECISION_VOCAB) + r")\*\*")
     for r, (fm, typ, text) in pages.items():

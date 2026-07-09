@@ -28,6 +28,7 @@
 - (이월) plan-feature description 1,024자 한도 근접 — 다음 description 수정 시 여유 확보.
 - lint --fix 대상 확대(§7-19 누락 행 추가 등) — 키워드 요약을 기계 생성할 근거가 생기면 재검토.
 - suggest(제안) 이벤트의 로깅 확장 — part1 T2는 차단+경고만(사용자 확정 범위).
+- (T2 리뷰 m2) lint.py `section()` 헬퍼를 Match 반환형으로 확장해 `section_span()`과 단일화 — 기존 호출부 리팩터링 동반이라 이번 diff 범위 밖, 다음 lint.py 정비 때.
 
 ## Investigation Log
 - **기존 4태그 열거 지점 전수 grep** (`K-DRIFT|SKILL-IMPROVE|PROJECT-FACT|네 태그|세 태그`, 2026-07-09 실행): [K-MISS] 합류 시 정합 필요 지점 —
@@ -144,7 +145,7 @@
     - (i) 열거 지점 누락 → Investigation Log의 전수 grep 목록이 기준(9곳), V-7 grep 재확인으로 해소
   - **Depends on**: -
 
-- [ ] T2. lint.py `--fix` 모드 (안전 3종 + 백업 + fix 골든)
+- [x] T2. lint.py `--fix` 모드 (안전 3종 + 백업 + fix 골든)
   - **Type**: D
   - **Acceptance**: Given `--fix` 플래그 없이 실행, Then 기존과 바이트 동일 동작(무회귀 — 기존 골든 전 케이스 PASS). Given `--fix`로 실행, When §7-23 위반(open question 인덱스 미등록/resolved 잔존)·§7-24 위반(아카이브 포인터 누락/stale)·§7-19 stale 인덱스 행 존재, Then 해당 파일을 `90_archive/backup/{오늘}/`에 백업 후 수정하고 수정 내역을 stdout에 항목별 요약 출력, 재실행 lint에서 그 3종 위반 0. And 신규 fix-mode 골든 케이스(임시본 --fix → 재lint 대조) PASS.
   - **Files**:
@@ -216,6 +217,7 @@
 ## Retry Ledger
 
 ## Progress Log
+- T1-T2 완료 (커밋 bc6283d + T2): [K-MISS] 다섯 태그 열거 정합(K 2 :115의 기존 5-3 누락도 정정) / lint.py --fix(안전 3종, apply_fixes가 본 lint 헬퍼 재사용·BOM/줄바꿈 원본 보존·백업 §8 미덮어쓰기, DEC_PTR_RX 모듈 상수 승격 — 리뷰 m1 반영, m2는 Deferred). 골든 22→23, check_consistency 94 유지. 리뷰 4건 OK(m1·m2 MINOR만).
 
 ## Next Steps
 - part1(하네스) 완료 후 이 plan을 `docs/plans/2026-07-09-harness-wiki-improve-part2.md 구현`으로 실행
