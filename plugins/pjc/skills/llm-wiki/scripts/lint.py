@@ -9,7 +9,7 @@
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
-      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION]/[PROJECT-FACT] 태그별, §7-25)
+      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION]/[PROJECT-FACT]/[K-MISS] 태그별, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
@@ -21,7 +21,7 @@
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (H-2 규약(references/procedures-ops.md): SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
 """
-import os, re, sys, glob, datetime
+import os, re, sys, glob, shutil, datetime
 
 # Windows 콘솔(cp949)에서도 한글이 깨지지 않도록 UTF-8 출력 강제
 try:
@@ -40,6 +40,10 @@ ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
 # decision-log 항목 결정 어휘 (wiki-schema §2.8·§3 — 어긋나면 타임라인 합성·번복 추적 누락)
 DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
+
+# decisions '## 아카이브' 포인터 패턴 — §7-24 판정(main)과 --fix(apply_fixes)가 같은 대상을 보도록
+#  단일 출처로 둔다(한쪽만 고치면 lint 판정과 fix 대상이 조용히 어긋나는 드리프트 방지 — T2 리뷰 m1).
+DEC_PTR_RX = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
@@ -220,11 +224,190 @@ def repo_root_for_hub(hub_text):
     return root if os.path.isdir(root) else None
 
 
+def apply_fixes(vault):
+    """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 3종만 자동 수정한다 (§7 —fix 규약) —
+      ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거)
+      ② §7-24 decisions '## 아카이브' 포인터 동기(양방향: 깨진 포인터 행 제거 + 실재 아카이브 포인터 행 추가)
+      ③ §7-19 log 아카이브 인덱스 stale 행 '제거만' (누락 행 추가는 그 달 키워드 요약이 필요해 판단 개입 — 수동)
+    그 외 검사(인덱스 행 생성·한/영 병기·updated 등)는 내용 판단이 필요해 --fix 대상이 아니다.
+    안전장치: 수정 전 원본을 90_archive/backup/{오늘}/ 원경로에 백업(목적지 존재 시 미덮어쓰기 — §8,
+      복구는 절차 L 그대로 적용). 인코딩(BOM)·줄바꿈은 원본 상태를 보존한다. 항목별 실패는 격리
+      (그 파일만 [FIX-FAIL] 보고 후 계속). 위반 0이면 파일 무변경·백업 미생성.
+    플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변."""
+    today = datetime.date.today()
+    rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
+    md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
+    raws, pages = {}, {}   # rel -> (bom, 원본 텍스트) / rel -> (fm, type, 정규화 텍스트)
+    for p in md:
+        try:
+            with open(p, "rb") as fh:
+                b = fh.read()
+            raw = b.decode("utf-8-sig")
+        except (UnicodeDecodeError, OSError):
+            continue   # 읽기 실패 파일은 fix 제외 — 본 lint가 ERR로 보고한다
+        norm = raw.replace("\r\n", "\n").replace("\r", "\n")
+        fm = frontmatter(norm)
+        raws[rel(p)] = (b.startswith(b"\xef\xbb\xbf"), raw)
+        pages[rel(p)] = (fm, fm.get("type", ""), norm)
+
+    fixed, failed = [], []
+    backed = set()
+
+    def backup(r):
+        if r in backed:
+            return
+        src = os.path.join(vault, r.replace("/", os.sep))
+        dst = os.path.join(vault, "90_archive", "backup", today.isoformat(), r.replace("/", os.sep))
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        if not os.path.exists(dst):   # 목적지 존재 시 미덮어쓰기(§8) — 같은 날 첫 백업이 원본
+            shutil.copy2(src, dst)
+        backed.add(r)
+
+    def write(r, new_raw):
+        bom, _ = raws[r]
+        data = new_raw.encode("utf-8")
+        if bom:   # 원본 BOM 보존 — BOM 정리는 fix 범위 아님(별도 WARN이 안내)
+            data = b"\xef\xbb\xbf" + data
+        with open(os.path.join(vault, r.replace("/", os.sep)), "wb") as fh:
+            fh.write(data)
+        raws[r] = (bom, new_raw)
+
+    def nl_of(raw):
+        return "\r\n" if "\r\n" in raw else "\n"
+
+    def remove_lines(raw_seg, pred):
+        kept = [ln for ln in raw_seg.splitlines(keepends=True) if not pred(ln)]
+        return "".join(kept), len(raw_seg.splitlines()) - len(kept)
+
+    def section_span(raw, heading):
+        return re.search(r"(?m)^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)", raw, re.S)
+
+    def insert_into_section(raw, heading, new_line):
+        """섹션 끝(후행 공백줄 앞)에 행 삽입. 섹션이 없으면 문서 끝에 신설(기계적 — 골격 규약 준수).
+        반환: (새 텍스트, 섹션 신설 여부)."""
+        nl = nl_of(raw)
+        m = section_span(raw, heading)
+        if not m:
+            base = raw if raw.endswith("\n") else raw + nl
+            return base + nl + "## " + heading + nl + new_line + nl, True
+        seg = m.group(0)
+        body = seg.rstrip("\r\n")
+        trail = seg[len(body):]
+        new_seg = body + nl + new_line + (trail if trail else nl)
+        return raw[:m.start()] + new_seg + raw[m.end():], False
+
+    # ── ① §7-23 미해결 질문 인덱스 동기 ──────────────────────────────
+    if "index.md" in pages:
+        try:
+            inorm = pages["index.md"][2]
+            q_sec = section(strip_code(inorm), "미해결 질문") or ""
+            q_listed = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(q_sec)}
+            to_add, stale_keys = [], set()
+            for qr, (qfm, qtyp, qnorm) in sorted(pages.items()):
+                if qtyp != "question" or qr.startswith("90_archive/"):
+                    continue
+                resolved = question_is_resolved(qfm)
+                listed = qr[:-3] in q_listed or os.path.basename(qr)[:-3] in q_listed
+                if not resolved and not is_lint_report(qr) and not listed:
+                    h1 = re.search(r"(?m)^#\s+(.+)$", qnorm)
+                    to_add.append((qr[:-3], h1.group(1).strip() if h1 else os.path.basename(qr)[:-3]))
+                if resolved and listed:
+                    stale_keys.add(qr[:-3])
+                    stale_keys.add(os.path.basename(qr)[:-3])
+            if to_add or stale_keys:
+                backup("index.md")
+                bom, raw = raws["index.md"]
+                if stale_keys:
+                    m = section_span(raw, "미해결 질문")
+                    if m:   # 섹션 '안'의 행만 제거 — 다른 섹션의 정당한 링크 보존
+                        def is_stale_row(ln):
+                            return any((t[:-3] if t.endswith(".md") else t) in stale_keys
+                                       for t in wikilink_targets(ln))
+                        new_seg, n = remove_lines(m.group(0), is_stale_row)
+                        if n:
+                            raw = raw[:m.start()] + new_seg + raw[m.end():]
+                            fixed.append(f"index.md: 해결된 질문 행 {n}개 제거 (§7-23)")
+                for path_noext, title in to_add:
+                    raw, created = insert_into_section(raw, "미해결 질문", f"- [[{path_noext}|{title}]]")
+                    fixed.append(f"index.md: 미해결 질문 등록 — {path_noext} (§7-23)"
+                                 + (" [섹션 신설]" if created else ""))
+                write("index.md", raw)
+        except OSError as e:
+            failed.append(f"index.md 수정 실패({type(e).__name__}) — 건너뜀")
+
+    # ── ② §7-24 decisions '## 아카이브' 포인터 동기 (패턴 단일 출처: DEC_PTR_RX) ──
+    dec_rx = DEC_PTR_RX
+    for r in sorted(pages):
+        fm, typ, norm = pages[r]
+        if typ != "decision-log" or r.startswith("90_archive/"):
+            continue
+        try:
+            acted = False
+            broken = sorted({t for t in dec_rx.findall(norm) if t not in pages})
+            if broken:
+                backup(r)
+                bom, raw = raws[r]
+                new_raw, n = remove_lines(raw, lambda ln: any(b in ln for b in broken))
+                if n:
+                    raws[r] = (bom, new_raw)
+                    acted = True
+                    fixed.append(f"{r}: 깨진 decisions 아카이브 포인터 {n}행 제거 (§7-24)")
+            arch = "90_archive/" + r
+            if arch in pages and arch not in raws[r][1]:
+                backup(r)
+                bom, raw = raws[r]
+                new_raw, created = insert_into_section(raw, "아카이브", f"- {arch}")
+                raws[r] = (bom, new_raw)
+                acted = True
+                fixed.append(f"{r}: 아카이브 포인터 추가 — {arch} (§7-24)"
+                             + (" [섹션 신설]" if created else ""))
+            if acted:
+                write(r, raws[r][1])
+        except OSError as e:
+            failed.append(f"{r} 수정 실패({type(e).__name__}) — 건너뜀")
+
+    # ── ③ §7-19 log 아카이브 인덱스 stale 행 제거 (제거만 — 추가는 수동) ──
+    if "log.md" in pages:
+        try:
+            norm = pages["log.md"][2]
+            sec_txt = section(norm, "아카이브 인덱스")
+            indexed = set(re.findall(r"(\d{4}-\d{2})\.md", sec_txt)) if sec_txt else set()
+            archived = {m.group(1) for k in pages
+                        if (m := re.fullmatch(r"90_archive/log/(\d{4}-\d{2})\.md", k))}
+            stale = sorted(indexed - archived)
+            if stale:
+                backup("log.md")
+                bom, raw = raws["log.md"]
+                m = section_span(raw, "아카이브 인덱스")
+                if m:
+                    new_seg, n = remove_lines(m.group(0), lambda ln: any((ym + ".md") in ln for ym in stale))
+                    if n:
+                        write("log.md", raw[:m.start()] + new_seg + raw[m.end():])
+                        fixed.append(f"log.md: stale 아카이브 인덱스 행 {n}개 제거 (§7-19 — 누락 행 추가는 수동)")
+        except OSError as e:
+            failed.append(f"log.md 수정 실패({type(e).__name__}) — 건너뜀")
+
+    print("== --fix 적용 (안전 3종: §7-23 / §7-24 / §7-19 stale 제거) ==")
+    if fixed:
+        for f in fixed:
+            print("[FIXED] " + f)
+        print(f"백업: 90_archive/backup/{today.isoformat()}/ (원본 보존 — 복구는 절차 L)")
+    else:
+        print("수정 대상 없음 (파일 무변경·백업 미생성)")
+    for f in failed:
+        print("[FIX-FAIL] " + f)
+    print()
+
+
 def main():
     if len(sys.argv) < 2:
-        print("사용법: python lint.py \"<vault_path>\"")
+        print("사용법: python lint.py \"<vault_path>\" [--fix]")
         sys.exit(1)
     vault = sys.argv[1].rstrip("/\\")
+    # --fix는 opt-in — 지정 시 안전 3종을 먼저 수정하고, 이어지는 본 lint가 수정 후 상태를 보고한다.
+    #  (기본 실행은 완전 read-only 불변)
+    if "--fix" in sys.argv[2:]:
+        apply_fixes(vault)
     # L-3: vault 경로에 glob 메타문자([ ] * ? 등)가 있어도 리터럴로 취급 — glob.escape로 감싸지 않으면
     #   'D:\wiki[2026]' 같은 경로에서 md 목록이 0개가 되어 대부분 검사가 공허 통과한다.
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
@@ -595,11 +778,12 @@ def main():
             warn(f"log 아카이브 인덱스 깨짐: log.md가 {ym}.md를 가리키나 90_archive/log/{ym}.md 없음",
                  f"90_archive/log/{ym}.md")
 
-    # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/K 5-3/B-1 0): 잔량이 있으면 INFO로 알려
+    # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/K 5-3/K 5-4/B-1 0): 잔량이 있으면 INFO로 알려
     #  다음 ingest/lint 세션이 소비하게 한다 (0건·파일 없음이면 생략). 태그별 분리 —
     #  [K-DRIFT]는 위키 세션이 반영 후 제거, [SKILL-IMPROVE]는 사용자 보고 대상(제거는 사용자 지시),
     #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비),
-    #  [PROJECT-FACT]는 해당 프로젝트 허브 '## 작업 규약·주의사항'에 반영 후 제거(자가 소비).
+    #  [PROJECT-FACT]는 해당 프로젝트 허브 '## 작업 규약·주의사항'에 반영 후 제거(자가 소비),
+    #  [K-MISS]는 레포 근거 대조 후 feature/recipe 반영 또는 기각 보고 후 제거(수요 신호 — 자동 생성 아님).
     #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
     if "pending.md" in pages:
         pend_text = pages["pending.md"][2]
@@ -607,7 +791,8 @@ def main():
         for tag, label in (("K-DRIFT", "K-DRIFT {n}건"),
                            ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)"),
                            ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비)"),
-                           ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — 허브 '작업 규약·주의사항' 반영 대상, 게이트는 DECISION 동형)")):
+                           ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — 허브 '작업 규약·주의사항' 반영 대상, 게이트는 DECISION 동형)"),
+                           ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)")):
             n = sum(1 for line in pend_text.splitlines()
                     if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[" + tag + r"\]", line))
             if n:
@@ -619,7 +804,7 @@ def main():
     # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
     #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시
     #  조회(K 2·G 2b)가 현행 파일만 읽고 "기록 없음"으로 침묵 오답하므로 기계 검사한다.
-    dec_ptr_rx = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
+    dec_ptr_rx = DEC_PTR_RX   # 패턴 단일 출처(모듈 상수) — apply_fixes와 동일 대상 보장
     dec_item_rx = re.compile(r"^-\s*\[\d{4}-\d{2}-\d{2}\]")
     dec_vocab_rx = re.compile(r"\*\*(" + "|".join(DECISION_VOCAB) + r")\*\*")
     for r, (fm, typ, text) in pages.items():

@@ -42,11 +42,12 @@ FIXTURES_DIR = os.path.join(EVALS_DIR, "fixtures")
 CASES_JSON = os.path.join(EVALS_DIR, "lint-cases.json")
 
 
-def run_lint(vault_path):
+def run_lint(vault_path, extra_args=None):
     """lint.py를 subprocess로 실행하고 (stdout, returncode, stderr)를 반환한다.
-    returncode를 함께 넘겨, lint.py 자체 크래시와 '위반 검출 결과'를 호출부가 구분하게 한다."""
+    returncode를 함께 넘겨, lint.py 자체 크래시와 '위반 검출 결과'를 호출부가 구분하게 한다.
+    extra_args: --fix 등 추가 인자(fix_mode 케이스용)."""
     proc = subprocess.run(
-        [sys.executable, LINT_PY, vault_path],
+        [sys.executable, LINT_PY, vault_path] + (extra_args or []),
         capture_output=True, text=True, encoding="utf-8",
     )
     return proc.stdout, proc.returncode, proc.stderr
@@ -96,6 +97,28 @@ def check_case(case):
     # case 스키마 방어: 기대 조건이 하나도 없으면 오타로 조용히 PASS되는 것을 막는다.
     if "expect_clean" not in case and "expect_keywords" not in case:
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
+
+    # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
+    #  원본 fixture는 절대 수정하지 않는다(placeholder copytree 패턴 재사용). 대조 2단 —
+    #  ① --fix 실행 출력에 expect_keywords([FIXED] 요약) 전부 존재
+    #  ② 수정 후 재lint 출력에 after_expect_absent(원 위반 문구) 전부 부재
+    if case.get("fix_mode"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-fix-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        out1, rc1, err1 = run_lint(dest, ["--fix"])
+        out2, rc2, err2 = run_lint(dest)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if "== llm-wiki Lint:" not in out1 or "== llm-wiki Lint:" not in out2:
+            tail = (err1 or err2).strip().splitlines()[-1] if (err1 or err2).strip() else "(stderr 없음)"
+            return False, f"lint.py 비정상 종료(fix={rc1}/재실행={rc2}): {tail}"
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out1]
+        if missing:
+            return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
+        residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
+        if residual:
+            return False, "수정 후 재lint에 위반 잔존: " + ", ".join(residual)
+        return True, "--fix 적용·재lint 해소 확인: " + ", ".join(case.get("expect_keywords", []))
 
     tmp = None
     if case.get("placeholder"):

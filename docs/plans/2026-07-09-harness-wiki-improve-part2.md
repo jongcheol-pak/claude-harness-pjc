@@ -28,6 +28,7 @@
 - (이월) plan-feature description 1,024자 한도 근접 — 다음 description 수정 시 여유 확보.
 - lint --fix 대상 확대(§7-19 누락 행 추가 등) — 키워드 요약을 기계 생성할 근거가 생기면 재검토.
 - suggest(제안) 이벤트의 로깅 확장 — part1 T2는 차단+경고만(사용자 확정 범위).
+- (T2 리뷰 m2) lint.py `section()` 헬퍼를 Match 반환형으로 확장해 `section_span()`과 단일화 — 기존 호출부 리팩터링 동반이라 이번 diff 범위 밖, 다음 lint.py 정비 때.
 
 ## Investigation Log
 - **기존 4태그 열거 지점 전수 grep** (`K-DRIFT|SKILL-IMPROVE|PROJECT-FACT|네 태그|세 태그`, 2026-07-09 실행): [K-MISS] 합류 시 정합 필요 지점 —
@@ -128,7 +129,7 @@
 
 ## Tasks
 
-- [ ] T1. [K-MISS] 큐 태그 신설 (큐잉 K 5-4 + 소비 B-1 0 + 열거 정합 + lint 집계 + 골든)
+- [x] T1. [K-MISS] 큐 태그 신설 (큐잉 K 5-4 + 소비 B-1 0 + 열거 정합 + lint 집계 + 골든)
   - **Type**: D
   - **Acceptance**: Given 절차 K 3에서 한/영 양방향 검색 후 무매칭, When 작업에 실제 필요했던 지식이면, Then `- [YYYY-MM-DD] [K-MISS] {프로젝트}: {찾으려던 지식 1줄}`이 pending.md에 append되는 규약이 SKILL.md K 5-4에 존재(중복 억제·vault 폴백·하네스 레포 예외는 5-2와 동형 참조). And 태그 열거 지점 9곳(Investigation Log 목록) 전부에 [K-MISS] 합류. And `python evals/check_consistency.py` exit 0. And lint 골든에 pending-backlog K-MISS 집계 케이스 1건 추가돼 `run_lint_evals.py` 전 케이스 PASS.
   - **Files**:
@@ -144,7 +145,7 @@
     - (i) 열거 지점 누락 → Investigation Log의 전수 grep 목록이 기준(9곳), V-7 grep 재확인으로 해소
   - **Depends on**: -
 
-- [ ] T2. lint.py `--fix` 모드 (안전 3종 + 백업 + fix 골든)
+- [x] T2. lint.py `--fix` 모드 (안전 3종 + 백업 + fix 골든)
   - **Type**: D
   - **Acceptance**: Given `--fix` 플래그 없이 실행, Then 기존과 바이트 동일 동작(무회귀 — 기존 골든 전 케이스 PASS). Given `--fix`로 실행, When §7-23 위반(open question 인덱스 미등록/resolved 잔존)·§7-24 위반(아카이브 포인터 누락/stale)·§7-19 stale 인덱스 행 존재, Then 해당 파일을 `90_archive/backup/{오늘}/`에 백업 후 수정하고 수정 내역을 stdout에 항목별 요약 출력, 재실행 lint에서 그 3종 위반 0. And 신규 fix-mode 골든 케이스(임시본 --fix → 재lint 대조) PASS.
   - **Files**:
@@ -160,7 +161,7 @@
     - (i) §7-19 누락 행 추가 욕구(키워드 필요) → D3에서 제거만으로 확정(추가는 Out of Scope)
   - **Depends on**: T1 (lint.py·lint-cases 동시 수정 — 충돌 방지 순차)
 
-- [ ] T3. 경량 큐 소비 절차 M 신설
+- [x] T3. 경량 큐 소비 절차 M 신설
   - **Type**: C
   - **Acceptance**: Given "큐 정리"/"pending 정리" 요청, Then procedures-ops.md `### M. 큐 소비 (경량)`이 §0 시작 절차 → pending.md 읽기 → B-1 0 정본 부분 Read로 태그별 소비(게이트 포함) → log 1줄 → 잔량 보고로 완결(lint·ingest 미수행 명시). And SKILL.md 절차 목차 라우팅 표에 M 행 존재 + description에 트리거 문구 추가(총 1,024자 이내). And `check_consistency.py` exit 0 (라우팅 표 ↔ 헤딩 동적 캡처 통과).
   - **Files**:
@@ -173,7 +174,7 @@
   - **Halt Forecast**: (해당 없음 — 소비 게이트는 B-1 0 정본이 이미 정의)
   - **Depends on**: T1 ([K-MISS] 포함된 B-1 0을 M이 포인터로 참조 — 태그 완성 후)
 
-- [ ] T4. 절차 K 참조 내역 plan.md 기록
+- [x] T4. 절차 K 참조 내역 plan.md 기록
   - **Type**: C
   - **Acceptance**: Given plan-feature Step 1에서 절차 K로 위키 참조, Then 참조한 페이지·핵심 결론 1줄(무매칭이면 "관련 위키 자료 없음")을 plan.md Investigation Log에 기록하는 규정이 Step 1 위키 참조 불릿에 존재. And plan-template.md Investigation Log 주석에 기록 예시 1줄. And implement-task 재개 진입 :172에 "plan Investigation Log의 위키 참조 기록이 있으면 그 페이지를 우선 식별 대상으로" 1줄 (implement-task SKILL.md 총 행수 ≤500 유지).
   - **Files**:
@@ -185,7 +186,7 @@
   - **Halt Forecast**: (해당 없음 — 지침 doc 1~2줄 추가, 500줄 위험은 Edge Case에서 선해소)
   - **Depends on**: -
 
-- [ ] T5. 버전·README·통합 검증
+- [x] T5. 버전·README·통합 검증
   - **Type**: A
   - **Acceptance**: plugin.json·README 1.105.0→1.106.0(part1 선행 가정 — part1 미실행 상태면 1.104.0→1.106.0이 아니라 현재 버전에서 minor +1). README에 v1.106.0 변경 안내 1블록([K-MISS]·--fix·절차 M·K 참조 기록). 통합 검증 전부 green: 전 ps1 parse OK, JSON 매니페스트 3종 OK, `check_consistency.py` exit 0, `run_lint_evals.py` 전 케이스 PASS, .md 무BOM.
   - **Files**:
@@ -212,13 +213,17 @@
 - 수동 검증: 실 vault(`D:/Personal Project/Obsidian Vault/LLM WIKI`)에 lint --fix를 **실행하지 않는다** — fixture 골든으로만 실증(실 vault는 사용자 위키 세션에서)
 
 ## Phase Ledger
+- Phase F 통과 (HEAD cb4a431) — F-2 전체 검증 green(parse·JSON 3종·hook 골든 297/297·lint 골든 23/23·check_consistency 96항목), F-7 plan-completion-reviewer OK(이슈 0)
 
 ## Retry Ledger
 
 ## Progress Log
+- T1-T2 완료 (커밋 bc6283d + T2): [K-MISS] 다섯 태그 열거 정합(K 2 :115의 기존 5-3 누락도 정정) / lint.py --fix(안전 3종, apply_fixes가 본 lint 헬퍼 재사용·BOM/줄바꿈 원본 보존·백업 §8 미덮어쓰기, DEC_PTR_RX 모듈 상수 승격 — 리뷰 m1 반영, m2는 Deferred). 골든 22→23, check_consistency 94 유지. 리뷰 4건 OK(m1·m2 MINOR만).
+- T3-T5 완료: 절차 M(소비는 B-1 0 포인터, 레포 대조 필요 태그는 보류 경계 — consistency 96항목 자동 캡처) / K 참조 기록(3파일, 문구 리터럴 통일 MINOR 2 반영) / 버전 1.106.0. 통합 검증 전부 green(parse·JSON·hook 297·lint 23·consistency 96).
 
 ## Next Steps
-- part1(하네스) 완료 후 이 plan을 `docs/plans/2026-07-09-harness-wiki-improve-part2.md 구현`으로 실행
+- part2 완료 (T1~T5 + Phase F 통과) — **분할 plan 완료 (part1+part2 전체 구현됨)**
+- push·main 병합·릴리즈(v1.105.0+v1.106.0 합류 발행 가능)·재설치는 별도 승인 대기
 
 ## Open Questions
 - (없음 — Q1~Q4 사용자 확정 반영 완료)
