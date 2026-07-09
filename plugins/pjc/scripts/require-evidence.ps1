@@ -28,6 +28,17 @@ if ($env:CLAUDE_PROJECT_DIR -and (Test-Path -LiteralPath $env:CLAUDE_PROJECT_DIR
     Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR
 }
 
+# [이벤트 로깅] STOP WARNING 방출을 오탐 리뷰 데이터로 적재 — 경고 판정 무변경, 실패 전면 격리.
+try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
+function Write-ReEvent {
+    param([string]$Rule)
+    try {
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+            Write-HookEvent 'require-evidence' 'warn' $Rule ''
+        }
+    } catch {}
+}
+
 # git 저장소인지 확인 (현재 작업 디렉터리 기준)
 $gitDir = & git rev-parse --git-dir 2>$null
 if (-not $gitDir -or $LASTEXITCODE -ne 0) {
@@ -46,6 +57,7 @@ if ($firstLine -match '^checkpoint:') {
     [Console]::Error.WriteLine("STOP WARNING: 마지막 커밋이 checkpoint입니다 - task가 완료되지 않았을 수 있습니다.")
     [Console]::Error.WriteLine("implement-task의 Phase D를 완료하지 않은 채 종료하려 합니다.")
     [Console]::Error.WriteLine("정말 종료할 거면 사용자에게 현재 상태를 보고하세요.")
+    Write-ReEvent 'checkpoint 미완료 종료'
 }
 
 # 2. task 커밋이지만 검증 '결과' 증거 없음
@@ -58,6 +70,7 @@ if ($firstLine -match '^T\d+:') {
     if ($lastMsg -notmatch $evidenceRx) {
         [Console]::Error.WriteLine("STOP WARNING: task 커밋에 검증 '결과' 증거가 없습니다 (예: Build ...OK / Tests N / Review ...OK).")
         [Console]::Error.WriteLine("Done = Proof 원칙 위반 가능 - 단어만이 아니라 실제 결과를 커밋 메시지에 적거나 사용자에게 보고하세요.")
+        Write-ReEvent '검증 증거 없음'
     } else {
         $hasEvidence = $true
     }
@@ -81,6 +94,7 @@ if ($hasEvidence) {
             if (-not (($tail -join "`n") -match $traceRx)) {
                 [Console]::Error.WriteLine("STOP WARNING: 커밋에 검증 증거 텍스트는 있으나 이 세션 transcript에서 빌드/테스트 실행 흔적을 찾지 못했습니다.")
                 [Console]::Error.WriteLine("증거가 실행 없이 적혔을 수 있습니다 - 실제로 빌드/테스트를 실행했는지 확인하세요 (이전 세션에서 실행했으면 무시).")
+                Write-ReEvent '실행 흔적 없음'
             }
         }
     } catch { }
@@ -114,6 +128,7 @@ if ($porcelain) {
         [Console]::Error.WriteLine("STOP WARNING: 커밋되지 않은 코드 파일 변경이 $($codeChanges.Count)개 있습니다 - 구현 후 commit을 누락했을 수 있습니다.")
         foreach ($c in ($codeChanges | Select-Object -First 8)) { [Console]::Error.WriteLine("  - $c") }
         [Console]::Error.WriteLine("구현이 끝났으면 Phase D(commit)를 수행하거나, 의도된 미커밋이면 사용자에게 상태를 보고하세요.")
+        Write-ReEvent '미커밋 코드 변경'
     }
 }
 

@@ -38,13 +38,31 @@ if (-not (Get-Command Invoke-WarnExternalOps -ErrorAction SilentlyContinue)) {
     exit 0
 }
 
-# 순서: 원 hooks.json 순서에서 block-destructive(독립)만 앞으로 뺀 나머지 3종.
-$checks = @('Invoke-WarnExternalOps', 'Invoke-RequireTaskCheckbox', 'Invoke-WarnCommitSecrets')
-$results = New-Object System.Collections.Generic.List[object]
-foreach ($fn in $checks) {
+# [이벤트 로깅] 차단/경고 이벤트를 오탐 리뷰 데이터로 적재 — lib 함수·얇은 래퍼는 무수정(골든 격리 유지),
+#   로깅은 디스패처 수준에서 결과 객체로 수행한다. 실패는 전면 격리(검사 판정 무영향).
+try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
+$cmdText = [string]$data.tool_input.command
+function Write-DispatchEvent {
+    param([string]$HookName, [string]$Decision, [object]$Result)
     try {
-        $r = & $fn $data
-        if ($r) { $results.Add($r) }
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+            $rule = if ($Result.Stderr -and @($Result.Stderr).Count -gt 0) { [string](@($Result.Stderr)[0]) } else { '' }
+            Write-HookEvent $HookName $Decision $rule $script:cmdText
+        }
+    } catch {}
+}
+
+# 순서: 원 hooks.json 순서에서 block-destructive(독립)만 앞으로 뺀 나머지 3종.
+$checks = @(
+    @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
+    @{ fn = 'Invoke-RequireTaskCheckbox'; name = 'require-task-checkbox' },
+    @{ fn = 'Invoke-WarnCommitSecrets';   name = 'warn-commit-secrets' }
+)
+$results = New-Object System.Collections.Generic.List[object]
+foreach ($c in $checks) {
+    try {
+        $r = & $c.fn $data
+        if ($r) { $r['Name'] = $c.name; $results.Add($r) }
     } catch {
         # 한 검사의 예외는 나머지를 막지 않는다(런타임 격리 — 안전측 통과).
     }
@@ -55,6 +73,7 @@ if ($blocked.Count -gt 0) {
     # 차단: 차단 사유만 출력(warn 경고는 버림 — D4 트레이드오프), exit 2로 도구 차단.
     foreach ($b in $blocked) {
         foreach ($l in $b.Stderr) { [Console]::Error.WriteLine($l) }
+        Write-DispatchEvent $b['Name'] 'block' $b
     }
     exit 2
 }
@@ -63,6 +82,7 @@ if ($blocked.Count -gt 0) {
 $contexts = New-Object System.Collections.Generic.List[string]
 foreach ($r in $results) {
     foreach ($l in $r.Stderr) { [Console]::Error.WriteLine($l) }
+    if (($r.Stderr -and @($r.Stderr).Count -gt 0) -or $r.Context) { Write-DispatchEvent $r['Name'] 'warn' $r }
     if ($r.Context) { $contexts.Add($r.Context) }
 }
 if ($contexts.Count -gt 0) {

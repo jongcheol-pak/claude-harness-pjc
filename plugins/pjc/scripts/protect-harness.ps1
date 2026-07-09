@@ -67,7 +67,7 @@ $norm = '/' + ($segs -join '/')
 # hook 신설 시 여기에 함께 추가할 것(v1.96.0 warn-commit-secrets 누락이 v1.97.2에서 뒤늦게 합류한 전례).
 # secret-patterns는 hook이 아닌 dot-source 헬퍼지만, 설치본 개조 시 시크릿 경고 계층(post-write·
 # warn-commit-secrets)이 동일하게 무력화되는 등가 우회라 보호 대상에 포함한다.
-$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib'
+$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib|warn-version-drift|hook-event-log'
 
 # (1) .claude/ 하위 설치본 hook 스크립트·hooks.json 개조
 $isHookScript = ($norm -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$')) -or
@@ -89,6 +89,13 @@ if ($isHookScript -or $suspect83) {
     [Console]::Error.WriteLine("BLOCKED: 하니스 안전 hook 개조 시도 감지 — $why")
     [Console]::Error.WriteLine("대상: $targetPath")
     [Console]::Error.WriteLine("하니스 수정은 개발 repo(경로에 .claude 없음)에서 plan 게이트를 거쳐 진행하세요.")
+    # [이벤트 로깅] 차단 판정 완료 후 exit 직전 — 로드·호출 실패 전면 격리(차단 동작 무영향).
+    try {
+        . (Join-Path $PSScriptRoot 'hook-event-log.ps1')
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+            Write-HookEvent 'protect-harness' 'block' $why ([string]$targetPath)
+        }
+    } catch {}
     exit 2
 }
 

@@ -53,7 +53,7 @@ function Test-WarnOnce {
 #   개조해 안전 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만 그 시도를 가시화한다.
 $normFileH2 = $file -replace '\\', '/'
 # hook·공유 헬퍼 이름 집합 — protect-harness.ps1 과 동일 유지(hook 신설 시 두 곳 함께 추가, secret-patterns 포함 근거는 그쪽 주석).
-$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib'
+$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib|warn-version-drift|hook-event-log'
 # 8.3 단축명 마스킹 감지(H3) — protect-harness.ps1의 $suspect83과 동일 술어(탐지↔차단 대칭, 함께 갱신).
 #   실제 마스킹 형태(CLAUDE~N) + hook명 + /plugins/cache/(설치 캐시)일 때만 감지. hook명 단독 판정은
 #   'Claude…' 폴더(8.3=CLAUDE~1, 이 repo 포함)의 개발 소스 편집을 오탐하므로 캐시 컨텍스트를 게이트로
@@ -335,6 +335,14 @@ if ($allMsgs.Count -gt 0) {
 
     # stderr: 사용자 가시성용
     [Console]::Error.WriteLine($msg)
+
+    # [이벤트 로깅] 경고 방출 시 1건 적재 — 검사 판정 무변경, 실패 전면 격리.
+    try {
+        . (Join-Path $PSScriptRoot 'hook-event-log.ps1')
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+            Write-HookEvent 'post-write-checks' 'warn' ([string]$allMsgs[0]) ([string]$file)
+        }
+    } catch {}
 
     # stdout JSON: PostToolUse additionalContext로 모델에 전달 (exit 0 비차단).
     $payload = @{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $msg } } | ConvertTo-Json -Compress -Depth 5

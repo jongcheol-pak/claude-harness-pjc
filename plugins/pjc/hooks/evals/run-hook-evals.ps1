@@ -657,6 +657,99 @@ if ($gitOk) {
 }
 
 # =====================================================================
+# 10) warn-version-drift 시나리오 (SessionStart — 설치본↔레포 버전 비교)
+# =====================================================================
+# 설치본은 $env:CLAUDE_PLUGIN_ROOT 픽스처로, 레포는 마커 2종(plugins/pjc/.claude-plugin/plugin.json +
+# .claude-plugin/marketplace.json) 픽스처로 위장한다. 실행 후 CLAUDE_PLUGIN_ROOT는 원복(다른 시나리오 오염 방지).
+$vdRealRoot = $env:CLAUDE_PLUGIN_ROOT
+try {
+    # 가짜 설치본 (v1.0.0)
+    $vdInst = Join-Path $work 'vd-installed'
+    New-Item -ItemType Directory (Join-Path $vdInst '.claude-plugin') -Force | Out-Null
+    '{ "name": "pjc", "version": "1.0.0" }' | Set-Content (Join-Path $vdInst '.claude-plugin/plugin.json')
+    $env:CLAUDE_PLUGIN_ROOT = $vdInst
+
+    # 가짜 하네스 레포 (v9.9.9 — 불일치)
+    $vdRepo = Join-Path $work 'vd-repo'
+    New-Item -ItemType Directory (Join-Path $vdRepo 'plugins/pjc/.claude-plugin') -Force | Out-Null
+    New-Item -ItemType Directory (Join-Path $vdRepo '.claude-plugin') -Force | Out-Null
+    '{ "name": "pjc", "version": "9.9.9" }' | Set-Content (Join-Path $vdRepo 'plugins/pjc/.claude-plugin/plugin.json')
+    '{ "name": "pjc-harness" }' | Set-Content (Join-Path $vdRepo '.claude-plugin/marketplace.json')
+
+    $vdJson = @{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $vdRepo } | ConvertTo-Json -Compress
+    # 1) 불일치 → 드리프트 경고 (exit 0 — 비차단)
+    $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
+    Assert-Case -Name "version-drift: 설치본≠레포 경고" -R $r -ExpectExit 0 -ExpectContains '버전 드리프트'
+
+    # 2) 일치 → 무출력
+    '{ "name": "pjc", "version": "1.0.0" }' | Set-Content (Join-Path $vdRepo 'plugins/pjc/.claude-plugin/plugin.json')
+    $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
+    Assert-Case -Name "version-drift: 버전 일치 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 3) 비레포 cwd(마커 없음) → 무출력
+    $r = Invoke-Hook 'warn-version-drift.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $work } | ConvertTo-Json -Compress)
+    Assert-Case -Name "version-drift: 비레포 cwd 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 4) CLAUDE_PLUGIN_ROOT 부재 → 무출력 (fail-open)
+    $env:CLAUDE_PLUGIN_ROOT = $null
+    '{ "name": "pjc", "version": "9.9.9" }' | Set-Content (Join-Path $vdRepo 'plugins/pjc/.claude-plugin/plugin.json')
+    $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
+    Assert-Case -Name "version-drift: CLAUDE_PLUGIN_ROOT 부재 무출력(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
+} finally {
+    $env:CLAUDE_PLUGIN_ROOT = $vdRealRoot
+}
+
+# ---- [T1] protect-harness: 신규 hook(warn-version-drift) 설치본 개조 차단 (이름 집합 합류 실증) ----
+$vdCache = Join-Path $iso '.claude/plugins/cache/pjc-harness/pjc/1.0.0/scripts'
+$vdTarget = (Join-Path $vdCache 'warn-version-drift.ps1') -replace '\\', '/'
+$r = Invoke-Hook 'protect-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $vdTarget; content = 'x' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "protect-harness: 설치본 warn-version-drift 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+# =====================================================================
+# 11) hook 이벤트 로깅 (hook-event-log.ps1 — 적재·격리·시크릿 fail-closed)
+# =====================================================================
+# 로그는 격리 홈($iso)의 .claude/.state/hook-events/{YYYY-MM}.jsonl에 쓰인다.
+
+# (a) 쓰기 불가 격리 — 로그 경로가 막혀도 차단 동작은 정상 (별도 격리 홈에서 hook-events 자리를 파일로 선점).
+#     ※ (b)보다 먼저: $iso에는 앞 섹션들의 경고 로깅으로 이미 디렉터리가 생겨 있을 수 있어 새 홈을 쓴다.
+$iso2 = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-lockedlog-" + $suffix)
+New-Item -ItemType Directory -Path (Join-Path $iso2 '.claude/.state') -Force | Out-Null
+'lock' | Set-Content (Join-Path $iso2 '.claude/.state/hook-events')   # 디렉터리 자리에 파일 — 로깅만 실패 유도
+$env:USERPROFILE = $iso2
+$r = Invoke-Hook 'block-destructive.ps1' (@{ tool_name = 'Bash'; tool_input = @{ command = 'rm -rf /' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "event-log: 로그 경로 쓰기 불가여도 차단 정상(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$env:USERPROFILE = $iso
+Remove-Item -Recurse -Force $iso2 -ErrorAction SilentlyContinue
+
+# (b) 차단 이벤트 적재 실증 — block-destructive 차단 1건 후 로그 라인 존재.
+$r = Invoke-Hook 'block-destructive.ps1' (@{ tool_name = 'Bash'; tool_input = @{ command = 'rm -rf /' } } | ConvertTo-Json -Compress)
+$evDir = Join-Path $iso '.claude/.state/hook-events'
+$evText = ''
+try { $evText = (Get-ChildItem -LiteralPath $evDir -Filter '*.jsonl' -ErrorAction Stop | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n" } catch {}
+if (($r.code -eq 2) -and ($evText -match '"hook":"block-destructive"') -and ($evText -match '"decision":"block"')) {
+    $script:results.Add(@{ ok = $true; line = "[PASS] event-log: 차단 이벤트 jsonl 적재" })
+} else {
+    $script:results.Add(@{ ok = $false; line = "[FAIL] event-log: 차단 이벤트 적재 누락 (exit=$($r.code), 로그검색 실패)" })
+}
+
+# (c) 시크릿 fail-closed — warn 명령에 시크릿 값 포함 시 로그에 평문 부재 (cmd 필드 생략).
+$fakeKey = 'ZXCV9876QWER5432'   # 가짜 값 (러너 자체 오탐 방지용 분리 기재 불필요 — 패턴 좌변 없음)
+$secCmd = 'git push origin main && export api_key="' + $fakeKey + '"'
+$r = Invoke-Hook 'pre-bash-dispatch.ps1' (@{ tool_name = 'Bash'; tool_input = @{ command = $secCmd } } | ConvertTo-Json -Compress)
+$evText2 = ''
+try { $evText2 = (Get-ChildItem -LiteralPath $evDir -Filter '*.jsonl' -ErrorAction Stop | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n" } catch {}
+if (($r.code -eq 0) -and ($evText2 -match '"hook":"warn-external-ops"') -and ($evText2 -notmatch [regex]::Escape($fakeKey))) {
+    $script:results.Add(@{ ok = $true; line = "[PASS] event-log: 시크릿 포함 명령 fail-closed (평문 미기록)" })
+} else {
+    $script:results.Add(@{ ok = $false; line = "[FAIL] event-log: 시크릿 fail-closed 위반 또는 warn 미적재 (exit=$($r.code))" })
+}
+
+# (d) protect-harness: 설치본 hook-event-log(헬퍼) 개조 차단 (이름 집합 합류 실증)
+$elTarget = (Join-Path $vdCache 'hook-event-log.ps1') -replace '\\', '/'
+$r = Invoke-Hook 'protect-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $elTarget; content = 'x' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "protect-harness: 설치본 hook-event-log 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+# =====================================================================
 # USERPROFILE 원복 + 결과 보고
 # =====================================================================
 $env:USERPROFILE = $realHome
