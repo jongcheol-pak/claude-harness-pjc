@@ -129,7 +129,7 @@
 
 ## Tasks
 
-- [ ] T1. SessionStart 버전 드리프트 경고 hook (warn-version-drift.ps1)
+- [x] T1. SessionStart 버전 드리프트 경고 hook (warn-version-drift.ps1)
   - **Type**: D
   - **Acceptance**: Given 하네스 레포 cwd + 설치본 버전 ≠ 레포 plugin.json 버전, When SessionStart(startup|resume|clear), Then stdout으로 "설치본 vX ≠ 레포 vY …" 경고 1줄 + exit 0. Given 버전 일치 또는 비레포 cwd 또는 CLAUDE_PLUGIN_ROOT 부재, Then 무출력 exit 0. And protect-harness·post-write 이름 집합, validate `$hooks`에 합류(설치본 개조 차단). And 골든 3건(불일치 경고/일치 침묵/비레포 침묵) PASS + 기존 288 무회귀.
   - **Files**:

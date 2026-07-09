@@ -657,6 +657,55 @@ if ($gitOk) {
 }
 
 # =====================================================================
+# 10) warn-version-drift 시나리오 (SessionStart — 설치본↔레포 버전 비교)
+# =====================================================================
+# 설치본은 $env:CLAUDE_PLUGIN_ROOT 픽스처로, 레포는 마커 2종(plugins/pjc/.claude-plugin/plugin.json +
+# .claude-plugin/marketplace.json) 픽스처로 위장한다. 실행 후 CLAUDE_PLUGIN_ROOT는 원복(다른 시나리오 오염 방지).
+$vdRealRoot = $env:CLAUDE_PLUGIN_ROOT
+try {
+    # 가짜 설치본 (v1.0.0)
+    $vdInst = Join-Path $work 'vd-installed'
+    New-Item -ItemType Directory (Join-Path $vdInst '.claude-plugin') -Force | Out-Null
+    '{ "name": "pjc", "version": "1.0.0" }' | Set-Content (Join-Path $vdInst '.claude-plugin/plugin.json')
+    $env:CLAUDE_PLUGIN_ROOT = $vdInst
+
+    # 가짜 하네스 레포 (v9.9.9 — 불일치)
+    $vdRepo = Join-Path $work 'vd-repo'
+    New-Item -ItemType Directory (Join-Path $vdRepo 'plugins/pjc/.claude-plugin') -Force | Out-Null
+    New-Item -ItemType Directory (Join-Path $vdRepo '.claude-plugin') -Force | Out-Null
+    '{ "name": "pjc", "version": "9.9.9" }' | Set-Content (Join-Path $vdRepo 'plugins/pjc/.claude-plugin/plugin.json')
+    '{ "name": "pjc-harness" }' | Set-Content (Join-Path $vdRepo '.claude-plugin/marketplace.json')
+
+    $vdJson = @{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $vdRepo } | ConvertTo-Json -Compress
+    # 1) 불일치 → 드리프트 경고 (exit 0 — 비차단)
+    $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
+    Assert-Case -Name "version-drift: 설치본≠레포 경고" -R $r -ExpectExit 0 -ExpectContains '버전 드리프트'
+
+    # 2) 일치 → 무출력
+    '{ "name": "pjc", "version": "1.0.0" }' | Set-Content (Join-Path $vdRepo 'plugins/pjc/.claude-plugin/plugin.json')
+    $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
+    Assert-Case -Name "version-drift: 버전 일치 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 3) 비레포 cwd(마커 없음) → 무출력
+    $r = Invoke-Hook 'warn-version-drift.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $work } | ConvertTo-Json -Compress)
+    Assert-Case -Name "version-drift: 비레포 cwd 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 4) CLAUDE_PLUGIN_ROOT 부재 → 무출력 (fail-open)
+    $env:CLAUDE_PLUGIN_ROOT = $null
+    '{ "name": "pjc", "version": "9.9.9" }' | Set-Content (Join-Path $vdRepo 'plugins/pjc/.claude-plugin/plugin.json')
+    $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
+    Assert-Case -Name "version-drift: CLAUDE_PLUGIN_ROOT 부재 무출력(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
+} finally {
+    $env:CLAUDE_PLUGIN_ROOT = $vdRealRoot
+}
+
+# ---- [T1] protect-harness: 신규 hook(warn-version-drift) 설치본 개조 차단 (이름 집합 합류 실증) ----
+$vdCache = Join-Path $iso '.claude/plugins/cache/pjc-harness/pjc/1.0.0/scripts'
+$vdTarget = (Join-Path $vdCache 'warn-version-drift.ps1') -replace '\\', '/'
+$r = Invoke-Hook 'protect-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $vdTarget; content = 'x' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "protect-harness: 설치본 warn-version-drift 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+# =====================================================================
 # USERPROFILE 원복 + 결과 보고
 # =====================================================================
 $env:USERPROFILE = $realHome
