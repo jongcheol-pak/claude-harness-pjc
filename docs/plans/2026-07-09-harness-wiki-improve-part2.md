@@ -174,7 +174,7 @@
   - **Halt Forecast**: (해당 없음 — 소비 게이트는 B-1 0 정본이 이미 정의)
   - **Depends on**: T1 ([K-MISS] 포함된 B-1 0을 M이 포인터로 참조 — 태그 완성 후)
 
-- [ ] T4. 절차 K 참조 내역 plan.md 기록
+- [x] T4. 절차 K 참조 내역 plan.md 기록
   - **Type**: C
   - **Acceptance**: Given plan-feature Step 1에서 절차 K로 위키 참조, Then 참조한 페이지·핵심 결론 1줄(무매칭이면 "관련 위키 자료 없음")을 plan.md Investigation Log에 기록하는 규정이 Step 1 위키 참조 불릿에 존재. And plan-template.md Investigation Log 주석에 기록 예시 1줄. And implement-task 재개 진입 :172에 "plan Investigation Log의 위키 참조 기록이 있으면 그 페이지를 우선 식별 대상으로" 1줄 (implement-task SKILL.md 총 행수 ≤500 유지).
   - **Files**:
