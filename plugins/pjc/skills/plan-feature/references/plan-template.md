@@ -42,7 +42,9 @@ plan.md는 **git에 commit되어 영구 보존**된다.
      - 첫 plan(part1): **다음 plan**: <part2 경로>
      - 둘째 plan(part2): **이전 plan**: <part1 경로>
      plan-completion-reviewer가 이 표식으로 분할 plan임을 인지해 Goal을 "이 plan 범위"로 해석한다(전체 미완성을 BLOCKER로 보지 않음).
-     동기화 주의: part2 경로는 이 줄·아래 ## Deferred·## Next Steps 3곳에 나타난다 — 경로를 바꾸면 세 곳을 함께 고친다. -->
+     동기화 주의: part2 경로는 이 줄·아래 ## Deferred·## Next Steps 3곳에 나타난다 — 경로를 바꾸면 세 곳을 함께 고친다.
+     핸드오프: 이전 part의 implement-task가 완료 시 이 포인터 줄 아래에 `## 이전 part 핸드오프` 섹션(함정·기각된
+     접근·검증 지름길, 5줄 상한)을 append할 수 있다 — 계획 단계에서 미리 만들지 않는다(구현 세션 산출물). -->
 **다음 plan**: <분할 첫 part(part1)면 part2 경로 — 분할 아니거나 마지막 part면 이 줄 생략(part2는 대신 **이전 plan**: 사용)>
 
 ## 요구 이해
