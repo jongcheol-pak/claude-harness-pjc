@@ -9,7 +9,7 @@
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
-      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION] 태그별, §7-25)
+      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION]/[PROJECT-FACT] 태그별, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
@@ -595,17 +595,19 @@ def main():
             warn(f"log 아카이브 인덱스 깨짐: log.md가 {ym}.md를 가리키나 90_archive/log/{ym}.md 없음",
                  f"90_archive/log/{ym}.md")
 
-    # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/B-1 0): 잔량이 있으면 INFO로 알려
+    # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/K 5-3/B-1 0): 잔량이 있으면 INFO로 알려
     #  다음 ingest/lint 세션이 소비하게 한다 (0건·파일 없음이면 생략). 태그별 분리 —
     #  [K-DRIFT]는 위키 세션이 반영 후 제거, [SKILL-IMPROVE]는 사용자 보고 대상(제거는 사용자 지시),
-    #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비).
+    #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비),
+    #  [PROJECT-FACT]는 해당 프로젝트 허브 '## 작업 규약·주의사항'에 반영 후 제거(자가 소비).
     #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
     if "pending.md" in pages:
         pend_text = pages["pending.md"][2]
         parts = []
         for tag, label in (("K-DRIFT", "K-DRIFT {n}건"),
                            ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)"),
-                           ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비)")):
+                           ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비)"),
+                           ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — 허브 '작업 규약·주의사항' 반영 대상, 게이트는 DECISION 동형)")):
             n = sum(1 for line in pend_text.splitlines()
                     if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[" + tag + r"\]", line))
             if n:

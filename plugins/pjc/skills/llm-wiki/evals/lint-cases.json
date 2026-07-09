@@ -173,6 +173,15 @@
         "미편집"
       ],
       "rationale": "T9(F1) §8 예외 1 — status: archived 페이지는 updated가 90일+ 과거여도 시간기반 신선도 INFO(미편집)를 내지 않아야 함(paused 동급, 절차 D로 20_projects/에 남은 archived 프로젝트의 영구 노이즈 방지). ERR 0 확인 + '미편집' 부재. status를 active로 바꾸면 '90일+ 미편집'이 나오는 fixture라 면제가 실제 작동함을 검증(expect_clean은 INFO를 허용하므로 expect_keywords로 expect_absent를 활성화)"
+    },
+    {
+      "fixture": "pending-backlog",
+      "expect_keywords": [
+        "pending.md 미처리 잔량",
+        "PROJECT-FACT 1건",
+        "DECISION 1건"
+      ],
+      "rationale": "§7-25 pending 잔량 집계 INFO — [PROJECT-FACT] 태그 합류(v1.102.0 T3) 실증 + 기존 태그(DECISION) 집계 무회귀"
     }
   ]
 }
