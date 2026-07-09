@@ -8,7 +8,7 @@ language: ko
 # 위키 규칙 — llm-wiki 번들 (규칙 진실원천)
 
 > 이 파일은 위키의 헌법이다. llm-wiki 스킬은 이 파일의 규칙을 따르되, **전체를 정독하지 않고 작업 관련 §만** 아래 목차 인덱스로 특정해 부분 Read한다(컨텍스트 예산 — 이 파일은 수십 KB급 대형 파일이다).
-> 실행 절차(A~L)는 `SKILL.md`(본체: §0·K·J)와 `references/procedures-content.md`(A~E·I)·`references/procedures-ops.md`(F·G·H·L)에 있다. vault에는 이 규칙의 사본을 두지 않는다(번들만 사용).
+> 실행 절차(A~M)는 `SKILL.md`(본체: §0·K·J)와 `references/procedures-content.md`(A~E·I)·`references/procedures-ops.md`(F·G·H·L·M)에 있다. vault에는 이 규칙의 사본을 두지 않는다(번들만 사용).
 
 ## 목차 (부분 Read 인덱스 — 작업 관련 §만 읽는다)
 
