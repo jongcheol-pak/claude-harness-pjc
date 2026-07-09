@@ -38,7 +38,7 @@
 ├── plugins/pjc/
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop hook 배선
-│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(SessionStart 버전 드리프트 경고)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib, hook 아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용).
+│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(SessionStart 버전 드리프트 경고)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log(차단/경고 이벤트 jsonl 적재 — `~/.claude/.state/hook-events/`), hook 아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용).
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
 ├── validate.ps1                     # 설치본 검증

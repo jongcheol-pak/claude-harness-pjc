@@ -25,6 +25,18 @@ try {
 # 파일 경로가 없으면 통과
 if ([string]::IsNullOrWhiteSpace($targetPath)) { exit 0 }
 
+# [이벤트 로깅] 차단(plan 없음)·경고(G4/H3) 이벤트를 오탐 리뷰 데이터로 적재 — 게이트 판정은 무변경,
+#   실패 전면 격리(try/catch + Get-Command 가드).
+try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
+function Write-RpEvent {
+    param([string]$Decision, [string]$Rule)
+    try {
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+            Write-HookEvent 'require-plan-for-write' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath)
+        }
+    } catch {}
+}
+
 # ---- 항상 허용되는 파일 타입 ----
 # 문서, 설정, plan, 이미지·리소스는 plan 없이도 작성 가능
 $alwaysAllowedExts = @(
@@ -319,6 +331,7 @@ if ($foundIn) {
                                "이번 코드 변경이 이 완료된 plan의 범위 내 후속 작업(리뷰 지적 수정·마무리·문서 갱신 등)이면 새 plan 없이 그대로 진행하세요. " +
                                "완료된 plan과 무관한 '새 작업'일 때만 plan-feature로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다. (이 경고는 세션당 1회)"
                     [Console]::Error.WriteLine($warnMsg)
+                    Write-RpEvent 'warn' 'G4: 완료된 plan으로 새 변경'
                     # PreToolUse additionalContext로 모델에 전달 (exit 0 비차단)
                     $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
                     [Console]::Out.WriteLine($payload)
@@ -331,6 +344,7 @@ if ($foundIn) {
                                "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. plan-feature로 실제 task를 작성하세요. " +
                                "(단 이 plan.md가 분할 plan 포인터·스텁이면 실제 task는 docs/plans/ 하위 plan에 있으니 무시하세요. 이 경고는 세션당 1회)"
                     [Console]::Error.WriteLine($warnMsg)
+                    Write-RpEvent 'warn' 'H3: 빈/플레이스홀더 plan'
                     $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
                     [Console]::Out.WriteLine($payload)
                 }
@@ -368,4 +382,5 @@ foreach ($s in $searchStarts) {
 [Console]::Error.WriteLine("     루트의 plan.md 파일 위치와 검색 시작점이 다른 경로일 수 있습니다.")
 [Console]::Error.WriteLine("     모노레포라면 작업 디렉터리 위쪽에 plan.md 또는 docs/plans/ 가 있어야 합니다.")
 
+Write-RpEvent 'block' 'plan 없음 차단'
 exit 2

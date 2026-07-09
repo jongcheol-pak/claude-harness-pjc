@@ -145,7 +145,7 @@
     - (ii-a) hooks.json 구조 변경(이벤트 신설) → `## 사전 승인 항목`에 등록
   - **Depends on**: -
 
-- [ ] T2. hook 이벤트 로깅 (hook-event-log.ps1 헬퍼 + 6개 지점 적용)
+- [x] T2. hook 이벤트 로깅 (hook-event-log.ps1 헬퍼 + 6개 지점 적용)
   - **Type**: D
   - **Acceptance**: Given 차단·경고가 실제 방출되는 hook 이벤트, Then `~/.claude/.state/hook-events/{YYYY-MM}.jsonl`에 `{ts, hook, decision, rule, cmd(≤200자·시크릿 마스킹)}` 1행 append — 차단/경고 판정 자체는 수정 전과 완전 동일(골든 288 무회귀로 실증). Given 로그 디렉터리 쓰기 불가·헬퍼 로드 실패, Then hook 본연 동작(차단/경고) 정상 + 로깅만 조용히 생략(신규 골든 케이스로 실증). Given 시크릿 포함 명령, Then 로그의 cmd 필드에 시크릿 평문 부재(마스킹 실패 시 cmd 필드 생략). And 90일 초과 로그 파일 자동 정리.
   - **Files**:
@@ -231,6 +231,7 @@
 ## Retry Ledger
 
 ## Progress Log
+- T1-T2 완료 (커밋 74f9485, T2는 amend 예정): warn-version-drift(SessionStart, matcher startup|resume|clear, 마커 2종+fail-open) + hook-event-log 헬퍼(6지점, 시크릿은 cmd 필드 생략 fail-closed — Get-SecretMatches가 라벨만 반환해 값 치환 대신 생략 채택). 골든 288→297 전부 green, 리뷰 4건 전부 OK 1심 통과.
 
 ## Next Steps
 - 이 plan(part1) 완료 후: 남은 분할 plan `docs/plans/2026-07-09-harness-wiki-improve-part2.md` — pjc:implement-task로 별도 실행

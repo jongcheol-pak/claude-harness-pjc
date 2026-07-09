@@ -40,6 +40,19 @@ try {
 
 if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
+# [이벤트 로깅] 차단 이벤트를 오탐 리뷰 데이터로 적재 (hook-event-log.ps1) — 차단 '판정'은 무변경.
+#   로드·호출의 어떤 실패도 차단 동작에 영향 없게 전면 격리(try/catch + Get-Command 가드,
+#   호출 위치도 판정 완료 후 exit 직전) — 마지막 방어선 결합 금지 원칙 유지.
+try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
+function Write-BdEvent {
+    param([string]$Rule, [string]$CmdText)
+    try {
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+            Write-HookEvent 'block-destructive' 'block' $Rule $CmdText
+        }
+    } catch {}
+}
+
 # ---- heredoc 파일-리다이렉트 본문 스트립 (모든 검사 전, v1.98.0) ----
 # 'cat <<EOF > m.sql … DROP TABLE …; EOF'처럼 heredoc이 '파일로 리다이렉트'되면 본문은 기록될
 #   데이터일 뿐 실행되지 않는다 — Split-TopLevel이 개행에서 본문을 별도 sub로 쪼개 $patterns
@@ -109,6 +122,7 @@ if ($cmd -match $findDangerRoot -and (
     [Console]::Error.WriteLine("BLOCKED: 위험 루트(/, ~, `$HOME, 드라이브 루트)를 find로 훑어 삭제(xargs rm / -exec rm / -delete) 감지")
     [Console]::Error.WriteLine("Command: $cmd")
     [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
+    Write-BdEvent 'find 위험루트 삭제' $cmd
     exit 2
 }
 
@@ -140,6 +154,7 @@ if (($beforePipe -match $enumSource) -and ($enumSrcScan -match $dangerTarget) -a
     [Console]::Error.WriteLine("BLOCKED: 위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지")
     [Console]::Error.WriteLine("Command: $cmd")
     [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
+    Write-BdEvent '열거 파이프 삭제' $cmd
     exit 2
 }
 
@@ -347,6 +362,7 @@ foreach ($sub in $subs) {
             [Console]::Error.WriteLine("BLOCKED: 재귀 삭제 + 위험 루트 대상 감지")
             [Console]::Error.WriteLine("Command: $sub")
             [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
+            Write-BdEvent '재귀 삭제 + 위험 루트' $sub
             exit 2
         }
     }
@@ -356,6 +372,7 @@ foreach ($sub in $subs) {
             [Console]::Error.WriteLine("BLOCKED: 파괴적 명령 패턴 감지: '$pattern'")
             [Console]::Error.WriteLine("Command: $sub")
             [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
+            Write-BdEvent "패턴: $pattern" $sub
             exit 2
         }
     }
