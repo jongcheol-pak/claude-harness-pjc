@@ -161,7 +161,7 @@
     - (i) §7-19 누락 행 추가 욕구(키워드 필요) → D3에서 제거만으로 확정(추가는 Out of Scope)
   - **Depends on**: T1 (lint.py·lint-cases 동시 수정 — 충돌 방지 순차)
 
-- [ ] T3. 경량 큐 소비 절차 M 신설
+- [x] T3. 경량 큐 소비 절차 M 신설
   - **Type**: C
   - **Acceptance**: Given "큐 정리"/"pending 정리" 요청, Then procedures-ops.md `### M. 큐 소비 (경량)`이 §0 시작 절차 → pending.md 읽기 → B-1 0 정본 부분 Read로 태그별 소비(게이트 포함) → log 1줄 → 잔량 보고로 완결(lint·ingest 미수행 명시). And SKILL.md 절차 목차 라우팅 표에 M 행 존재 + description에 트리거 문구 추가(총 1,024자 이내). And `check_consistency.py` exit 0 (라우팅 표 ↔ 헤딩 동적 캡처 통과).
   - **Files**:
