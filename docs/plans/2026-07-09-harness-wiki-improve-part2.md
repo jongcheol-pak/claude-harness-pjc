@@ -186,7 +186,7 @@
   - **Halt Forecast**: (해당 없음 — 지침 doc 1~2줄 추가, 500줄 위험은 Edge Case에서 선해소)
   - **Depends on**: -
 
-- [ ] T5. 버전·README·통합 검증
+- [x] T5. 버전·README·통합 검증
   - **Type**: A
   - **Acceptance**: plugin.json·README 1.105.0→1.106.0(part1 선행 가정 — part1 미실행 상태면 1.104.0→1.106.0이 아니라 현재 버전에서 minor +1). README에 v1.106.0 변경 안내 1블록([K-MISS]·--fix·절차 M·K 참조 기록). 통합 검증 전부 green: 전 ps1 parse OK, JSON 매니페스트 3종 OK, `check_consistency.py` exit 0, `run_lint_evals.py` 전 케이스 PASS, .md 무BOM.
   - **Files**:
@@ -218,6 +218,7 @@
 
 ## Progress Log
 - T1-T2 완료 (커밋 bc6283d + T2): [K-MISS] 다섯 태그 열거 정합(K 2 :115의 기존 5-3 누락도 정정) / lint.py --fix(안전 3종, apply_fixes가 본 lint 헬퍼 재사용·BOM/줄바꿈 원본 보존·백업 §8 미덮어쓰기, DEC_PTR_RX 모듈 상수 승격 — 리뷰 m1 반영, m2는 Deferred). 골든 22→23, check_consistency 94 유지. 리뷰 4건 OK(m1·m2 MINOR만).
+- T3-T5 완료: 절차 M(소비는 B-1 0 포인터, 레포 대조 필요 태그는 보류 경계 — consistency 96항목 자동 캡처) / K 참조 기록(3파일, 문구 리터럴 통일 MINOR 2 반영) / 버전 1.106.0. 통합 검증 전부 green(parse·JSON·hook 297·lint 23·consistency 96).
 
 ## Next Steps
 - part1(하네스) 완료 후 이 plan을 `docs/plans/2026-07-09-harness-wiki-improve-part2.md 구현`으로 실행
