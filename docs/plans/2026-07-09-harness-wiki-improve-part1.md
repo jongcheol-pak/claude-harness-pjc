@@ -186,7 +186,7 @@
     - (ii-a) AGENTS.md 수정(기존 산문 조건의 표 재구성) → `## 사전 승인 항목`에 등록
   - **Depends on**: T1 (AGENTS.md를 T1도 수정 — 순차)
 
-- [ ] T5. reviewer·explorer LSP 보강
+- [x] T5. reviewer·explorer LSP 보강
   - **Type**: C
   - **Acceptance**: plan-reviewer·spec-compliance-reviewer·code-quality-reviewer·plan-completion-reviewer·explorer 5개 frontmatter `tools:`에 LSP 추가 + 각 본문에 "LSP 사용 가능 시 참조 추적 우선(불활성이면 기존 grep 절차)" 1~2줄. spec-prefilter 무변경. disallowedTools 무변경(Write/Edit 차단 유지).
   - **Files**:
@@ -232,6 +232,7 @@
 
 ## Progress Log
 - T1-T2 완료 (커밋 74f9485, T2는 amend 예정): warn-version-drift(SessionStart, matcher startup|resume|clear, 마커 2종+fail-open) + hook-event-log 헬퍼(6지점, 시크릿은 cmd 필드 생략 fail-closed — Get-SecretMatches가 라벨만 반환해 값 치환 대신 생략 채택). 골든 288→297 전부 green, 리뷰 4건 전부 OK 1심 통과.
+- T3-T5 완료 (커밋 ca4b5b5·ec7cbdb·T5 amend): 핸드오프 섹션 규약(final-report-template 생성 + SKILL :183 읽기 + plan-template 주석, 3-part 일반화 MINOR 즉시 반영) / AGENTS 검증 매핑 표 + V-2 표 인식 / agent 5종 LSP(tools+조건화 가이드, prefilter·disallowedTools 무변경). 리뷰 3건 전부 OK.
 
 ## Next Steps
 - 이 plan(part1) 완료 후: 남은 분할 plan `docs/plans/2026-07-09-harness-wiki-improve-part2.md` — pjc:implement-task로 별도 실행

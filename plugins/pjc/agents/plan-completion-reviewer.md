@@ -4,13 +4,15 @@ description: Whole-plan verification ONLY after ALL tasks complete (implement-ta
 model: opus
 effort: high
 maxTurns: 40
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, LSP
 disallowedTools: Write, Edit, NotebookEdit
 ---
 
 # Plan Completion Reviewer
 
 `implement-task`의 모든 task 완료 후 호출되는 **전체 plan 적대적 검토자**.
+
+> **LSP 우선 (사용 가능 시)**: LSP 도구가 활성인 프로젝트에서는 호출자/구현체/참조 추적에 grep보다 LSP를 우선 사용한다(문자열 매칭 오탐·누락 감소). 없거나 비활성이면 기존 grep 절차 그대로.
 
 ## 역할 한 줄
 **plan.md 전체와 누적된 구현 diff를 대조하여, "plan이 달성되었는가"를 적대적으로 검증.**
