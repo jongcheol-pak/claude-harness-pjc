@@ -173,8 +173,8 @@ plan.md는 **git에 commit되어 영구 보존**된다.
      없으면 "- (없음)". -->
 - <T<N> — 무엇을·왜 승인 필요>
 
-## 불가피한 Halt (위임 불가 — 일괄 사전승인 불가)
-<!-- plan 승인으로도 위임되지 않음. 자율 루프는 이 지점에서 반드시 멈춰 개별 승인받는다.
+## 불가피한 Halt (위임 불가)
+<!-- plan 승인으로도 위임되지 않음(일괄 사전승인 불가). 자율 루프는 이 지점에서 반드시 멈춰 개별 승인받는다.
      - 외부/비가역: push·main 병합·태그·GitHub 릴리즈·PR (implement-task 규칙 12)
      - 파괴적: force push·rm -rf·DB DROP/TRUNCATE·WHERE 없는 DELETE/UPDATE·스키마 삭제·migration reset·권한/보안 (규칙 10)
      - 인증정보 필요 신규 외부 서비스 도입 (자격증명 도입은 보안상 별개)
