@@ -183,6 +183,26 @@
         "K-MISS 1건"
       ],
       "rationale": "§7-25 pending 잔량 집계 INFO — [PROJECT-FACT](v1.102.0 T3)·[K-MISS](v1.106.0 T1) 태그 합류 실증 + 기존 태그(DECISION) 집계 무회귀"
+    },
+    {
+      "fixture": "fix-mode",
+      "fix_mode": true,
+      "expect_keywords": [
+        "[FIXED] index.md: 미해결 질문 등록",
+        "[FIXED] index.md: 해결된 질문 행 1개 제거",
+        "깨진 decisions 아카이브 포인터 1행 제거",
+        "아카이브 포인터 추가",
+        "stale 아카이브 인덱스 행 1개 제거",
+        "백업: 90_archive/backup/"
+      ],
+      "after_expect_absent": [
+        "미해결 질문 index 미등록",
+        "index 미해결 목록에 잔존",
+        "아카이브 포인터 깨짐",
+        "아카이브 포인터 누락",
+        "log 아카이브 인덱스 깨짐"
+      ],
+      "rationale": "--fix 안전 3종(§7-23 양방향·§7-24 양방향·§7-19 stale 제거) 실증 — 임시 복사본에 --fix 적용 후 재lint에서 원 위반 문구 전부 부재 (v1.106.0 T2)"
     }
   ]
 }

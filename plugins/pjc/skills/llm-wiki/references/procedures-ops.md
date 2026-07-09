@@ -47,7 +47,7 @@
 #### F-2. 결과 보고
 - 결과를 **심각도 등급**(🔴 오류 / 🟡 경고 / 🔵 정보)으로 분류해 보고.
 - 이슈가 있으면 `30_knowledge/questions/lint-{YYYYMMDD}.md`에 리포트 페이지 작성(상세 보존), 요약은 사용자에게. (이 리포트는 발견 다건이면 길어지는 게 정상이라 lint 예산 검사에서 제외된다 — is_lint_report.)
-- 사용자 승인 후 수정.
+- 사용자 승인 후 수정. **참조 무결성 3종(§7-23·§7-24·§7-19 stale 행)은 수기 편집 대신 `python <skill>/scripts/lint.py "<vault>" --fix`로 대체할 수 있다**(자동 백업·[FIXED] 요약 출력 — 대상·안전장치 정본은 schema §7 서두, 승인 전 실행 금지).
 - **pending.md 큐 소비도 이 승인 지점에서 함께 처리**(F-0 잔량 보고 → 여기서 소비): 승인 시 B-1 0 규칙대로 K-DRIFT·DECISION(대상 프로젝트)·PROJECT-FACT(대상 프로젝트)·K-MISS(대상 프로젝트)·SKILL-IMPROVE를 소비한다. 소비 전 `references/procedures-content.md`의 B-1 0 절만 부분 Read(Grep/offset)해 제거 시점 재읽기-병합·중복 검사·롤오버·표식 규칙을 따른다(요약만으로 소비 금지). 다른 프로젝트 [DECISION]·[PROJECT-FACT]·[K-MISS]는 B-1 0의 동의 게이트를 따른다.
 - `log.md`: `- [YYYY-MM-DD] [LINT] 위키 점검. {발견}건 발견, {수정}건 수정. 표본: {코드 정합 샘플링 feature 목록}.` — 표본 명시는 다음 lint의 로테이션 근거다(F-1 10, schema §7-10).
 
