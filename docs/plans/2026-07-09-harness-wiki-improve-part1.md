@@ -160,7 +160,7 @@
     - (ii-a) block-destructive·protect-harness 파일 수정(차단 로직 무변경, 로깅 추가만 — AGENTS.md DO NOT 대상 파일) → `## 사전 승인 항목`에 등록 (사용자 Q3 답변으로 방향 기승인, plan 승인으로 확정)
   - **Depends on**: T1 (protect-harness·validate 이름 집합을 두 task가 연속 수정 — 충돌 방지 순차)
 
-- [ ] T3. 분할 plan 핸드오프 브리핑
+- [x] T3. 분할 plan 핸드오프 브리핑
   - **Type**: C
   - **Acceptance**: Given 분할 plan part1의 Phase F 통과 후 최종 보고 생성, Then part2 plan 파일 상단(분할 포인터 아래)에 `## 이전 part 핸드오프`(함정·기각된 접근·검증 지름길 — 총 5줄 상한, 없으면 "특이사항 없음" 1줄)를 append하는 규정이 final-report-template 분할 안내 절에 존재. And implement-task :183 분할 호출 규약에 "part 시작 시 이 섹션 우선 읽기" 명시(SKILL.md ≤500줄 유지). And plan-template 분할 주석에 섹션 규약 동기(3곳 동기 목록 갱신 불필요 — 경로 아님).
   - **Files**:
