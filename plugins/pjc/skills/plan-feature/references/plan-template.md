@@ -79,6 +79,8 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 ## Deferred / Follow-up
 <!-- 이번 제외 — 이번 plan에선 안 하지만 향후 진행할 작업.
      사용자가 "이번엔 빼고 다음에 하자"고 한 것은 Out of Scope가 아니라 반드시 여기로.
+     미처리분은 작업 완료 시 docs/plans/deferred.md 대장의 "## 대기"로도 반영된다
+     (implement-task F-6.5 규정 — plan 교체 시 유실 방지, plan-feature Step 1이 다음 계획 때 조회).
      분할 plan의 첫 part(part1)면: "**다음 분할 plan**: <part2 경로> — T1~ (전체의 후반부, 미실행)"을
      반드시 여기 기록해 둘째 plan 실행을 잊지 않게 한다(동기화: 상단 **다음 plan**:·## Next Steps와 같은 경로). -->
 - <이번엔 제외, 향후 별도 plan으로 진행할 작업>
