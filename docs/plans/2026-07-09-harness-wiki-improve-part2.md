@@ -213,6 +213,7 @@
 - 수동 검증: 실 vault(`D:/Personal Project/Obsidian Vault/LLM WIKI`)에 lint --fix를 **실행하지 않는다** — fixture 골든으로만 실증(실 vault는 사용자 위키 세션에서)
 
 ## Phase Ledger
+- Phase F 통과 (HEAD cb4a431) — F-2 전체 검증 green(parse·JSON 3종·hook 골든 297/297·lint 골든 23/23·check_consistency 96항목), F-7 plan-completion-reviewer OK(이슈 0)
 
 ## Retry Ledger
 
@@ -221,7 +222,8 @@
 - T3-T5 완료: 절차 M(소비는 B-1 0 포인터, 레포 대조 필요 태그는 보류 경계 — consistency 96항목 자동 캡처) / K 참조 기록(3파일, 문구 리터럴 통일 MINOR 2 반영) / 버전 1.106.0. 통합 검증 전부 green(parse·JSON·hook 297·lint 23·consistency 96).
 
 ## Next Steps
-- part1(하네스) 완료 후 이 plan을 `docs/plans/2026-07-09-harness-wiki-improve-part2.md 구현`으로 실행
+- part2 완료 (T1~T5 + Phase F 통과) — **분할 plan 완료 (part1+part2 전체 구현됨)**
+- push·main 병합·릴리즈(v1.105.0+v1.106.0 합류 발행 가능)·재설치는 별도 승인 대기
 
 ## Open Questions
 - (없음 — Q1~Q4 사용자 확정 반영 완료)
