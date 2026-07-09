@@ -43,16 +43,17 @@ Write-Host ""
 Write-Host "pjc Claude Code Harness - Plugin Installer" -ForegroundColor Cyan
 Write-Host ""
 
-# ---- 0. 런타임 확인 (안전 hook은 pwsh 7 우선·없으면 내장 PowerShell 폴백) ----
-# hook은 pwsh(PowerShell 7+)가 있으면 그쪽, 없으면 Windows 내장 powershell.exe(5.1)로 폴백 실행된다.
-# 따라서 Windows는 pwsh 미설치여도 안전망이 동작한다(추가 설치 불요). pwsh 설치 시 그쪽을 우선 쓴다.
-# 비-Windows(macOS/Linux)는 폴백할 5.1이 없어 pwsh가 반드시 필요하다(미검증·실험적).
+# ---- 0. 런타임 확인 (안전 hook은 pwsh 7 우선 — 실행 셸은 Claude Code가 결정) ----
+# v1.108.0부터 hook은 Claude Code가 띄운 PowerShell에서 직접 실행된다(자체 재기동 없음).
+# 실행 셸 선택은 Claude Code의 powershell 해석을 따르며(실측: pwsh 있으면 pwsh 우선·NoProfile),
+# 스크립트는 5.1 호환(BOM)이라 pwsh 미설치 Windows에서도 동작한다(추가 설치 불요, pwsh 설치 시 그쪽 우선).
+# 비-Windows(macOS/Linux)는 5.1이 없어 pwsh가 반드시 필요하다(미검증·실험적).
 $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
 $isWin = ($IsWindows -or -not (Test-Path variable:IsWindows))
 if (-not $pwshCmd) {
     if ($isWin) {
-        Write-Info "pwsh(PowerShell 7+) 미설치 — 안전 hook은 내장 powershell.exe(5.1)로 폴백 동작합니다(추가 설치 불요)."
-        Write-Info "pwsh 7을 설치하면 어디서나 그쪽을 우선 사용합니다(선택): winget install Microsoft.PowerShell"
+        Write-Info "pwsh(PowerShell 7+) 미설치 — 안전 hook은 Claude Code가 띄우는 내장 PowerShell(5.1)에서 동작합니다(추가 설치 불요, 스크립트 5.1 호환)."
+        Write-Info "pwsh 7을 설치하면 그쪽을 우선 사용합니다(실측 기준, 선택): winget install Microsoft.PowerShell"
     } else {
         Write-Warn "안전 hook 실행에 pwsh(PowerShell 7+)가 필요한데 찾을 수 없습니다 (비-Windows는 5.1 폴백 불가)."
         Write-Warn "macOS: 'brew install powershell' / Linux: 배포판 패키지로 pwsh 설치 후 재시작 (비-Windows hook은 미검증·실험적)."
