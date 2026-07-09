@@ -842,6 +842,43 @@ Assert-Case -Name "protect-harness: 설치본 hook-event-log 개조 차단" -R $
 }   # ---- §11 게이트 끝 (hook-event-log 외) ----
 
 # =====================================================================
+# 12) report-hook-events.ps1 스모크 (이벤트 로그 집계 리포트 — hook 아님, 직접 실행)
+# =====================================================================
+# 리포트는 stdin이 아니라 USERPROFILE 기반 로그 디렉터리를 읽으므로 Invoke-Hook을 쓰지 않고
+# 전용 격리 홈에 통제된 fixture jsonl을 심어 결정적으로 검증한다($iso는 앞 섹션들의 실제
+# 이벤트로 오염돼 건수 단정 불가).
+if (Test-HookSelected @('hook-event-log')) {
+    $repScript = Join-Path $scriptsDir 'report-hook-events.ps1'
+
+    # (a) fixture 3건(block 1 + warn 2) → 집계 키워드·건수 확인
+    $isoR = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-report-" + $suffix)
+    $repDir = Join-Path $isoR '.claude/.state/hook-events'
+    New-Item -ItemType Directory -Path $repDir -Force | Out-Null
+    @(
+        '{"ts":"2026-07-01T10:00:00+09:00","hook":"block-destructive","decision":"block","rule":"rm -rf 루트","cmd":"rm -rf /"}',
+        '{"ts":"2026-07-02T11:00:00+09:00","hook":"warn-external-ops","decision":"warn","rule":"git push"}',
+        '{"ts":"2026-07-03T12:00:00+09:00","hook":"warn-external-ops","decision":"warn","rule":"git push"}'
+    ) | Set-Content -Encoding UTF8 (Join-Path $repDir '2026-07.jsonl')
+    $env:USERPROFILE = $isoR
+    $outRep = & pwsh -NoProfile -ExecutionPolicy Bypass -File $repScript 2>&1
+    $rRep = @{ code = $LASTEXITCODE; out = (($outRep | Out-String)).Trim() }
+    $env:USERPROFILE = $iso
+    Assert-Case -Name "report-hook-events: fixture 3건 총계 집계" -R $rRep -ExpectExit 0 -ExpectContains '총 이벤트: 3건 (차단 1 · 경고 2)'
+    Assert-Case -Name "report-hook-events: hook×판정·규칙 집계 표기" -R $rRep -ExpectExit 0 -ExpectContains 'warn-external-ops'
+    Remove-Item -Recurse -Force $isoR -ErrorAction SilentlyContinue
+
+    # (b) 로그 없는 빈 홈 → 안내 + exit 0 (오류로 죽지 않음)
+    $isoR2 = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-report-empty-" + $suffix)
+    New-Item -ItemType Directory -Path $isoR2 -Force | Out-Null
+    $env:USERPROFILE = $isoR2
+    $outRep2 = & pwsh -NoProfile -ExecutionPolicy Bypass -File $repScript 2>&1
+    $rRep2 = @{ code = $LASTEXITCODE; out = (($outRep2 | Out-String)).Trim() }
+    $env:USERPROFILE = $iso
+    Assert-Case -Name "report-hook-events: 로그 없음 안내 + exit 0" -R $rRep2 -ExpectExit 0 -ExpectContains '적재된 이벤트 없음'
+    Remove-Item -Recurse -Force $isoR2 -ErrorAction SilentlyContinue
+}   # ---- §12 게이트 끝 (hook-event-log) ----
+
+# =====================================================================
 # USERPROFILE 원복 + 결과 보고
 # =====================================================================
 $env:USERPROFILE = $realHome

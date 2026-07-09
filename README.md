@@ -216,6 +216,13 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 
 **차단/경고 이벤트 로그 (오탐 리뷰용)**: hook이 차단·경고를 낼 때마다 발생 시점·hook 이름·발동 규칙·명령 요약이 `~/.claude/.state/hook-events/{YYYY-MM}.jsonl`에 1줄씩 쌓입니다(90일 지난 파일은 자동 정리). 정상 작업이 자꾸 차단·경고되는 것 같으면 Claude에게 "hook 이벤트 로그에서 최근 차단 내역 검토해줘"라고 요청하세요 — 오탐 수정이 추측이 아니라 실측 데이터 기반이 됩니다. 명령에 시크릿이 감지되면 그 명령 원문은 로그에 기록하지 않으며(안전 우선), 로깅이 실패해도 차단·경고 동작에는 영향이 없습니다.
 
+쌓인 로그는 집계 리포트 도구로 바로 볼 수 있습니다 (v1.107.0 — hook별·판정별·발동 규칙별 집계, 읽기 전용):
+
+```powershell
+pwsh -NoProfile -File plugins/pjc/scripts/report-hook-events.ps1            # 보존분 전체
+pwsh -NoProfile -File plugins/pjc/scripts/report-hook-events.ps1 -Days 30  # 최근 30일만
+```
+
 ---
 
 ## 자주 쓰는 명령
