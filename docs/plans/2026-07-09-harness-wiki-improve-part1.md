@@ -23,6 +23,7 @@
 - 로그 기반 오탐 자동 요약 스크립트 — 로그 3개월 축적 후
 - (이월) suggest-agents-record grep 패턴 오탐 — T2 로깅 데이터 축적 후 근거 기반 수정
 - (이월) plan-feature description 1,024자 한도 근접
+- (T6 발견, 기존 상태) llm-wiki fixture `archive-exempt/.../oldproj.md`에 UTF-8 BOM 존재(v1.94.0부터, 이번 plan 미접촉·lint는 utf-8-sig로 허용이라 무해) — 다음 fixture 정비 때 무BOM으로 정리
 
 ## Investigation Log
 - **hooks.json 현행 배선** (explorer + 직접 grep): PreToolUse(block-destructive 독립·pre-bash-dispatch·require-plan-for-write·protect-harness), PostToolUse(suggest-agents-record·post-write-checks), Stop(require-evidence). **SessionStart 배선 없음**. 모든 command가 `${CLAUDE_PLUGIN_ROOT}/scripts/*.ps1` + pwsh/powershell 폴백 패턴(:11~:80).
@@ -198,7 +199,7 @@
     - (ii-a) agent 정의 5개 frontmatter tools 변경 → `## 사전 승인 항목`에 등록
   - **Depends on**: -
 
-- [ ] T6. 버전·README·통합 검증
+- [x] T6. 버전·README·통합 검증
   - **Type**: A
   - **Acceptance**: plugin.json·README 1.104.0→1.105.0 + README v1.105.0 안내 1블록(드리프트 경고·이벤트 로깅·핸드오프·검증 매핑·LSP). 통합 검증 전부 green: 전 ps1 parse OK, JSON 3종 OK, hook 골든 전 케이스(기존 288 + 신규 ~6) PASS, check_consistency exit 0(이 plan은 llm-wiki 상수 무변경 — 통과 확인만), .md 무BOM·.ps1 BOM 규약.
   - **Files**:
