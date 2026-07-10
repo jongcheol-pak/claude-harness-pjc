@@ -281,7 +281,7 @@ B) 2개 plan으로 분할 (앞부분 / 뒷부분)
 
 사용자가 A를 택하면 그대로 진행하되, implement-task가 Progress Log를 적극 활용.
 
-**B(분할) 선택 시 규약** (드문 경로 — 둘째 plan 망각·번호 충돌·절반 구현 오판 방지): 각 분할 plan은 **T1부터 재번호**(독립 실행 — implement-task "첫 실행 T1" 전제와 정합), 저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적(`Plan Location: plan.md` 덮어쓰기여도 override), 상호 포인터(`**다음 plan**:`/`**이전 plan**:` — implement-task(분할 plan 호출)·plan-completion-reviewer가 이 표식으로 분할을 인지; plan-reviewer는 분할 해석 로직이 없다)와 Goal 범위 한정(`**전체 목표**:` 별도 줄 + Deferred/Next Steps에 다음 part 상기), 시작 part는 경로 명시 호출. **전체 규약·템플릿(위치 가이드·분할 포인터·Goal 범위)은 `references/plan-template.md` 정본.**
+**B(분할) 선택 시 규약** (드문 경로 — 둘째 plan 망각·번호 충돌·절반 구현 오판 방지): 각 분할 plan은 **T1부터 재번호**(독립 실행 — implement-task "첫 실행 T1" 전제와 정합), 저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적(`Plan Location: plan.md` 덮어쓰기여도 override), 상호 포인터(`**다음 plan**:`/`**이전 plan**:` — implement-task(분할 plan 호출)·plan-completion-reviewer·plan-reviewer(항목 12-a의 PRD Coverage 분할 스코프)가 이 표식으로 분할을 인지)와 Goal 범위 한정(`**전체 목표**:` 별도 줄 + Deferred/Next Steps에 다음 part 상기), 시작 part는 경로 명시 호출. **분할 시 두 part plan 파일을 동시 작성한다** — Step 7.5의 합집합 전수 검증과 plan-reviewer 12-a의 "다음 part 대응 task 실재" 확인이 두 파일의 존재를 전제하므로, part2를 나중에 쓰면 이 검증들이 성립하지 않는다. **전체 규약·템플릿(위치 가이드·분할 포인터·Goal 범위)은 `references/plan-template.md` 정본.**
 
 ### Step 6. Decision Points 발굴
 
@@ -331,7 +331,8 @@ PRD가 있으면 (Step 0.5에서 새로 작성했거나 Step 1에서 기존 PRD�
 2. **일치 판정** (대조 대상 = plan이 **커버 대상으로 선언한** Must FR):
    - 커버 대상으로 선언한 모든 Must FR에 대응 task가 있으면 → plan과 PRD가 일치. Step 8로 진행.
    - **커버 대상 Must FR에 대응 task가 없으면 → 누락**. plan에 task를 추가해 일치시킨 뒤 진행 (plan↔PRD 불일치 상태로 구현에 들어가지 않는다).
-   - **소규모 연결 plan**(Step 1에서 기존 PRD를 연결)은 이번에 닿지 않은 active Must FR을 `## PRD Coverage`에 `이번 범위 외 (기구현/후속)`로 명시하며, 그 FR은 이 대조에서 제외한다(기구현 FR을 이 작은 plan에서 재구현하도록 강요하지 않음). 단 **대규모 신규 작업(Step 0.5)은 이 제외를 쓰지 않고 전수 커버**한다 — 미대응 Must FR은 누락으로 본다.
+   - **소규모 연결 plan**(Step 1에서 기존 PRD를 연결)은 이번에 닿지 않은 active Must FR을 `## PRD Coverage`에 `이번 범위 외 (기구현/후속)`로 명시하며, 그 FR은 이 대조에서 제외한다(기구현 FR을 이 작은 plan에서 재구현하도록 강요하지 않음). 단 **대규모 신규 작업(Step 0.5)은 이 제외를 쓰지 않고 전수 커버**한다 — 미대응 Must FR은 누락으로 본다(분할 시 전수의 기준은 아래 분할 분기의 **합집합**).
+   - **분할 plan(Step 5 B — 상단 `**다음/이전 plan**:` 표식)**: 각 part의 `## PRD Coverage` 표는 **그 part 몫 FR만** 커버 대상으로 넣고, 다른 part 몫 active Must FR은 `⏭️ 다음 part` 또는 `✅ 이전 part 기구현` 상태 행으로 명시한다 — `이번 범위 외 (기구현/후속)`와 구분한다(범위 외는 "이 작업이 안 하는 것", 분할 행은 "이 전체 작업 안에서 다른 part가 하는 것"). 대규모 전수 커버는 part별이 아니라 **분할 전체에 적용**된다: 분할은 두 part plan 파일을 동시 작성하므로(Step 5 B 규약 — 이 검증의 선행조건) 여기서 **두 part 표의 커버 대상 합집합 = active Must FR 전수**를 확인한다(합집합에 빠진 Must FR은 누락). 3개 이상 분할이면 중간 part도 `다음 part` 행을 쓰고 합집합은 전 part 기준.
    - Should/Could를 의도적으로 1차 범위에서 빼려면, PRD의 Out of Scope 또는 plan에 "이번 제외" 사유를 명시 (암묵적 누락과 명시적 제외를 구분).
 3. 매핑표는 plan.md에 `## PRD Coverage` 섹션으로 남긴다 (Phase G가 이 표를 기준으로 재대조).
 
