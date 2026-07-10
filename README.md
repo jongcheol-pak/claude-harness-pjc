@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.113.0
+**버전**: 1.113.1
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -168,6 +168,8 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 > - **완료 시 요구 재대조**: 완료 검토자가 구현 산출물이 계획의 "요구 이해" 각 포인트를 커버하는지 사후 대조합니다 — PRD 없는 계획의 유일한 사후 요구 재검증.
 
 > v1.103.0: 계획 질문의 **추천(★) 기준을 "근본 해결 우선"으로 명문화** — 쉽게 끝나는 선택지가 아니라 문제를 근본적으로 해결하는 선택지를 추천하고, 복잡도·작업량 차이는 트레이드오프로 함께 표시해 비교할 수 있게 합니다(단순함 자체가 근본 해결인 경우는 예외).
+
+> v1.113.1: warn-external-ops의 `git merge-base` 오탐 수정 — 병합 등 외부 작업을 경고하는 안전망이 `git merge-base`(병합 기준 커밋을 찾는 읽기 전용 조회)를 실제 브랜치 병합으로 잘못 보고 불필요한 경고를 내던 것을 고쳤습니다. 정규식이 하이픈을 단어 경계로 인정해 `merge-base`·`merge-tree`·`merge-file`·`merge-index` 같은 plumbing 명령까지 걸리던 것을, 하이픈을 명령 이름의 일부로 취급하도록 조여 오탐만 제거했습니다(실제 `git merge`·bare `git merge` 경고와 `--abort`/`--continue` 제외는 그대로 유지). 골든 회귀 321/321 — merge-base·merge-tree 무경고 케이스 2종 추가.
 
 > v1.113.0: Type B(Trivial Code) 분류 정의 조임 — 신규 심볼이라도 **비자명 로직·알고리즘·제어흐름·상태 변경을 담으면 Type C 이상**으로 분류하도록 경계를 명문화했습니다(자명한 접근자·상수·순수 위임은 Type B 유지). Type B는 적대적 리뷰(V-5 Sonnet·V-6)를 건너뛰고 Haiku prefilter만 타므로, 검토가 필요한 신규 로직이 단일 파일이라는 이유로 B로 분류돼 무검증 통과되던 공백을 막습니다. plan-reviewer의 Type 오분류 검출(항목 9)에도 같은 케이스를 BLOCKER 예시로 병기해 계획·계획리뷰 두 단계에서 방어합니다.
 
