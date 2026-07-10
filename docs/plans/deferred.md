@@ -20,10 +20,10 @@
 - [2026-07-09] SessionStart hook의 위키 허브 컨텍스트 자동 주입 — v1.102.0 미채택(지침 방식 선택), 지침 방식 실효성이 낮다고 관찰되면 재검토 (출처: v1.102.0)
 - [2026-07-09] 위키 허브 `## 작업 규약·주의사항`이 수십 건으로 커지면 전용 페이지(worknotes류) 승격 검토 (출처: v1.103.0)
 - [2026-07-08] (확인 필요) 위키 feat-safety-hooks의 보호 집합 서술("hook 스크립트 8종") 현행화 — 다음 하네스 ingest 세션에서 (출처: v1.97.2 후속)
-- [2026-07-10] warn-external-ops가 `git merge-base`(읽기 전용 조회)를 "git merge"로 오탐 — 단어 경계 검사, hook 오탐 정비 라운드에서 (출처: v1.109.0 세션 실관찰)
 
 ## 종결
 
+- [2026-07-10 → 2026-07-10] warn-external-ops가 `git merge-base`(읽기 전용 조회)를 "git merge"로 오탐 — 반영(v1.113.1 T1 — bash-hook-lib.ps1:39 `merge\b`→`merge(?![-\w])`, merge-base·merge-tree·merge-file·merge-index plumbing 오탐 제거·실제 merge 경고와 --abort/continue/quit 제외 보존, 골든 merge-base·merge-tree 무경고 2건 추가)
 - [2026-07-10 → 2026-07-10] 위키 feat-safety-hooks·feat-plan-feature에 v1.111.0 bootstrap 게이트·직접 작성 금지 반영 — 반영(2026-07-10 위키 ingest 세션 — feat-plan-feature Step 1 bootstrap 강화 + feat-safety-hooks require-plan 게이트 동작·지도 서술)
 - [2026-07-10 → 2026-07-10] Type B 분류 정의가 구조 기준(단일 파일·메서드·호출자 없음)뿐이라 신규 비자명 로직이 B로 새어 검토(V-5 prefilter만·V-3/V-6 생략) 얕아짐 — 반영(v1.113.0 T1 — plan-feature:257에 경계 명문화(비자명 로직·알고리즘·제어흐름·상태변경 신규 심볼은 Type C 이상, 자명 접근자·상수·순수 위임은 B 유지) + plan-reviewer:39 오분류 검출 예시 병기, 방어선 2층)
 - [2026-07-10 → 2026-07-10] SessionStart matcher `compact` 추가 + 요약 직후 재확인 컨텍스트 주입 — 반영(v1.112.0 T1 — session-context.ps1 신설, matcher 4종 + compact 리마인더, 골든 SC2)
