@@ -91,10 +91,11 @@ $gitOk = $null -ne (Get-Command git -ErrorAction SilentlyContinue)   # §4·§7�
 $pw = Join-Path $work 'pwproj'; New-Item -ItemType Directory $pw -Force | Out-Null   # §6·§7 후속·Pre.cs 픽스처
 $vdCache = Join-Path $iso '.claude/plugins/cache/pjc-harness/pjc/1.0.0/scripts'      # §10 개조 차단·§11(d) 경로
 
-function New-WriteJson([string]$cwd, [string]$file, [string]$tool = 'Write', [hashtable]$extra = @{}) {
+function New-WriteJson([string]$cwd, [string]$file, [string]$tool = 'Write', [hashtable]$extra = @{}, [hashtable]$top = @{}) {
     # §2 require-plan·§2b protect-harness·§6 post-write 등 다수 섹션 공용
+    # $top: tool_input이 아니라 stdin JSON 최상위에 병합할 필드 (예: transcript_path — AGENTS 게이트)
     $ti = @{ file_path = $file; content = 'class A {}' } + $extra
-    return (@{ tool_name = $tool; cwd = $cwd; tool_input = $ti } | ConvertTo-Json -Compress)
+    return ((@{ tool_name = $tool; cwd = $cwd; tool_input = $ti } + $top) | ConvertTo-Json -Compress)
 }
 
 function New-CommitJson([string]$cwd, [string]$msg) {
@@ -283,6 +284,33 @@ $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $doneplan (Join-Pat
 Assert-Case -Name "require-plan: G4 완료 plan 경고 2회차 무출력 (P1T3 디듑)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $emptyplan (Join-Path $emptyplan 'B.cs'))
 Assert-Case -Name "require-plan: H3 빈 plan 경고 2회차 무출력 (P1T3 디듑)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# ---- [v1.111.0] AGENTS.md bootstrap 게이트 (신규 생성 + 스킬 미발동 차단, fail-open) ----
+$agentsProj = Join-Path $work 'proj-agents';  New-Item -ItemType Directory $agentsProj -Force | Out-Null
+# fixture transcript 3종 — 흔적 없음(산문 언급만: 언급만으로 통과되지 않음을 동시 실증) / Skill input 흔적 / tool result 흔적
+$trNo  = Join-Path $work 'tr-no-launch.jsonl'
+'{"type":"assistant","text":"bootstrap-agents-md 스킬 이야기만 하는 산문 언급"}' | Set-Content $trNo
+$trIn  = Join-Path $work 'tr-launch-input.jsonl'
+'{"type":"assistant","tool_use":{"name":"Skill","input":{"skill":"pjc:bootstrap-agents-md"}}}' | Set-Content $trIn
+$trRes = Join-Path $work 'tr-launch-result.jsonl'
+'{"type":"tool_result","content":"Launching skill: pjc:bootstrap-agents-md"}' | Set-Content $trRes
+
+$agentsNew = Join-Path $agentsProj 'AGENTS.md'
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trNo })
+Assert-Case -Name "require-plan: AGENTS.md 신규 + 발동 흔적 없음 차단 (AG1)" -R $r -ExpectExit 2 -ExpectContains 'bootstrap-agents-md'
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trIn })
+Assert-Case -Name "require-plan: AGENTS.md 신규 + Skill input 흔적 통과 (AG2)" -R $r -ExpectExit 0
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trRes })
+Assert-Case -Name "require-plan: AGENTS.md 신규 + Launching result 흔적 통과 (AG3)" -R $r -ExpectExit 0
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $agentsProj $agentsNew)
+Assert-Case -Name "require-plan: AGENTS.md 신규 + transcript 미제공 fail-open 통과 (AG4)" -R $r -ExpectExit 0
+$agentsExistDir = Join-Path $agentsProj 'existing';  New-Item -ItemType Directory $agentsExistDir -Force | Out-Null
+'# AGENTS.md' | Set-Content (Join-Path $agentsExistDir 'AGENTS.md')
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $agentsProj (Join-Path $agentsExistDir 'AGENTS.md') -top @{ transcript_path = $trNo })
+Assert-Case -Name "require-plan: 기존 AGENTS.md Write 통과 — 신규만 게이트 (AG5)" -R $r -ExpectExit 0
+$agentsSubDir = Join-Path $agentsProj 'sub';  New-Item -ItemType Directory $agentsSubDir -Force | Out-Null
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $agentsProj (Join-Path $agentsSubDir 'AGENTS.md') -top @{ transcript_path = $trNo })
+Assert-Case -Name "require-plan: 하위 폴더 AGENTS.md 신규도 차단 — 경로 무관 게이트 (AG6)" -R $r -ExpectExit 2 -ExpectContains 'bootstrap-agents-md'
 }   # ---- §2 게이트 끝 (require-plan-for-write) ----
 
 # =====================================================================

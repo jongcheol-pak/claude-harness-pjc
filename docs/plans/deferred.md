@@ -6,6 +6,8 @@
 
 ## 대기
 
+- [2026-07-10] 위키 feat-safety-hooks·feat-plan-feature에 v1.111.0 AGENTS.md bootstrap 게이트·직접 작성 금지 문구 반영 — 다음 하네스 ingest 세션에서 (출처: v1.111.0)
+- [2026-07-10] AGENTS 게이트 임시폴더 예외 분기 골든 케이스 추가 — 러너 $work가 LOCALAPPDATA라 현재 스위트 사각(fail-open 방향·저위험), 다음 hook 정비 때 (출처: v1.111.0 F-7 m1)
 - [2026-07-10] plan-feature Type B 정의가 구조 기준(단일 파일·단일 메서드·호출자 없음)뿐이라 신규 로직 단일 파일 작업이 B로 새어 검토 얕아짐 — B 정의에 "신규 심볼·알고리즘 추가는 C 이상" 제약 검토(검토 깊이 판정 기준 변경이라 설계 승인 필요) (출처: 동 점검 Tier 3 M1)
 - [2026-07-08] block-destructive: `cat <<EOF > file`(데이터 싱크 스트립) 후 같은 Bash 호출에서 즉시 실행 시 위험 본문 미스캔 — "파일 작성+동일 호출 실행" 조합 감지 개선 (출처: harness-quality-part1)
 - [2026-07-08] suggest-agents-record 명령 오인 오탐 2류 — ① 커밋 -m 값 속 명령 문자열 ② grep 패턴 문자열 속 "dotnet build" — hook 이벤트 로그 데이터 축적 후 근거 기반 수정 (출처: harness-quality-part1·v1.101.0)
