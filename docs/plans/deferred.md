@@ -6,6 +6,7 @@
 
 ## 대기
 
+- [2026-07-10] plan-feature Type B 정의가 구조 기준(단일 파일·단일 메서드·호출자 없음)뿐이라 신규 로직 단일 파일 작업이 B로 새어 검토 얕아짐 — B 정의에 "신규 심볼·알고리즘 추가는 C 이상" 제약 검토(검토 깊이 판정 기준 변경이라 설계 승인 필요) (출처: 동 점검 Tier 3 M1)
 - [2026-07-08] block-destructive: `cat <<EOF > file`(데이터 싱크 스트립) 후 같은 Bash 호출에서 즉시 실행 시 위험 본문 미스캔 — "파일 작성+동일 호출 실행" 조합 감지 개선 (출처: harness-quality-part1)
 - [2026-07-08] suggest-agents-record 명령 오인 오탐 2류 — ① 커밋 -m 값 속 명령 문자열 ② grep 패턴 문자열 속 "dotnet build" — hook 이벤트 로그 데이터 축적 후 근거 기반 수정 (출처: harness-quality-part1·v1.101.0)
 - [2026-07-08] .state 디듑 마커(post-write-warn·require-plan-warn·suggest-agents-record) 누적 정리 정책(TTL/청소) 부재 (출처: harness-quality-part1)
@@ -22,6 +23,8 @@
 
 ## 종결
 
+- [2026-07-10 → 2026-07-10] implement-task Phase D clean/dirty 판정×재리뷰 커밋 프로토콜 모순 + review-fix 커밋 메시지 미규정 — 반영(v1.110.0 T1 — Phase D ①을 HEAD 커밋 제목 판정으로 교체·review-fix checkpoint 규정·재개 트리 5분기+폴백·새 완료 커밋 --allow-empty)
+- [2026-07-10 → 2026-07-10] plan-feature 분할×PRD 전수 커버×12-a 규정 교착 — 반영(v1.110.0 T2·T3 — part별 Coverage 스코프(`⏭️ 다음 part`/`✅ 이전 part 기구현` 행)+합집합=전수 게이트+두 part 동시 작성 명문화, 12-a 분할 인지+실질 MAJOR 게이트, 마지막 part Phase G/F-7 전수(전체 트리 기준))
 - [2026-07-09 → 2026-07-10] 하네스 최근 버전분(v1.102.0~) 위키 ingest — 반영(2026-07-10 위키 세션 2회: v1.102~1.108 feature 5페이지 상세 ingest + v1.109.0 델타·run_eval 함정·A~L 표기 드리프트 정정, lint 델타 0)
 - [2026-07-08 → 2026-07-10] plan-feature description 1,018자 하드 한도(1,024) 근접 — 반영(v1.109.0 T5 — 981자로 무손실 압축(연결부만), 여유 43자. pjc-systematic-debugging 1,019→921자도 동일 처리. 전후 트리거 eval 동률 실증)
 - [2026-07-09 → 2026-07-09] hook 이벤트 로그 자동 요약(3개월 축적 후) — 반영(v1.107.0 T2 `report-hook-events.ps1` 수동 리포트로 대체 — 자동 실행은 사용자 확정으로 채택 안 함)

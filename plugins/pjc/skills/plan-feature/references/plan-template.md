@@ -68,6 +68,10 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 
 ## PRD Coverage
 <!-- PRD 있을 때만. plan-feature Step 7.5에서 작성. Phase G가 이 표로 재대조. -->
+<!-- 분할 plan이면(상단 다음/이전 plan 표식): 이 part 몫 FR만 커버 대상으로 넣고, 다른 part 몫
+     active Must FR은 아래 분할 행 형식으로 명시한다(Step 7.5 분할 분기 — 두 part 합집합이 전수).
+     예: | FR-3 | Must | (part2 담당) | ⏭️ 다음 part |
+         | FR-1 | Must | (part1 기구현) | ✅ 이전 part 기구현 | -->
 | PRD ID | 우선순위 | 대응 task | 상태 |
 |--------|---------|----------|------|
 | FR-1 | Must | T1 | ✅ 커버 |

@@ -264,6 +264,8 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 **Type C의 V-6(code-quality) 요청 플래그**: Type C task가 ① 보안·인증 관련 코드, ② 동시성·공유 상태, ③ 새 공개/내부 멤버(public/internal) 추가, ④ 파일 응집도 우려(1500줄 근접), ⑤ **사용자에게 노출되는 UI 문구(레이블·버튼·오류·툴팁·플레이스홀더) 신규 추가·변경** 중 하나라도 해당하면 Type 라인에 `(quality-review)`를 붙여 V-6을 요청한다 (예: `**Type**: C (quality-review)`). 그 외 Type C는 V-6 생략(V-5 단독). Type D는 항상 V-6. (⑤ 근거: UI 문구 사용자 친화성 검토는 code-quality-reviewer 항목 I에만 있어, 이 플래그가 없으면 기술 용어 노출(`null`·열거형 값 등)을 어느 reviewer도 잡지 못한다.)
 
+**PRD 복귀 게이트**: 분해 결과 task가 **10개 이상**인데 plan에 PRD 연결(`**PRD**:` 줄)이 없으면 — Step 0.5의 판정이 추정(예상 task 수) 기준이라 실분해와 어긋난 경우다 — Step 0.5로 돌아가 PRD를 먼저 작성한 뒤 계속한다(대규모 안전망(Phase G 재검증) 상실 방지).
+
 #### 긴 plan 분할 권고 (컨텍스트 관리)
 
 task가 **8개를 초과**하면 사용자에게 분할을 제안한다:
@@ -279,7 +281,7 @@ B) 2개 plan으로 분할 (앞부분 / 뒷부분)
 
 사용자가 A를 택하면 그대로 진행하되, implement-task가 Progress Log를 적극 활용.
 
-**B(분할) 선택 시 규약** (드문 경로 — 둘째 plan 망각·번호 충돌·절반 구현 오판 방지): 각 분할 plan은 **T1부터 재번호**(독립 실행 — implement-task "첫 실행 T1" 전제와 정합), 저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적(`Plan Location: plan.md` 덮어쓰기여도 override), 상호 포인터(`**다음 plan**:`/`**이전 plan**:` — implement-task(분할 plan 호출)·plan-completion-reviewer가 이 표식으로 분할을 인지; plan-reviewer는 분할 해석 로직이 없다)와 Goal 범위 한정(`**전체 목표**:` 별도 줄 + Deferred/Next Steps에 다음 part 상기), 시작 part는 경로 명시 호출. **전체 규약·템플릿(위치 가이드·분할 포인터·Goal 범위)은 `references/plan-template.md` 정본.**
+**B(분할) 선택 시 규약** (드문 경로 — 둘째 plan 망각·번호 충돌·절반 구현 오판 방지): 각 분할 plan은 **T1부터 재번호**(독립 실행 — implement-task "첫 실행 T1" 전제와 정합), 저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적(`Plan Location: plan.md` 덮어쓰기여도 override), 상호 포인터(`**다음 plan**:`/`**이전 plan**:` — implement-task(분할 plan 호출)·plan-completion-reviewer·plan-reviewer(항목 12-a의 PRD Coverage 분할 스코프)가 이 표식으로 분할을 인지)와 Goal 범위 한정(`**전체 목표**:` 별도 줄 + Deferred/Next Steps에 다음 part 상기), 시작 part는 경로 명시 호출. **분할 시 두 part plan 파일을 동시 작성한다** — Step 7.5의 합집합 전수 검증과 plan-reviewer 12-a의 "다음 part 대응 task 실재" 확인이 두 파일의 존재를 전제하므로, part2를 나중에 쓰면 이 검증들이 성립하지 않는다. **전체 규약·템플릿(위치 가이드·분할 포인터·Goal 범위)은 `references/plan-template.md` 정본.**
 
 ### Step 6. Decision Points 발굴
 
@@ -329,13 +331,14 @@ PRD가 있으면 (Step 0.5에서 새로 작성했거나 Step 1에서 기존 PRD�
 2. **일치 판정** (대조 대상 = plan이 **커버 대상으로 선언한** Must FR):
    - 커버 대상으로 선언한 모든 Must FR에 대응 task가 있으면 → plan과 PRD가 일치. Step 8로 진행.
    - **커버 대상 Must FR에 대응 task가 없으면 → 누락**. plan에 task를 추가해 일치시킨 뒤 진행 (plan↔PRD 불일치 상태로 구현에 들어가지 않는다).
-   - **소규모 연결 plan**(Step 1에서 기존 PRD를 연결)은 이번에 닿지 않은 active Must FR을 `## PRD Coverage`에 `이번 범위 외 (기구현/후속)`로 명시하며, 그 FR은 이 대조에서 제외한다(기구현 FR을 이 작은 plan에서 재구현하도록 강요하지 않음). 단 **대규모 신규 작업(Step 0.5)은 이 제외를 쓰지 않고 전수 커버**한다 — 미대응 Must FR은 누락으로 본다.
+   - **소규모 연결 plan**(Step 1에서 기존 PRD를 연결)은 이번에 닿지 않은 active Must FR을 `## PRD Coverage`에 `이번 범위 외 (기구현/후속)`로 명시하며, 그 FR은 이 대조에서 제외한다(기구현 FR을 이 작은 plan에서 재구현하도록 강요하지 않음). 단 **대규모 신규 작업(Step 0.5)은 이 제외를 쓰지 않고 전수 커버**한다 — 미대응 Must FR은 누락으로 본다(분할 시 전수의 기준은 아래 분할 분기의 **합집합**).
+   - **분할 plan(Step 5 B — 상단 `**다음/이전 plan**:` 표식)**: 각 part의 `## PRD Coverage` 표는 **그 part 몫 FR만** 커버 대상으로 넣고, 다른 part 몫 active Must FR은 `⏭️ 다음 part` 또는 `✅ 이전 part 기구현` 상태 행으로 명시한다 — `이번 범위 외 (기구현/후속)`와 구분한다(범위 외는 "이 작업이 안 하는 것", 분할 행은 "이 전체 작업 안에서 다른 part가 하는 것"). 대규모 전수 커버는 part별이 아니라 **분할 전체에 적용**된다: 분할은 두 part plan 파일을 동시 작성하므로(Step 5 B 규약 — 이 검증의 선행조건) 여기서 **두 part 표의 커버 대상 합집합 = active Must FR 전수**를 확인한다(합집합에 빠진 Must FR은 누락). 3개 이상 분할이면 중간 part도 `다음 part` 행을 쓰고 합집합은 전 part 기준.
    - Should/Could를 의도적으로 1차 범위에서 빼려면, PRD의 Out of Scope 또는 plan에 "이번 제외" 사유를 명시 (암묵적 누락과 명시적 제외를 구분).
 3. 매핑표는 plan.md에 `## PRD Coverage` 섹션으로 남긴다 (Phase G가 이 표를 기준으로 재대조).
 
 ### Step 8. Open Questions 해결 — 일괄·완전 모드
 
-질문이 있으면 **여기서** 사용자에게 묶어 질문하고, 답변을 plan.md에 반영한다. (리뷰 게이트(Step 9)보다 먼저 — plan-reviewer는 미해결 Open Questions를 BLOCKER로 보므로, 질문을 먼저 해소한 뒤 리뷰해야 한다.)
+질문이 있으면 **여기서** 사용자에게 묶어 질문하고, 답변을 plan.md에 반영한다. (리뷰 게이트(Step 9)보다 먼저 — plan-reviewer는 미해결 Open Questions를 BLOCKER로 보므로, 질문을 먼저 해소한 뒤 리뷰해야 한다.) **답변을 반영한 질문은 `## Open Questions`에서 `[x]`로 바꾸고 답 요약을 병기한다** — `[ ]`로 남기면 plan-reviewer(항목 6)가 미해결로 오판할 수 있다(미해결 질문만 `[ ]`로 남긴다).
 
 #### 질문 형식 (카테고리별 묶음)
 
@@ -384,7 +387,7 @@ Q5. ...
 ### Step 9. 리뷰 게이트 (subagent 필수)
 
 Open Questions가 모두 해소돼 plan이 완성된 뒤 검토한다. **`plan-reviewer` subagent 호출.** 자체 검토 금지.
-- **예외 (Type A/B만으로 구성된 plan)**: plan의 모든 task가 Type A(Doc/Config) 또는 B(Trivial Code)뿐이면 — 적대적 plan-reviewer(Opus) 대신 **메인이 자체 체크리스트 검토로 대체**할 수 있다(아래 Step 9 통과 체크리스트를 메인이 직접 대조). Type A/B는 cross-file·시그니처 변경이 없어 plan-reviewer의 핵심 항목(3 Impact·9 Autonomous)이 얕게 적용되므로, Opus 호출 비용이 검증 가치를 넘는다. **단 Type C/D가 하나라도 있으면 plan-reviewer 필수**(대체 불가). 자체 검토로 대체한 경우 그 사실을 사용자 승인 프롬프트에 1줄 명시한다.
+- **예외 (Type A/B만으로 구성된 plan)**: plan의 모든 task가 Type A(Doc/Config) 또는 B(Trivial Code)뿐이면 — 적대적 plan-reviewer(Opus) 대신 **메인이 자체 체크리스트 검토로 대체**할 수 있다(문서 끝 `## 통과 체크리스트`를 메인이 직접 대조). Type A/B는 cross-file·시그니처 변경이 없어 plan-reviewer의 핵심 항목(3 Impact·9 Autonomous)이 얕게 적용되므로, Opus 호출 비용이 검증 가치를 넘는다. **단 Type C/D가 하나라도 있으면 plan-reviewer 필수**(대체 불가). 자체 검토로 대체한 경우 그 사실을 사용자 승인 프롬프트에 1줄 명시한다.
 - 결과가 BLOCKER 또는 MAJOR면 plan 수정 후 재호출 (최대 3회).
 - **incomplete·미검증 잔여분은 통과가 아니다.** plan-reviewer 결과에 `incomplete`(turn 소진), "심볼 N개 미검증"(항목 3 grep 상한), "항목 미검토"(항목 우선순위) 표시가 있으면 — **BLOCKER/MAJOR가 0이어도 그 리뷰를 통과(OK)로 보지 않는다.** 메인이 잔여분을 직접 검증하거나(미검증 심볼은 grep으로 호출자를 직접 대조, 미검토 항목은 그 항목의 판정 기준을 체크리스트로 직접 대조해 결과를 남김) plan-reviewer를 재호출해 나머지를 마저 검토한 뒤에만 통과한다. 잔여분을 조용히 흘려보내고 Step 10으로 넘어가는 것은 금지 — reviewer가 정직하게 보고한 미검증분을 소비하지 않으면 보고 의무가 무의미해진다(implement-task V-5의 incomplete 처리와 동일 원칙). 단 위 Type A/B 자체 검토 대체 경로는 메인이 체크리스트 전 항목을 완주하므로 이 규정의 대상이 아니다.
 - **3회 후에도 BLOCKER/MAJOR가 잔존하면 → 사용자에게 에스컬레이션**(plan-reviewer의 `RECURRING — escalate to user` 표시를 받아 그대로 보고): 무엇이 왜 3회 반복됐는지 + 선택지(수정 방향 승인 / 범위 축소 / 직접 지침)를 제시하고 지시를 기다린다. **자동 통과·무한 재시도 금지** — plan을 통과시키지 못한 채 implement-task로 넘어가지 않는다(교착 방지: 종결은 통과 아니면 에스컬레이션 둘 중 하나).
@@ -394,7 +397,7 @@ Open Questions가 모두 해소돼 plan이 완성된 뒤 검토한다. **`plan-r
 
 ### Step 10. 사용자 승인 게이트
 
-ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
+ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출. **제시 전에 문서 끝 `## 통과 체크리스트`를 먼저 대조한다** — 체크리스트는 승인 후가 아니라 승인 요청 전 게이트다.
 
 **승인 프롬프트에 plan 요약을 반드시 포함한다 — 사용자가 plan.md 파일을 열지 않고도 판단할 수 있게**:
 1. **요구 이해** — plan의 `## 요구 이해`(원문 인용 + 이해 3~5줄)를 **최상단에 그대로 노출**. 요구 오해는 사용자만 판정할 수 있으므로 승인 판단의 첫 항목이다 (여기서 어긋나면 아래 task가 전부 맞아도 무의미).

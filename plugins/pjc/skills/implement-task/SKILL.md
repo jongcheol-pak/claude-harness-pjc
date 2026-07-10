@@ -119,6 +119,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
   0. **Phase 0 사전 승인 일괄 확인** — plan에 `## 사전 승인 항목`이 있고 이번 대화에 plan 승인이 없을 때(새 세션/재개), 루프 시작 전 1회 (위 Phase 0).
   1. Halt Condition 발동
   2. 모든 task 완료 (Phase F 통과 후 최종 보고)
+  3. **리뷰 인프라 장애** — Sonnet reviewer(V-5/V-6)가 과부하(529) 재시도 소진 시의 선택 요청(재시도/자체 검증/대기 — 정본 `references/recovery.md` "Reviewer 과부하(529) 대응". Halt가 아니라 선택 후 루프 계속)
 
 **사용자 승인은 plan-feature 단계에서 plan.md에 대해 단 1회만 받았다.** plan.md = 전체 작업의 위임장 — 이 위임에는 plan의 `## 사전 승인 항목 (일괄 승인 대상)`이 명시적으로 포함된다(Phase 0이 인정). 단 `## 불가피한 Halt (위임 불가)`(파괴적·외부/비가역·돌발)는 제외돼 그 지점에서 별도 승인받는다.
 
@@ -150,7 +151,7 @@ loop over plan.md tasks (시작 task부터 Tn까지 — 첫 실행은 T1, 재개
   Phase P → 변경 전략 확정, caller 사전 추적
   Phase I → 최소 변경으로 구현
   Phase V → Type별 fast-path (V-1~V-7, + V-9 디자인 정합 작업 시 — V-8이 최종 관문)
-  Phase D → checkpoint commit → (2 task마다 Progress Log) → 즉시 다음 task로
+  Phase D → 완료 커밋(T<N>:) → (2 task마다 Progress Log) → 즉시 다음 task로
 
 # 모든 task 완료 후
 Phase F → 전체 plan 통합 검증 (조건부 진입)
@@ -174,7 +175,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 
 **세 신호(Progress Log·git log·체크박스)가 어긋나면 git log를 신뢰한다.** git log는 매 task commit(`T<N>: ...`)으로 항상 최신이고, Progress Log는 2 task마다, 체크박스는 갱신 누락 가능성이 있다. 또 지정 task의 선행(`Depends on`) task가 git log에 안 보이면 그 선행부터 다시 확인한 뒤 진행한다.
 
-**task 내부 재개 판정 (checkpoint 커밋으로).** git log 마지막 커밋이 그 task의 완료 커밋(`T<N>: ...`)이 아니라 checkpoint면 task가 미완료 중단된 것이다 — `checkpoint: T<N> start`(빈 커밋)면 구현부터, **`checkpoint: T<N> pre-review`면 구현은 끝났고 V-5/V-6 리뷰가 미완료**인 것으로 보고 그 task의 Phase V부터 재개한다(구현을 다시 하지 않는다). Phase Ledger 마커는 Phase F/G 위치만 다루므로, task 내부의 이 판정은 마지막 checkpoint 커밋 종류로 한다.
+**task 내부 재개 판정 (checkpoint 커밋으로).** git log 마지막 커밋이 그 task의 완료 커밋(`T<N>: ...`)이 아니라 checkpoint면 task가 미완료 중단된 것이다 — `checkpoint: T<N> start`(빈 커밋)면 구현부터, **`checkpoint: T<N> pre-review`면 구현은 끝났고 V-5/V-6 리뷰가 미완료**인 것으로 보고 그 task의 Phase V부터 재개한다(구현을 다시 하지 않는다). **`checkpoint: T<N> review-fix`면 수정분까지 커밋됐고 재리뷰가 미확인** — 그 HEAD로 V-5/V-6 재리뷰부터 재개한다(직전에 재리뷰가 이미 통과했을 가능성은 있으나 중복 리뷰를 감수한다 — 무회귀 우선, pre-review 재개와 동일 철학). **`checkpoint: T<N> partial`이면 구현 중 중단** — Phase I를 이어 진행한다. 제목이 checkpoint 계열도 완료 커밋도 아니면(수동 개입 등) `checkpoint: T<N> pre-review`의 존재 여부로 폴백한다(있으면 Phase V부터, 없으면 구현부터). Phase Ledger 마커는 Phase F/G 위치만 다루므로, task 내부의 이 판정은 마지막 checkpoint 커밋 종류로 한다.
 
 **Phase Ledger로 진행 위치 판정 (Phase F/G 중복 실행 방지).** plan.md에 `## Phase Ledger` 줄이 있으면 그것으로 **어느 Phase까지 왔는지**(예: `전 task 완료` / `Phase F 통과 (HEAD <sha>)` / `Phase G 재루프 N회차`)를 판정한다. **이미 Phase F를 통과한 상태로 재개하면**(예: Phase G가 추가한 task를 처리하다 압축된 경우) 남은 task만 P→I→V→D로 처리하고 **Phase F(F-7 Opus 포함)를 재실행하지 않는다** — Phase G 재루프는 완료 task 후 G-1 재대조만 하지 Phase F 전체를 다시 돌지 않기 때문이다(phase-g-detail G-2). 마커가 **없는** 기존 plan은 안전하게 "처음부터(전 미완료 task + Phase F/G)"로 폴백한다(무회귀). 마커가 git log·체크박스와 어긋나면 task 완료 판정은 git log를 신뢰하되, **Phase 진행 위치**는 마커 + Progress Log로 판정한다.
 
@@ -236,7 +237,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 git add -A
 git commit -m "checkpoint: T<N> pre-review"
 ```
-이 커밋의 SHA를 V-5/V-6 리뷰어에게 **HEAD_SHA로 전달**한다. **이유**: 리뷰어는 `git diff <BASE_SHA> <HEAD_SHA>`로 변경을 보는데, 구현 변경이 워킹트리에만 있고 미커밋이면(과거 결함) HEAD가 직전 `checkpoint: T<N> start`(빈 커밋)를 가리켜 리뷰어가 **빈 diff**를 보고 거짓 BLOCKER를 내거나 임의로 워킹트리 diff를 쓰게 된다. pre-review 커밋으로 리뷰 대상 스냅숏을 고정하면 결정적·재현 가능하다. BASE_SHA는 `checkpoint: T<N> start`(또는 직전 task 최종 커밋). **리뷰 지적 수정분은 Phase I로 돌아가 고친 뒤 pre-review 커밋에 이어 커밋**(amend 아님 — 추가 커밋)하고, 그 새 HEAD로 재리뷰한다. Phase D의 최종 커밋은 pre-review 커밋(+수정분)을 task 완료 커밋으로 정리하는 단계다(수정분이 없으면 pre-review 커밋에 amend해 메시지만 승격, 있으면 그 위 추가 커밋 — 판정·명령은 Phase D ③). Type A는 이 커밋을 건너뛰고 Phase D에서 바로 최종 커밋한다.
+이 커밋의 SHA를 V-5/V-6 리뷰어에게 **HEAD_SHA로 전달**한다. **이유**: 리뷰어는 `git diff <BASE_SHA> <HEAD_SHA>`로 변경을 보는데, 구현 변경이 워킹트리에만 있고 미커밋이면(과거 결함) HEAD가 직전 `checkpoint: T<N> start`(빈 커밋)를 가리켜 리뷰어가 **빈 diff**를 보고 거짓 BLOCKER를 내거나 임의로 워킹트리 diff를 쓰게 된다. pre-review 커밋으로 리뷰 대상 스냅숏을 고정하면 결정적·재현 가능하다. BASE_SHA는 `checkpoint: T<N> start`(또는 직전 task 최종 커밋). **pre-review 커밋 이후의 모든 수정분(리뷰 지적 수정·V-1~V-3 실패 수정)은 Phase I로 돌아가 고친 뒤 `git commit -m "checkpoint: T<N> review-fix"`로 이어 커밋**(amend 아님 — 추가 커밋, 리뷰 스냅숏 이력 보존)하고, 그 새 HEAD로 재리뷰한다. Phase D의 최종 커밋은 pre-review 커밋(+review-fix)을 task 완료 커밋으로 정리하는 단계다(HEAD가 그대로 pre-review면 amend로 메시지만 승격, review-fix가 쌓였으면 그 위 새 완료 커밋 — 판정·명령은 Phase D ③). Type A는 이 커밋을 건너뛰고 Phase D에서 바로 최종 커밋한다.
 
 순서대로 실행. 실패 시 Phase I로 복귀해 수정 후 재시도한다 — 반복 한도는 `references/recovery.md`의 카운터(빌드/테스트 5회 연속 실패·리뷰 수정 사이클 5회·복구 2회)를 따른다(카운터 없이 무한 반복하지 않으며, "1회만"이라는 뜻도 아니다). **V-1~V-3은 가능하면 한 도구 호출로 체이닝한다**(`<build> && <test> && <lint>` — 앞 단계 실패 시 뒤가 실행되지 않는 것이 "실패 시 Phase I 복귀"와 일치. 해당 Type에 없는 단계는 생략하고, V-2를 조건부 축소하면 그 필터 명령을 체인에 넣는다).
 
@@ -341,6 +342,7 @@ Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 - [ ] "동작 확인됨" 주장의 근거가 빌드 통과 외에 있는가?
 - [ ] 이 task에서 추측으로 작성한 코드가 하나도 없는가?
 - [ ] 수정한 코드의 주석·docstring이 새 동작과 일치하는가 (옛 내용 그대로 둔 stale 주석이 없는가)?
+- [ ] (V-9 수행 task) 시각 요소 분해 표에 ❌ 잔존 0인가 — HUMAN-VERIFY로 위임 명시한 항목 제외 (V-9 미수행 task는 N/A)?
 
 하나라도 "아니오" → Phase I 복귀. **단 해당 단계를 실행하지 않은 task의 "N/A"는 "아니오"가 아니다** — Fast-Path가 그 단계를 생략한 경우(예: Type A 순수 문서는 V-1/V-2 미실행이므로 빌드·테스트 박스가 N/A로 통과; V-3 미수행이면 린트 박스도 N/A). N/A와 "실행했어야 하는데 안 함(=아니오)"을 혼동하지 않는다: V-1/V-2/V-3을 **수행한** task는 반드시 "예"여야 한다.
 
@@ -357,10 +359,10 @@ plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만*
 
 ## Phase D — Done
 
-**① 리뷰 수정분 유무 판정 (체크박스 갱신 전 — 먼저 실행)**: Phase D 진입 직후, **plan.md 체크박스를 아직 건드리기 전에** `git status --porcelain`으로 pre-review 커밋 이후 리뷰 지적 수정이 있었는지 판정해 둔다.
-- **clean** = 리뷰가 첫 판에 OK라 pre-review 커밋이 곧 최종 코드(추가 수정 없음).
-- **dirty** = 리뷰 지적 수정분이 워킹트리에 있음.
-- **이 판정을 ②(체크박스 갱신)보다 먼저 하는 이유**: 체크박스 갱신은 plan.md를 **항상** 수정하므로(plan.md가 tracked인 통상 케이스), 갱신 뒤에 판정하면 `git status`가 리뷰 수정 유무와 무관하게 늘 dirty가 되어 ③의 amend(clean) 분기가 죽는다. 판정을 앞당겨 체크박스 변경이 판정을 오염시키지 않게 한다. (plan.md가 gitignore인 repo면 체크박스 변경은 git에 안 보이므로 어느 순서든 무방하지만, 규칙은 tracked 기준으로 통일한다.)
+**① 리뷰 수정분 유무 판정 (HEAD 커밋 제목 기준)**: Phase D 진입 시 `git log -1 --format=%s`로 HEAD 커밋 제목을 확인한다.
+- **HEAD = `checkpoint: T<N> pre-review`** = 리뷰가 첫 판에 OK라 pre-review 커밋이 곧 최종 코드(추가 수정 없음) → ③의 amend 분기.
+- **그 외** = ③의 새 완료 커밋 분기 — `checkpoint: T<N> review-fix`가 쌓인 경우(수정분이 커밋으로 실재), Type A처럼 pre-review 없이 HEAD가 `checkpoint: T<N> start`인 경우 모두 여기.
+- 판정 신호가 커밋 제목이므로 **②(체크박스 갱신)와 순서 무관**하다 — 체크박스 변경은 워킹트리에만 있어 HEAD 제목을 바꾸지 않는다(수정분이 review-fix로 커밋되는 프로토콜과 신호가 일치 — 워킹트리 상태로 판정하지 않는다). HEAD 제목이 checkpoint 계열도 `T<N>:`도 아니면(수동 개입 등) `checkpoint: T<N> pre-review` 커밋의 존재 여부로 폴백 판정한다(있으면 후속 커밋 유무로, 없으면 새 완료 커밋 분기).
 
 **② plan.md 체크박스 갱신 (매 task, 필수 — commit보다 먼저)**: 이 task의 본체 체크박스를 `[ ]`/`[/]` → `[x]`로 바꾼 **뒤에** commit한다. 재개 시 미완료 task 식별의 1차 신호이므로 **task 완료마다 즉시** 갱신한다(Progress Log는 2 task마다지만 체크박스는 매 task). 이 단계를 빠뜨리면 재개('재개 진입')에서 체크박스가 전부 `[ ]`로 남아 git log·Progress Log와 어긋난다. 글로벌 CLAUDE.md에도 동일 규칙이 있으나, 이 스킬은 그에 의존하지 않고 자체적으로 강제한다.
 - **`require-task-checkbox` hook이 이 순서를 기계 강제한다** — `T<N>:` 완료 커밋 시 plan의 해당 체크박스가 [x]가 아니면 commit이 차단(exit 2)된다. 지침 준수 부탁이 아니라 구조적 게이트다.
@@ -368,18 +370,19 @@ plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만*
 
 **③ commit** — Phase V 서두에서 만든 `checkpoint: T<N> pre-review` 커밋을 이 task 완료 커밋으로 마무리한다. **①의 판정으로 분기**한다:
 
-- **①이 clean이면**(리뷰 수정분 없음) → 새 커밋 대신 **pre-review 커밋에 amend**한다(체크박스 변경만 흡수되고 메시지가 완료 메시지로 승격):
+- **①에서 HEAD가 pre-review면**(수정분 없음) → 새 커밋 대신 **pre-review 커밋에 amend**한다(체크박스 변경만 흡수되고 메시지가 완료 메시지로 승격):
   ```bash
   git add -A                    # ②의 체크박스 변경만 staged됨
   git commit --amend -m "T<N>: <한 줄 요약>
   ... (아래 완료 메시지 본문) ..."
   ```
-- **①이 dirty이면**(리뷰 지적 수정분 있음) → 그대로 새 완료 커밋을 만든다. pre-review 커밋은 그 앞 단계로 남는다(squash하지 않음 — 리뷰 대상 diff 고정 이력 보존):
+- **①이 그 외면**(review-fix 후속 커밋 있음 또는 Type A) → 새 완료 커밋을 만든다. pre-review·review-fix 커밋은 그 앞 단계로 남는다(squash하지 않음 — 리뷰 대상 diff 고정 이력 보존):
   ```bash
-  git add -A                    # 리뷰 수정분 + ②의 체크박스 변경
-  git commit -m "T<N>: <한 줄 요약>
+  git add -A                    # 남은 워킹트리 변경(체크박스 등)이 있으면 staged됨
+  git commit --allow-empty -m "T<N>: <한 줄 요약>
   ... (아래 완료 메시지 본문) ..."
   ```
+  `--allow-empty`인 이유: plan.md가 gitignore인 repo에서는 수정분이 전부 review-fix로 기커밋되고 체크박스 변경도 git에 안 보여 staged가 0일 수 있다 — 그 경우에도 완료 커밋(본문에 빌드/테스트/리뷰 기록)이 `nothing to commit`으로 실패하지 않게 한다(`checkpoint: T<N> start` 빈 커밋과 동일 선례). tracked plan repo에서는 체크박스 변경이 staged되므로 no-op(무해).
 
 완료 메시지 본문(두 경로 공통):
 
