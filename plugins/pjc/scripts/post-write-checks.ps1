@@ -53,7 +53,7 @@ function Test-WarnOnce {
 #   개조해 안전 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만 그 시도를 가시화한다.
 $normFileH2 = $file -replace '\\', '/'
 # hook·공유 헬퍼 이름 집합 — protect-harness.ps1 과 동일 유지(hook 신설 시 두 곳 함께 추가, secret-patterns 포함 근거는 그쪽 주석).
-$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib|warn-version-drift|hook-event-log'
+$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib|warn-version-drift|session-context|hook-event-log'
 # 8.3 단축명 마스킹 감지(H3) — protect-harness.ps1의 $suspect83과 동일 술어(탐지↔차단 대칭, 함께 갱신).
 #   실제 마스킹 형태(CLAUDE~N) + hook명 + /plugins/cache/(설치 캐시)일 때만 감지. hook명 단독 판정은
 #   'Claude…' 폴더(8.3=CLAUDE~1, 이 repo 포함)의 개발 소스 편집을 오탐하므로 캐시 컨텍스트를 게이트로
@@ -134,6 +134,17 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             if ($raw.EndsWith("`n")) { $lineCount-- }
             if ($lineCount -gt 1500) {
                 $utf8Warnings.Add("파일 라인 수 $lineCount (>1500). 분리 '검토' 신호 - 여러 독립 책임이 섞였으면 책임 단위로 분리, 단일 책임인데 길 뿐이면 그대로 둔다(억지 분리는 지역성을 해침). 분리 시 plan에 등록.")
+            }
+        }
+
+        # ---- 2b. notes.md 아카이브 시점 경고 (v1.112.0) ----
+        # 글로벌 CLAUDE.md 아카이브 규칙(30,000자 초과 시 notes-archive/로 이동, "미루면 영원히 안 됨")의
+        #   집행 장치 — 규칙 자체가 즉시성을 요구하는데 트리거가 모델 자율뿐이라 누락되기 쉽다.
+        # 문자 수 기준($raw.Length = UTF-16 코드 유닛 ≈ 문자 수, 한글 BMP 정확) — 규칙 문언(줄 수 아닌
+        #   문자 수 판단)과 일치. 세션·파일당 1회 디듑(매 notes 편집 반복 주입 방지).
+        if ($null -ne $raw -and [System.IO.Path]::GetFileName($file) -eq 'notes.md' -and $raw.Length -gt 30000) {
+            if (Test-WarnOnce ('notesarch|' + ($file -replace '\\', '/'))) {
+                $utf8Warnings.Add("notes.md가 $($raw.Length)자 (>30,000) — 아카이브 조건 충족. 오래된 항목부터 notes-archive/{YYYY-MM}.md 끝에 append하고 notes.md에서 제거하세요(15,000자 이하까지, 항목 블록은 쪼개지 않음). 이 세션에서 바로 수행하고 미루지 마세요 — 전체를 다시 읽지 말고 대상 블록만 부분 편집. (세션·파일당 1회)")
             }
         }
 
