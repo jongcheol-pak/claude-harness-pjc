@@ -264,6 +264,8 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 **Type C의 V-6(code-quality) 요청 플래그**: Type C task가 ① 보안·인증 관련 코드, ② 동시성·공유 상태, ③ 새 공개/내부 멤버(public/internal) 추가, ④ 파일 응집도 우려(1500줄 근접), ⑤ **사용자에게 노출되는 UI 문구(레이블·버튼·오류·툴팁·플레이스홀더) 신규 추가·변경** 중 하나라도 해당하면 Type 라인에 `(quality-review)`를 붙여 V-6을 요청한다 (예: `**Type**: C (quality-review)`). 그 외 Type C는 V-6 생략(V-5 단독). Type D는 항상 V-6. (⑤ 근거: UI 문구 사용자 친화성 검토는 code-quality-reviewer 항목 I에만 있어, 이 플래그가 없으면 기술 용어 노출(`null`·열거형 값 등)을 어느 reviewer도 잡지 못한다.)
 
+**PRD 복귀 게이트**: 분해 결과 task가 **10개 이상**인데 plan에 PRD 연결(`**PRD**:` 줄)이 없으면 — Step 0.5의 판정이 추정(예상 task 수) 기준이라 실분해와 어긋난 경우다 — Step 0.5로 돌아가 PRD를 먼저 작성한 뒤 계속한다(대규모 안전망(Phase G 재검증) 상실 방지).
+
 #### 긴 plan 분할 권고 (컨텍스트 관리)
 
 task가 **8개를 초과**하면 사용자에게 분할을 제안한다:
@@ -335,7 +337,7 @@ PRD가 있으면 (Step 0.5에서 새로 작성했거나 Step 1에서 기존 PRD�
 
 ### Step 8. Open Questions 해결 — 일괄·완전 모드
 
-질문이 있으면 **여기서** 사용자에게 묶어 질문하고, 답변을 plan.md에 반영한다. (리뷰 게이트(Step 9)보다 먼저 — plan-reviewer는 미해결 Open Questions를 BLOCKER로 보므로, 질문을 먼저 해소한 뒤 리뷰해야 한다.)
+질문이 있으면 **여기서** 사용자에게 묶어 질문하고, 답변을 plan.md에 반영한다. (리뷰 게이트(Step 9)보다 먼저 — plan-reviewer는 미해결 Open Questions를 BLOCKER로 보므로, 질문을 먼저 해소한 뒤 리뷰해야 한다.) **답변을 반영한 질문은 `## Open Questions`에서 `[x]`로 바꾸고 답 요약을 병기한다** — `[ ]`로 남기면 plan-reviewer(항목 6)가 미해결로 오판할 수 있다(미해결 질문만 `[ ]`로 남긴다).
 
 #### 질문 형식 (카테고리별 묶음)
 
@@ -384,7 +386,7 @@ Q5. ...
 ### Step 9. 리뷰 게이트 (subagent 필수)
 
 Open Questions가 모두 해소돼 plan이 완성된 뒤 검토한다. **`plan-reviewer` subagent 호출.** 자체 검토 금지.
-- **예외 (Type A/B만으로 구성된 plan)**: plan의 모든 task가 Type A(Doc/Config) 또는 B(Trivial Code)뿐이면 — 적대적 plan-reviewer(Opus) 대신 **메인이 자체 체크리스트 검토로 대체**할 수 있다(아래 Step 9 통과 체크리스트를 메인이 직접 대조). Type A/B는 cross-file·시그니처 변경이 없어 plan-reviewer의 핵심 항목(3 Impact·9 Autonomous)이 얕게 적용되므로, Opus 호출 비용이 검증 가치를 넘는다. **단 Type C/D가 하나라도 있으면 plan-reviewer 필수**(대체 불가). 자체 검토로 대체한 경우 그 사실을 사용자 승인 프롬프트에 1줄 명시한다.
+- **예외 (Type A/B만으로 구성된 plan)**: plan의 모든 task가 Type A(Doc/Config) 또는 B(Trivial Code)뿐이면 — 적대적 plan-reviewer(Opus) 대신 **메인이 자체 체크리스트 검토로 대체**할 수 있다(문서 끝 `## 통과 체크리스트`를 메인이 직접 대조). Type A/B는 cross-file·시그니처 변경이 없어 plan-reviewer의 핵심 항목(3 Impact·9 Autonomous)이 얕게 적용되므로, Opus 호출 비용이 검증 가치를 넘는다. **단 Type C/D가 하나라도 있으면 plan-reviewer 필수**(대체 불가). 자체 검토로 대체한 경우 그 사실을 사용자 승인 프롬프트에 1줄 명시한다.
 - 결과가 BLOCKER 또는 MAJOR면 plan 수정 후 재호출 (최대 3회).
 - **incomplete·미검증 잔여분은 통과가 아니다.** plan-reviewer 결과에 `incomplete`(turn 소진), "심볼 N개 미검증"(항목 3 grep 상한), "항목 미검토"(항목 우선순위) 표시가 있으면 — **BLOCKER/MAJOR가 0이어도 그 리뷰를 통과(OK)로 보지 않는다.** 메인이 잔여분을 직접 검증하거나(미검증 심볼은 grep으로 호출자를 직접 대조, 미검토 항목은 그 항목의 판정 기준을 체크리스트로 직접 대조해 결과를 남김) plan-reviewer를 재호출해 나머지를 마저 검토한 뒤에만 통과한다. 잔여분을 조용히 흘려보내고 Step 10으로 넘어가는 것은 금지 — reviewer가 정직하게 보고한 미검증분을 소비하지 않으면 보고 의무가 무의미해진다(implement-task V-5의 incomplete 처리와 동일 원칙). 단 위 Type A/B 자체 검토 대체 경로는 메인이 체크리스트 전 항목을 완주하므로 이 규정의 대상이 아니다.
 - **3회 후에도 BLOCKER/MAJOR가 잔존하면 → 사용자에게 에스컬레이션**(plan-reviewer의 `RECURRING — escalate to user` 표시를 받아 그대로 보고): 무엇이 왜 3회 반복됐는지 + 선택지(수정 방향 승인 / 범위 축소 / 직접 지침)를 제시하고 지시를 기다린다. **자동 통과·무한 재시도 금지** — plan을 통과시키지 못한 채 implement-task로 넘어가지 않는다(교착 방지: 종결은 통과 아니면 에스컬레이션 둘 중 하나).
@@ -394,7 +396,7 @@ Open Questions가 모두 해소돼 plan이 완성된 뒤 검토한다. **`plan-r
 
 ### Step 10. 사용자 승인 게이트
 
-ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
+ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출. **제시 전에 문서 끝 `## 통과 체크리스트`를 먼저 대조한다** — 체크리스트는 승인 후가 아니라 승인 요청 전 게이트다.
 
 **승인 프롬프트에 plan 요약을 반드시 포함한다 — 사용자가 plan.md 파일을 열지 않고도 판단할 수 있게**:
 1. **요구 이해** — plan의 `## 요구 이해`(원문 인용 + 이해 3~5줄)를 **최상단에 그대로 노출**. 요구 오해는 사용자만 판정할 수 있으므로 승인 판단의 첫 항목이다 (여기서 어긋나면 아래 task가 전부 맞아도 무의미).

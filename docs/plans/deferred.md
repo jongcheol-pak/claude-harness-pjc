@@ -6,6 +6,9 @@
 
 ## 대기
 
+- [2026-07-10] implement-task Phase D ① clean/dirty 판정(`git status`)이 재리뷰 커밋 프로토콜(SKILL:239 이어 커밋 + 리뷰어 diff 가드)과 모순(커밋된 수정분은 clean으로 오분류·dirty 분기 도달 불가) + 리뷰 수정 커밋 메시지 미규정으로 재개 트리(:177) 공백 — review-fix checkpoint 규정 + 판정을 `git log <pre-review>..HEAD` 기반으로 교체하는 설계 plan 필요 (출처: 2026-07-10 사용성 점검 Tier 2)
+- [2026-07-10] plan-feature 분할(Step 5 B)×대규모 PRD 전수 커버(Step 7.5)×plan-reviewer 12-a(분할 무해석) 규정 교착 — part별 PRD Coverage 스코프 규칙(`다음 part` 행 표기) 신설 + 12-a 분할 표식 인지 설계 plan 필요 (출처: 동 점검 Tier 2)
+- [2026-07-10] plan-feature Type B 정의가 구조 기준(단일 파일·단일 메서드·호출자 없음)뿐이라 신규 로직 단일 파일 작업이 B로 새어 검토 얕아짐 — B 정의에 "신규 심볼·알고리즘 추가는 C 이상" 제약 검토(검토 깊이 판정 기준 변경이라 설계 승인 필요) (출처: 동 점검 Tier 3 M1)
 - [2026-07-08] block-destructive: `cat <<EOF > file`(데이터 싱크 스트립) 후 같은 Bash 호출에서 즉시 실행 시 위험 본문 미스캔 — "파일 작성+동일 호출 실행" 조합 감지 개선 (출처: harness-quality-part1)
 - [2026-07-08] suggest-agents-record 명령 오인 오탐 2류 — ① 커밋 -m 값 속 명령 문자열 ② grep 패턴 문자열 속 "dotnet build" — hook 이벤트 로그 데이터 축적 후 근거 기반 수정 (출처: harness-quality-part1·v1.101.0)
 - [2026-07-08] .state 디듑 마커(post-write-warn·require-plan-warn·suggest-agents-record) 누적 정리 정책(TTL/청소) 부재 (출처: harness-quality-part1)
