@@ -124,10 +124,11 @@ Impact Analysis에 식별된 파일이 **각 task의 Files 목록에 빠짐없�
 ### 7. 부분 확인 (MAJOR 후보)
 - Investigation Log에 "샘플 확인" 등 전수 조사가 아닌 표현
 - 검색 범위가 명시되지 않은 확인
+- 예외: **읽기 비례 원칙에 따른 판정 근거가 Investigation Log에 있으면 부분 확인이 아니다** (plan-feature 절대 규칙 2 — hit 30건 초과 시 문맥 grep 1차 판정 + 영향 의심분만 정독은 정당한 전수 조사 방식이다. "샘플만 보고 전체 단정"과 구분)
 
 ### 8. 과대 범위 (MINOR 후보)
 - Out of Scope 섹션 누락
-- 한 task가 4시간 초과 추정
+- 한 task의 주 파일이 5개를 크게 초과 (plan-feature Step 5의 구조 기준 — 시간 추정이 아니라 "독립 검증되는가·주 파일 몇 개인가"로 판단)
 - task가 독립 검증 불가능
 
 ### 9. Autonomous Readiness (BLOCKER 후보) — **핵심**

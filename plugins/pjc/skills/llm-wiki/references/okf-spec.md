@@ -1,4 +1,4 @@
-<!-- 사본: Open Knowledge Format (OKF) v0.1 Draft — 2026-07-08 사용자 제공 원문을 무변조 보존한 사본. llm-wiki OKF 정합 규정(wiki-schema.md §12)의 대조 기준 문서. 이 주석 1줄 외 원문 무수정. -->
+<!-- 사본: Open Knowledge Format (OKF) v0.1 Draft — 2026-07-08 사용자 제공 원문을 무변조 보존한 사본. llm-wiki OKF 정합 규정(wiki-schema.md §12)의 대조 기준 문서. 이 주석 1줄 외 원문 무수정. 부분 Read가 필요하면 wiki-schema.md §12의 § 포인터(§3·4.1·5·6·7·9·11)로 해당 섹션만 특정해 읽는다(전문 정독 대신 — 이 파일은 TOC 없음). -->
 
 # Open Knowledge Format (OKF)
 

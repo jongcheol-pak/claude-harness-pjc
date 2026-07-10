@@ -1,6 +1,6 @@
 ---
 name: plan-feature
-description: Plan a non-trivial code change before code is written — decompose into tasks, pre-resolve decisions, define acceptance, output one plan.md. Triggers on Korean (계획/설계/기능 추가/리팩토링/구현/수정/변경/여러 곳/전체/만들어줘/앱·도구 만들어) and English (plan/design/implement/refactor/build an app/create a tool), a multi-task request, or a change spanning multiple files, altering logic/signatures, adding a function/class/method, or refactoring a resource layer (i18n/theming/DI). Routing — if an approved plan.md exists and the user only wants to execute it (구현/이대로 진행/계속/T<N> 진행/go) use implement-task; bug/crash reports (버그/에러/크래시/안 됨/왜 안 돼) go to pjc-systematic-debugging first; single-component work (Domain/Application service, ViewModel, wiki page) has its own skill (add-domain-service/add-viewmodel/llm-wiki). Do NOT trigger for trivial edits (single-line text/label/color/size, typo, comment, config, or ≤3-line code adding no new symbol/signature — Claude edits those directly). Ambiguous scope — ask "A) edit directly / B) make a plan".
+description: Plan a non-trivial code change — decompose into tasks, pre-resolve decisions, define acceptance, output one plan.md. Triggers on Korean (계획/설계/기능 추가/리팩토링/구현/수정/변경/여러 곳/전체/만들어줘/앱·도구 만들어) and English (plan/design/implement/refactor/build an app/create a tool), a multi-task request, or a change spanning multiple files, altering logic/signatures, adding a function/class/method, or refactoring a resource layer (i18n/theming/DI). Routing — approved plan.md + execute-only (구현/이대로 진행/계속/T<N> 진행/go) → implement-task; bug/crash reports (버그/에러/크래시/안 됨/왜 안 돼) → pjc-systematic-debugging first; single-component work (Domain/Application service, ViewModel, wiki page) → add-domain-service/add-viewmodel/llm-wiki. Do NOT trigger for trivial edits (single-line text/label/color/size, typo, comment, config, ≤3-line code adding no new symbol/signature, or multi-element pure value substitution of any count — Claude edits directly). Ambiguous scope — ask "A) edit directly / B) make a plan".
 argument-hint: "<요청 설명>"
 ---
 
@@ -108,7 +108,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
    - **이번 요청과 직접 관련된 변경**이거나, **방금 이 세션에서 진행해 곧 이어서 작업할 변경**이면 → 묻지 않고 그대로 진행한다 (개발 중 미커밋은 정상이며, 매번 물으면 과잉이다).
    - 판단이 애매하면(무관한 잔재인지 진행 중인지 불분명) 그때만 한 번 묻는다.
    - **'폐기'는 데이터 손실이므로 Claude가 직접 실행하지 않는다** — `git clean -fd` 같은 untracked 영구 삭제는 `block-destructive` hook이 차단한다. 단 **`git checkout -- <파일>`(추적 파일 되돌리기)은 hook이 막지 않는다**(정당한 파일 복원과 구분 불가하므로) — 그래도 uncommitted 변경 손실이라 Claude가 스스로 실행하지 않는다. 폐기를 원하면 사용자가 직접 실행하도록 안내하고, Claude는 커밋·stash까지만 돕는다.
-2. **기존 plan.md 확인**: 이미 `plan.md`가 있으면 다음을 구분한다 (항상 묻지 않는다):
+2. **기존 plan.md 확인** (= Step 0.2 — 외부 문서가 이 라벨로 지칭한다): 이미 `plan.md`가 있으면 다음을 구분한다 (항상 묻지 않는다):
    - **이전 계획이 완료됨**(모든 task 완료, notes에도 반영됨)이 명백하면 → 묻지 않고 새 계획으로 교체한다 (완료된 plan.md는 휘발성 잔재이므로 보존 가치 없음 — notes가 영구 기록을 이미 담았다). **단 교체 전에 기존 plan의 `## Deferred / Follow-up`에 미처리 항목이 남았는지 확인한다** — task 체크박스가 전부 `[x]`여도 Deferred는 "다음에 할 일"이라 완료가 아니다. 남아 있으면 이번 작업과 관련된 항목은 새 plan의 `## Deferred / Follow-up`으로 이관하고, 무관한 항목은 `docs/plans/deferred.md` 대장의 `## 대기`로 옮긴 뒤 교체한다(커밋되는 단일 대장이 Deferred 추적 정본 — 형식·중복 억제는 implement-task `references/phase-f-detail.md` F-6.5 규정, 파일 없으면 생성. F-6.5의 notes 포함 의무가 로컬 상세 기록으로 병행돼 유실 안전망이 이중이다).
      - **PRD 연결 plan은 완료 판정에 Phase G 통과까지 포함한다**: 기존 plan에 `**PRD**:` 줄이 있으면 task가 전부 `[x]`여도 그것만으로 완료가 아니다 — PRD 기반 작업의 완료는 **Phase G(요구 재검증) 통과 = active Must FR 100%**까지다. `## Phase Ledger` 마커 상태로 판정한다(implement-task Phase G-4가 통과 시 남기는 완료 신호가 Step 0.2가 읽는 실제 산출물):
 
@@ -170,7 +170,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 - **독립 read-only 조사(위치·패턴 찾기)가 2개 이상이면 `explorer` subagent 병렬 위임을 기본으로 한다** (메인 컨텍스트 보호). 단일·소규모라도 메인 컨텍스트를 아껴야 하면 위임 가능.
   - **서로 독립적인 조사 질문이 여러 개면 explorer를 한 turn에 병렬 호출한다** (예: "DI 등록 위치" + "기존 테마 처리 방식" + "테스트 구조" → 3개 동시). read-only라 충돌이 없고 대기 시간만 줄어든다. Step 4(영향 범위 조사)에서도 동일 — 기능별 독립 조사는 병렬로. **단 Step 4 위임은 후보 위치 찾기(grep locating)까지만이다 — 사용처를 전수 Read해 영향을 판단·확정하는 일은 메인이 직접 한다(아래 품질 경계).**
   - **위임 품질 경계**: 위임 대상은 "어디 있나 / 패턴이 무엇인가"(locating)뿐이다. "이 코드가 X를 하는가" 같은 **판단**과 **전체 파일을 읽어야 하는 작업**은 explorer(발췌만 읽음)에 맡기지 말고 메인이 직접 한다. 정확도가 품질에 직결되는 단계를 발췌-읽기에 떠넘기면 오판 위험. (토큰보다 품질·정확도 우선 — 병렬 위임은 latency만 줄이고 토큰은 늘므로, 무분별 위임이 아니라 "독립 locating"에 집중한다.)
-  - **explorer 결과 취급 (후보 위치일 뿐)**: explorer가 반환한 위치·패턴은 **후보**다 — Investigation Log에 근거로 등재하기 전에 **메인이 그 파일을 직접 Read해 확인**한다. explorer는 발췌만 읽으므로 그 요약을 검증 없이 "확인된 사실"로 옮기면 환각이 스며들 수 있다. locating은 위임하되, 등재되는 근거는 메인이 직접 본 것이어야 한다(D5 — explorer는 조회 보조이지 사실 판정자가 아니다).
+  - **explorer 결과 취급 (후보 위치일 뿐)**: explorer가 반환한 위치·패턴은 **후보**다 — Investigation Log에 근거로 등재하기 전에 **메인이 그 파일을 직접 Read해 확인**한다. explorer는 발췌만 읽으므로 그 요약을 검증 없이 "확인된 사실"로 옮기면 환각이 스며들 수 있다. locating은 위임하되, 등재되는 근거는 메인이 직접 본 것이어야 한다(explorer는 조회 보조이지 사실 판정자가 아니다).
   - 단, 앞 결과가 다음 질문을 결정하는 **의존 조사는 순차로** (예: "DI 컨테이너 종류 확인" → 그 결과에 따라 "해당 컨테이너의 등록 패턴 조사").
 
 ### Step 2. 범위 명확화
@@ -215,7 +215,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 변경 대상의 모든 사용처를 **실제로 식별하고 읽어** 분석.
 
 #### 4-A. 심볼/타입 추적
-- [ ] 심볼 참조 grep — **결과를 모두 Read로 열어 확인** (요약만으로 끝내기 금지)
+- [ ] 심볼 참조 grep — **결과를 모두 Read로 열어 확인** (요약만으로 끝내기 금지. hit 30건 초과 시 절대 규칙 2의 읽기 비례 원칙 적용 — 판정 근거를 Investigation Log에)
 - [ ] 인터페이스 변경 시 — 모든 **구현체 파일** 식별
 - [ ] 메서드 시그니처 변경 시 — 모든 **호출자 파일** 식별
 - [ ] 타입/필드 변경 시 — 모든 **참조 위치** 식별
@@ -409,7 +409,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 
 이 승인은 **plan 실행(구현) 승인**이다 — `## 불가피한 Halt (위임 불가)`의 항목(push·main 병합·태그·릴리즈·PR·파괴적 작업·인증정보 필요 신규 외부 서비스·돌발 결정)은 이 승인에 **포함하지 않으며**, 각 지점에서 그 행위를 이름으로 적어 따로 승인받는다 (implement-task 절대 규칙 12). push·릴리즈 등은 구현·검증 완료 후 implement-task 최종 보고에서 별도로 받는다.
 
-**승인 직후 결정 큐잉**: plan의 **기능 단위** 채택 결정·`## Deferred / Follow-up`(보류)·`## Out of Scope`(기각)를 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 항목별 1줄로 기록한다(vault 없으면 그 규약의 폴백, 구현 세부 결정은 제외 — 입도 기준은 K 5-2 정본) — 다음 계획 때 위키 조회로 회수된다.
+**승인 직후 결정 큐잉**: plan의 **기능 단위** 채택 결정·`## Deferred / Follow-up`(보류)·`## Out of Scope`(기각)를 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 항목별 1줄로 기록한다(vault 없으면 그 규약의 폴백, 구현 세부 결정은 제외 — 입도 기준은 K 5-2 정본) — 다음 계획 때 위키 조회로 회수된다. 같은 시점에 계획 중 확인된 **작업 규약·함정 사실**(레포에 안 담는 크로스 세션 지식)은 `[PROJECT-FACT]` 큐에 기록한다(형식·입도는 절차 K 5-3 정본 — 배치 트리거 ① plan 승인).
 
 ## 통과 체크리스트
 
@@ -418,7 +418,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출.
 - [ ] **근거 없는 단정 0** (핵심 주장이 모두 Investigation Log의 확인 근거와 매칭됨 — "아마도/보통" 같은 표현은 그 신호일 뿐, 판정 기준은 표현 유무가 아니라 근거 매칭. plan-reviewer 항목 1과 동일 기준)
 - [ ] `## 요구 이해` 작성됨 (원문 요청 인용 + 이해한 요구 3~5줄)
 - [ ] Impact Analysis 항목(4-A~4-D) 모두 ✓ — 신규 심볼이 있으면 4-D 재사용 확인 기록 포함
-- [ ] plan-reviewer 이슈 0 (또는 MINOR만 follow-up으로 등록) — **미검증 심볼·미검토 항목 잔여분도 처리 완료** (Step 9 incomplete 규정: 직접 검증 또는 재호출, 조용한 통과 금지)
+- [ ] plan-reviewer 이슈 0 (또는 MINOR만 follow-up으로 등록) — **미검증 심볼·미검토 항목 잔여분도 처리 완료** (Step 9 incomplete 규정: 직접 검증 또는 재호출, 조용한 통과 금지. Type A/B 자체 검토 대체 경로는 그 체크리스트 완주로 이 항목을 갈음)
 - [ ] 각 task에 검증 가능한 acceptance 1개 이상 — **항목 간 동시 만족 가능**(상호 모순 0, 절대 규칙 8) + **성립을 좌우하는 확인이 구현으로 이연되지 않음**(Step 6.5)
 - [ ] Open Questions 모두 해결됨
 - [ ] 코드 작성 중 사용자에게 물을 결정 분기 0

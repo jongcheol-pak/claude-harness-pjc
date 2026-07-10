@@ -90,7 +90,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 ### 🧭 시작 전 컨텍스트 확인 (구현 시작 직전, 1회)
 
-자율 루프 **시작 전**, 이번 세션에 이미 auto-compact가 있었거나 대화가 매우 길게 누적됐으면(=시작 후 압축 반복으로 후반 task 품질 저하 위험) 첫 task 전에 새 세션 시작을 권한다. 시작 전은 멈춰도 안전한 분기점이다(작업 *중간*엔 멈추지 않고 압축을 통과하는 절대 규칙 4와 구분 — 시작 전 권유 vs 중간 통과):
+자율 루프 **시작 전**, 이번 세션에 이미 auto-compact가 있었거나 대화가 매우 길게 누적됐으면(=시작 후 압축 반복으로 후반 task 품질 저하 위험) 첫 task 전에 새 세션 시작을 권한다. 시작 전은 멈춰도 안전한 분기점이다(작업 *중간*엔 멈추지 않고 압축을 통과하는 컨텍스트 관리 규칙 4와 구분 — 시작 전 권유 vs 중간 통과):
 > "현재 대화가 길어 컨텍스트가 많이 찼습니다. **새 세션에서 `pjc:implement-task`로 시작**(plan.md가 있어 'T1부터 진행'으로 이어짐)을 권합니다. 이대로 진행할까요, 새 세션으로 옮길까요?"
 
 - **컨텍스트가 여유롭거나** 사용자가 "이대로 진행"을 택하면 묻지 않고(또는 선택 존중해) 조용히 자율 루프를 시작한다(과잉 방지).
@@ -149,7 +149,7 @@ Phase 0 → 사전 승인 일괄 확인 (하이브리드 — 루프 시작 전 1
 loop over plan.md tasks (시작 task부터 Tn까지 — 첫 실행은 T1, 재개면 지정/첫 미완료 task):
   Phase P → 변경 전략 확정, caller 사전 추적
   Phase I → 최소 변경으로 구현
-  Phase V → Type별 fast-path (V-1~V-8, + V-9 디자인 정합 작업 시)
+  Phase V → Type별 fast-path (V-1~V-7, + V-9 디자인 정합 작업 시 — V-8이 최종 관문)
   Phase D → checkpoint commit → (2 task마다 Progress Log) → 즉시 다음 task로
 
 # 모든 task 완료 후
@@ -192,7 +192,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 ### P-3. 심볼 사용처 전수 추적
 - 변경 대상 심볼에 대해 `grep -rn "\b<symbol>\b"` 실행. 심볼이 여럿이면 `grep -rnE "\b(sym1|sym2|...)\b"` **1회 배치 실행** 후 결과를 심볼별로 재귀속한다(결과 동일, 호출 수만 절약 — post-write-checks hook의 배치 grep과 동일 기법).
 - 결과를 모두 Read로 확인.
-- **읽기 비례 원칙 (hit 과다 시).** hit가 **30건을 초과**하면 전건 전체 Read 대신, 먼저 `grep -rn -C <n>`(문맥 포함)으로 각 hit의 **영향 여부를 1차 판정**한다 — 영향이 의심되는 파일만 전체 Read로 정밀 확인한다. **판정 근거를 남긴다**(예: "hit 47건 중 12건이 시그니처 호출부 → 전체 Read, 나머지 35건은 문자열 매칭/주석 → 문맥으로 영향 없음 확인"). 단순 grep 카운트만으로 끝내는 것은 금지(영향 판정이 반드시 있어야 함). **위임 금지 가드는 유지** — 이 축약은 메인이 직접 수행하며 explorer 등에 넘기지 않는다(아래 가드). hit가 30건 이하면 종전대로 전건 Read.
+- **읽기 비례 원칙 (hit 과다 시).** hit가 **30건을 초과**하면(배치 실행 시 재귀속 후 **심볼별 hit** 기준) 전건 전체 Read 대신, 먼저 `grep -rn -C <n>`(문맥 포함)으로 각 hit의 **영향 여부를 1차 판정**한다 — 영향이 의심되는 파일만 전체 Read로 정밀 확인한다. **판정 근거를 남긴다**(예: "hit 47건 중 12건이 시그니처 호출부 → 전체 Read, 나머지 35건은 문자열 매칭/주석 → 문맥으로 영향 없음 확인"). 단순 grep 카운트만으로 끝내는 것은 금지(영향 판정이 반드시 있어야 함). **위임 금지 가드는 유지** — 이 축약은 메인이 직접 수행하며 explorer 등에 넘기지 않는다(아래 가드). hit가 30건 이하면 종전대로 전건 Read.
 - task의 Files 목록과 대조 → 누락된 caller 발견 시 **자율 처리가 기본**: plan.md의 해당 task Files에 누락 caller를 추가하고 함께 수정한다 (멈추지 않음). caller 갱신은 절대 규칙 3(Cross-File Consistency)의 정상 작업이다.
   - **예외 (Halt → 재승인)**: ① 누락 caller가 여러 모듈로 연쇄(대략 5개 파일 이상)해 plan 범위를 크게 벗어나거나, ② plan에 없던 **공개(public) 멤버 시그니처 변경**이 새로 필요해지거나(공개 API 계약 변경은 plan 승인 범위 밖 — 글로벌 "공개 멤버 시그니처 변경 승인 필요"와 정합), ③ 파괴적 변경·새 의존성을 유발하는 경우에는 Halt해 재승인받는다. plan이 이미 의도한 변경의 **단순 caller 갱신(시그니처 동일·내부 호출부 수정)**은 Cross-File Consistency의 정상 작업이라 Halt 아님.
 
@@ -292,7 +292,7 @@ reviewer subagent 호출이 **과부하(HTTP 529)로 실패**하면(V-5/V-6·F-7
 
 Task Type에 따라 다른 흐름:
 
-**Type B**: `spec-prefilter` (Haiku) 먼저 호출 (BASE_SHA·HEAD_SHA는 Type C/D와 동일 — HEAD_SHA = Phase V 서두의 **pre-review 커밋** SHA. prefilter도 그 diff를 본다).
+**Type B**: `spec-prefilter` (Haiku) 먼저 호출 (BASE_SHA·HEAD_SHA는 Type C/D와 동일 — HEAD_SHA = Phase V 서두의 **pre-review 커밋** SHA. prefilter도 그 diff를 본다. 나머지 전달물은 spec-prefilter 입력 계약대로 — acceptance 1줄·task Files 목록·AGENTS.md 위치).
 - PASS → V-5 완료, **V-7(축소)·V-8 진행** (Type B는 V-6 생략 — Sonnet 호출 안 함. Fast-Path 표와 일치).
 - ESCALATE → `spec-compliance-reviewer` (Sonnet) **단독** 호출 (Type B ESCALATE도 V-6 생략 → 병렬 대상 아님). BLOCKER/MAJOR → Phase I 복귀·수정 후 재호출, MINOR → follow-up, OK → V-7로.
 
@@ -348,16 +348,7 @@ Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 
 ### V-9. 시각 충실도 검증 (디자인 정합 작업만)
 
-plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만** 수행한다 (디자인 정합 작업이 아니면 건너뜀 — 이 표준 제목으로 트리거를 판정한다).
-
-1. **요소 전수 대조**: 분해 표의 각 요소·속성(**디자인 값** 기준)을 구현 결과와 하나씩 대조한다. 공유·재사용 컴포넌트도 빠짐없이 — "행만 맞추고 헤더·검색·칩은 맞겠지" 금지. **대조 결과(현재 구현 값·일치 여부)는 이 V-9 단계에서 산출한다** — plan의 분해 표는 "디자인 값 + 확인 방법"까지만 담으므로(현재 값·일치 열은 계획 단계에 두지 않음, plan-feature Step 2.5), 여기서 각 요소의 실제 구현 값을 확인해 일치/불일치를 판정한다. (구버전 plan이 "현재 값"·"일치" 열을 이미 가진 경우엔 그 열을 갱신하며 사용해도 된다 — **열 유무와 무관하게 디자인 값 기준으로 대조**하는 것이 핵심.)
-2. **빌드 ≠ 시각 일치를 명시**: 빌드 통과·테스트·코드리뷰는 **CSS 시각 충실도를 검증하지 못한다** (폰트 크기, 간격, 정렬, 아이콘 유무, 레이아웃 어긋남은 빌드가 못 잡는다). 따라서 빌드만으로 "디자인과 동일"을 선언하지 않는다.
-3. **시각 확인 처리**:
-   - 렌더 캡처가 가능하면(로그인 불필요·캡처 환경 있음) 디자인과 캡처를 요소별로 대조하고 결과를 표에 기록.
-   - **렌더 확인이 불가하면**(로그인 필요·캡처 환경 없음) 작업을 멈추지 말고 진행하되, 완료 보고에 **⏳ HUMAN-VERIFY: "시각 충실도는 빌드로 미검증 — 화면을 직접 확인 필요"**를 분해 표와 함께 명시한다. "동일하게 맞췄다"고 단정하지 않는다.
-4. 분해 표에서 ❌(불일치)가 남아 있으면 Phase I로 복귀해 수정 후 재대조한다.
-
-> 핵심: "디자인과 동일하게"는 화면 전체를 요소 단위로 대조하고 렌더로 확인해야 하는 작업이다. 일부만 보고 "맞겠지"로 끝내면 사용자가 볼 때만 어긋남이 드러난다.
+plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만** 수행한다 (디자인 정합 작업이 아니면 건너뜀 — 이 표준 제목으로 트리거를 판정한다). 수행 시점은 **V-7 이후·V-8 이전** — V-8("Phase D 진입 직전")이 V-9 결과까지 포괄하는 최종 관문이 되도록 한다. **수행 시 `references/phase-v9-detail.md`를 읽고 그 절차(요소 전수 대조·빌드≠시각 일치·렌더/HUMAN-VERIFY 처리·불일치 시 Phase I 복귀)를 그대로 따른다.**
 
 ### 재시도 한계 (Halt 트리거 — 무한 루프 차단)
 - 같은 task에서 **동일 BLOCKER/MAJOR 3회 연속** → Halt (reviewer의 RECURRING 태그 포함).
@@ -399,7 +390,7 @@ T<N>: <한 줄 요약>
 Type: <A/B/C/D>
 Build: <명령> → OK
 Tests: <X/Y passed>
-Review: spec OK (prefilter: <PASS/ESCALATE→OK>), quality <OK/SKIPPED>
+Review: spec OK (prefilter: <PASS/ESCALATE→OK> — Type B만, 그 외 필드 생략), quality <OK/SKIPPED>
 Caller-recheck: <확인한 심볼 수>개 심볼, 누락 0
 Self-honesty: PASS
 ```
@@ -433,7 +424,7 @@ Self-honesty: PASS
 
 ### Next Steps 갱신 (압축 대비 체크포인트 + 최종 보고 시)
 
-컨텍스트 과밀 시 압축 대비 체크포인트(절대 규칙 4), Halt 보고, 그리고 Phase F 통과 최종 보고 시 plan.md의 `## Next Steps`에 다음을 기록:
+컨텍스트 과밀 시 압축 대비 체크포인트(컨텍스트 관리 규칙 4), Halt 보고, 그리고 Phase F 통과 최종 보고 시 plan.md의 `## Next Steps`에 다음을 기록:
 
 ```markdown
 ## Next Steps
@@ -457,10 +448,10 @@ Self-honesty: PASS
 
 ## Phase F — Finalize (모든 task 완료 후)
 
-전체 plan 통합 검증. **진입 조건표(1 task+Type A=생략 / 1 task+Type B=F-1·F-2·F-6만 / 2+ tasks·Type C·D=전체 F-1~F-7)와 F-1~F-7 상세는 모두 `references/phase-f-detail.md`에 일원화.**
+전체 plan 통합 검증. **진입 조건표(1 task+Type A=생략 / 1 task+Type B=F-1·F-2·F-6만 / 2+ tasks 또는 Type C/D 포함=전체 F-1~F-7)와 F-1~F-7 상세는 모두 `references/phase-f-detail.md`에 일원화.**
 
 - 단, **F-6.5(notes 기록 + 오래된 항목 아카이브 이동)는 Phase F가 생략·축소돼도 코드 변경이 있었으면 항상 수행**한다(빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따름) — 누락 빈발 지점이라 본문에 남긴다.
-- 구현 중 **새로 생긴** plan `## Deferred / Follow-up`(보류)·`## Out of Scope`(기각) 항목은 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 1줄씩 기록한다(vault 없으면 그 규약의 폴백) — 계획 시점에 큐잉된 결정과 중복이면 생략.
+- 구현 중 **새로 생긴** plan `## Deferred / Follow-up`(보류)·`## Out of Scope`(기각) 항목은 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 1줄씩 기록한다(vault 없으면 그 규약의 폴백) — 계획 시점에 큐잉된 결정과 중복이면 생략. 같은 시점에 구현 중 확인된 **작업 규약·함정 사실**(레포에 안 담는 크로스 세션 지식)은 `[PROJECT-FACT]` 큐에 기록한다(형식·입도는 절차 K 5-3 정본 — 배치 트리거 ② implement-task 종료).
 - F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
 - **Phase Ledger 갱신**: Phase F를 통과하면 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를 기록한다 — 이후 Phase G 재루프 중 압축·재개가 발생해도 Phase F(F-7 Opus)를 중복 재실행하지 않기 위한 마커다('재개 진입'의 Phase Ledger 판정 규칙 참조). **PRD 연결 plan은 Phase G까지 통과하면 추가로 `Phase G 통과 (Must 100%)`를 기록한다**(phase-g-detail G-4 — 새 세션 plan-feature Step 0.2가 완료를 판정하는 신호).
 
@@ -470,7 +461,7 @@ Self-honesty: PASS
 
 Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 — **"plan.md가 PRD 요구를 빠뜨리지 않았는가"** 를 검증한다. **진입 시 `references/phase-g-detail.md`를 읽고 그 절차(G-1~G-4)를 그대로 수행한다.** 루프 제어 핵심 요약:
 
-- **G-1. PRD 전수 대조** — F-7 reviewer의 대조 결과를 재사용한다(동일 대조를 반복하지 않음, 보완 대조 예외 2가지는 상세 참조). REMOVED FR은 대상 제외. 기계 검증 불가 항목은 ✅가 아니라 ⏳ HUMAN-VERIFY로 표기한다(✅ 둔갑은 V-8 자기기만 패턴과 동일 위반).
+- **G-1. PRD 전수 대조** — F-7 reviewer의 대조 결과를 재사용한다(동일 대조를 반복하지 않음, 보완 대조 예외 3가지는 상세 참조). REMOVED FR은 대상 제외. 기계 검증 불가 항목은 ✅가 아니라 ⏳ HUMAN-VERIFY로 표기한다(✅ 둔갑은 V-8 자기기만 패턴과 동일 위반).
 - **G-2. 갭 처리 (자율 재루프)** — Must 미충족은 새 task 추가 후 Phase P부터 자율 재진입(사용자 확인 불필요), Should는 사용자 선택, Could는 follow-up만. 요구 자체를 바꿔야 하면 임의 변경 금지 — 사용자 승인 → PRD 갱신 → plan 조정 순서.
 - **G-3. 종료 조건** — 재루프 최대 2회. 같은 FR 2회 연속 미충족이면 즉시 Halt. 한도 도달 시 상세의 의무 보고 형식으로 Halt하고 지시를 기다린다(그냥 완료 선언 금지).
 - **G-4.** 최종 보고에 G-1 충족표 전체 + Must 충족률 100%를 명시한다.
@@ -489,4 +480,5 @@ Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 �
 - 저빈도 상세(빌드/테스트 fallback 표 · UI 문구 · 검증 스크립트 Windows 보안): `references/authoring-detail.md`
 - Phase F 상세: `references/phase-f-detail.md`
 - Phase G 상세: `references/phase-g-detail.md`
+- Phase V-9 상세: `references/phase-v9-detail.md`
 - 최종 보고 양식: `references/final-report-template.md`
