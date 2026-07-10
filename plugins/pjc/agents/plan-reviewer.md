@@ -36,7 +36,7 @@ plan의 task Type 분포에 따라 적용 항목이 다르다:
 
 - Type 분포는 plan.md의 각 task `Type:` 필드로 판별
 - "확신 없으면 더 무거운 Type으로 분류" 원칙은 plan-feature Step 5에 명시되어 있으므로, plan-reviewer는 명시된 Type을 신뢰
-- 단, **명백히 Type 분류가 잘못된 경우** (예: 인터페이스 시그니처 변경인데 Type B로 분류) → 항목 9 (Autonomous Readiness)에서 BLOCKER
+- 단, **명백히 Type 분류가 잘못된 경우** (예: 인터페이스 시그니처 변경인데 Type B로 분류, 또는 비자명 로직·알고리즘·제어흐름을 담은 신규 심볼 추가인데 Type B로 분류 — 자명한 접근자·상수·위임은 B 유지) → 항목 9 (Autonomous Readiness)에서 BLOCKER
 - **Type A 오분류 검출 (declared Type 무관 상시 적용)**: Type A로 분류됐는데 **동작을 바꾸는 Config**(DI 배선·기능 플래그 기본값·라우팅·빌드 산출 영향)면 → **MAJOR** (Type B 이상 재분류 요구). Type A는 적용 항목이 1·2·4·8뿐이라 적대적 검토가 얕고 implement-task에서 V-5/V-6도 생략되므로, 동작 변경이 Type A로 숨어 무검증 통과되는 것을 이 검출이 막는다.
 
 다음 각 항목을 plan.md 본문과 대조하여 검사합니다.
