@@ -82,6 +82,17 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/session-context.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "Stop": [

@@ -64,7 +64,7 @@ if ($Filter -and @($Filter).Count) {
     $knownFilterNames = @(
         'block-destructive', 'protect-harness', 'require-plan-for-write', 'require-task-checkbox',
         'post-write-checks', 'require-evidence', 'warn-external-ops', 'suggest-agents-record',
-        'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'hook-event-log'
+        'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'session-context', 'hook-event-log'
     )
     foreach ($f in $script:FilterSet) {
         if ($knownFilterNames -notcontains $f) {
@@ -819,6 +819,10 @@ if (Test-HookSelected @('protect-harness')) {
 $vdTarget = (Join-Path $vdCache 'warn-version-drift.ps1') -replace '\\', '/'
 $r = Invoke-Hook 'protect-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $vdTarget; content = 'x' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "protect-harness: 설치본 warn-version-drift 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+# session-context(v1.112.0 신설)도 동일 실증 — 이름 집합 합류 확인
+$scTarget = (Join-Path $vdCache 'session-context.ps1') -replace '\\', '/'
+$r = Invoke-Hook 'protect-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $scTarget; content = 'x' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "protect-harness: 설치본 session-context 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 }   # ---- 게이트 끝 (protect-harness) ----
 
 # =====================================================================
@@ -905,6 +909,55 @@ if (Test-HookSelected @('hook-event-log')) {
     Assert-Case -Name "report-hook-events: 로그 없음 안내 + exit 0" -R $rRep2 -ExpectExit 0 -ExpectContains '적재된 이벤트 없음'
     Remove-Item -Recurse -Force $isoR2 -ErrorAction SilentlyContinue
 }   # ---- §12 게이트 끝 (hook-event-log) ----
+
+# =====================================================================
+# 13) session-context 시나리오 (SessionStart — plan/notes 상태 요약 주입, v1.112.0)
+# =====================================================================
+if (Test-HookSelected @('session-context')) {
+    # 픽스처: plan.md(T 3개 중 미완료 2 — [x]/[/]/[ ] 혼합) + notes.md(최근 항목 날짜)
+    $scProj = Join-Path $work 'sc-proj'
+    New-Item -ItemType Directory $scProj -Force | Out-Null
+    @(
+        '# Plan: test',
+        '## Tasks',
+        '- [x] T1: done (Type A)',
+        '- [/] T2: in progress (Type B)',
+        '- [ ] T3: todo (Type C)'
+    ) | Set-Content -Encoding UTF8 (Join-Path $scProj 'plan.md')
+    @('## 최근 변경', '- 2026-07-01: 테스트 항목') | Set-Content -Encoding UTF8 (Join-Path $scProj 'notes.md')
+
+    # SC1: startup → plan 미완료 카운트 + notes 날짜 주입 (같은 실행 결과로 2개 확인)
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: plan 미완료 카운트 주입 (SC1)" -R $r -ExpectExit 0 -ExpectContains '미완료 2'
+    Assert-Case -Name "session-context: notes 최근 항목 날짜 주입 (SC1b)" -R $r -ExpectExit 0 -ExpectContains '2026-07-01'
+
+    # SC2: compact → 재확인 리마인더 추가 주입
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 재확인 리마인더 (SC2)" -R $r -ExpectExit 0 -ExpectContains '요약 직후'
+
+    # SC3: plan/notes 없는 빈 폴더 → 무출력 (비 pjc 프로젝트 노이즈 방지)
+    $scEmpty = Join-Path $work 'sc-empty'; New-Item -ItemType Directory $scEmpty -Force | Out-Null
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scEmpty } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: plan/notes 없음 무출력 (SC3)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # SC4: 루트 plan 없음 → docs/plans/ 폴백 (체크박스 없는 deferred.md는 건너뜀 실증 — 더 최신이어도 비인식)
+    $scDocs = Join-Path $work 'sc-docs'
+    New-Item -ItemType Directory (Join-Path $scDocs 'docs/plans') -Force | Out-Null
+    @('- [x] T1: a', '- [ ] T2: b') | Set-Content -Encoding UTF8 (Join-Path $scDocs 'docs/plans/2026-07-01-feature.md')
+    '- [2026-07-10] deferred 항목 (T 체크박스 아님)' | Set-Content -Encoding UTF8 (Join-Path $scDocs 'docs/plans/deferred.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDocs } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: docs/plans 폴백 인식 (SC4)" -R $r -ExpectExit 0 -ExpectContains '2026-07-01-feature.md'
+
+    # SC5: task 체크박스 없는 plan.md(비 pjc 형식) → 카운트 오보 대신 존재 강등 문구
+    $scNoT = Join-Path $work 'sc-not'; New-Item -ItemType Directory $scNoT -Force | Out-Null
+    '# 자유 형식 계획 문서' | Set-Content -Encoding UTF8 (Join-Path $scNoT 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scNoT } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 비 pjc plan 존재 강등 문구 (SC5)" -R $r -ExpectExit 0 -ExpectContains '존재'
+
+    # SC6: 빈 stdin → 무출력 exit 0 (fail-open)
+    $r = Invoke-Hook 'session-context.ps1' ''
+    Assert-Case -Name "session-context: 빈 stdin 무출력 fail-open (SC6)" -R $r -ExpectExit 0 -ExpectSilent $true
+}   # ---- §13 게이트 끝 (session-context) ----
 
 # =====================================================================
 # USERPROFILE 원복 + 결과 보고
