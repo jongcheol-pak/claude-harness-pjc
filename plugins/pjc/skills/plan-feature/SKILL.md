@@ -254,7 +254,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 | Type | 정의 |
 |---|---|
 | **A** (Doc/Config) | `.md`, `.json`, `.yml`, `.csproj`, `.editorconfig` 등 코드 외 파일만. **단 동작을 바꾸는 Config는 Type A 아님** — DI 배선·기능 플래그 기본값·라우팅·빌드 산출에 영향 주는 설정은 런타임 동작을 바꾸므로 **Type B 이상**으로 본다(순수 문서·주석·비동작 설정만 A). Type A는 적대적 리뷰(V-5/V-6)를 건너뛰므로 동작 변경이 A로 숨으면 무검증 통과된다. |
-| **B** (Trivial Code) | 단일 코드 파일, 단일 메서드/필드, **호출자 변경 없음** (typo, 주석) |
+| **B** (Trivial Code) | 단일 코드 파일, 단일 메서드/필드, **호출자 변경 없음**. 기존 코드의 값·문자열·주석 수정, 자명한 접근자(getter/setter)·상수·순수 위임 수준 (typo, 주석). **단 비자명 로직·알고리즘·제어흐름·상태 변경을 담은 신규 심볼(함수/메서드/클래스) 추가는 파일이 하나여도 Type C 이상** — Type B는 V-5가 prefilter(Haiku)만, V-3·V-6을 생략하므로 검토가 필요한 신규 로직이 B로 새면 무검증 통과된다. |
 | **C** (Normal Code) | 단일 또는 2-3개 파일, caller 갱신 있음 |
 | **D** (Complex/Cross-cutting) | 다중 파일, 인터페이스 변경, 시그니처 변경, 직렬화 변경, DDD/아키텍처 영향 |
 

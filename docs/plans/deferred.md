@@ -9,7 +9,6 @@
 - [2026-07-10] 골든 러너 `-Filter "a,b"` 단일 문자열 바인딩 시 콤마 split 안 됨(배열 전달만 동작) — 기존 동작, 다음 러너 정비 때 (출처: v1.112.0 T1 quality 리뷰 m2)
 - [2026-07-10] 위키 feat-safety-hooks·feat-plan-feature에 v1.111.0 AGENTS.md bootstrap 게이트·직접 작성 금지 문구 반영 — 다음 하네스 ingest 세션에서 (출처: v1.111.0)
 - [2026-07-10] AGENTS 게이트 임시폴더 예외 분기 골든 케이스 추가 — 러너 $work가 LOCALAPPDATA라 현재 스위트 사각(fail-open 방향·저위험), 다음 hook 정비 때 (출처: v1.111.0 F-7 m1)
-- [2026-07-10] plan-feature Type B 정의가 구조 기준(단일 파일·단일 메서드·호출자 없음)뿐이라 신규 로직 단일 파일 작업이 B로 새어 검토 얕아짐 — B 정의에 "신규 심볼·알고리즘 추가는 C 이상" 제약 검토(검토 깊이 판정 기준 변경이라 설계 승인 필요) (출처: 동 점검 Tier 3 M1)
 - [2026-07-08] block-destructive: `cat <<EOF > file`(데이터 싱크 스트립) 후 같은 Bash 호출에서 즉시 실행 시 위험 본문 미스캔 — "파일 작성+동일 호출 실행" 조합 감지 개선 (출처: harness-quality-part1)
 - [2026-07-08] suggest-agents-record 명령 오인 오탐 2류 — ① 커밋 -m 값 속 명령 문자열 ② grep 패턴 문자열 속 "dotnet build" — hook 이벤트 로그 데이터 축적 후 근거 기반 수정 (출처: harness-quality-part1·v1.101.0)
 - [2026-07-08] .state 디듑 마커(post-write-warn·require-plan-warn·suggest-agents-record) 누적 정리 정책(TTL/청소) 부재 (출처: harness-quality-part1)
@@ -26,6 +25,7 @@
 
 ## 종결
 
+- [2026-07-10 → 2026-07-10] Type B 분류 정의가 구조 기준(단일 파일·메서드·호출자 없음)뿐이라 신규 비자명 로직이 B로 새어 검토(V-5 prefilter만·V-3/V-6 생략) 얕아짐 — 반영(v1.113.0 T1 — plan-feature:257에 경계 명문화(비자명 로직·알고리즘·제어흐름·상태변경 신규 심볼은 Type C 이상, 자명 접근자·상수·순수 위임은 B 유지) + plan-reviewer:39 오분류 검출 예시 병기, 방어선 2층)
 - [2026-07-10 → 2026-07-10] SessionStart matcher `compact` 추가 + 요약 직후 재확인 컨텍스트 주입 — 반영(v1.112.0 T1 — session-context.ps1 신설, matcher 4종 + compact 리마인더, 골든 SC2)
 - [2026-07-10 → 2026-07-10] post-write-checks notes.md 30,000자 초과 아카이브 경고 — 반영(v1.112.0 T2 — 섹션 2b, Test-WarnOnce 디듑, 골든 NA1~NA3)
 - [2026-07-10 → 2026-07-10] SessionStart에 plan.md 존재·미완료 task 수·notes.md 최신 항목 날짜 주입(로컬 경량판) — 반영(v1.112.0 T1 — session-context.ps1에 compact 항목과 통합 구현, 골든 SC1·SC1b·SC3~SC5)
