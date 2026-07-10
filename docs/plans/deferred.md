@@ -6,9 +6,7 @@
 
 ## 대기
 
-- [2026-07-10] SessionStart matcher에 `compact` 추가 + 요약 직후 "활성 plan 경로·현재 task·핵심 게이트 재확인" 컨텍스트 주입 — implement-task 장기 자율 루프의 컨텍스트 요약 내성 확보 (출처: 2026-07-10 스킬 사용성 검토)
-- [2026-07-10] post-write-checks에 notes.md 30,000자 초과 시 아카이브 안내 경고 추가(비차단, .state 디듑 마커 재사용) — CLAUDE.md 아카이브 규칙의 집행 장치 부재 보완 (출처: 2026-07-10 스킬 사용성 검토)
-- [2026-07-10] SessionStart에 plan.md 존재·미완료 task 수·notes.md 최신 항목 날짜 1줄 주입 — 로컬 파일만 보는 경량판(v1.102.0 위키 허브 주입 미채택 결정과 별개), "작업 시작 전 확인" 규칙 구조화 (출처: 2026-07-10 스킬 사용성 검토)
+- [2026-07-10] 골든 러너 `-Filter "a,b"` 단일 문자열 바인딩 시 콤마 split 안 됨(배열 전달만 동작) — 기존 동작, 다음 러너 정비 때 (출처: v1.112.0 T1 quality 리뷰 m2)
 - [2026-07-10] 위키 feat-safety-hooks·feat-plan-feature에 v1.111.0 AGENTS.md bootstrap 게이트·직접 작성 금지 문구 반영 — 다음 하네스 ingest 세션에서 (출처: v1.111.0)
 - [2026-07-10] AGENTS 게이트 임시폴더 예외 분기 골든 케이스 추가 — 러너 $work가 LOCALAPPDATA라 현재 스위트 사각(fail-open 방향·저위험), 다음 hook 정비 때 (출처: v1.111.0 F-7 m1)
 - [2026-07-10] plan-feature Type B 정의가 구조 기준(단일 파일·단일 메서드·호출자 없음)뿐이라 신규 로직 단일 파일 작업이 B로 새어 검토 얕아짐 — B 정의에 "신규 심볼·알고리즘 추가는 C 이상" 제약 검토(검토 깊이 판정 기준 변경이라 설계 승인 필요) (출처: 동 점검 Tier 3 M1)
@@ -28,6 +26,9 @@
 
 ## 종결
 
+- [2026-07-10 → 2026-07-10] SessionStart matcher `compact` 추가 + 요약 직후 재확인 컨텍스트 주입 — 반영(v1.112.0 T1 — session-context.ps1 신설, matcher 4종 + compact 리마인더, 골든 SC2)
+- [2026-07-10 → 2026-07-10] post-write-checks notes.md 30,000자 초과 아카이브 경고 — 반영(v1.112.0 T2 — 섹션 2b, Test-WarnOnce 디듑, 골든 NA1~NA3)
+- [2026-07-10 → 2026-07-10] SessionStart에 plan.md 존재·미완료 task 수·notes.md 최신 항목 날짜 주입(로컬 경량판) — 반영(v1.112.0 T1 — session-context.ps1에 compact 항목과 통합 구현, 골든 SC1·SC1b·SC3~SC5)
 - [2026-07-10 → 2026-07-10] implement-task Phase D clean/dirty 판정×재리뷰 커밋 프로토콜 모순 + review-fix 커밋 메시지 미규정 — 반영(v1.110.0 T1 — Phase D ①을 HEAD 커밋 제목 판정으로 교체·review-fix checkpoint 규정·재개 트리 5분기+폴백·새 완료 커밋 --allow-empty)
 - [2026-07-10 → 2026-07-10] plan-feature 분할×PRD 전수 커버×12-a 규정 교착 — 반영(v1.110.0 T2·T3 — part별 Coverage 스코프(`⏭️ 다음 part`/`✅ 이전 part 기구현` 행)+합집합=전수 게이트+두 part 동시 작성 명문화, 12-a 분할 인지+실질 MAJOR 게이트, 마지막 part Phase G/F-7 전수(전체 트리 기준))
 - [2026-07-09 → 2026-07-10] 하네스 최근 버전분(v1.102.0~) 위키 ingest — 반영(2026-07-10 위키 세션 2회: v1.102~1.108 feature 5페이지 상세 ingest + v1.109.0 델타·run_eval 함정·A~L 표기 드리프트 정정, lint 델타 0)
