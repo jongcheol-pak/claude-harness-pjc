@@ -959,6 +959,20 @@
       "command": "git merge feature-branch && echo done --continue",
       "expect_exit": 0,
       "expect_contains": "git merge"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "git merge-base 무경고 (읽기 전용 조회, merge 오탐 아님)",
+      "command": "git merge-base main feature",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "git merge-tree 무경고 (하이픈 결합 plumbing)",
+      "command": "git merge-tree main feature",
+      "expect_exit": 0,
+      "expect_silent": true
     }
   ]
 }
