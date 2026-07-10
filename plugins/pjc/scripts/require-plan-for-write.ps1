@@ -84,6 +84,8 @@ if ($data.tool_name -eq 'Write' -and
             [Console]::Error.WriteLine("  3) 스킬을 호출할 수 없는 상황(도구 제한 등)이면 사용자에게 확인 요청")
             [Console]::Error.WriteLine("  4) 긴급 우회는 사용자만 가능 (Claude Code 시작 전 터미널에서):")
             [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")
+            [Console]::Error.WriteLine("     ※ Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다 — 시도하지 말고,")
+            [Console]::Error.WriteLine("       필요하면 사용자에게 위 설정(후 Claude Code 재시작)을 안내하세요.")
             Write-RpEvent 'block' 'AGENTS bootstrap 게이트'
             exit 2
         }
