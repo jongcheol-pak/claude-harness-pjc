@@ -137,6 +137,17 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             }
         }
 
+        # ---- 2b. notes.md 아카이브 시점 경고 (v1.112.0) ----
+        # 글로벌 CLAUDE.md 아카이브 규칙(30,000자 초과 시 notes-archive/로 이동, "미루면 영원히 안 됨")의
+        #   집행 장치 — 규칙 자체가 즉시성을 요구하는데 트리거가 모델 자율뿐이라 누락되기 쉽다.
+        # 문자 수 기준($raw.Length = UTF-16 코드 유닛 ≈ 문자 수, 한글 BMP 정확) — 규칙 문언(줄 수 아닌
+        #   문자 수 판단)과 일치. 세션·파일당 1회 디듑(매 notes 편집 반복 주입 방지).
+        if ($null -ne $raw -and [System.IO.Path]::GetFileName($file) -eq 'notes.md' -and $raw.Length -gt 30000) {
+            if (Test-WarnOnce ('notesarch|' + ($file -replace '\\', '/'))) {
+                $utf8Warnings.Add("notes.md가 $($raw.Length)자 (>30,000) — 아카이브 조건 충족. 오래된 항목부터 notes-archive/{YYYY-MM}.md 끝에 append하고 notes.md에서 제거하세요(15,000자 이하까지, 항목 블록은 쪼개지 않음). 이 세션에서 바로 수행하고 미루지 마세요 — 전체를 다시 읽지 말고 대상 블록만 부분 편집. (세션·파일당 1회)")
+            }
+        }
+
         # ---- 3. 영문 주석 비율 (코드 파일만) ----
         # 주석 검사용 코드 확장자 — impact 섹션의 caller 검색용 목록($codeExtsImpact)과 다르므로 분리 유지.
         $extComment = [System.IO.Path]::GetExtension($file).ToLower()
