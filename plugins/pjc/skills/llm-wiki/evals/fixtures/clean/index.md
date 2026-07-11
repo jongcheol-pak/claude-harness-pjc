@@ -14,5 +14,10 @@ updated: 2026-07-02
 |---|---|---|---|
 | 것 (thing) | windows-desktop | Demo | [[20_projects/personal/demo/feat-thing\|feature]] |
 
+## 증상별 인덱스
+| 증상 | 근본원인 | 플랫폼 | 해법 |
+|---|---|---|---|
+| 화면에 아무것도 안 보인다 | 바인딩 누락 | windows-desktop | [[20_projects/personal/demo/feat-thing\|해법]] |
+
 ## 미해결 질문
 (없음)

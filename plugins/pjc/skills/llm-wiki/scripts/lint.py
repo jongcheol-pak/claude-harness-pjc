@@ -9,7 +9,7 @@
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
-      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION]/[PROJECT-FACT]/[K-MISS] 태그별, §7-25)
+      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION]/[PROJECT-FACT]/[K-MISS]/[SYMPTOM] 태그별, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
@@ -155,6 +155,16 @@ def section(text, heading):
     m = re.search(r"^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)",
                   text, re.M | re.S)
     return m.group(0) if m else None
+
+
+def without_section(text, heading):
+    """'## {heading}' 섹션(헤딩~다음 '## ' 또는 \\Z)을 제거한 사본. section()의 역(逆).
+    증상별 인덱스(§6)는 행 형상이 기능별 인덱스와 겹치지만(첫 컬럼 평문 + feat/recipe 링크,
+    is_feat_recipe_row가 True) 의미가 달라(첫 컬럼이 '증상' 관찰 표현) 한/영 병기(§7-16)·등록
+    (§7-6) 검사 대상이 아니다 — 스캔 텍스트에서 이 섹션을 뺀다. §7-14 행수는 section('기능별
+    인덱스')로 이미 스코프돼 영향 없고, 행 wikilink의 깨진 링크는 §7-1이 전 페이지에서 잡는다."""
+    return re.sub(r"^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)", "",
+                  text, flags=re.M | re.S)
 
 
 def wikilink_targets(text):
@@ -730,8 +740,12 @@ def main():
                     itext += "\n" + sfh.read()
             except (UnicodeDecodeError, OSError):  # M-2: 비 UTF-8 sub-index 하나로 전체가 죽지 않게
                 pass
+        # 증상별 인덱스(§6)는 행 형상이 기능별 인덱스와 겹치나 의미가 달라 등록(§7-6)·한/영(§7-16)
+        #  검사에서 제외한다(증상 행이 feature를 '등록됨'으로 마스킹하거나, 증상 관찰 표현에 한/영을
+        #  요구하는 오탐 방지). 깨진 링크는 §7-1이 전 페이지에서 잡으므로 이 제외로 놓치지 않는다.
+        itext_feat = without_section(itext, "증상별 인덱스")
         # 코드펜스/인라인코드 제외 후 feature 링크 추출 — wikilink_targets(메인 루프 파싱과 공용)
-        for t in wikilink_targets(itext):
+        for t in wikilink_targets(itext_feat):
             if "/feat-" in t:
                 # M-3: '.md' 확장자를 벗겨 feat_files(무확장)와 동일 형태로 맞춘다 —
                 #   '[[…/feat-x.md]]' 링크를 '인덱스 누락'으로 오판하지 않게(깨진링크·고아와 함께 3중 오탐 제거).
@@ -745,7 +759,7 @@ def main():
         #  뒤의 행도 누락하지 않는다(§4 보증). 첫 컬럼은 평문 행만 판정에 들어오므로(헬퍼 조건 ②)
         #  split("|")[1] 추출이 이후 컬럼 wikilink의 \| 이스케이프에 영향받지 않는다.
         han, lat = re.compile(r"[가-힣]"), re.compile(r"[A-Za-z]")
-        for line in itext.splitlines():
+        for line in itext_feat.splitlines():   # 증상별 인덱스 섹션 제외본(위 §7-6) — 증상 관찰 표현 오탐 차단
             if not is_feat_recipe_row(line):
                 continue
             name = line.lstrip().split("|")[1].strip()

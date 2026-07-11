@@ -4,7 +4,7 @@
     {
       "fixture": "clean",
       "expect_clean": true,
-      "rationale": "위반 0 — 오탐 회귀 방지(정상 vault를 경고하지 않는지)"
+      "rationale": "위반 0 — 오탐 회귀 방지(정상 vault를 경고하지 않는지). 증상별 인덱스(§6)에 한글-only 증상 행(feat 링크)을 포함 — is_feat_recipe_row가 True라 §7-16 한/영 병기가 오탐할 수 있으나 without_section 제외로 clean 유지(v1.114.1 회귀)."
     },
     {
       "fixture": "broken-link",
