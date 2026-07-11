@@ -779,12 +779,13 @@ def main():
             warn(f"log 아카이브 인덱스 깨짐: log.md가 {ym}.md를 가리키나 90_archive/log/{ym}.md 없음",
                  f"90_archive/log/{ym}.md")
 
-    # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/K 5-3/K 5-4/B-1 0): 잔량이 있으면 INFO로 알려
+    # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/K 5-3/K 5-4/K 5-5/B-1 0): 잔량이 있으면 INFO로 알려
     #  다음 ingest/lint 세션이 소비하게 한다 (0건·파일 없음이면 생략). 태그별 분리 —
     #  [K-DRIFT]는 위키 세션이 반영 후 제거, [SKILL-IMPROVE]는 사용자 보고 대상(제거는 사용자 지시),
     #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비),
     #  [PROJECT-FACT]는 해당 프로젝트 허브 '## 작업 규약·주의사항'에 반영 후 제거(자가 소비),
-    #  [K-MISS]는 레포 근거 대조 후 feature/recipe 반영 또는 기각 보고 후 제거(수요 신호 — 자동 생성 아님).
+    #  [K-MISS]는 레포 근거 대조 후 feature/recipe 반영 또는 기각 보고 후 제거(수요 신호 — 자동 생성 아님),
+    #  [SYMPTOM]은 증상별 인덱스(§6)에 등재 게이트 검증 후 반영 또는 보류(해법 페이지 부재)·기각(미검증 원인) 후 제거.
     #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
     if "pending.md" in pages:
         pend_text = pages["pending.md"][2]
@@ -793,7 +794,8 @@ def main():
                            ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)"),
                            ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비)"),
                            ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — 허브 '작업 규약·주의사항' 반영 대상, 게이트는 DECISION 동형)"),
-                           ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)")):
+                           ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)"),
+                           ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)")):
             n = sum(1 for line in pend_text.splitlines()
                     if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[" + tag + r"\]", line))
             if n:
