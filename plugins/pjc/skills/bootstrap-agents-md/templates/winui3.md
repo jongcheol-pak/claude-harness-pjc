@@ -13,7 +13,7 @@
 
 ## Build & Test
 - **Build**: `dotnet build <Project>.csproj -c Debug -p:Platform=x64`  ← **반드시 `-p:Platform` 명시**
-- **Test**: `dotnet test tests/`
+- **Test**: `dotnet test <솔루션 파일>` 또는 테스트 프로젝트 단일 지정 (`tests/` 디렉터리 지정은 테스트 프로젝트가 2개 이상이면 MSB1011로 실패)
 - **Lint/Format**: `dotnet format`
 - **실행**: 패키지형은 VS F5(Package 프로필) 권장. 비패키지형은 `dotnet run --project <Project>.csproj -p:Platform=x64`
 
@@ -72,7 +72,7 @@
 - **DI**: `Microsoft.Extensions.DependencyInjection`, 인터페이스 통한 등록
 - **에러 처리**: `Result<T>` 패턴 권장
 - **비동기**: `async`/`await` 일관. `.Result`/`.Wait()` 금지, `async void`는 이벤트 핸들러만
-- **파일**: 1500라인 내외, UTF-8 (BOM 없음), 주석은 한글 ("왜"만 설명)
+- **파일**: 1500라인 내외, UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 - **접근성**: 포커스 비주얼 + `AutomationProperties.Name` 설정
 
 ## Repository Structure
@@ -93,6 +93,15 @@
 └── docs/                       # WINUI3-PROJECT-GUIDE.md, WINUI3-DESIGN-GUIDE.md (있으면)
 ```
 
+## 산출물·파일 관리
+- **빌드 산출물**: `bin/` · `obj/` (gitignore)
+- **패키징 출력**: `AppPackages/` (MSIX) · `publish/` (gitignore)
+- **런타임 생성물**: <로그·설정 저장 경로 — 예: `%LOCALAPPDATA%\<App>\`>
+
+## 데이터 접근
+- **DB/스토어**: <예: SQLite(로컬) / 없음>
+- **접속**: <연결 정보는 환경변수·secrets로 — 실제 값 금지, 환경변수 이름만>
+
 ## DO NOT
 - `dotnet new winui` (CLI) 사용
 - `Window.Current` 사용 (UWP 잔재)
@@ -105,11 +114,16 @@
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
-- 단일 plan: `plan.md`
-- 여러 plan 누적: `docs/plans/<YYYY-MM-DD>-<slug>.md`
-- PRD (대규모 작업 시): `docs/prd.md` 또는 `docs/prds/<YYYY-MM-DD>-<slug>.md`
+
+```
+Plan Location: <plan.md | docs/plans/>   ← 하나만 남기세요
+PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-DD>-<slug>.md)
+```
+
+- `plan.md` = 단일 파일 덮어쓰기(작은 프로젝트) / `docs/plans/` = `<YYYY-MM-DD>-<slug>.md` 날짜별 누적(히스토리 보존)
+- 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
-- 타깃 OS: Windows 11 21H2+ (`net10.0-windows10.0.22000.0`) 또는 프로젝트 지정값
+- 타깃 OS/TFM: Stack 섹션의 TFM과 동일하게 유지 (예: `net8.0-windows10.0.19041.0` — 실제 값은 csproj의 `TargetFramework`를 따른다)
 - 배포: MSIX (패키지형 권장)
 - 상세 가이드: `docs/WINUI3-PROJECT-GUIDE.md` (생성/실행), `docs/WINUI3-DESIGN-GUIDE.md` (UI)

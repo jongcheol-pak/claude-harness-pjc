@@ -19,7 +19,7 @@
 - **Build (단일 TFM 권장)**: `dotnet build -f <TFM>` (예: `dotnet build -f net8.0-windows10.0.19041.0`)
 - **Build (전체)**: `dotnet build` (csproj의 모든 TargetFrameworks)
 - **실행**: `dotnet build -t:Run -f <TFM>` 또는 VS에서 디버그 타깃 선택
-- **Test**: `dotnet test tests/` (단위 테스트는 별도 `net8.0` 프로젝트로 분리 권장 — UI 비의존 로직만)
+- **Test**: `dotnet test <솔루션 파일>` 또는 테스트 프로젝트 단일 지정 (단위 테스트는 별도 `net8.0` 프로젝트로 분리 권장 — UI 비의존 로직만. `tests/` 디렉터리 지정은 테스트 프로젝트가 2개 이상이면 MSB1011로 실패)
 - **Lint/Format**: `dotnet format`
 
 > ⚠️ MAUI 빌드는 워크로드 설치(`dotnet workload install maui`)와 플랫폼 SDK가 필요하다. 빌드 명령·TFM은 프로젝트 csproj의 `<TargetFrameworks>`를 확인해 채운다 (위 값은 추측 — 실제 값으로 교체).
@@ -86,7 +86,7 @@ public static MauiApp CreateMauiApp()
 - **에러 처리**: `Result<T>` 패턴 권장
 - **비동기**: `async`/`await` 일관. `.Result`/`.Wait()` 금지, `async void`는 이벤트 핸들러만
 - **테마/색**: `AppThemeBinding` (Light/Dark 대응). 색 하드코딩 금지
-- **파일**: 1500라인 내외, UTF-8 (BOM 없음), 주석은 한글 ("왜"만 설명)
+- **파일**: 1500라인 내외, UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 - **접근성**: `SemanticProperties.Description`, `SemanticProperties.HeadingLevel`
 
 ## Repository Structure
@@ -106,6 +106,14 @@ public static MauiApp CreateMauiApp()
 └── docs/
 ```
 
+## 산출물·파일 관리
+- **빌드 산출물**: `bin/` · `obj/` (플랫폼별 APK/AAB·MSIX 출력 포함, gitignore)
+- **런타임 생성물**: <로그·로컬 데이터 경로 — 예: `FileSystem.AppDataDirectory`>
+
+## 데이터 접근
+- **DB/스토어**: <예: SQLite(sqlite-net / EF Core) / Preferences / 없음>
+- **접속**: <연결 정보는 환경변수·secrets로 — 실제 값 금지, 환경변수 이름만>
+
 ## DO NOT
 - `x:Bind`·`ProgressRing`·`Microsoft.UI.Xaml`(WinUI 전용) 사용 — MAUI는 `{Binding}`·`ActivityIndicator`·`Microsoft.Maui.Controls`
 - 색·치수·문구 하드코딩 (테마 전환·다국어 깨짐 → `AppThemeBinding`·`StaticResource`·리소스)
@@ -117,9 +125,14 @@ public static MauiApp CreateMauiApp()
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
-- 단일 plan: `plan.md`
-- 여러 plan 누적: `docs/plans/<YYYY-MM-DD>-<slug>.md`
-- PRD (대규모 작업 시): `docs/prd.md` 또는 `docs/prds/<YYYY-MM-DD>-<slug>.md`
+
+```
+Plan Location: <plan.md | docs/plans/>   ← 하나만 남기세요
+PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-DD>-<slug>.md)
+```
+
+- `plan.md` = 단일 파일 덮어쓰기(작은 프로젝트) / `docs/plans/` = `<YYYY-MM-DD>-<slug>.md` 날짜별 누적(히스토리 보존)
+- 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
 - 타깃 플랫폼: <Android | iOS | macOS | Windows 중 사용하는 것>

@@ -14,7 +14,7 @@
 
 ## Build & Test
 - **Build**: `dotnet build <Project>.csproj -c Debug`
-- **Test**: `dotnet test tests/`
+- **Test**: `dotnet test <솔루션 파일>` 또는 테스트 프로젝트 단일 지정 (`tests/` 디렉터리 지정은 테스트 프로젝트가 2개 이상이면 MSB1011로 실패)
 - **Lint/Format**: `dotnet format`
 - **실행**: `dotnet run --project <Project>.csproj` 또는 VS F5
 
@@ -82,7 +82,7 @@ dotnet add package WPF-UI
 - **에러 처리**: `Result<T>` 패턴 권장
 - **비동기**: `async`/`await` 일관. `.Result`/`.Wait()` 금지, `async void`는 이벤트 핸들러만
 - **색/브러시**: `DynamicResource` (테마 대응). `StaticResource`는 테마 무관 항목만
-- **파일**: 1500라인 내외, UTF-8 (BOM 없음), 주석은 한글 ("왜"만 설명)
+- **파일**: 1500라인 내외, UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 - **접근성**: `AutomationProperties.Name`, 키보드 내비게이션
 
 ## Repository Structure
@@ -100,6 +100,15 @@ dotnet add package WPF-UI
 └── docs/                       # WPF-UI 커스텀 패턴 메모 (있으면)
 ```
 
+## 산출물·파일 관리
+- **빌드 산출물**: `bin/` · `obj/` (gitignore)
+- **배포 출력**: `publish/` 또는 installer 출력 경로 (gitignore)
+- **런타임 생성물**: <로그·설정 저장 경로 — 예: `%APPDATA%\<App>\`>
+
+## 데이터 접근
+- **DB/스토어**: <예: SQLite(로컬) / SQL Server / 없음>
+- **접속**: <연결 정보는 환경변수·secrets로 — 실제 값 금지, 환경변수 이름만>
+
 ## DO NOT
 - WPF-UI 설치 후 표준 `Window`로 새 창 생성 (FluentWindow 사용)
 - 색·브러시를 `StaticResource`/하드코딩 (테마 전환 깨짐 → `DynamicResource`)
@@ -111,9 +120,14 @@ dotnet add package WPF-UI
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
-- 단일 plan: `plan.md`
-- 여러 plan 누적: `docs/plans/<YYYY-MM-DD>-<slug>.md`
-- PRD (대규모 작업 시): `docs/prd.md` 또는 `docs/prds/<YYYY-MM-DD>-<slug>.md`
+
+```
+Plan Location: <plan.md | docs/plans/>   ← 하나만 남기세요
+PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-DD>-<slug>.md)
+```
+
+- `plan.md` = 단일 파일 덮어쓰기(작은 프로젝트) / `docs/plans/` = `<YYYY-MM-DD>-<slug>.md` 날짜별 누적(히스토리 보존)
+- 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
 - 타깃: <net8.0-windows 등>

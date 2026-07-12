@@ -58,9 +58,14 @@
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
-- 단일 plan: `plan.md`
-- 여러 plan 누적: `docs/plans/<YYYY-MM-DD>-<slug>.md`
-- PRD (대규모 작업 시): `docs/prd.md` 또는 `docs/prds/<YYYY-MM-DD>-<slug>.md`
+
+```
+Plan Location: <plan.md | docs/plans/>   ← 하나만 남기세요
+PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-DD>-<slug>.md)
+```
+
+- `plan.md` = 단일 파일 덮어쓰기(작은 프로젝트) / `docs/plans/` = `<YYYY-MM-DD>-<slug>.md` 날짜별 누적(히스토리 보존)
+- 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
 - OS/플랫폼: <Windows / Linux / macOS / iOS / Android / Web 등>

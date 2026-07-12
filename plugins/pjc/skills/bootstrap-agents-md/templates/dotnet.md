@@ -12,7 +12,7 @@
 
 ## Build & Test
 - **Build**: `dotnet build src/<Sln 또는 Project>.sln`
-- **Test**: `dotnet test tests/`
+- **Test**: `dotnet test src/<Sln>.sln` 또는 테스트 프로젝트 단일 지정 (`tests/` 디렉터리 지정은 테스트 프로젝트가 2개 이상이면 MSB1011로 실패 — 아래 구조처럼 3개면 반드시 솔루션 단위)
 - **Lint/Format**: `dotnet format`
 - **Watch (개발)**: `dotnet watch run --project src/<Main>`
 
@@ -52,7 +52,7 @@
 - **에러 처리**: `Result<T>` 패턴 권장 (또는 명시된 예외 정책)
 - **비동기**: `async`/`await` 일관성. `.Result`, `.Wait()` 금지.
 - **테스트**: 단위 테스트는 Domain/Application, 통합은 Infrastructure 별도
-- **파일**: 1500라인 내외, UTF-8 (BOM 없음), 주석은 한글 ("왜"만 설명)
+- **파일**: 1500라인 내외, UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 
 ## DO NOT
 - `secrets.json`, `appsettings.Development.json`의 실제 credential 커밋
@@ -63,9 +63,14 @@
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
-- 단일 plan: `plan.md`
-- 여러 plan 누적: `docs/plans/<YYYY-MM-DD>-<slug>.md`
-- PRD (대규모 작업 시): `docs/prd.md` 또는 `docs/prds/<YYYY-MM-DD>-<slug>.md`
+
+```
+Plan Location: <plan.md | docs/plans/>   ← 하나만 남기세요
+PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-DD>-<slug>.md)
+```
+
+- `plan.md` = 단일 파일 덮어쓰기(작은 프로젝트) / `docs/plans/` = `<YYYY-MM-DD>-<slug>.md` 날짜별 누적(히스토리 보존)
+- 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
 - 빌드 환경: <Windows / Linux / macOS>

@@ -61,11 +61,11 @@ Workspace 사용 시 `members = ["crates/*"]`로 구분.
 - **동시성**: `tokio` (async). `Arc<Mutex<T>>`보다 채널·actor 우선.
 - **테스트**: 단위는 `#[cfg(test)] mod tests`, 통합은 `tests/` 디렉터리.
 - **문서화**: `///` doc comment + `//!` for module. 한글 가능하지만 코드 예시는 영문/실행 가능 형태.
+- **Cargo.lock**: 커밋 (binary·library 모두 — 현행 Cargo 공식 권장. 기존 프로젝트에 library 무시 정책이 있으면 그것을 따름)
 - **파일**: 1500라인 내외 (Rust는 module 분리 강함), UTF-8, 주석은 한글
 
 ## DO NOT
 - `target/` 커밋 (gitignore 필수)
-- `Cargo.lock`은 binary는 커밋, library는 보통 무시 (정책에 따라)
 - `unsafe` 무분별 사용 — 사유 주석 의무
 - `println!` production 로깅 — `tracing` 또는 `log` 사용
 - `panic!` 직접 호출 (예외: main에서 검증 실패)
@@ -73,9 +73,14 @@ Workspace 사용 시 `members = ["crates/*"]`로 구분.
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
-- 단일 plan: `plan.md`
-- 여러 plan 누적: `docs/plans/<YYYY-MM-DD>-<slug>.md`
-- PRD (대규모 작업 시): `docs/prd.md` 또는 `docs/prds/<YYYY-MM-DD>-<slug>.md`
+
+```
+Plan Location: <plan.md | docs/plans/>   ← 하나만 남기세요
+PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-DD>-<slug>.md)
+```
+
+- `plan.md` = 단일 파일 덮어쓰기(작은 프로젝트) / `docs/plans/` = `<YYYY-MM-DD>-<slug>.md` 날짜별 누적(히스토리 보존)
+- 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
 - Rust 버전 고정: `rust-toolchain.toml`

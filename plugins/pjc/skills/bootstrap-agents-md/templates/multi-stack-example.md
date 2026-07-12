@@ -1,4 +1,4 @@
-# AGENTS.md - Agent Guide
+# AGENTS.md — Agent Guide
 
 > **이 파일은 글로벌 harness가 사용하는 프로젝트별 설정입니다.**
 > 각 프로젝트의 루트에 배치하세요 (`<repo>/AGENTS.md`).
@@ -69,11 +69,14 @@
 - 핵심 라이브러리: Hilt(DI), Coroutines + Flow, Retrofit + OkHttp, Room, Coil, Timber
 
 ## Build & Test
-- **Build**: `./gradlew assembleDebug`
-- **Test (unit)**: `./gradlew test`
-- **Test (instrumented)**: `./gradlew connectedAndroidTest` (에뮬레이터/디바이스 필요)
-- **Lint**: `./gradlew lint detekt ktlintCheck`
-- **Run (debug)**: `./gradlew installDebug` 후 디바이스에서 실행
+
+> Windows는 `.\gradlew.bat`, macOS/Linux는 `./gradlew` (아래는 Windows 표기 — `android.md` 템플릿과 동일 기준).
+
+- **Build**: `.\gradlew.bat assembleDebug`
+- **Test (unit)**: `.\gradlew.bat test`
+- **Test (instrumented)**: `.\gradlew.bat connectedAndroidTest` (에뮬레이터/디바이스 필요)
+- **Lint**: `.\gradlew.bat lint detekt ktlintCheck`
+- **Run (debug)**: `.\gradlew.bat installDebug` 후 디바이스에서 실행
 
 ## Repository Structure
 
@@ -126,6 +129,10 @@
 ---
 
 # 공통 — 모든 스택
+
+## DO NOT (공통 — 모든 스택)
+- 코드·문서·notes·plan 등 어떤 파일에도 실제 IP·계정·비밀번호·토큰·DB 연결문자열 기록 (환경변수 이름만 적고 값은 .env로)
+- 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
 
