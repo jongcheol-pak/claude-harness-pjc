@@ -18,11 +18,11 @@
 - [2026-07-09] 나머지 7개 프로젝트 메모리의 위키 순차 이전(AI-Agents·neighborhood-walk-rpg·Obsidian-Vault-WIKI·bitleader-dev-HomePage·Web-HomePage·ProjectDashboard·DevDashboard-WinUI) — 각 프로젝트 위키 절차 B 세션에서 (출처: v1.102.0)
 - [2026-07-09] SessionStart hook의 위키 허브 컨텍스트 자동 주입 — v1.102.0 미채택(지침 방식 선택), 지침 방식 실효성이 낮다고 관찰되면 재검토 (출처: v1.102.0)
 - [2026-07-09] 위키 허브 `## 작업 규약·주의사항`이 수십 건으로 커지면 전용 페이지(worknotes류) 승격 검토 (출처: v1.103.0)
-- [2026-07-08] (확인 필요) 위키 feat-safety-hooks의 보호 집합 서술("hook 스크립트 8종") 현행화 — 다음 하네스 ingest 세션에서 (출처: v1.97.2 후속)
 - [2026-07-10] warn-external-ops가 `gh release create --notes "…git merge…"` 노트 값 속 텍스트를 오탐 — 커밋 `-m`/`--message` 값은 스트립하나 `--notes` 값은 미스트립이라 노트 본문의 push/merge/tag 텍스트가 규칙에 걸림(비차단), `--notes`(및 유사 값 옵션) 스트립 또는 `git ` 접두 요구로 개선, 다음 hook 오탐 정비 라운드에서 (출처: v1.113.1 릴리즈 발행 시 실관찰)
 
 ## 종결
 
+- [2026-07-08 → 2026-07-12] 위키 feat-safety-hooks 보호 집합 서술("hook 스크립트 8종") 현행화 — 확인 종결(2026-07-12 하네스 ingest 세션에서 grep 확인: "8종" 서술이 이미 없음 — 이전 ingest(v1.108~113 반영)가 "검사 10종 + 디스패처"로 현행화 완료)
 - [2026-07-09 → 2026-07-12] llm-wiki fixture `archive-exempt/.../oldproj.md` UTF-8 BOM 정리 — 기각(v1.116.0 D6: 그 BOM은 lint-cases archive-exempt 케이스의 expect_absent "BOM"이 검증하는 **의도된 테스트 입력**(90_archive BOM 무경고 실증)이라 제거하면 검증이 공허해짐 — 컨벤션 위반이 아니라 테스트 대상 데이터)
 
 - [2026-07-10 → 2026-07-10] warn-external-ops가 `git merge-base`(읽기 전용 조회)를 "git merge"로 오탐 — 반영(v1.113.1 T1 — bash-hook-lib.ps1:39 `merge\b`→`merge(?![-\w])`, merge-base·merge-tree·merge-file·merge-index plumbing 오탐 제거·실제 merge 경고와 --abort/continue/quit 제외 보존, 골든 merge-base·merge-tree 무경고 2건 추가)
