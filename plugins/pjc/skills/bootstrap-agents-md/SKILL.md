@@ -44,52 +44,87 @@ argument-hint: "(자동)"
 | `*.csproj`에 `<UseWinUI>true</UseWinUI>` 포함 | WinUI 3 | `winui3.md` |
 | `*.csproj`에 `<UseWPF>true</UseWPF>` 포함 (WinUI 아님) | WPF | `wpf.md` |
 | `*.csproj`에 `<UseMaui>true</UseMaui>` 포함 (WinUI/WPF 아님) | MAUI | `maui.md` |
-| `*.csproj`, `*.sln`, `*.fsproj` (WinUI/WPF/MAUI 아님) | .NET | `dotnet.md` |
-| `build.gradle*`, `settings.gradle*`, `AndroidManifest.xml` | Android | `android.md` |
+| `*.csproj`, `*.sln`, `*.slnx`, `*.fsproj` (WinUI/WPF/MAUI 아님) | .NET | `dotnet.md` |
+| `AndroidManifest.xml` **또는** `build.gradle*`에 `com.android.application/library` 플러그인 | Android | `android.md` |
+| `build.gradle*`/`settings.gradle*`만 (위 Android 표식 없음 — Spring Boot·JVM 라이브러리 등) | JVM (Gradle) | Case B → `generic.md` |
 | `package.json` + `tsconfig.json` 또는 `*.ts` 파일 | Node/TypeScript | `node-typescript.md` |
 | `package.json` (TS 없음) | Node/JavaScript | `node-typescript.md` (라벨만 변경) |
 | `pyproject.toml`, `setup.py`, `requirements*.txt` | Python | `python.md` |
 | `go.mod` | Go | `go.md` |
 | `Cargo.toml` | Rust | `rust.md` |
+| `pubspec.yaml` / `Package.swift` / `Gemfile` / `mix.exs` / `build.zig` / `pom.xml` | Flutter / Swift / Ruby / Elixir / Zig / Java(Maven) | Case B → `generic.md` |
+
+> Gradle 파일만으로는 Android로 판정하지 않는다 — `AndroidManifest.xml`이나 `com.android.*` 플러그인이 없는 순수 JVM Gradle 프로젝트(Spring Boot 등)를 `android.md`로 오탐하는 것을 막기 위함. Case B 표식(마지막 두 행)도 Step 2에서 함께 탐색해야 Case B 분기가 실제로 작동한다.
 
 **.NET UI 프레임워크 우선 판정**: `.csproj`가 있으면 그 안의 UI 플래그를 먼저 확인한다. `<UseWinUI>true</UseWinUI>`면 `winui3.md`, `<UseWPF>true</UseWPF>`(WinUI 아님)면 `wpf.md`, `<UseMaui>true</UseMaui>`(WinUI/WPF 아님)면 `maui.md`, 셋 다 없으면 `dotnet.md`. WinUI 3가 WPF보다 우선(WinUI 프로젝트도 드물게 UseWPF가 보일 수 있음).
 
 검색 명령 (PowerShell):
 ```powershell
-$markers = @{
-    'dotnet'          = @('*.csproj', '*.sln', '*.fsproj')
-    'android'         = @('build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'AndroidManifest.xml')
+# 의존성·산출물 디렉터리 제외 — 하위 node_modules의 package.json 등이 stack으로 오탐되는 것 방지
+$excludeDirs = '\\(node_modules|bin|obj|\.git|target|build|dist|out|\.venv|__pycache__|Pods|vendor)\\'
+# -Recurse -Depth 3: 표식이 루트가 아닌 하위(src/, 모듈 폴더 등)에 있어도 감지 (깊이 3 상한)
+function Find-Marker([string[]]$patterns) {
+    foreach ($p in $patterns) {
+        $hit = Get-ChildItem -Filter $p -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
+               Where-Object { $_.FullName -notmatch $excludeDirs } | Select-Object -First 1
+        if ($hit) { return $hit }
+    }
+    return $null
+}
+
+# [ordered]: 표 순서 보장 (@{}는 키 순서 비보장 — "표 순서대로 검사"가 실제로 지켜지게)
+$markers = [ordered]@{
+    'dotnet'          = @('*.csproj', '*.sln', '*.slnx', '*.fsproj')
+    'android'         = @('AndroidManifest.xml')   # Gradle 파일만으로는 Android 판정 금지 (아래 gradle-jvm 정제 참조)
+    'gradle-jvm'      = @('build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts')
     'node-typescript' = @('package.json', 'tsconfig.json')
     'python'          = @('pyproject.toml', 'setup.py', 'requirements*.txt')
     'go'              = @('go.mod')
     'rust'            = @('Cargo.toml')
+    # ↓ template 없는 기지 표식 — 발견 시 Case B로 라우팅
+    'flutter'         = @('pubspec.yaml')
+    'swift'           = @('Package.swift')
+    'ruby'            = @('Gemfile')
+    'elixir'          = @('mix.exs')
+    'zig'             = @('build.zig')
+    'java-maven'      = @('pom.xml')
 }
 $detected = @()
 foreach ($stack in $markers.Keys) {
-    foreach ($pattern in $markers[$stack]) {
-        # -Recurse -Depth 3: 표식이 루트가 아닌 하위(src/, 모듈 폴더 등)에 있어도 감지. 아래 csproj UI 검사와 방식 통일(둘 다 재귀 탐색, 깊이 3으로 상한).
-        if (Get-ChildItem -Filter $pattern -Recurse -Depth 3 -ErrorAction SilentlyContinue) {
-            $detected += $stack
-            break
-        }
+    if (Find-Marker $markers[$stack]) { $detected += $stack }
+}
+
+# gradle-jvm 정제: build.gradle에 com.android 플러그인이 있으면 android로 승격,
+# 없으면 순수 JVM(Gradle) 프로젝트 → Case B (Spring Boot 등을 android.md로 오탐하지 않음)
+if ($detected -contains 'gradle-jvm' -and $detected -notcontains 'android') {
+    $gradleContent = Get-ChildItem -Include 'build.gradle','build.gradle.kts' -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
+                     Where-Object { $_.FullName -notmatch $excludeDirs } |
+                     Get-Content -Raw -ErrorAction SilentlyContinue
+    if ($gradleContent | Select-String -Pattern 'com\.android\.(application|library)' -Quiet) {
+        $detected += 'android'
     }
+}
+if ($detected -contains 'android') {
+    $detected = @($detected | Where-Object { $_ -ne 'gradle-jvm' })
 }
 
 # WinUI 3 / WPF / MAUI 우선 판정: csproj의 UI 플래그로 dotnet → winui3/wpf/maui 승격
 if ($detected -contains 'dotnet') {
-    $csprojContent = Get-ChildItem -Filter '*.csproj' -Recurse -Depth 3 -ErrorAction SilentlyContinue |
+    $csprojContent = Get-ChildItem -Filter '*.csproj' -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
+                     Where-Object { $_.FullName -notmatch $excludeDirs } |
                      Get-Content -Raw -ErrorAction SilentlyContinue
     $isWinUI = $csprojContent | Select-String -Pattern '<UseWinUI>\s*true\s*</UseWinUI>' -Quiet
     $isWPF   = $csprojContent | Select-String -Pattern '<UseWPF>\s*true\s*</UseWPF>' -Quiet
     $isMaui  = $csprojContent | Select-String -Pattern '<UseMaui>\s*true\s*</UseMaui>' -Quiet
     if ($isWinUI) {
-        $detected = ($detected | Where-Object { $_ -ne 'dotnet' }) + 'winui3'
+        $detected = @($detected | Where-Object { $_ -ne 'dotnet' }) + 'winui3'
     } elseif ($isWPF) {
-        $detected = ($detected | Where-Object { $_ -ne 'dotnet' }) + 'wpf'
+        $detected = @($detected | Where-Object { $_ -ne 'dotnet' }) + 'wpf'
     } elseif ($isMaui) {
-        $detected = ($detected | Where-Object { $_ -ne 'dotnet' }) + 'maui'
+        $detected = @($detected | Where-Object { $_ -ne 'dotnet' }) + 'maui'
     }
 }
+# flutter/swift/ruby/elixir/zig/java-maven/gradle-jvm 이 $detected에 있으면 → Case B로 진행
 ```
 
 ### Step 3. 결과 분기
@@ -108,7 +143,7 @@ if ($detected -contains 'dotnet') {
 
 #### Case B — 표식 알지만 template 없음
 
-예: `pubspec.yaml` (Flutter), `Package.swift` (Swift), `Gemfile` (Ruby), `mix.exs` (Elixir)
+예: `pubspec.yaml` (Flutter), `Package.swift` (Swift), `Gemfile` (Ruby), `mix.exs` (Elixir), `pom.xml` (Java/Maven), Android 표식 없는 `build.gradle*` (JVM/Gradle)
 
 → `templates/generic.md`로 복사 + 다음 정보로 채움:
 - Stack: <감지된 라벨>
@@ -121,6 +156,8 @@ Package.swift → "Swift | swift build / swift test (추측)"
 Gemfile      → "Ruby | bundle install / bundle exec rspec (추측)"
 mix.exs      → "Elixir | mix compile / mix test (추측)"
 build.zig    → "Zig | zig build / zig build test (추측)"
+pom.xml      → "Java (Maven) | mvn compile / mvn test (추측)"
+build.gradle* (Android 아님) → "JVM Java/Kotlin (Gradle) | gradlew build / gradlew test (추측)"
 ```
 
 #### Case C — 표식조차 없음

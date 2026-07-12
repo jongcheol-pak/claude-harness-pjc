@@ -147,6 +147,15 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 └── settings.gradle.kts
 ```
 
+## 산출물·파일 관리
+- **빌드 산출물**: `build/` · `app/build/` (APK: `app/build/outputs/apk/`, gitignore)
+- **임시/캐시**: `.gradle/` · `.idea/` · `local.properties`
+- **런타임 생성물**: <로그·스크린샷 경로 — 예: `docs/screenshots/`>
+
+## 데이터 접근
+- **DB/스토어**: <예: Room(SQLite) / DataStore / 없음>
+- **접속**: <원격 API·DB 연결 정보는 BuildConfig + gradle.properties(비커밋)·환경변수로 — 실제 값 금지>
+
 ## Conventions
 - **아키텍처**: MVVM + Clean Architecture. UI → Domain ← Data.
 - **DI**: Hilt (`@HiltAndroidApp`, `@HiltViewModel`, `@Module`)
@@ -168,9 +177,14 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass` (백신이 공격 도구로 오인해 격리할 수 있음)
 
 ## Plan Location
-- 단일 plan: `plan.md`
-- 여러 plan 누적: `docs/plans/<YYYY-MM-DD>-<slug>.md`
-- PRD (대규모 작업 시): `docs/prd.md` 또는 `docs/prds/<YYYY-MM-DD>-<slug>.md`
+
+```
+Plan Location: <plan.md | docs/plans/>   ← 하나만 남기세요
+PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-DD>-<slug>.md)
+```
+
+- `plan.md` = 단일 파일 덮어쓰기(작은 프로젝트) / `docs/plans/` = `<YYYY-MM-DD>-<slug>.md` 날짜별 누적(히스토리 보존)
+- 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
 - JDK: <17 등>
