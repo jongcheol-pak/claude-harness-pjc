@@ -2,7 +2,8 @@
 """llm-wiki Lint 보조 스크립트.
 
 사용법: python lint.py "<vault_path>" [--fix]
-검사: 깨진/경로 없는 wikilink / 예산 초과 / platform·origin·confidence·category 통제어휘 위반·누락
+검사: 깨진/경로 없는 wikilink(루트 pending.md 큐는 제외 — §7-1) / 예산 초과·guide_kind 부재/오타(§7-2)
+      / platform·origin·confidence·category 통제어휘 위반·누락
       / updated 필드 누락(§7-9 — 신선도 추적 전제) / feature '## 구현 방법' 섹션 부재(§7-18 확장)
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
@@ -237,8 +238,10 @@ def repo_root_for_hub(hub_text):
 
 def apply_fixes(vault):
     """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 3종만 자동 수정한다 (§7 —fix 규약) —
-      ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거)
-      ② §7-24 decisions '## 아카이브' 포인터 동기(양방향: 깨진 포인터 행 제거 + 실재 아카이브 포인터 행 추가)
+      ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거 —
+         섹션이 표면 표 행, 아니면 불릿으로 추가: insert_into_section)
+      ② §7-24 decisions '## 아카이브' 포인터 동기(양방향: 깨진 포인터 행 제거 + 실재 아카이브 포인터 행 추가
+         — 제거는 '## 아카이브' 섹션 안 행만, 결정 항목 본문 인용은 불변 §2.8)
       ③ §7-19 log 아카이브 인덱스 stale 행 '제거만' (누락 행 추가는 그 달 키워드 요약이 필요해 판단 개입 — 수동)
     그 외 검사(인덱스 행 생성·한/영 병기·updated 등)는 내용 판단이 필요해 --fix 대상이 아니다.
     안전장치: 수정 전 원본을 90_archive/backup/{오늘}/ 원경로에 백업(목적지 존재 시 미덮어쓰기 — §8,
@@ -293,8 +296,12 @@ def apply_fixes(vault):
     def section_span(raw, heading):
         return re.search(r"(?m)^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)", raw, re.S)
 
-    def insert_into_section(raw, heading, new_line):
+    def insert_into_section(raw, heading, new_line, cell=None):
         """섹션 끝(후행 공백줄 앞)에 행 삽입. 섹션이 없으면 문서 끝에 신설(기계적 — 골격 규약 준수).
+        cell이 주어지고 섹션에 표(`|` 시작 행)가 있으면 불릿 대신 **표 행**으로 삽입한다 —
+        부트스트랩 골격(SKILL J 2 "표는 헤더만")의 표 섹션에 불릿을 섞지 않는다(§7 --fix 규약).
+        컬럼 수는 섹션 첫 `|` 행(헤더) 기준, 첫 셀에 cell·나머지는 빈 셀. 표가 없으면
+        new_line(불릿) 그대로 — 기존 불릿형 vault 하위호환(§7-24 포인터 추가도 불릿 경로).
         반환: (새 텍스트, 섹션 신설 여부)."""
         nl = nl_of(raw)
         m = section_span(raw, heading)
@@ -304,7 +311,13 @@ def apply_fixes(vault):
         seg = m.group(0)
         body = seg.rstrip("\r\n")
         trail = seg[len(body):]
-        new_seg = body + nl + new_line + (trail if trail else nl)
+        insert = new_line
+        if cell is not None:
+            header = next((ln for ln in seg.splitlines() if ln.lstrip().startswith("|")), None)
+            if header:
+                ncols = max(1, len(header.strip().strip("|").split("|")))
+                insert = "| " + cell + " |" + " |" * (ncols - 1)
+        new_seg = body + nl + insert + (trail if trail else nl)
         return raw[:m.start()] + new_seg + raw[m.end():], False
 
     # ── ① §7-23 미해결 질문 인덱스 동기 ──────────────────────────────
@@ -339,7 +352,11 @@ def apply_fixes(vault):
                             raw = raw[:m.start()] + new_seg + raw[m.end():]
                             fixed.append(f"index.md: 해결된 질문 행 {n}개 제거 (§7-23)")
                 for path_noext, title in to_add:
-                    raw, created = insert_into_section(raw, "미해결 질문", f"- [[{path_noext}|{title}]]")
+                    # 제목의 `|`는 표 셀·wikilink 표시명을 깨뜨리므로 치환(표시용 텍스트라 무손실 아님을 감수)
+                    safe_title = title.replace("|", "/")
+                    raw, created = insert_into_section(
+                        raw, "미해결 질문", f"- [[{path_noext}|{safe_title}]]",
+                        cell=f"[[{path_noext}\\|{safe_title}]]")  # 표 셀 안 wikilink는 \| 이스케이프(§3)
                     fixed.append(f"index.md: 미해결 질문 등록 — {path_noext} (§7-23)"
                                  + (" [섹션 신설]" if created else ""))
                 write("index.md", raw)
@@ -356,13 +373,18 @@ def apply_fixes(vault):
             acted = False
             broken = sorted({t for t in dec_rx.findall(norm) if t not in pages})
             if broken:
-                backup(r)
                 bom, raw = raws[r]
-                new_raw, n = remove_lines(raw, lambda ln: any(b in ln for b in broken))
-                if n:
-                    raws[r] = (bom, new_raw)
-                    acted = True
-                    fixed.append(f"{r}: 깨진 decisions 아카이브 포인터 {n}행 제거 (§7-24)")
+                # 제거는 '## 아카이브' 섹션 안 행만 — 결정 항목 본문이 깨진 아카이브 경로를 인용해도
+                #   지우지 않는다(§2.8 항목 불변·수정 삭제 금지). 섹션 밖 깨진 포인터는 제거 0건으로
+                #   남고 본 lint의 §7-24 WARN이 계속 가리킨다(검출 광역·수정 보수 — §7-19 '제거만' 동형).
+                m = section_span(raw, "아카이브")
+                if m:
+                    new_seg, n = remove_lines(m.group(0), lambda ln: any(b in ln for b in broken))
+                    if n:
+                        backup(r)
+                        raws[r] = (bom, raw[:m.start()] + new_seg + raw[m.end():])
+                        acted = True
+                        fixed.append(f"{r}: 깨진 decisions 아카이브 포인터 {n}행 제거 (§7-24 — '## 아카이브' 섹션 내)")
             arch = "90_archive/" + r
             if arch in pages and arch not in raws[r][1]:
                 backup(r)
@@ -515,7 +537,10 @@ def main():
             #   지우도록 유도하는 오탐이다(예산·인덱스·고아 검사가 이미 아카이브를 제외하는 것과 정합).
             #   link_targets.add는 위에서 무조건 수행 — 고아 검사가 아카이브발 링크도 '링크됨'으로
             #   인정해야 무회귀(가드를 add 위로 올리면 아카이브만 링크한 페이지가 고아로 오탐).
-            if not in_archive:
+            # 루트 pending.md(소비 대기 큐)도 제외 — 큐 항목은 지식 페이지가 아니라 링크 규약(§3)
+            #   대상이 아니다(§6·§7-1). 큐에 적힌 wikilink 대상이 이후 삭제·이름변경돼도 lint를
+            #   exit 1로 죽이지 않는다(시크릿 스캔·§7-25 잔량 집계·link_targets 수집은 유지).
+            if not in_archive and r != "pending.md":
                 if "/" in t:
                     if t_norm not in existing_cf:
                         errors.append(f"깨진 링크: {r} -> [[{t}]]")
@@ -535,8 +560,12 @@ def main():
             if typ == "guide":
                 gk = fm.get("guide_kind", "")
                 # L-3: guide_kind 오타(예: 'recipes')면 기본 200줄이 조용히 적용돼 recipe 120줄 예산을
-                #   우회한다 → 통제어휘 밖이면 WARN(오타 가시화).
-                if gk and gk not in GUIDE_BUDGET:
+                #   우회한다 → 통제어휘 밖이면 WARN(오타 가시화). 부재도 동일하게 침묵 우회가 되므로
+                #   WARN(§7-2) — origin/confidence "누락 WARN·값 위반 ERR" 패턴과 동형(부재는 값이
+                #   없어 ERR 대상이 아니고, exit 1로 기존 vault를 즉시 차단하지 않는다).
+                if not gk:
+                    warn(f"guide_kind 누락: {r} (허용: {', '.join(GUIDE_BUDGET)}) — 기본 200줄 적용됨(recipe 120줄 예산 우회 주의, schema §2.6)", r)
+                elif gk not in GUIDE_BUDGET:
                     warn(f"guide_kind 통제어휘 위반: {r} guide_kind='{gk}' (허용: {', '.join(GUIDE_BUDGET)}) — 기본 200줄 적용됨", r)
                 budget = GUIDE_BUDGET.get(gk, 200)
             elif typ in BUDGET:
@@ -932,7 +961,11 @@ def main():
                 full = os.path.join(root, p)
                 key = (root, p)
                 if key not in exists_cache:  # 실행-내 memoization (한 실행 중 파일시스템 불변 전제)
-                    exists_cache[key] = bool(glob.glob(full)) if "*" in p else os.path.exists(full)
+                    # 글롭 분기는 레포 루트를 이스케이프한다(L-3의 vault escape와 동형) — 루트 경로에
+                    #   [ ] 등 메타문자가 있으면 글롭 토큰이 항상 매치 0건이 되어 실재 경로를 오탐한다.
+                    #   토큰 p 안의 글롭(*)은 패턴으로 유지.
+                    exists_cache[key] = (bool(glob.glob(os.path.join(glob.escape(root), p)))
+                                         if "*" in p else os.path.exists(full))
                 if not exists_cache[key]:
                     detail = "글롭 매치 0건 — 이동·삭제·오기 가능" if "*" in p \
                         else "이동·삭제·오기 가능 — 갱신 필요"

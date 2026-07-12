@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.115.0
+**버전**: 1.116.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 
 ---
@@ -168,6 +168,8 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 > - **완료 시 요구 재대조**: 완료 검토자가 구현 산출물이 계획의 "요구 이해" 각 포인트를 커버하는지 사후 대조합니다 — PRD 없는 계획의 유일한 사후 요구 재검증.
 
 > v1.103.0: 계획 질문의 **추천(★) 기준을 "근본 해결 우선"으로 명문화** — 쉽게 끝나는 선택지가 아니라 문제를 근본적으로 해결하는 선택지를 추천하고, 복잡도·작업량 차이는 트레이드오프로 함께 표시해 비교할 수 있게 합니다(단순함 자체가 근본 해결인 경우는 예외).
+
+> v1.116.0: llm-wiki **스킬 검토 결함 6종 수정** — 절차 문서 2건: ① 절차 M(큐 소비)에 빈 위키 예외 신설 — §0-2 부트스트랩이 M의 "범위 고정" 선언보다 먼저 발동해 큐 정리 요청이 vault 골격을 만들던 순서 충돌 해소(G·K와 동형, 미부트스트랩 vault의 큐는 잔량 보고만), §0-2에 읽기측(G·K·M) 예외 포인터 명시. ② SKILL.md 병렬 분업 요약의 공유 파일 목록에 `pending.md` 합류(정본 §9와 드리프트 — 병렬 에이전트가 각자 append하면 read-modify-write 유실). lint.py 4건: ③ 루트 `pending.md`(소비 대기 큐)를 깨진 링크 검사에서 제외 — 큐 항목의 wikilink 대상이 삭제되면 lint가 exit 1로 죽던 것(시크릿·잔량 집계는 유지). ④ guide_kind **부재** 시 WARN — 오타는 경고하면서 부재는 침묵으로 기본 200줄이 적용돼 recipe 120줄 예산이 우회되던 비대칭 해소. ⑤ §7-20/21 실존 검사의 레포 루트 글롭 이스케이프(`[ ]` 메타문자 경로에서 글롭 토큰 상시 오탐) + --fix §7-24 깨진 포인터 제거를 `## 아카이브` 섹션 안으로 한정(결정 항목 본문의 경로 인용까지 지우던 것 — §2.8 항목 불변 보호). ⑥ --fix 질문 등록이 표 형식 섹션엔 컬럼 수 맞춘 표 행으로 삽입(부트스트랩 골격 정합·불릿형 하위호환). 골든 회귀 23→25케이스(guide_kind 부재·--fix 보수 동작 실증 — 러너에 after_expect_keywords 필드 추가), wiki-schema v2.40.
 
 > v1.115.0: bootstrap-agents-md **감지 로직 결함 3종 + 템플릿 정비** — ① **Case B 죽은 분기 해소**: "표식은 알지만 템플릿 없는" stack(Flutter·Swift·Ruby·Elixir·Zig·Java/Maven)의 표식을 Step 2가 아예 탐색하지 않아 Case B가 도달 불가였던 것을 마커 목록에 합류시켜 실동작하게 했습니다. ② **Gradle JVM→Android 오탐 차단**: `build.gradle`만으로 Android로 판정해 Spring Boot 등 순수 JVM 프로젝트가 `android.md`를 받던 것을, `AndroidManifest.xml` 또는 `com.android.*` 플러그인이 있을 때만 Android로 좁혔습니다(그 외 Gradle은 Case B). ③ **의존성 디렉터리 오탐 차단**: 재귀 탐색에 node_modules/bin/obj 등 제외를 추가(하위 node_modules의 package.json이 Node stack으로 오탐되던 것). 부수: `[ordered]` 해시테이블(표 순서 보장)·`*.slnx` 마커. 템플릿 쪽은 `dotnet test tests/`가 테스트 프로젝트 2개 이상이면 MSB1011로 실패하는 자기모순 수정(4종), winui3 TFM 예시 정합, **Plan Location을 옵션 나열→택일 설정 형식으로 통일**(10종 — 생성된 AGENTS.md를 읽는 에이전트가 어느 쪽인지 판별 가능), multi-stack 예시에 보안 DO NOT 합류, UI 계열 4종에 산출물·데이터 접근 섹션 추가, python `poetry shell`(2.x 제거됨)·rust Cargo.lock 지침 현행화. (모의 프로젝트 6종 실행 테스트로 판정 실증)
 

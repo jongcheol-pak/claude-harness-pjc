@@ -15,7 +15,6 @@
 - [2026-07-09] suggest(제안) 이벤트의 로깅 확장 — v1.105.0 T2는 차단+경고만(사용자 확정 범위) (출처: harness-wiki-part1)
 - [2026-07-09] lint.py --fix 대상 확대(§7-19 누락 행 추가 등) — 키워드 요약을 기계 생성할 근거가 생기면 재검토 (출처: harness-wiki-part2)
 - [2026-07-09] lint.py `section()` 헬퍼 Match 반환형 확장으로 `section_span()`과 단일화 — 호출부 리팩터링 동반, 다음 lint.py 정비 때 (출처: harness-wiki-part2 T2 리뷰 m2)
-- [2026-07-09] llm-wiki fixture `archive-exempt/.../oldproj.md` UTF-8 BOM 정리(무해하나 컨벤션 위반, v1.94.0부터) — 다음 fixture 정비 때 (출처: harness-wiki-part1)
 - [2026-07-09] 나머지 7개 프로젝트 메모리의 위키 순차 이전(AI-Agents·neighborhood-walk-rpg·Obsidian-Vault-WIKI·bitleader-dev-HomePage·Web-HomePage·ProjectDashboard·DevDashboard-WinUI) — 각 프로젝트 위키 절차 B 세션에서 (출처: v1.102.0)
 - [2026-07-09] SessionStart hook의 위키 허브 컨텍스트 자동 주입 — v1.102.0 미채택(지침 방식 선택), 지침 방식 실효성이 낮다고 관찰되면 재검토 (출처: v1.102.0)
 - [2026-07-09] 위키 허브 `## 작업 규약·주의사항`이 수십 건으로 커지면 전용 페이지(worknotes류) 승격 검토 (출처: v1.103.0)
@@ -23,6 +22,8 @@
 - [2026-07-10] warn-external-ops가 `gh release create --notes "…git merge…"` 노트 값 속 텍스트를 오탐 — 커밋 `-m`/`--message` 값은 스트립하나 `--notes` 값은 미스트립이라 노트 본문의 push/merge/tag 텍스트가 규칙에 걸림(비차단), `--notes`(및 유사 값 옵션) 스트립 또는 `git ` 접두 요구로 개선, 다음 hook 오탐 정비 라운드에서 (출처: v1.113.1 릴리즈 발행 시 실관찰)
 
 ## 종결
+
+- [2026-07-09 → 2026-07-12] llm-wiki fixture `archive-exempt/.../oldproj.md` UTF-8 BOM 정리 — 기각(v1.116.0 D6: 그 BOM은 lint-cases archive-exempt 케이스의 expect_absent "BOM"이 검증하는 **의도된 테스트 입력**(90_archive BOM 무경고 실증)이라 제거하면 검증이 공허해짐 — 컨벤션 위반이 아니라 테스트 대상 데이터)
 
 - [2026-07-10 → 2026-07-10] warn-external-ops가 `git merge-base`(읽기 전용 조회)를 "git merge"로 오탐 — 반영(v1.113.1 T1 — bash-hook-lib.ps1:39 `merge\b`→`merge(?![-\w])`, merge-base·merge-tree·merge-file·merge-index plumbing 오탐 제거·실제 merge 경고와 --abort/continue/quit 제외 보존, 골든 merge-base·merge-tree 무경고 2건 추가)
 - [2026-07-10 → 2026-07-10] 위키 feat-safety-hooks·feat-plan-feature에 v1.111.0 bootstrap 게이트·직접 작성 금지 반영 — 반영(2026-07-10 위키 ingest 세션 — feat-plan-feature Step 1 bootstrap 강화 + feat-safety-hooks require-plan 게이트 동작·지도 서술)

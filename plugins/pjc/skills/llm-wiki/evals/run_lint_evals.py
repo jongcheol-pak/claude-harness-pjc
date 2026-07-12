@@ -11,6 +11,8 @@ lint-cases.json의 각 case를 evals/fixtures/<fixture> vault에 대해 lint.py�
                          lint 문구 미세 변경에 견고).
   - expect_absent      → (보조) 나열된 키워드가 lint 출력에 하나라도 있으면 FAIL —
                          "실재 경로는 경고하지 않는다" 같은 무경고 기대를 검증한다.
+  - after_expect_keywords → (fix_mode 보조) --fix 후 재lint 출력에 전부 있어야 PASS —
+                         "--fix가 건드리지 않아야 하는 위반의 잔존"(보수 동작)을 검증한다.
   - placeholder=true   → fixture를 임시 폴더로 복사한 뒤 .md 안의 __FIXTURE_ROOT__를
                          복사본 절대경로로 치환해 lint를 실행한다. §7-20처럼 '실재하는
                          절대경로'가 필요한 fixture를 기계 독립적으로 만든다 (opt-in —
@@ -99,9 +101,11 @@ def check_case(case):
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
 
     # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
-    #  원본 fixture는 절대 수정하지 않는다(placeholder copytree 패턴 재사용). 대조 2단 —
+    #  원본 fixture는 절대 수정하지 않는다(placeholder copytree 패턴 재사용). 대조 3단 —
     #  ① --fix 실행 출력에 expect_keywords([FIXED] 요약) 전부 존재
     #  ② 수정 후 재lint 출력에 after_expect_absent(원 위반 문구) 전부 부재
+    #  ③ 수정 후 재lint 출력에 after_expect_keywords 전부 존재 — "--fix가 건드리지 않아야 하는
+    #     위반이 그대로 남았는가"(보수 동작: §7-24 섹션 밖 비제거 등)를 실증하는 보조 필드
     if case.get("fix_mode"):
         tmp = tempfile.mkdtemp(prefix="lint-eval-fix-")
         dest = os.path.join(tmp, os.path.basename(vault))
@@ -118,6 +122,9 @@ def check_case(case):
         residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
         if residual:
             return False, "수정 후 재lint에 위반 잔존: " + ", ".join(residual)
+        missing2 = [kw for kw in case.get("after_expect_keywords", []) if kw not in out2]
+        if missing2:
+            return False, "수정 후 재lint 기대 키워드 미검출(비제거 대상이 사라짐 의심): " + ", ".join(missing2)
         return True, "--fix 적용·재lint 해소 확인: " + ", ".join(case.get("expect_keywords", []))
 
     tmp = None
