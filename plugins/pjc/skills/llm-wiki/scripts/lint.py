@@ -15,15 +15,17 @@
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
       / index.md 부재(ERR — 인덱스 기반 검사 불능 신호)
+      / 위키 뒤처짐(INFO — 허브 synced_commit 이후 레포에 쌓인 커밋 수, §7-26. fail-open)
       / (미검증)·미해결 question 집계(INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 자동 백업 — schema §7 서두 정본).
-범위: vault 파일 읽기 + §7-20의 레포 파일 '실존' 확인까지 — 코드 내용은 해석하지 않는다
+범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
+      (커밋 '수'만 셈). 어느 쪽도 코드 내용은 해석하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (H-2 규약(references/procedures-ops.md): SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
 """
-import os, re, sys, glob, shutil, datetime
+import os, re, sys, glob, shutil, datetime, subprocess
 
 # Windows 콘솔(cp949)에서도 한글이 깨지지 않도록 UTF-8 출력 강제
 try:
@@ -221,6 +223,27 @@ def feature_index_rows(text):
     if not sec:
         return 0
     return sum(1 for line in sec.splitlines() if is_feat_recipe_row(line))
+
+
+def git_commits_behind(repo_root, sha):
+    """repo_root의 HEAD가 sha 이후로 몇 커밋 쌓였는지 반환(§7-26). 계산 불가면 None.
+
+    fail-open이 이 함수의 계약이다 — git 미설치·비 git 레포·sha 소실(rebase·force push)·
+    타임아웃·예외를 전부 None으로 흡수한다. lint은 읽기 전용 진단 도구라, 환경 차이로
+    실패해 vault 점검 전체를 막으면 안 된다(§7-20의 "레포 접근 가능 시"와 동일 원칙).
+    코드 내용은 읽지 않고 커밋 '수'만 센다(§7 결과 처리의 레포 접근 범위)."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", repo_root, "rev-list", "--count", f"{sha}..HEAD"],
+            capture_output=True, text=True, timeout=10,
+            stdin=subprocess.DEVNULL,  # 자격증명·에디터 프롬프트로 매달리지 않게 입력을 닫는다
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None  # git 미설치·실행 실패·타임아웃
+    if proc.returncode != 0:
+        return None  # sha가 이력에 없음(rebase·force push) 등
+    out = proc.stdout.strip()
+    return int(out) if out.isdigit() else None
 
 
 def repo_root_for_hub(hub_text):
@@ -970,6 +993,30 @@ def main():
                     detail = "글롭 매치 0건 — 이동·삭제·오기 가능" if "*" in p \
                         else "이동·삭제·오기 가능 — 갱신 필요"
                     warn(f"{label} 레포에 없음: {r} -> '{t}' ({detail}, schema {sec})", r)
+
+    # 위키 뒤처짐 (wiki-schema §7-26): 허브 synced_commit(§2.2) 이후 레포에 쌓인 커밋 수를 센다.
+    #  updated(§7-3 신선도)는 "언제 손댔나"라서, 날짜만 갱신되고 내용이 레포를 못 따라온 상태를
+    #  그대로 통과시킨다 — 그 사각을 이 검사가 메운다("어디까지 담았나").
+    #  전부 INFO다: 커밋 수 임계는 프로젝트 커밋 빈도에 따라 의미가 달라 근거 없는 상수가 되므로
+    #  신선도와 같이 "후보 제시"에 머문다(exit code 불변). 접근 불가는 조용히 skip(fail-open).
+    for r, (fm, typ, text) in sorted(pages.items()):
+        if typ != "project" or r.startswith("90_archive/"):
+            continue
+        synced = str(fm.get("synced_commit", "")).strip()
+        if not synced:
+            infos.append(f"동기 기준점 미설정: {r} — synced_commit 없음 "
+                         f"(다음 ingest에서 기록, schema §2.2·§7-26)")
+            continue
+        root = repo_root_for_hub(text)
+        if root is None or not os.path.isdir(os.path.join(root, ".git")):
+            continue  # 레포 경로 부재·git 아님 → 조용히 skip (fail-open — 다른 PC·비 git 레포)
+        behind = git_commits_behind(root, synced)
+        if behind is None:
+            infos.append(f"동기 기준점이 레포 이력에 없음: {r} -> '{synced[:7]}' "
+                         f"(rebase·force push 가능 — 다음 ingest에서 재설정, schema §7-26)")
+        elif behind > 0:
+            infos.append(f"위키 뒤처짐: {r} — {behind}커밋 미반영 "
+                         f"(synced: {synced[:7]}, schema §7-26)")
 
     # 고아 페이지(간이): 어디서도 링크되지 않는 페이지 (루트 인프라·아카이브·lint 리포트 제외)
     #  lint-YYYYMMDD 리포트(questions/, type: question)는 어디서도 링크되지 않는 게 정상이라
