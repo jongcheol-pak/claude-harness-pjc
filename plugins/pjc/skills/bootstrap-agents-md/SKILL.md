@@ -141,7 +141,7 @@ if ($detected -contains 'dotnet') {
 - **go**: `go.mod`의 module 경로
 - **rust**: `Cargo.toml`의 package.name, edition
 
-##### 아키텍처 확인 (템플릿 복사 후, 저장 전)
+#### Case A-1 — 아키텍처 확인 (템플릿 복사 후, 저장 전)
 
 **템플릿의 아키텍처 항목은 선택형 빈 칸이다** — 값이 박혀 있지 않다(v1.119.0). 그대로 두면 Claude가 어디에 코드를 둘지 모르므로, Step 4의 [Y/E/N] 미리보기에 **이 질문을 함께 실어 사용자에게 확인한다** (질문 라운드를 새로 늘리지 않는다).
 
@@ -156,6 +156,8 @@ if ($detected -contains 'dotnet') {
    <감지된 구조가 있으면: "src/에 Domain/·Application/ 폴더가 보입니다 → A로 추정">
    ```
 3. **답을 못 얻으면 빈 칸으로 저장한다** — 추측해서 채우지 않는다(행동 원칙 "빈 칸 유지가 추측 채움보다 안전").
+
+> 위 A/B/C는 **대표 명칭**이다. 실제로 채워 넣는 문구는 **그 stack 템플릿의 선택지 표현을 그대로 쓴다** — 예: go/rust는 A가 `Clean/Hexagonal`, rust의 B는 `계층형(단일 crate)`, android는 A가 `Clean Architecture`·B가 `계층형(단순 Repository)`. 템플릿에 없는 표현을 새로 만들지 않는다.
 
 > **왜 묻는가**: 종전 템플릿은 stack만 보고 "DDD + Clean"을 값으로 박았다. 그래서 도메인 규칙이 얇은 CRUD 앱도 AGENTS.md에는 DDD라고 적혔고, 실제 코드는 트랜잭션 스크립트인데 **선언만 DDD인 상태**가 됐다 — 리뷰어도 사람도 "지켜지고 있다"고 착각한다. **없는 레이어를 강요하는 것은 그 자체가 과한 추상화다.**
 
