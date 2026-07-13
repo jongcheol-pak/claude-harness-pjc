@@ -34,12 +34,20 @@ function Get-HighConfidenceSecretLabels {
 function Test-CredentialPairToken {
     param([string]$id, [string]$pw)
 
-    # 플레이스홀더는 자격증명이 아니다 (문서의 예시 표기).
+    # 플레이스홀더는 자격증명이 아니다 (문서의 예시 표기). 각괄호 형태(<PASSWORD>)는 인용형 pw의
+    #   문자 클래스가 '<'를 허용하므로 여기서 걸러야 한다(id는 클래스가 이미 배제).
     $placeholder = '^(xxx+|\*+|your[-_]|fake|example|dummy|sample|test|changeme$)'
-    if ($id -match "(?i)$placeholder" -or $pw -match "(?i)$placeholder") { return $false }
+    foreach ($t in @($id, $pw)) {
+        if ($t -match "(?i)$placeholder") { return $false }
+        if ($t -match '^<.*>$') { return $false }
+    }
 
     # 경로·URL·파일명·버전은 자격증명이 아니다. 확장자를 열거하면 목록 밖(.yml·.config 등)에서
     #   오탐이 되살아나므로 '마지막 점 뒤 2~5 영문자 = 파일명'이라는 일반 규칙으로 판정한다.
+    # 트레이드오프(의도): 이 규칙은 pw에도 적용돼 'Secret1.io' 같은 도메인형 비밀번호를 미탐한다.
+    #   그래도 유지하는 이유는 반대 방향의 대가가 더 크기 때문이다 — pw에서 배제를 빼면
+    #   "계정: admin / config2.yml"류 파일명 쌍이 오탐되고, 이 라벨은 커밋 차단(exit 2) 기준이라
+    #   오탐 하나가 자율 루프를 세운다. 미탐은 경고 계층(비인용 라벨)·리뷰어 보안 체크가 덮는다.
     foreach ($t in @($id, $pw)) {
         if ($t -match '/') { return $false }                      # 경로·라우트
         if ($t -match '(?i)\.[a-z]{2,5}$') { return $false }       # 파일명(config.yml, appsettings.json …)
@@ -107,15 +115,18 @@ function Get-SecretMatches {
     #   어디에도 걸리지 않았고, 그대로 공개 저장소에 커밋됐다.
     # 인용형(고신뢰 → 커밋 차단)과 비인용형(저신뢰 → 경고)을 나눈다: 인용부호 요건이 오탐을 크게
     #   줄이지만(코드 심볼·표·경로 배제) 백틱 없는 변형까지 차단하면 오탐 비용이 차단 이득을 넘는다.
-    $pairKeyword = '\b(admin|계정|아이디|로그인|사용자명)\b[^\r\n:]{0,40}:\s*'
-    $pairQuoted   = $pairKeyword + '["''`]([A-Za-z0-9._-]{3,32})["''`]\s*/\s*["''`]([^\s"''`]{6,64})["''`]'
+    # 인용부호는 여는 것과 닫는 것이 같아야 한다(역참조) — 문자 클래스만 쓰면 짝이 안 맞는
+    #   ("admin` / `pw") 형태까지 고신뢰 차단 라벨을 받는다.
+    $pairKeyword = '\b(admin|계정|아이디|로그인|사용자명|ID/PW)\b[^\r\n:]{0,40}:\s*'
+    $pairQuoted   = $pairKeyword + '(["''`])([A-Za-z0-9._-]{3,32})\2\s*/\s*(["''`])([^\s"''`]{6,64})\4'
     $pairUnquoted = $pairKeyword + '([A-Za-z0-9._-]{3,32})\s*/\s*([A-Za-z0-9._\-#$%!@^&*+=?~]{6,64})'
 
     # 인용형을 먼저 판정하고, 매치되면 비인용형은 보지 않는다 (두 라벨은 상호 배타 —
     #   한 문자열이 두 라벨을 함께 반환하면 caller의 차단 판정이 흐려진다).
     $quotedHit = $false
     foreach ($m in [regex]::Matches($content, "(?i)$pairQuoted")) {
-        if (Test-CredentialPairToken $m.Groups[2].Value $m.Groups[3].Value) { $quotedHit = $true; break }
+        # 그룹: 1=키워드 2=여는 인용 3=id 4=닫는 인용 5=pw
+        if (Test-CredentialPairToken $m.Groups[3].Value $m.Groups[5].Value) { $quotedHit = $true; break }
     }
     if ($quotedHit) {
         $found.Add('자격증명 쌍')

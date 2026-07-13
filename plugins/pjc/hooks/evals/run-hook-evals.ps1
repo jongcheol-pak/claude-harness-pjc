@@ -841,6 +841,10 @@ $spCases = @(
     @{ n = '음성: 버전 쌍';                   t = '계정 서비스 v1.2 / v1.3';                                          e = '' }
     @{ n = '음성: 미열거 확장자';             t = '계정 설정 파일: config.yml / config.production.yml';               e = '' }
     @{ n = '음성: 역할 열거형';               t = '계정 유형: admin / super_admin';                                   e = '' }
+    # T1 리뷰 지적분 — 골든에 없어 통과했던 구멍 3종
+    @{ n = 'ID/PW 키워드 쌍';                 t = "ID/PW: $spBt$spId$spBt / $spBt$spPw$spBt";                        e = '자격증명 쌍' }
+    @{ n = '음성: 각괄호 플레이스홀더';       t = "관리자 계정: $spBt$spId$spBt / $spBt<PASSWORD123>$spBt";          e = '' }
+    @{ n = '음성: 인용부호 짝 불일치';        t = "관리자 계정: $($spBt)$spId`" / `"$spPw$spBt";                     e = '' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')
