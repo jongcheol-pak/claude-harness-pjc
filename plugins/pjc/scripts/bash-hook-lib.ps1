@@ -216,6 +216,44 @@ function Invoke-WarnCommitSecrets {
                 Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
         }
 
+        # 선행 스테이징 인지 (v1.119.0 — F-7 B1): PreToolUse는 명령 '실행 전'에 돈다.
+        #   `git add -A && git commit`을 한 호출로 보내면 이 시점 인덱스가 비어 --cached가 0줄이고,
+        #   untracked 신규 파일은 git diff HEAD에도 없어 자격증명이 그대로 통과했다.
+        #   사고의 실제 경로(신규 프로젝트의 새 README)이자 자율 루프의 표준 커밋 형태다.
+        # → 명령에 git add가 있으면 그 대상의 '워킹트리 내용'을 미리 스캔한다.
+        $addMatch = [regex]::Match($cmd, '(?i)git\s+((-c|-C)\s+\S+\s+)*add\s+([^&;|\r\n]*)')
+        if ($addMatch.Success) {
+            $addArgs = $addMatch.Groups[3].Value.Trim()
+            $addTargets = @()
+            if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
+                # 전체 스테이징: untracked + 추적 파일 수정분
+                $addTargets = @(& git ls-files --others --exclude-standard 2>$null)
+                $addedLines += @(@(& git diff HEAD --unified=0 2>$null) |
+                    Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+            } else {
+                # 경로 나열: 플래그를 뺀 인자만 대상으로 본다
+                $addTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
+                    ForEach-Object { $_.Trim('"', "'") })
+            }
+
+            # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다.
+            #   상한 초과분은 스캔하지 않으므로 미탐이 될 수 있으나, 커밋 직전 신규 파일이 50개를
+            #   넘는 경우는 드물고 그때도 --cached/diff HEAD 경로는 그대로 작동한다.
+            $scanned = 0
+            foreach ($t in $addTargets) {
+                if ($scanned -ge 50) { break }
+                if ([string]::IsNullOrWhiteSpace($t)) { continue }
+                try {
+                    $tf = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path (Get-Location).Path $t }
+                    if (-not (Test-Path -LiteralPath $tf -PathType Leaf)) { continue }
+                    if ((Get-Item -LiteralPath $tf).Length -gt 1MB) { continue }   # 대용량·바이너리 회피
+                    $txt = Get-Content -LiteralPath $tf -Raw -Encoding UTF8 -ErrorAction Stop
+                    if ($txt) { $addedLines += ('+' + ($txt -replace '\r?\n', "`n+")) }
+                    $scanned++
+                } catch { continue }   # 바이너리·읽기 실패는 조용히 스킵
+            }
+        }
+
         $scanText = (@($addedLines | ForEach-Object { $_.Substring(1) }) -join "`n")
 
         . (Join-Path $PSScriptRoot 'secret-patterns.ps1')
