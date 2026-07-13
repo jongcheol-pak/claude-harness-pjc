@@ -1,6 +1,9 @@
-﻿# PreToolUse hook (얇은 래퍼) - 커밋 시점 시크릿 스캔 (경고, 비차단)
-# Bash/PowerShell 도구로 'git commit' 직전, 스테이징될 변경에서 시크릿 패턴을 스캔해 경고(exit 0).
-# 편집 시점의 post-write-checks가 놓친 경로의 "커밋 직전 최종 방어선".
+﻿# PreToolUse hook (얇은 래퍼) - 커밋 시점 시크릿 스캔 (조건부 차단)
+# Bash/PowerShell 도구로 'git commit' 직전, 스테이징될 변경에서 시크릿 패턴을 스캔한다.
+#   고신뢰 라벨(개인키·DB 연결 문자열·DB/서비스 URI 인증정보·자격증명 쌍) → 차단(exit 2, v1.119.0).
+#   그 외 라벨·.env 스테이징 → 경고(exit 0) — 오탐 여지가 있어 정상 작업을 막지 않는다.
+# 편집 시점의 post-write-checks가 놓친 경로(Bash 리다이렉션 등)의 "커밋 직전 최종 방어선".
+# 우회는 전용 변수 CLAUDE_HARNESS_ALLOW_SECRET=1 (사용자만, 시작 전 터미널에서) — QUICK으로는 안 꺼진다.
 #
 # 검사 로직은 bash-hook-lib.ps1의 Invoke-WarnCommitSecrets로 이관됐다(pre-bash-dispatch.ps1과
 #   동일 함수 공유). 이 파일은 stdin 파싱 + 함수 호출 + 결과 번역(stderr/additionalContext/exit)만 한다.

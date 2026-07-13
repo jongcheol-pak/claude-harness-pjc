@@ -26,6 +26,8 @@
 
 ## Repository Structure
 
+> 아래는 **DDD/Clean을 택했을 때**의 구조다. 계층형을 택했으면 이 트리를 그대로 두지 말고 실제 구조로 바꾼다(예: `src/<App>/` 단일 프로젝트 + `Services/`·`Data/` 폴더). **선택한 아키텍처에 맞게 조정하세요.**
+
 ```
 <repo>/
 ├── src/
@@ -46,7 +48,10 @@
 - **임시/캐시**: `obj/` · `TestResults/`
 
 ## Conventions
-- **아키텍처**: DDD + Clean. 의존 방향: UI → Application → Domain ← Infrastructure
+- **아키텍처**: `<DDD + Clean | 계층형(트랜잭션 스크립트) | 기타 — 하나만 남기세요>`
+  - **DDD + Clean** — 의존 방향: UI → Application → Domain ← Infrastructure. 도메인 규칙(검증·상태 전이·계산)이 두터울 때. 엔티티에 행위를 두고 애그리게이트 경계를 잡는다.
+  - **계층형(트랜잭션 스크립트)** — 서비스가 절차를 순서대로 실행. 규칙이 얇은 CRUD·조회 위주 앱에 **정당한 선택**이다. 로직이 없는데 레이어만 4개로 나누면 그 자체가 과한 추상화다.
+  - ⚠️ **실제 구조와 다르게 적지 마세요.** 선언만 DDD면(엔티티는 프로퍼티뿐, 로직은 전부 서비스) 리뷰어도 사람도 "지켜지고 있다"고 착각합니다 — 없느니만 못합니다.
 - **MVVM (WinUI 3/WPF/MAUI)**: ViewModel은 `CommunityToolkit.Mvvm`의 `[ObservableProperty]` / `[RelayCommand]` 사용
 - **DI**: `Microsoft.Extensions.DependencyInjection`. 모든 서비스는 인터페이스 통한 등록.
 - **에러 처리**: `Result<T>` 패턴 권장 (또는 명시된 예외 정책)

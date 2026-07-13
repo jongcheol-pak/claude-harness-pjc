@@ -15,7 +15,7 @@
 ## Stack
 - 언어/런타임: C# 12, .NET 8
 - 주요 프레임워크: WinUI 3, Windows App SDK
-- 아키텍처: MVVM + DDD
+- 아키텍처: MVVM + DDD  <!-- 예시일 뿐입니다. 실제 프로젝트의 구조를 적으세요 — 도메인 규칙이 얇으면 계층형이 정당합니다 -->
 - 핵심 라이브러리: CommunityToolkit.Mvvm, Microsoft.Extensions.DependencyInjection, Serilog
 
 ## Build & Test
@@ -65,7 +65,7 @@
 - 언어/런타임: Kotlin 2.x, JDK 17, Android Gradle Plugin 8.x
 - minSdk / targetSdk: 24 / 34 (또는 프로젝트 값)
 - 주요 프레임워크: Jetpack Compose, AndroidX
-- 아키텍처: Clean Architecture (data/domain/presentation) + MVVM
+- 아키텍처: Clean Architecture (data/domain/presentation) + MVVM  <!-- 예시일 뿐입니다. 실제 구조를 적으세요 -->
 - 핵심 라이브러리: Hilt(DI), Coroutines + Flow, Retrofit + OkHttp, Room, Coil, Timber
 
 ## Build & Test

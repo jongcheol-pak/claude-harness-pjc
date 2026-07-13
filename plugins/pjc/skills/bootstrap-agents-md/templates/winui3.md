@@ -67,7 +67,10 @@
 4. **StartupTask 표시명**은 `ms-resource:///Resources/<키>` 형식. 전체 URI(`ms-resource://앱이름/...`)는 resolve 실패.
 
 ## Conventions
-- **아키텍처**: DDD + Clean. 의존 방향: UI → Application → Domain ← Infrastructure
+- **아키텍처**: `<DDD + Clean | 계층형(트랜잭션 스크립트) | 기타 — 하나만 남기세요>` (MVVM은 UI 패턴이라 아키텍처 선택과 별개로 유지)
+  - **DDD + Clean** — 의존 방향: UI → Application → Domain ← Infrastructure. 도메인 규칙이 두터울 때.
+  - **계층형(트랜잭션 스크립트)** — 규칙이 얇은 CRUD·조회 위주 앱에 **정당한 선택**이다. 로직이 없는데 레이어만 나누면 과한 추상화다.
+  - ⚠️ **실제 구조와 다르게 적지 마세요.** 선언만 DDD면 리뷰어도 사람도 "지켜지고 있다"고 착각합니다.
 - **MVVM**: ViewModel은 `[ObservableProperty]` / `[RelayCommand]` (CommunityToolkit.Mvvm)
 - **DI**: `Microsoft.Extensions.DependencyInjection`, 인터페이스 통한 등록
 - **에러 처리**: `Result<T>` 패턴 권장

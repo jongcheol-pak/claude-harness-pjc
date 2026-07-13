@@ -31,6 +31,8 @@
 
 ## Repository Structure
 
+> 아래는 **Clean/DDD를 택했을 때**의 구조다. 계층형을 택했으면 실제 구조로 바꾼다(예: `routes/`·`services/`·`db/`). **선택한 아키텍처에 맞게 조정하세요.**
+
 ```
 <repo>/
 ├── src/
@@ -50,7 +52,10 @@
 - **임시/캐시**: `node_modules/` · `coverage/` · `.cache/`
 
 ## Conventions
-- **아키텍처**: Layered / Clean. 의존 방향: interfaces → application → domain ← infrastructure
+- **아키텍처**: `<Clean/DDD | 계층형(트랜잭션 스크립트) | 기타 — 하나만 남기세요>`
+  - **Clean/DDD** — 의존 방향: interfaces → application → domain ← infrastructure. 도메인 규칙(검증·상태 전이·계산)이 두터울 때.
+  - **계층형(트랜잭션 스크립트)** — route/controller → service → repository. 규칙이 얇은 CRUD·API 위주면 **정당한 선택**이다. 로직이 없는데 레이어만 나누면 과한 추상화다.
+  - ⚠️ **실제 구조와 다르게 적지 마세요.** 선언만 DDD면(도메인 객체는 타입뿐, 로직은 전부 서비스) 리뷰어도 사람도 "지켜지고 있다"고 착각합니다.
 - **모듈 시스템**: ESM 권장 (`"type": "module"`). CommonJS는 legacy만.
 - **타입**: `any` 금지. `unknown` 사용 후 좁히기.
 - **에러 처리**: `Result<T, E>` 패턴 또는 throw + global handler. 정책 일관.

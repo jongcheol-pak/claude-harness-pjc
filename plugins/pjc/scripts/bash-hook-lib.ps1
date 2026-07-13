@@ -216,6 +216,54 @@ function Invoke-WarnCommitSecrets {
                 Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
         }
 
+        # 선행 스테이징 인지 (v1.119.0 — F-7 B1): PreToolUse는 명령 '실행 전'에 돈다.
+        #   `git add -A && git commit`을 한 호출로 보내면 이 시점 인덱스가 비어 --cached가 0줄이고,
+        #   untracked 신규 파일은 git diff HEAD에도 없어 자격증명이 그대로 통과했다.
+        #   사고의 실제 경로(신규 프로젝트의 새 README)이자 자율 루프의 표준 커밋 형태다.
+        # → 명령에 git add가 있으면 그 대상의 '워킹트리 내용'을 미리 스캔한다.
+        $addMatch = [regex]::Match($cmd, '(?i)git\s+((-c|-C)\s+\S+\s+)*add\s+([^&;|\r\n]*)')
+        if ($addMatch.Success) {
+            $addArgs = $addMatch.Groups[3].Value.Trim()
+            $addTargets = @()
+            if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
+                # 전체 스테이징: untracked + 추적 파일 수정분
+                $addTargets = @(& git ls-files --others --exclude-standard 2>$null)
+                $addedLines += @(@(& git diff HEAD --unified=0 2>$null) |
+                    Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+            } else {
+                # 경로 나열: 플래그를 뺀 인자만 대상으로 본다.
+                #   인자가 디렉터리(`git add docs/`)거나 글롭(`git add *.md`)이면 파일이 아니라서
+                #   그냥 두면 통째로 스킵된다 — 둘 다 일상 형태이므로 git에게 대상 파일을 물어
+                #   전개한다(F-7 2회차 M1 — 이걸 빼면 `git add src/` 한 줄로 게이트가 뚫린다).
+                $rawTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
+                    ForEach-Object { $_.Trim('"', "'") })
+                foreach ($rt in $rawTargets) {
+                    if (Test-Path -LiteralPath $rt -PathType Leaf) { $addTargets += $rt; continue }
+                    # 디렉터리·글롭·미존재 경로 → git이 해석하게 맡긴다
+                    $addTargets += @(& git ls-files --others --exclude-standard -- $rt 2>$null)
+                    $addedLines += @(@(& git diff HEAD --unified=0 -- $rt 2>$null) |
+                        Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+                }
+            }
+
+            # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다.
+            #   상한 초과분은 스캔하지 않으므로 미탐이 될 수 있으나, 커밋 직전 신규 파일이 50개를
+            #   넘는 경우는 드물고 그때도 --cached/diff HEAD 경로는 그대로 작동한다.
+            $scanned = 0
+            foreach ($t in $addTargets) {
+                if ($scanned -ge 50) { break }
+                if ([string]::IsNullOrWhiteSpace($t)) { continue }
+                try {
+                    $tf = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path (Get-Location).Path $t }
+                    if (-not (Test-Path -LiteralPath $tf -PathType Leaf)) { continue }
+                    if ((Get-Item -LiteralPath $tf).Length -gt 1MB) { continue }   # 대용량·바이너리 회피
+                    $txt = Get-Content -LiteralPath $tf -Raw -Encoding UTF8 -ErrorAction Stop
+                    if ($txt) { $addedLines += ('+' + ($txt -replace '\r?\n', "`n+")) }
+                    $scanned++
+                } catch { continue }   # 바이너리·읽기 실패는 조용히 스킵
+            }
+        }
+
         $scanText = (@($addedLines | ForEach-Object { $_.Substring(1) }) -join "`n")
 
         . (Join-Path $PSScriptRoot 'secret-patterns.ps1')
@@ -233,10 +281,57 @@ function Invoke-WarnCommitSecrets {
 
         if ($hits.Count -eq 0 -and $envFiles.Count -eq 0) { return New-HookResult }
 
+        # 고신뢰 라벨(개인키·DB 연결 문자열·DB/서비스 URI 인증정보·자격증명 쌍)은 오탐 여지가 거의 없어
+        #   커밋을 차단한다(v1.119.0). 나머지 라벨·.env 스테이징은 종전대로 경고만 — 이 둘은
+        #   테스트 픽스처·문서 예시에서 흔히 나와, 차단하면 정상 작업이 막힌다.
+        # 배경: README에 관리자 계정이 적힌 채 공개 저장소에 push된 사고. 경고는 이미 있었으나
+        #   비차단이라 자율 루프가 그대로 커밋했다 — 경고를 하나 더 얹는 것은 같은 실패의 반복이다.
+        # 등급 판정 함수가 없으면(모듈 부분 로드·손상) 검출된 시크릿을 전부 고신뢰로 취급해 차단한다.
+        #   조용히 경고로 강등하면 "검사가 꺼진 줄 모르고 통과"하는데, 그건 이 게이트가 막으려는
+        #   사고(경고는 있었으나 그냥 커밋됨)와 똑같은 실패 모드다 — 판정 불가는 fail-closed로 간다.
+        #   (hits가 0이면 이 분기 자체에 오지 않으므로 정상 작업이 막히지 않는다.)
+        $gradeUnknown = -not (Get-Command Get-HighConfidenceSecretLabels -ErrorAction SilentlyContinue)
+        if ($gradeUnknown) {
+            $highConf = @($hits | Select-Object -Unique)
+        } else {
+            $hcLabels = @(Get-HighConfidenceSecretLabels)
+            $highConf = @($hits | Where-Object { $hcLabels -contains $_ } | Select-Object -Unique)
+        }
+
+        # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-viewmodel·
+        #   add-domain-service가 단독 사용 시 켜라고 안내하는 일상 변수라, 재사용하면 그 세션에서
+        #   자격증명 차단까지 함께 꺼진다(block-destructive·protect-harness가 "QUICK도 무시"하는
+        #   것과 같은 이유 — 안전 임계 게이트는 QUICK에 종속되지 않는다).
+        $allowSecret = ($env:CLAUDE_HARNESS_ALLOW_SECRET -eq '1')
+
+        if ($highConf.Count -gt 0 -and -not $allowSecret) {
+            $lines = New-Object System.Collections.Generic.List[string]
+            $lines.Add("[HARNESS] BLOCKED: 커밋될 변경에 자격증명으로 보이는 값이 있습니다.")
+            $lines.Add("")
+            foreach ($h in $highConf) { $lines.Add("  - $h") }
+            if ($gradeUnknown) {
+                $lines.Add("")
+                $lines.Add("  ! 시크릿 등급 판정 함수를 불러오지 못해 검출분을 전부 차단했습니다(secret-patterns.ps1 확인 필요).")
+            }
+            $lines.Add("")
+            $lines.Add("공개 저장소에 한 번 올라가면 커밋 이력에 남아 회수할 수 없습니다.")
+            $lines.Add("")
+            $lines.Add("해결 방법:")
+            $lines.Add("  1) 실제 값이면 — 파일에서 값을 지우고 환경변수 이름만 남긴 뒤(실제 값은 .env),")
+            $lines.Add("     `git restore --staged <파일>` 로 스테이징에서 빼고 다시 commit")
+            $lines.Add("  2) 오탐이면 — 사용자에게 보고하고 멈춥니다. 우회는 사용자만 설정합니다")
+            $lines.Add("     (Claude Code 시작 전 터미널에서): `$env:CLAUDE_HARNESS_ALLOW_SECRET = '1'")
+            $lines.Add("     Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다.")
+            return New-HookResult -Block $true -Stderr $lines
+        }
+
         $lines = New-Object System.Collections.Generic.List[string]
         $lines.Add("[COMMIT SECRET WARNING] 커밋될 스테이징된 변경에서 민감 정보로 보이는 내용이 감지되었습니다:")
         foreach ($h in ($hits | Select-Object -Unique)) { $lines.Add("  - $h") }
         foreach ($e in $envFiles) { $lines.Add("  - .env 파일 스테이징: $e (시크릿 파일이 커밋에 포함되려 합니다)") }
+        if ($allowSecret -and $highConf.Count -gt 0) {
+            $lines.Add("  * CLAUDE_HARNESS_ALLOW_SECRET=1 — 자격증명 차단이 우회된 상태입니다.")
+        }
         $lines.Add("")
         $lines.Add("실제 값을 커밋하지 말고, .env(gitignore)로 분리하거나 스테이징에서 제외(git restore --staged <파일>)하세요.")
         $lines.Add("이 경고는 차단이 아닙니다 — 검토 후 진행하세요.")

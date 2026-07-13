@@ -81,7 +81,10 @@ public static MauiApp CreateMauiApp()
 6. **빌드로 1차 검증.** `dotnet build -f <TFM>`로 XAML 오류를 잡고 통과시킨 뒤 다음 task로. 단 레이아웃 적정성(보기 좋은가)은 빌드로 못 잡으므로 ⏳ HUMAN-VERIFY로 남기고 사용자 확인 목록에 적는다.
 
 ## Conventions
-- **아키텍처**: MVVM + Clean. UI(View/ViewModel) → Application → Domain ← Infrastructure
+- **아키텍처**: MVVM(UI 패턴, 고정) + `<Clean/DDD | 계층형(트랜잭션 스크립트) | 기타 — 하나만 남기세요>`
+  - **Clean/DDD** — UI(View/ViewModel) → Application → Domain ← Infrastructure. 도메인 규칙이 두터울 때.
+  - **계층형(트랜잭션 스크립트)** — 규칙이 얇은 CRUD·조회 위주 앱에 **정당한 선택**이다. 로직이 없는데 레이어만 나누면 과한 추상화다.
+  - ⚠️ **실제 구조와 다르게 적지 마세요.** 선언만 DDD면 리뷰어도 사람도 "지켜지고 있다"고 착각합니다.
 - **ViewModel**: `[ObservableProperty]` / `[RelayCommand]` (CommunityToolkit.Mvvm), DI 등록 필수
 - **에러 처리**: `Result<T>` 패턴 권장
 - **비동기**: `async`/`await` 일관. `.Result`/`.Wait()` 금지, `async void`는 이벤트 핸들러만
