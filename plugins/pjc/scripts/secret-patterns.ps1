@@ -36,7 +36,9 @@ function Test-CredentialPairToken {
 
     # 플레이스홀더는 자격증명이 아니다 (문서의 예시 표기). 각괄호 형태(<PASSWORD>)는 인용형 pw의
     #   문자 클래스가 '<'를 허용하므로 여기서 걸러야 한다(id는 클래스가 이미 배제).
-    $placeholder = '^(xxx+|\*+|your[-_]|fake|example|dummy|sample|test|changeme$)'
+    # 'test'는 접두가 아니라 '단독/testing'만 배제한다 — 접두로 배제하면 실계정 testadmin이
+    #   통째로 미탐된다(F-7 M1 실측).
+    $placeholder = '^(xxx+|\*+|your[-_]|fake|example|dummy|sample|changeme$|test$|testing)'
     foreach ($t in @($id, $pw)) {
         if ($t -match "(?i)$placeholder") { return $false }
         if ($t -match '^<.*>$') { return $false }
@@ -117,7 +119,11 @@ function Get-SecretMatches {
     #   줄이지만(코드 심볼·표·경로 배제) 백틱 없는 변형까지 차단하면 오탐 비용이 차단 이득을 넘는다.
     # 인용부호는 여는 것과 닫는 것이 같아야 한다(역참조) — 문자 클래스만 쓰면 짝이 안 맞는
     #   ("admin` / `pw") 형태까지 고신뢰 차단 라벨을 받는다.
-    $pairKeyword = '\b(admin|계정|아이디|로그인|사용자명|ID/PW)\b[^\r\n:]{0,40}:\s*'
+    # 키워드: 영문(공개 GitHub의 다수가 영문 README다)과 한글을 함께 본다.
+    #   영문만 \b로 단어 경계를 건다 — 한글은 \b가 어절 경계와 어긋나 '관리자계정:'(무공백)이
+    #   미탐된다(F-7 m1 실측). 한글 키워드는 경계 없이 부분일치를 허용한다.
+    # (내부는 non-capturing — 그룹 번호가 밀리면 아래 역참조 \2·\4와 Groups[] 인덱스가 깨진다)
+    $pairKeyword = '((?:\b(?:admin|account|credentials?|login|username|ID/PW)\b)|계정|아이디|로그인|사용자명)[^\r\n:]{0,40}:\s*'
     $pairQuoted   = $pairKeyword + '(["''`])([A-Za-z0-9._-]{3,32})\2\s*/\s*(["''`])([^\s"''`]{6,64})\4'
     $pairUnquoted = $pairKeyword + '([A-Za-z0-9._-]{3,32})\s*/\s*([A-Za-z0-9._\-#$%!@^&*+=?~]{6,64})'
 

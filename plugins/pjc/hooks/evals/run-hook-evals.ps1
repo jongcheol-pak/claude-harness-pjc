@@ -845,6 +845,14 @@ $spCases = @(
     @{ n = 'ID/PW 키워드 쌍';                 t = "ID/PW: $spBt$spId$spBt / $spBt$spPw$spBt";                        e = '자격증명 쌍' }
     @{ n = '음성: 각괄호 플레이스홀더';       t = "관리자 계정: $spBt$spId$spBt / $spBt<PASSWORD123>$spBt";          e = '' }
     @{ n = '음성: 인용부호 짝 불일치';        t = "관리자 계정: $($spBt)$spId`" / `"$spPw$spBt";                     e = '' }
+    # F-7 지적분 — 공개 GitHub의 다수가 영문 README다. 한글 \b는 어절 경계와 어긋나 무공백을 놓쳤다.
+    @{ n = '영문 account 쌍';                 t = "Default account: $spBt$spId$spBt / $spBt$spPw$spBt";               e = '자격증명 쌍' }
+    @{ n = '영문 credentials 쌍';             t = "Credentials: $spBt$spId$spBt / $spBt$spPw$spBt";                   e = '자격증명 쌍' }
+    @{ n = '무공백 관리자계정';               t = "관리자계정: $spBt$spId$spBt / $spBt$spPw$spBt";                    e = '자격증명 쌍' }
+    @{ n = 'test 접두 실계정(testadmin)';     t = "계정: ${spBt}testadmin$spBt / $spBt$spPw$spBt";                    e = '자격증명 쌍' }
+    @{ n = '음성: 영문 설정값(login: true)';  t = 'login: true / false';                                              e = '' }
+    @{ n = '음성: 영문 라우트(account API)';  t = 'account API: GET /api/v1/accounts';                                e = '' }
+    @{ n = '음성: 영문 예시 플레이스홀더';    t = "Login: ${spBt}example$spBt / ${spBt}your-password$spBt";           e = '' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')
