@@ -125,7 +125,7 @@ function Get-SecretMatches {
     #   한 문자열이 두 라벨을 함께 반환하면 caller의 차단 판정이 흐려진다).
     $quotedHit = $false
     foreach ($m in [regex]::Matches($content, "(?i)$pairQuoted")) {
-        # 그룹: 1=키워드 2=여는 인용 3=id 4=닫는 인용 5=pw
+        # 그룹: 1=키워드 2=id 인용부호 3=id 4=pw 인용부호 5=pw (닫는 쪽은 \2·\4 역참조 — 새 그룹 아님)
         if (Test-CredentialPairToken $m.Groups[3].Value $m.Groups[5].Value) { $quotedHit = $true; break }
     }
     if ($quotedHit) {
