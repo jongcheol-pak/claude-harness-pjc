@@ -819,6 +819,47 @@ Assert-Case -Name "dispatch=rtc: 제목 아닌 T3 언급 통과 (제목 한정)"
 # 러너 파일 자체가 자사 시크릿 스캐너·post-write hook에 오탐되지 않게 가짜 값은 문자열 연결로 분리 기재.
 # 게이트 태그 2개: 내부 dispatch 동등성·고유 분기가 이 섹션의 $wcs git 상태를 공유(초과 실행 허용).
 if (Test-HookSelected @('warn-commit-secrets', 'pre-bash-dispatch')) {
+
+# ---- [v1.119.0] secret-patterns 라벨 판정 (함수 단위 — hook 실행 전 단계) ----
+# 실사고: README의 "관리자 계정: `<id>` / `<pw>`"가 종전 7패턴 어디에도 안 걸려 공개 커밋됐다.
+# 자격증명 쌍은 오탐이 곧 커밋 차단(자율 루프 정지)이라, 양성만큼 음성(정상 문서)이 중요하다 —
+#   경로·라우트·파일명·버전·역할 열거는 반드시 통과해야 한다.
+. (Join-Path $scriptsDir 'secret-patterns.ps1')
+$spId = 'ad' + 'min'
+$spPw = 'Zq7' + '#mK21'
+$spBt = [char]96
+$spCases = @(
+    @{ n = '인용 쌍 → 자격증명 쌍(고신뢰)';   t = "관리자 계정: $spBt$spId$spBt / $spBt$spPw$spBt";                  e = '자격증명 쌍' }
+    @{ n = '비인용 쌍 → 경고 라벨';           t = "계정: $spId / $spPw";                                             e = '자격증명 쌍(비인용)' }
+    @{ n = '한글 비밀번호 값';                t = '비밀번호: ' + 'Zq7' + '#mK21';                                    e = 'password 값' }
+    @{ n = '음성: 한글 대비 문구';            t = '계정 종류: 관리자 / 일반 사용자';                                 e = '' }
+    @{ n = '음성: 코드 심볼';                 t = 'AdminService / UserService_v2';                                    e = '' }
+    @{ n = '음성: 표·경로';                   t = '| admin | /api/v1/users |';                                        e = '' }
+    @{ n = '음성: 환경변수 안내';             t = '비밀번호: 환경변수 PD_ADMIN_PASSWORD로 지정';                     e = '' }
+    @{ n = '음성: API 라우트';                t = '계정 생성 API: POST /api/v1/accounts';                             e = '' }
+    @{ n = '음성: 파일 경로 쌍';              t = '관리자 계정 설정: appsettings.json / appsettings.Production.json'; e = '' }
+    @{ n = '음성: 버전 쌍';                   t = '계정 서비스 v1.2 / v1.3';                                          e = '' }
+    @{ n = '음성: 미열거 확장자';             t = '계정 설정 파일: config.yml / config.production.yml';               e = '' }
+    @{ n = '음성: 역할 열거형';               t = '계정 유형: admin / super_admin';                                   e = '' }
+)
+foreach ($sc in $spCases) {
+    $got = (@(Get-SecretMatches $sc.t) -join ',')
+    $ok = if ($sc.e -eq '') { $got -eq '' } else { $got -eq $sc.e }
+    if ($ok) {
+        $script:results.Add(@{ ok = $true; line = "[PASS] secret-patterns: $($sc.n)" })
+    } else {
+        $script:results.Add(@{ ok = $false; line = "[FAIL] secret-patterns: $($sc.n) — 기대 '$($sc.e)', 실제 '$got'" })
+    }
+}
+# 고신뢰 라벨 집합 — warn-commit-secrets 차단 기준(T2). 집합이 조용히 바뀌면 차단 범위가 바뀐다.
+$hcExpect = @('개인키', 'DB 연결 문자열', 'DB/서비스 URI 인증정보', '자격증명 쌍')
+$hcGot = @(Get-HighConfidenceSecretLabels)
+if (-not (Compare-Object $hcExpect $hcGot)) {
+    $script:results.Add(@{ ok = $true; line = '[PASS] secret-patterns: 고신뢰 라벨 집합 4종' })
+} else {
+    $script:results.Add(@{ ok = $false; line = "[FAIL] secret-patterns: 고신뢰 라벨 집합 불일치 — 실제 '$($hcGot -join ',')'" })
+}
+
 if ($gitOk) {
     $wcs = Join-Path $work 'wcsrepo'; New-Item -ItemType Directory $wcs -Force | Out-Null
     Push-Location $wcs

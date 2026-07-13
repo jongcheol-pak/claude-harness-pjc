@@ -10,6 +10,49 @@
 #
 # 함수 계약: 내용 문자열 → 매치된 시크릿 라벨 배열. 스캔 대상 판단(.env 스킵 등)·경고 문구는
 #   각 caller가 결정한다(이 함수는 "내용→매치"만).
+# caller 3곳(전부 라벨 배열만 소비 — 반환 계약을 바꾸면 셋을 함께 고쳐야 한다):
+#   post-write-checks.ps1(편집 시점 경고) · bash-hook-lib.ps1(커밋 시점) · hook-event-log.ps1(fail-closed 마스킹).
+
+# 고신뢰 라벨 (v1.119.0) — warn-commit-secrets가 이 라벨을 커밋 차단(exit 2) 기준으로 쓴다.
+#   오탐 여지가 거의 없는 것만 넣는다: 나머지 라벨(password 값·API key·Bearer·IP·비인용 쌍)은
+#   테스트 픽스처·문서 예시에서 흔히 나와 차단하면 정상 작업이 막히므로 경고로 남긴다
+#   (과잉 차단은 아래 '늑대소년화' 주석과 같은 실패 모드 — 이번엔 대가가 루프 정지라 더 크다).
+$script:HighConfidenceSecretLabels = @(
+    '개인키',
+    'DB 연결 문자열',
+    'DB/서비스 URI 인증정보',
+    '자격증명 쌍'
+)
+
+function Get-HighConfidenceSecretLabels {
+    return $script:HighConfidenceSecretLabels
+}
+
+# 자격증명 쌍의 토큰 검증 (v1.119.0) — 인용형·비인용형 두 패턴이 공유한다.
+#   두 패턴이 서로 다른 기준을 쓰면 그 차이가 곧 오탐/미탐 구멍이므로 판정을 한 곳에 둔다
+#   (모듈 헤더의 '패턴이 갈라지면 보안 구멍' 논리와 동일).
+function Test-CredentialPairToken {
+    param([string]$id, [string]$pw)
+
+    # 플레이스홀더는 자격증명이 아니다 (문서의 예시 표기).
+    $placeholder = '^(xxx+|\*+|your[-_]|fake|example|dummy|sample|test|changeme$)'
+    if ($id -match "(?i)$placeholder" -or $pw -match "(?i)$placeholder") { return $false }
+
+    # 경로·URL·파일명·버전은 자격증명이 아니다. 확장자를 열거하면 목록 밖(.yml·.config 등)에서
+    #   오탐이 되살아나므로 '마지막 점 뒤 2~5 영문자 = 파일명'이라는 일반 규칙으로 판정한다.
+    foreach ($t in @($id, $pw)) {
+        if ($t -match '/') { return $false }                      # 경로·라우트
+        if ($t -match '(?i)\.[a-z]{2,5}$') { return $false }       # 파일명(config.yml, appsettings.json …)
+        if ($t -match '(?i)^v?\d+\.\d+') { return $false }         # 버전(v1.2)
+    }
+
+    # 비밀번호 자리: 6자 이상 + 숫자 또는 특수문자. '_'·'-'는 특수문자로 치지 않는다 —
+    #   그러면 역할·열거형 문서(admin / super_admin, local / oauth2_pkce)가 전부 걸린다.
+    if ($pw.Length -lt 6) { return $false }
+    if ($pw -notmatch '[\d#$%!@^&*+=?~]') { return $false }
+
+    return $true
+}
 
 function Get-SecretMatches {
     param([string]$content)
@@ -25,6 +68,9 @@ function Get-SecretMatches {
     #   경고가 반복돼 진짜 시크릿 경고의 신뢰가 무너진다(늑대소년화). lookahead로 제외한다.
     $secretPatterns = @(
         @{ rx = '(?i)(password|passwd|pwd)\s*[:=]\s*["'']?(?!(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\(|string\b|str\b|int\b|bool\b|char\b|secure(string)?\b|none\b|null\b|nil\b|true\b|false\b))[^\s"''<>{}$]{3,}'; label = 'password 값' },
+        # 한글 키워드 (v1.119.0) — 종전엔 영문 password 계열만 봐서 "비밀번호: <값>"이 통째로 미탐이었다.
+        #   환경변수 이름만 적으라는 이 hook의 권고를 따른 문장("비밀번호: 환경변수 X로 지정")은 제외한다.
+        @{ rx = '(?i)(비밀번호|패스워드|암호)\s*[:=]\s*["''`]?(?!(환경변수|없음|미설정|변경|설정|\$env|os\.|process\.env|Environment\.|<))[^\s"''`<>{}$]{3,}'; label = 'password 값' },
         @{ rx = '(?i)(api[_-]?key|apikey|access[_-]?token|secret[_-]?key|auth[_-]?token|client[_-]?secret)\s*[:=]\s*["'']?[A-Za-z0-9_\-]{8,}'; label = 'API key/token 값' },
         @{ rx = '(?i)(Server|Data Source)=[^;]+;\s*(User|Uid|Password|Pwd)='; label = 'DB 연결 문자열' },
         @{ rx = '(?i)(mongodb(\+srv)?|postgres|postgresql|mysql|redis|amqp)://[^\s]+:[^\s]+@'; label = 'DB/서비스 URI 인증정보' },
@@ -55,5 +101,32 @@ function Get-SecretMatches {
             $found.Add($sp.label)
         }
     }
+
+    # ---- 자격증명 쌍 (v1.119.0) ----
+    # 실사고 형태: "**기본 관리자 계정**: `<id>` / `<pw>`" — 한글 라벨 + 슬래시 구분이라 위 패턴
+    #   어디에도 걸리지 않았고, 그대로 공개 저장소에 커밋됐다.
+    # 인용형(고신뢰 → 커밋 차단)과 비인용형(저신뢰 → 경고)을 나눈다: 인용부호 요건이 오탐을 크게
+    #   줄이지만(코드 심볼·표·경로 배제) 백틱 없는 변형까지 차단하면 오탐 비용이 차단 이득을 넘는다.
+    $pairKeyword = '\b(admin|계정|아이디|로그인|사용자명)\b[^\r\n:]{0,40}:\s*'
+    $pairQuoted   = $pairKeyword + '["''`]([A-Za-z0-9._-]{3,32})["''`]\s*/\s*["''`]([^\s"''`]{6,64})["''`]'
+    $pairUnquoted = $pairKeyword + '([A-Za-z0-9._-]{3,32})\s*/\s*([A-Za-z0-9._\-#$%!@^&*+=?~]{6,64})'
+
+    # 인용형을 먼저 판정하고, 매치되면 비인용형은 보지 않는다 (두 라벨은 상호 배타 —
+    #   한 문자열이 두 라벨을 함께 반환하면 caller의 차단 판정이 흐려진다).
+    $quotedHit = $false
+    foreach ($m in [regex]::Matches($content, "(?i)$pairQuoted")) {
+        if (Test-CredentialPairToken $m.Groups[2].Value $m.Groups[3].Value) { $quotedHit = $true; break }
+    }
+    if ($quotedHit) {
+        $found.Add('자격증명 쌍')
+    } else {
+        foreach ($m in [regex]::Matches($content, "(?i)$pairUnquoted")) {
+            if (Test-CredentialPairToken $m.Groups[2].Value $m.Groups[3].Value) {
+                $found.Add('자격증명 쌍(비인용)')
+                break
+            }
+        }
+    }
+
     return $found.ToArray()
 }
