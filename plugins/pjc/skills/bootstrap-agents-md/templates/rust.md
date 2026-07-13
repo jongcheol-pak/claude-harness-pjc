@@ -55,7 +55,10 @@ Workspace 사용 시 `members = ["crates/*"]`로 구분.
 - **임시/캐시**: `target/` (빌드 캐시 겸) · criterion 결과(`target/criterion/`)
 
 ## Conventions
-- **아키텍처**: Clean / Hexagonal. crate 경계로 layered 강제 가능.
+- **아키텍처**: `<Clean/Hexagonal | 계층형(단일 crate) | 기타 — 하나만 남기세요>`
+  - **Clean/Hexagonal** — crate 경계로 layered 강제 가능(도메인 crate가 인프라에 의존하지 않게 컴파일러가 보장). 도메인 규칙이 두터울 때.
+  - **계층형(단일 crate)** — 모듈로만 나눈다. 규칙이 얇은 CLI·도구면 **정당한 선택**이다. crate를 쪼개면 빌드·의존 관리 비용이 실제로 발생한다.
+  - ⚠️ **실제 구조와 다르게 적지 마세요.** 선언과 실제가 갈리면 리뷰어도 사람도 오도됩니다.
 - **에러 처리**: `Result<T, E>` + `thiserror` (도메인 에러), `anyhow` (애플리케이션). `unwrap()`, `expect()` 금지 (테스트·main 진입부 제외).
 - **소유권**: 명시적. `clone()` 남발 금지 — borrow 우선.
 - **동시성**: `tokio` (async). `Arc<Mutex<T>>`보다 채널·actor 우선.

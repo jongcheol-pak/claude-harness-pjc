@@ -157,7 +157,10 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 - **접속**: <원격 API·DB 연결 정보는 BuildConfig + gradle.properties(비커밋)·환경변수로 — 실제 값 금지>
 
 ## Conventions
-- **아키텍처**: MVVM + Clean Architecture. UI → Domain ← Data.
+- **아키텍처**: MVVM(UI 패턴, 고정) + `<Clean Architecture | 계층형(단순 Repository) | 기타 — 하나만 남기세요>`
+  - **Clean Architecture** — UI → Domain ← Data. UseCase·도메인 모델을 두고 규칙을 Domain에 모은다. 도메인 규칙이 두터울 때.
+  - **계층형(단순 Repository)** — ViewModel → Repository → 데이터소스. 규칙이 얇은 CRUD·조회 앱에 **정당한 선택**이다. UseCase가 Repository를 한 줄 위임만 한다면 그 레이어는 비용만 남는다.
+  - ⚠️ **실제 구조와 다르게 적지 마세요.** 선언만 Clean이면 리뷰어도 사람도 "지켜지고 있다"고 착각합니다.
 - **DI**: Hilt (`@HiltAndroidApp`, `@HiltViewModel`, `@Module`)
 - **상태 관리**: `StateFlow` (Compose 권장) 또는 `LiveData`
 - **비동기**: Coroutines + Flow. `runBlocking` 금지 (테스트 제외)

@@ -31,6 +31,8 @@
 
 ## Repository Structure
 
+> 아래는 **Clean/DDD를 택했을 때**의 구조다. 계층형을 택했으면 실제 구조로 바꾼다(예: `api/`·`services/`·`db/`). **선택한 아키텍처에 맞게 조정하세요.**
+
 ```
 <repo>/
 ├── src/<package>/
@@ -52,7 +54,10 @@
 
 ## Conventions
 - **타입 힌트 의무**. mypy/pyright strict 권장.
-- **아키텍처**: Layered / Clean. 의존: interfaces → application → domain ← infrastructure
+- **아키텍처**: `<Clean/DDD | 계층형(트랜잭션 스크립트) | 기타 — 하나만 남기세요>`
+  - **Clean/DDD** — 의존: interfaces → application → domain ← infrastructure. 도메인 규칙이 두터울 때.
+  - **계층형(트랜잭션 스크립트)** — view/handler → service → repository. 규칙이 얇은 CRUD·스크립트·도구면 **정당한 선택**이다. 레이어 분리 자체가 목적이 되면 과한 추상화다.
+  - ⚠️ **실제 구조와 다르게 적지 마세요.** 선언만 DDD면 리뷰어도 사람도 "지켜지고 있다"고 착각합니다.
 - **에러 처리**: 명시적 예외 클래스 또는 `Result` 패턴. Bare `except:` 금지.
 - **비동기**: `async`/`await` (FastAPI 등). 동기/비동기 코드 혼용 주의.
 - **테스트**: pytest fixture 활용. mock은 `pytest-mock` 또는 `unittest.mock`.

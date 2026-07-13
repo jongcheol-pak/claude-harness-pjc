@@ -50,7 +50,10 @@
 - **임시/캐시**: `$GOCACHE` · coverage 출력(`*.out`)
 
 ## Conventions
-- **아키텍처**: Clean / Hexagonal. 의존: interfaces → application → domain ← infrastructure
+- **아키텍처**: `<Clean/Hexagonal | 계층형(트랜잭션 스크립트) | 기타 — 하나만 남기세요>`
+  - **Clean/Hexagonal** — 의존: interfaces → application → domain ← infrastructure. 포트·어댑터로 경계를 잡는다. 도메인 규칙이 두터울 때.
+  - **계층형(트랜잭션 스크립트)** — handler → service → store. Go의 관례에 가깝고, 규칙이 얇은 API·CLI면 **정당한 선택**이다. 인터페이스를 미리 파는 것은 Go에서 특히 안티패턴이다(사용처에서 정의).
+  - ⚠️ **실제 구조와 다르게 적지 마세요.** 선언과 실제가 갈리면 리뷰어도 사람도 오도됩니다.
 - **에러 처리**: `if err != nil` 명시적 처리. `errors.Is/As` 활용. `panic` 금지 (recover 가능한 곳 제외).
 - **인터페이스**: 소비처에 정의 (`accept interfaces, return structs`).
 - **동시성**: goroutine + channel. `context.Context` 전파 의무 (timeout/cancel).
