@@ -287,7 +287,7 @@ B) 2개 plan으로 분할 (앞부분 / 뒷부분)
 
 각 task에 대해 결정 분기를 사전 해결.
 
-**Type별 적용 범위 + 카테고리 11개 + 기록 형식은 `references/decision-points.md` 정본 참조** (요지: Type A skip / B 1-2개 / C 5-6개 / D 11개 전체).
+**Type별 적용 범위 + 카테고리 12개 + 기록 형식은 `references/decision-points.md` 정본 참조** (요지: Type A skip / B 1-2개 / C 5-6개 + 보안·자격증명(해당 시) / D 12개 전체). **보안·자격증명**은 Type C/D가 **인증·자격증명·외부 접근**을 다룰 때 발동한다 — 시드 계정 유무·강제 변경, 자격증명 보관처(문서에 값 금지), 계정 잠금·시도 제한을 계획 단계에서 확정한다.
 
 ### Step 6.5. Edge Case & Halt Forecast (자율 실행 대비)
 
