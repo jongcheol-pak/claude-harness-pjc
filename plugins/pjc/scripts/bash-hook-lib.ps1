@@ -233,13 +233,19 @@ function Invoke-WarnCommitSecrets {
 
         if ($hits.Count -eq 0 -and $envFiles.Count -eq 0) { return New-HookResult }
 
-        # 고신뢰 라벨(개인키·DB 연결 문자열·DB URI 인증정보·자격증명 쌍)은 오탐 여지가 거의 없어
+        # 고신뢰 라벨(개인키·DB 연결 문자열·DB/서비스 URI 인증정보·자격증명 쌍)은 오탐 여지가 거의 없어
         #   커밋을 차단한다(v1.119.0). 나머지 라벨·.env 스테이징은 종전대로 경고만 — 이 둘은
         #   테스트 픽스처·문서 예시에서 흔히 나와, 차단하면 정상 작업이 막힌다.
         # 배경: README에 관리자 계정이 적힌 채 공개 저장소에 push된 사고. 경고는 이미 있었으나
         #   비차단이라 자율 루프가 그대로 커밋했다 — 경고를 하나 더 얹는 것은 같은 실패의 반복이다.
-        $highConf = @()
-        if (Get-Command Get-HighConfidenceSecretLabels -ErrorAction SilentlyContinue) {
+        # 등급 판정 함수가 없으면(모듈 부분 로드·손상) 검출된 시크릿을 전부 고신뢰로 취급해 차단한다.
+        #   조용히 경고로 강등하면 "검사가 꺼진 줄 모르고 통과"하는데, 그건 이 게이트가 막으려는
+        #   사고(경고는 있었으나 그냥 커밋됨)와 똑같은 실패 모드다 — 판정 불가는 fail-closed로 간다.
+        #   (hits가 0이면 이 분기 자체에 오지 않으므로 정상 작업이 막히지 않는다.)
+        $gradeUnknown = -not (Get-Command Get-HighConfidenceSecretLabels -ErrorAction SilentlyContinue)
+        if ($gradeUnknown) {
+            $highConf = @($hits | Select-Object -Unique)
+        } else {
             $hcLabels = @(Get-HighConfidenceSecretLabels)
             $highConf = @($hits | Where-Object { $hcLabels -contains $_ } | Select-Object -Unique)
         }
@@ -255,6 +261,10 @@ function Invoke-WarnCommitSecrets {
             $lines.Add("[HARNESS] BLOCKED: 커밋될 변경에 자격증명으로 보이는 값이 있습니다.")
             $lines.Add("")
             foreach ($h in $highConf) { $lines.Add("  - $h") }
+            if ($gradeUnknown) {
+                $lines.Add("")
+                $lines.Add("  ! 시크릿 등급 판정 함수를 불러오지 못해 검출분을 전부 차단했습니다(secret-patterns.ps1 확인 필요).")
+            }
             $lines.Add("")
             $lines.Add("공개 저장소에 한 번 올라가면 커밋 이력에 남아 회수할 수 없습니다.")
             $lines.Add("")

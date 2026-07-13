@@ -926,6 +926,8 @@ if ($gitOk) {
     $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 자격증명 쌍 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     Assert-Case -Name "commit-secrets: 차단 메시지에 우회 변수 안내" -R $r -ExpectExit 2 -ExpectContains 'CLAUDE_HARNESS_ALLOW_SECRET'
+    # 우회 변수는 세션 시작 전에만 설정 가능하다 — Bash 도구로 설정해도 hook에 전파되지 않는다(M8).
+    Assert-Case -Name "commit-secrets: 차단 메시지에 세션 시작 전 설정 안내" -R $r -ExpectExit 2 -ExpectContains '시작 전 터미널'
 
     # (b) QUICK=1이어도 차단 유지 — 안전 임계 게이트는 QUICK에 종속되지 않는다(M6).
     $env:CLAUDE_HARNESS_QUICK = '1'
@@ -947,17 +949,41 @@ if ($gitOk) {
     $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 개인키 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
-    # (e) 저신뢰(비인용 자격증명 쌍) → 경고만. 차단 범위가 넓어지면 여기서 잡힌다.
+    # (d2) DB 연결 문자열(고신뢰) → 차단. 고신뢰 4종 중 hook 레벨 실증이 빠지면 $highConf 필터
+    #      버그를 함수 단위 테스트로는 못 잡는다.
     Push-Location $wcsB
     git rm -q --cached key.pem; Remove-Item key.pem -Force
+    # 기존 DB 패턴은 'Server=<v>;' 바로 뒤 User/Pwd/Password 키를 요구한다(secret-patterns.ps1:29).
+    #   'User Id='(공백)·중간 키(Database=…)가 끼면 미탐 — 기존 결함이라 plan Deferred에 등록했고,
+    #   여기서는 패턴이 실제로 잡는 유효 형태로 차단 경로를 실증한다.
+    # 키 이름과 '='를 반드시 분리해 조립한다 — 한 리터럴에 붙여 두면 이 러너 파일(과 그 주석!)
+    #   자체가 자사 커밋 게이트에 차단된다(실측으로 두 번 걸렸다).
+    $dbConn = 'Server' + '=' + 'prod-sql' + ';' + 'Pwd' + '=' + 'Zq7#mK21' + ';'
+    Set-Content db.config $dbConn; git add db.config
+    Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: DB 연결 문자열 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+    # (e) 저신뢰(비인용 자격증명 쌍) → 경고만. 차단 범위가 넓어지면 여기서 잡힌다.
+    Push-Location $wcsB
+    git rm -q --cached db.config; Remove-Item db.config -Force
     Set-Content notes.md ('계정: ' + 'ad' + 'min' + ' / ' + 'Zq7' + '#mK21'); git add notes.md
     Pop-Location
     $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 비인용 쌍은 경고만(exit 0)" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
 
-    # (f) 시크릿 제거 후 재커밋 → 통과. 차단이 막다른 골목이 아님을 실증한다.
+    # (e2) IP 주소만(저신뢰) → 경고만. 오차단 0의 핵심 회귀 감시 — 차단 범위가 IP까지 넓어지면
+    #      문서·설정에 IP를 적는 모든 정상 커밋이 막힌다.
     Push-Location $wcsB
     git rm -q --cached notes.md; Remove-Item notes.md -Force
+    Set-Content hosts.md ('배포 서버 ' + '203.0' + '.113.5' + ' 접속'); git add hosts.md
+    Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: IP 주소만은 경고만(exit 0, 오차단 0)" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+
+    # (f) 시크릿 제거 후 재커밋 → 통과. 차단이 막다른 골목이 아님을 실증한다.
+    Push-Location $wcsB
+    git rm -q --cached hosts.md; Remove-Item hosts.md -Force
     'clean=1' | Set-Content ok.txt; git add ok.txt
     Pop-Location
     $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
