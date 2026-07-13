@@ -63,6 +63,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **파일 크기**: 1500라인은 분리 "검토" 신호(강제 분리선 아님).
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단(`exit 2`)은 `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox`만.
+- **`require-plan-for-write`는 게이트 3종을 담는다**(v1.118.0): ① plan 존재 게이트(코드 Write 시 plan 필요 — `docs/plans/`는 **체크박스 plan 실재**로 판정, 디렉터리 존재만으로는 안 켜짐) ② **plan 작성 게이트**(plan 파일 Write·체크박스 도입 Edit은 `pjc:plan-feature`/`implement-task` 발동 흔적 필요) ③ AGENTS.md bootstrap 게이트. ①과 ②는 같은 정규식(`$planTaskRx`)을 공유한다 — **기준이 갈리면 그 차이가 곧 우회 경로**이므로 한쪽만 고치지 말 것.
 - **SKILL 문서 작성**: `plugins/pjc/skills/AUTHORING.md` 참조("왜"를 설명, 절대 규칙만 단호하게).
 
 ## DO NOT
