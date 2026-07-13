@@ -1,5 +1,10 @@
 ﻿# PreToolUse hook - PowerShell 버전
-# Write/Edit 호출 시 plan.md (또는 docs/plans/) 부재면 차단.
+# 두 개의 독립된 게이트를 담는다:
+#   ① plan 존재 게이트 — 코드 Write/Edit 시 plan.md(또는 docs/plans/의 체크박스 plan)가 없으면 차단.
+#   ② plan 작성 게이트 (v1.118.0) — plan.md/docs/plans/*.md 자체를 Write하거나 체크박스를 새로 도입하는
+#      Edit은 pjc:plan-feature(또는 implement-task) 발동 흔적 없이는 차단. 손으로 급조한 plan으로
+#      ①을 켜서 리뷰·영향분석을 통째로 우회하던 구멍을 막는다.
+#   (+ AGENTS.md bootstrap 게이트 — 신규 생성은 pjc:bootstrap-agents-md 경유만 허용.)
 # 문서/설정 파일은 항상 허용.
 # 우회: $env:CLAUDE_HARNESS_QUICK = '1'
 # exit 2 = block.
@@ -87,6 +92,111 @@ if ($data.tool_name -eq 'Write' -and
             [Console]::Error.WriteLine("     ※ Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다 — 시도하지 말고,")
             [Console]::Error.WriteLine("       필요하면 사용자에게 위 설정(후 Claude Code 재시작)을 안내하세요.")
             Write-RpEvent 'block' 'AGENTS bootstrap 게이트'
+            exit 2
+        }
+    }
+}
+
+# ---- plan 작성 게이트 (v1.118.0) ----
+# plan은 pjc:plan-feature 경유가 정본 경로다(적대적 plan-reviewer 검토·영향 범위 전수 조사·Type 분류·
+#   사전 승인 항목). 스킬을 거치지 않고 손으로 급조한 plan 하나로 그 자산이 통째로 우회되던 구멍을 막는다.
+#   AGENTS bootstrap 게이트와 동형(transcript 흔적 판정·fail-open·temp 예외·QUICK 우회)이나, 조건이 다르다:
+#   AGENTS.md는 기존 파일 편집이 정당 경로(record-project-fact)라 '신규 생성'만 게이트하지만, plan은
+#   Write 자체가 통째 재작성이라 신규/기존을 가리지 않는다.
+#
+# 게이트의 축은 '도구'가 아니라 **체크박스를 새로 도입하는 행위**다 — Write만 막으면
+#   ① 체크박스 없는 docs/plans/*.md를 Write(통과) → ② Edit으로 체크박스 추가 → ③ 아래
+#   Test-PlanInDirectory가 plan으로 인정 = 스킬 0회로 게이트 ON, 이라는 2단계 우회가 성립한다.
+#   그래서 Write(전부)와 '체크박스를 도입하는 Edit'을 같은 문으로 잠근다.
+#
+# $planTaskRx는 이 게이트와 Test-PlanInDirectory가 **공유**한다 — 두 기준이 갈리면 그 차이가 곧 구멍이다
+#   (게이트는 통과하는데 plan 판정은 켜지는 파일이 생긴다). `-`·`*`·`+` 불릿과 ordered list(`1.`/`1)`),
+#   `[x]`/`[X]`/`[/]`를 모두 인정한다: 좁게 잡으면 표기를 바꾼 급조 plan이 게이트를 빠져나가고,
+#   동시에 정상 plan이 "plan 아님"으로 판정돼 그 프로젝트의 코드 Write가 전면 차단된다(오차단).
+# 이 줄은 .md 무조건 허용($alwaysAllowedExts)보다 반드시 앞에 있어야 한다 — 뒤면 plan.md가 먼저 통과한다.
+$planTaskRx = '(?m)^\s*([-*+]|\d+[.)])\s*\[[ /xX]\]'
+
+if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
+    $planFileName = [System.IO.Path]::GetFileName($targetPath)
+    $isPlanFileName = ($planFileName -ieq 'plan.md')            # plan.md/PLAN.md — 경로 무관, 내용 무관
+    $isInPlansDir = ($targetPath -match '(?i)[\\/]docs[\\/]plans[\\/][^\\/]+\.md$')
+
+    $planGateTarget = $false
+    if ($isPlanFileName) {
+        # ⓐ plan 파일명 — Write면 내용과 무관하게 게이트(빈 plan 급조가 바로 차단 대상)
+        if ($data.tool_name -eq 'Write') { $planGateTarget = $true }
+    }
+    if ($isPlanFileName -or $isInPlansDir) {
+        # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다
+        #    (deferred.md 대장·brief 등 비 plan 문서를 오차단하지 않기 위함. 체크박스 없는 파일은
+        #     통과시켜도 Test-PlanInDirectory가 plan으로 인정하지 않으므로 게이트가 새지 않는다.)
+        if ($data.tool_name -eq 'Write' -and $isInPlansDir) {
+            if ([string]$data.tool_input.content -match $planTaskRx) { $planGateTarget = $true }
+        }
+        # ⓒ 체크박스를 '새로 도입'하는 Edit/MultiEdit — 위 2단계 우회 차단.
+        #    기존 plan의 정상 갱신은 전부 무매치다: 상태 변경([ ]→[x])은 old에도 체크박스가 있고,
+        #    Progress Log·Retry Ledger·Deferred append는 체크박스를 도입하지 않는다.
+        #    MultiEdit은 합산이 아니라 **edit 단위**로 본다 — edits는 순차 적용되므로 합산하면
+        #    'edit#1이 도입한 체크박스'를 edit#2가 old로 참조하는 것만으로 old에 체크박스가 섞여
+        #    무매치 조건이 깨진다(합산 판정의 false-negative).
+        if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
+            $editPairs = @()
+            if ($data.tool_name -eq 'MultiEdit' -and $data.tool_input.edits) {
+                $editPairs = @($data.tool_input.edits | ForEach-Object {
+                    @{ old = [string]$_.old_string; new = [string]$_.new_string }
+                })
+            } else {
+                $editPairs = @(@{ old = [string]$data.tool_input.old_string; new = [string]$data.tool_input.new_string })
+            }
+            foreach ($p in $editPairs) {
+                if (($p.new -match $planTaskRx) -and ($p.old -notmatch $planTaskRx)) { $planGateTarget = $true; break }
+            }
+        }
+    }
+
+    # 시스템 임시 폴더(스크래치패드)는 비대상 — 프로젝트 plan이 아니다(AGENTS 게이트와 동일 완화)
+    if ($planGateTarget) {
+        try {
+            $tempRootP = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
+            $tpNormP = $targetPath -replace '/', '\'
+            if ($tempRootP -and $tpNormP.StartsWith($tempRootP + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+                $planGateTarget = $false
+            }
+        } catch { }
+    }
+
+    if ($planGateTarget) {
+        # 발동 흔적 판정 — plan-feature(정본 경로) 또는 implement-task(승인된 plan이 있어야 발동하는
+        #   스킬이라 허용해도 우회로가 되지 않는다. 자율 루프가 예상 못 한 Write에서 차단되면 Halt 비용이
+        #   크므로 안전 마진으로 허용). llm-wiki 등 plan 없이 발동 가능한 스킬은 넣지 않는다 —
+        #   넣으면 "그 스킬을 켜서 게이트를 우회"하는 경로가 열린다.
+        # fail-open: transcript 부재·읽기 실패는 통과(AGENTS 게이트와 동일 관례).
+        $planSkillLaunched = $false
+        $tpp = [string]$data.transcript_path
+        if ([string]::IsNullOrWhiteSpace($tpp) -or -not (Test-Path -LiteralPath $tpp)) {
+            $planSkillLaunched = $true
+        } else {
+            try {
+                $planSkillLaunched = [bool](Select-String -LiteralPath $tpp -Quiet -Pattern @(
+                    '"skill"\s*:\s*"pjc:plan-feature"',
+                    'Launching skill: pjc:plan-feature',
+                    '"skill"\s*:\s*"pjc:implement-task"',
+                    'Launching skill: pjc:implement-task'))
+            } catch { $planSkillLaunched = $true }
+        }
+        if (-not $planSkillLaunched) {
+            [Console]::Error.WriteLine("[HARNESS] BLOCKED: plan 작성은 pjc:plan-feature 스킬로만 합니다.")
+            [Console]::Error.WriteLine("")
+            [Console]::Error.WriteLine("직접 작성은 적대적 plan-reviewer 검토·영향 범위 전수 조사·Type 분류·사전 승인 항목을 통째로 우회합니다.")
+            [Console]::Error.WriteLine("")
+            [Console]::Error.WriteLine("해결 방법:")
+            [Console]::Error.WriteLine("  1) Skill 도구로 pjc:plan-feature 호출 → 조사·검토·사용자 승인 후 plan 작성")
+            [Console]::Error.WriteLine("  2) 기존 plan의 부분 갱신(체크박스 [ ]->[x], Progress Log·Deferred 기록)은 이 게이트의 대상이 아닙니다")
+            [Console]::Error.WriteLine("     — 체크박스를 '새로 도입'하는 편집만 막습니다.")
+            [Console]::Error.WriteLine("  3) 긴급 우회는 사용자만 가능 (Claude Code 시작 전 터미널에서):")
+            [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")
+            [Console]::Error.WriteLine("     ※ Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다.")
+            Write-RpEvent 'block' 'plan 작성 게이트'
             exit 2
         }
     }
@@ -300,14 +410,42 @@ if (-not $projectRoot) {
 # ---- plan 존재 확인 (다중 시작점에서 거슬러 올라가며 검색) ----
 # Claude Code가 보낸 cwd가 부정확하거나 작업이 서브디렉터리에서 일어나도
 # 부모 어딘가에 plan.md가 있으면 인식하도록 한다.
+# docs/plans/ 하위에 '실제 plan'(task 체크박스가 있는 .md)이 1개라도 있는가 (v1.118.0).
+# 종전엔 디렉터리 존재만으로 plan 있음으로 판정했다 — 그러면 체크박스 없는 .md 하나를 거기 쓰는 것만으로
+#   (위 게이트가 의도적으로 허용하는 파일이다) 디렉터리가 생겨 이후 모든 코드 Write가 plan 없이 통과했다.
+#   즉 게이트를 우회해 plan 판정을 켜는 경로였다. 판정 기준을 게이트와 같은 $planTaskRx로 맞춰 그 틈을 없앤다.
+# 비용: 이 함수는 코드 Write마다 검색 시작점(최대 4)×상향 8단계로 반복 호출되므로 무제한 정독은
+#   hook 지연이 된다 → 최신 수정순 10개까지만, Select-String -Quiet로 매치 즉시 중단한다.
+#   상한 밖에만 plan이 있으면 미검출되어 차단되지만(fail-closed), 그 경우 아래 차단 메시지가 사유를
+#   알려주므로 사용자가 진단할 수 있다(진단 불가능한 fail-closed는 안전측이 아니다).
+function Test-PlansDirHasPlan {
+    param([string]$PlansDir)
+    try {
+        $files = @(Get-ChildItem -LiteralPath $PlansDir -Filter '*.md' -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 10)
+        foreach ($f in $files) {
+            if (Select-String -LiteralPath $f.FullName -Quiet -Pattern $script:planTaskRx) { return $true }
+        }
+    } catch { }
+    return $false
+}
+
 function Test-PlanInDirectory {
     param([string]$Dir)
     if ([string]::IsNullOrEmpty($Dir)) { return $false }
-    # 다음 중 하나라도 있으면 plan 있음으로 간주
-    return (Test-Path -LiteralPath (Join-Path $Dir 'plan.md') -PathType Leaf) -or
-           (Test-Path -LiteralPath (Join-Path $Dir 'PLAN.md') -PathType Leaf) -or
-           (Test-Path -LiteralPath (Join-Path $Dir 'docs/plan.md') -PathType Leaf) -or
-           (Test-Path -LiteralPath (Join-Path $Dir 'docs/plans') -PathType Container)
+    # 단일 plan 파일은 존재만으로 인정한다 — 신규 생성은 위 게이트 ⓐ가 내용과 무관하게 막으므로
+    #   "합법 Write로 판정을 켜는" 경로가 없다(기존 빈 plan.md는 H3 경고 층위).
+    if ((Test-Path -LiteralPath (Join-Path $Dir 'plan.md') -PathType Leaf) -or
+        (Test-Path -LiteralPath (Join-Path $Dir 'PLAN.md') -PathType Leaf) -or
+        (Test-Path -LiteralPath (Join-Path $Dir 'docs/plan.md') -PathType Leaf)) {
+        return $true
+    }
+    # docs/plans/는 디렉터리 존재가 아니라 '체크박스 plan 실재'로 판정한다.
+    $plansDir = Join-Path $Dir 'docs/plans'
+    if (Test-Path -LiteralPath $plansDir -PathType Container) {
+        return (Test-PlansDirHasPlan -PlansDir $plansDir)
+    }
+    return $false
 }
 
 function Find-PlanUpwards {
@@ -423,6 +561,16 @@ foreach ($s in $searchStarts) {
 [Console]::Error.WriteLine("찾는 위치 (각 시작점에서 부모로 최대 8단계):")
 [Console]::Error.WriteLine("  - plan.md, PLAN.md, docs/plan.md, docs/plans/")
 [Console]::Error.WriteLine("위 위치 어디에도 plan이 없습니다.")
+
+# 진단 분기(v1.118.0): docs/plans/는 있는데 체크박스 plan이 없어 판정이 꺼진 경우, "plan이 없다"는
+#   메시지만 보면 사용자는 눈앞에 .md가 보이는데 없다는 말을 듣게 되어 원인을 알 수 없다.
+#   fail-closed는 진단 가능할 때만 안전측이므로 사유를 명시한다.
+$plansDirDiag = Join-Path $projectRoot 'docs/plans'
+if (Test-Path -LiteralPath $plansDirDiag -PathType Container) {
+    [Console]::Error.WriteLine("")
+    [Console]::Error.WriteLine("※ docs/plans/ 디렉터리는 있으나, task 체크박스(- [ ] / - [x])가 있는 plan 파일이 없습니다")
+    [Console]::Error.WriteLine("   (최신 수정순 10개 검사). 체크박스가 없는 문서(대장·메모 등)는 plan으로 인식하지 않습니다.")
+}
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("해결 방법:")
 [Console]::Error.WriteLine("  1) plan-feature skill 호출:")

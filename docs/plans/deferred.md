@@ -8,7 +8,9 @@
 
 - [2026-07-13] README 버전 이력의 **서술 정책 확정**(시점 스냅샷 vs 현행 반영) — v1.117.0에서 과거 v1.100.0 블록의 문장을 현재 동작으로 소급 수정하고 "(v1.117.0에서 …)" 각주를 달았는데, 이 repo의 다른 이력 블록은 append-only 관례다. 그 블록이 "Subagents(검토 담당)" 섹션 안에 있어 독자가 현재 기능 설명으로 읽는 위치라 이번엔 stale 방치보다 정확성을 택했으나, 정책 자체가 미확정 (출처: v1.117.0 T1 quality 리뷰 m1)
 - [2026-07-10] 골든 러너 `-Filter "a,b"` 단일 문자열 바인딩 시 콤마 split 안 됨(배열 전달만 동작) — 기존 동작, 다음 러너 정비 때 (출처: v1.112.0 T1 quality 리뷰 m2)
-- [2026-07-10] AGENTS 게이트 임시폴더 예외 분기 골든 케이스 추가 — 러너 $work가 LOCALAPPDATA라 현재 스위트 사각(fail-open 방향·저위험), 다음 hook 정비 때 (출처: v1.111.0 F-7 m1)
+- [2026-07-13] `pjc-systematic-debugging` 단독 세션이 **plan.md가 없는 레포**에서 조사 로그를 plan.md로 **신규 Write**하면 plan 작성 게이트에 차단된다(통과 흔적 목록에 debug 스킬 없음 — D3). 실해는 작다(SKILL.md:281이 `debug-<날짜>.md` 대안을 이미 제시, 차단 메시지도 그리로 유도). SKILL.md:281에 "plan.md가 없으면 `debug-<날짜>.md`" 1구 명문화 또는 흔적 허용 여부 재검토 (출처: v1.118.0 F-7 m2)
+- [2026-07-13] 비표준 체크박스 문자(`- [-]` 취소·`- [~]`) 표기만 쓰는 외부 레포는 `$planTaskRx`(` `/`x`/`X`/`/`만 인정)에 무매치라 `docs/plans/`가 있어도 plan 판정 OFF → 코드 Write 전면 차단(종전엔 통과). 진단 문구로 회복 가능하나 문자 클래스 확장 검토 (출처: v1.118.0 F-7 m3)
+- [2026-07-13] `$isInPlansDir` 정규식이 선행 구분자 필수(`[\\/]docs[\\/]plans[\\/]`)라, 상대경로 `docs/plans/x.md` Write가 오면 게이트 미발동인데 `Test-PlansDirHasPlan`은 그 파일을 plan으로 인정 → 게이트/판정 비대칭. Claude Code Write는 절대경로 계약이라 현 재현성 낮음(기존 AGENTS 게이트도 동일 가정) — 차기 hook 정비 때 `(^|[\\/])` 분기 추가 검토 (출처: v1.118.0 F-7 m4)
 - [2026-07-08] block-destructive: `cat <<EOF > file`(데이터 싱크 스트립) 후 같은 Bash 호출에서 즉시 실행 시 위험 본문 미스캔 — "파일 작성+동일 호출 실행" 조합 감지 개선 (출처: harness-quality-part1)
 - [2026-07-08] suggest-agents-record 명령 오인 오탐 2류 — ① 커밋 -m 값 속 명령 문자열 ② grep 패턴 문자열 속 "dotnet build" — hook 이벤트 로그 데이터 축적 후 근거 기반 수정 (출처: harness-quality-part1·v1.101.0)
 - [2026-07-08] .state 디듑 마커(post-write-warn·require-plan-warn·suggest-agents-record) 누적 정리 정책(TTL/청소) 부재 (출처: harness-quality-part1)
@@ -23,6 +25,7 @@
 
 ## 종결
 
+- [2026-07-10 → 2026-07-13] AGENTS 게이트 임시폴더 예외 분기 골든 케이스 추가 — 반영(v1.118.0 T1 — TE1(plan 게이트)·TE2(AGENTS 게이트) 2건 신설. 픽스처를 `$iso`(GetTempPath 하위) + **흔적 없는 transcript 주입**으로 구성해, 미주입 시 fail-open으로 exit 0이 나는 거짓 green을 방지)
 - [2026-07-08 → 2026-07-12] 위키 feat-safety-hooks 보호 집합 서술("hook 스크립트 8종") 현행화 — 확인 종결(2026-07-12 하네스 ingest 세션에서 grep 확인: "8종" 서술이 이미 없음 — 이전 ingest(v1.108~113 반영)가 "검사 10종 + 디스패처"로 현행화 완료)
 - [2026-07-09 → 2026-07-12] llm-wiki fixture `archive-exempt/.../oldproj.md` UTF-8 BOM 정리 — 기각(v1.116.0 D6: 그 BOM은 lint-cases archive-exempt 케이스의 expect_absent "BOM"이 검증하는 **의도된 테스트 입력**(90_archive BOM 무경고 실증)이라 제거하면 검증이 공허해짐 — 컨벤션 위반이 아니라 테스트 대상 데이터)
 

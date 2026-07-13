@@ -314,6 +314,108 @@ Assert-Case -Name "require-plan: 하위 폴더 AGENTS.md 신규도 차단 — �
 }   # ---- §2 게이트 끝 (require-plan-for-write) ----
 
 # =====================================================================
+# 2c) [v1.118.0] plan 작성 게이트 + plan 존재 판정 강화
+#   PG = plan 작성 게이트(Write 축) / PE = 체크박스 도입 Edit 축 / PD = plan 존재 판정(docs/plans)
+#   TE = temp 예외 분기(plan·AGENTS 두 게이트 — 종전 스위트 사각, 2026-07-10 deferred 종결)
+#   §2 픽스처에 의존하지 않고 자기 픽스처를 자기 안에서 만든다(-Filter 부분 실행에서 깨지지 않게).
+# =====================================================================
+if (Test-HookSelected @('require-plan-for-write')) {
+# transcript 스텁 — §2의 3종은 bootstrap-agents-md 문자열이라 재사용 불가(스킬명이 다르면 매치 안 됨)
+$trPlanNo = Join-Path $work 'tr-plan-none.jsonl'
+'{"type":"assistant","text":"plan-feature 스킬 이야기만 하는 산문 언급"}' | Set-Content $trPlanNo
+$trPlanIn = Join-Path $work 'tr-plan-input.jsonl'
+'{"type":"assistant","tool_use":{"name":"Skill","input":{"skill":"pjc:plan-feature"}}}' | Set-Content $trPlanIn
+$trImplRes = Join-Path $work 'tr-impl-result.jsonl'
+'{"type":"tool_result","content":"Launching skill: pjc:implement-task"}' | Set-Content $trImplRes
+
+$pg = Join-Path $work 'proj-plangate'; New-Item -ItemType Directory $pg -Force | Out-Null
+$pgPlan = Join-Path $pg 'plan.md'
+$pgPlansDir = Join-Path $pg 'docs/plans'; New-Item -ItemType Directory $pgPlansDir -Force | Out-Null
+
+function New-PlanWriteJson([string]$cwd, [string]$file, [string]$content, [string]$tr) {
+    $top = @{}
+    if ($tr) { $top = @{ transcript_path = $tr } }
+    return ((@{ tool_name = 'Write'; cwd = $cwd; tool_input = @{ file_path = $file; content = $content } } + $top) | ConvertTo-Json -Compress)
+}
+function New-PlanEditJson([string]$cwd, [string]$file, [string]$old, [string]$new, [string]$tr) {
+    $top = @{}
+    if ($tr) { $top = @{ transcript_path = $tr } }
+    return ((@{ tool_name = 'Edit'; cwd = $cwd; tool_input = @{ file_path = $file; old_string = $old; new_string = $new } } + $top) | ConvertTo-Json -Compress)
+}
+
+# --- PG: Write 축 ---
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trPlanNo)
+Assert-Case -Name "plan게이트: plan.md 신규 Write + 흔적 없음 차단 (PG1)" -R $r -ExpectExit 2 -ExpectContains 'plan-feature'
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trPlanIn)
+Assert-Case -Name "plan게이트: plan.md Write + plan-feature 흔적 통과 (PG2)" -R $r -ExpectExit 0
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trImplRes)
+Assert-Case -Name "plan게이트: plan.md Write + implement-task 흔적 통과 (PG3)" -R $r -ExpectExit 0
+# PG4: 기존 plan.md도 Write면 차단 (신규/기존 무관 — 통째 재작성이므로)
+"# 기존 plan`n- [x] T1: done" | Set-Content $pgPlan
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# 재작성`n- [ ] T1: y" $trPlanNo)
+Assert-Case -Name "plan게이트: 기존 plan.md Write도 차단 — 재작성 게이트 (PG4)" -R $r -ExpectExit 2
+# PG5: 체크박스 '상태 변경' Edit은 통과 (old에도 체크박스 있음 — 정당 갱신 경로의 핵심 회귀 가드)
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $pgPlan '- [ ] T1: x' '- [x] T1: x' $trPlanNo)
+Assert-Case -Name "plan게이트: plan.md 체크박스 [ ]->[x] Edit 통과 (PG5)" -R $r -ExpectExit 0
+# PG6: docs/plans/deferred.md(체크박스 0) Write 통과 — 대장 오차단 방지
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg (Join-Path $pgPlansDir 'deferred.md') "# Deferred 대장`n- [2026-07-10] 항목 하나" $trPlanNo)
+Assert-Case -Name "plan게이트: docs/plans/deferred.md(체크박스 0) Write 통과 (PG6)" -R $r -ExpectExit 0
+# PG7/PG8: docs/plans/*.md에 체크박스 있으면 차단 (별표 불릿 표기 변형 포함)
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg (Join-Path $pgPlansDir '2026-07-13-x.md') "# plan`n- [ ] T1: x" $trPlanNo)
+Assert-Case -Name "plan게이트: docs/plans/ 체크박스 plan Write 차단 (PG7)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg (Join-Path $pgPlansDir 'y.md') "# plan`n* [ ] T1: x" $trPlanNo)
+Assert-Case -Name "plan게이트: docs/plans/ 별표('*') 불릿 plan도 차단 (PG8)" -R $r -ExpectExit 2
+# PG9: transcript 미제공 → fail-open
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $null)
+Assert-Case -Name "plan게이트: transcript 미제공 fail-open 통과 (PG9)" -R $r -ExpectExit 0
+
+# --- PE: 체크박스 '도입' Edit 축 (2단계 우회 차단) ---
+$peFile = Join-Path $pgPlansDir 'sneak.md'
+"# 그냥 메모" | Set-Content $peFile
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# plan`n- [ ] T1: x" $trPlanNo)
+Assert-Case -Name "plan게이트: 체크박스 도입 Edit 차단 — 2단계 우회 (PE1)" -R $r -ExpectExit 2 -ExpectContains 'plan-feature'
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# plan`n- [ ] T1: x" $trImplRes)
+Assert-Case -Name "plan게이트: 체크박스 도입 Edit + implement-task 흔적 통과 (PE2)" -R $r -ExpectExit 0
+# PE3: MultiEdit 순차 적용 우회 — edit#1이 도입, edit#2가 그 체크박스를 old로 참조.
+#   합산 판정이면 old에 체크박스가 섞여 통과했을 것(false-negative). edit 단위 판정이라 차단된다.
+$peMulti = @{ tool_name = 'MultiEdit'; cwd = $pg; transcript_path = $trPlanNo; tool_input = @{
+    file_path = $pgPlan
+    edits = @(
+        @{ old_string = 'PLACEHOLDER'; new_string = '- [ ] T1: x' },
+        @{ old_string = '- [ ] T1: x'; new_string = "- [ ] T1: x`n- [ ] T2: y" }
+    )
+} } | ConvertTo-Json -Compress -Depth 5
+$r = Invoke-Hook 'require-plan-for-write.ps1' $peMulti
+Assert-Case -Name "plan게이트: MultiEdit 순차 적용 우회 차단 — edit 단위 판정 (PE3)" -R $r -ExpectExit 2
+
+# --- PD: plan 존재 판정 (docs/plans 디렉터리) ---
+# PD1: 체크박스 없는 .md만 있는 docs/plans → plan 판정 OFF → 코드 Write 차단 + 진단 문구
+$pd1 = Join-Path $work 'proj-pd1'; New-Item -ItemType Directory (Join-Path $pd1 'docs/plans') -Force | Out-Null
+"# 메모`n- [2026-07-10] 체크박스 아님" | Set-Content (Join-Path $pd1 'docs/plans/notes.md')
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd1 (Join-Path $pd1 'A.cs'))
+Assert-Case -Name "plan판정: docs/plans에 체크박스 plan 없으면 코드 Write 차단 (PD1)" -R $r -ExpectExit 2 -ExpectContains 'task 체크박스'
+# PD2: 체크박스 plan이 있으면 통과 (기존 동작 보존 — 강화가 정상 plan을 죽이지 않음)
+$pd2 = Join-Path $work 'proj-pd2'; New-Item -ItemType Directory (Join-Path $pd2 'docs/plans') -Force | Out-Null
+"# plan`n- [ ] T1: work" | Set-Content (Join-Path $pd2 'docs/plans/2026-07-13-a.md')
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd2 (Join-Path $pd2 'A.cs'))
+Assert-Case -Name "plan판정: docs/plans에 체크박스 plan 있으면 통과 (PD2)" -R $r -ExpectExit 0
+# PD3: '+' 불릿·ordered list 표기 plan도 인정 (표기 커버리지 부족으로 인한 오차단 방지)
+$pd3 = Join-Path $work 'proj-pd3'; New-Item -ItemType Directory (Join-Path $pd3 'docs/plans') -Force | Out-Null
+"# plan`n1. [ ] 첫 작업`n+ [ ] 둘째 작업" | Set-Content (Join-Path $pd3 'docs/plans/p.md')
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd3 (Join-Path $pd3 'A.cs'))
+Assert-Case -Name "plan판정: '+'/ordered 체크박스 표기 plan도 인정 — 오차단 없음 (PD3)" -R $r -ExpectExit 0
+
+# --- TE: 시스템 임시 폴더 예외 분기 (두 게이트 공통 — 종전 스위트 사각) ---
+# 반드시 '흔적 없는' transcript를 주입한다 — 미주입이면 fail-open으로 exit 0이 되어
+#   temp 예외를 검증하지 않고도 green이 된다(거짓 green).
+$teDir = Join-Path $iso 'te-scratch'; New-Item -ItemType Directory $teDir -Force | Out-Null
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $teDir (Join-Path $teDir 'plan.md') "# plan`n- [ ] T1: x" $trPlanNo)
+Assert-Case -Name "plan게이트: 시스템 임시폴더 plan.md Write 통과 — temp 예외 (TE1)" -R $r -ExpectExit 0
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $teDir (Join-Path $teDir 'AGENTS.md') 'Write' @{} @{ transcript_path = $trPlanNo })
+Assert-Case -Name "AGENTS게이트: 시스템 임시폴더 AGENTS.md 신규 Write 통과 — temp 예외 (TE2)" -R $r -ExpectExit 0
+}   # ---- §2c 게이트 끝 ----
+
+# =====================================================================
 # 2b) protect-harness 시나리오 (Write/Edit로 하니스 게이트 무력화 차단 — 경로 문자열만 검사, 무상태)
 #   .claude 하위 설치본 hook 스크립트·hooks.json 개조만 차단.
 #   .claude 없는 개발 repo 소스·일반 .claude 설정은 통과(하니스 자기 개발은 plan 게이트로 관리).

@@ -314,6 +314,8 @@ B) 2개 plan으로 분할 (앞부분 / 뒷부분)
 
 **`## 요구 이해`를 반드시 채운다** (원문 요청 인용 + 이해한 요구 3~5줄 — 형식·작성 규칙은 `references/plan-template.md` 정본). 승인 게이트를 통과한 요구 오해는 이후 어느 리뷰도 잡지 못하므로(구현 후 plan-completion-reviewer 항목 2.5가 요구 이해 ↔ 산출물 **커버**는 사후 대조하지만, 이해 자체의 옳음은 사용자만 판정), 이 섹션이 Step 10 승인 프롬프트 첫 항목으로 노출되어 사용자가 오해를 승인 전에 발견하는 장치다.
 
+> **plan 작성은 이 스킬 경유가 정본이다 — 스킬 없이 손으로 쓰지 않는다** (`require-plan-for-write` hook이 기계 강제, v1.118.0). plan을 직접 Write하면 Step 1~9의 자산(영향 범위 전수 조사·Deferred 대장 확인·적대적 plan-reviewer 검토·Type 분류·사전 승인 항목·Halt Forecast)이 통째로 우회되고, 그렇게 만든 plan이 `require-plan`의 "plan 있음" 판정을 켜서 **이후 모든 코드 변경이 무검증 통과**한다(AGENTS.md 직접 작성 금지와 동일 구조 — Step 1 참조). hook은 plan 파일 Write와 **체크박스를 새로 도입하는 Edit**을 이 스킬(또는 `implement-task`) 발동 흔적 없이는 차단한다. **기존 plan의 부분 갱신(체크박스 `[ ]`→`[x]`, Progress Log·Retry Ledger·Deferred append)은 게이트 대상이 아니므로** implement-task의 정상 갱신은 그대로 진행된다.
+
 **상세 plan.md 템플릿은 `references/plan-template.md` 참조.**
 
 ### Step 7.5. PRD 커버리지 확인 (PRD 있을 때만)
