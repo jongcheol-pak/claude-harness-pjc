@@ -48,6 +48,9 @@ status: active
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
 updated: YYYY-MM-DD
+synced_commit: <레포 커밋 sha — 선택. 이 위키가 레포의 어디까지 반영했는지(§2.2·§7-26).
+                등록(A)·ingest(B) 시 그 시점 HEAD로 기록. updated("언제 손댔나")와 역할이 다르다("어디까지 담았나").
+                미설정도 유효 — lint이 INFO로만 알린다. git 아닌 레포면 생략>
 tags: [project, 카테고리, 프로젝트태그]
 ---
 
