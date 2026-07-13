@@ -231,9 +231,19 @@ function Invoke-WarnCommitSecrets {
                 $addedLines += @(@(& git diff HEAD --unified=0 2>$null) |
                     Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
             } else {
-                # 경로 나열: 플래그를 뺀 인자만 대상으로 본다
-                $addTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
+                # 경로 나열: 플래그를 뺀 인자만 대상으로 본다.
+                #   인자가 디렉터리(`git add docs/`)거나 글롭(`git add *.md`)이면 파일이 아니라서
+                #   그냥 두면 통째로 스킵된다 — 둘 다 일상 형태이므로 git에게 대상 파일을 물어
+                #   전개한다(F-7 2회차 M1 — 이걸 빼면 `git add src/` 한 줄로 게이트가 뚫린다).
+                $rawTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
                     ForEach-Object { $_.Trim('"', "'") })
+                foreach ($rt in $rawTargets) {
+                    if (Test-Path -LiteralPath $rt -PathType Leaf) { $addTargets += $rt; continue }
+                    # 디렉터리·글롭·미존재 경로 → git이 해석하게 맡긴다
+                    $addTargets += @(& git ls-files --others --exclude-standard -- $rt 2>$null)
+                    $addedLines += @(@(& git diff HEAD --unified=0 -- $rt 2>$null) |
+                        Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+                }
             }
 
             # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다.
