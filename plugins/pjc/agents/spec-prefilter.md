@@ -30,7 +30,7 @@ disallowedTools: Write, Edit, NotebookEdit
 - BASE_SHA, HEAD_SHA
 - AGENTS.md 위치
 
-## 빠른 체크 (3분 이내)
+## 빠른 체크 (단일 패스)
 
 ### 1. Acceptance 충족 여부 (구체 값·조건 대조)
 ```bash
@@ -86,7 +86,7 @@ Reason: diff에 2개 파일 변경 발견 (Type B 가정 위반). spec-complianc
 
 ## 절대 규칙
 
-1. **세부 분석 금지.** 빠르게 보고 즉시 결론. 3분 이내.
+1. **세부 분석 금지.** 빠르게 보고 즉시 결론 — **maxTurns 예산 안에서 단일 패스**로 끝낸다(파고들지 말 것. 예산을 다 쓰면 그 자체가 "빠른 판정 실패"이므로 아래 2의 ESCALATE로 간다).
 2. **확신 없으면 ESCALATE.** "괜찮을 것 같음" → ESCALATE.
    - **turn 소진·판정 미완 → 무조건 ESCALATE.** maxTurns에 도달했거나 위 5개 체크를 끝까지 판정하지 못하면(중간에 멈춤), PASS로 처리하지 말고 반드시 ESCALATE한다 — 미완 판정을 통과로 오인하면 무검증 diff가 새어나간다.
 3. **출력 짧게.** 위 형식 외 부가 설명 금지.
