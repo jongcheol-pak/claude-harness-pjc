@@ -98,8 +98,9 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
     `git rev-list` 실경로가 어디서도 검증되지 않으므로 진짜 레포를 만든다.
     synced_mode: "first"=첫 커밋 sha(→ 2커밋 뒤처짐) / "missing"=이력에 없는 가짜 sha.
     커밋은 전역 git config에 의존하지 않게 `-c user.*`를 케이스 로컬로 준다.
-    git이 없거나 실패하면 (None, None, None) — 호출부가 케이스를 SKIP한다.
-    반환: (정리용 임시 루트, vault 경로, 뒤처진 커밋 수)."""
+    git이 없거나 실패하면 (None, None) — 호출부가 케이스를 SKIP한다.
+    반환: (정리용 임시 루트, vault 경로). 기대 뒤처짐 수는 케이스의 expect_keywords가
+    문자열로 못박으므로(예: "2커밋 미반영") 따로 반환하지 않는다."""
     tmp = tempfile.mkdtemp(prefix="lint-eval-git-")
     dest = os.path.join(tmp, os.path.basename(fixture_dir))
     shutil.copytree(fixture_dir, dest)
@@ -120,10 +121,9 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
             shas.append(out.stdout.strip())
     except (OSError, subprocess.SubprocessError):
         shutil.rmtree(tmp, ignore_errors=True)
-        return None, None, None  # git 미설치·실행 실패 → 케이스 SKIP
+        return None, None  # git 미설치·실행 실패 → 케이스 SKIP
     # "first" = 첫 커밋 기준 → 이후 2커밋이 미반영. "missing" = 이력에 없는 sha(rebase 소실 재현).
     synced = shas[0] if synced_mode == "first" else "0" * 40
-    behind = len(shas) - 1 if synced_mode == "first" else None
     for dirpath, _dirs, files in os.walk(dest):
         for name in files:
             if not name.endswith(".md"):
@@ -136,7 +136,7 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
             if new != text:
                 with open(path, "w", encoding="utf-8", newline="") as fh:
                     fh.write(new)
-    return tmp, dest, behind
+    return tmp, dest
 
 
 def check_case(case):
@@ -180,7 +180,7 @@ def check_case(case):
     if case.get("git_repo"):
         # §7-26: 실제 git 이력이 있어야 뒤처짐 계산이 실증된다. git이 없는 환경에선 이 케이스만
         #  SKIP하고 전체는 통과시킨다(fail-open — 검사 자체가 fail-open이므로 골든도 같은 규약).
-        tmp, vault, _behind = prepare_git_repo_vault(vault, case.get("synced_mode", "first"))
+        tmp, vault = prepare_git_repo_vault(vault, case.get("synced_mode", "first"))
         if tmp is None:
             return True, "SKIP (git 미설치·실행 실패 — §7-26 골든은 git 필요)"
     elif case.get("placeholder"):
