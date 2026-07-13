@@ -909,6 +909,66 @@ if ($gitOk) {
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: git commit 아님 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+    # ---- [v1.119.0] 고신뢰 라벨 커밋 차단 (exit 2) ----
+    # 상태 오염을 피하려고 별도 repo를 쓴다(위 $wcs는 케이스 1~7이 순서 의존으로 공유).
+    # 픽스처는 러너 자신이 자사 스캐너·post-write hook에 걸리지 않게 문자열 연결로 분리 기재한다.
+    $wcsB = Join-Path $work 'wcsblock'; New-Item -ItemType Directory $wcsB -Force | Out-Null
+    Push-Location $wcsB
+    git init -q; git config user.email t@t; git config user.name t
+    'v=1' | Set-Content app.js; git add .; git commit -qm init
+    Pop-Location
+    $wcsBJson = @{ tool_name = 'Bash'; cwd = $wcsB; tool_input = @{ command = 'git commit -m test' } } | ConvertTo-Json -Compress
+    $btB = [char]96
+    $credLine = '기본 관리자 계정: ' + $btB + 'ad' + 'min' + $btB + ' / ' + $btB + 'Zq7' + '#mK21' + $btB
+
+    # (a) 자격증명 쌍(고신뢰) 스테이징 → 차단 + 회복 경로 2종 안내
+    Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: 자격증명 쌍 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    Assert-Case -Name "commit-secrets: 차단 메시지에 우회 변수 안내" -R $r -ExpectExit 2 -ExpectContains 'CLAUDE_HARNESS_ALLOW_SECRET'
+
+    # (b) QUICK=1이어도 차단 유지 — 안전 임계 게이트는 QUICK에 종속되지 않는다(M6).
+    $env:CLAUDE_HARNESS_QUICK = '1'
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: QUICK=1이어도 자격증명 차단 유지" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    $env:CLAUDE_HARNESS_QUICK = $null
+
+    # (c) 전용 escape hatch → 통과(경고). 오탐 시 사용자가 빠져나갈 문이 있어야 한다.
+    $env:CLAUDE_HARNESS_ALLOW_SECRET = '1'
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: ALLOW_SECRET=1 우회(경고, exit 0)" -R $r -ExpectExit 0 -ExpectContains 'ALLOW_SECRET'
+    $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
+
+    # (d) 개인키(고신뢰) → 차단
+    Push-Location $wcsB
+    git rm -q --cached README.md; Remove-Item README.md -Force
+    Set-Content key.pem ('-----BEGIN RSA ' + 'PRIVATE KEY-----'); git add key.pem
+    Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: 개인키 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+    # (e) 저신뢰(비인용 자격증명 쌍) → 경고만. 차단 범위가 넓어지면 여기서 잡힌다.
+    Push-Location $wcsB
+    git rm -q --cached key.pem; Remove-Item key.pem -Force
+    Set-Content notes.md ('계정: ' + 'ad' + 'min' + ' / ' + 'Zq7' + '#mK21'); git add notes.md
+    Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: 비인용 쌍은 경고만(exit 0)" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+
+    # (f) 시크릿 제거 후 재커밋 → 통과. 차단이 막다른 골목이 아님을 실증한다.
+    Push-Location $wcsB
+    git rm -q --cached notes.md; Remove-Item notes.md -Force
+    'clean=1' | Set-Content ok.txt; git add ok.txt
+    Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: 시크릿 제거 후 재커밋 통과(회복 가능)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # (g) 디스패처 경유도 동일 차단 — lib 함수 공유라 두 경로가 갈리면 안 된다(D3).
+    Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
+    $r = Invoke-Hook 'pre-bash-dispatch.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: 디스패처 경유 자격증명 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    Push-Location $wcsB; git rm -q --cached README.md; Remove-Item README.md -Force; Pop-Location
+
     # ---- [v1.99.0 T6] 디스패처 동등성 + 디스패처 고유 분기 (git repo 필요) ----
     # 현재 $wcs 상태: app.js에 시크릿(-am 자동스테이징 대상), ok.txt 미스테이징. 명시 스테이징 시크릿을 다시 심는다.
     Push-Location $wcs; Set-Content secret2.js $fakeApi; git add secret2.js; Pop-Location

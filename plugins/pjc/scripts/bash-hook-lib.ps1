@@ -233,10 +233,47 @@ function Invoke-WarnCommitSecrets {
 
         if ($hits.Count -eq 0 -and $envFiles.Count -eq 0) { return New-HookResult }
 
+        # 고신뢰 라벨(개인키·DB 연결 문자열·DB URI 인증정보·자격증명 쌍)은 오탐 여지가 거의 없어
+        #   커밋을 차단한다(v1.119.0). 나머지 라벨·.env 스테이징은 종전대로 경고만 — 이 둘은
+        #   테스트 픽스처·문서 예시에서 흔히 나와, 차단하면 정상 작업이 막힌다.
+        # 배경: README에 관리자 계정이 적힌 채 공개 저장소에 push된 사고. 경고는 이미 있었으나
+        #   비차단이라 자율 루프가 그대로 커밋했다 — 경고를 하나 더 얹는 것은 같은 실패의 반복이다.
+        $highConf = @()
+        if (Get-Command Get-HighConfidenceSecretLabels -ErrorAction SilentlyContinue) {
+            $hcLabels = @(Get-HighConfidenceSecretLabels)
+            $highConf = @($hits | Where-Object { $hcLabels -contains $_ } | Select-Object -Unique)
+        }
+
+        # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-viewmodel·
+        #   add-domain-service가 단독 사용 시 켜라고 안내하는 일상 변수라, 재사용하면 그 세션에서
+        #   자격증명 차단까지 함께 꺼진다(block-destructive·protect-harness가 "QUICK도 무시"하는
+        #   것과 같은 이유 — 안전 임계 게이트는 QUICK에 종속되지 않는다).
+        $allowSecret = ($env:CLAUDE_HARNESS_ALLOW_SECRET -eq '1')
+
+        if ($highConf.Count -gt 0 -and -not $allowSecret) {
+            $lines = New-Object System.Collections.Generic.List[string]
+            $lines.Add("[HARNESS] BLOCKED: 커밋될 변경에 자격증명으로 보이는 값이 있습니다.")
+            $lines.Add("")
+            foreach ($h in $highConf) { $lines.Add("  - $h") }
+            $lines.Add("")
+            $lines.Add("공개 저장소에 한 번 올라가면 커밋 이력에 남아 회수할 수 없습니다.")
+            $lines.Add("")
+            $lines.Add("해결 방법:")
+            $lines.Add("  1) 실제 값이면 — 파일에서 값을 지우고 환경변수 이름만 남긴 뒤(실제 값은 .env),")
+            $lines.Add("     `git restore --staged <파일>` 로 스테이징에서 빼고 다시 commit")
+            $lines.Add("  2) 오탐이면 — 사용자에게 보고하고 멈춥니다. 우회는 사용자만 설정합니다")
+            $lines.Add("     (Claude Code 시작 전 터미널에서): `$env:CLAUDE_HARNESS_ALLOW_SECRET = '1'")
+            $lines.Add("     Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다.")
+            return New-HookResult -Block $true -Stderr $lines
+        }
+
         $lines = New-Object System.Collections.Generic.List[string]
         $lines.Add("[COMMIT SECRET WARNING] 커밋될 스테이징된 변경에서 민감 정보로 보이는 내용이 감지되었습니다:")
         foreach ($h in ($hits | Select-Object -Unique)) { $lines.Add("  - $h") }
         foreach ($e in $envFiles) { $lines.Add("  - .env 파일 스테이징: $e (시크릿 파일이 커밋에 포함되려 합니다)") }
+        if ($allowSecret -and $highConf.Count -gt 0) {
+            $lines.Add("  * CLAUDE_HARNESS_ALLOW_SECRET=1 — 자격증명 차단이 우회된 상태입니다.")
+        }
         $lines.Add("")
         $lines.Add("실제 값을 커밋하지 말고, .env(gitignore)로 분리하거나 스테이징에서 제외(git restore --staged <파일>)하세요.")
         $lines.Add("이 경고는 차단이 아닙니다 — 검토 후 진행하세요.")
