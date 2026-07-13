@@ -90,6 +90,55 @@ def prepare_bad_encoding_vault(fixture_dir):
     return tmp, dest
 
 
+def prepare_git_repo_vault(fixture_dir, synced_mode):
+    """fixture를 임시 폴더로 복사하고, 그 옆에 **커밋 3개짜리 임시 git 레포**를 만들어
+    허브의 `__REPO_ROOT__`·`__SYNCED_SHA__`를 실제 값으로 치환한다(§7-26 골든).
+
+    §7-26의 뒤처짐 계산은 실제 git 이력이 있어야만 실증된다 — 스텁으로 대체하면
+    `git rev-list` 실경로가 어디서도 검증되지 않으므로 진짜 레포를 만든다.
+    synced_mode: "first"=첫 커밋 sha(→ 2커밋 뒤처짐) / "missing"=이력에 없는 가짜 sha.
+    커밋은 전역 git config에 의존하지 않게 `-c user.*`를 케이스 로컬로 준다.
+    git이 없거나 실패하면 (None, None) — 호출부가 케이스를 SKIP한다.
+    반환: (정리용 임시 루트, vault 경로). 기대 뒤처짐 수는 케이스의 expect_keywords가
+    문자열로 못박으므로(예: "2커밋 미반영") 따로 반환하지 않는다."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-git-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    repo = os.path.join(tmp, "repo")
+    os.makedirs(repo)
+    git = ["git", "-c", "user.name=lint-eval", "-c", "user.email=lint-eval@example.invalid"]
+    try:
+        subprocess.run(["git", "init", "-q", repo], check=True, capture_output=True, timeout=20)
+        shas = []
+        for i in range(3):
+            with open(os.path.join(repo, f"f{i}.txt"), "w", encoding="utf-8") as fh:
+                fh.write(f"commit {i}\n")
+            subprocess.run(git + ["-C", repo, "add", "-A"], check=True, capture_output=True, timeout=20)
+            subprocess.run(git + ["-C", repo, "commit", "-q", "-m", f"c{i}"],
+                           check=True, capture_output=True, timeout=20)
+            out = subprocess.run(["git", "-C", repo, "rev-parse", "HEAD"],
+                                 check=True, capture_output=True, text=True, timeout=20)
+            shas.append(out.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        shutil.rmtree(tmp, ignore_errors=True)
+        return None, None  # git 미설치·실행 실패 → 케이스 SKIP
+    # "first" = 첫 커밋 기준 → 이후 2커밋이 미반영. "missing" = 이력에 없는 sha(rebase 소실 재현).
+    synced = shas[0] if synced_mode == "first" else "0" * 40
+    for dirpath, _dirs, files in os.walk(dest):
+        for name in files:
+            if not name.endswith(".md"):
+                continue
+            path = os.path.join(dirpath, name)
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            new = text.replace("__REPO_ROOT__", repo.replace("\\", "/")) \
+                      .replace("__SYNCED_SHA__", synced)
+            if new != text:
+                with open(path, "w", encoding="utf-8", newline="") as fh:
+                    fh.write(new)
+    return tmp, dest
+
+
 def check_case(case):
     """한 case를 실행·대조해 (passed, detail) 반환."""
     fixture = case["fixture"]
@@ -128,7 +177,13 @@ def check_case(case):
         return True, "--fix 적용·재lint 해소 확인: " + ", ".join(case.get("expect_keywords", []))
 
     tmp = None
-    if case.get("placeholder"):
+    if case.get("git_repo"):
+        # §7-26: 실제 git 이력이 있어야 뒤처짐 계산이 실증된다. git이 없는 환경에선 이 케이스만
+        #  SKIP하고 전체는 통과시킨다(fail-open — 검사 자체가 fail-open이므로 골든도 같은 규약).
+        tmp, vault = prepare_git_repo_vault(vault, case.get("synced_mode", "first"))
+        if tmp is None:
+            return True, "SKIP (git 미설치·실행 실패 — §7-26 골든은 git 필요)"
+    elif case.get("placeholder"):
         tmp, vault = prepare_placeholder_vault(vault)
     elif case.get("bad_encoding"):
         tmp, vault = prepare_bad_encoding_vault(vault)
@@ -145,6 +200,11 @@ def check_case(case):
 
     if case.get("expect_clean"):
         # 정상 vault: ERR·WARN 0이어야 한다(INFO는 허용).
+        # expect_absent는 clean 케이스에도 적용한다 — "조용히 건너뛰어야 하는" 동작(§7-26 fail-open 등)은
+        #  ERR/WARN 0만으로는 실증되지 않는다(INFO로 새어나와도 clean 판정은 통과하므로).
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "부재 기대 키워드가 출력에 존재(오탐): " + ", ".join(present)
         ok = ("[ERR] 오류 0건" in out) and ("[WARN] 경고 0건" in out)
         if ok:
             return True, "WARN/ERR 0 (정상)"

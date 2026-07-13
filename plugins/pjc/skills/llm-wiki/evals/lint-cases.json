@@ -233,6 +233,45 @@
         "아카이브 포인터 깨짐"
       ],
       "rationale": "--fix 보수 동작 실증(v1.116.0) — ① §7-23 등록이 표 형식 '## 미해결 질문' 섹션에 표 행으로 삽입돼 재lint에서 등록 인정(미등록 부재), ② §7-24 제거가 '## 아카이브' 섹션 안 깨진 포인터만 지움(정확히 1행) — 결정 항목 본문의 깨진 아카이브 경로 인용은 비제거라 재lint에 '아카이브 포인터 깨짐' WARN이 잔존해야 PASS(§2.8 항목 불변 보호, after_expect_keywords로 실증)"
+    },
+    {
+      "fixture": "wiki-stale",
+      "git_repo": true,
+      "synced_mode": "first",
+      "expect_keywords": [
+        "위키 뒤처짐",
+        "2커밋 미반영"
+      ],
+      "rationale": "§7-26 핵심 경로 — 러너가 커밋 3개짜리 임시 git 레포를 만들고 허브 synced_commit을 첫 커밋으로 두면 2커밋이 미반영이다. 이 케이스가 git rev-list 실경로를 실증한다(스텁 대체 금지 — 계산이 검증되지 않으면 검사가 있으나 마나)"
+    },
+    {
+      "fixture": "wiki-stale",
+      "git_repo": true,
+      "synced_mode": "missing",
+      "expect_keywords": [
+        "동기 기준점이 레포 이력에 없음"
+      ],
+      "expect_absent": [
+        "위키 뒤처짐"
+      ],
+      "rationale": "§7-26 sha 소실(rebase·force push) — 기준점이 이력에 없으면 커밋 수를 셀 수 없다. 뒤처짐 수치를 지어내지 않고 INFO로 재설정을 안내해야 한다(expect_absent가 거짓 수치 출력을 막는 가드)"
+    },
+    {
+      "fixture": "wiki-nongit",
+      "placeholder": true,
+      "expect_clean": true,
+      "expect_absent": [
+        "위키 뒤처짐",
+        "동기 기준점"
+      ],
+      "rationale": "§7-26 fail-open — synced_commit은 있으나 레포 경로가 git 레포가 아니면(.git 없음) 조용히 건너뛴다. ERR/WARN은 물론 INFO도 내지 않아야 한다(진단 도구가 환경 차이로 소음을 내면 안 됨). expect_clean 단독으로는 INFO 누출을 못 잡아 expect_absent를 병기한다"
+    },
+    {
+      "fixture": "clean",
+      "expect_keywords": [
+        "동기 기준점 미설정"
+      ],
+      "rationale": "§7-26 미설정 INFO — synced_commit이 없는 기존 허브는 유효하되(선택 필드) 기준점 부재를 INFO 1줄로 알린다. clean fixture가 ERR/WARN 0을 유지하는 것과 양립함을 함께 실증한다(신규 필드가 기존 vault를 깨지 않는다)"
     }
   ]
 }
