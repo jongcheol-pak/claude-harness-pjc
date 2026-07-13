@@ -31,6 +31,8 @@
 
 ## Repository Structure
 
+> 아래는 **Clean/Hexagonal을 택했을 때**의 구조다. 계층형을 택했으면 실제 구조로 바꾼다(예: `internal/handler/`·`internal/service/`·`internal/store/`). **선택한 아키텍처에 맞게 조정하세요.**
+
 ```
 <repo>/
 ├── cmd/<app>/           # 실행 진입점 (main.go)

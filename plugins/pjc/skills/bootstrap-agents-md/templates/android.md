@@ -130,6 +130,8 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 
 ## Repository Structure
 
+> 아래는 **Clean Architecture를 택했을 때**의 구조다. 계층형(단순 Repository)을 택했으면 실제 구조로 바꾼다(예: `ui/`·`data/`만 두고 `domain/` UseCase 레이어 생략). **선택한 아키텍처에 맞게 조정하세요.**
+
 ```
 <repo>/
 ├── app/

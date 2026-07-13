@@ -32,6 +32,8 @@
 
 ## Repository Structure
 
+> 아래는 **Clean/Hexagonal을 택했을 때**의 구조다. 계층형(단일 crate)을 택했으면 실제 구조로 바꾼다(예: `src/` 아래 모듈만 분리, crate 분리 없음). **선택한 아키텍처에 맞게 조정하세요.**
+
 ```
 <repo>/
 ├── Cargo.toml
