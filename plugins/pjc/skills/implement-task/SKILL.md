@@ -434,7 +434,7 @@ Self-honesty: PASS
 ## Next Steps
 - 권장 다음 액션: <명확한 한 줄> (예: T7부터 implement-task 재개 / PR 생성 후 /code-review 호출)
 - Suggested skills: <쉼표 구분> (예: pjc:implement-task, 공식 /code-review, 공식 /security-review)
-- 위키 갱신 (llm-wiki 사용 중이고 이 프로젝트가 등록돼 있을 때만): 위키 반영 여부는 F-6.5에서 **능동적으로 사용자에게 묻는다**(여기 Next Steps에 묻어두는 것으로 대체하지 않음). 동의 시 `pjc:llm-wiki` 절차 B를 별도 세션에서 진행 (구현 세션은 위키 직접 수정 안 함).
+- 위키 갱신 (llm-wiki 사용 중이고 이 프로젝트가 등록돼 있을 때만): 위키 반영 여부는 F-6.5에서 **능동적으로 사용자에게 묻는다**(여기 Next Steps에 묻어두는 것으로 대체하지 않음). 동의 시 `pjc:llm-wiki` 절차 B를 별도 세션에서 진행 (구현 세션은 위키 직접 수정 안 함). **사용자가 미루면 그 사실을 `[K-DRIFT]` 큐에 1줄 남긴다**(F-6.5 — 묻고 끝내면 미반영이 대화와 함께 사라져 위키가 조용히 뒤처진다).
 ```
 
 목적: ① 압축 직후의 Claude 자신이 plan.md만 읽고 정확히 재개할 수 있게 함 (압축 생존의 핵심), ② Halt·완료 시 종철님이 plan.md만 보고도 무엇을 호출할지 즉시 알 수 있게 함. handoff 패턴 차용.
