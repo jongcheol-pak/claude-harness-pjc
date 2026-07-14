@@ -891,6 +891,97 @@
       "expect_contains": "BLOCKED"
     },
     {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path 하위 경로 정리 통과 (v1.121.0 오탐 수정 — 문자열 형태와 대칭)",
+      "command": "Remove-Item -Recurse -Force (Join-Path $env:TEMP \"claude\\pd-x\")",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path -ChildPath 명명 인자 하위 경로 통과 (위치 인자와 등가)",
+      "command": "Remove-Item -Recurse -Force (Join-Path -Path $env:TEMP -ChildPath \"claude\\x\")",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path 열거 파이프 하위 경로 통과 (열거 사전검사에도 정규화 적용)",
+      "command": "Get-ChildItem (Join-Path $env:TEMP \"claude\") -Recurse | Remove-Item -Force",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path POSIX 루트 글롭 차단 유지 (= rm -rf /* 등가 — 구분자 \\ 고정 시 뚫리던 미탐)",
+      "command": "Remove-Item -Recurse -Force (Join-Path / *)",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path POSIX 시스템 디렉터리 차단 유지 (/etc — POSIX 알터네이션은 / 구분자만 받음)",
+      "command": "Remove-Item -Recurse -Force (Join-Path \"/etc\" \"nginx\")",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path cwd 전체 글롭 차단 유지 (= rm -rf ./* 등가)",
+      "command": "Remove-Item -Recurse -Force (Join-Path . *)",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path 자식 선행 구분자 글롭 차단 유지 (조인 시 구분자 중복으로 뚫리던 미탐)",
+      "command": "Remove-Item -Recurse -Force (Join-Path $env:TEMP \"\\*\")",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path 자식 .* 세그먼트 차단 유지 (= rm -rf /.* 등가)",
+      "command": "Remove-Item -Recurse -Force (Join-Path / \".*\")",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path 자식 상위 탈출(..) 차단 유지",
+      "command": "Remove-Item -Recurse -Force (Join-Path $env:TEMP \"..\")",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path $env: 직속 전체글롭 차단 유지 (루트 소실 등가)",
+      "command": "Remove-Item -Recurse -Force (Join-Path $env:TEMP \"*\")",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path 열거 파이프 글롭 차단 유지",
+      "command": "Get-ChildItem (Join-Path $env:TEMP \"*\") -Recurse | Remove-Item -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "Join-Path Windows 시스템 디렉터리 차단 유지",
+      "command": "Remove-Item -Recurse -Force (Join-Path \"C:\\Windows\" \"System32\")",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 오탐 — 3인자 미커버] Join-Path 3인자는 무변경이라 차단 유지 (안전 증명 케이스 아님 — 현행 동작 고정용)",
+      "command": "Remove-Item -Recurse -Force (Join-Path $env:TEMP \"claude\" \"x\")",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
       "hook": "warn-external-ops.ps1",
       "name": "P1T5 커밋 메시지 속 git push 언급 무경고 (-m 값 스트립)",
       "command": "git commit -m \"다음 단계: git push 후 릴리즈\"",

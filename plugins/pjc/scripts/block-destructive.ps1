@@ -100,6 +100,46 @@ $cmd = [regex]::Replace($cmd, $heredocRx, {
 #   하위 경로($env:TEMP\claude\…)는 통과.
 $dangerTarget ='(^|\s)(["'']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\S*)?|/home[\\/]+[^\\/\s]+[\\/]\.?\*[\\/]?|/home([\\/]+[^\\/\s]+)?[\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|/[*/]?|~[\\/]\.?\*[\\/]?|~[\\/]?|\$HOME[\\/]\.?\*[\\/]?|\$HOME[\\/]?|\$env:\w+[\\/]\.?\*[\\/]?|\$env:\w+[\\/]?|\*|\.\*|\./\*|\./|\.|[A-Za-z]:[\\/]+(Windows|Program Files( \(x86\))?|ProgramData)([\\/]\S*)?|[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s]+[\\/]\.?\*[\\/]?|[A-Za-z]:[\\/]+Users([\\/]+[^\\/\s]+)?[\\/]?|[A-Za-z]:[\\/]+\*?)(["'']?)(\s|$)'
 
+# ---- Join-Path 정규화 (v1.121.0) — $dangerTarget 검사 '직전'에만 쓰는 표현 정규화 ----
+# 왜: $dangerTarget은 경로가 '한 토큰의 문자열'이라고 전제한다(깊이 cap — 루트 뒤에 \하위가 붙어야 통과).
+#   그런데 Join-Path는 루트와 하위를 '분리된 인자'로 쪼개므로 루트가 단독 토큰으로 남아,
+#   rm -r "$env:TEMP\claude\x"(통과)와 등가인 Remove-Item -r (Join-Path $env:TEMP "claude\x")가
+#   '%TEMP% 루트 전체 삭제'로 읽혀 오차단됐다(하니스 자신의 임시폴더 규약이 이 표기를 계속 만든다).
+#   → 조합 결과를 '이미 검사 중인 문자열 형태'로 되돌려 표기법에 따라 판정이 갈리는 비대칭을 없앤다.
+#
+# 설계상 반드시 지켜야 하는 세 가지 (전부 실측으로 확인된 함정 — 하나라도 빠지면 차단이 뚫린다):
+#  ① 감싼 괄호까지 흡수하고 앞뒤에 공백을 넣는다. 괄호를 남기면 $dangerTarget의 앞 경계 (^|\s)가
+#     '(' 에서 깨져 (Join-Path $env:TEMP "*") 같은 직속 글롭·시스템 디렉터리가 통째로 통과한다.
+#  ② 구분자는 \ · / '두 표기'를 각각 만들어 어느 쪽이든 위험하면 차단한다. $dangerTarget의 POSIX
+#     알터네이션(/etc·/usr·/[*/]?)은 구분자로 /만 받으므로, \로 고정하면 (Join-Path / *)(= rm -rf /*)·
+#     (Join-Path "/etc" "nginx")가 뚫린다. 반대로 /mnt/c/Windows는 / 표기에서만 매치된다.
+#  ③ '평범한 하위 경로'인 자식만 조인한다. 글롭·선행 구분자·. / .. 세그먼트를 조인하면 구분자 중복
+#     ($env:TEMP\\*)이나 세그먼트 소실로 글롭 차단을 빠져나간다. 조인하지 않으면 루트가 단독 토큰으로
+#     남아 '현행 차단이 그대로' 걸린다 — 즉 미조인은 항상 안전한 쪽(보수적)이다.
+# 미커버(의도): 3인자 Join-Path a b c · 중첩 괄호 · 파이프라인 · 역순 명명 인자는 매치되지 않아 무변경
+#   → 현행 차단 유지. 정상 작업이 막히는 '오탐 잔존'이지만, 뚫리는 쪽(미탐)보다 안전하다.
+$joinPathTok = '"[^"]*"|''[^'']*''|[^\s()]+'
+$joinPathRx  = '(?i)\(\s*Join-Path\s+(?:-Path\s+)?(?<a>' + $joinPathTok + ')\s+(?:-ChildPath\s+)?(?<b>' + $joinPathTok + ')\s*\)'
+function Expand-JoinPath {
+    param([string]$Text, [string]$Sep)
+    [regex]::Replace($Text, $joinPathRx, {
+        param($m)
+        # 따옴표를 '먼저' 벗긴 값으로 판정한다 — 원문에 걸면 첫 글자가 " 라서 아무것도 조인되지 않는다.
+        $a = $m.Groups['a'].Value.Trim('"', "'")
+        $b = $m.Groups['b'].Value.Trim('"', "'")
+        $plainChild = ($b -match '^[A-Za-z0-9_]') -and ($b -notmatch '[*?]') -and ($b -notmatch '(^|[\\/])\.\.([\\/]|$)')
+        $plainRoot  = ($a -notmatch '[*?]')   # 루트가 글롭이면 미조인 — *\claude로 이으면 \* 의 뒤 경계가 깨진다
+        if (-not ($plainChild -and $plainRoot)) { return $m.Value }   # 무변경 → 현행 차단 유지
+        $joined = if ($a -match '[\\/]$') { $a + $b } else { $a + $Sep + $b }   # a가 이미 구분자로 끝나면 덧붙이지 않는다
+        ' "' + $joined + '" '
+    })
+}
+# 두 표기 중 하나라도 위험 대상에 걸리면 위험으로 본다(위 ②).
+function Test-DangerTarget {
+    param([string]$Text)
+    ((Expand-JoinPath $Text '\') -match $dangerTarget) -or ((Expand-JoinPath $Text '/') -match $dangerTarget)
+}
+
 # 삭제 명령 별칭 세트 — 사전검사(find·열거 파이프)와 in-loop 컴파운드 검사가 **동일 집합을 공유**한다.
 #   한 곳만 좁으면(예: 사전검사가 ri/rmdir/rd 누락) 그 별칭으로 파이프 삭제 우회가 다시 열린다(T3 B1).
 $delCmdAlt = 'rm|Remove-Item|ri|rmdir|rd|del|erase'
@@ -148,7 +188,7 @@ $delRecurseForce = '(?i)(-Recurse\b|-Force\b|--recursive\b|--force\b|(^|\s)-[rfR
 $beforePipe = ($cmd -split '\|', 2)[0]   # 첫 파이프 앞 = 열거 소스 인자 영역(여기서만 위험루트 판정)
 $hasNameFilter = $beforePipe -match '(?i)\s-(Filter|Include|Exclude|i?name)\b'
 $enumSrcScan = if ($hasNameFilter) { $beforePipe -replace '(^|\s)\.[\\/]?(?=\s|$)', ' ' } else { $beforePipe }   # 선택적 열거만 .·./ 제외
-if (($beforePipe -match $enumSource) -and ($enumSrcScan -match $dangerTarget) -and (
+if (($beforePipe -match $enumSource) -and (Test-DangerTarget $enumSrcScan) -and (
         (($cmd -match $pipeToDelete) -and ($cmd -match $delRecurseForce)) -or
         ($cmd -match $pipeXargsRm))) {
     [Console]::Error.WriteLine("BLOCKED: 위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지")
@@ -358,7 +398,8 @@ foreach ($sub in $subs) {
                       ($win -match '\s/s\b')
         # 강제 플래그는 요구하지 않는다(H2) — 위험루트 재귀 삭제는 -f 없이도 대부분 즉시 실행·비가역이다
         #   (rm -r은 쓰기보호 파일에만 묻고, Remove-Item은 숨김/읽기전용 외엔 그냥 지운다).
-        if ($hasRecurse -and ($win -match $dangerTarget)) {
+        # 위험 대상 판정에만 Join-Path 정규화를 적용한다($hasRecurse는 원본 $win 기준 — 재귀 플래그는 조합과 무관).
+        if ($hasRecurse -and (Test-DangerTarget $win)) {
             [Console]::Error.WriteLine("BLOCKED: 재귀 삭제 + 위험 루트 대상 감지")
             [Console]::Error.WriteLine("Command: $sub")
             [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
