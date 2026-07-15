@@ -34,6 +34,7 @@ git log --oneline <BASE_SHA>..<HEAD_SHA>
 - Acceptance 기준
 - 예상 변경 파일 (Files)
 - 결정된 Options (Decisions)
+- Design (구조 명세 — 있으면)
 - 의존 관계 (Depends on)
 
 ### Step 3. 항목별 검증
@@ -47,9 +48,11 @@ git log --oneline <BASE_SHA>..<HEAD_SHA>
 - 목록 외 파일 수정이 있다면 사유 확인
 - 다른 task의 영역을 침범하지 않았는지
 
-#### C. Decisions 준수 (MAJOR 후보)
+#### C. Decisions·Design 준수 (MAJOR 후보)
 - plan.md의 Chosen option대로 구현되었는지
 - 다른 옵션으로 우회한 흔적 없는지
+- **Design 준수**: task에 `**Design**:` 필드가 있으면 구현이 그 4요소(배치·신규 심볼과 책임·의존 방향·비추상화 선언)대로인지 diff와 대조한다 — 계획이 확정한 구조 명세를 사후 대조하지 않으면 Design 필드는 권고문으로 퇴화한다(plan-reviewer 항목 14는 계획 시점의 존재·내용만 검사하고, 구현 준수는 이 항목이 유일한 관문). 위반(명세와 다른 파일/레이어 배치, 선언한 비추상화의 위반 등)은 MAJOR, 결함 여부가 해석에 달리면 아래 거짓양성 억제 표대로 MINOR 강등. `(D<N> 참조)`로 Decisions를 가리키는 Design은 그 Decision의 Chosen을 기준으로 대조한다.
+  - **Design 필드가 없는 task는 이 검증을 skip**한다(이 필드 도입 전 구버전 plan·Type A/B·"해당 없음 — <근거>" 표기 — 부재를 지적하지 않는다, 무회귀. 부재 검출은 plan-reviewer 항목 14의 몫). Design과 Decisions가 서로 어긋나면(plan 작성 오류) 어느 쪽이 옳은지 판정하지 않고 `(확인 요청)` MINOR로 보고한다.
 
 #### D. 환각 검출 (BLOCKER 후보) — 직접 검증
 - 호출된 외부 API/라이브러리가 **실제 존재하는지 grep/Read로 직접 확인**
