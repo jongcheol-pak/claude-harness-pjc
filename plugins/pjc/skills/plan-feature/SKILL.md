@@ -262,7 +262,13 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 확실하지 않으면 **한 단계 더 무거운 쪽 선택** (안전 우선).
 
-**Type C의 V-6(code-quality) 요청 플래그**: Type C task가 ① 보안·인증 관련 코드, ② 동시성·공유 상태, ③ 새 공개/내부 멤버(public/internal) 추가, ④ 파일 응집도 우려(1500줄 근접), ⑤ **사용자에게 노출되는 UI 문구(레이블·버튼·오류·툴팁·플레이스홀더) 신규 추가·변경** 중 하나라도 해당하면 Type 라인에 `(quality-review)`를 붙여 V-6을 요청한다 (예: `**Type**: C (quality-review)`). 그 외 Type C는 V-6 생략(V-5 단독). Type D는 항상 V-6. (⑤ 근거: UI 문구 사용자 친화성 검토는 code-quality-reviewer 항목 I에만 있어, 이 플래그가 없으면 기술 용어 노출(`null`·열거형 값 등)을 어느 reviewer도 잡지 못한다.)
+**Type C/D의 V-6(code-quality)는 항상 실행된다** — plan이 별도 표기를 붙일 필요 없다. 종전에는 Type C가 opt-in 플래그(`(quality-review)`) 없이는 V-6을 생략했는데, 그 기본값이 가장 흔한 Type C 코드를 spec 검증만 받고 **품질 검토 0회**로 커밋시키는 공백이라 반전했다(V-5와 병렬 호출이라 소요 시간은 늘지 않는다 — implement-task Fast-Path 표 정본). **기존 plan에 남은 `(quality-review)` 플래그는 no-op**(이미 기본이 된 것의 중복 명시 — 오류 아님).
+
+#### Design 필드 (Type D 필수 · Type C는 신규 심볼 도입 시)
+
+Type D task 전부와 **신규 심볼(함수/클래스/컴포넌트)을 도입하는 Type C task**는 task에 `**Design**:` 필드로 구조 명세를 확정한다(대상 판정은 4-D 재사용 확인과 동일 기준 — 4-D 표에 신규 심볼이 있으면 대상. Type A/B는 비대상 — 과잉 방지). 4요소를 1~4줄로 자유 서술: ① **배치**(어느 파일/레이어에 두는가) ② **신규 심볼과 책임**(이름 — 책임 1줄) ③ **의존 방향**(무엇을 참조하고 무엇이 참조하는가) ④ **비추상화 선언**(이번에 추상화하지 *않을* 것 — YAGNI 앵커). 설계가 계획에 없으면 구현자가 그때그때 편한 구조를 택하고 사후 리뷰(V-6)는 완성된 코드를 뒤집지 못한다 — "계획 단계에서 확정하는 것이 가장 싸다"(decision-points.md와 동일 원리).
+- **Decisions '위치' 카테고리와의 역할 구분**: Decisions '위치' = **갈림길일 때의 선택 기록**(Options/Chosen), Design = **task별 구조 명세의 확정 기록**(갈림길이 아니어도 명시). 겹치면 Design이 `(D<N> 참조)`로 중복 서술을 피한다.
+- 신규 심볼 없는 Type D는 "해당 없음 — <근거 1줄>"로 적는다(무근거 공백·placeholder는 plan-reviewer 항목 14가 MAJOR로 검출).
 
 **PRD 복귀 게이트**: 분해 결과 task가 **10개 이상**인데 plan에 PRD 연결(`**PRD**:` 줄)이 없으면 — Step 0.5의 판정이 추정(예상 task 수) 기준이라 실분해와 어긋난 경우다 — Step 0.5로 돌아가 PRD를 먼저 작성한 뒤 계속한다(대규모 안전망(Phase G 재검증) 상실 방지).
 
@@ -428,6 +434,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출. **제시 전
 - [ ] Open Questions 모두 해결됨
 - [ ] 코드 작성 중 사용자에게 물을 결정 분기 0
 - [ ] 각 task에 Type(A/B/C/D) 분류 명시
+- [ ] Design 필드 작성됨 — Type D 전 task + 신규 심볼 도입 Type C task (4요소, Step 5 Design 필드 규정)
 - [ ] 각 task에 Edge Cases 명시 (Type 게이트 6.5-A — Type A skip, B 빈/null·경계값, C/D 해당 카테고리)
 - [ ] 각 task에 Halt Forecast 명시 (Type 게이트 6.5-B — Type C/D 필수, A/B는 파괴적·의존성·외부 유발 시만)
 - [ ] 자율 실행 준비도 자문 3개 질문 모두 "예" (Type 게이트 6.5-C — Type B 이상; Type A는 자명 충족)
