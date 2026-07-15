@@ -6,7 +6,10 @@
 
 ## 대기
 
-- [2026-07-15] **Phase F에 전체-diff(BASE..HEAD) 품질 패스 추가** — task별 diff 리뷰(V-6)는 task 간 누적 중복·패턴 불일치·여러 task에 걸쳐 비대해진 파일을 원리적으로 못 본다. 전 task 완료 후 전체 diff에 1회 품질 리뷰를 수행하는 F-단계 신설 검토. v1.122.0 3레버(Design 필드·V-6 기본화·SUGGEST)의 효과 관찰 후. (출처: v1.122.0 plan Deferred)
+- [2026-07-15] **Fast-Path 표 B행에 ESCALATE→C격상 각주 추가** — 표는 PASS 경로 기준이라 무변경이 옳으나(v1.123.0 plan 확정), 표만 읽는 독자가 ESCALATE에서도 V-3/V-6 생략으로 오독할 여지. §267 포인터 각주 1구로 가독 개선. 다음 implement-task SKILL 정비 때. (출처: v1.123.0 T2 quality m1)
+- [2026-07-15] **직접 수정(Trivial Bypass) 누적 품질 드리프트 점검 장치** — plan 없는 직접 수정(3줄 이내·순수 값 치환)은 리뷰 0회로 커밋되며, 여러 세션 누적돼도 어떤 게이트도 재점검하지 않는다(F-7 7.5는 plan 단위 작업에만 발동). 트리거 설계 필요(누적 횟수 기준? 다음 plan-feature Step 1에서 경량 훑기?). (출처: v1.123.0 plan Deferred)
+- [2026-07-15] **품질 게이트 모델 티어 조건부 상향** — 계획 검토(plan-reviewer)·전체 검증(F-7)은 Opus인데 아키텍처 판단이 가장 어려운 Type D 대형 diff의 V-6은 Sonnet/effort medium 고정. Type D 시 effort 상향 등 조건부 에스컬레이션 검토 — v1.122.0 Out of Scope "reviewer 모델 상향(비용 관찰 후 별도 검토)"와 동일 사안. (출처: v1.123.0 plan Deferred)
+- [2026-07-15] **Phase F에 전체-diff(BASE..HEAD) 품질 패스 추가** — task별 diff 리뷰(V-6)는 task 간 누적 중복·패턴 불일치·여러 task에 걸쳐 비대해진 파일을 원리적으로 못 본다. 전 task 완료 후 전체 diff에 1회 품질 리뷰를 수행하는 F-단계 신설 검토. v1.122.0 3레버(Design 필드·V-6 기본화·SUGGEST)의 효과 관찰 후. v1.123.0 분석에서 재확인: 4-D 재사용 조사는 계획된 심볼만 대상이고 V-6 항목 J②(중복)는 non-blocking이라, task 간 누적 중복의 실효 검출 수단은 이 패스뿐이다. (출처: v1.122.0 plan Deferred)
 - [2026-07-15] **simplify(정리) 패스** — 리뷰 통과 후 diff를 더 단순하게 정리하는 단계. 자율 루프 churn(수정→재리뷰 반복) 위험이 있어 범위·트리거 별도 설계 필요. (출처: v1.122.0 plan Deferred)
 - [2026-07-15] **품질 루브릭 eval(Opus judge 채점)** — 고정 task 세트를 돌려 아키텍처 품질을 1-10 루브릭으로 채점, 파이프라인 변경 효과를 수치로 측정(eval 기준선은 Opus 실작업). (출처: v1.122.0 plan Deferred)
 - [2026-07-14] **문자열 형태의 상위 탈출(`..`)·`/.*` 미탐** — `Remove-Item -Recurse -Force "$env:APPDATA\..\..\.."`(드라이브 루트로 상승)·`rm -rf "/.*"`이 현행에서 통과한다(실측 PASS). v1.121.0의 `Join-Path` 정규화가 만든 구멍이 **아니다** — 조인 조건 ②③이 이런 자식을 걸러 `Join-Path` 경로에서는 차단 유지되며, 남은 것은 원래부터 뚫려 있던 문자열 형태다. `$dangerTarget`에 `\.\.`·`/\.?\*` 성분을 추가하는 강화는 정상 상대 경로(`../build` 정리) 오탐과 트레이드오프가 있어 별도 검토 필요. (출처: v1.121.0 plan Deferred / plan-reviewer 2회차 M1)
