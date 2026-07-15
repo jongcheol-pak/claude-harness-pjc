@@ -6,6 +6,9 @@
 
 ## 대기
 
+- [2026-07-15] **Phase F에 전체-diff(BASE..HEAD) 품질 패스 추가** — task별 diff 리뷰(V-6)는 task 간 누적 중복·패턴 불일치·여러 task에 걸쳐 비대해진 파일을 원리적으로 못 본다. 전 task 완료 후 전체 diff에 1회 품질 리뷰를 수행하는 F-단계 신설 검토. v1.122.0 3레버(Design 필드·V-6 기본화·SUGGEST)의 효과 관찰 후. (출처: v1.122.0 plan Deferred)
+- [2026-07-15] **simplify(정리) 패스** — 리뷰 통과 후 diff를 더 단순하게 정리하는 단계. 자율 루프 churn(수정→재리뷰 반복) 위험이 있어 범위·트리거 별도 설계 필요. (출처: v1.122.0 plan Deferred)
+- [2026-07-15] **품질 루브릭 eval(Opus judge 채점)** — 고정 task 세트를 돌려 아키텍처 품질을 1-10 루브릭으로 채점, 파이프라인 변경 효과를 수치로 측정(eval 기준선은 Opus 실작업). (출처: v1.122.0 plan Deferred)
 - [2026-07-14] **문자열 형태의 상위 탈출(`..`)·`/.*` 미탐** — `Remove-Item -Recurse -Force "$env:APPDATA\..\..\.."`(드라이브 루트로 상승)·`rm -rf "/.*"`이 현행에서 통과한다(실측 PASS). v1.121.0의 `Join-Path` 정규화가 만든 구멍이 **아니다** — 조인 조건 ②③이 이런 자식을 걸러 `Join-Path` 경로에서는 차단 유지되며, 남은 것은 원래부터 뚫려 있던 문자열 형태다. `$dangerTarget`에 `\.\.`·`/\.?\*` 성분을 추가하는 강화는 정상 상대 경로(`../build` 정리) 오탐과 트레이드오프가 있어 별도 검토 필요. (출처: v1.121.0 plan Deferred / plan-reviewer 2회차 M1)
 - [2026-07-14] **`$env:` 별칭 시스템 루트의 깊이 cap 미탐** — `$env:SystemRoot`·`$env:SystemDrive`·`$env:ProgramFiles`·`$env:windir`처럼 **환경변수가 시스템 경로를 가리키는 경우**, 그 하위 삭제(`"$env:SystemDrive\Windows"`·`(Join-Path $env:SystemDrive "Windows")`)가 통과한다. `$dangerTarget`이 `$env:NAME`을 리터럴 토큰으로만 보고 **값이 무엇인지 모르기 때문**(깊이 cap의 구조적 한계 — v1.98.0 승인 설계). **v1.121.0이 만든 구멍이 아니다**: 등가 문자열 형태가 수정 전에도 이미 통과했고(실측), Join-Path 형태가 그와 대칭이 된 것뿐이라 실질 공격면 증가는 0이다. 다만 37케이스 매트릭스·골든 어디에도 이 축이 없어 의식적 판단 없이 통과했다. 위 `..` 미탐 항목과 **같은 성격**(정규식이 값이 아니라 표기만 본다)이라 함께 검토. (출처: v1.121.0 F-7 m1 — 리뷰어 독립 프로브)
 - [2026-07-14] **`Join-Path` 3인자·중첩 괄호·역순 명명 인자의 오탐 잔존** — `(Join-Path $env:TEMP "claude" "x")`(PS6+ AdditionalChildPath)·`(Join-Path $env:TEMP (Get-Date -F yyyy))`·`(Join-Path -ChildPath "x" -Path $env:TEMP)`는 정규화 정규식에 매치되지 않아 무변경 → 현행 차단이 유지된다(정상 작업이 막히는 오탐이지만 **오차단 방향이라 안전**). 골든에 `[알려진 오탐 — 3인자 미커버]` 라벨로 현행 동작만 고정해 뒀다. 실제 오차단이 관측되면 커버 확대. (출처: v1.121.0 Out of Scope / D5)
