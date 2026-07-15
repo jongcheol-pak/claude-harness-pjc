@@ -266,8 +266,8 @@ git commit -m "checkpoint: T<N> pre-review"
 
 #### Type B prefilter PASS 시 V-7 축소
 - spec-prefilter(Haiku)가 PASS → 변경 심볼이 trivial이므로 V-7을 **정방향(변경 심볼)·역방향(삭제된 호출부 심볼) 각 grep 1회**로 축소 (전체 재추적 불필요).
-- prefilter가 ESCALATE → 정상 V-5(Sonnet) + V-7 전체 수행.
-- **Type 오분류 피드백 (경미)**: spec-prefilter가 Type B task에서 ESCALATE를 반복(여러 task에 걸쳐 잦게)하면 plan의 Type 분류가 실제보다 가볍다는 신호다 — 해당 task는 그대로 진행하되 plan.md `## Deferred / Follow-up`에 "Type 분류 재검토 (prefilter ESCALATE 잦음)"를 1줄 남긴다(다음 계획 단계 강화용, 루프는 멈추지 않음).
+- prefilter가 ESCALATE → **해당 task를 Type C로 격상** (격상 절차·이유는 V-5 Type B 절 정본 — V-3 + V-5·V-6 병렬 + V-7 전체).
+- **Type 오분류 피드백 (경미)**: spec-prefilter가 Type B task에서 ESCALATE를 반복(여러 task에 걸쳐 잦게)하면 plan의 Type 분류가 실제보다 가볍다는 신호다 — 해당 task는 C 격상으로 진행하되(위 격상 규정) plan.md `## Deferred / Follow-up`에 "Type 분류 재검토 (prefilter ESCALATE 잦음)"를 1줄 남긴다(다음 계획 단계 강화용, 루프는 멈추지 않음).
 
 ### V-1. 빌드
 - AGENTS.md의 build 명령 실행. exit 0 확인. 오류 시 Phase I로 복귀해 수정 후 재시도(한도: recovery.md 빌드 5회 연속 실패 카운터).
@@ -297,7 +297,7 @@ Task Type에 따라 다른 흐름:
 
 **Type B**: `spec-prefilter` (Haiku) 먼저 호출 (BASE_SHA·HEAD_SHA는 Type C/D와 동일 — HEAD_SHA = Phase V 서두의 **pre-review 커밋** SHA. prefilter도 그 diff를 본다. 나머지 전달물은 spec-prefilter 입력 계약대로 — acceptance 1줄·task Files 목록·AGENTS.md 위치).
 - PASS → V-5 완료, **V-7(축소)·V-8 진행** (Type B는 V-6 생략 — Sonnet 호출 안 함. Fast-Path 표와 일치).
-- ESCALATE → `spec-compliance-reviewer` (Sonnet) **단독** 호출 (Type B ESCALATE도 V-6 생략 → 병렬 대상 아님). BLOCKER/MAJOR → Phase I 복귀·수정 후 재호출, MINOR → follow-up, OK → V-7로.
+- ESCALATE → **해당 task를 Type C로 격상**한다: plan.md의 그 task Type 라인을 `C (B→격상: prefilter ESCALATE)`로 갱신하고(기존 plan 부분 갱신 — 격상 흔적이 재개 세션의 C 처리 신호가 된다), 이후를 **Type C 기준으로 수행** — V-5(compliance)·V-6(quality)를 병렬 호출하고 V-3·V-7도 전체 수행한다(이미 통과한 V-1·V-2는 재실행 불필요). ESCALATE는 "trivial 아님" 판정("확신 없으면 ESCALATE")이므로 오분류가 가장 의심되는 순간에 가장 약한 검증(spec 단독)이 적용되던 역설을 없앤다. 결과 처리는 아래 Type C/D와 동일.
 
 **Type C/D**: `spec-compliance-reviewer` (Sonnet) 호출.
 - 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA(= **pre-review 커밋** SHA — Phase V 서두에서 만든 것, 빈 checkpoint가 아님), AGENTS.md 경로(V-6 병렬의 quality reviewer 컨벤션 대조 입력 — code-quality-reviewer 입력 계약).
@@ -396,7 +396,7 @@ T<N>: <한 줄 요약>
 Type: <A/B/C/D>
 Build: <명령> → OK
 Tests: <X/Y passed>
-Review: spec OK (prefilter: <PASS/ESCALATE→OK> — Type B만, 그 외 필드 생략), quality <OK/SKIPPED>
+Review: spec OK (prefilter: <PASS/ESCALATE→C격상> — Type B만, 그 외 필드 생략), quality <OK/SKIPPED>
 Caller-recheck: <확인한 심볼 수>개 심볼, 누락 0
 Self-honesty: PASS
 ```
