@@ -32,7 +32,7 @@ plan의 task Type 분포에 따라 적용 항목이 다르다:
 | **Type C/D 포함** | **위 전체 (1~11) + 13 (재사용 확인) + 14 (설계 스켈레톤)** |
 | **+ PRD 있으면** (Type 무관) | 위에 더해 항목 **12 (PRD 커버리지)** |
 
-> Type B에 항목 9(자율 준비도)를 포함하는 이유: Type B도 implement-task 자율 루프가 실행하므로 plan에 미루기 표현·placeholder가 있으면 멈춘다. plan-feature 통과 체크리스트(Step 5·6.5)도 Type B에 Edge(빈/null·경계값)·자율 준비도를 요구한다. Type C/D는 별도 차등 없이 1~11·13 전체를 적용한다(둘을 분리해도 적용 항목이 같음).
+> Type B에 항목 9(자율 준비도)를 포함하는 이유: Type B도 implement-task 자율 루프가 실행하므로 plan에 미루기 표현·placeholder가 있으면 멈춘다. plan-feature 통과 체크리스트(Step 5·6.5)도 Type B에 Edge(빈/null·경계값)·자율 준비도를 요구한다. Type C/D는 별도 차등 없이 1~11·13·14 전체를 적용한다(둘을 분리해도 적용 항목이 같음).
 
 - Type 분포는 plan.md의 각 task `Type:` 필드로 판별
 - "확신 없으면 더 무거운 Type으로 분류" 원칙은 plan-feature Step 5에 명시되어 있으므로, plan-reviewer는 명시된 Type을 신뢰
