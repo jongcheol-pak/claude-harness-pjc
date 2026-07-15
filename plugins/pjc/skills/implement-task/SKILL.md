@@ -184,7 +184,7 @@ Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만
 **분할 plan 호출**: plan이 2개로 분할된 경우(plan-feature "긴 plan 분할" — `docs/plans/...-part1.md`/`-part2.md`), 각 part는 **plan 경로를 명시해 호출**한다(예: "`docs/plans/<날짜>-<slug>-part2.md` 구현"). `docs/plans` 복수 파일은 자동 plan 해소가 모호하므로 경로를 지정한다. 각 분할 plan은 자기 안에서 T1부터 시작하며(분할은 각 plan을 독립 실행), part1 완료 최종 보고가 part2 경로를 안내한다. **plan 상단에 `## 이전 part 핸드오프` 섹션이 있으면 첫 task 전에 먼저 읽는다** — 이전 part 세션이 남긴 함정·기각된 접근·검증 지름길(final-report-template.md의 분할 안내가 생성)로, `/clear`로 유실된 암묵지를 회수한다.
 
 ### P-1. plan.md 해당 task 정독
-- task의 Acceptance, Files, Edge Cases, Halt Forecast, Type 모두 확인.
+- task의 Acceptance, Design(있으면 — 구현이 따를 구조 명세), Files, Edge Cases, Halt Forecast, Type 모두 확인.
 
 ### P-2. Files 목록 직접 Read
 - task의 Files에 있는 모든 파일을 Read 도구로 직접 열어 현재 상태 확인. 파일들은 서로 독립이므로 **한 턴에 병렬 Read**한다(읽는 내용은 동일, 턴 수만 절약 — 순차 Read는 낭비).
