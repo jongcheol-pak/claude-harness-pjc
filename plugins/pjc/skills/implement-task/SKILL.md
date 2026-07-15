@@ -249,13 +249,15 @@ git commit -m "checkpoint: T<N> pre-review"
 |---|---|---|
 | **A** (Doc/Config) | V-8만 (코드 빌드에 영향 주는 설정이면 V-1 추가) | V-1(대개)~V-7 |
 | **B** (Trivial Code) | V-1 + V-2 + V-5(**prefilter Haiku**) + V-7 + V-8 (prefilter PASS 시 V-7은 정방향·역방향 각 grep 1회로 축소) | V-3, V-6 |
-| **C** (Normal Code) | V-1 + V-2 + V-3 + V-5(compliance Sonnet) + V-7 + V-8 | V-6 (plan에 `(quality-review)` 없으면 생략) |
+| **C** (Normal Code) | V-1 ~ V-8 **전체** (V-5는 compliance Sonnet) | 생략 없음 |
 | **D** (Complex/Cross-cutting) | V-1 ~ V-8 **전체** (V-5는 compliance Sonnet) | 생략 없음 |
+
+> Type C/D의 **실행 단계는 동일**하다(V-6 포함 — 종전에는 C가 `(quality-review)` 플래그 없이는 V-6을 생략했으나, 그 기본값이 대부분의 코드를 품질 검토 0회로 통과시켜 반전했다). C/D의 차이는 실행이 아니라 **계획 단계**(Decision 카테고리 12개 vs 5-6개·Edge 카테고리·Design 필드 의무)에 있다.
 
 **Task Type 판정**: plan이 Type을 명시하면 그것을 따른다. **plan에 Type이 없으면 메인이 diff 예상 규모로 B/C/D를 1줄로 판정해 plan.md 해당 task에 기입**한다(예: "단일 파일·caller 없음 → B", "다중 파일·시그니처 변경 → D"). 규모를 가늠하기 어렵거나 판정이 애매하면 **D로 간주**(안전 우선 — 무거운 쪽).
 **V-4(PostToolUse hook)는 자동 실행** — 모든 Type에서 작동 (UTF-8 + impact-warn).
 **V-9(시각 충실도)는 Type과 무관하게 조건부** — plan에 `## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있는 디자인 정합 작업일 때만 수행 (없으면 모든 Type에서 생략).
-**V-5·V-6 병렬** — Type D(및 `(quality-review)` 플래그가 붙은 Type C)에서 V-5(compliance)·V-6(quality)는 동일 BASE/HEAD에 병렬 호출하고, 둘 다 OK일 때만 진행한다 (상세는 V-5).
+**V-5·V-6 병렬** — Type C/D에서 V-5(compliance)·V-6(quality)는 동일 BASE/HEAD에 병렬 호출하고, 둘 다 OK일 때만 진행한다 (상세는 V-5).
 
 #### Type A 빌드 판단
 - 순수 문서·주석·README·`.gitignore` 등 **빌드에 영향 없는 파일** → V-1도 skip, V-8만.
@@ -298,17 +300,17 @@ Task Type에 따라 다른 흐름:
 - ESCALATE → `spec-compliance-reviewer` (Sonnet) **단독** 호출 (Type B ESCALATE도 V-6 생략 → 병렬 대상 아님). BLOCKER/MAJOR → Phase I 복귀·수정 후 재호출, MINOR → follow-up, OK → V-7로.
 
 **Type C/D**: `spec-compliance-reviewer` (Sonnet) 호출.
-- 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA(= **pre-review 커밋** SHA — Phase V 서두에서 만든 것, 빈 checkpoint가 아님), AGENTS.md 경로(V-6 병렬 시 quality reviewer의 컨벤션 대조 입력 — code-quality-reviewer 입력 계약).
-- **V-6이 함께 수행되는 경우(Type D 항상, Type C는 plan Type 라인에 `(quality-review)`가 있을 때)에는 V-5(compliance)와 V-6(quality)를 동일 BASE_SHA·HEAD_SHA에 병렬(한 turn 동시) 호출한다.** 두 리뷰는 독립 read-only라 동시 실행해도 충돌이 없다. V-6을 생략하는 경우(플래그 없는 Type C, 기본)는 V-5만 단독 호출.
+- 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA(= **pre-review 커밋** SHA — Phase V 서두에서 만든 것, 빈 checkpoint가 아님), AGENTS.md 경로(V-6 병렬의 quality reviewer 컨벤션 대조 입력 — code-quality-reviewer 입력 계약).
+- **V-5(compliance)와 V-6(quality)를 동일 BASE_SHA·HEAD_SHA에 병렬(한 turn 동시) 호출한다** — Type C/D 공통(V-6 항상 수행). 두 리뷰는 독립 read-only라 동시 실행해도 충돌이 없다.
 - **둘 중 하나라도 BLOCKER/MAJOR → Phase I로 복귀, 수정 후 (수행된) 리뷰를 다시 병렬 재실행.** 둘 다 OK/MINOR일 때만 다음 단계 (MINOR → follow-up 등록). **follow-up 등록은 최종 통과 run 기준** — 중간 run에서 본 MINOR는 최종 run에서 재평가하며(수정으로 위치가 바뀔 수 있음), 중간 결과로 중복 등록하지 않는다.
 - 두 리뷰는 항상 **최종 diff에 전체 수행** — 어느 것도 생략·약화하지 않는다 (단 아래 529 인프라 장애 fallback은 예외이며, 그 경우 약화 사실을 반드시 명시한다). 실패 경로에서 V-6이 재실행되는 토큰 비용은 품질 우선으로 감수한다.
 - **529 과부하는 각 reviewer에 독립 적용** — 병렬 중 한쪽만 529면 그 reviewer만 "Reviewer 과부하(529) 대응" fallback을 따른다 (다른 쪽 결과 유지).
 - **reviewer가 "incomplete"(turn 예산 소진 등으로 acceptance 일부만 검토)로 응답하면 통과(OK)로 보지 않는다** — 미검토 항목을 메인이 diff에서 직접 대조(해당 acceptance가 충족되는 위치 지목)하거나 reviewer를 재호출해 나머지를 마저 검토한 뒤에야 다음 단계로 간다. incomplete를 조용히 OK 처리하고 다음 task로 넘어가는 것은 금지. (Phase G의 incomplete 처리 원칙을 per-task V-5/V-6에도 동일 적용 — Type B ESCALATE의 spec-compliance-reviewer 호출 포함 모든 reviewer 응답에 적용.)
 - **지적 이의 절차 (사실 오류 반증 — 무조건 수용 방지).** 리뷰 지적을 코드 수정으로 반영하는 것이 기본이지만, 메인이 그 지적을 **사실 오류로 판단하고 파일:라인 인용으로 반증할 수 있으면**(예: 리뷰어가 "caller 누락"이라 했으나 그 caller가 리플렉션·다른 파일에서 실제로 갱신됨을 grep으로 제시), 코드를 바꾸지 않고 **반증 근거를 첨부해 같은 리뷰어를 재호출**한다. **재호출에도 리뷰어가 같은 지적을 유지하면** 그 지적을 수용해 수정하거나(반증이 틀렸을 수 있음), 반증이 확실하면 Halt해 사용자 판단을 받는다 — 이 종결 규칙이 반박의 끝을 보장한다. **이 반증 재호출은 재시도 한계의 "수정 사이클"에 포함**되므로 상한은 그 카운터(수정 사이클 누적 5회·동일 지적 3회 연속)가 강제한다(별도 횟수 캡을 두지 않는 이유 — 상한이 이미 두 겹이다). 이 절차는 antipatterns.md "Review 묵살 금지"의 예외다 — **묵살(근거 없이 무시)이 아니라 근거 있는 반증**이며, 반증이 기각되면 수용한다. 반증 없이 "내 판단엔 틀렸다"로 넘어가는 것은 여전히 금지.
 
-### V-6. Code Quality Review (subagent, Type D 항상 · Type C는 `(quality-review)` 플래그 시) — V-5와 병렬 수행
-- `code-quality-reviewer` subagent 호출 (위 V-5에서 **병렬로 함께 호출**). 자체 검토 금지.
-- 검토 기준: DDD, 환각, 한글 주석, 파일 응집도(1500은 분리 검토 신호), UTF-8, 보안, 동시성, 사용자 노출 UI 문구 친화성(항목 I — `(quality-review)` 플래그 ⑤).
+### V-6. Code Quality Review (subagent, Type C/D 항상) — V-5와 병렬 수행
+- `code-quality-reviewer` subagent 호출 (위 V-5에서 **병렬로 함께 호출**). 자체 검토 금지. **기존 plan의 Type 라인에 남은 `(quality-review)` 플래그는 no-op**(종전 opt-in 표기 — 이미 기본이라 중복 명시일 뿐, 오류 아님).
+- 검토 기준: DDD, 환각, 한글 주석, 파일 응집도(1500은 분리 검토 신호), UTF-8, 보안, 동시성, 사용자 노출 UI 문구 친화성(항목 I — diff에 화면 표시 문구가 있을 때).
 - 결과 처리: V-5와 통합 — 둘 중 하나라도 BLOCKER/MAJOR면 수정 후 둘 다 재실행, 둘 다 OK일 때만 진행.
 
 ### V-7. Caller Re-verification

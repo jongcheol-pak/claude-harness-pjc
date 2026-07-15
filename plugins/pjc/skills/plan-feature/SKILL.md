@@ -262,7 +262,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 확실하지 않으면 **한 단계 더 무거운 쪽 선택** (안전 우선).
 
-**Type C의 V-6(code-quality) 요청 플래그**: Type C task가 ① 보안·인증 관련 코드, ② 동시성·공유 상태, ③ 새 공개/내부 멤버(public/internal) 추가, ④ 파일 응집도 우려(1500줄 근접), ⑤ **사용자에게 노출되는 UI 문구(레이블·버튼·오류·툴팁·플레이스홀더) 신규 추가·변경** 중 하나라도 해당하면 Type 라인에 `(quality-review)`를 붙여 V-6을 요청한다 (예: `**Type**: C (quality-review)`). 그 외 Type C는 V-6 생략(V-5 단독). Type D는 항상 V-6. (⑤ 근거: UI 문구 사용자 친화성 검토는 code-quality-reviewer 항목 I에만 있어, 이 플래그가 없으면 기술 용어 노출(`null`·열거형 값 등)을 어느 reviewer도 잡지 못한다.)
+**Type C/D의 V-6(code-quality)는 항상 실행된다** — plan이 별도 표기를 붙일 필요 없다. 종전에는 Type C가 opt-in 플래그(`(quality-review)`) 없이는 V-6을 생략했는데, 그 기본값이 가장 흔한 Type C 코드를 spec 검증만 받고 **품질 검토 0회**로 커밋시키는 공백이라 반전했다(V-5와 병렬 호출이라 소요 시간은 늘지 않는다 — implement-task Fast-Path 표 정본). **기존 plan에 남은 `(quality-review)` 플래그는 no-op**(이미 기본이 된 것의 중복 명시 — 오류 아님).
 
 #### Design 필드 (Type D 필수 · Type C는 신규 심볼 도입 시)
 
