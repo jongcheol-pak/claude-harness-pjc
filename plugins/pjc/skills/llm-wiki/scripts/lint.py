@@ -819,6 +819,26 @@ def main():
             if has_h != has_l:
                 warn(f"한/영 병기 누락: '{name}' ({'한글만' if has_h else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
 
+        # §7-27 가이드/레시피 섹션 가이드 행 한/영 병기: 이 섹션 행은 첫 컬럼이 wikilink라
+        #  is_feat_recipe_row(첫 컬럼 평문)에 안 걸려 위 §7-16이 형상 자체로 놓친다. recipe(대상
+        #  40_guides/recipes/)는 기능별 인덱스 등록분이 §7-16으로 병기가 강제되므로 제외하고,
+        #  platform/ui-ux 가이드 행 표시이름(alias)에 한/영 한쪽만이면 WARN — ui-ux 가이드는
+        #  기능별 인덱스 미등록(§5)이라 이 섹션이 유일 검색 경로. 섹션 없으면(신규 vault) skip.
+        guide_sec = section(itext, "가이드 / 레시피")
+        if guide_sec:
+            for line in guide_sec.splitlines():
+                # 첫 컬럼 wikilink [[대상|표시]] — Obsidian 테이블은 \| 이스케이프라 대상의 \ 제거
+                #  (wikilink_targets·is_feat_recipe_row와 동일 정규화). 헤더·구분선은 [[ 없어 skip.
+                m = re.match(r"\|\s*\[\[([^\]|]+)\|([^\]]+)\]\]", line.lstrip())
+                if not m:
+                    continue
+                if "40_guides/recipes/" in m.group(1).replace("\\", ""):
+                    continue  # recipe는 §7-16(기능별 인덱스)이 이미 병기 강제 — 이중 요구 방지
+                gname = m.group(2).replace("\\", "").strip()
+                has_gh, has_gl = bool(han.search(gname)), bool(lat.search(gname))
+                if has_gh != has_gl:
+                    warn(f"가이드 한/영 병기 누락: '{gname}' ({'한글만' if has_gh else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
+
     else:
         # 인덱스 기반 검사(§7-6·14·15·16·23) 전체가 불능인 구조 결함 — 침묵 대신 ERR 1건으로 신호
         #  (특히 §7-23은 index.md가 없으면 '질문 유실' 최악 시나리오를 못 잡는다).
