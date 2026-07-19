@@ -220,6 +220,17 @@
       "rationale": "§7-27 양성 검출(v1.125.0, deferred 2026-07-19 종결) — platform/ui-ux 가이드 행 alias가 한글 전용이면 WARN. 기존 검증은 실vault 1회성 스모크뿐이라 리팩터로 §7-27이 무력화돼도 eval이 못 잡던 공백을 회귀 그물로 승격(guide-kind-missing의 유일 가이드 행은 recipe라 §7-27 미발화)"
     },
     {
+      "fixture": "release-marker",
+      "expect_keywords": [
+        "릴리즈 마커",
+        "feat-hist"
+      ],
+      "expect_absent": [
+        "decisions"
+      ],
+      "rationale": "§7-28(v1.126.0) — 콘텐츠 본문의 v접두 3필드 semver(v1.2.3)는 §5 changelog 미러링 금지 위반 신호로 WARN(feature 양성). decision-log는 같은 마커(v9.9.9)가 있어도 무경고(제외 실증 — 항목 불변 이력이라 재작성 대상이 아님. 제외가 빠지면 decisions.md 경고가 출력돼 expect_absent FAIL)"
+    },
+    {
       "fixture": "fix-mode",
       "fix_mode": true,
       "expect_keywords": [
