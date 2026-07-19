@@ -194,3 +194,4 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 | log.md | 6000자(문자 수) |
 | index.md | 제한 없음 (본문 400줄 / 기능별 인덱스 200행 초과 시 분할 검토 — lint INFO. sub-index `index-*.md`도 동일 임계 측정 — 초과 시 소제목 구역화. 분할 절차 상세는 `wiki-schema.md` §4) |
 - 예산 80% 도달 시 오래된 항목을 `[YYYY-MM-DD] 한줄요약`으로 압축. feature/guide는 압축(삭제) 대신 하위 페이지 분리. **단 log.md는 줄 압축이 아니라 문자 수 기준 월별 롤오버**(6000자 초과 → 오래된 항목을 `90_archive/log/{YYYY-MM}.md`로 이동, 3000자 이하까지 — wiki-schema §8).
+- **guide(platform-bootstrap·ui-ux)의 예산 판정은 코드 펜스 내부 줄을 제외한 유효 줄 수**로 한다(recipe는 펜스 포함 — 판정 방식 정본은 wiki-schema §2.6). 가이드가 유효 줄 수로도 초과하면 허브+하위 분할 — 실행 절차는 I-2b(`references/procedures-content.md`).
