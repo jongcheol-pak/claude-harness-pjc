@@ -6,7 +6,7 @@
 > **이 템플릿은 그대로 써도 동작합니다.** 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고 고유 규칙을 추가하면 Claude가 추측을 줄여 더 정확하게 작업합니다. 빌드·테스트 명령만 채워 시작하고 점진적으로 다듬는 것을 권장합니다.
 
 ## Stack
-- **언어**: C# / .NET <version, 예: net8.0-windows10.0.19041.0>
+- **언어**: C# / .NET <version, 예: net10.0-windows10.0.22621.0>
 - **UI**: WinUI 3 (Windows App SDK 2.x), MVVM = `CommunityToolkit.Mvvm`
 - **주요 패키지**: `Microsoft.WindowsAppSDK`, `CommunityToolkit.WinUI.Controls.SettingsControls`, `CommunityToolkit.WinUI.Extensions`, `WinUIEx` <실제 사용하는 것만>
 - **테스트**: <xUnit | NUnit | MSTest>
@@ -127,6 +127,6 @@ PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-D
 - 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
-- 타깃 OS/TFM: Stack 섹션의 TFM과 동일하게 유지 (예: `net8.0-windows10.0.19041.0` — 실제 값은 csproj의 `TargetFramework`를 따른다)
+- 타깃 OS/TFM: Stack 섹션의 TFM과 동일하게 유지 (예: `net10.0-windows10.0.22621.0` — 실제 값은 csproj의 `TargetFramework`를 따른다)
 - 배포: MSIX (패키지형 권장)
 - 상세 가이드: `docs/WINUI3-PROJECT-GUIDE.md` (생성/실행), `docs/WINUI3-DESIGN-GUIDE.md` (UI)

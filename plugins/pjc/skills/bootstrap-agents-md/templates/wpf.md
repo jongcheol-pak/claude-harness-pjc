@@ -6,7 +6,7 @@
 
 
 ## Stack
-- **언어**: C# / .NET <version, 예: net8.0-windows>
+- **언어**: C# / .NET <version, 예: net10.0-windows10.0.22621.0>
 - **UI 프레임워크**: WPF + **WPF-UI** (NuGet `WPF-UI`, Fluent/Windows 11 스타일)
 - **MVVM**: `CommunityToolkit.Mvvm` (`[ObservableProperty]`, `[RelayCommand]`)
 - **DI**: `Microsoft.Extensions.DependencyInjection` / `Microsoft.Extensions.Hosting`
@@ -133,7 +133,7 @@ PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-D
 - 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
 
 ## 추가 정보
-- 타깃: <net8.0-windows 등>
+- 타깃: <net10.0-windows10.0.22621.0 등>
 - WPF-UI 버전: 새 프로젝트 생성 시점의 최신 안정 버전 고정 (와일드카드 지양)
 - 배포: <MSIX | ClickOnce | 자체 installer>
 - 상세 가이드: https://wpfui.lepo.co/documentation/getting-started.html
