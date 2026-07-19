@@ -44,6 +44,7 @@
 24. `[기계]` decision-log 정합
 25. `[기계]` pending.md 잔량 집계 (INFO)
 26. `[기계]` 위키 뒤처짐 — 허브 `synced_commit` ↔ 레포 HEAD 커밋 수 (INFO, fail-open)
+27. `[기계]` 가이드/레시피 섹션 가이드 행 한/영 병기 (§7-27 — recipe 제외, platform/ui-ux 가이드 alias)
 
 #### F-2. 결과 보고
 - 결과를 **심각도 등급**(🔴 오류 / 🟡 경고 / 🔵 정보)으로 분류해 보고.
