@@ -37,6 +37,7 @@
 - [2026-07-09] SessionStart hook의 위키 허브 컨텍스트 자동 주입 — v1.102.0 미채택(지침 방식 선택), 지침 방식 실효성이 낮다고 관찰되면 재검토 (출처: v1.102.0)
 - [2026-07-09] 위키 허브 `## 작업 규약·주의사항`이 수십 건으로 커지면 전용 페이지(worknotes류) 승격 검토 (출처: v1.103.0)
 - [2026-07-10] warn-external-ops가 `gh release create --notes "…git merge…"` 노트 값 속 텍스트를 오탐 — 커밋 `-m`/`--message` 값은 스트립하나 `--notes` 값은 미스트립이라 노트 본문의 push/merge/tag 텍스트가 규칙에 걸림(비차단), `--notes`(및 유사 값 옵션) 스트립 또는 `git ` 접두 요구로 개선, 다음 hook 오탐 정비 라운드에서 (출처: v1.113.1 릴리즈 발행 시 실관찰)
+- [2026-07-19] llm-wiki §7-27 **양성 검출** eval fixture 추가 — `evals/fixtures/`에 platform/ui-ux 가이드 행(한글전용 alias) fixture + lint-cases.json 기대 WARN을 넣어 §7-27 정상 검출을 항구적 회귀 그물로 승격(현재는 실제 vault 1회성 스모크로만 검증 — 리팩터 시 §7-27 무력화돼도 eval이 못 잡음). 기존 `guide-kind-missing` fixture의 유일 가이드 행이 recipe라 §7-27이 발화 안 함 (출처: v1.124.0 plan F-7 MINOR m1)
 
 ## 종결
 
