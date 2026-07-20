@@ -150,12 +150,13 @@ Phase 0 → 사전 승인 일괄 확인 (하이브리드 — 루프 시작 전 1
 loop over plan.md tasks (시작 task부터 Tn까지 — 첫 실행은 T1, 재개면 지정/첫 미완료 task):
   Phase P → 변경 전략 확정, caller 사전 추적
   Phase I → 최소 변경으로 구현
-  Phase V → Type별 fast-path (V-1~V-7, + V-9 디자인 정합 작업 시 — V-8이 최종 관문)
+  Phase V → Type별 fast-path (V-1~V-7, + V-9 디자인 정합 작업 시 — V-8이 최종 관문. V-9의 ⏳ 미확인 행은 F-8로 인계)
   Phase D → 완료 커밋(T<N>:) → (2 task마다 Progress Log) → 즉시 다음 task로
 
 # 모든 task 완료 후
 Phase F → 전체 plan 통합 검증 (조건부 진입)
 Phase G → PRD 요구 재검증 (plan.md 상단에 `**PRD**:` 줄 있을 때만 — 갭 발견 시 task 추가 후 자율 재진입, 최대 2회)
+F-8   → 시각 충실도 최종 관문 (plan에 `## 시각 요소 분해` 있을 때만 — ⏳ 미확인 잔존 시 완료 선언 보류)
 → 최종 보고 (첫 사용자 개입 지점)
 ```
 
@@ -300,7 +301,7 @@ Task Type에 따라 다른 흐름:
 - ESCALATE → **해당 task를 Type C로 격상**한다: plan.md의 그 task Type 라인을 `C (B→격상: prefilter ESCALATE)`로 갱신하고(기존 plan 부분 갱신 — 격상 흔적이 재개 세션의 C 처리 신호가 된다), 이후를 **Type C 기준으로 수행** — V-5(compliance)·V-6(quality)를 병렬 호출하고 V-3·V-7도 전체 수행한다(이미 통과한 V-1·V-2는 재실행 불필요). ESCALATE는 "trivial 아님" 판정("확신 없으면 ESCALATE")이므로 오분류가 가장 의심되는 순간에 가장 약한 검증(spec 단독)이 적용되던 역설을 없앤다. 결과 처리는 아래 Type C/D와 동일.
 
 **Type C/D**: `spec-compliance-reviewer` (Sonnet) 호출.
-- 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA(= **pre-review 커밋** SHA — Phase V 서두에서 만든 것, 빈 checkpoint가 아님), AGENTS.md 경로(V-6 병렬의 quality reviewer 컨벤션 대조 입력 — code-quality-reviewer 입력 계약).
+- 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA(= **pre-review 커밋** SHA — Phase V 서두에서 만든 것, 빈 checkpoint가 아님), AGENTS.md 경로(V-6 병렬의 quality reviewer 컨벤션 대조 입력 — code-quality-reviewer 입력 계약), **그리고 plan에 `## 시각 요소 분해` 섹션이 있으면 그 섹션**(spec-compliance-reviewer 항목 I 입력 — 리뷰어가 이 task 귀속 행을 diff와 대조한다. **섹션이 없으면 전달을 생략**하며 항목 I도 skip되어 기존 동작과 동일하다).
 - **V-5(compliance)와 V-6(quality)를 동일 BASE_SHA·HEAD_SHA에 병렬(한 turn 동시) 호출한다** — Type C/D 공통(V-6 항상 수행). 두 리뷰는 독립 read-only라 동시 실행해도 충돌이 없다.
 - **둘 중 하나라도 BLOCKER/MAJOR → Phase I로 복귀, 수정 후 (수행된) 리뷰를 다시 병렬 재실행.** 둘 다 OK/MINOR일 때만 다음 단계 (MINOR → follow-up 등록). **follow-up 등록은 최종 통과 run 기준** — 중간 run에서 본 MINOR는 최종 run에서 재평가하며(수정으로 위치가 바뀔 수 있음), 중간 결과로 중복 등록하지 않는다. **quality 리뷰의 SUGGEST(설계 소견 — code-quality-reviewer 항목 J)도 동일하게 최종 run 기준**으로 plan.md `## Deferred / Follow-up`에 `[SUGGEST]` 접두 1줄씩 등록한다(동일 파일·동일 요지는 1건으로 디듑) — verdict 무영향이므로 수정·재리뷰 없이 루프를 계속한다.
 - 두 리뷰는 항상 **최종 diff에 전체 수행** — 어느 것도 생략·약화하지 않는다 (단 아래 529 인프라 장애 fallback은 예외이며, 그 경우 약화 사실을 반드시 명시한다). 실패 경로에서 V-6이 재실행되는 토큰 비용은 품질 우선으로 감수한다.
@@ -344,7 +345,7 @@ Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 - [ ] "동작 확인됨" 주장의 근거가 빌드 통과 외에 있는가?
 - [ ] 이 task에서 추측으로 작성한 코드가 하나도 없는가?
 - [ ] 수정한 코드의 주석·docstring이 새 동작과 일치하는가 (옛 내용 그대로 둔 stale 주석이 없는가)?
-- [ ] (V-9 수행 task) 시각 요소 분해 표에 ❌ 잔존 0인가 — HUMAN-VERIFY로 위임 명시한 항목 제외 (V-9 미수행 task는 N/A)?
+- [ ] (V-9 수행 task) 시각 요소 분해 표에 ❌ 잔존 0이고, **`⏳ 미확인` 행을 F-8 인계 목록에 등재**했는가 — 미확인은 ❌가 아니지만 **제외가 아니라 인계**다(등재 없이 넘어가면 F-8이 받을 목록이 비어 검증이 통째로 사라진다). V-9 미수행 task는 N/A?
 
 하나라도 "아니오" → Phase I 복귀. **단 해당 단계를 실행하지 않은 task의 "N/A"는 "아니오"가 아니다** — Fast-Path가 그 단계를 생략한 경우(예: Type A 순수 문서는 V-1/V-2 미실행이므로 빌드·테스트 박스가 N/A로 통과; V-3 미수행이면 린트 박스도 N/A). N/A와 "실행했어야 하는데 안 함(=아니오)"을 혼동하지 않는다: V-1/V-2/V-3을 **수행한** task는 반드시 "예"여야 한다.
 
@@ -352,7 +353,9 @@ Phase D 진입 직전 자기 정직성 검증. 모두 "예"여야 진행 가능:
 
 ### V-9. 시각 충실도 검증 (디자인 정합 작업만)
 
-plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만** 수행한다 (디자인 정합 작업이 아니면 건너뜀 — 이 표준 제목으로 트리거를 판정한다). 수행 시점은 **V-7 이후·V-8 이전** — V-8("Phase D 진입 직전")이 V-9 결과까지 포괄하는 최종 관문이 되도록 한다. **수행 시 `references/phase-v9-detail.md`를 읽고 그 절차(요소 전수 대조·빌드≠시각 일치·렌더/HUMAN-VERIFY 처리·불일치 시 Phase I 복귀)를 그대로 따른다.**
+plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만** 수행한다 (디자인 정합 작업이 아니면 건너뜀 — 이 표준 제목으로 트리거를 판정한다). 수행 시점은 **V-7 이후·V-8 이전** — V-8("Phase D 진입 직전")이 V-9 결과까지 포괄하는 최종 관문이 되도록 한다. **수행 시 `references/phase-v9-detail.md`를 읽고 그 절차(요소 전수 대조·행별 diff 위치 지목·빌드≠시각 일치·렌더 3분기·불일치 시 Phase I 복귀)를 그대로 따른다.**
+
+**미확인 행은 F-8로 인계한다 (의무).** 렌더 확인이 불가한 행(데스크톱 UI·캡처 도구 부재 등)은 `⏳ 미확인`으로 표기하고 그 목록을 plan의 분해 표에 남긴다 — **Phase F-8이 완료 선언 직전에 이 목록을 받아 게이트를 건다.** task 루프는 멈추지 않지만, 인계는 검증의 이연이지 면제가 아니다(미확인을 보고에만 적고 완료를 선언하던 종전 경로를 F-8이 차단한다).
 
 ### 재시도 한계 (Halt 트리거 — 무한 루프 차단)
 - 같은 task에서 **동일 BLOCKER/MAJOR 3회 연속** → Halt (reviewer의 RECURRING 태그 포함).
@@ -454,11 +457,12 @@ Self-honesty: PASS
 
 ## Phase F — Finalize (모든 task 완료 후)
 
-전체 plan 통합 검증. **진입 조건표(1 task+Type A=생략 / 1 task+Type B=F-1·F-2·F-6만 / 2+ tasks 또는 Type C/D 포함=전체 F-1~F-7)와 F-1~F-7 상세는 모두 `references/phase-f-detail.md`에 일원화.**
+전체 plan 통합 검증. **진입 조건표(1 task+Type A=생략 / 1 task+Type B=F-1·F-2·F-6만 / 2+ tasks 또는 Type C/D 포함=전체 F-1~F-8)와 F-1~F-8 상세는 모두 `references/phase-f-detail.md`에 일원화.**
 
 - 단, **F-6.5(notes 기록 + 오래된 항목 아카이브 이동)는 Phase F가 생략·축소돼도 코드 변경이 있었으면 항상 수행**한다(빌드 영향 없는 trivial 단일 수정은 공통 지침의 문서 갱신 생략 조건을 따름) — 누락 빈발 지점이라 본문에 남긴다.
 - 구현 중 **새로 생긴** plan `## Deferred / Follow-up`(보류)·`## Out of Scope`(기각) 항목은 `pjc:llm-wiki` 절차 K 5-2의 `[DECISION]` 큐에 1줄씩 기록한다(vault 없으면 그 규약의 폴백) — 계획 시점에 큐잉된 결정과 중복이면 생략. 같은 시점에 구현 중 확인된 **작업 규약·함정 사실**(레포에 안 담는 크로스 세션 지식)은 `[PROJECT-FACT]` 큐에 기록한다(형식·입도는 절차 K 5-3 정본 — 배치 트리거 ② implement-task 종료).
 - F-7은 `plan-completion-reviewer` subagent (Opus) 호출 — plan 전체 적대적 검토.
+- **F-8(시각 충실도 최종 관문)은 plan에 `## 시각 요소 분해`가 있을 때만 수행**하며, F-6.5처럼 **Phase F가 생략·축소돼도 해당 시 항상 수행**한다. 수행 위치는 **완료 선언 직전** — PRD 없는 plan은 F-7 뒤, **PRD 연결 plan은 Phase G 통과 후**(Phase G 재루프가 시각 요소를 다시 바꿀 수 있어 선언 직전 1회로 모은다). V-9가 인계한 `⏳ 미확인` 행이 하나라도 남으면 **완료 선언을 보류하고 Halt**한다.
 - **Phase Ledger 갱신**: Phase F를 통과하면 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를 기록한다 — 이후 Phase G 재루프 중 압축·재개가 발생해도 Phase F(F-7 Opus)를 중복 재실행하지 않기 위한 마커다('재개 진입'의 Phase Ledger 판정 규칙 참조). **PRD 연결 plan은 Phase G까지 통과하면 추가로 `Phase G 통과 (Must 100%)`를 기록한다**(phase-g-detail G-4 — 새 세션 plan-feature Step 0.2가 완료를 판정하는 신호).
 
 ## Phase G — 요구 재검증 (PRD 있을 때만)

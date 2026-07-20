@@ -111,9 +111,11 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 대표 공식 skill: `migrate-xml-views-to-jetpack-compose`, `agp-9-upgrade`, `navigation-3`, `r8-analyzer`(성능), `play-billing-library-version-upgrade`, `edge-to-edge`.
 관련 작업(예: Compose 마이그레이션, AGP 업그레이드, 성능 최적화) 시 해당 skill을 우선 적용한다.
 
-## UI/UX — 미제공 시 공식 가이드 준수
+## UI/UX — 시안 우선, 미제공 시 공식 가이드 준수
 
-사용자가 UI/UX 시안을 제공하지 않거나 별도 디자인 요청이 없으면 **Android 공식 디자인 가이드대로 진행**한다 (자체 디자인 임의 창작 금지):
+**사용자가 UI/UX 시안(디자인 HTML·이미지·Figma 등)을 제공하면 시안이 기준이다.** 아래 공식 가이드는 시안이 정하지 않은 부분(접근성·적응형 대응 등)에만 적용한다. **Material에 비슷한 표준 패턴이 있다는 이유로 시안의 레이아웃·구성 요소를 표준 컴포넌트로 대체하지 않는다.**
+
+시안을 제공하지 않거나 별도 디자인 요청이 없으면 **Android 공식 디자인 가이드대로 진행**한다 (자체 디자인 임의 창작 금지):
 - Material 3 (Material You) 디자인 시스템
 - 공식 UI 가이드: https://developer.android.com/design/ui/mobile
 - 접근성: 터치 타깃 48dp+, contentDescription, 동적 글꼴 대응

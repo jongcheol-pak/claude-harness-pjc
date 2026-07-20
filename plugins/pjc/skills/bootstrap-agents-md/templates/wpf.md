@@ -18,9 +18,11 @@
 - **Lint/Format**: `dotnet format`
 - **실행**: `dotnet run --project <Project>.csproj` 또는 VS F5
 
-## UI/UX — WPF-UI 사용 (미제공 시 공식 가이드 준수)
+## UI/UX — 시안 우선, 미제공 시 WPF-UI 공식 가이드 준수
 
-사용자가 UI/UX 시안을 제공하지 않거나 별도 디자인 요청이 없으면 **WPF-UI 공식 가이드(wpfui.lepo.co)대로** 진행한다 (자체 디자인 임의 창작 금지).
+**사용자가 UI/UX 시안(디자인 HTML·이미지·Figma 등)을 제공하면 시안이 기준이다.** 아래 WPF-UI 규칙은 시안이 정하지 않은 부분(테마·리소스 사전·접근성 등)에만 적용한다. **WPF-UI Gallery에 비슷한 컨트롤이 있다는 이유로 시안의 레이아웃·구성 요소를 표준 컨트롤로 대체하지 않는다.**
+
+시안을 제공하지 않거나 별도 디자인 요청이 없으면 **WPF-UI 공식 가이드(wpfui.lepo.co)대로** 진행한다 (자체 디자인 임의 창작 금지).
 
 ### 1. 패키지 설치
 ```powershell
@@ -57,7 +59,7 @@ dotnet add package WPF-UI
 - 아이콘은 `{ui:SymbolIcon Fluent24}` 형식 (Fluent System Icons).
 
 ### 4. 디자인 규칙
-- **자체 디자인 만들지 않는다.** WPF-UI Gallery에 같은 UX가 있으면 그 컨트롤·구조를 따른다 (Wpf.Ui.Gallery 참고).
+- **자체 디자인 만들지 않는다.** (시안 미제공 시) WPF-UI Gallery에 같은 UX가 있으면 그 컨트롤·구조를 따른다 (Wpf.Ui.Gallery 참고).
 - **하드코딩 금지.** 색·브러시는 `DynamicResource`로 참조 (테마 전환이 런타임에 반영되려면 필수). 문구는 리소스로 분리.
 - **테마는 시스템에 맡긴다.** Light/Dark/HighContrast = `ApplicationThemeManager`. 전환은 `ApplicationThemeManager.Apply(theme)` 한 곳. `ApplicationThemeManager.Changed` 이벤트로 커스텀 요소 갱신.
 - 테마 적용은 생명주기 초기(App.xaml 또는 MainWindow 생성자)에.
@@ -73,7 +75,7 @@ dotnet add package WPF-UI
 5. **바인딩 모드 명시.** 입력 컨트롤 양방향은 `Mode=TwoWay`, `UpdateSourceTrigger=PropertyChanged` 명시. WPF 기본 바인딩은 INotifyPropertyChanged 구현 필요 (CommunityToolkit.Mvvm `[ObservableProperty]`가 자동 처리).
 6. **리소스 키는 정의 확인 후 사용.** `{DynamicResource X}`/`{StaticResource X}`의 키 X 존재를 grep 확인. WPF는 `StaticResource` 키 누락 시 **빌드는 통과하고 런타임 크래시**.
 7. **네임스페이스 혼동 금지.** WPF는 `System.Windows.Controls`(표준) + `Wpf.Ui.Controls`(WPF-UI, `ui:` 접두사). WinUI(`Microsoft.UI.Xaml`) 컨트롤·문법을 섞지 말 것 (`x:Bind`는 WinUI 전용 — WPF는 `Binding` 사용).
-8. **참조 구현 우선.** 새 화면은 Wpf.Ui.Gallery의 동일 패턴 구조를 복제.
+8. **참조 구현 우선.** 새 화면은 Wpf.Ui.Gallery의 동일 패턴 구조를 복제. **단 사용자 시안이 있으면 시안이 우선** — Gallery 구조는 시안을 재현하는 수단으로만 쓴다(위 UI/UX 우선순위).
 9. **빌드로 1차 검증.** `dotnet build`로 XAML 오류를 잡고 반드시 통과시킨 뒤 다음 task로. 단 레이아웃 적정성(보기 좋은가)은 빌드로 못 잡으므로 ⏳ HUMAN-VERIFY로 남기고 사용자 확인 목록에 적는다.
 
 ## Conventions
