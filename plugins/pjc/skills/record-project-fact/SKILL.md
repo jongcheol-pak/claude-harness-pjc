@@ -1,12 +1,12 @@
 ---
 name: record-project-fact
-description: This skill should be used when recording a CONFIRMED project fact (build/run command, DB access method, file/artifact location, test/verify command) into an EXISTING AGENTS.md — either right after the suggest-agents-record hook emits "[AGENTS 기록 제안]" and the user accepts, or when the user explicitly asks to record such a fact. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘", or accepting the hook's suggestion. The fact may be added, updated, or removed. Do NOT trigger for — creating a new AGENTS.md from scratch (use bootstrap-agents-md), planning or writing code (plan-feature/implement-task). Records into AGENTS.md ONLY — never the global/project CLAUDE.md — and ONLY after showing the exact change and getting user approval (no silent writes). Real secrets/connection strings/credentials are forbidden — environment variable names only.
+description: This skill should be used when recording a CONFIRMED project fact (build/run command, DB access method, file/artifact location, test/verify command, intentionally untested layers) into an EXISTING AGENTS.md — either right after the suggest-agents-record hook emits "[AGENTS 기록 제안]" and the user accepts, or when the user explicitly asks to record such a fact. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "테스트 비대상 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘", or accepting the hook's suggestion. The fact may be added, updated, or removed. Do NOT trigger for — creating a new AGENTS.md from scratch (use bootstrap-agents-md), planning or writing code (plan-feature/implement-task). Records into AGENTS.md ONLY — never the global/project CLAUDE.md — and ONLY after showing the exact change and getting user approval (no silent writes). Real secrets/connection strings/credentials are forbidden — environment variable names only.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
 # Record Project Fact
 
-작업 중 **확인된 프로젝트 사실**(빌드·실행 명령, DB 접근 방법, 파일·산출물 위치, 테스트·검증 명령)을
+작업 중 **확인된 프로젝트 사실**(빌드·실행 명령, DB 접근 방법, 파일·산출물 위치, 테스트·검증 명령, 의도적 테스트 비대상 계층)을
 **기존 `AGENTS.md`에 추가·갱신·제거**한다. 다음 작업부터 같은 정보를 재발견(grep·파일 읽기)하지 않게 하고, 틀려진 정보가 남아 오도하지 않게 하는 것이 목적이다.
 
 > AGENTS.md는 세션 시작 시 자동 로드되므로, **한 번 기록하면 다음 세션부터 재확인이 사라진다.**
@@ -28,6 +28,7 @@ bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)�
 2. **AGENTS.md만 대상.** 프로젝트 루트의 `AGENTS.md`에만 기록한다. **글로벌/프로젝트 `CLAUDE.md`는 수정하지 않는다**(지침 파일이라 위험).
 3. **실제 시크릿 금지.** DB 연결 문자열·비밀번호·API 키·토큰·내부 IP/호스트를 기록하지 않는다. **환경변수 이름·설정 키 이름만** 적고 실제 값은 `.env`(gitignore)로. (예: `접속: 환경변수 DB_CONNECTION` — 실제 문자열 금지.)
 4. **확인된 사실만.** 직접 실행·확인한 명령/경로만 기록한다. 추측("아마 이 명령일 것")은 기록하지 않는다.
+4-1. **"의도적 비대상"은 사용자 확인으로만 성립한다.** 테스트가 없는 계층을 발견한 것만으로는 "비대상"이 아니다 — 빠뜨린 것일 수도 있다. **사용자가 의도라고 확인한 경우에만** 기록한다(추측 기록 금지 — 규칙 4의 연장).
 5. **중복은 추가가 아니라 갱신.** 같은 항목이 이미 있으면 새 줄을 늘리지 말고 기존 줄을 갱신한다.
 6. **삭제는 stale·잘못된·시크릿이 든 항목만.** 더 이상 유효하지 않거나 틀린 항목(예: 바뀐 빌드 명령의 옛 줄), 실수로 들어간 실제 값(연결문자열·비밀번호 등)을 제거할 때만 삭제한다. **멀쩡한 정보를 임의로 지우지 않는다** — 무엇을 왜 지우는지 승인받는다(규칙 1).
 7. **AGENTS.md가 없으면** 먼저 `pjc:bootstrap-agents-md`로 생성을 안내한다(이 스킬은 갱신 전담 — 생성은 bootstrap 몫).
@@ -40,6 +41,7 @@ bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)�
 | 테스트·검증 명령 | `## Build & Test` | 기존 섹션 보강 |
 | DB 접근 방법 | `## 데이터 접근` | 없으면 `## Build & Test` **뒤에** 신설 |
 | 파일·산출물 관리 | `## 산출물·파일 관리` | 없으면 `## Repository Structure` **뒤에** 신설 |
+| 테스트 비대상 계층·의도된 제약 | `## Conventions` | 테스트를 **의도적으로 쓰지 않는 계층**(예: ViewModel·UI 바인딩 — 수동 확인으로 대체), 의도된 UX·기능 제약 등 **"빠뜨린 것이 아니라 그렇게 정한 것"**. 기록해두지 않으면 리뷰어가 "테스트 누락"으로 오판한다(spec-compliance-reviewer 테스트 예외가 이 표기를 근거로 삼는다) |
 
 > 섹션 신설 위치는 bootstrap 템플릿과 동일하게 맞춘다(데이터 접근=Build & Test 뒤, 산출물·파일 관리=Repository Structure 뒤). 섹션이 이미 있으면 그 안에 항목을 추가/갱신한다.
 
