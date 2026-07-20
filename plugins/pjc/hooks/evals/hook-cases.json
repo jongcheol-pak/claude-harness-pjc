@@ -982,6 +982,55 @@
       "expect_contains": "BLOCKED"
     },
     {
+      "hook": "block-destructive.ps1",
+      "name": "백슬래시 접두 우회 \\rm 차단 (별칭 우회 관용구 — 앞 경계 미탐 보완)",
+      "command": "\\rm -rf /",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "백슬래시 접두 우회 \\Remove-Item 차단 (PowerShell 별칭 형태)",
+      "command": "\\Remove-Item -Recurse C:\\Windows",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[델타 음성] 경로 끝 \\rm 세그먼트는 재귀 플래그 없어 통과 (새 앞 경계 발화하나 오차단 아님)",
+      "command": "Get-ChildItem C:\\rm",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[델타 음성] 스트립 비대상 명령의 따옴표 안 \\rm 통과 (재귀 플래그 없음)",
+      "command": "notify-send 'a\\rm b'",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[무회귀] git rm -r --cached . 통과 유지 (git 제외 경로 — 새 경계 무영향)",
+      "command": "git rm -r --cached .",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[무회귀 — 델타 없음] 경로 중간 \\rmdir는 뒤 경계에서 미매치 (새 경계를 검증하지 않는 회귀 그물)",
+      "command": "Remove-Item -Recurse \"C:\\rmdir\\build\\*\"",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "한글 경로 stdin UTF-8 왕복 (차단 사유 에코에 한글 보존 — InputEncoding 미설정 시 ?꾨줈?앺듃로 깨져 red)",
+      "command": "rm -rf \"C:\\Users\\프로젝트\\*\"",
+      "expect_exit": 2,
+      "expect_contains": "프로젝트"
+    },
+    {
       "hook": "warn-external-ops.ps1",
       "name": "P1T5 커밋 메시지 속 git push 언급 무경고 (-m 값 스트립)",
       "command": "git commit -m \"다음 단계: git push 후 릴리즈\"",

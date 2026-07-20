@@ -16,6 +16,9 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 # 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+# stdin도 UTF-8로 디코딩 (v1.129.0) — Claude Code는 UTF-8 바이트로 보내는데 콘솔 기본 코드페이지(cp949)로
+#   읽으면 한글 경로·명령이 깨져 cwd 판정·제안 대상 명령 인식이 어긋난다. 실패해도 종전 동작 유지.
+try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # ---- 홈 경로 (Claude Code 홈과 정합 — Windows는 USERPROFILE, 없으면 $HOME) ----
 $base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
