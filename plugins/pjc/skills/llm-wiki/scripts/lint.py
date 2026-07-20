@@ -766,11 +766,14 @@ def main():
             feat_files.add(r[:-3])
 
     # index.md: 분할 신호(줄수/행수) + sub-index 목록 정합 + 기능별 인덱스 ↔ feature 동기화
-    idx = os.path.join(vault, "index.md")
     sub_files = sorted(glob.glob(os.path.join(glob.escape(vault), "index-*.md")))  # L-3: vault만 escape('index-*'의 *는 패턴 유지)
-    if os.path.isfile(idx):
-        with open(idx, encoding="utf-8-sig") as fh:  # M-2/BOM 정합: BOM 흡수(text-mode라 개행은 자동 정규화)
-            itext = fh.read()
+    # M-2 격리 복원: 메인 루프가 읽어 둔 본문을 재사용한다(두 번 읽지 않는다) — 종전에는 여기서
+    #   index.md를 예외 처리 없이 다시 열어, CP949로 저장된 index.md 하나가 lint 전체를 traceback으로
+    #   죽였다(파일별 격리가 정작 가장 중요한 파일에서만 무력화돼 있었다). pages 멤버십으로 판정하면
+    #   읽기 실패 파일은 메인 루프가 낸 ERR만 남고 인덱스 검사는 조용히 건너뛴다(중복 ERR 없음).
+    #   BOM은 utf-8-sig로 이미 흡수됐고 개행도 메인 루프가 LF로 정규화했다(534-544행).
+    if "index.md" in pages:
+        itext = pages["index.md"][2]
 
         # 미해결 질문 인덱스 동기 (wiki-schema §7-23): open question ↔ index.md '## 미해결 질문'
         #  (비분할 섹션 — 본체 기준 §4, 아래 sub-index 합산 '전'에 검사해야 하므로 이 위치).

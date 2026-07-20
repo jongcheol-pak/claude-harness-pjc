@@ -90,6 +90,20 @@ def prepare_bad_encoding_vault(fixture_dir):
     return tmp, dest
 
 
+def prepare_bad_index_vault(fixture_dir):
+    """fixture를 임시 폴더로 복사하고 **index.md 자체**를 CP949로 덮어쓴다.
+    일반 페이지를 깨뜨리는 bad_encoding과 달리 index.md는 메인 루프 밖에서 한 번 더 읽히던
+    경로라, 예외 처리가 없던 시절엔 이 파일 하나로 lint 전체가 traceback으로 죽었다.
+    반환: (정리용 임시 루트, lint에 넘길 vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-badidx-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    bad = os.path.join(dest, "index.md")
+    with open(bad, "wb") as fh:
+        fh.write("# 인덱스\n\n한글 CP949 본문".encode("cp949"))
+    return tmp, dest
+
+
 def prepare_git_repo_vault(fixture_dir, synced_mode):
     """fixture를 임시 폴더로 복사하고, 그 옆에 **커밋 3개짜리 임시 git 레포**를 만들어
     허브의 `__REPO_ROOT__`·`__SYNCED_SHA__`를 실제 값으로 치환한다(§7-26 골든).
@@ -187,6 +201,8 @@ def check_case(case):
         tmp, vault = prepare_placeholder_vault(vault)
     elif case.get("bad_encoding"):
         tmp, vault = prepare_bad_encoding_vault(vault)
+    elif case.get("bad_index"):
+        tmp, vault = prepare_bad_index_vault(vault)
     out, rc, err = run_lint(vault)
     if tmp:
         shutil.rmtree(tmp, ignore_errors=True)

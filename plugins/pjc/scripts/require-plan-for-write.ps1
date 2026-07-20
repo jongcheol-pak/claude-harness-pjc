@@ -13,6 +13,9 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 # 한글 차단 사유가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+# stdin도 UTF-8로 디코딩 (v1.129.0) — Claude Code는 UTF-8 바이트로 보내는데 콘솔 기본 코드페이지(cp949)로
+#   읽으면 한글 경로가 깨져 $targetPath·Find-PlanUpwards 판정이 어긋난다(정상 작업 오차단 위험).
+try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # stdin JSON 읽기
 $inputJson = [Console]::In.ReadToEnd()

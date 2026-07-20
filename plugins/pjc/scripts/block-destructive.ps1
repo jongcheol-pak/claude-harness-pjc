@@ -25,6 +25,9 @@ $ErrorActionPreference = 'Stop'
 
 # 한글 차단 사유가 cp949 콘솔에서 깨지지 않도록 stderr 출력을 UTF-8로 (Claude Code는 hook 출력을 UTF-8로 디코딩)
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+# stdin도 UTF-8로 디코딩 (v1.129.0) — Claude Code는 UTF-8 바이트로 보내는데 콘솔 기본 코드페이지(cp949)로
+#   읽으면 한글 경로·명령이 깨진다(경로 판정·차단 사유 에코·이벤트 로그가 함께 손상). 실패해도 종전 동작 유지.
+try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # stdin으로 JSON 입력 수신
 $inputJson = [Console]::In.ReadToEnd()
@@ -376,7 +379,21 @@ foreach ($sub in $subs) {
     #   않는 명령의 따옴표 인자에 rm+위험대상 문자열이 들어가도 차단될 수 있다(예: notify-send 'rm -rf /').
     #   (echo/printf/grep/git은 190~196행에서 인자를 스트립하므로 echo "rm -rf /"는 오차단 안 됨.)
     #   이는 과소 차단보다 과잉 차단을 택하는 안전 hook 설계 방향과 일치 — 오차단 시 사용자가 직접 실행하면 됨.
-    $delMatches = [regex]::Matches($norm, '(?i)(^|\s|["''])(' + $delCmdAlt + ')(\s|$)')
+    #
+    # 앞 경계에 \ 포함 (v1.129.0) — 위 따옴표 확장과 같은 성격의 연장이다.
+    #   Split-TopLevel은 인용 밖 백슬래시를 '다음 문자와 함께 리터럴로 보존'한다(인용 밖 분기 — \" 가 인용을
+    #   열어 구분자 분리를 깨뜨리던 미탐을 막기 위한 의도된 동작). 그 결과 '\rm -rf /'가 \+rm 으로 남아
+    #   rm 앞 글자가 \ 가 되고, (^|\s|["']) 만으로는 앞 경계가 성립하지 않아 통째로 통과했다(실측 exit 0).
+    #   \rm 은 bash에서 별칭·함수를 우회해 /bin/rm 을 직접 부르는 표준 관용구라, 우회 시도로 가장 자연스러운
+    #   형태가 정확히 뚫려 있던 셈이다(env·command·busybox 접두는 이미 차단돼 이 케이스만 비대칭이었다).
+    #   Split 쪽을 고치면 위 \" 미탐이 되살아나므로 경계 쪽에서 닫는다.
+    #   오차단 표면이 좁은 이유: 새 경계가 발화하려면 \<삭제토큰> 뒤가 공백·끝이어야 하는데(뒤 경계
+    #   (\s|$)는 무변경), 그 형태에서 재귀 플래그와 위험대상까지 동시에 갖춘 정상 명령은 구성하기 어렵다
+    #   — 후보 10종 실측에서 오차단 조합 0건. 경로 중간 토큰(C:\rmdir\build)은 뒤가 \ 라 애초에 미매치.
+    #   ⚠️ 이 변경은 '오탐 수정'이 아니라 '미탐 보완'(차단 범위 확대)이라 AGENTS.md DO NOT 조항의 문면상
+    #   예외가 아니었다 — 2026-07-20 코드 검토 보고에 대한 사용자 명시 승인으로 진행했고, 그 선례를
+    #   AGENTS.md:72에 인라인 기록했다(골든 red-green + 음성 4건 오차단 0 실증 조건).
+    $delMatches = [regex]::Matches($norm, '(?i)(^|\s|["''\\])(' + $delCmdAlt + ')(\s|$)')
     foreach ($dm in $delMatches) {
         # git rm 제외 (v1.98.0): git rm은 git 인덱스가 추적해 git restore로 복구 가능한 비파괴 작업 —
         #   'git rm -r --cached .'의 rm+.(위험대상) 조합이 컴파운드 검사에 오차단되던 것을 해소.

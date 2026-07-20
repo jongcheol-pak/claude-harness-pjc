@@ -15,6 +15,9 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 # 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+# stdin도 UTF-8로 디코딩 (v1.129.0) — Claude Code는 UTF-8 바이트로 보내는데 콘솔 기본 코드페이지(cp949)로
+#   읽으면 한글 경로가 깨져 cwd 이동·git 검사 대상이 어긋난다. 실패해도 종전 동작 유지.
+try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # stdin JSON에서 cwd 추출 (Claude Code가 hook을 어디서 실행하든 프로젝트 루트로 이동)
 $inputJson = [Console]::In.ReadToEnd()

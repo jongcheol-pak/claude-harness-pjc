@@ -10,6 +10,9 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+# stdin도 UTF-8로 디코딩 (v1.129.0) — Claude Code는 UTF-8 바이트로 보내는데 콘솔 기본 코드페이지(cp949)로
+#   읽으면 한글 경로·커밋 메시지가 깨져 plan 탐색·체크박스 판정이 어긋난다. 실패해도 종전 동작 유지.
+try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 $inputJson = [Console]::In.ReadToEnd()
 try {
