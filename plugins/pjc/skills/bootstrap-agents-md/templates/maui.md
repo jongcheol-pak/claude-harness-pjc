@@ -24,9 +24,11 @@
 
 > ⚠️ MAUI 빌드는 워크로드 설치(`dotnet workload install maui`)와 플랫폼 SDK가 필요하다. 빌드 명령·TFM은 프로젝트 csproj의 `<TargetFrameworks>`를 확인해 채운다 (위 값은 추측 — 실제 값으로 교체).
 
-## UI/UX — .NET MAUI 표준 (미제공 시 공식 가이드 준수)
+## UI/UX — 시안 우선, 미제공 시 .NET MAUI 표준
 
-사용자가 UI/UX 시안을 제공하지 않거나 별도 디자인 요청이 없으면 **.NET MAUI 공식 컨트롤·스타일대로** 진행한다 (자체 디자인 임의 창작 금지).
+**사용자가 UI/UX 시안(디자인 HTML·이미지·Figma 등)을 제공하면 시안이 기준이다.** 아래 표준 컨트롤·스타일 규칙은 시안이 정하지 않은 부분(테마·공유 스타일·접근성 등)에만 적용한다. **MAUI에 비슷한 표준 컨트롤이 있다는 이유로 시안의 레이아웃·구성 요소를 대체하지 않는다.**
+
+시안을 제공하지 않거나 별도 디자인 요청이 없으면 **.NET MAUI 공식 컨트롤·스타일대로** 진행한다 (자체 디자인 임의 창작 금지).
 
 ### 1. 페이지는 ContentPage
 ```xml
@@ -67,7 +69,7 @@ public static MauiApp CreateMauiApp()
 - Page는 생성자 주입으로 ViewModel을 받는다 (`App.GetService` 같은 서비스 로케이터 지양).
 
 ### 4. 디자인 규칙
-- **자체 디자인 만들지 않는다.** MAUI 표준 컨트롤·`Resources/Styles/`의 공유 스타일을 우선 사용.
+- **자체 디자인 만들지 않는다.** (시안 미제공 시) MAUI 표준 컨트롤·`Resources/Styles/`의 공유 스타일을 우선 사용.
 - **하드코딩 금지.** 색·치수·문구는 `Resources/Styles/`의 `ResourceDictionary`·`StaticResource`로 분리. 다국어는 `.resx` + `IStringLocalizer` 또는 프로젝트 패턴.
 - **테마(Light/Dark)는 `AppThemeBinding`으로.** 색을 직접 박지 말고 `{AppThemeBinding Light=..., Dark=...}`.
 - 플랫폼별 차이는 `OnPlatform`/`OnIdiom` 또는 `Platforms/` 폴더의 핸들러로.
