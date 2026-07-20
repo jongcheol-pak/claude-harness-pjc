@@ -438,6 +438,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출. **제시 전
 - [ ] 각 task에 Edge Cases 명시 (Type 게이트 6.5-A — Type A skip, B 빈/null·경계값, C/D 해당 카테고리)
 - [ ] 각 task에 Halt Forecast 명시 (Type 게이트 6.5-B — Type C/D 필수, A/B는 파괴적·의존성·외부 유발 시만)
 - [ ] 자율 실행 준비도 자문 3개 질문 모두 "예" (Type 게이트 6.5-C — Type B 이상; Type A는 자명 충족)
+- [ ] **시각 충실도 작업이면 `## 시각 요소 분해` 섹션 작성됨** (Step 2.5 발동 조건 ①+② 충족 시 — 이 표가 없으면 implement-task V-9·F-8·spec-compliance 항목 I이 모두 미발동해 시각 검증이 사라진다. 기준 디자인 미확보로 아직 못 만들었으면 Step 2.5의 확보 절차부터. 비시각 plan은 해당 없음)
 
 ## 참조 문서
 
