@@ -12,6 +12,7 @@
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
       / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION]/[PROJECT-FACT]/[K-MISS]/[SYMPTOM] 태그별, §7-25)
+        + 형식 위반(WARN — 태그는 있으나 날짜 선두가 아니라 집계에서 누락되는 줄, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
@@ -922,13 +923,16 @@ def main():
     #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
     if "pending.md" in pages:
         pend_text = pages["pending.md"][2]
+        # 태그 목록은 아래 잔량 집계와 형식 위반 검사가 공유한다 — 한쪽만 태그를 추가하면
+        #  새 태그가 집계되지 않거나 위반 검출에서 빠져 조용히 사각지대가 생긴다(단일 출처).
+        pend_tags = (("K-DRIFT", "K-DRIFT {n}건"),
+                     ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)"),
+                     ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비)"),
+                     ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — 허브 '작업 규약·주의사항' 반영 대상, 게이트는 DECISION 동형)"),
+                     ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)"),
+                     ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)"))
         parts = []
-        for tag, label in (("K-DRIFT", "K-DRIFT {n}건"),
-                           ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)"),
-                           ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비)"),
-                           ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — 허브 '작업 규약·주의사항' 반영 대상, 게이트는 DECISION 동형)"),
-                           ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)"),
-                           ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)")):
+        for tag, label in pend_tags:
             n = sum(1 for line in pend_text.splitlines()
                     if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[" + tag + r"\]", line))
             if n:
@@ -936,6 +940,20 @@ def main():
         if parts:
             infos.append("pending.md 미처리 잔량 — " + " / ".join(parts)
                          + " — ingest(절차 B-1 0) 또는 lint(F-0 보고 후 F-2 승인 시)에서 소비")
+
+        # 형식 위반 검출 (§7-25): 위 집계는 날짜 선두를 요구하므로, 태그는 있으나 그 형식이
+        #  아닌 줄은 **어느 태그에도 안 잡히고 버려진다** — 큐가 쌓여 있어도 잔량 0으로 보고돼
+        #  "0건"과 "형식이 틀려 못 셈"이 구분되지 않는다(실측: 17줄이 0건으로 집계된 사례).
+        #  집계 숫자의 신뢰성 문제라 INFO가 아니라 WARN이다.
+        pend_tag_rx = re.compile(r"\[(" + "|".join(t for t, _ in pend_tags) + r")\]")
+        pend_ok_rx = re.compile(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[(" + "|".join(t for t, _ in pend_tags) + r")\]")
+        malformed = sum(1 for line in pend_text.splitlines()
+                        if re.match(r"^\s*-\s", line)          # 큐 항목은 불릿 — 헤더·산문 제외
+                        and pend_tag_rx.search(line)           # 태그가 있는데
+                        and not pend_ok_rx.match(line))        # 날짜 선두 형식이 아님
+        if malformed:
+            warn(f"pending.md 형식 위반 {malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
+                 f"아니라 위 잔량 집계에서 누락됨(K 5 큐 형식 규약, 정규화 필요)", "pending.md")
 
     # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
     #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시
