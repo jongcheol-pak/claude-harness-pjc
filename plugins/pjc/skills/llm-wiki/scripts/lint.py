@@ -948,7 +948,10 @@ def main():
         pend_tag_rx = re.compile(r"\[(" + "|".join(t for t, _ in pend_tags) + r")\]")
         pend_ok_rx = re.compile(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[(" + "|".join(t for t, _ in pend_tags) + r")\]")
         malformed = sum(1 for line in pend_text.splitlines()
-                        if re.match(r"^\s*-\s", line)          # 큐 항목은 불릿 — 헤더·산문 제외
+                        if re.match(r"^\s*-\s*", line)         # 큐 항목은 불릿 — 헤더·산문 제외
+                                                               #  (공백 폭은 pend_ok_rx와 동일하게 \s* — 더 엄격하면
+                                                               #   '-[TAG]'처럼 대시 뒤 공백 없는 줄이 정상에도 위반에도
+                                                               #   안 잡혀 이 검사가 없애려던 사각지대가 그대로 남는다)
                         and pend_tag_rx.search(line)           # 태그가 있는데
                         and not pend_ok_rx.match(line))        # 날짜 선두 형식이 아님
         if malformed:
