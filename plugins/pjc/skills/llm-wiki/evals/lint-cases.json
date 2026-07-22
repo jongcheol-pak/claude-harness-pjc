@@ -194,9 +194,23 @@
       ],
       "expect_absent": [
         "깨진 링크",
-        "경로 없는 wikilink"
+        "경로 없는 wikilink",
+        "형식 위반"
       ],
       "rationale": "§7-25 pending 잔량 집계 INFO — [PROJECT-FACT](v1.102.0 T3)·[K-MISS](v1.106.0 T1)·[SYMPTOM](증상별 인덱스 T2) 태그 합류 실증 + 기존 태그(DECISION) 집계 무회귀. **추가(§7-1 pending 제외, v1.116.0)**: [SYMPTOM] 행의 대응 페이지가 부재 대상 wikilink여도 깨진 링크 ERR·경로없음 WARN이 나지 않아야 함 — 루트 pending.md는 소비 대기 큐라 링크 규약 대상이 아니다(제외가 빠지면 큐 항목이 lint를 exit 1로 죽인다)"
+    },
+    {
+      "fixture": "pending-malformed",
+      "expect_keywords": [
+        "pending.md 형식 위반 2건",
+        "pending.md 미처리 잔량",
+        "K-MISS 1건"
+      ],
+      "expect_absent": [
+        "DECISION 1건",
+        "PROJECT-FACT 1건"
+      ],
+      "rationale": "§7-25 형식 위반 WARN — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두가 아닌 줄이 잔량 집계에서 조용히 누락되던 사각지대를 검출한다(실측: 실 vault 큐 17줄이 0건으로 집계돼 20건 잔량 경고가 통째로 침묵). 픽스처는 위반 2종을 담는다 — ⓐ 날짜가 끝 괄호로 밀린 줄 ⓑ 대시 뒤 공백 없는 줄(불릿 판별을 pend_ok_rx보다 엄격하게 두면 정상에도 위반에도 안 잡히는 2차 사각지대가 생겨, 두 정규식의 공백 폭을 맞춘 것을 고정). 정상 줄 1건을 섞어 **위반 WARN과 잔량 INFO가 병존**함을 검증하고, expect_absent로 위반 줄이 태그별 집계에 잘못 포함되지 않음(과다 집계 0)을 못 박는다. 짝: 정상 픽스처 pending-backlog의 expect_absent '형식 위반'이 오탐 0을 고정한다"
     },
     {
       "fixture": "guide-kind-missing",
