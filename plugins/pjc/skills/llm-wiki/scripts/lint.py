@@ -19,7 +19,8 @@
       / index.md 부재(ERR — 인덱스 기반 검사 불능 신호)
       / 위키 뒤처짐(INFO — 허브 synced_commit 이후 레포에 쌓인 커밋 수, §7-26. fail-open)
       / (미검증)·미해결 question 집계(INFO)
-      / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외).
+      / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
+      / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트 제외).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 자동 백업 — schema §7 서두 정본).
 범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
@@ -52,6 +53,25 @@ DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
 #  경계를 \b로 하지 않는 이유: 한글도 \w라 "v1.2.3에서"(실vault 최빈 형태)의 꼬리 경계가 실패한다 —
 #  영숫자·언더스코어·점만 명시 배제해 한글 인접은 매치하고 식별자 일부(curve1.2.3)·4필드는 배제.
 RELEASE_MARKER_RX = re.compile(r"(?<![0-9A-Za-z_.])v\d+\.\d+\.\d+(?![0-9.])")
+
+# 장식 이모지 (§7-29 — 위키 본문 평문 원칙). Unicode Emoji_Presentation=Yes 코드포인트 + VS16(U+FE0F).
+#  이 속성은 "기본이 컬러 이모지 표현인 문자"만 포함해, 화살표(→ U+2192)·흑백 기호(⚠ U+26A0·★ U+2605·
+#  ✔ U+2714)는 자동 배제된다(모두 text-default) — 산문에서 기능적으로 쓰이는 기호를 오탐하지 않기 위함.
+#  ✅(U+2705)는 Emoji_Presentation=Yes라 검출, ✔(U+2714)는 No라 비검출(경계 예). VS16은 text-default
+#  기호를 이모지로 강제 표현하는 신호라(예: ✔️=U+2714+FE0F) 존재만으로 장식 의도로 본다.
+#  SMP(U+1F300–1FAFF 등)는 전부 이모지라 범위로, BMP는 Emoji_Presentation 코드포인트만 명시 열거한다.
+EMOJI_RX = re.compile(
+    "["
+    "\U0001F300-\U0001FAFF"   # 그림문자·이모티콘·교통·기호(🎯🚀😀🔴🟡 등)
+    "\U0001F1E6-\U0001F1FF"   # 지역 표시자(국기)
+    "\U0001F000-\U0001F0FF"   # 마작·도미노·카드(🀄🃏)
+    "⌚⌛⏩-⏬⏰⏳◽◾☔☕"
+    "♈-♓♿⚓⚡⚪⚫⚽⚾⛄⛅"
+    "⛎⛔⛪⛲⛳⛵⛺⛽✅✊✋"
+    "✨❌❎❓-❕❗➕-➗➰➿"
+    "⬛⬜⭐⭕"
+    "️"                  # VS16(이모지 표현 강제) — text-default 기호를 이모지화한 신호
+    "]")
 
 # decisions '## 아카이브' 포인터 패턴 — §7-24 판정(main)과 --fix(apply_fixes)가 같은 대상을 보도록
 #  단일 출처로 둔다(한쪽만 고치면 lint 판정과 fix 대상이 조용히 어긋나는 드리프트 방지 — T2 리뷰 m1).
@@ -761,6 +781,19 @@ def main():
                 if rm_hits:
                     warn(f"릴리즈 마커 {rm_hits}건(§5 changelog 미러링 금지): {r} — "
                          f"버전 서사는 레포 이력에 위임하고 본문은 현재형·이유 중심으로 (schema §7-28)", r)
+
+        # 장식 이모지 스캔 (§7-29) — 20_/30_/40_ 콘텐츠 페이지 산문에 Emoji_Presentation 이모지가 섞이면 WARN.
+        #  위키 본문은 평문이 원칙(장식 이모지는 정보가 아니라 소음). 코드펜스·인라인코드는 strip_code로 제외
+        #  (코드 스니펫의 이모지는 정당할 수 있음), lint-* 리포트는 자체 심각도 이모지(🔴🟡🔵)를 담으므로
+        #  제외(§7-12·§7-28의 lint-* 제외와 동일 계열). 화살표(→)·흑백 기호(⚠★✔)는 EMOJI_RX 정의상 비검출.
+        if r.startswith(("20_", "30_", "40_")) and not is_lint_report(r):
+            emo_body = strip_code(re.sub(r"^---\n.*?\n---", "", text, count=1, flags=re.S))
+            emo_fm_lines = text.count("\n") - emo_body.count("\n")  # 본문 시작 줄 오프셋(줄 번호 보고용, §7-22 방식)
+            for eli, eline in enumerate(emo_body.splitlines(), start=emo_fm_lines + 1):
+                m3 = EMOJI_RX.search(eline)
+                if m3:  # 줄당 첫 매치만 — 한 줄 다중 이모지 중복 경고 방지
+                    warn(f"장식 이모지 의심('{m3.group(0)}'): {r} L{eli} — "
+                         f"위키 본문은 평문 유지 (schema §7-29)", r)
 
         # 90_archive/ 하위(백업 사본 포함)는 인덱스 동기 대상이 아님 — §8 "백업 파일이 WARN을 만들지 않는다"
         if typ == "feature" and not r.startswith("90_archive/"):
