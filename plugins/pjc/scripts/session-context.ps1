@@ -1,4 +1,4 @@
-﻿# session-context.ps1 — SessionStart: 로컬 plan/notes 상태 요약 컨텍스트 주입 (비차단)
+﻿# session-context.ps1 — SessionStart: 로컬 plan/notes 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단)
 #
 # 왜: ① 글로벌 CLAUDE.md의 "작업 시작 전 plan.md·notes.md 최근 항목 확인" 규칙이 전적으로
 #   모델 자율에 맡겨져 있어 긴 세션·새 세션에서 누락되기 쉽다 — 세션 시작 시점에 기계가
@@ -8,8 +8,10 @@
 # 어떻게: stdin(SessionStart JSON)의 cwd에서 plan(루트 plan.md 우선, 없으면 docs/plans/ 최신
 #   수정 5개 중 task 체크박스가 있는 파일 — 글로벌 CLAUDE.md의 확인 순서와 동일)과 notes.md를
 #   찾아 미완료 task 수·최신 항목 날짜를 stdout으로 출력한다(SessionStart 규약: stdout=컨텍스트
-#   주입, exit 0). plan·notes 둘 다 없으면 무출력(비 pjc 프로젝트 노이즈 방지) — 단 compact
-#   리마인더는 plan 유무와 무관하게 출력한다(요약 직후엔 plan 없어도 스킬 규약 재확인 가치).
+#   주입, exit 0). 추가로 프로젝트 루트 AGENTS.md가 있으면 전문(16KB 초과 시 목차+Read 지시)을
+#   함께 주입한다 — AGENTS.md는 에이전트용 가이드라 plan/notes가 없어도 존재하면 주입한다.
+#   plan·notes·AGENTS.md가 모두 없으면 무출력(비 pjc 프로젝트 노이즈 방지) — 단 compact
+#   리마인더는 유무와 무관하게 출력한다(요약 직후엔 plan 없어도 스킬 규약 재확인 가치).
 # 안전: 정보 주입 hook(차단·경고 아님 — hook-event-log 적재 대상 아님). 모든 실패 경로는
 #   조용히 exit 0 (fail-open — 세션 시작을 절대 막지 않는다). warn-version-drift와 동일 골격.
 
@@ -91,6 +93,47 @@ try {
                 $m = [regex]::Match($notesText, '(?m)^- (\d{4}-\d{2}-\d{2})')
                 if ($m.Success) {
                     $lines.Add("[pjc 세션 컨텍스트] notes.md 최근 항목: $($m.Groups[1].Value)")
+                }
+            }
+        }
+
+        # ---- AGENTS.md 전문 주입 (가이드 판단이 "읽혔는지"에 좌우되지 않게) ----
+        # 왜: 세션에서 AGENTS.md 앞부분만 읽고 "관련 내용 없음"으로 단정하는 오답을 구조적으로 없앤다 —
+        #   전문이 컨텍스트에 있으면 "부분만 읽는" 상황 자체가 성립하지 않는다. plan/notes와 달리
+        #   AGENTS.md는 에이전트에게 읽히려고 두는 파일이라 plan/notes가 없어도 존재하면 주입한다.
+        #   16KB 초과 시에는 전문 대신 섹션 목차 + 전문 Read 지시로 폴백(주입 비용 상방 고정).
+        # 크기 판정은 읽기 전 FileInfo 1회로 확정한다 — 읽은 뒤 재조회하면 그 사이 삭제·잠금 시
+        #   null 크기가 상한 비교(-le)를 조용히 통과하고, 초대형 파일은 읽기 자체가 hook 타임아웃(10초)을
+        #   위협해 이미 모은 plan/notes 라인까지 통째로 유실시킨다.
+        $agentsMaxBytes = 16384      # 전문 주입 상한 — 하니스 생성 템플릿·이 repo가 모두 전문 주입 범위에 들어가는 값 (v1.135.0 기준 실측 최대 약 12KB)
+        $agentsTocMaxBytes = 1048576 # 목차 폴백 상한(1MB) — 초과 시 읽기·목차 스캔 자체를 생략 (비정상 대형 파일 방어)
+        $agentsPath = Join-Path $cwd 'AGENTS.md'
+        $agentsInfo = Get-Item -LiteralPath $agentsPath -ErrorAction SilentlyContinue
+        # 빈 파일(0B)은 조용히 스킵 (내용 없는 --- 블록 방지)
+        if ($agentsInfo -and -not $agentsInfo.PSIsContainer -and $agentsInfo.Length -gt 0) {
+            $agentsBytes = [long]$agentsInfo.Length
+            if ($agentsBytes -gt $agentsTocMaxBytes) {
+                $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(16KB) 초과로 전문 미주입(자동 로드되지 않습니다). 참조 시 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요.")
+            } else {
+                $agentsText = $null
+                try { $agentsText = Get-Content -LiteralPath $agentsPath -Raw -Encoding UTF8 } catch {}
+                # 공백뿐인 파일·읽기 실패는 조용히 스킵
+                if (-not [string]::IsNullOrWhiteSpace($agentsText)) {
+                    if ($agentsText.IndexOf([char]0xFFFD) -ge 0) {
+                        # U+FFFD 검출 = UTF-8 디코딩 실패(CP949 등 다른 인코딩) — 깨진 전문을 "정본"으로
+                        #   주입하면 오히려 원문 Read를 막으므로, 주입 대신 직접 Read를 안내한다
+                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 존재 — UTF-8 디코딩 실패(다른 인코딩으로 보임)로 전문 미주입. 참조 시 파일을 직접 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요.")
+                    } elseif ($agentsBytes -le $agentsMaxBytes) {
+                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) 전문 — 이 repo 프로젝트 가이드의 정본입니다(재Read 불필요). AGENTS.md에 관한 판단은 아래 전문을 근거로 하세요 — '관련 내용이 없다'고 말하려면 아래 전문 전체를 근거로만 단정하고, 앞부분만 보고 단정하지 마세요.`n---`n${agentsText}`n---")
+                    } else {
+                        # 폴백: 전문 대신 헤딩 목차(§1~3단계) + Read 지시. 폴백 전환 사실을 명시(무신호 폴백 방지)
+                        # 0열 코드 펜스(```) 블록을 먼저 제거해 펜스 안의 '# 주석' 줄이 섹션으로 오인되지 않게 한다
+                        #   (닫히지 않은 펜스는 제거되지 않고 종전 동작 — fail-open)
+                        $tocSource = [regex]::Replace($agentsText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
+                        $agentsHeadings = @([regex]::Matches($tocSource, '(?m)^#{1,3} .+') | ForEach-Object { ($_.Value -replace '^#{1,3}\s*', '').Trim() })
+                        $agentsToc = if ($agentsHeadings.Count -gt 0) { "섹션: " + ($agentsHeadings -join ' · ') + " " } else { "" }
+                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(16KB) 초과로 전문 미주입(자동 로드되지 않습니다). ${agentsToc}참조 시 offset/limit 없이 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요.")
+                    }
                 }
             }
         }

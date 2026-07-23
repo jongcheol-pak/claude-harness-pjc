@@ -220,7 +220,8 @@ function Invoke-WarnCommitSecrets {
         #   `git add -A && git commit`을 한 호출로 보내면 이 시점 인덱스가 비어 --cached가 0줄이고,
         #   untracked 신규 파일은 git diff HEAD에도 없어 자격증명이 그대로 통과했다.
         #   사고의 실제 경로(신규 프로젝트의 새 README)이자 자율 루프의 표준 커밋 형태다.
-        # → 명령에 git add가 있으면 그 대상의 '워킹트리 내용'을 미리 스캔한다.
+        # → 명령에 git add가 있으면 그 대상을 미리 스캔한다 — untracked 파일은 워킹트리 전체 내용,
+        #   추적 파일은 diff HEAD 추가 라인만(커밋으로 이력에 새로 들어가는 것은 추가 라인뿐).
         $addMatch = [regex]::Match($cmd, '(?i)git\s+((-c|-C)\s+\S+\s+)*add\s+([^&;|\r\n]*)')
         if ($addMatch.Success) {
             $addArgs = $addMatch.Groups[3].Value.Trim()
@@ -238,7 +239,18 @@ function Invoke-WarnCommitSecrets {
                 $rawTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
                     ForEach-Object { $_.Trim('"', "'") })
                 foreach ($rt in $rawTargets) {
-                    if (Test-Path -LiteralPath $rt -PathType Leaf) { $addTargets += $rt; continue }
+                    if (Test-Path -LiteralPath $rt -PathType Leaf) {
+                        # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용(시크릿 픽스처·
+                        #   탐지 규칙 정의)의 재신고는 보호 효과 0에 차단 비용만 낳는다. 전체 스캔 특례는
+                        #   untracked(ignored 강제 add 포함) 전용으로 유지 — v1.119.0 신규 파일 사고 경로.
+                        if (@(& git ls-files -- $rt 2>$null).Count -gt 0) {
+                            $addedLines += @(@(& git diff HEAD --unified=0 -- $rt 2>$null) |
+                                Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+                        } else {
+                            $addTargets += $rt
+                        }
+                        continue
+                    }
                     # 디렉터리·글롭·미존재 경로 → git이 해석하게 맡긴다
                     $addTargets += @(& git ls-files --others --exclude-standard -- $rt 2>$null)
                     $addedLines += @(@(& git diff HEAD --unified=0 -- $rt 2>$null) |
