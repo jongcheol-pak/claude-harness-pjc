@@ -51,6 +51,7 @@
 - [2026-07-20] **`항목 I` 레이블이 두 리뷰어에 중복** — spec-compliance의 `I. 시각 요소 분해`와 code-quality의 기존 `I. UI 문구 사용자 친화성`. LLM 리뷰어는 자기 파일만 읽어 동작 영향 없으나 `implement-task/SKILL.md`의 두 참조가 10줄 간격(304·314행)이라 사람이 오독할 여지. 314행에 `(code-quality-reviewer)` 소속 명시 검토. (출처: v1.127.0 T2 quality m1)
 - [2026-07-19] **가이드/레시피 섹션 미등록·리스트 불릿 등록 가이드의 기계 검출(§7-27 확장) 검토** — §7-27은 표 행(`| [[...]]`)만 스캔해 리스트 불릿 등록·섹션 미등록 가이드는 병기 검사 사각(현재는 고아 검사만 커버, v1.125.0 fixture 1차 FAIL로 실증). 규정(§2.6·I-2b "표 행 형식 등록")으로 절차 방어는 완료 — 기계 방어 확장은 다음 lint 정비 때 (출처: v1.125.0 T2)
 - [2026-07-23] **AGENTS.md 주입 스냅샷 정합** — 주입분은 세션 시작 시점 스냅샷이라 세션 중 AGENTS.md를 편집하면 컨텍스트의 전문이 구버전으로 남음. 실제 혼동이 관측되면 post-write-checks에 "AGENTS.md 편집됨 — 주입 스냅샷은 구버전" 경고 추가 검토 (출처: v1.135.0 plan Deferred)
+- [2026-07-23] **session-context.ps1 안전 읽기 패턴 공통화 검토** — `Test-Path` + `try Get-Content -Raw` 패턴이 AGENTS.md 주입 추가로 3곳(plan·notes·AGENTS) 도달, 공통화 문턱(3회) 충족 — 다음 session-context 정비 때 `Read-TextFileSafe` 로컬 헬퍼 추출 검토 (출처: v1.135.0 T1 quality SUGGEST)
 
 ## 종결
 
