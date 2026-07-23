@@ -114,10 +114,12 @@ function Assert-Case {
     param(
         [string]$Name, [hashtable]$R,
         [int]$ExpectExit = 0, [string]$ExpectContains = '', [bool]$ExpectSilent = $false,
-        [bool]$PendingFix = $false
+        [string]$ExpectNotContains = '', [bool]$PendingFix = $false
     )
     $green = ($R.code -eq $ExpectExit)
     if ($green -and $ExpectContains) { $green = ($R.out -match [regex]::Escape($ExpectContains)) }
+    # ExpectContains와 대칭 — 지정 시 해당 문자열이 출력에 '없어야' green (기본값 ''이면 미발동, 기존 호출 무영향)
+    if ($green -and $ExpectNotContains) { $green = -not ($R.out -match [regex]::Escape($ExpectNotContains)) }
     if ($green -and $ExpectSilent)   { $green = [string]::IsNullOrWhiteSpace($R.out) }
 
     if ($PendingFix) {
@@ -133,6 +135,7 @@ function Assert-Case {
     } else {
         $detail = "exit $($R.code) (기대 $ExpectExit)"
         if ($ExpectContains) { $detail += ", 기대 키워드 '$ExpectContains'" }
+        if ($ExpectNotContains) { $detail += ", 미포함 기대 '$ExpectNotContains'" }
         if ($ExpectSilent)   { $detail += ", 무출력 기대" }
         $head = ($R.out -split "`r?`n" | Select-Object -First 2) -join ' / '
         $script:results.Add(@{ ok = $false; line = "[FAIL] $Name — $detail | 출력: $head" })
@@ -1254,6 +1257,30 @@ if (Test-HookSelected @('session-context')) {
     # SC6: 빈 stdin → 무출력 exit 0 (fail-open)
     $r = Invoke-Hook 'session-context.ps1' ''
     Assert-Case -Name "session-context: 빈 stdin 무출력 fail-open (SC6)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # SC7~SC9: AGENTS.md 전문 주입 (v1.135.0) — 전용 픽스처(기존 $scProj 오염 방지, 4-C)
+    $scAgents = Join-Path $work 'sc-agents'; New-Item -ItemType Directory $scAgents -Force | Out-Null
+    @(
+        '---', 'type: x', '---',
+        '# Agent Guide',
+        'SC_AGENTS_UNIQUE_MARKER 이 문자열은 AGENTS.md 전문에만 있다',
+        '## DO NOT', '금지 항목'
+    ) | Set-Content -Encoding UTF8 (Join-Path $scAgents 'AGENTS.md')
+    @('# Plan', '- [ ] T1: todo') | Set-Content -Encoding UTF8 (Join-Path $scAgents 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scAgents } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: AGENTS.md 전문 주입 (SC7)" -R $r -ExpectExit 0 -ExpectContains 'SC_AGENTS_UNIQUE_MARKER'
+    Assert-Case -Name "session-context: AGENTS.md 근거 요구 문구 (SC8)" -R $r -ExpectExit 0 -ExpectContains '단정'
+
+    # SC9: 16KB 초과 AGENTS.md → 전문 대신 섹션 목차 폴백 (헤딩 포함, 바이트로 상한 초과)
+    $scBig = Join-Path $work 'sc-agents-big'; New-Item -ItemType Directory $scBig -Force | Out-Null
+    (@('---', 'type: x', '---', '# Big Guide', '## Section One') + (1..2500 | ForEach-Object { '가나다라마 반복 채우기 줄' }) + @('### Sub Section', '끝')) | Set-Content -Encoding UTF8 (Join-Path $scBig 'AGENTS.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scBig } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 16KB 초과 AGENTS.md 목차 폴백 (SC9)" -R $r -ExpectExit 0 -ExpectContains '섹션:'
+
+    # SC10: AGENTS.md 없는 기존 픽스처($scProj: plan+notes만)는 AGENTS 문자열 무오염 — T1 acceptance ⓑ의 영구 그물.
+    #   SC3(완전 빈 폴더)은 plan/notes는 있고 AGENTS만 없는 이 경로를 고정 못 하므로 별도 케이스로 둔다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: AGENTS.md 없는 픽스처 무오염 (SC10)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains 'AGENTS'
 }   # ---- §13 게이트 끝 (session-context) ----
 
 # =====================================================================
