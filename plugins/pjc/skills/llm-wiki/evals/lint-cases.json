@@ -326,6 +326,18 @@
         "동기 기준점 미설정"
       ],
       "rationale": "§7-26 미설정 INFO — synced_commit이 없는 기존 허브는 유효하되(선택 필드) 기준점 부재를 INFO 1줄로 알린다. clean fixture가 ERR/WARN 0을 유지하는 것과 양립함을 함께 실증한다(신규 필드가 기존 vault를 깨지 않는다)"
+    },
+    {
+      "fixture": "emoji-bad",
+      "expect_keywords": [
+        "장식 이모지",
+        "feat-emoji"
+      ],
+      "expect_absent": [
+        "q-20260101-codefence",
+        "lint-20260101"
+      ],
+      "rationale": "§7-29 장식 이모지 검출 (WARN) — feat-emoji 산문의 🎯를 검출하는 동시에, 코드펜스에만 이모지가 있는 q-20260101-codefence(strip_code 제외)와 자체 심각도 이모지를 담은 lint-20260101(is_lint_report 제외)이 출력에 새지 않음을 함께 실증한다. 코드펜스 페이지는 index wikilink로 orphan WARN도 막아 expect_absent 우연 FAIL을 차단(리뷰 M3)."
     }
   ]
 }
