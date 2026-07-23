@@ -1039,6 +1039,32 @@ if ($gitOk) {
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 시크릿 없는 신규 파일 'add -A && commit' 통과(오차단 0)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+    # ---- [v1.136.0] 경로 나열 Leaf 분기의 추적 인지 (T1 그물) ----
+    # HEAD에 고신뢰 픽스처가 '이미' 커밋된 상태가 전제라 기존 repo($wcs·$wcsB·$wcsC — 케이스 순서
+    #   의존 공유)와 얽히지 않게 전용 repo를 쓴다(§13 SC 픽스처 분리와 동일 원칙).
+    $wcsD = Join-Path $work 'wcstracked'; New-Item -ItemType Directory $wcsD -Force | Out-Null
+    Push-Location $wcsD
+    git init -q; git config user.email t@t; git config user.name t
+    Set-Content fixtures.md $credLine          # 이력 기존 내용 — 재신고 오탐의 원천이던 형태
+    'ignored.txt' | Set-Content .gitignore
+    git add .; git commit -qm init
+    Pop-Location
+
+    # (n1) 추적 파일 + HEAD 픽스처 + 무해 추가 라인 → 무차단 (핵심 델타 — 이력 기존 내용 재신고 제거)
+    Push-Location $wcsD; git checkout -q -- .; Add-Content fixtures.md '무해한 안내 라인 추가'; Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add fixtures.md && git commit -m test' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 추적 파일 HEAD 픽스처 + 무해 추가 라인 무차단(n1, v1.136.0)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # (n2) 추적 파일 + 추가 라인에 자격증명 쌍 → 차단 유지 (신규 유입 보호 그물)
+    Push-Location $wcsD; git checkout -q -- .; Add-Content fixtures.md ('신규 유입: ' + $credLine); Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add fixtures.md && git commit -m test' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 추적 파일 추가 라인 자격증명 차단(n2, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+    # (n3) ignored 파일 강제 add + 자격증명 → 차단 유지 (D1 (a) 근거 — untracked 전체 스캔 보존)
+    Push-Location $wcsD; git checkout -q -- .; Set-Content ignored.txt $credLine; Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add -f ignored.txt && git commit -m test' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: ignored 강제 add 자격증명 차단(n3, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
     # (g) 디스패처 경유도 동일 차단 — lib 함수 공유라 두 경로가 갈리면 안 된다(D3).
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
     $r = Invoke-Hook 'pre-bash-dispatch.ps1' $wcsBJson
