@@ -47,6 +47,7 @@
 26. `[기계]` 위키 뒤처짐 — 허브 `synced_commit` ↔ 레포 HEAD 커밋 수 (INFO, fail-open)
 27. `[기계]` 가이드/레시피 섹션 가이드 행 한/영 병기 (§7-27 — recipe 제외, platform/ui-ux 가이드 alias)
 28. `[기계]` 본문 릴리즈 마커 (§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
+29. `[기계]` 장식 이모지 검출 (§7-29 — 20_/30_/40_ 산문의 Emoji_Presentation 이모지, 코드펜스·lint-* 제외)
 
 #### F-2. 결과 보고
 - 결과를 **심각도 등급**(🔴 오류 / 🟡 경고 / 🔵 정보)으로 분류해 보고.
