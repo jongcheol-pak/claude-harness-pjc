@@ -532,6 +532,38 @@ if ($gitOk) {
     @('{"type":"tool_use","name":"Bash","input":{"command":"pwsh -File ./build.ps1"}}', '{"type":"tool_use","name":"Write","input":{"file_path":"orphan.cs"}}') | Set-Content -Encoding UTF8 $trB2
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev2; transcript_path = $trB2 } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: 미커밋 .cs + Write 흔적 세션 → 미커밋 경고 유지 (P1T5 게이트 무차별 아님)" -R $r -ExpectExit 0 -ExpectContains '커밋되지 않은 코드'
+
+    # ---- [v1.138.0 T5] 세션 디듑 골든 (같은 세션·같은 프로젝트의 동일 종류 경고는 1회) ----
+    # 별도 repo(evrepo3)로 격리한다 — 마커 키가 cwd를 포함하므로 위 케이스들(evrepo·evrepo2)과 겹치지 않는다.
+    #   (이 키 설계가 기존 골든 무회귀의 조건이다: 507의 evrepo 미커밋 경고와 534의 evrepo2 미커밋 경고가 둘 다 살아야 한다.)
+    $ev3 = Join-Path $work 'evrepo3'; New-Item -ItemType Directory $ev3 -Force | Out-Null
+    Push-Location $ev3
+    git init -q; git config user.email t@t; git config user.name t
+    'x' | Set-Content a.txt; git add .; git commit -qm 'checkpoint: T1 start'
+    Pop-Location
+    $jd1 = @{ cwd = $ev3; session_id = 'sd1' } | ConvertTo-Json -Compress
+    # (D1) 같은 세션 1회차 → 경고 발생
+    $r = Invoke-Hook 'require-evidence.ps1' $jd1
+    Assert-Case -Name "evidence: 세션 디듑 1회차 → 경고 발생 (T5 red)" -R $r -ExpectExit 0 -ExpectContains 'checkpoint'
+    # (D2) 같은 세션 2회차 → 억제(무출력). T5의 핵심 동작.
+    $r = Invoke-Hook 'require-evidence.ps1' $jd1
+    Assert-Case -Name "evidence: 세션 디듑 2회차 → 억제 (T5 green)" -R $r -ExpectExit 0 -ExpectSilent $true
+    # (D3) 다른 세션 → 다시 발생(디듑 단위가 세션임을 실증 — 영구 억제가 아니다)
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev3; session_id = 'sd2' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 다른 세션 → 경고 재발생 (T5 세션 단위)" -R $r -ExpectExit 0 -ExpectContains 'checkpoint'
+    # (D4) 같은 세션·다른 종류 → 독립 발생(checkpoint는 억제된 상태에서 미커밋 경고는 살아 있어야 한다)
+    Push-Location $ev3; 'w' | Set-Content orphan.cs; Pop-Location
+    $trD = Join-Path $work 'tr-d.jsonl'
+    '{"type":"tool_use","name":"Write","input":{"file_path":"orphan.cs"}}' | Set-Content -Encoding UTF8 $trD
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev3; session_id = 'sd1'; transcript_path = $trD } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 같은 세션 다른 종류 → 독립 발생 (T5 종류별 키)" -R $r -ExpectExit 0 -ExpectContains '커밋되지 않은 코드'
+    # (D5) 마커 디렉터리 생성 불가 → fail-open(경고 유지). 상태 경로에 동명 '파일'을 두어 디렉터리 생성을 막는다.
+    $reMarkerDir = Join-Path $iso '.claude/.state/require-evidence-warn'
+    if (Test-Path -LiteralPath $reMarkerDir) { Remove-Item -Recurse -Force $reMarkerDir }
+    New-Item -ItemType File -Path $reMarkerDir -Force | Out-Null
+    $r = Invoke-Hook 'require-evidence.ps1' $jd1
+    Assert-Case -Name "evidence: 마커 생성 불가 → fail-open 경고 유지 (T5)" -R $r -ExpectExit 0 -ExpectContains 'checkpoint'
+    Remove-Item -Force -LiteralPath $reMarkerDir
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }

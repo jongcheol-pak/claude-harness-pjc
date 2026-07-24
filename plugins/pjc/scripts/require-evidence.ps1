@@ -42,6 +42,29 @@ function Write-ReEvent {
     } catch {}
 }
 
+# ---- [세션 디듑] 같은 세션·같은 프로젝트의 동일 종류 경고를 1회로 억제 (v1.138.0) ----
+# 이 hook은 '모든' 종료 시도에 발동하므로, 상태가 그대로여도 같은 경고가 매 종료마다 반복 방출됐다
+#   (실측: 'checkpoint 미완료 종료' 415건·'미커밋 코드 변경' 193건 — 읽히지 않는 반복은 신호가 아니라 소음이다).
+# 판정·문구·exit 코드는 무변경이다 — 첫 발화는 종전과 동일하고 2번째 이후 동일 경고만 조용해진다.
+# 키에 cwd를 포함하는 이유: 세션이 같아도 **프로젝트가 다르면 별개 상황**이라 각각 알려야 한다
+#   (post-write-checks가 키에 파일 경로를 넣는 것과 같은 이유).
+$reBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+$reStateDir = Join-Path $reBase '.claude/.state/require-evidence-warn'
+try { New-Item -Force -ItemType Directory -Path $reStateDir | Out-Null } catch {}
+$reSid = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
+$reCwd = if ($data.cwd) { [string]$data.cwd } else { (Get-Location).Path }
+function Test-EvWarnOnce {
+    param([string]$Kind)
+    try {
+        $md5 = [System.Security.Cryptography.MD5]::Create()
+        $hash = ($md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($reCwd + '|' + $Kind)) | ForEach-Object { $_.ToString('x2') }) -join ''
+        $mk = Join-Path $reStateDir ($reSid + '_' + $hash)
+        if (Test-Path -LiteralPath $mk) { return $false }
+        New-Item -Force -ItemType File -Path $mk | Out-Null
+        return $true
+    } catch { return $true }   # 마커 실패 시 경고 누락보다 중복이 낫다(fail-open)
+}
+
 # git 저장소인지 확인 (현재 작업 디렉터리 기준)
 $gitDir = & git rev-parse --git-dir 2>$null
 if (-not $gitDir -or $LASTEXITCODE -ne 0) {
@@ -56,7 +79,7 @@ $lastMsg = ($lastMsgRaw -join "`n")
 $firstLine = ($lastMsg -split "`n")[0].Trim()
 
 # 1. checkpoint만 있고 후속 커밋 없음
-if ($firstLine -match '^checkpoint:') {
+if ($firstLine -match '^checkpoint:' -and (Test-EvWarnOnce 'checkpoint')) {
     [Console]::Error.WriteLine("STOP WARNING: 마지막 커밋이 checkpoint입니다 - task가 완료되지 않았을 수 있습니다.")
     [Console]::Error.WriteLine("implement-task의 Phase D를 완료하지 않은 채 종료하려 합니다.")
     [Console]::Error.WriteLine("정말 종료할 거면 사용자에게 현재 상태를 보고하세요.")
@@ -71,9 +94,12 @@ $evidenceRx = '(Build[^\r\n]*\b(OK|pass|passed|성공)\b)|(Tests?\s*[:=]?\s*\d)|
 $hasEvidence = $false
 if ($firstLine -match '^T\d+:') {
     if ($lastMsg -notmatch $evidenceRx) {
-        [Console]::Error.WriteLine("STOP WARNING: task 커밋에 검증 '결과' 증거가 없습니다 (예: Build ...OK / Tests N / Review ...OK).")
-        [Console]::Error.WriteLine("Done = Proof 원칙 위반 가능 - 단어만이 아니라 실제 결과를 커밋 메시지에 적거나 사용자에게 보고하세요.")
-        Write-ReEvent '검증 증거 없음'
+        # 디듑은 '출력'에만 적용한다 — 아래 $hasEvidence 판정(2-1 transcript 대조의 진입 조건)은 억제와 무관하게 그대로 흐른다.
+        if (Test-EvWarnOnce 'no-evidence') {
+            [Console]::Error.WriteLine("STOP WARNING: task 커밋에 검증 '결과' 증거가 없습니다 (예: Build ...OK / Tests N / Review ...OK).")
+            [Console]::Error.WriteLine("Done = Proof 원칙 위반 가능 - 단어만이 아니라 실제 결과를 커밋 메시지에 적거나 사용자에게 보고하세요.")
+            Write-ReEvent '검증 증거 없음'
+        }
     } else {
         $hasEvidence = $true
     }
@@ -94,7 +120,7 @@ if ($hasEvidence) {
             #   포함한다(v1.98.0) — 종전엔 표준 명령만 있어 './build.ps1'·'tsc'로 검증한 정직한 세션이
             #   실행 흔적 없음으로 오경고됐다.
             $traceRx = '"command"\s*:\s*".{0,600}?(dotnet (build|test)|npm (test|run )|npx |yarn |pnpm |pytest|cargo (build|test)|gradlew?\b|go (build|test)|mvn |msbuild|make |ctest|python(3)? -m (py_compile|build|pytest)|ParseFile|[.\\/]*build\.(ps1|sh|py|js)|\btsc\b|\brun-hook-evals\b|check_consistency|\brun_lint_evals\b)'
-            if (-not (($tail -join "`n") -match $traceRx)) {
+            if (-not (($tail -join "`n") -match $traceRx) -and (Test-EvWarnOnce 'no-trace')) {
                 [Console]::Error.WriteLine("STOP WARNING: 커밋에 검증 증거 텍스트는 있으나 이 세션 transcript에서 빌드/테스트 실행 흔적을 찾지 못했습니다.")
                 [Console]::Error.WriteLine("증거가 실행 없이 적혔을 수 있습니다 - 실제로 빌드/테스트를 실행했는지 확인하세요 (이전 세션에서 실행했으면 무시).")
                 Write-ReEvent '실행 흔적 없음'
@@ -127,7 +153,7 @@ if ($porcelain) {
         $e = [System.IO.Path]::GetExtension($p).ToLower()
         if ($codeExts -contains $e) { [void]$codeChanges.Add($p) }
     }
-    if ($codeChanges.Count -gt 0) {
+    if ($codeChanges.Count -gt 0 -and (Test-EvWarnOnce 'uncommitted')) {
         [Console]::Error.WriteLine("STOP WARNING: 커밋되지 않은 코드 파일 변경이 $($codeChanges.Count)개 있습니다 - 구현 후 commit을 누락했을 수 있습니다.")
         foreach ($c in ($codeChanges | Select-Object -First 8)) { [Console]::Error.WriteLine("  - $c") }
         [Console]::Error.WriteLine("구현이 끝났으면 Phase D(commit)를 수행하거나, 의도된 미커밋이면 사용자에게 상태를 보고하세요.")
