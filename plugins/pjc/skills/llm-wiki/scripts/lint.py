@@ -89,7 +89,8 @@ SPECIAL_BUDGET = {"log.md": 6000}
 INFRA_TYPES = {"index", "log", "dashboard", "schema"}
 # 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
 ARCHIVE_EXEMPT_TYPES = {"feature", "guide"}
-# index.md 분할 신호 임계 (wiki-schema.md §4 — 초과 시 INFO로 2단계 파일 분할 제안)
+# index.md 분할 신호 임계 (wiki-schema.md §4 — index.md 초과는 B/F 세션이 2단계 파일 분할을 자동 수행,
+#   sub-index 초과는 소제목 구역화 제안)
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
 INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 수
 
@@ -836,8 +837,9 @@ def main():
         idx_lines = itext.count("\n") + 1
         feat_rows = feature_index_rows(itext)
         if idx_lines > INDEX_BODY_LINES or feat_rows > INDEX_FEAT_ROWS:
-            infos.append(f"index.md 분할 검토: 본문 {idx_lines}줄(임계 {INDEX_BODY_LINES}), "
-                         f"기능별 인덱스 {feat_rows}행(임계 {INDEX_FEAT_ROWS}) (wiki-schema §4 2단계)")
+            infos.append(f"index.md 분할 대상: 본문 {idx_lines}줄(임계 {INDEX_BODY_LINES}), "
+                         f"기능별 인덱스 {feat_rows}행(임계 {INDEX_FEAT_ROWS}) — B/F 세션이 "
+                         f"주 작업 완료 후 자동 분할(승인 불요, wiki-schema §4 2단계)")
 
         # sub-index 분할 신호 (§7-14): 각 index-*.md 자체 크기도 측정.
         # index.md → personal/work 2분할이 종착이라 추가 파일 분할 경로가 없으므로
