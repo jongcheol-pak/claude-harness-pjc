@@ -241,7 +241,7 @@ F-8   → 시각 충실도 최종 관문 (plan에 `## 시각 요소 분해` 있�
 git add -A
 git commit -m "checkpoint: T<N> pre-review"
 ```
-이 커밋의 SHA를 V-5/V-6 리뷰어에게 **HEAD_SHA로 전달**한다. **이유**: 리뷰어는 `git diff <BASE_SHA> <HEAD_SHA>`로 변경을 보는데, 구현 변경이 워킹트리에만 있고 미커밋이면(과거 결함) HEAD가 직전 `checkpoint: T<N> start`(빈 커밋)를 가리켜 리뷰어가 **빈 diff**를 보고 거짓 BLOCKER를 내거나 임의로 워킹트리 diff를 쓰게 된다. pre-review 커밋으로 리뷰 대상 스냅숏을 고정하면 결정적·재현 가능하다. BASE_SHA는 `checkpoint: T<N> start`(또는 직전 task 최종 커밋). **pre-review 커밋 이후의 모든 수정분(리뷰 지적 수정·V-1~V-3 실패 수정)은 Phase I로 돌아가 고친 뒤 `git commit -m "checkpoint: T<N> review-fix"`로 이어 커밋**(amend 아님 — 추가 커밋, 리뷰 스냅숏 이력 보존)하고, 그 새 HEAD로 재리뷰한다. Phase D의 최종 커밋은 pre-review 커밋(+review-fix)을 task 완료 커밋으로 정리하는 단계다(HEAD가 그대로 pre-review면 amend로 메시지만 승격, review-fix가 쌓였으면 그 위 새 완료 커밋 — 판정·명령은 Phase D ③). Type A는 이 커밋을 건너뛰고 Phase D에서 바로 최종 커밋한다.
+이 커밋의 SHA를 V-5/V-6 리뷰어에게 **HEAD_SHA로 전달**한다(왜 커밋을 하나 더 만드는지의 근거는 `references/rationale.md`). BASE_SHA는 `checkpoint: T<N> start`(또는 직전 task 최종 커밋). **pre-review 커밋 이후의 모든 수정분(리뷰 지적 수정·V-1~V-3 실패 수정)은 Phase I로 돌아가 고친 뒤 `git commit -m "checkpoint: T<N> review-fix"`로 이어 커밋**(amend 아님 — 추가 커밋, 리뷰 스냅숏 이력 보존)하고, 그 새 HEAD로 재리뷰한다. Phase D의 최종 커밋은 pre-review 커밋(+review-fix)을 task 완료 커밋으로 정리하는 단계다(HEAD가 그대로 pre-review면 amend로 메시지만 승격, review-fix가 쌓였으면 그 위 새 완료 커밋 — 판정·명령은 Phase D ③). Type A는 이 커밋을 건너뛰고 Phase D에서 바로 최종 커밋한다.
 
 순서대로 실행. 실패 시 Phase I로 복귀해 수정 후 재시도한다 — 반복 한도는 `references/recovery.md`의 카운터(빌드/테스트 5회 연속 실패·리뷰 수정 사이클 5회·복구 2회)를 따른다(카운터 없이 무한 반복하지 않으며, "1회만"이라는 뜻도 아니다). **V-1~V-3은 가능하면 한 도구 호출로 체이닝한다**(`<build> && <test> && <lint>` — 앞 단계 실패 시 뒤가 실행되지 않는 것이 "실패 시 Phase I 복귀"와 일치. 해당 Type에 없는 단계는 생략하고, V-2를 조건부 축소하면 그 필터 명령을 체인에 넣는다).
 
@@ -256,7 +256,7 @@ git commit -m "checkpoint: T<N> pre-review"
 | **C** (Normal Code) | V-1 ~ V-8 **전체** (V-5는 compliance Sonnet) | 생략 없음 |
 | **D** (Complex/Cross-cutting) | V-1 ~ V-8 **전체** (V-5는 compliance Sonnet) | 생략 없음 |
 
-> Type C/D의 **실행 단계는 동일**하다(V-6 포함 — 종전에는 C가 `(quality-review)` 플래그 없이는 V-6을 생략했으나, 그 기본값이 대부분의 코드를 품질 검토 0회로 통과시켜 반전했다). C/D의 차이는 실행이 아니라 **계획 단계**(Decision 카테고리 12개 vs 5-6개·Edge 카테고리·Design 필드 의무)에 있다.
+> Type C/D의 **실행 단계는 동일**하다(V-6 포함). C/D의 차이는 실행이 아니라 **계획 단계**(Decision 카테고리 12개 vs 5-6개·Edge 카테고리·Design 필드 의무)에 있다.
 
 **Task Type 판정**: plan이 Type을 명시하면 그것을 따른다. **plan에 Type이 없으면 메인이 diff 예상 규모로 B/C/D를 1줄로 판정해 plan.md 해당 task에 기입**한다(예: "단일 파일·caller 없음 → B", "다중 파일·시그니처 변경 → D"). 규모를 가늠하기 어렵거나 판정이 애매하면 **D로 간주**(안전 우선 — 무거운 쪽).
 **V-4(PostToolUse hook)는 자동 실행** — 모든 Type에서 작동 (UTF-8 + impact-warn).
@@ -307,7 +307,7 @@ Task Type에 따라 다른 흐름:
 
 **Type B**: `spec-prefilter` (Haiku) 먼저 호출 (BASE_SHA·HEAD_SHA는 Type C/D와 동일 — HEAD_SHA = Phase V 서두의 **pre-review 커밋** SHA. prefilter도 그 diff를 본다. 나머지 전달물은 spec-prefilter 입력 계약대로 — acceptance 1줄·task Files 목록·AGENTS.md 위치).
 - PASS → V-5 완료, **V-7(축소)·V-8 진행** (Type B는 V-6 생략 — Sonnet 호출 안 함. Fast-Path 표와 일치).
-- ESCALATE → **해당 task를 Type C로 격상**한다: plan.md의 그 task Type 라인을 `C (B→격상: prefilter ESCALATE)`로 갱신하고(기존 plan 부분 갱신 — 격상 흔적이 재개 세션의 C 처리 신호가 된다), 이후를 **Type C 기준으로 수행** — V-5(compliance)·V-6(quality)를 병렬 호출하고 V-3·V-7도 전체 수행한다(이미 통과한 V-1·V-2는 재실행 불필요). ESCALATE는 "trivial 아님" 판정("확신 없으면 ESCALATE")이므로 오분류가 가장 의심되는 순간에 가장 약한 검증(spec 단독)이 적용되던 역설을 없앤다. 결과 처리는 아래 Type C/D와 동일.
+- ESCALATE → **해당 task를 Type C로 격상**한다: plan.md의 그 task Type 라인을 `C (B→격상: prefilter ESCALATE)`로 갱신하고(기존 plan 부분 갱신 — 격상 흔적이 재개 세션의 C 처리 신호가 된다), 이후를 **Type C 기준으로 수행** — V-5(compliance)·V-6(quality)를 병렬 호출하고 V-3·V-7도 전체 수행한다(이미 통과한 V-1·V-2는 재실행 불필요). 결과 처리는 아래 Type C/D와 동일.
 
 **Type C/D**: `spec-compliance-reviewer` (Sonnet) 호출.
 - 전달: task ID, plan.md 해당 섹션, BASE_SHA, HEAD_SHA(= **pre-review 커밋** SHA — Phase V 서두에서 만든 것, 빈 checkpoint가 아님), AGENTS.md 경로(V-6 병렬의 quality reviewer 컨벤션 대조 입력 — code-quality-reviewer 입력 계약), **그리고 plan에 `## 시각 요소 분해` 섹션이 있으면 그 섹션**(spec-compliance-reviewer 항목 I 입력 — 리뷰어가 이 task 귀속 행을 diff와 대조한다. **섹션이 없으면 전달을 생략**하며 항목 I도 skip되어 기존 동작과 동일하다).
@@ -501,3 +501,4 @@ Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 �
 - Phase G 상세: `references/phase-g-detail.md`
 - Phase V-9 상세: `references/phase-v9-detail.md`
 - 최종 보고 양식: `references/final-report-template.md`
+- 규칙의 배경·이력(규칙 아님 — 판단이 필요할 때만): `references/rationale.md`

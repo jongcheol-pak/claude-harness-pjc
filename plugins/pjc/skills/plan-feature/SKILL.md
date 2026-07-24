@@ -269,7 +269,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 확실하지 않으면 **한 단계 더 무거운 쪽 선택** (안전 우선).
 
-**Type C/D의 V-6(code-quality)는 항상 실행된다** — plan이 별도 표기를 붙일 필요 없다. 종전에는 Type C가 opt-in 플래그(`(quality-review)`) 없이는 V-6을 생략했는데, 그 기본값이 가장 흔한 Type C 코드를 spec 검증만 받고 **품질 검토 0회**로 커밋시키는 공백이라 반전했다(V-5와 병렬 호출이라 소요 시간은 늘지 않는다 — implement-task Fast-Path 표 정본). **기존 plan에 남은 `(quality-review)` 플래그는 no-op**(이미 기본이 된 것의 중복 명시 — 오류 아님).
+**Type C/D의 V-6(code-quality)는 항상 실행된다** — plan이 별도 표기를 붙일 필요 없다(적용 Phase V 단계는 implement-task Fast-Path 표가 정본. 이 기본값이 된 경위는 `references/rationale.md`). **기존 plan에 남은 `(quality-review)` 플래그는 no-op**(이미 기본이 된 것의 중복 명시 — 오류 아님).
 
 #### Design 필드 (Type D 필수 · Type C는 신규 심볼 도입 시)
 
@@ -454,3 +454,4 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출. **제시 전
 - Edge Cases + Halt Forecast: `references/edge-cases.md`
 - plan.md 템플릿: `references/plan-template.md`
 - PRD 템플릿 (대규모 작업, Step 0.5): `references/prd-template.md`
+- 규칙의 배경·이력(규칙 아님 — 판단이 필요할 때만): `references/rationale.md`
