@@ -37,12 +37,15 @@ try:
 except Exception:
     pass
 
-BUDGET = {  # type -> 최대 줄 수 (wiki-schema.md §4와 일치 유지)
-    "source-stub": 30, "project": 120, "feature": 180,
-    "entity": 100, "concept": 80, "question": 40,
-    "decision-log": 150,  # 결정 이력 (wiki-schema §2.8 — 초과 시 90_archive 원경로 이동)
+BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 — v1.138.0 줄 수→문자 수 전환)
+    #  줄 수는 밀도를 못 담아(한 줄에 500자를 써도 통과) 예산이 무의미했다 → 문자 수로 전환.
+    #  단 index.md는 '행 수(등록 항목 개수)'가 본질적 단위라 문자로 못 바꾼다(INDEX_* 별도 경로 유지),
+    #  log.md도 이미 문자 수(SPECIAL_BUDGET). 즉 산문 타입만 이 딕셔너리로 문자 수 판정한다.
+    "source-stub": 1800, "project": 13000, "feature": 22000,
+    "entity": 6000, "concept": 5000, "question": 3500,
+    "decision-log": 6000,  # 결정 이력 (wiki-schema §2.8 — 초과 시 90_archive 원경로 이동)
 }
-GUIDE_BUDGET = {"platform-bootstrap": 200, "ui-ux": 150, "recipe": 120}
+GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
 PLATFORM_VOCAB = {"windows-desktop", "web", "mobile", "cli", "cross"}
 ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
@@ -180,21 +183,23 @@ def strip_code(text):
     return text
 
 
-def fenced_interior_lines(text):
-    """guide 예산 판정용: 백틱 코드 펜스(```)의 '내부' 줄 수를 센다(여닫는 구분자 줄은 판정에 포함되므로 제외).
+def fenced_interior_chars(text):
+    """guide 예산 판정용: 백틱 코드 펜스(```)의 '내부' 문자 수를 센다(여닫는 구분자 줄은 판정에서 제외).
     platform-bootstrap·ui-ux 가이드는 분할 불가능한 페이로드(샘플 템플릿·예제)가 펜스에 실리므로
-    예산(산문 비대 억제)에서 펜스 내부를 제외한다 — recipe는 스니펫이 본체(120줄이 펜스 포함 보정값)라
-    비적용(wiki-schema §2.6·§4·§7-2). strip_code()는 줄바꿈을 보존해 줄 수가 불변이라 이 용도로 재사용 불가.
-    여닫이가 안 맞으면(미종결 펜스) 0을 반환해 전체 줄 수로 판정한다(비대 은폐 방지 — 보수 폴백).
+    예산(산문 비대 억제)에서 펜스 내부를 제외한다 — recipe는 스니펫이 본체(예산이 펜스 포함 보정값)라
+    비적용(wiki-schema §2.6·§4·§7-2).
+    여닫이가 안 맞으면(미종결 펜스) 0을 반환해 전체 문자 수로 판정한다(비대 은폐 방지 — 보수 폴백).
+    문자 수 계산은 각 내부 줄의 길이 + 줄바꿈 1자로 하되(전체 len(text)와 같은 기준), 여닫는 구분자 줄은
+    제외해 전체 문자 수에서 빼면 산문분만 남는다(v1.138.0 줄 수→문자 수 전환).
     한계: 4-backtick 중첩 펜스는 단순 토글이라 오계상 가능, ~~~ 물결 펜스는 비지원(vault 관례는 백틱뿐)."""
     interior = 0
     in_fence = False
-    for line in text.splitlines():
+    for line in text.splitlines(keepends=True):
         if line.lstrip().startswith("```"):
             in_fence = not in_fence
             continue
         if in_fence:
-            interior += 1
+            interior += len(line)
     return 0 if in_fence else interior
 
 
@@ -566,7 +571,6 @@ def main():
         text = text.replace("\r\n", "\n").replace("\r", "\n")
         if raw_bytes.startswith(b"\xef\xbb\xbf") and not r.startswith("90_archive/"):
             warn(f"UTF-8 BOM 발견: {r} — BOM 없이 저장 권장(인코딩 규약)", r)
-        lines = text.count("\n") + 1
         fm = frontmatter(text)
         typ = fm.get("type", "")
         pages[r] = (fm, typ, text)
@@ -627,35 +631,36 @@ def main():
                      f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)", r)
         elif not in_archive:
             budget = None
-            eff_lines, fence_note = lines, ""
+            chars = len(text)
+            eff_chars, fence_note = chars, ""
             if typ == "guide":
                 gk = fm.get("guide_kind", "")
-                # L-3: guide_kind 오타(예: 'recipes')면 기본 200줄이 조용히 적용돼 recipe 120줄 예산을
+                # L-3: guide_kind 오타(예: 'recipes')면 기본 9000자가 조용히 적용돼 recipe 8500자 예산을
                 #   우회한다 → 통제어휘 밖이면 WARN(오타 가시화). 부재도 동일하게 침묵 우회가 되므로
                 #   WARN(§7-2) — origin/confidence "누락 WARN·값 위반 ERR" 패턴과 동형(부재는 값이
                 #   없어 ERR 대상이 아니고, exit 1로 기존 vault를 즉시 차단하지 않는다).
                 if not gk:
-                    warn(f"guide_kind 누락: {r} (허용: {', '.join(GUIDE_BUDGET)}) — 기본 200줄 적용됨(recipe 120줄 예산 우회 주의, schema §2.6)", r)
+                    warn(f"guide_kind 누락: {r} (허용: {', '.join(GUIDE_BUDGET)}) — 기본 9000자 적용됨(recipe 8500자 예산 우회 주의, schema §2.6)", r)
                 elif gk not in GUIDE_BUDGET:
-                    warn(f"guide_kind 통제어휘 위반: {r} guide_kind='{gk}' (허용: {', '.join(GUIDE_BUDGET)}) — 기본 200줄 적용됨", r)
-                budget = GUIDE_BUDGET.get(gk, 200)
-                # platform-bootstrap·ui-ux는 펜스 내부 줄 제외 판정(§7-2·§4) — 통짜 템플릿·예제 펜스는
+                    warn(f"guide_kind 통제어휘 위반: {r} guide_kind='{gk}' (허용: {', '.join(GUIDE_BUDGET)}) — 기본 9000자 적용됨", r)
+                budget = GUIDE_BUDGET.get(gk, 9000)
+                # platform-bootstrap·ui-ux는 펜스 내부 문자 제외 판정(§7-2·§4) — 통짜 템플릿·예제 펜스는
                 #   분할 불가능한 페이로드라 산문 예산 대상이 아니다. recipe·타 타입은 기존 판정 유지.
                 if gk in ("platform-bootstrap", "ui-ux"):
-                    fenced = fenced_interior_lines(text)
+                    fenced = fenced_interior_chars(text)
                     if fenced:
-                        eff_lines = lines - fenced
-                        fence_note = f", 코드 펜스 {fenced}줄 제외"
+                        eff_chars = chars - fenced
+                        fence_note = f", 코드 펜스 {fenced}자 제외"
             elif typ in BUDGET:
                 budget = BUDGET[typ]
             # L-2: lint 리포트(questions/lint-YYYYMMDD.md)는 발견 다건이면 길어지는 게 정상이라
             #   예산 검사에서 제외한다(§7-12/23 집계·등록 제외와 동일 기준) — 자기 리포트가 다음 lint에서
             #   영구 '예산 초과' WARN을 만드는 것을 막는다.
-            if budget and eff_lines > budget and not is_lint_report(r):
+            if budget and eff_chars > budget and not is_lint_report(r):
                 # decision-log는 수리 방법이 롤오버+포인터라 일반 문구와 분기 (§2.8)
                 hint = (" — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)"
                         if typ == "decision-log" else "")
-                warn(f"예산 초과: {r} {eff_lines}/{budget}줄 (type={typ}{fence_note}){hint}", r)
+                warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{fence_note}){hint}", r)
 
         # platform 통제어휘 (90_archive/ 제외 — 동결 백업은 wiki-schema §2.8·§8 자동 제외 원칙)
         plat = fm.get("platform")
