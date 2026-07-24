@@ -160,14 +160,14 @@ def parse_schema_type_budget(text):
             die(f"schema §2 '{typ}' 섹션에서 '- **예산**' 줄을 찾지 못함")
         val = bm.group(1)
         if typ == "guide":
-            for gm in re.finditer(r"([a-z-]+)\s*~(\d+)줄", val):
+            for gm in re.finditer(r"([a-z-]+)\s*~(\d+)자", val):
                 rows["guide:" + gm.group(1)] = int(gm.group(2))
             if not any(k.startswith("guide:") for k in rows):
-                die("schema §2.6 guide 예산 줄 파싱 실패")
+                die("schema §2.6 guide 예산 파싱 실패 (~N자 형식 기대 — v1.138.0 문자 수 전환)")
         else:
-            nm = re.search(r"~(\d+)줄", val)
+            nm = re.search(r"~(\d+)자", val)
             if not nm:
-                die(f"schema §2 '{typ}' 예산 줄에서 '~N줄'을 찾지 못함")
+                die(f"schema §2 '{typ}' 예산 줄에서 '~N자'를 찾지 못함 (v1.138.0 문자 수 전환)")
             rows[typ] = int(nm.group(1))
     return rows
 

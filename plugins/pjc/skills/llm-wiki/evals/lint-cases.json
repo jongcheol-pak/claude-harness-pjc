@@ -220,19 +220,19 @@
       "expect_absent": [
         "guide_kind 통제어휘 위반"
       ],
-      "rationale": "§7-2 확장(v1.116.0) — type: guide에 guide_kind 필드가 없으면 WARN(침묵 기본 200줄 적용으로 recipe 120줄 예산이 우회되는 사각 가시화). 오타 WARN(기존)과 별개 분기 — 부재 fixture가 통제어휘 위반 문구를 내면 분기 오류"
+      "rationale": "§7-2 확장(v1.116.0, v1.138.0 문자 수 전환) — type: guide에 guide_kind 필드가 없으면 WARN(침묵 기본 9000자 적용으로 recipe 8500자 예산이 우회되는 사각 가시화). 오타 WARN(기존)과 별개 분기 — 부재 fixture가 통제어휘 위반 문구를 내면 분기 오류"
     },
     {
       "fixture": "guide-fence-budget",
       "expect_keywords": [
         "예산 초과: 40_guides/recipes/demo/recipe-fence.md",
-        "/120줄 (type=guide)"
+        "/8500자 (type=guide)"
       ],
       "expect_absent": [
         "예산 초과: 40_guides/ui-ux/uiux-fence.md",
         "코드 펜스"
       ],
-      "rationale": "§7-2 펜스 제외 판정(v1.125.0) — ui-ux 가이드(총 169줄, 펜스 내부 150줄)는 유효 19줄로 예산 WARN이 없어야 하고(펜스 제외가 빠지면 169/150 WARN으로 FAIL), recipe(139줄, 대부분 펜스)는 펜스 포함 판정 유지로 예산 초과 WARN이 나야 한다(recipe까지 제외되면 keywords 미검출 FAIL). expect_absent '코드 펜스'는 이 fixture에서 제외 병기 문구가 나올 경로가 없음을 이중 가드(우발 확대 적용 검출). expect_absent를 파일명이 아니라 '예산 초과: <경로>' 정밀 문자열로 둔 이유 — 60일+ 신선도 INFO가 파일명을 언급해도 노화 FAIL하지 않게"
+      "rationale": "§7-2 펜스 제외 판정(v1.125.0, v1.138.0 문자 수 전환) — ui-ux 가이드(약 2650자, 대부분 펜스 내부)는 펜스 제외 유효 문자가 예산(6000자) 미만이라 WARN이 없어야 하고(펜스 제외가 빠지면 전체 문자로 WARN 가능성), recipe(약 10324자, 대부분 펜스)는 펜스 포함 판정 유지로 예산(8500자) 초과 WARN이 나야 한다(recipe까지 제외되면 keywords 미검출 FAIL). expect_absent '코드 펜스'는 이 fixture에서 제외 병기 문구가 나올 경로가 없음을 이중 가드(우발 확대 적용 검출). expect_absent를 파일명이 아니라 '예산 초과: <경로>' 정밀 문자열로 둔 이유 — 60일+ 신선도 INFO가 파일명을 언급해도 노화 FAIL하지 않게"
     },
     {
       "fixture": "no-hanyeong-guide",

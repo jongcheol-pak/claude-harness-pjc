@@ -11,7 +11,7 @@ tags: [guide, recipe, demo]
 # 재시도 정책 (guide_kind 누락)
 
 ## 목적
-guide_kind 부재 시 lint가 침묵으로 기본 200줄 예산을 적용하지 않고 WARN을 내는지 검증한다.
+guide_kind 부재 시 lint가 침묵으로 기본 9000자 예산을 적용하지 않고 WARN을 내는지 검증한다.
 
 ## 적용 플랫폼
 CLI.
