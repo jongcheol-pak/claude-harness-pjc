@@ -32,7 +32,7 @@
 11. `[기계]` tech_stack 휘발성 버전
 12. `[기계]` (미검증)·미해결 question 집계 (INFO)
 13. `[에이전트]` 잠재 연결 발견 (미연결 공통점, INFO)
-14. `[기계]` index·sub-index 분할 신호 (INFO) — **index.md에 한해** F-2에서 자동 수행(승인 불요, §4 분할 수행 절차 1번). sub-index는 제안만.
+14. `[기계]` index·sub-index 분할 신호 (INFO) — **index.md에 한해** B-3/F-2에서 자동 수행(승인 불요, §4 분할 수행 절차 1번). sub-index는 제안만.
 15. `[기계]` sub-index 목록 정합
 16. `[기계]` 기능별 인덱스 한/영 병기
 17. `[기계]` deprecated 표기 정합·집계
