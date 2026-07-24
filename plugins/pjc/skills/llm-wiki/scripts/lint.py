@@ -93,7 +93,7 @@ INFRA_TYPES = {"index", "log", "dashboard", "schema"}
 # 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
 ARCHIVE_EXEMPT_TYPES = {"feature", "guide"}
 # index.md 분할 신호 임계 (wiki-schema.md §4 — index.md 초과는 B/F 세션이 2단계 파일 분할을 자동 수행,
-#   sub-index 초과는 소제목 구역화 제안)
+#   sub-index(순번 파일) 초과는 순번 파일(index-{cat}-{n}.md)로 자동 분할)
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
 INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 수
 
@@ -847,9 +847,9 @@ def main():
                          f"주 작업 완료 후 자동 분할(승인 불요, wiki-schema §4 2단계)")
 
         # sub-index 분할 신호 (§7-14): 각 index-*.md 자체 크기도 측정.
-        # index.md → personal/work 2분할이 종착이라 추가 파일 분할 경로가 없으므로
-        # 초과 시 '소제목 구역화'를 권고한다(wiki-schema §4). 본문 줄수는 헤딩과 무관하게,
-        # 행수는 sub-index가 보유한 '## 기능별 인덱스' 헤딩 기준으로 측정(wiki-schema §4 명문).
+        # sub-index(순번 파일)가 초과하면 순번 파일(index-{cat}-{n}.md)로 자동 분할한다
+        # (wiki-schema §4 3단계 — personal/work 종착 분류를 유지한 채 등록 순서로 순번 청크 증분).
+        # 본문 줄수는 헤딩과 무관하게, 행수는 sub-index가 보유한 '## 기능별 인덱스' 헤딩 기준으로 측정.
         for sp in sub_files:
             try:
                 with open(sp, encoding="utf-8-sig") as sfh:  # M-2/BOM 정합
@@ -860,14 +860,17 @@ def main():
             s_rows = feature_index_rows(stext)
             if s_lines > INDEX_BODY_LINES or s_rows > INDEX_FEAT_ROWS:
                 infos.append(
-                    f"{os.path.basename(sp)} 분할 검토: 본문 {s_lines}줄(임계 {INDEX_BODY_LINES}), "
-                    f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — sub-index는 추가 파일 분할 "
-                    f"대신 `### ` 하위 소제목으로 구역화(wiki-schema §4)")
+                    f"{os.path.basename(sp)} 순번 파일 자동 분할 대상: 본문 {s_lines}줄(임계 {INDEX_BODY_LINES}), "
+                    f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — B/F 세션이 순번 파일"
+                    f"(index-{{cat}}-{{n}}.md)로 자동 분할(승인 불요, wiki-schema §4 3단계)")
 
         # sub-index 목록 정합: 실재하는 index-*.md가 index.md에 언급(등록)됐는지.
         #  A(실재 파일) − B(index.md 언급) = 미등록 → WARN. 역방향(언급은 있으나 파일 없음)은
         #  wikilink면 위 깨진/경로없음 검사가 이미 잡으므로 신규 WARN을 내지 않는다(중복·모순 차단).
-        mentioned = set(re.findall(r"index-[a-z]+", itext))
+        # 순번 sub-index(index-work-1 등)의 '-\d+' suffix까지 stem으로 포착한다(비캡처 그룹 —
+        #  findall이 전체 매치를 반환해 '-1'이 잘려 index-work로만 잡히던 §7-15 오탐 제거).
+        #  무순번 index-personal도 그대로 매치돼 회귀 없음(wiki-schema §4 3단계).
+        mentioned = set(re.findall(r"index-[a-z]+(?:-\d+)?", itext))
         for sp in sub_files:
             stem = os.path.basename(sp)[:-3]  # 예: 'index-personal'
             if stem not in mentioned:
