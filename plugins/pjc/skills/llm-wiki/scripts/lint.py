@@ -3,7 +3,7 @@
 
 사용법: python lint.py "<vault_path>" [--fix]
 검사: 깨진/경로 없는 wikilink(루트 pending.md 큐는 제외 — §7-1) / 예산 초과·guide_kind 부재/오타(§7-2 —
-      platform-bootstrap·ui-ux guide는 코드 펜스 내부 줄 제외 판정, recipe는 펜스 포함)
+      platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
       / updated 필드 누락(§7-9 — 신선도 추적 전제) / feature '## 구현 방법' 섹션 부재(§7-18 확장)
       / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정

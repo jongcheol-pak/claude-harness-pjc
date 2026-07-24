@@ -220,7 +220,7 @@
       "expect_absent": [
         "guide_kind 통제어휘 위반"
       ],
-      "rationale": "§7-2 확장(v1.116.0) — type: guide에 guide_kind 필드가 없으면 WARN(침묵 기본 200줄 적용으로 recipe 120줄 예산이 우회되는 사각 가시화). 오타 WARN(기존)과 별개 분기 — 부재 fixture가 통제어휘 위반 문구를 내면 분기 오류"
+      "rationale": "§7-2 확장(v1.116.0, v1.138.0 문자 수 전환) — type: guide에 guide_kind 필드가 없으면 WARN(침묵 기본 9000자 적용으로 recipe 8500자 예산이 우회되는 사각 가시화). 오타 WARN(기존)과 별개 분기 — 부재 fixture가 통제어휘 위반 문구를 내면 분기 오류"
     },
     {
       "fixture": "guide-fence-budget",
