@@ -241,7 +241,7 @@ F-8   → 시각 충실도 최종 관문 (plan에 `## 시각 요소 분해` 있�
 git add -A
 git commit -m "checkpoint: T<N> pre-review"
 ```
-이 커밋의 SHA를 V-5/V-6 리뷰어에게 **HEAD_SHA로 전달**한다(왜 커밋을 하나 더 만드는지의 근거는 `references/rationale.md`). BASE_SHA는 `checkpoint: T<N> start`(또는 직전 task 최종 커밋). **pre-review 커밋 이후의 모든 수정분(리뷰 지적 수정·V-1~V-3 실패 수정)은 Phase I로 돌아가 고친 뒤 `git commit -m "checkpoint: T<N> review-fix"`로 이어 커밋**(amend 아님 — 추가 커밋, 리뷰 스냅숏 이력 보존)하고, 그 새 HEAD로 재리뷰한다. Phase D의 최종 커밋은 pre-review 커밋(+review-fix)을 task 완료 커밋으로 정리하는 단계다(HEAD가 그대로 pre-review면 amend로 메시지만 승격, review-fix가 쌓였으면 그 위 새 완료 커밋 — 판정·명령은 Phase D ③). Type A는 이 커밋을 건너뛰고 Phase D에서 바로 최종 커밋한다.
+이 커밋의 SHA를 V-5/V-6 리뷰어에게 **HEAD_SHA로 전달**한다(왜 커밋을 하나 더 만드는지의 근거는 `references/rationale.md`). BASE_SHA는 `checkpoint: T<N> start`(또는 직전 task 최종 커밋). **pre-review 커밋 이후의 모든 수정분(리뷰 지적 수정·V-1~V-3 실패 수정)은 Phase I로 돌아가 고친 뒤 `git commit -m "checkpoint: T<N> review-fix"`로 이어 커밋**(amend 아님 — 추가 커밋, 리뷰 스냅숏 이력 보존)하고, 그 새 HEAD로 재리뷰한다. Phase D의 최종 커밋이 pre-review(+review-fix) 커밋을 task 완료 커밋으로 정리한다(판정·명령은 Phase D ③). Type A는 이 커밋을 건너뛰고 Phase D에서 바로 최종 커밋한다.
 
 순서대로 실행. 실패 시 Phase I로 복귀해 수정 후 재시도한다 — 반복 한도는 `references/recovery.md`의 카운터(빌드/테스트 5회 연속 실패·리뷰 수정 사이클 5회·복구 2회)를 따른다(카운터 없이 무한 반복하지 않으며, "1회만"이라는 뜻도 아니다). **V-1~V-3은 가능하면 한 도구 호출로 체이닝한다**(`<build> && <test> && <lint>` — 앞 단계 실패 시 뒤가 실행되지 않는 것이 "실패 시 Phase I 복귀"와 일치. 해당 Type에 없는 단계는 생략하고, V-2를 조건부 축소하면 그 필터 명령을 체인에 넣는다).
 
