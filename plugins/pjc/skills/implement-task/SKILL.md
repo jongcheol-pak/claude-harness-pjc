@@ -122,7 +122,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
   0. **Phase 0 사전 승인 일괄 확인** — plan에 `## 사전 승인 항목`이 있고 이번 대화에 plan 승인이 없을 때(새 세션/재개), 루프 시작 전 1회 (위 Phase 0).
   1. Halt Condition 발동
   2. 모든 task 완료 (Phase F 통과 후 최종 보고)
-  3. **리뷰 인프라 장애** — Sonnet reviewer(V-5/V-6)가 과부하(529) 재시도 소진 시의 선택 요청(재시도/자체 검증/대기 — 정본 `references/recovery.md` "Reviewer 호출 실패 대응" A. Halt가 아니라 선택 후 루프 계속). **도구 사용 불가**(subagent 호출 자체가 차단된 환경)도 같은 개입 지점이나 **선택 요청이 아니라 공시**다 — 같은 정본의 B 분기(체크리스트 대체 + 의무 3종)를 따르고 루프는 계속한다.
+  3. **리뷰 인프라 장애** — Sonnet reviewer(V-5/V-6)가 과부하(529) 재시도 소진 시의 선택 요청(재시도/자체 검증/대기 — 정본 `references/recovery.md` "Reviewer 호출 실패 대응" A. Halt가 아니라 선택 후 루프 계속). **도구 사용 불가**(subagent 호출 자체가 차단된 환경)도 같은 개입 지점이나 **선택 요청이 아니라 공시**다 — 같은 정본의 B 분기(체크리스트 대체 + 의무 3종)를 따르고 루프는 계속한다. **단 정책 금지**(B-1 — 세션 지침이 subagent 호출에 사용자 요청을 요구)**는 공시가 아니라 1회 승인 요청**이며, 승인되면 정상 호출로 정식 리뷰를 수행한다(세션당 1회).
 
 **사용자 승인은 plan-feature 단계에서 plan.md에 대해 단 1회만 받았다.** plan.md = 전체 작업의 위임장 — 이 위임에는 plan의 `## 사전 승인 항목 (일괄 승인 대상)`이 명시적으로 포함된다(Phase 0이 인정). 단 `## 불가피한 Halt (위임 불가)`(파괴적·외부/비가역·돌발)는 제외돼 그 지점에서 별도 승인받는다.
 
@@ -297,7 +297,7 @@ git commit -m "checkpoint: T<N> pre-review"
 
 **A. 과부하(HTTP 529)** — reviewer 호출이 529로 실패하면(V-5/V-6·F-7·plan-feature plan-reviewer 등 모든 reviewer 공통): 짧게 재시도(최대 2회) → 계속 529면 등급별 분기 — **Opus**(`plan-reviewer`·`plan-completion-reviewer`)는 Sonnet 대체 가능(단 "검증 깊이 낮을 수 있음" 명시 + ⚠️ 표시 + Next Steps 기록), **Sonnet**(`spec-compliance-reviewer`·`code-quality-reviewer`)은 **Haiku 대체 금지**(사용자 선택: 재시도/자체검증/대기), **Haiku**(`spec-prefilter`·`explorer`)는 재시도만 후 상위 흐름.
 
-**B. 도구 사용 불가** — subagent 호출이 **기술적으로 불가**할 때(세션 정책상 금지·도구 미제공·즉시 거부). 재시도해도 환경은 바뀌지 않으므로 2회까지만 시도하고 **대체 절차**로 간다: 메인이 그 reviewer의 정의 파일(`agents/<이름>.md`)을 Read해 **판정 항목을 체크리스트로 직접 대조**하고 항목별 결과를 남긴다 + **의무 3종**(사용자 보고 · `## Progress Log` 기록 · 최종 보고에 "검증 깊이 저하 — reviewer 미실행" 명시). **"리뷰가 과하다"는 판단은 발동 조건이 아니다** — 애매하면 발동하지 않고 Halt한다. F-7을 이 분기로 대체하면 Phase G가 active Must FR 전체를 보완 재대조한다(`phase-g-detail.md` G-1 예외 ②와 동일).
+**B. 도구 사용 불가** — subagent 호출이 **기술적으로 불가**할 때(세션 정책상 금지·도구 미제공·즉시 거부). 재시도해도 환경은 바뀌지 않으므로 2회까지만 시도하고 **대체 절차**로 간다: 메인이 그 reviewer의 정의 파일(`agents/<이름>.md`)을 Read해 **판정 항목을 체크리스트로 직접 대조**하고 항목별 결과를 남긴다 + **의무 3종**(사용자 보고 · `## Progress Log` 기록 · 최종 보고에 "검증 깊이 저하 — reviewer 미실행" 명시). **"리뷰가 과하다"는 판단은 발동 조건이 아니다** — 애매하면 발동하지 않고 Halt한다. F-7을 이 분기로 대체하면 Phase G가 active Must FR 전체를 보완 재대조한다(`phase-g-detail.md` G-1 예외 ②와 동일). **정책 금지(B-1)는 대체 전에 사용자에게 1회 승인을 구한다** — 승인되면 정상 호출이라 이 분기 자체가 발동하지 않는다(정본 B 분기).
 
 **대체·검증 생략은 항상 명시(투명성) — 조용히 대체 금지.** 상세 매트릭스: `references/recovery.md`.
 
