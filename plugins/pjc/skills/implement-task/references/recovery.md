@@ -1,6 +1,6 @@
 # Recovery Mechanism — implement-task
 
-Phase V 실패 시 복구 절차. 그리고 **하니스 전 스킬이 공유하는 subagent 호출 공통 규약**(정상 경로의 동기 실행 + 호출 실패 대응)을 담는다 — 아래 두 절은 `implement-task`뿐 아니라 `plan-feature`·`pjc-systematic-debugging`·`llm-wiki`가 함께 참조하는 정본이다.
+Phase V 실패 시 복구 절차. 그리고 **하니스 전 스킬이 공유하는 subagent 호출 공통 규약**(정상 경로의 동기 실행 + 호출 실패 대응)을 담는다 — 아래 두 절은 `implement-task`뿐 아니라 `plan-feature`·`pjc-systematic-debugging`이 포인터로 참조하는 정본이다(`llm-wiki`는 자기 정본 `references/wiki-schema.md` §9에 같은 취지 규약을 둔다).
 
 ## 절차
 
