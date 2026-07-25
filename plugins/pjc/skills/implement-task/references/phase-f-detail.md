@@ -115,7 +115,7 @@ F-1 ~ F-6 중 어느 하나라도 결함 발견 → **추가 task 등록 후 Pha
 
 ## F-7. plan-completion-reviewer subagent (필수)
 
-위 자체 검증 통과 후 **`plan-completion-reviewer` subagent에 적대적 검토 위임.** 자체 검토만으로 마무리 금지 — **예외는 호출 자체가 불가한 환경뿐이며 그때는 `recovery.md` "Reviewer 호출 실패 대응" B 분기**(체크리스트 대체 + 의무 3종). **B 분기로 F-7을 대체하면 Phase G가 active Must FR 전체를 보완 재대조한다**(`phase-g-detail.md` G-1 예외 ② — 대체 경로가 Sonnet 대체보다 얕으므로 사후 검증을 느슨하게 두지 않는다).
+위 자체 검증 통과 후 **`plan-completion-reviewer` subagent에 적대적 검토 위임.** 자체 검토만으로 마무리 금지 — **예외는 호출 자체가 불가한 환경뿐이며 그때는 `recovery.md` "Reviewer 호출 실패 대응" B 분기**(체크리스트 대체 + 의무 3종). **B 분기로 F-7을 대체하면 Phase G가 active Must FR 전체를 보완 재대조한다**(`phase-g-detail.md` G-1 예외 ② — 대체 경로가 Sonnet 대체보다 얕으므로 사후 검증을 느슨하게 두지 않는다). 호출은 **동기 호출**(`run_in_background: false`) — 검토 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
 
 호출 시 전달:
 - plan.md 경로
@@ -132,7 +132,7 @@ F-7 검토에는 **요구 커버리지 대조**(plan `## 요구 이해` ↔ 산�
 - **MINOR** 있음 → plan.md follow-up에 기록하고 진행
 - **재호출 3회 연속 동일 BLOCKER** → Halt → 사용자에게 보고
 
-재진입(추가 task) 완료 후 최소 재실행 세트는 **Phase G G-2와 동형**이다 — **F-2 전체 테스트 1회 + F-7 재호출**(BLOCKER 해소 확인 — F-7은 지적 당사자이므로 G-2의 "F-7 Opus 면제"가 여기엔 적용되지 않는다). F-1~F-6 전체 반복은 불요.
+재진입(추가 task) 완료 후 최소 재실행 세트는 **Phase G G-2와 동형**이다 — **F-2 전체 테스트 1회 + F-7 재호출**(BLOCKER 해소 확인 — F-7은 지적 당사자이므로 G-2의 "F-7 Opus 면제"가 여기엔 적용되지 않는다). F-1~F-6 전체 반복은 불요. F-7 재호출도 **동기 호출**(`run_in_background: false`) — 결과 수신 전 진행 금지.
 
 ## F-8. 시각 충실도 최종 관문 (디자인 정합 작업만)
 
