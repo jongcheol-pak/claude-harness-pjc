@@ -612,16 +612,18 @@ tags: [decision-log, 프로젝트태그]
 
 v0.2는 provenance(`sources`)·trust(`generated`/`verified`)·lifecycle(`status`/`stale_after`) 세 패밀리를 신설했다(okf-spec §5 Provenance, trust, and lifecycle). 아래 표는 이 위키의 기존 요소가 그중 무엇에 대응하는지와 **채택 판정**이다. 판정 열은 **현재 상태의 기술이지 도입 예고가 아니다** — 신규 필드를 실제로 넣으려면 별도 계획이 필요하다(아래 "미적합 잔여"와 같은 원칙).
 
+표에서 `okf-spec §`는 v0.2 원문 사본의 절이고, 접두 없는 `§`는 이 문서(wiki-schema)의 절이다 — 문서 전체 관례와 동일하다.
+
 | 위키 요소 | OKF v0.2 대응 | 판정 |
 |---|---|---|
-| `updated` (YYYY-MM-DD) | `generated.at`(§5.2) — v0.1 `timestamp`의 후신 | **확장 키로 유지** — `generated` 미도입(위 절) |
-| `origin: agent-synthesized \| human-validated` (lint `ORIGIN_VOCAB`, 5타입 필수) | trust tier(§5.3 Trust tiers) — `verified` 유무와 actor 종류에서 *파생*되는 값(저장 필드가 아님) | **확장 키로 유지** — 의미는 대응하나 tier의 원천인 `verified` 이벤트 목록은 미도입 |
-| `confidence: high \| medium \| low` (lint `CONFIDENCE_VOCAB`) | **대응 필드 없음** — v0.2가 신뢰에 두는 것은 `verified` 파생 tier(§5.3)와 *소스별* 객관 신호(`author`·`usage_count`·`last_modified`, §5.1)뿐이다 | **확장 키로 유지** — OKF가 배제하는 것은 소스별 credibility **점수**이지 페이지 단위 신뢰도가 아니므로, 확장 키로 그대로 유효하다(§4.1 Frontmatter) |
-| `status` — project/feature `active\|paused\|archived`, question `open\|investigating\|resolved` | `status: draft \| stable \| deprecated`(§5.4 Lifecycle: `status`) — 예약 어휘, 부재 시 `stable` | **어휘 충돌** — 아래 미적합 잔여 ④ |
-| 각주 출처 구조 — 본문 `[^src-태그]` + `10_sources` 스텁 wikilink(§2.3·templates.md) | per-claim attribution(§5.1) — 각주 라벨이 `sources[].id`를 가리키는 join key | **형태는 대응, 필드 미도입** — join 대상이 frontmatter `sources`가 아니라 소스 스텁 페이지다(lint §7-18·§7-20이 이 구조를 검사) |
-| (대응 요소 없음) | `sources` + credibility 신호(§5.1 Provenance: `sources`) | **필드 미도입** — 출처 정본은 각주 + 소스 스텁이며, 전 페이지 frontmatter 백필은 "저비용으로 적합 가능한 항목만 채택" 원칙과 충돌 |
-| (대응 요소 없음) | `stale_after`(§5.5 Lifecycle: `stale_after`) | **필드 미도입** — 신선도는 lint가 `updated` 기준 시간 규칙(60일 confidence 하락·90일 아카이브, §8)으로 판정한다 |
-| (대응 요소 없음) | `Attested Computation` 타입과 computation 키(§10 Attested computations concept) | **미채택** — 이 위키에 "인정된 계산"에 해당하는 개념 자체가 없다 |
+| `updated` (YYYY-MM-DD) | `generated.at`(okf-spec §5.2 Trust: `generated` and `verified`) — v0.1 `timestamp`의 후신 | **확장 키로 유지** — `generated` 미도입(위 절) |
+| `origin: agent-synthesized \| human-validated` (lint `ORIGIN_VOCAB`, 5타입 필수) | trust tier(okf-spec §5.3 Trust tiers) — `verified` 유무와 actor 종류에서 *파생*되는 값(저장 필드가 아님) | **확장 키로 유지** — 의미는 대응하나 tier의 원천인 `verified` 이벤트 목록은 미도입 |
+| `confidence: high \| medium \| low` (lint `CONFIDENCE_VOCAB`) | **대응 필드 없음** — v0.2가 신뢰에 두는 것은 `verified` 파생 tier(okf-spec §5.3 Trust tiers)와 *소스별* 객관 신호(`author`·`usage_count`·`last_modified`, okf-spec §5.1 Provenance: `sources`)뿐이다 | **확장 키로 유지** — OKF가 배제하는 것은 소스별 credibility **점수**이지 페이지 단위 신뢰도가 아니므로, 확장 키로 그대로 유효하다(okf-spec §4.1 Frontmatter) |
+| `status` — project/feature `active\|paused\|archived`, question `open\|investigating\|resolved`(§2 각 타입 블록) | `status: draft \| stable \| deprecated`(okf-spec §5.4 Lifecycle: `status`) — 예약 어휘, 부재 시 `stable` | **어휘 충돌** — 아래 미적합 잔여 ④ |
+| 각주 출처 구조 — 본문 `[^src-태그]` + `10_sources` 스텁 wikilink(§2.3·`references/templates.md`) | per-claim attribution(okf-spec §5.1 Provenance: `sources`) — 각주 라벨이 `sources[].id`를 가리키는 join key | **형태는 대응, 필드 미도입** — join 대상이 frontmatter `sources`가 아니라 소스 스텁 페이지다(lint §7-18·§7-20이 이 구조를 검사) |
+| (대응 요소 없음) | `sources` + credibility 신호(okf-spec §5.1 Provenance: `sources`) | **필드 미도입** — 출처 정본은 각주 + 소스 스텁이며, 전 페이지 frontmatter 백필은 "저비용으로 적합 가능한 항목만 채택" 원칙과 충돌 |
+| (대응 요소 없음) | `stale_after`(okf-spec §5.5 Lifecycle: `stale_after`) | **필드 미도입** — 신선도는 lint가 `updated` 기준 시간 규칙(60일 confidence 하락·90일 아카이브, §8)으로 판정한다 |
+| (대응 요소 없음) | `Attested Computation` 타입과 computation 키(okf-spec §10 Attested computations concept) | **미채택** — 이 위키에 "인정된 계산"에 해당하는 개념 자체가 없다 |
 
 - **본문 `# Citations` → `sources` 이전은 이 위키에 무영향**이다 — v0.2의 두 breaking change(okf-spec §13.1 Breaking changes) 중 하나지만, 위키는 `# Citations` 섹션을 애초에 쓰지 않고 위 각주 + 소스 스텁 구조를 쓰므로 대응 작업이 없다. 나머지 하나(`timestamp` 폐기)의 대응은 위 "updated ↔ OKF 콘텐츠 시각 필드 매핑" 절이다.
 
@@ -630,5 +632,5 @@ v0.2는 provenance(`sources`)·trust(`generated`/`verified`)·lifecycle(`status`
 - ① **wikilink**(`[[경로|이름]]`, §3) — okf-spec §6 Cross-linking and paths는 표준 markdown 링크를 권장한다. 외부 OKF 소비자는 wikilink를 링크로 추적하지 못한다(적합성 3요건 위반은 아님).
 - ② **index.md 표 기반 카탈로그**(§3·§4) — okf-spec §8 Index files는 불릿 목록 구조다.
 - ③ **log.md 평면 목록**(§8) — okf-spec §9 Log files는 날짜 헤딩(`## YYYY-MM-DD`) 그룹이다.
-- ④ **`status` 어휘 충돌**(§2 각 타입 블록) — okf-spec §5.4 Lifecycle: `status`가 `draft|stable|deprecated`를 예약 어휘로 정의(부재 시 `stable`)하는 반면 이 위키는 `active|paused|archived`(project/feature)·`open|investigating|resolved`(question)를 쓴다. 교집합은 `deprecated`뿐이다(§2.3 폐기 표시). 어휘를 바꾸지 않는 이유는 vault 전 페이지 마이그레이션에 더해 **lint 판정 로직이 현재 값에 직접 의존**하기 때문이다(§7-12·§7-23의 `resolved` 닫힘 판정, §7-17의 `deprecated` 집계, §8 예외 1의 `paused`·`archived` 신선도 제외). 적합성 3요건 위반은 아니지만, v0.2 소비자가 `status`를 §5.4 어휘로 읽으면 이 위키의 값은 그 어휘 밖이라 lifecycle 신호가 전달되지 않는다.
+- ④ **`status` 어휘 충돌**(§2 각 타입 블록) — okf-spec §5.4 Lifecycle: `status`가 `draft|stable|deprecated`를 예약 어휘로 정의(부재 시 `stable`)하는 반면 이 위키는 `active|paused|archived`(project/feature)·`open|investigating|resolved`(question)를 쓴다. 교집합은 `deprecated`뿐이다(§2.3 폐기 표시). 어휘를 바꾸지 않는 이유는 vault 전 페이지 마이그레이션에 더해 **lint 판정 로직이 현재 값에 직접 의존**하기 때문이다(§7-12·§7-23의 `resolved` 닫힘 판정, §7-17의 `deprecated` 집계, §8 예외 1의 `paused`·`archived` 신선도 제외). 적합성 3요건 위반은 아니지만, v0.2 소비자가 `status`를 okf-spec §5.4 어휘로 읽으면 이 위키의 값은 그 어휘 밖이라 lifecycle 신호가 전달되지 않는다.
 - 네 항목은 lint(§7)·검색·인덱스 체계 전반이 의존하는 형식이라 유지한다. 전환하려면 lint 재작성 + vault 전체 마이그레이션이 필요하므로 **사용자 명시 요청에 의한 별도 계획으로만** 진행한다(§11 설계 방향 전환 규정과 동일 원칙).
