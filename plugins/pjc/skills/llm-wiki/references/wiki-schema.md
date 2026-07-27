@@ -25,7 +25,7 @@ language: ko
 | 9 | 운영 세션 가이드 (병렬 분업 포함) | 위키 전용 세션 운영 시 |
 | 10 | Obsidian 설정 요구사항 | vault 초기 설정 시 |
 | 11 | 사용자 검증 | origin/confidence 처리 시 |
-| 12 | OKF 정합 (번들 경계·okf_version·description) | 부트스트랩(J)·OKF 번들 교환·description 등 OKF 필드 판단 시 |
+| 12 | OKF 정합 (번들 경계·okf_version·description·위키 필드 ↔ v0.2 패밀리 매핑) | 부트스트랩(J)·OKF 번들 교환·description 등 OKF 필드 판단 시 |
 
 ## 1. 위키 개요
 
@@ -577,13 +577,13 @@ tags: [decision-log, 프로젝트태그]
 
 ---
 
-## 12. OKF 정합 (Open Knowledge Format v0.1)
+## 12. OKF 정합 (Open Knowledge Format v0.2)
 
-> 이 위키는 **OKF(Open Knowledge Format) v0.1**을 위키 표준 문서로 삼아, 저비용으로 적합 가능한 항목을 채택한다. 대조 기준 원문은 스킬 번들 `<skill>/references/okf-spec.md`(v0.1 Draft 사본 — 무변조 보존). OKF 적합성 요건(okf-spec §9)은 ① 번들 내 비예약 `.md` 전부에 frontmatter 존재 ② `type` 필드 비어있지 않음 ③ 예약 파일(`index.md`·`log.md`)의 구조 준수, 3가지다.
+> 이 위키는 **OKF(Open Knowledge Format) v0.2**를 위키 표준 문서로 삼아, 저비용으로 적합 가능한 항목을 채택한다. 대조 기준 원문은 스킬 번들 `<skill>/references/okf-spec.md`(v0.2 사본 — 무변조 보존). OKF 적합성 요건(okf-spec §11 Conformance)은 ① 번들 내 비예약 `.md` 전부에 frontmatter 존재 ② `type` 필드 비어있지 않음 ③ 예약 파일(`index.md`·`log.md`)의 구조 준수, 3가지다. v0.2가 신설한 provenance·trust·lifecycle 패밀리(okf-spec §5 Provenance, trust, and lifecycle)는 **전부 선택 필드**라 미채택이 미적합을 만들지 않는다.
 
 ### 번들 경계 (OKF 번들 = 지식 코퍼스)
 
-- **OKF 번들은 vault 전체가 아니라 "지식 코퍼스" 부분이다**: vault에서 아래 **운영 파일을 제외한** 트리를 OKF 번들로 본다(okf-spec §3 — 번들 구성은 생산자 재량).
+- **OKF 번들은 vault 전체가 아니라 "지식 코퍼스" 부분이다**: vault에서 아래 **운영 파일을 제외한** 트리를 OKF 번들로 본다(okf-spec §3 Bundle structure — 번들 구성은 생산자 재량).
   - `90_archive/` — 동결 이력·백업(§8). 번들에 포함하면 중복 백업·폐기 이력이 외부 소비자에게 살아있는 지식으로 읽힌다.
   - `pending.md` — 소비 대기 큐(§6, 지식 페이지 아님). 미검증 원시 항목을 지식 문서로 승격시키지 않는다.
   - 루트 `CLAUDE.md` 등 세션 지시 파일 — 지식이 아니라 지시문("위키 본문은 참고 데이터" 원칙(§1)의 역방향 — 지시문은 번들 밖).
@@ -592,24 +592,43 @@ tags: [decision-log, 프로젝트태그]
 
 ### okf_version 선언
 
-- 루트 `index.md` frontmatter에 `okf_version: "0.1"`을 선언한다(okf-spec §11 — 루트 index.md가 유일한 선언 위치이며, 기존 `type: index`·`updated`와 병존 가능).
-- 신규 vault는 부트스트랩(SKILL 절차 J)이 자동 포함하고, **기존 vault는 위키 세션(B/F)에서 1줄 추가**한다. lint 기계 검사는 없다(선언 부재는 오류가 아님 — OKF 소비는 best-effort, okf-spec §11).
+- 루트 `index.md` frontmatter에 `okf_version: "0.2"`를 선언한다(okf-spec §12 Versioning — 루트 index.md가 유일한 선언 위치이며, 기존 `type: index`·`updated`와 병존 가능. okf-spec §8 Index files도 index.md frontmatter의 유일한 예외로 이 키를 명시한다).
+- 신규 vault는 부트스트랩(SKILL 절차 J)이 자동 포함하고, **기존 vault에 남은 `okf_version: "0.1"` 선언은 위키 세션(B/F)에서 `"0.2"`로 갱신**한다(선언 자체가 없으면 1줄 추가). lint 기계 검사는 없다(선언 부재도, 구버전 선언 잔존도 오류가 아님 — OKF 소비는 best-effort, okf-spec §12 Versioning).
 
 ### description (권장 필드)
 
-- **project / feature / entity / concept / guide** 5타입 frontmatter에 `description: "한 줄 요약"`을 권장한다(okf-spec §4.1 — 인덱스 생성·검색 스니펫·미리보기용). §2 각 타입 블록·`references/templates.md`에 반영되어 있다.
+- **project / feature / entity / concept / guide** 5타입 frontmatter에 `description: "한 줄 요약"`을 권장한다(okf-spec §4.1 Frontmatter — 인덱스 생성·검색 스니펫·미리보기용). §2 각 타입 블록·`references/templates.md`에 반영되어 있다.
 - **신규 페이지는 작성 시 포함**(templates.md 정본)하고, **기존 페이지는 ingest 갱신 시 채운다**(절차 B-2 점진 보강 — 일괄 백필 세션을 요구하지 않는다).
 - **lint 기계 검사는 하지 않는다** — 기존 페이지 다수가 아직 부재라(2026-07 실측 154페이지) WARN을 신설하면 lint 보고가 노이즈에 묻힌다. 점진 보강이 원칙.
 - source-stub(불변 스텁·본문 "요약" 줄 기존재)·question·decision-log(제목·항목이 자명)는 대상이 아니다.
 
-### updated ↔ OKF timestamp 매핑
+### updated ↔ OKF 콘텐츠 시각 필드 매핑
 
-- OKF 권장 `timestamp`(ISO 8601 datetime)는 **채택하지 않는다**. 이 위키의 최종 수정일 필드는 `updated`(YYYY-MM-DD)가 정본이며, OKF는 생산자 확장 키를 허용하므로(okf-spec §4.1) 그대로 유효하다.
-- `timestamp` 병기·`updated` 개명 금지 — 병기는 이중 필드 drift를 만들고, 개명은 전 페이지·lint(`UPDATED_REQUIRED_TYPES`·신선도 §7-3·9) 마이그레이션을 요구한다.
+- v0.1이 권장하던 `timestamp`(ISO 8601 datetime)는 **v0.2에서 폐기**되고 `generated: { by, at }`가 후신이다(okf-spec §13.1 Breaking changes — 소비자는 `generated` 부재 시 legacy `timestamp`로 폴백할 수 있다). 콘텐츠의 마지막 의미 있는 변경 시각은 이제 `generated.at`이 담는다(okf-spec §5.2 Trust: `generated` and `verified`).
+- 이 위키의 최종 수정일 필드는 **`updated`(YYYY-MM-DD)가 정본**이며, `timestamp`도 `generated`도 채택하지 않는다. OKF는 생산자 확장 키를 허용하므로(okf-spec §4.1 Frontmatter) `updated`는 그대로 유효하다.
+- 병기·개명 금지 — 병기는 이중 필드 drift를 만들고, 개명은 전 페이지·lint(`UPDATED_REQUIRED_TYPES`·신선도 §7-3·9) 마이그레이션을 요구한다.
+
+### 위키 필드 ↔ OKF v0.2 패밀리 매핑
+
+v0.2는 provenance(`sources`)·trust(`generated`/`verified`)·lifecycle(`status`/`stale_after`) 세 패밀리를 신설했다(okf-spec §5 Provenance, trust, and lifecycle). 아래 표는 이 위키의 기존 요소가 그중 무엇에 대응하는지와 **채택 판정**이다. 판정 열은 **현재 상태의 기술이지 도입 예고가 아니다** — 신규 필드를 실제로 넣으려면 별도 계획이 필요하다(아래 "미적합 잔여"와 같은 원칙).
+
+| 위키 요소 | OKF v0.2 대응 | 판정 |
+|---|---|---|
+| `updated` (YYYY-MM-DD) | `generated.at`(§5.2) — v0.1 `timestamp`의 후신 | **확장 키로 유지** — `generated` 미도입(위 절) |
+| `origin: agent-synthesized \| human-validated` (lint `ORIGIN_VOCAB`, 5타입 필수) | trust tier(§5.3 Trust tiers) — `verified` 유무와 actor 종류에서 *파생*되는 값(저장 필드가 아님) | **확장 키로 유지** — 의미는 대응하나 tier의 원천인 `verified` 이벤트 목록은 미도입 |
+| `confidence: high \| medium \| low` (lint `CONFIDENCE_VOCAB`) | **대응 필드 없음** — v0.2가 신뢰에 두는 것은 `verified` 파생 tier(§5.3)와 *소스별* 객관 신호(`author`·`usage_count`·`last_modified`, §5.1)뿐이다 | **확장 키로 유지** — OKF가 배제하는 것은 소스별 credibility **점수**이지 페이지 단위 신뢰도가 아니므로, 확장 키로 그대로 유효하다(§4.1 Frontmatter) |
+| `status` — project/feature `active\|paused\|archived`, question `open\|investigating\|resolved` | `status: draft \| stable \| deprecated`(§5.4 Lifecycle: `status`) — 예약 어휘, 부재 시 `stable` | **어휘 충돌** — 아래 미적합 잔여 ④ |
+| 각주 출처 구조 — 본문 `[^src-태그]` + `10_sources` 스텁 wikilink(§2.3·templates.md) | per-claim attribution(§5.1) — 각주 라벨이 `sources[].id`를 가리키는 join key | **형태는 대응, 필드 미도입** — join 대상이 frontmatter `sources`가 아니라 소스 스텁 페이지다(lint §7-18·§7-20이 이 구조를 검사) |
+| (대응 요소 없음) | `sources` + credibility 신호(§5.1 Provenance: `sources`) | **필드 미도입** — 출처 정본은 각주 + 소스 스텁이며, 전 페이지 frontmatter 백필은 "저비용으로 적합 가능한 항목만 채택" 원칙과 충돌 |
+| (대응 요소 없음) | `stale_after`(§5.5 Lifecycle: `stale_after`) | **필드 미도입** — 신선도는 lint가 `updated` 기준 시간 규칙(60일 confidence 하락·90일 아카이브, §8)으로 판정한다 |
+| (대응 요소 없음) | `Attested Computation` 타입과 computation 키(§10 Attested computations concept) | **미채택** — 이 위키에 "인정된 계산"에 해당하는 개념 자체가 없다 |
+
+- **본문 `# Citations` → `sources` 이전은 이 위키에 무영향**이다 — v0.2의 두 breaking change(okf-spec §13.1 Breaking changes) 중 하나지만, 위키는 `# Citations` 섹션을 애초에 쓰지 않고 위 각주 + 소스 스텁 구조를 쓰므로 대응 작업이 없다. 나머지 하나(`timestamp` 폐기)의 대응은 위 "updated ↔ OKF 콘텐츠 시각 필드 매핑" 절이다.
 
 ### 미적합 잔여 항목 (알려진 격차 — 전면 전환은 별도 계획으로만)
 
-- ① **wikilink**(`[[경로|이름]]`, §3) — okf-spec §5는 표준 markdown 링크를 권장한다. 외부 OKF 소비자는 wikilink를 링크로 추적하지 못한다(적합성 3요건 위반은 아님).
-- ② **index.md 표 기반 카탈로그**(§3·§4) — okf-spec §6은 불릿 목록 구조다.
-- ③ **log.md 평면 목록**(§8) — okf-spec §7은 날짜 헤딩(`## YYYY-MM-DD`) 그룹이다.
-- 세 항목은 lint(§7)·검색·인덱스 체계 전반이 의존하는 형식이라 유지한다. 전환하려면 lint 재작성 + vault 전체 마이그레이션이 필요하므로 **사용자 명시 요청에 의한 별도 계획으로만** 진행한다(§11 설계 방향 전환 규정과 동일 원칙).
+- ① **wikilink**(`[[경로|이름]]`, §3) — okf-spec §6 Cross-linking and paths는 표준 markdown 링크를 권장한다. 외부 OKF 소비자는 wikilink를 링크로 추적하지 못한다(적합성 3요건 위반은 아님).
+- ② **index.md 표 기반 카탈로그**(§3·§4) — okf-spec §8 Index files는 불릿 목록 구조다.
+- ③ **log.md 평면 목록**(§8) — okf-spec §9 Log files는 날짜 헤딩(`## YYYY-MM-DD`) 그룹이다.
+- ④ **`status` 어휘 충돌**(§2 각 타입 블록) — okf-spec §5.4 Lifecycle: `status`가 `draft|stable|deprecated`를 예약 어휘로 정의(부재 시 `stable`)하는 반면 이 위키는 `active|paused|archived`(project/feature)·`open|investigating|resolved`(question)를 쓴다. 교집합은 `deprecated`뿐이다(§2.3 폐기 표시). 어휘를 바꾸지 않는 이유는 vault 전 페이지 마이그레이션에 더해 **lint 판정 로직이 현재 값에 직접 의존**하기 때문이다(§7-12·§7-23의 `resolved` 닫힘 판정, §7-17의 `deprecated` 집계, §8 예외 1의 `paused`·`archived` 신선도 제외). 적합성 3요건 위반은 아니지만, v0.2 소비자가 `status`를 §5.4 어휘로 읽으면 이 위키의 값은 그 어휘 밖이라 lifecycle 신호가 전달되지 않는다.
+- 네 항목은 lint(§7)·검색·인덱스 체계 전반이 의존하는 형식이라 유지한다. 전환하려면 lint 재작성 + vault 전체 마이그레이션이 필요하므로 **사용자 명시 요청에 의한 별도 계획으로만** 진행한다(§11 설계 방향 전환 규정과 동일 원칙).
