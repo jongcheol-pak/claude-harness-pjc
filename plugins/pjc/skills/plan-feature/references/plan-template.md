@@ -3,7 +3,7 @@
 ## 목차
 - [위치 결정 가이드](#위치-결정-가이드)
 - [작성 시 주의 — 민감 정보](#작성-시-주의--민감-정보)
-- [Template](#template) — 내장 섹션: 요구 이해 / Goal / PRD Coverage / Out of Scope / Deferred·Follow-up / Investigation Log / Risks & Unknowns / Impact Analysis / Decisions / 시각 요소 분해(디자인 정합 시) / Tasks / 사전 승인 항목 / 불가피한 Halt / Known Workarounds / Verification Strategy / Phase Ledger / Retry Ledger / Progress Log / Next Steps / Open Questions
+- [Template](#template) — 내장 섹션: 요구 이해 / Goal / PRD Coverage / Out of Scope / Deferred·Follow-up / Investigation Log / Risks & Unknowns / Impact Analysis / Decisions / 시각 요소 분해(디자인 정합·화면 이식 시) / Tasks / 사전 승인 항목 / 불가피한 Halt / Known Workarounds / Verification Strategy / Phase Ledger / Retry Ledger / Progress Log / Next Steps / Open Questions
 
 ## 위치 결정 가이드
 
@@ -25,6 +25,8 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 - password, connection string
 - 개인정보(이메일·전화·실명 등)
 - 내부 URL/도메인 중 외부 노출 시 민감한 것
+
+**로컬 절대 경로 (`## 시각 요소 분해`의 `**원본**:` 줄 등)**: 경로는 위 금지 목록 자체는 아니지만 `C:\Users\<사용자명>\…` 형태로 실명이 섞이기 쉽다. **plan이 로컬 전용(gitignore)이면 절대 경로를 그대로** 적고, **커밋·공유되는 plan이면 사용자명 구간을 환경변수 표기**(`%USERPROFILE%`·`$HOME`)로 대체한다.
 
 필요하면 **환경변수 이름만** 적고 실제 값은 `.env`(gitignore)에서 관리.
 예: `❌ DATABASE_URL=postgres://user:pass@host/db` → `✅ DATABASE_URL은 .env에 정의`
@@ -129,13 +131,28 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 - **Rationale**: ...
 - **Source**: ...
 
-## 시각 요소 분해 (디자인 정합 작업만)
+## 시각 요소 분해 (디자인 정합 · 화면 이식 작업만)
 <!-- Step 2.5 발동 시에만 이 표준 제목으로 만든다. implement-task V-9가 이 섹션의 존재로
-     시각 충실도 검증을 트리거하므로 task 본문에 표를 묻지 말 것. 비디자인 작업이면 섹션 자체를 생략. -->
-<!-- | 요소 | 속성 | 디자인 값 | 확인 방법 |
+     검증을 트리거하므로 task 본문에 표를 묻지 말 것. 해당 없는 작업이면 섹션 자체를 생략.
+     아래 두 하위 표는 각각 조건부 — 둘 다 요구하지 않는다(시각 정합만이면 인벤토리 생략,
+     항목 이식만이면 시각 속성 생략). 하위 제목 없이 표 1개만 있는 기존 plan은 시각 속성 표로 취급. -->
+
+<!-- 화면 이식(Step 2.5 ①-b)이면 원본 경로를 의무 기재 — implement-task는 plan.md만 보고 실행하므로
+     이 줄이 없으면 V-9 원본 대조도 reviewer 전달도 참조할 값이 없다.
+**원본**: <원본 화면의 로컬 절대 경로> -->
+
+<!-- ### 시각 속성
+     | 요소 | 속성 | 디자인 값 | 확인 방법 |
      |------|------|----------|-----------|
      | 헤더 | font-size | 14px | 디자인 HTML .header 컴퓨티드 |
      "현재 값"·"일치" 열은 두지 않는다 — 현재 값 대조는 구현 후 implement-task V-9의 몫. -->
+
+<!-- ### 참조 정합 인벤토리
+     | # | 항목(원본 순서) | 라벨 문구(원문) | 컨트롤 타입 | 선택지·범위 | 기본값 | 활성·비활성 조건 | 원본 근거 |
+     |---|----------------|----------------|------------|------------|--------|----------------|----------|
+     | 1 | 테마 | 앱 테마 | ComboBox | 시스템 설정 / 라이트 / 다크 | 시스템 설정 | 항상 활성 | SettingsPage.xaml:42 |
+     문구는 원문 그대로 복사(의역·축약 금지), 컨트롤 타입은 원본 타입명 그대로,
+     원본 항목 순서대로 전수, 모든 행에 원본 근거(파일:라인). 근거 없는 행은 넣지 않는다. -->
 
 ## Tasks
 <!-- 반드시 T1, T2, ... 형식. "Phase 1", "단계 1", "Step 1" 등으로 쓰지 말 것
