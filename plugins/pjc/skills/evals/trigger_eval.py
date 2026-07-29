@@ -31,6 +31,7 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -49,6 +50,8 @@ CASES_JSON = os.path.join(EVALS_DIR, "trigger-cases.json")
 
 # 케이스당 상한. 트리거 판정은 첫 도구 호출 시점에 끝나므로 턴 수는 작아도 충분하다.
 MAX_TURNS = 3
+# 2026-07-29 기준선 40세션의 최장 케이스가 108.7초였다 — 그보다 넉넉히 잡아 정상 케이스가
+# timeout으로 버려지지 않게 하되, 응답이 끊긴 세션이 러너를 무한정 붙잡지도 않게 한다.
 CASE_TIMEOUT_SEC = 180
 
 
@@ -117,15 +120,23 @@ def prepare_isolated_config():
 
 
 def kill_tree(proc):
-    """자식까지 함께 종료한다. proc.kill()만으로는 claude가 띄운 하위 프로세스가 남는다."""
+    """자식까지 함께 종료한다. proc.kill()만으로는 claude가 띄운 하위 프로세스가 남는다.
+
+    POSIX는 프로세스 그룹째 죽인다 — 그러려면 Popen이 `start_new_session=True`로 자식을 별도
+    세션에 띄워야 하며(run_claude가 그렇게 한다), 그래야 killpg가 러너 자신을 말려들게 하지
+    않는다. 그룹 킬이 실패하면 최소한 부모라도 정리한다.
+    """
     try:
         if os.name == "nt":
             subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
                            capture_output=True, timeout=20)
         else:
-            proc.kill()
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
     except (OSError, subprocess.SubprocessError):
-        pass
+        try:
+            proc.kill()
+        except OSError:
+            pass
 
 
 def parse_events(lines):
@@ -201,6 +212,7 @@ def run_claude(query, workspace, config_dir, model, stop_skill=None):
     proc = subprocess.Popen(
         cmd, cwd=workspace, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, encoding="utf-8", errors="replace",
+        start_new_session=(os.name != "nt"),  # kill_tree의 POSIX 그룹 킬 전제
     )
     state = {"timed_out": False}
 
