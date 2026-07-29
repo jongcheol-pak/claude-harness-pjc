@@ -7,8 +7,9 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.144.1
+**버전**: 1.145.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
+**Claude Code**: 최소 v2.0 · **권장 v2.1.219+** — plan 리뷰어 2종(`plan-reviewer`·`plan-completion-reviewer`)이 쓰는 `opus` 별칭이 **Claude Opus 5**로 해소되는 버전이다. 그 미만에서도 동작하지만 두 리뷰어가 이전 세대 Opus로 실행된다(나머지 리뷰어는 sonnet·haiku 지정이라 무관). 상세는 [호환 환경](#호환-환경).
 
 ---
 
@@ -212,7 +213,7 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 - 변경이 영향을 주는 곳 자동 경고
 - 완료 전 검증 증거 확인 (빌드·테스트 흔적 없이 끝내려 하면 경고 — 커밋에 "통과"라고만 적고 이 세션에 실제 실행 흔적이 없어도 경고)
 - 빌드·테스트·DB 명령 실행 시 AGENTS.md에 기록 제안 (다음 작업 때 재확인을 줄임 — 승인 시에만 기록)
-- 세션 시작·재개·컨텍스트 요약 직후에 plan.md 진행 상태·notes.md 최근 항목·AGENTS.md 전문을 자동 주입 (AGENTS.md는 프로젝트 가이드 정본 — 16KB 이하면 전문, 초과 시 섹션 목차 + 전문 Read 지시로 폴백. 요약 직후엔 규약 재확인 리마인더 포함 — 긴 자율 루프의 규칙 유실 방지)
+- 세션 시작·재개·컨텍스트 요약 직후에 plan.md 진행 상태·notes.md 최근 항목·AGENTS.md 전문을 자동 주입 (AGENTS.md는 프로젝트 가이드 정본 — 16KB 이하면 전문, 초과 시 섹션 목차 + 전문 Read 지시로 폴백. 요약 직후엔 규약 재확인 리마인더 포함 — 긴 자율 루프의 규칙 유실 방지). 요약 직후에 **미완료 task가 있는 plan을 찾으면 재읽어야 할 스킬 문서·reference 경로까지 지정**한다 — 스킬은 요약 후 앞부분만 재부착되고 재invoke로는 복구되지 않아, "재확인하라"만으로는 무엇을 읽을지가 비어 있기 때문
 - notes.md가 아카이브 조건(30,000자 초과)에 도달하면 편집 시점에 이동 안내 경고 (세션당 1회)
 - 하네스 레포에서 세션을 시작하면 설치본과 레포의 플러그인 버전이 다를 때 자동 경고 (재설치 전까지 세션이 구버전으로 동작한다는 혼동 제거)
 
@@ -433,7 +434,7 @@ pjc는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 |---|---|
 | OS | **Windows 10/11**: 완전 지원·검증. **macOS/Linux**: pwsh 7 설치 시 동작하도록 구현됐으나 **실제 환경 미검증(실험적)** |
 | 런타임 | **Windows**: 추가 설치 불요 — 실행 셸은 Claude Code가 결정(실측: pwsh 7 있으면 그쪽 우선), 스크립트는 내장 `powershell.exe`(5.1) 호환 유지. **macOS/Linux**: pwsh 7 필요(`brew install powershell` 등) |
-| Claude Code | v2.0 이상 |
+| Claude Code | **최소 v2.0** · **권장 v2.1.219+** — 이 버전부터 `opus` 별칭이 Claude Opus 5로 해소돼 plan 리뷰어 2종(`plan-reviewer`·`plan-completion-reviewer`)이 최신 세대로 실행된다. 미만에서도 동작하나 그 둘이 이전 세대 Opus로 돈다 |
 | 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 전용 템플릿으로 자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 generic 템플릿으로 빌드/테스트 명령만 입력하면 동일하게 작동 |
 
 > **요약**: 자동 안전망(hook)은 OS에 무관하게 동작하도록 구현됐습니다. **Windows는 검증 완료** — pwsh 7이 있으면 그쪽에서, 없으면 내장 `powershell.exe`(5.1)에서 동작해 **추가 설치 없이 안전망이 항상 동작**합니다. **macOS/Linux는 pwsh 7 필요·실험적(미검증)** 입니다(`brew install powershell` 등).

@@ -5,6 +5,17 @@
 - [작성 시 주의 — 민감 정보](#작성-시-주의--민감-정보)
 - [Template](#template) — 내장 섹션: 요구 이해 / Goal / PRD Coverage / Out of Scope / Deferred·Follow-up / Investigation Log / Risks & Unknowns / Impact Analysis / Decisions / 시각 요소 분해(디자인 정합·화면 이식 시) / Tasks / 사전 승인 항목 / 불가피한 Halt / Known Workarounds / Verification Strategy / Phase Ledger / Retry Ledger / Progress Log / Next Steps / Open Questions
 
+## 분량 지침 (길이는 품질이 아니다)
+
+plan은 **구현자가 되묻지 않고 실행할 수 있으면 충분**하다. 각 섹션은 판단에 필요한 것만 담고, 같은 사실을 여러 절에 옮겨 적지 않는다(한 곳에 두고 나머지는 그곳을 가리킨다 — 사본이 늘면 개정 때 한쪽만 고쳐져 서로 어긋난다).
+
+- **Decisions**: 선택지·채택·근거·출처를 각 1~3줄. 배경 서술을 길게 늘어놓지 않는다.
+- **Impact Analysis**: 표로. 심볼·영향 파일·영향 종류를 행으로 적고 산문 설명을 덧붙이지 않는다.
+- **task 하나**: Acceptance·Files·Edge Cases·Halt Forecast가 각각 한눈에 들어오는 분량. Design은 구현이 따를 구조만 적고 코드를 미리 쓰지 않는다.
+- **Investigation Log**: 확인한 **사실과 그 출처**만. 조사 과정의 서사는 넣지 않는다.
+
+길이가 필요해서 길어지는 것은 정상이다(요구가 크면 task도 많다). 줄여야 하는 것은 **같은 말의 반복**과 **결정에 쓰이지 않는 서술**이다. 판단 기준: *이 문단을 지우면 구현자가 무엇을 되묻게 되는가?* 답이 "아무것도"라면 지운다.
+
 ## 위치 결정 가이드
 
 | 프로젝트 규모 | 권장 위치 |

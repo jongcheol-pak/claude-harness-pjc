@@ -42,9 +42,37 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 
 **공식 한도 (Agent Skills 표준 — agentskills.io/specification + code.claude.com/docs/en/plugins.md, 2026-07-08 확인)**:
 - `name`: 1-64자, 소문자·숫자·하이픈만, **스킬 디렉터리명과 일치**.
-- `description`: **1-1,024자 (하드 제약)** — 초과분은 잘리거나 무효가 될 수 있다. 트리거 어휘·near-miss 경계는 유지한 채 산문 연결부를 압축해 맞춘다(v1.100.0에서 1,230자로 초과된 전례 — 개정 때마다 자수 재측정).
+- `description`: **두 사양이 함께 걸린다 — 낮은 쪽이 실효 한도다.**
+  - **Agent Skills 표준: 1-1,024자** (하드 제약). 표준을 따르는 다른 도구에서도 쓰려면 이 값을 지켜야 한다.
+  - **Claude Code: `description` + `when_to_use` 합산이 스킬 목록에서 1,536자로 절단**된다(목록 예산은 컨텍스트의 1% — `skillListingBudgetFraction`, 항목당 캡은 `skillListingMaxDescChars`. 출처: code.claude.com/docs/en/skills, 2026-07-29 확인). 즉 Claude Code만 놓고 보면 여유가 더 있으나, **`when_to_use`를 쓰면 그 몫만큼 `description` 가용분이 줄어든다.**
+  - **pjc의 운용 기준은 1,024자**다 — 두 사양 중 낮은 쪽이고, 표준 호환을 잃지 않는다. 초과분은 잘리거나 무효가 될 수 있으므로 트리거 어휘·near-miss 경계는 유지한 채 산문 연결부를 압축해 맞춘다(v1.100.0에서 1,230자로 초과된 전례 — 개정 때마다 자수 재측정).
 - SKILL.md 본문: **500줄 미만 권장** — 초과하면 저빈도 상세를 `references/`로 분리(progressive disclosure). 5,000토큰 권장은 대형 스킬(implement-task 등)에서 의도적으로 초과 수용(자율 루프 품질 우선 — 분리 시 최빈 경로 토큰 중립 + Read 지연만 추가).
 - 측정: python으로 frontmatter `description:` 값 길이·본문 행수를 잰다(공백 포함 문자 수 기준).
+
+### frontmatter 필드 (pjc가 쓸 수 있는 것)
+
+**출처**: code.claude.com/docs/en/skills (2026-07-29 확인) — 아래 필드 목록·치환 변수·`disallowed-tools` 해제 규칙·`background`의 도구 축소는 모두 이 문서 기준이다.
+
+공식 지원 필드는 17종이며, 그중 이 하니스에서 실제로 쓸 만한 것만 추린다. **표준(agentskills.io) 밖의 Claude Code 확장 필드는 다른 도구에서 무시되므로, 그 필드에 의존하는 동작은 문서 규칙으로도 한 겹 받쳐 둔다**(예: `disallowed-tools`에 기댄 자율 루프의 질문 금지).
+
+| 필드 | 용도 |
+|---|---|
+| `name` | 스킬 이름 — 디렉터리명과 일치해야 한다 |
+| `description` | 트리거 메타데이터 (위 한도 참조) |
+| `when_to_use` | 트리거 조건을 `description`에서 분리 — 목록 예산은 둘의 **합산**으로 잡힌다 |
+| `argument-hint` | `/skill` 입력 시 보이는 인자 힌트 |
+| `arguments` | 이름 있는 위치 인자 선언 — 본문에서 `$name`으로 치환 |
+| `allowed-tools` | 이 스킬이 쓸 도구를 화이트리스트로 한정 |
+| `disallowed-tools` | 이 스킬 활성 중 제거할 도구. **사용자의 다음 메시지에서 해제**되므로 영구 차단이 아니다 |
+| `model` | 이 스킬이 쓸 모델 고정 |
+| `effort` | 이 스킬 활성 중 effort 오버라이드 — `low`·`medium`·`high`·`xhigh`·`max` (모델에 따라 가용 등급이 다르다) |
+| `context` | 스킬에 주입할 추가 컨텍스트 |
+| `agent` | 이 스킬을 특정 subagent로 실행 |
+| `background` | 백그라운드 실행. **내장 도구가 축소되고 `LSP`가 빠지므로** 검증 성격의 스킬에는 쓰지 않는다 |
+| `paths` | 특정 경로에서만 활성화 |
+| `shell` | 본문의 `` !`cmd` `` 전처리에 쓸 셸 지정 |
+
+**본문 치환 변수**: `$ARGUMENTS`·`$ARGUMENTS[N]`·`$N`·`$name`·`${CLAUDE_SESSION_ID}`·`${CLAUDE_EFFORT}`·`${CLAUDE_SKILL_DIR}`·`${CLAUDE_PROJECT_DIR}`. **치환은 원본 파일 전체에 1회 적용되며 코드펜스 안이라고 예외가 아니다** — 변수명을 설명문에 그대로 적으면 그것까지 치환되므로, 설명할 때는 이름을 쪼개 쓴다.
 
 스킬 트리거의 1차 메커니즘이다(skill-creator 가이드 정합):
 - **무엇을 하는가 + 언제 트리거되는가**를 모두 담는다.
