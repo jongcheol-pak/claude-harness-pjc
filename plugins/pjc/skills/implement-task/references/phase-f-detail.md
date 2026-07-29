@@ -115,7 +115,7 @@ F-1 ~ F-6 중 어느 하나라도 결함 발견 → **추가 task 등록 후 Pha
 
 ## F-7. plan-completion-reviewer subagent (필수)
 
-위 자체 검증 통과 후 **`plan-completion-reviewer` subagent에 적대적 검토 위임.** 자체 검토만으로 마무리 금지 — **예외는 호출 자체가 불가한 환경뿐이며 그때는 `recovery.md` "Reviewer 호출 실패 대응" B 분기**(체크리스트 대체 + 의무 3종). **B 분기로 F-7을 대체하면 Phase G가 active Must FR 전체를 보완 재대조한다**(`phase-g-detail.md` G-1 예외 ② — 대체 경로가 Sonnet 대체보다 얕으므로 사후 검증을 느슨하게 두지 않는다). 호출은 **동기 호출**(`run_in_background: false`) — 검토 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
+위 자체 검증 통과 후 **`plan-completion-reviewer` subagent에 적대적 검토 위임.** 자체 검토만으로 마무리 금지 — **예외는 호출 자체가 불가한 환경뿐이며 그때는 `recovery.md` "Reviewer 호출 실패 대응" B 분기**(체크리스트 대체 + 의무 3종). **reviewer가 HTTP 오류 없이 정상 응답으로 검토를 거절한 경우는 그 절의 C 분기**(범위를 좁혀 1회 재의뢰 → 그래도 거절되면 B 절차를 쓰되 사유를 "거절 — 미검토 범위"로 기재)를 따른다. **B 분기로 F-7을 대체하면 Phase G가 active Must FR 전체를 보완 재대조한다**(`phase-g-detail.md` G-1 예외 ② — 대체 경로가 Sonnet 대체보다 얕으므로 사후 검증을 느슨하게 두지 않는다). 호출은 **동기 호출**(`run_in_background: false`) — 검토 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
 
 호출 시 전달:
 - plan.md 경로
