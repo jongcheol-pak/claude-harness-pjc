@@ -27,6 +27,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -151,6 +152,26 @@ def prepare_isolated_config():
     return cfg
 
 
+def kill_tree(proc):
+    """자식까지 함께 종료한다. proc.kill()만으로는 claude가 띄운 하위 프로세스가 남는다.
+
+    POSIX는 프로세스 그룹째 죽인다 — 그러려면 Popen이 `start_new_session=True`로 자식을 별도
+    세션에 띄워야 하며(score_one이 그렇게 한다), 그래야 killpg가 러너 자신을 말려들게 하지 않는다.
+    러너 간 코드를 공유하지 않는 설계라 trigger_eval.py와 같은 역할의 함수를 각자 갖는다.
+    """
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                           capture_output=True, timeout=20)
+        else:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
+
 def score_one(prompt, model, config_dir, cwd):
     """judge를 1회 호출해 (파싱된 응답, 오류 문자열)을 반환한다. 오류 시 1회 재시도한다."""
     cmd = ["claude", "-p", "--output-format", "json",
@@ -163,17 +184,27 @@ def score_one(prompt, model, config_dir, cwd):
 
     last_err = "(사유 없음)"
     for _ in range(2):  # 네트워크·API 오류는 1회만 재시도 (trigger_eval.py와 동일 정책)
+        proc = subprocess.Popen(
+            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8", errors="replace", cwd=cwd, env=env,
+            start_new_session=(os.name != "nt"),  # kill_tree의 POSIX 그룹 킬 전제
+        )
         try:
-            proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
-                                  encoding="utf-8", errors="replace", cwd=cwd, env=env,
-                                  timeout=JUDGE_TIMEOUT_SEC)
+            stdout, stderr = proc.communicate(input=prompt, timeout=JUDGE_TIMEOUT_SEC)
         except subprocess.TimeoutExpired:
+            # 직계만 죽이면 claude가 띄운 하위 프로세스가 남아, 여러 plan을 순회하는 동안
+            # 고아가 누적되고 임시 폴더 정리까지 조용히 실패한다.
+            kill_tree(proc)
+            try:
+                proc.communicate(timeout=20)  # 파이프 정리
+            except subprocess.SubprocessError:
+                pass
             last_err = f"timeout ({JUDGE_TIMEOUT_SEC}s)"
             continue
         try:
-            envelope = json.loads(proc.stdout)
+            envelope = json.loads(stdout)
         except json.JSONDecodeError:
-            last_err = (proc.stderr.strip().splitlines() or ["stdout 파싱 실패"])[-1][:200]
+            last_err = (stderr.strip().splitlines() or ["stdout 파싱 실패"])[-1][:200]
             continue
         if envelope.get("is_error"):
             last_err = str(envelope.get("subtype") or envelope.get("result"))[:200]
@@ -187,21 +218,20 @@ def score_one(prompt, model, config_dir, cwd):
 
 
 def deviation(runs, keys):
-    """같은 plan의 두 채점 사이 항목별 절대 편차를 낸다.
+    """같은 plan을 반복 채점했을 때 항목별로 벌어진 폭(최댓값 - 최솟값)을 낸다.
 
-    한쪽이라도 N/A면 편차를 계산하지 않고 그 사실을 남긴다 — N/A를 0점으로 취급하면 '채점 못 함'이
+    2회면 두 점수의 절대차와 같고, `--repeats`를 3회 이상으로 올리면 전 회차의 폭을 본다 —
+    앞 두 회차만 보면 세 번째 이후의 흔들림이 편차 통계에서 조용히 빠진다.
+    한 회차라도 N/A면 계산하지 않고 그 사실을 남긴다 — N/A를 0점으로 취급하면 '채점 못 함'이
     '최하점'으로 둔갑한다.
     """
     if len(runs) < 2:
         return {}
-    a, b = runs[0]["scores"], runs[1]["scores"]
     out = {}
     for key in keys:
-        sa, sb = a.get(key, {}).get("score"), b.get(key, {}).get("score")
-        if isinstance(sa, (int, float)) and isinstance(sb, (int, float)):
-            out[key] = abs(sa - sb)
-        else:
-            out[key] = "N/A"
+        values = [r["scores"].get(key, {}).get("score") for r in runs]
+        nums = [v for v in values if isinstance(v, (int, float)) and not isinstance(v, bool)]
+        out[key] = max(nums) - min(nums) if len(nums) == len(runs) else "N/A"
     return out
 
 
