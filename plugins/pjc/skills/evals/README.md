@@ -7,6 +7,7 @@
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
 | `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 20건 | `trigger-<isolation>-<run_id>.json` |
+| `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 
 ## 공통 출력 계약
 
@@ -57,6 +58,28 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 `trigger-cases.json`의 `cases[]`에 `id`·`skill`·`expect`·`workspace`·`query`·`why`를 넣는다. `why`는 러너가 읽지 않는 판정 근거이며, 케이스가 왜 그 기대값을 갖는지 후속 세션이 알 수 있게 남긴다.
 
+## rubric_eval.py
+
+```
+python rubric_eval.py                     # docs/plans/의 전 plan을 2회씩 채점
+python rubric_eval.py --repeats 1         # 편차 측정 없이 1회만 (스모크)
+python rubric_eval.py --filter harness     # plan 파일명 부분 일치 필터
+python rubric_eval.py --plans-dir <경로>   # 입력 세트 지정
+```
+
+`rubric.md`의 8개 항목을 judge에게 그대로 실어 보내 각 plan을 채점한다. 채점 대상은 파일명이 `YYYY-MM-DD-<slug>.md`인 것만이다 — `deferred.md` 같은 대장 문서를 plan으로 오인해 채점하지 않기 위한 필터다.
+
+### 이 러너가 반드시 지키는 것
+
+1. **근거 없는 점수는 점수로 세지 않는다** — 항목마다 `파일:라인` 근거를 받고, 근거가 없으면 러너가 그 점수를 `N/A`로 내린다(judge가 숫자를 냈더라도). 근거 없는 숫자는 A/B 비교의 기준이 되지 못한다.
+2. **기본 2회 채점 + 편차 보고** — judge 채점은 실행마다 흔들린다. 편차를 모르면 "1점 올랐다"가 개선인지 잡음인지 구분할 수 없다. 한쪽이라도 `N/A`인 항목은 편차를 계산하지 않는다(`N/A`를 0점으로 취급하면 "채점 못 함"이 "최하점"으로 둔갑한다).
+3. **중립 cwd + 격리 `CLAUDE_CONFIG_DIR`** — 프로젝트 `AGENTS.md`나 글로벌 `CLAUDE.md`가 채점 기준에 끼어들면 같은 plan이 환경에 따라 다른 점수를 받는다. 플러그인은 싣지 않는다(judge는 스킬을 쓰지 않는다).
+4. **절단을 숨기지 않는다** — 입력 상한 30,000자를 넘으면 잘라내되 `truncated`와 `issues`에 남긴다. 조용한 절단은 "뒷부분이 부실해서 낮은 점수"와 "안 보여줘서 낮은 점수"를 구분 불가능하게 만든다.
+
+### 루브릭을 고칠 때
+
+항목 키는 `rubric.md`의 `### N. 이름 (key)` 형식에서 **동적으로 추출**한다 — 루브릭을 고쳤는데 러너가 옛 항목을 기대해 전부 "불일치"로 집계되는 어긋남을 막기 위해서다. 다만 **항목을 더하거나 빼면 과거 run과의 점수 비교가 깨지므로**, 그럴 때는 새 `run_id` 세대로 구분하고 옛 run과 직접 비교하지 않는다.
+
 ## 비용
 
-`--isolation both`는 케이스 수 × 2회의 세션을 띄운다(20건 → 40세션). 스모크 확인은 `--filter`로 1~2건만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(20건 → 40세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
