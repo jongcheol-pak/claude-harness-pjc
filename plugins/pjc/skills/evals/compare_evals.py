@@ -114,9 +114,13 @@ def mean_score(case, key):
 def compare_rubric(before, after):
     """루브릭 run 두 개를 비교해 plan × 항목 증감표와 회귀 목록을 낸다."""
     pairs, only_b, only_a = align(before, after, "plan")
-    keys = before.get("rubric_items") or after.get("rubric_items") or []
-    common_keys = [k for k in keys if k in (after.get("rubric_items") or keys)]
-    dropped_keys = [k for k in keys if k not in common_keys]
+    # 항목 목록은 양쪽에서 각각 읽어 교집합을 낸다 — 한쪽 목록만 기준으로 삼으면 반대쪽에만
+    # 있는 항목이 '비교 제외' 목록에도 안 잡혀 조용히 사라진다(케이스 레벨의 only_b/only_a와
+    # 같은 대칭성을 항목 레벨에도 둔다).
+    before_keys = before.get("rubric_items") or []
+    after_keys = after.get("rubric_items") or []
+    common_keys = [k for k in before_keys if k in after_keys]
+    dropped_keys = sorted((set(before_keys) | set(after_keys)) - set(common_keys))
 
     if not pairs:
         print("  ⚠ 두 run에 공통인 plan이 없습니다 — 비교된 항목은 0건입니다.")
@@ -128,7 +132,10 @@ def compare_rubric(before, after):
             bs, as_ = mean_score(b, key), mean_score(a, key)
             if bs is None or as_ is None:
                 # 한쪽이 N/A면 증감을 만들지 않는다 — 없는 점수를 0으로 두면 허위 낙폭이 생긴다.
-                print(f"    {key:26s} {str(bs or 'N/A'):>6s} → {str(as_ or 'N/A'):>6s}   (비교 불가)")
+                # None 여부로 판정한다(falsy로 보면 0.0점이 N/A로 둔갑한다).
+                b_txt = "N/A" if bs is None else f"{bs:.1f}"
+                a_txt = "N/A" if as_ is None else f"{as_:.1f}"
+                print(f"    {key:26s} {b_txt:>6s} → {a_txt:>6s}   (비교 불가)")
                 continue
             delta = as_ - bs
             mark = "회귀" if delta < 0 else ("개선" if delta > 0 else "")
