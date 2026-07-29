@@ -1,0 +1,165 @@
+{
+  "_note": "스킬 트리거 정확도 eval 케이스. trigger_eval.py가 각 케이스를 격리 CLAUDE_CONFIG_DIR + 임시 워크스페이스에서 `claude -p`로 실행해 Skill 도구 호출을 관측한다. expect=trigger면 skill이 발동해야 PASS, expect=no-trigger면 발동하지 않아야 PASS(다른 스킬이 대신 발동하는 것은 무방 — 오발동만 본다). workspace는 러너가 실행 시점에 생성한다(plan.md가 repo .gitignore 대상이라 픽스처로 체크인할 수 없음). why는 판정 근거이며 러너는 읽지 않는다(사람·후속 세션용).",
+  "cases": [
+    {
+      "id": "impl-pos-1",
+      "skill": "pjc:implement-task",
+      "expect": "trigger",
+      "workspace": "with_plan",
+      "query": "plan.md 대로 구현 시작해줘",
+      "why": "승인된 plan 존재 + '구현' — description의 1차 트리거 문구"
+    },
+    {
+      "id": "impl-pos-2",
+      "skill": "pjc:implement-task",
+      "expect": "trigger",
+      "workspace": "with_plan",
+      "query": "이대로 진행해",
+      "why": "plan 승인 직후의 실행 지시 관용구"
+    },
+    {
+      "id": "impl-pos-3",
+      "skill": "pjc:implement-task",
+      "expect": "trigger",
+      "workspace": "with_plan",
+      "query": "T2부터 계속",
+      "why": "중간 재개 형태 — '재개 진입' 경로"
+    },
+    {
+      "id": "impl-pos-4",
+      "skill": "pjc:implement-task",
+      "expect": "trigger",
+      "workspace": "with_plan",
+      "query": "승인. 계획대로 작업 진행해줘",
+      "why": "'승인'+'진행' 조합 — 승인 게이트 통과 표현"
+    },
+    {
+      "id": "impl-pos-5",
+      "skill": "pjc:implement-task",
+      "expect": "trigger",
+      "workspace": "with_plan",
+      "query": "go",
+      "why": "description이 명시한 영어 단문 트리거"
+    },
+    {
+      "id": "impl-neg-1",
+      "skill": "pjc:implement-task",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "src/sample.py의 로깅 방식을 전체적으로 리팩토링해줘",
+      "why": "plan이 없음 — implement-task가 아니라 plan-feature 영역"
+    },
+    {
+      "id": "impl-neg-2",
+      "skill": "pjc:implement-task",
+      "expect": "no-trigger",
+      "workspace": "with_plan",
+      "query": "plan.md에 지금 어떤 작업들이 적혀 있어?",
+      "why": "plan이 있어도 질문 작업 — 수정 요청이 아니다"
+    },
+    {
+      "id": "impl-neg-3",
+      "skill": "pjc:implement-task",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "README.md 첫 줄 오타 하나만 고쳐줘",
+      "why": "trivial 단일 수정 — plan 없이 직접 편집"
+    },
+    {
+      "id": "impl-neg-4",
+      "skill": "pjc:implement-task",
+      "expect": "no-trigger",
+      "workspace": "with_plan",
+      "query": "이 프로젝트 빌드 명령이 뭐야?",
+      "why": "질문 작업 — plan 존재가 발동 근거가 되어선 안 된다"
+    },
+    {
+      "id": "impl-neg-5",
+      "skill": "pjc:implement-task",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "알림 기능을 새로 넣고 싶은데 계획부터 세워줘",
+      "why": "계획 수립 요청 — plan-feature가 맞다"
+    },
+    {
+      "id": "plan-pos-1",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "사용자 인증 기능을 추가하려는데 계획 세워줘",
+      "why": "'기능 추가'+'계획' — 1차 트리거"
+    },
+    {
+      "id": "plan-pos-2",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "이 프로젝트 에러 처리 방식을 여러 파일에 걸쳐 바꿔야 해",
+      "why": "다중 파일 변경 — plan 필요 규모"
+    },
+    {
+      "id": "plan-pos-3",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "설정 화면 만들어줘",
+      "why": "'만들어줘' — 신규 컴포넌트 생성 요청"
+    },
+    {
+      "id": "plan-pos-4",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "Build a small CLI tool that converts CSV files to JSON",
+      "why": "영어 'build a tool' — 영어 트리거 경로"
+    },
+    {
+      "id": "plan-pos-5",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "sample.py를 클래스 구조로 리팩토링하고 테스트도 붙여줘",
+      "why": "리팩토링 + 신규 심볼 — trivial 예외에 해당하지 않는다"
+    },
+    {
+      "id": "plan-neg-1",
+      "skill": "pjc:plan-feature",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "README.md의 오타 하나만 고쳐줘",
+      "why": "trivial 단일 수정 — description의 명시적 비대상"
+    },
+    {
+      "id": "plan-neg-2",
+      "skill": "pjc:plan-feature",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "sample.py의 로그 레벨 문자열을 INFO에서 DEBUG로 바꿔줘",
+      "why": "순수 값 치환 — trivial 예외"
+    },
+    {
+      "id": "plan-neg-3",
+      "skill": "pjc:plan-feature",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "sample.py가 무슨 일을 하는 코드인지 설명해줘",
+      "why": "질문 작업 — 수정 요청 없음"
+    },
+    {
+      "id": "plan-neg-4",
+      "skill": "pjc:plan-feature",
+      "expect": "no-trigger",
+      "workspace": "with_plan",
+      "query": "T1 구현 진행해줘",
+      "why": "승인된 plan 존재 + 실행 지시 — implement-task로 라우팅돼야 한다"
+    },
+    {
+      "id": "plan-neg-5",
+      "skill": "pjc:plan-feature",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "sample.py 맨 위에 주석 한 줄만 달아줘",
+      "why": "주석 1줄 — trivial 예외"
+    }
+  ]
+}
