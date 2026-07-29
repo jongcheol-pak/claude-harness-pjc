@@ -65,7 +65,7 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 | `allowed-tools` | 이 스킬이 쓸 도구를 화이트리스트로 한정 |
 | `disallowed-tools` | 이 스킬 활성 중 제거할 도구. **사용자의 다음 메시지에서 해제**되므로 영구 차단이 아니다 |
 | `model` | 이 스킬이 쓸 모델 고정 |
-| `effort` | 이 스킬 활성 중 effort 오버라이드 (`low`~`max`) |
+| `effort` | 이 스킬 활성 중 effort 오버라이드 — `low`·`medium`·`high`·`xhigh`·`max` (모델에 따라 가용 등급이 다르다) |
 | `context` | 스킬에 주입할 추가 컨텍스트 |
 | `agent` | 이 스킬을 특정 subagent로 실행 |
 | `background` | 백그라운드 실행. **내장 도구가 축소되고 `LSP`가 빠지므로** 검증 성격의 스킬에는 쓰지 않는다 |
