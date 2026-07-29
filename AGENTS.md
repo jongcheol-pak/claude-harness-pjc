@@ -4,6 +4,7 @@
 
 ## Stack
 - **언어/플랫폼**: Claude Code 플러그인 (pjc harness). PowerShell 7(pwsh) 우선 · Windows PowerShell 5.1 폴백. 컴파일 언어 없음.
+- **Claude Code 요구 버전**: 리뷰어 4종이 `opus` 별칭으로 모델을 지정하는데, 그 별칭이 **Claude Opus 5로 해소되는 것은 v2.1.219+**다. 그 이전 버전에서는 이전 세대 Opus로 실행돼 리뷰 판정 품질이 달라질 수 있다.
 - **버전**: pwsh 7+ (hook 실행). 플러그인 버전은 `plugins/pjc/.claude-plugin/plugin.json`.
 - **주요 프레임워크**: 없음 (hooks.json 배선 + PowerShell 스크립트 + Markdown SKILL/agent).
 - **테스트 도구**: 없음 (단위 테스트 프레임워크 없음 — 아래 구문·JSON 검증으로 대체).
@@ -42,6 +43,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
 | 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) — 기본값 |
+| `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·Phase F-2에 포함하지 않는다**(실제 모델을 호출해 분·비용 단위 비용이 든다) |
 
 ## Repository Structure
 ```

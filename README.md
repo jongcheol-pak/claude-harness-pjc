@@ -9,6 +9,7 @@
 
 **버전**: 1.144.1
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
+**권장 Claude Code**: v2.1.219+ — 리뷰어 4종이 쓰는 `opus` 별칭이 **Claude Opus 5**로 해소되는 최소 버전이다. 그 이전에서도 동작하지만 리뷰가 이전 세대 Opus로 실행된다.
 
 ---
 
