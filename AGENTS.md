@@ -4,7 +4,7 @@
 
 ## Stack
 - **언어/플랫폼**: Claude Code 플러그인 (pjc harness). PowerShell 7(pwsh) 우선 · Windows PowerShell 5.1 폴백. 컴파일 언어 없음.
-- **Claude Code 요구 버전**: 리뷰어 4종이 `opus` 별칭으로 모델을 지정하는데, 그 별칭이 **Claude Opus 5로 해소되는 것은 v2.1.219+**다. 그 이전 버전에서는 이전 세대 Opus로 실행돼 리뷰 판정 품질이 달라질 수 있다.
+- **Claude Code 버전**: 최소 v2.0, **권장 v2.1.219+**. plan 리뷰어 2종(`plan-reviewer`·`plan-completion-reviewer`)만 `model: opus`이며, 그 별칭이 **Claude Opus 5로 해소되는 것이 v2.1.219+**다 — 미만에서는 그 둘이 이전 세대 Opus로 실행돼 판정 품질이 달라질 수 있다(`spec-compliance`·`code-quality`는 sonnet, `explorer`·`spec-prefilter`는 haiku 지정이라 무관).
 - **버전**: pwsh 7+ (hook 실행). 플러그인 버전은 `plugins/pjc/.claude-plugin/plugin.json`.
 - **주요 프레임워크**: 없음 (hooks.json 배선 + PowerShell 스크립트 + Markdown SKILL/agent).
 - **테스트 도구**: 없음 (단위 테스트 프레임워크 없음 — 아래 구문·JSON 검증으로 대체).
