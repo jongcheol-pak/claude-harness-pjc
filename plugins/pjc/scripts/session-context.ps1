@@ -5,6 +5,9 @@
 #   상태 요약 1~3줄을 주입해 규칙을 구조화한다(v1.112.0).
 #   ② 컨텍스트 요약(auto-compact) 직후는 자율 루프(implement-task)의 절차 규칙·plan 상태가
 #   요약으로 희석되는 최위험 지점 — source=compact일 때 재확인 리마인더를 추가 주입한다.
+#   여기에 더해 **미완료 task가 있는 plan을 찾은 경우에만** 재읽기 대상 경로를 못박는다:
+#   스킬은 압축 후 앞 5,000토큰만 재부착되고 동일 스킬 재invoke는 "이미 로드됨"만 반환해
+#   복구되지 않으므로, "재확인하라"는 지시만으로는 무엇을 읽을지가 비어 있다.
 # 어떻게: stdin(SessionStart JSON)의 cwd에서 plan(루트 plan.md 우선, 없으면 docs/plans/ 최신
 #   수정 5개 중 task 체크박스가 있는 파일 — 글로벌 CLAUDE.md의 확인 순서와 동일)과 notes.md를
 #   찾아 미완료 task 수·최신 항목 날짜를 stdout으로 출력한다(SessionStart 규약: stdout=컨텍스트
@@ -74,6 +77,17 @@ try {
                 if ($all -gt 0) {
                     if ($open -gt 0) {
                         $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 중 미완료 ${open}개 — 작업 시작 전 plan.md 진행 상태와 notes.md 최근 항목을 확인하세요.")
+                        # 압축 직후 + 미완료 task = 자율 루프가 규칙을 잃은 채 재개될 최위험 조합.
+                        #   스킬은 auto-compact 후 앞 5,000토큰만 재부착되므로 뒷부분(Phase 절차·Halt
+                        #   조건·재시도 카운터)이 통째로 빠지는데, 동일 스킬 재invoke는 "이미 로드됨"만
+                        #   반환해 복구되지 않는다 — Read만 유효하다. 그래서 위 일반 리마인더(재확인하라)에
+                        #   더해 "무엇을" 읽을지를 기계가 못박는다.
+                        # Phase 판정은 하지 않는다: hook이 plan 형식에 의존하게 되고 형식이 바뀌면 조용히
+                        #   깨진다. 대신 Phase와 무관하게 늘 필요한 루프 제어 3종만 고정 지정하고,
+                        #   Phase 특화 reference는 스킬 본문의 지시에 맡긴다.
+                        if ($source -eq 'compact') {
+                            $lines.Add("[pjc 세션 컨텍스트] 진행 중 plan이 있습니다 — 스킬 재invoke로는 복구되지 않으니 다음을 Read로 재확인하세요: implement-task/SKILL.md · implement-task/references/halt-conditions.md · implement-task/references/recovery.md. 진행 중인 Phase가 참조하는 reference 파일도 함께 읽으세요.")
+                        }
                     } else {
                         $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 전부 완료 — 새 작업이면 plan 교체 전 Deferred/Follow-up 잔여 항목을 확인하세요.")
                     }
