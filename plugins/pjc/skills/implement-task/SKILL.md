@@ -2,6 +2,7 @@
 name: implement-task
 description: This skill should be used when executing tasks from an approved plan.md. Triggers — ONLY when an approved plan.md already exists (or the user is approving a plan just presented) — on phrases like "구현", "implement", "이대로 진행", "진행해", "계속", "T<N> 진행", "go" (meaning "proceed with the plan"). If NO plan exists yet and the user asks to design or implement a non-trivial change, that is plan-feature first — it writes the plan, this skill runs it. Runs a FULLY AUTONOMOUS loop — processes ALL tasks (T1...Tn) without asking between tasks, stopping only when every task completes or a Halt Condition fires. Resuming mid-plan ("T6부터 계속") means T6 through the LAST task plus Phase F/G, not just T6. For trivial single-line edits without a plan, do NOT use this skill — Claude applies the change directly and lets hooks validate.
 argument-hint: "<시작 task ID (거기부터 끝까지 자율 진행) | 생략 시 첫 미완료부터>"
+disallowed-tools: AskUserQuestion
 ---
 
 # Implement Task
@@ -25,6 +26,10 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
                                 |
                   ↑ 모든 질문 해결 후 ─── 이 시점부터 자율 ───
 ```
+
+> **질문 도구 제거는 보조 장치일 뿐 — 1차 방어선은 여전히 이 문서의 규칙이다.** 이 스킬의 frontmatter는 `disallowed-tools`로 질문 도구를 내려놓는다(공식 문서가 "자율 배경 루프의 `AskUserQuestion`"을 이 필드의 용례로 든다). 다만 **그 제거는 사용자가 다음 메시지를 보내면 풀리고**, 이 레포에서 **실동작 스모크 테스트는 아직 하지 않았다**(frontmatter 변경은 워킹트리에만 생기고 실제로 실행되는 것은 설치본이라, 확인하려면 push→릴리즈→재설치가 필요한데 그것은 자율 루프의 권한 밖이다 — `## Deferred / Follow-up`에 등재). 그러니 **"도구가 막혀 있으니 안전하다"고 가정하지 말 것**: "task 사이에 묻지 않는다"·금지 표현 목록이 실제로 지키는 규칙이고, 필드는 실수를 한 겹 더 막아 줄 뿐이다.
+>
+> 이 제거는 **Halt 보고·리뷰어 과부하 시 선택 요청·최종 보고에 영향이 없다** — 그 셋은 모두 텍스트로 출력하고 사용자의 다음 입력을 기다리는 경로이지 질문 도구를 쓰는 경로가 아니다.
 
 ## 절대 규칙 (Hard Rules)
 
@@ -91,7 +96,21 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 ## 자율 루프 (Autonomous Loop)
 
+### ⚙️ 세션 effort 확인 (루프 시작 전, 1회)
+
+**이 세션의 effort: `${CLAUDE_EFFORT}`**
+
+위 값이 **`low` 또는 `medium`이면** 루프 시작 전에 한 줄로 알린다:
+
+> "현재 세션 effort가 `<값>`입니다. 자율 루프는 task마다 Phase P~V를 돌며 caller 추적·리뷰 지적 판정을 하므로 `high` 이상을 권합니다. 이대로 진행하면 검증 깊이가 낮아질 수 있습니다."
+
+알린 뒤에는 **답을 기다리지 않고 그대로 진행한다** — 이것은 경고이지 승인 요청이 아니다(사용자가 낮은 effort를 의도적으로 골랐을 수 있고, 여기서 멈추면 "task 사이에 묻지 않는다"가 무너진다). `high`·`xhigh`·`max`면 아무것도 출력하지 않는다.
+
+<!-- 위 굵은 줄의 값은 Claude Code가 스킬 로드 시 치환해 넣는다(치환 변수: "CLAUDE_" + "EFFORT"를 `${...}`로 감싼 것 — 이 주석에 붙여 쓰면 여기도 치환되므로 쪼개 적는다). 치환은 원본 파일 전체에 1회 적용되며 코드펜스 안이라고 예외가 아니다. -->
+
 ### 🧭 시작 전 컨텍스트 확인 (구현 시작 직전, 1회)
+
+**배치 순서**: 위 effort 확인 → 이 컨텍스트 확인 → Phase 0 → 루프.
 
 자율 루프 **시작 전**, 이번 세션에 이미 auto-compact가 있었거나 대화가 매우 길게 누적됐으면(=시작 후 압축 반복으로 후반 task 품질 저하 위험) 첫 task 전에 새 세션 시작을 권한다. 시작 전은 멈춰도 안전한 분기점이다(작업 *중간*엔 멈추지 않고 압축을 통과하는 컨텍스트 관리 규칙 4와 구분 — 시작 전 권유 vs 중간 통과):
 > "현재 대화가 길어 컨텍스트가 많이 찼습니다. **새 세션에서 `pjc:implement-task`로 시작**(plan.md가 있어 'T1부터 진행'으로 이어짐)을 권합니다. 이대로 진행할까요, 새 세션으로 옮길까요?"
