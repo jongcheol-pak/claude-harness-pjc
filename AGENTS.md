@@ -52,7 +52,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 ├── plugins/pjc/
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop hook 배선
-│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(SessionStart 버전 드리프트 경고)·session-context(SessionStart plan/notes 상태 + AGENTS.md 전문 주입(16KB 초과 시 목차 폴백) — compact 포함)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log(차단/경고 이벤트 jsonl 적재 — `~/.claude/.state/hook-events/`), hook 아님) + 수동 실행 도구 report-hook-events(이벤트 로그 집계 리포트 — hook별·판정별·규칙별, 읽기 전용, hook 아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용). hooks.json command는 스크립트를 hook 셸에서 직접 실행(v1.108.0 — 엔트리당 outer+inner 2프로세스 → outer 1프로세스, 실행 셸은 Claude Code powershell 해석·실측 pwsh 우선).
+│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(SessionStart 버전 드리프트 경고)·session-context(SessionStart plan/notes 상태 + **위키 vault 설정 상태**(설정+실재 / 경로 부재만 1줄 주입, 미설정은 무출력 — 절차 K의 "미설정" 오판정 차단. 게이팅은 cwd 수집 라인(plan·notes·AGENTS) 기준이고 compact 리마인더는 신호가 아니다) + AGENTS.md 전문 주입(16KB 초과 시 목차 폴백) — compact 포함)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log(차단/경고 이벤트 jsonl 적재 — `~/.claude/.state/hook-events/`), hook 아님) + 수동 실행 도구 report-hook-events(이벤트 로그 집계 리포트 — hook별·판정별·규칙별, 읽기 전용, hook 아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용). hooks.json command는 스크립트를 hook 셸에서 직접 실행(v1.108.0 — 엔트리당 outer+inner 2프로세스 → outer 1프로세스, 실행 셸은 Claude Code powershell 해석·실측 pwsh 우선).
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
 ├── validate.ps1                     # 설치본 검증
@@ -78,7 +78,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 ## Plan Location
 - 단일 plan: `plan.md`(덮어쓰기 방식).
 - **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — git에 안 올라간다. 커밋되는 건 코드·문서(README 등)뿐이며, 작업의 영구 기록은 로컬 `notes.md`에 둔다.
-- PRD: 현재 없음.
+- PRD: `docs/prd.md` (Opus 5 세대 대응 작업분 — active FR 14건·NFR 6건). **소규모 후속 작업은 이 PRD에 닿는지 경량 확인만 하고**(plan-feature Step 1), 닿지 않으면 plan에 `**PRD**:` 줄을 두지 않는다(무관한 과거 PRD를 끌어와 거짓 미충족을 보고하지 않기 위함 — Phase G 진입은 그 줄이 단일 신호).
 
 ## OS/플랫폼
 - Windows 검증 · macOS/Linux 실험적(hooks는 pwsh 7 cross-platform 의도). 검증/배포는 Windows 기준.
