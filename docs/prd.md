@@ -25,8 +25,8 @@ pjc 하니스는 Opus 4.x 세대를 전제로 "더 꼼꼼히 시키는" 방향�
 | FR-9 | 리뷰어 4종이 **근거는 있으나 확신이 낮은 지적**을 `MINOR + (판정 유보)`로 배출한다. "근거 지목 불가 → 미보고"는 유지 | Must | 4개 agent 파일의 억제 표 행 전후 대조 + `plugins/pjc/skills/` diff 0줄(통제 어휘 오염 방지) |
 | FR-10 | 동기 호출 규약에 **백그라운드 subagent의 도구 축소(LSP 소실)** 근거가 명시된다 | Must | `recovery.md` 「Subagent 호출 규약」에 해당 근거 문장 존재 |
 | FR-11 | reviewer 응답이 **거절(refusal)** 일 때의 처리 분기가 존재한다 | Must | `recovery.md` 「Reviewer 호출 실패 대응」에 C 분기 신설 + `implement-task` V-5 헤더에서 도달 가능 |
-| FR-12 | `implement-task`가 **세션 effort를 인지**해 low/medium이면 자율 루프 부적합을 1줄 경고한다 | Should | 스킬 본문에 치환 변수 기반 분기 존재 + 실제 치환 동작을 세션에서 실증 |
-| FR-13 | `implement-task` frontmatter에 자율 루프에서 **질문 도구를 제거하는 필드를 도입**한다 | Should | frontmatter에 `disallowed-tools: AskUserQuestion`이 존재하고, 스킬 본문에 **"이 필드는 미검증 — 기존 문서 규칙이 여전히 1차 방어선"** 이 명시되며, 실동작 스모크 테스트가 `## Deferred / Follow-up`에 등재된다 (2026-07-29 2차 정정: frontmatter 변경은 워킹트리에만 생기고 실행되는 것은 설치본이라 실동작 검증에 push→update가 필요한데 push는 위임 불가 — 자율 루프 안에서 수행할 수 없음이 확인됨. 미지원이어도 필드는 무시될 뿐이라 무회귀) |
+| FR-12 | `implement-task`가 **세션 effort를 인지**해 low/medium이면 자율 루프 부적합을 1줄 경고한다 | Should | 스킬 본문에 치환 변수 기반 분기 존재 + 실제 치환 동작을 세션에서 실증 (2026-07-30 실증 완료: 본문 분기의 값도 설치본 로드 시 `high`로 치환돼 도착함을 확인 — plan의 `⏳ HUMAN-VERIFY` 해소) |
+| FR-13 | `implement-task` frontmatter에 자율 루프에서 **질문 도구를 제거하는 필드를 도입**한다 | Should | frontmatter에 `disallowed-tools: AskUserQuestion`이 존재하고, 스킬 본문에 **"이 필드는 미검증 — 기존 문서 규칙이 여전히 1차 방어선"** 이 명시되며, 실동작 스모크 테스트가 `## Deferred / Follow-up`에 등재된다 (2026-07-29 2차 정정: frontmatter 변경은 워킹트리에만 생기고 실행되는 것은 설치본이라 실동작 검증에 push→update가 필요한데 push는 위임 불가 — 자율 루프 안에서 수행할 수 없음이 확인됨. 미지원이어도 필드는 무시될 뿐이라 무회귀) (2026-07-30 실증: 설치본에서 스킬 로드 후 `AskUserQuestion` 호출이 거부됨을 확인 — 본문의 "미검증" 서술은 실측 결과로 정정했고, "1차 방어선은 문서 규칙"이라는 취지는 해제 규칙(사용자의 다음 메시지에서 풀림) 때문에 그대로 유지된다) |
 | FR-14 | `AUTHORING.md`의 **description 한도·frontmatter 필드 목록**이 현행 Claude Code 사양과 일치한다 | Must | 공식 문서 기준값과 문서 기재값 항목별 대조표 |
 | FR-15 | `README.md`·`AGENTS.md`에 **Opus 5 리뷰어 요구 버전**(Claude Code v2.1.219+)이 명시된다 | Should | 두 파일에 버전 명시 문장 존재 |
 
