@@ -719,6 +719,51 @@ $nbj = @{ tool_name = 'NotebookEdit'; cwd = $pw; tool_input = @{ notebook_path =
 $r = Invoke-Hook 'post-write-checks.ps1' $nbj
 Assert-Case -Name "post-write: NotebookEdit notebook_path 인식 — password 경고" -R $r -ExpectExit 0 -ExpectContains 'password'
 
+# ---- 시크릿 스캔 범위: 추적 파일은 추가 라인만 (v1.147.0) — 델타 2건 ----
+# 위 시크릿 7종은 비 git 픽스처($pw)라 전재 폴백 경로로 통과한다(무회귀) — 그래서 새 동작을
+#   고정하지 못한다. 아래 2건이 "추적 파일에서 실제로 좁혀졌음"을 실증하는 델타 케이스다:
+#   ① HEAD에 이미 있는 시크릿을 재저장 → 무경고(종전에는 매 저장마다 경고)
+#   ② 같은 파일에 새 시크릿 라인 추가 → 경고(탐지 능력 유지 — 미탐이 아님)
+# git 임시 repo 구성은 §9 warn-commit-secrets 케이스(L910 근방)와 동일 패턴.
+if ($gitOk) {
+    $pwRepo = Join-Path $work 'pwrepo'; New-Item -ItemType Directory $pwRepo -Force | Out-Null
+    $pwDoc = Join-Path $pwRepo 'doc.md'
+    # 가짜 값은 문자열 연결로 분리 기재 — 러너 파일 자체가 자사 시크릿 스캐너에 오탐되지 않게(L854 관례)
+    $fakeUri = 'postgres://' + 'u1' + ':' + 'p123456' + '@h/db'
+    Push-Location $pwRepo
+    git init -q; git config user.email t@t; git config user.name t
+    ('예시: DATABASE_URL=' + $fakeUri) | Set-Content doc.md -Encoding UTF8
+    git add doc.md; git commit -qm init
+    Pop-Location
+    $pwRepoJson = @{ tool_name = 'Write'; cwd = $pwRepo; tool_input = @{ file_path = $pwDoc } } | ConvertTo-Json -Compress
+
+    # ① 델타: HEAD에 이미 있는 시크릿 → 추가 라인 0줄이라 무경고
+    $r = Invoke-Hook 'post-write-checks.ps1' $pwRepoJson
+    Assert-Case -Name "post-write: 추적 파일의 기존 시크릿 재신고 안 함 (범위 축소 델타)" -R $r -ExpectExit 0 -ExpectNotContains '민감 정보'
+
+    # ② 델타: 새 시크릿 라인 추가 → 경고 (탐지 능력 유지 실증)
+    Add-Content -LiteralPath $pwDoc -Value ('신규: DB_URL=' + $fakeUri) -Encoding UTF8
+    $r = Invoke-Hook 'post-write-checks.ps1' $pwRepoJson
+    Assert-Case -Name "post-write: 추적 파일의 신규 시크릿 라인은 경고 (미탐 아님)" -R $r -ExpectExit 0 -ExpectContains '민감 정보'
+
+    Remove-Item -Recurse -Force $pwRepo -ErrorAction SilentlyContinue
+
+    # ③ HEAD 없는 저장소(초기 커밋 전 staged) → 전재 폴백으로 경고 유지 (V-5 B1 회귀 가드)
+    #   ls-files는 staged 파일이면 HEAD 없이도 성공하지만 `diff HEAD`는 exit 128로 실패한다 —
+    #   그 실패를 무시하면 "추가 라인 0줄"과 구분되지 않아 스캔이 스킵되고 시크릿이 통째로 미탐된다.
+    #   위 ①②는 항상 커밋된 저장소만 쓰므로 이 공백을 잡지 못한다(그래서 별도 케이스).
+    $pwFresh = Join-Path $work 'pwfresh'; New-Item -ItemType Directory $pwFresh -Force | Out-Null
+    $pwFreshDoc = Join-Path $pwFresh 'sec.md'
+    Push-Location $pwFresh
+    git init -q; git config user.email t@t; git config user.name t
+    ('DATABASE_URL=' + $fakeUri) | Set-Content sec.md -Encoding UTF8
+    git add sec.md                      # 커밋하지 않는다 — HEAD 부재 상태를 만든다
+    Pop-Location
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pwFresh; tool_input = @{ file_path = $pwFreshDoc } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "post-write: HEAD 없는 저장소는 전재 폴백 — 시크릿 경고 유지" -R $r -ExpectExit 0 -ExpectContains '민감 정보'
+    Remove-Item -Recurse -Force $pwFresh -ErrorAction SilentlyContinue
+}
+
 # =====================================================================
 # 7) impact-warn 시나리오 (git 필요 — caller 경고 양성·음성. §6과 같은 post-write-checks
 #    게이트 안 — $gitOk는 top-level 정의라 필터 조합과 무관하게 항상 판정됨)

@@ -183,8 +183,44 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         # .env(시크릿의 정당한 위치)·.git 내부는 스캔 대상에서 제외(스캔 대상 판단은 caller 책임).
         $skipSecretScan = $file -match '\.(env|env\..*)$' -or $file -match '(^|[\\/])\.git[\\/]'
         if ((-not $skipSecretScan) -and $raw) {
+            # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 (v1.147.0) ----
+            # 범위는 "이번 편집분"이 아니라 **커밋 전 누적 추가분**이다(`git diff HEAD`) — 새로 적은
+            #   시크릿은 커밋 전까지 매 저장마다 다시 경고된다. 줄어든 것은 *이미 커밋된* 내용의 재신고뿐.
+            # 왜: 시크릿 규칙·예시를 *서술하는* 문서가 저장할 때마다 자기 자신을 오탐해 매 편집에
+            #   같은 경고가 반복됐다(교육용 DB URL 예시를 담은 plan 템플릿·탐지 규칙을 서술한 Deferred
+            #   대장·시크릿 hook을 검증하는 골든 러너 — 3파일 실측). 커밋 시점 검사(bash-hook-lib)는
+            #   이미 추가 라인만 보는데(v1.136.0 — "이력에 이미 있는 내용의 재신고는 보호 효과 0에
+            #   차단 비용만 낳는다") 편집 시점만 파일 전재를 보고 있었다 — 같은 논리를 이쪽에 맞춘다.
+            # 탐지 패턴(secret-patterns.ps1)은 무수정이므로 미탐 위험이 없다. 좁아지는 것은 "어디를
+            #   보는가"뿐이며, git이 없거나 untracked·gitignore 파일이면 전재로 폴백한다 — 스킵하면
+            #   그 환경에서 경고가 통째로 사라져 보호가 후퇴한다.
+            $scanText = $raw
+            try {
+                $fileDir = Split-Path -Parent $file
+                if ($fileDir -and (Test-Path -LiteralPath $fileDir -PathType Container)) {
+                    $null = & git -C $fileDir ls-files --error-unmatch -- $file 2>$null
+                    if ($LASTEXITCODE -eq 0) {
+                        $diffOut = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null)
+                        # diff 성공 여부를 반드시 확인한다: ls-files는 staged 파일이면 HEAD 없이도
+                        #   성공하지만 `diff HEAD`는 초기 커밋 전 저장소에서 exit 128로 실패한다.
+                        #   그때 실패를 무시하면 "추가 라인 0줄"과 구분되지 않아 스캔이 통째로
+                        #   스킵되고(=시크릿 미탐지) 폴백이라는 설계가 무너진다.
+                        if ($LASTEXITCODE -eq 0) {
+                            $added = @($diffOut |
+                                Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } |
+                                ForEach-Object { $_.Substring(1) })
+                            # 추가 라인 0줄(삭제만 있거나 HEAD와 동일) = 스캔할 신규 내용이 없다
+                            $scanText = if ($added.Count -gt 0) { $added -join "`n" } else { '' }
+                        }
+                        # diff 실패면 $scanText는 위에서 넣은 $raw 그대로 — 전재 폴백
+                    }
+                }
+            } catch {
+                $scanText = $raw   # git 호출 실패는 전재 폴백 (fail-open)
+            }
+
             . (Join-Path $PSScriptRoot 'secret-patterns.ps1')
-            foreach ($label in @(Get-SecretMatches $raw)) {
+            foreach ($label in @(Get-SecretMatches $scanText)) {
                 $utf8Warnings.Add("민감 정보로 보이는 내용 감지: $label. 실제 값을 파일에 남기지 말고, 환경변수 이름만 기록하거나 .env(gitignore)로 분리하세요. (이 파일은 git/스냅샷으로 보존될 수 있음)")
             }
         }
