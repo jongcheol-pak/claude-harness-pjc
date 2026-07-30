@@ -183,7 +183,9 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         # .env(시크릿의 정당한 위치)·.git 내부는 스캔 대상에서 제외(스캔 대상 판단은 caller 책임).
         $skipSecretScan = $file -match '\.(env|env\..*)$' -or $file -match '(^|[\\/])\.git[\\/]'
         if ((-not $skipSecretScan) -and $raw) {
-            # ---- 스캔 범위: 추적 파일은 이번 편집으로 추가된 라인만 (v1.147.0) ----
+            # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 (v1.147.0) ----
+            # 범위는 "이번 편집분"이 아니라 **커밋 전 누적 추가분**이다(`git diff HEAD`) — 새로 적은
+            #   시크릿은 커밋 전까지 매 저장마다 다시 경고된다. 줄어든 것은 *이미 커밋된* 내용의 재신고뿐.
             # 왜: 시크릿 규칙·예시를 *서술하는* 문서가 저장할 때마다 자기 자신을 오탐해 매 편집에
             #   같은 경고가 반복됐다(교육용 DB URL 예시를 담은 plan 템플릿·탐지 규칙을 서술한 Deferred
             #   대장·시크릿 hook을 검증하는 골든 러너 — 3파일 실측). 커밋 시점 검사(bash-hook-lib)는
