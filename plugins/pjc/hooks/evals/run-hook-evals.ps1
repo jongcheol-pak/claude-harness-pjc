@@ -682,6 +682,35 @@ if ($gitOk) {
     Assert-Case -Name "evidence: 차단 상한 3회차 → 차단 (T3)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
     $r = Invoke-Hook 'require-evidence.ps1' $capJson
     Assert-Case -Name "evidence: 차단 상한 4회차 → 미차단 (T3 상한 실증)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L12) 문서↔코드 동일성 대조 — SKILL.md 금지 표현 ②의 평서형 예고 목록을 **파일에서 읽어**
+    #   각 문구가 실제로 차단을 유발하는지 확인한다.
+    #   여기서 문구를 하드코딩하면 안 된다: SKILL.md가 정본이므로 그쪽이 바뀌었는데 hook의
+    #   $rxAdvance가 안 따라가면 "규칙에 있는데 안 잡히는" 상태가 되는데, 하드코딩 사본은 그
+    #   드리프트를 영원히 못 본다(사본이 낡은 채로 계속 green). 추출이 0건이면 그 자체가 FAIL이라
+    #   SKILL.md 구조 변경도 신호로 잡힌다.
+    $skillMdPath = Join-Path $pluginRoot 'skills/implement-task/SKILL.md'
+    $phraseList = @()
+    try {
+        $skillTxt = Get-Content -LiteralPath $skillMdPath -Raw -Encoding UTF8
+        # 개행 클래스는 [\r\n]로 쓴다 — SKILL.md가 CRLF라 `\n+`는 `\r\n\r\n` 사이의 `\r`에 막힌다.
+        $secM = [regex]::Match($skillTxt, '(?ms)\*\*② 평서형 예고[^\r\n]*[\r\n]+((?:- "[^"]+"[\r\n]+)+)')
+        if ($secM.Success) {
+            $phraseList = @([regex]::Matches($secM.Groups[1].Value, '- "([^"]+)"') | ForEach-Object { $_.Groups[1].Value })
+        }
+    } catch {}
+    if ($phraseList.Count -eq 0) {
+        $script:results.Add(@{ ok = $false; line = "[FAIL] evidence: SKILL.md 금지 표현 ② 문구 추출 실패 (T3 문서↔코드 대조 — 목록 구조가 바뀌었는지 확인)" })
+    } else {
+        $phIdx = 0
+        foreach ($ph in $phraseList) {
+            $phIdx++
+            # 문서의 자리표시자(T\<N\>)를 실제 번호로 바꿔 프로브 문장을 만든다.
+            $probe = ($ph -replace '\\<N\\>', '5') -replace '<N>', '5'
+            $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = ('lpP' + $phIdx); transcript_path = $loopTr; last_assistant_message = $probe } | ConvertTo-Json -Compress)
+            Assert-Case -Name "evidence: SKILL.md 예고 문구 $phIdx/$($phraseList.Count) '$probe' → 차단 (T3 문서↔코드 동일성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+        }
+    }
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
