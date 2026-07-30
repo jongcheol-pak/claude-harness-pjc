@@ -711,6 +711,34 @@ if ($gitOk) {
             Assert-Case -Name "evidence: SKILL.md 예고 문구 $phIdx/$($phraseList.Count) '$probe' → 차단 (T3 문서↔코드 동일성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
         }
     }
+
+    # (L13) [v1.148.0 T8 / F-7 M2] transcript가 tail 상한(3000줄)을 넘어도 발동 흔적을 찾는가.
+    #   흔적을 **맨 앞**에 두고 뒤를 3000줄 이상으로 채운다 — 조건 ③이 tail만 보면 흔적이 밖으로
+    #   밀려 거짓이 되는데, **하필 그 긴 루프가 이 검사가 필요한 바로 그 상황**이다
+    #   (실측: 이 repo transcript 최대 2817줄 = 상한의 94%).
+    $loopTrBig = Join-Path $work 'tr-loop-big.jsonl'
+    $bigLines = New-Object System.Collections.Generic.List[string]
+    [void]$bigLines.Add('{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}')
+    for ($bi = 0; $bi -lt 3200; $bi++) { [void]$bigLines.Add('{"type":"assistant","message":{"content":[{"type":"text","text":"filler"}]}}') }
+    [void]$bigLines.Add('{"type":"user","message":{"content":"진행"}}')
+    $bigLines | Set-Content -Encoding UTF8 $loopTrBig
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lpBig'; transcript_path = $loopTrBig; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: transcript 3000줄 초과 + 발동 흔적이 앞부분 → 차단 (T8 M2 회귀)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L14) [v1.148.0 T8 / F-7 m1] 차단 시 이벤트 로그에 block으로 적재되는가.
+    #   오차단이 최악인 검사라 **사후 검토 수단**이 살아 있어야 한다(protect-harness와 같은 관례).
+    #   stdout만 단언하면 적재 누락이 조용히 통과한다.
+    $evLogFile = Join-Path $iso ('.claude/.state/hook-events/' + (Get-Date).ToString('yyyy-MM') + '.jsonl')
+    $blkBefore = 0
+    if (Test-Path -LiteralPath $evLogFile) { $blkBefore = @(Select-String -LiteralPath $evLogFile -Pattern '"decision":"block"' -SimpleMatch).Count }
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lpEv'; transcript_path = $loopTr; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
+    $blkAfter = 0
+    if (Test-Path -LiteralPath $evLogFile) { $blkAfter = @(Select-String -LiteralPath $evLogFile -Pattern '"decision":"block"' -SimpleMatch).Count }
+    if ($blkAfter -gt $blkBefore) {
+        $script:results.Add(@{ ok = $true; line = "[PASS] evidence: 차단 시 이벤트 로그에 block 적재 (T8 m1)" })
+    } else {
+        $script:results.Add(@{ ok = $false; line = "[FAIL] evidence: 차단 시 이벤트 로그에 block 적재 안 됨 (T8 m1) — before=$blkBefore after=$blkAfter, 로그=$evLogFile" })
+    }
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }

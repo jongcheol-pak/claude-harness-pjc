@@ -246,8 +246,16 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
         $tpL = if ($data) { [string]$data.transcript_path } else { '' }
         if (-not [string]::IsNullOrWhiteSpace($tpL) -and (Test-Path -LiteralPath $tpL -PathType Leaf)) {
             try {
+                # 조건 ③은 **전 파일**을 스캔한다 — tail로 자르면 긴 자율 루프에서 발동 흔적(세션
+                #   앞부분에 있다)이 잘려 조건이 거짓이 되는데, **하필 그 긴 루프가 이 검사가 필요한
+                #   바로 그 상황**이다(실측: 이 repo transcript 최대 2817줄 = 상한 3000의 94%).
+                #   -Quiet는 첫 매치에서 멈추므로 전량 로드가 아니다
+                #   (require-plan-for-write.ps1:79-81의 발동 흔적 판정과 같은 관례).
+                $loopSkill = [bool](Select-String -LiteralPath $tpL -Quiet -Pattern @(
+                        '"skill"\s*:\s*"pjc:implement-task"',
+                        'Launching skill: pjc:implement-task'))
+                # 조건 ⑤·④폴백은 '직전' 발화를 찾는 것이라 tail이 맞다(전 파일 역순 파싱은 비용이 크다).
                 $tailL = @(Get-Content -LiteralPath $tpL -Tail 3000 -ErrorAction Stop)
-                $loopSkill = (($tailL -join "`n") -match '"skill"\s*:\s*"pjc:implement-task"|Launching skill: pjc:implement-task')
 
                 # 역순 1회 스캔으로 ⑤(마지막 user 텍스트)와 ④ 폴백(마지막 assistant 텍스트)을 함께 찾는다.
                 # 조건 ⑤ 추출 규칙: "type":"user" 엔트리 중 실제 사용자 텍스트만 본다.

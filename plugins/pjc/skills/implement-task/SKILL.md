@@ -281,6 +281,8 @@ git commit -m "checkpoint: T<N> pre-review"
 | **D** (Complex/Cross-cutting) | V-1 ~ V-8 **전체** (V-5는 compliance Sonnet) | 생략 없음 |
 
 > Type C/D의 **실행 단계는 동일**하다(V-6 포함). C/D의 차이는 실행이 아니라 **계획 단계**(Decision 카테고리 12개 vs 5-6개·Edge 카테고리·Design 필드 의무)에 있다.
+>
+> **리뷰 실행 여부는 이 표의 Type이 결정한다 — "이 정도면 리뷰가 필요한가"를 구현 중에 판단하는 재량이 아니다.** Type C/D면 spec·quality 두 리뷰가 **항상** 돌고 opt-out 경로가 없으며, 생략은 "Reviewer 호출 실패 대응"의 세 fallback(과부하·도구 불가·거절)에서만 일어나고 그때도 반드시 명시한다. plan에 Type이 없으면 메인이 diff 규모로 판정하되 **애매하면 D**다(무거운 쪽).
 
 **Task Type 판정**: plan이 Type을 명시하면 그것을 따른다. **plan에 Type이 없으면 메인이 diff 예상 규모로 B/C/D를 1줄로 판정해 plan.md 해당 task에 기입**한다(예: "단일 파일·caller 없음 → B", "다중 파일·시그니처 변경 → D"). 규모를 가늠하기 어렵거나 판정이 애매하면 **D로 간주**(안전 우선 — 무거운 쪽). **단 순수 값 치환은 예외 — 애매해도 B**: 색상·치수·간격·폰트 등 리터럴/디자인 토큰 값만 바꾸고 로직·조건·구조·시그니처 변화가 0인 task는 **파일·개수와 무관하게 Type B**로 기입한다(값만 바뀌어 위험이 낮고 화면에서 즉시 검출 — plan-feature Trivial Bypass 순수 값 치환 예외와 동일 기준). '애매하면 D' 상향은 로직·구조 변화 가능성이 있을 때의 안전 규칙이라 순수 값 치환에는 적용하지 않는다. 값 변경이 조건·레이아웃 구조·계산식 도입을 동반하면 순수 치환이 아니므로 이 예외 밖이다.
 **V-4(PostToolUse hook)는 자동 실행** — 모든 Type에서 작동 (UTF-8 + impact-warn).
