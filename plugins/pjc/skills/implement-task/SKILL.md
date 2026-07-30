@@ -193,7 +193,7 @@ F-8   → 시각 충실도·참조 정합 최종 관문 (plan에 `## 시각 요�
 2. `git log`로 마지막 commit 상태 확인
 3. plan.md의 task 체크박스로 미완료 task 식별
 4. **첫 Phase P 진입 전 Phase 0(사전 승인 일괄 확인)을 1회 수행** — 새 세션 재개는 이번 대화에 plan 승인이 없으므로 재확인 분기(위 Phase 0). 그 뒤 지정된 task(또는 첫 미완료 task)부터 Phase P 시작
-5. **경량 위키 참조 (절차 K, 세션당 1회)**: 첫 Phase P 진입 전, `pjc:llm-wiki` 절차 K(read-only)로 이번 plan과 관련된 feature/recipe/patterns를 참조한다 — 재개 세션은 plan-feature Step 1(위키 참조)을 거치지 않아 위키의 재사용 레시피·함정 지식이 빠지기 쉽다. vault가 있으면 index 기능별 인덱스·`30_knowledge/patterns/`에서 관련 항목만 식별해 Read하고(전체 정독 금지), vault가 없거나 관련 자료가 없으면 조용히 통과한다(K 준용 — vault·자료 없으면 조용히 통과, 무매칭 시 합성 금지). **plan.md Investigation Log에 `위키 참조:` 기록이 있으면 그 페이지들을 우선 식별 대상으로 삼는다**(계획 세션이 이미 찾아둔 근거 — 인덱스 재검색 생략). 동일 세션에서 plan-feature를 막 거쳐온 경우(Step 1에서 이미 참조)는 중복이므로 생략한다.
+5. **경량 위키 참조 (절차 K, 세션당 1회)**: 첫 Phase P 진입 전, `pjc:llm-wiki` 절차 K(read-only)로 이번 plan과 관련된 feature/recipe/patterns를 참조한다 — 재개 세션은 plan-feature Step 1(위키 참조)을 거치지 않아 위키의 재사용 레시피·함정 지식이 빠지기 쉽다. vault가 있으면 index 기능별 인덱스·`30_knowledge/patterns/`에서 관련 항목만 식별해 Read하고(전체 정독 금지), vault가 없거나 관련 자료가 없으면 조용히 통과한다(K 준용 — vault·자료 없으면 조용히 통과, 무매칭 시 합성 금지). **단 "vault가 없다"는 판정은 절차 K 1의 `⚠ 판정 게이트`를 거친 확인 결과여야 한다** — config Read + 폴더 존재 확인 없이 미설정으로 단정하고 통과하지 않는다(주입된 vault 상태 라인이 있으면 그것으로 갈음, **라인의 부재는 판정 근거가 아니다**). 건너뛴 경우의 기록도 K 1 형식을 따른다. **plan.md Investigation Log에 `위키 참조:` 기록이 있으면 그 페이지들을 우선 식별 대상으로 삼는다**(계획 세션이 이미 찾아둔 근거 — 인덱스 재검색 생략). 동일 세션에서 plan-feature를 막 거쳐온 경우(Step 1에서 이미 참조)는 중복이므로 생략한다.
 6. 이전 task 상세는 Progress Log + git으로만 참조 (전체 history 불필요)
 
 **세 신호(Progress Log·git log·체크박스)가 어긋나면 git log를 신뢰한다.** git log는 매 task commit(`T<N>: ...`)으로 항상 최신이고, Progress Log는 2 task마다, 체크박스는 갱신 누락 가능성이 있다. 또 지정 task의 선행(`Depends on`) task가 git log에 안 보이면 그 선행부터 다시 확인한 뒤 진행한다.

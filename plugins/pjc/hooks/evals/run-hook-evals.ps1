@@ -1383,6 +1383,62 @@ if (Test-HookSelected @('session-context')) {
     #   이 라인이 cwd 검사 블록 밖에 있어야 성립하므로, 블록 안으로 옮기는 회귀를 골든이 막는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = (Join-Path $work 'sc-nonexistent') } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 무효 cwd 기본 문구 유지 (SC17)" -R $r -ExpectExit 0 -ExpectContains '요약 직후'
+
+    # SC18~SC23: 위키 vault 설정 상태 주입 (v1.146.0) — 절차 K의 "미설정" 오판정을 기계로 차단.
+    #   전용 격리 홈에 llm-wiki-config.json을 심는다($iso에는 config가 없어 미설정 상태이며 SC20이 그것을 쓴다).
+    #   무회귀 1건(SC20) + 델타 3건(SC21 과다 주입·SC22 과억제·SC23 리마인더 오신호) 구성 —
+    #   통과만 확인하는 케이스는 게이팅을 고정하지 못한다.
+    $isoV = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-vault-" + $suffix)
+    $isoVault = Join-Path $isoV 'my-wiki'
+    New-Item -ItemType Directory -Path (Join-Path $isoV '.claude') -Force | Out-Null
+    New-Item -ItemType Directory -Path $isoVault -Force | Out-Null
+    (@{ vault_path = ($isoVault -replace '\\', '/') } | ConvertTo-Json) | Set-Content -Encoding UTF8 (Join-Path $isoV '.claude/llm-wiki-config.json')
+
+    # SC18: 설정+실재 → 경로와 "단정 금지" 문구가 함께 주입된다 (문구 리터럴 고정)
+    $env:USERPROFILE = $isoV
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: vault 설정됨 상태 주입 (SC18)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
+    Assert-Case -Name "session-context: vault 단정 금지 문구 (SC18b)" -R $r -ExpectExit 0 -ExpectContains '단정하지 마세요'
+
+    # SC21 (델타): 설정+실재인데 비 pjc cwd(plan/notes/AGENTS 전무) → 게이팅으로 미주입.
+    #   vault는 cwd와 무관한 사용자 홈 자원이라, 게이팅이 없으면 위키를 쓰는 사용자의 모든 세션에 라인이 붙는다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scEmpty } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 비 pjc cwd는 vault 라인 미주입 (SC21)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # SC23 (델타): compact + 빈 cwd → 리마인더는 나오되 vault 라인은 미주입.
+    #   리마인더는 cwd 블록 밖에서 append되므로 게이팅 신호가 아니다 — $lines.Count -gt 0 판정을 이 케이스가 검출한다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 리마인더는 vault 게이팅 신호 아님 (SC23)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains '위키 vault'
+
+    # SC22 (델타): AGENTS.md만 있고 plan/notes 없는 cwd → vault 라인이 주입되고 AGENTS 라인보다 **앞**에 온다.
+    #   ① 게이팅을 AGENTS 진입 전 시점에 판정하면 이 케이스가 억제된다(과억제 검출).
+    #   ② 순서 단정은 Assert-Case로 불가하다 — ExpectContains가 [regex]::Escape를 거쳐 전후 관계를 비교할 수단이 없으므로
+    #      IndexOf 비교 후 결과를 직접 push한다(§11 (b) 패턴과 동일).
+    #   기존 AGENTS 단독 픽스처($scBig 등)는 16KB 초과·비UTF-8이라 전문이 아니라 폴백을 출력하므로 소형 픽스처를 따로 둔다.
+    $scVOnly = Join-Path $work 'sc-agents-only'; New-Item -ItemType Directory $scVOnly -Force | Out-Null
+    @('# Guide', 'SC_VAULT_ORDER_MARKER 전문 주입 대상') | Set-Content -Encoding UTF8 (Join-Path $scVOnly 'AGENTS.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scVOnly } | ConvertTo-Json -Compress)
+    $iVault  = $r.out.IndexOf('위키 vault: 설정됨')
+    $iAgents = $r.out.IndexOf('SC_VAULT_ORDER_MARKER')
+    if (($r.code -eq 0) -and ($iVault -ge 0) -and ($iAgents -gt $iVault)) {
+        $script:results.Add(@{ ok = $true; line = "[PASS] session-context: AGENTS 단독 cwd vault 주입 + AGENTS보다 앞 (SC22)" })
+    } else {
+        $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC22 주입·순서 위반 (exit=$($r.code), vault=$iVault, agents=$iAgents)" })
+    }
+
+    # SC19: 설정됐으나 폴더 부재(이동·삭제) → 부재 문구 주입 (경로 재확인 신호)
+    $isoV2 = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-vault-gone-" + $suffix)
+    New-Item -ItemType Directory -Path (Join-Path $isoV2 '.claude') -Force | Out-Null
+    (@{ vault_path = ((Join-Path $isoV2 'moved-away') -replace '\\', '/') } | ConvertTo-Json) | Set-Content -Encoding UTF8 (Join-Path $isoV2 '.claude/llm-wiki-config.json')
+    $env:USERPROFILE = $isoV2
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: vault 설정 경로 부재 주입 (SC19)" -R $r -ExpectExit 0 -ExpectContains '설정 경로 부재'
+
+    # SC20 (무회귀): config 없는 홈 → vault 라인 미주입. 미설정은 무출력이 설계다(노이즈 방지).
+    $env:USERPROFILE = $iso
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 미설정 홈은 vault 라인 미주입 (SC20)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains '위키 vault'
+    Remove-Item -Recurse -Force $isoV, $isoV2 -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 
 # =====================================================================
