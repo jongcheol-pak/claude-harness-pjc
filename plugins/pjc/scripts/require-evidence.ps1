@@ -210,53 +210,83 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
 
     $loopOpen = ($null -ne $loopPlanText -and $loopPlanText -match $rxPlanOpen)
 
-    # 조건 ③⑤: transcript에서 implement-task 발동 흔적과 '직전 사용자 발화'를 함께 얻는다
-    #   (같은 파일을 두 번 읽지 않도록 한 번의 tail로 처리).
+    # 조건 ④의 판정식 — 마지막 응답이 '진행 예고'인가(positive) + 정당한 정지 신호가 없는가(negative).
+    #   positive를 요구하는 이유: 부재 기반(정당 신호가 없으면 정지로 간주)만 쓰면 목록에 없는
+    #   모든 정상 종료 문구가 차단 후보가 된다. 실제 사고에는 예고 문구라는 양성 신호가 있다.
+    #   매칭은 어간 기반이다 — 리터럴로 잡으면 "정리 합니다"(어절 삽입)·"진행할게요"(어미 변형)를
+    #   전부 놓친다(실제 사고 문장이 리터럴 4문구 중 3개를 빗나갔다).
+    #   negative는 넓게 잡는다 — 넓힐수록 미차단(안전측)으로 기운다.
+    $rxAdvance = '(이어서|계속)\s*진행(하겠|할게|합니|하려)|여기까지[^\r\n]{0,20}정리\s*(하겠|합니|할게)|T\d+\s*(부터|까지)[^\r\n]{0,30}(진행|하겠|할게)'
+    $rxLegit = '⛔|🎉|⏸️|\?|승인|확인 요청|확인 부탁|선택해|중단 보고|Halt'
+    function Test-AdvancePromise {
+        param([string]$Text)
+        if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+        return ($Text -match $script:rxAdvance -and $Text -notmatch $script:rxLegit)
+    }
+
+    # 조건 ④ 1차 — stdin의 last_assistant_message가 오면 그것으로 즉시 판정한다(문자열 매칭만,
+    #   파일 I/O 0). 거짓이면 아래 transcript 읽기를 통째로 건너뛴다.
+    # ⚠ 이 필드의 실환경 제공 여부는 미실증이다(공식 문서 기준으로는 존재). **없어도 검사가 죽지
+    #   않도록** 아래에 transcript 폴백을 둔다 — 이 신호 하나에 기대면 필드가 안 올 때 검사 4가
+    #   프로덕션에서 영구 무발화하는데, 골든은 필드를 직접 주입하므로 green이라 발견되지 않는다.
+    $lastMsgL = if ($data) { [string]$data.last_assistant_message } else { '' }
+    $haveStdinMsg = -not [string]::IsNullOrWhiteSpace($lastMsgL)
+    $advancePromise = $false
+    if ($haveStdinMsg) { $advancePromise = (Test-AdvancePromise $lastMsgL) }
+
+    # 조건 ③⑤(+ 필요 시 ④ 폴백): transcript를 한 번만 tail해서 함께 처리한다.
+    #   stdin 필드가 왔는데 ④가 거짓이면 여기 진입하지 않는다(불필요한 I/O 제거).
     $loopSkill = $false
     $userStop = $false
     $userFound = $false
-    if ($loopOpen) {
+    if ($loopOpen -and ($advancePromise -or -not $haveStdinMsg)) {
         $tpL = if ($data) { [string]$data.transcript_path } else { '' }
         if (-not [string]::IsNullOrWhiteSpace($tpL) -and (Test-Path -LiteralPath $tpL -PathType Leaf)) {
             try {
                 $tailL = @(Get-Content -LiteralPath $tpL -Tail 3000 -ErrorAction Stop)
                 $loopSkill = (($tailL -join "`n") -match '"skill"\s*:\s*"pjc:implement-task"|Launching skill: pjc:implement-task')
 
+                # 역순 1회 스캔으로 ⑤(마지막 user 텍스트)와 ④ 폴백(마지막 assistant 텍스트)을 함께 찾는다.
                 # 조건 ⑤ 추출 규칙: "type":"user" 엔트리 중 실제 사용자 텍스트만 본다.
                 #   tool_result도 user 역할로 기록되므로 반드시 제외한다 — 포함하면 마지막 user
                 #   텍스트가 늘 도구 결과가 되어 이 조건이 항상 참이 되고, 사용자가 "그만"이라고
                 #   한 세션에서도 차단이 걸린다(이 검사에서 가장 위험한 오작동).
-                for ($i = $tailL.Count - 1; $i -ge 0 -and -not $userFound; $i--) {
+                # 파싱 상한 200: hook timeout이 10초(hooks.json)인데 ConvertFrom-Json은 호출당 비용이
+                #   있어, 텍스트 없는 엔트리가 수천 줄 이어지는 최악 입력에서 예산을 넘길 수 있다.
+                #   최근 200개 후보면 '직전 발화' 판정에 충분하다(더 거슬러 올라갈 이유가 없다).
+                $needAsst = (-not $haveStdinMsg)
+                $parsed = 0
+                for ($i = $tailL.Count - 1; $i -ge 0; $i--) {
+                    if ($userFound -and -not $needAsst) { break }
+                    if ($parsed -ge 200) { break }
                     $ln = $tailL[$i]
-                    if ($ln -notmatch '"type"\s*:\s*"user"') { continue }
-                    if ($ln -match '"type"\s*:\s*"tool_result"' -or $ln -match '"tool_use_id"') { continue }
+                    $isUser = ($ln -match '"type"\s*:\s*"user"')
+                    $isAsst = ($ln -match '"type"\s*:\s*"assistant"')
+                    if (-not $isUser -and -not $isAsst) { continue }
+                    if ($isUser -and ($ln -match '"type"\s*:\s*"tool_result"' -or $ln -match '"tool_use_id"')) { continue }
                     $obj = $null
+                    $parsed++
                     try { $obj = $ln | ConvertFrom-Json } catch { continue }
-                    $uc = $obj.message.content
-                    $utxt = $null
-                    if ($uc -is [string]) { $utxt = $uc }
-                    elseif ($uc) { $utxt = ((@($uc) | Where-Object { $_.type -eq 'text' } | ForEach-Object { $_.text }) -join "`n") }
-                    if (-not [string]::IsNullOrWhiteSpace($utxt)) {
+                    $mc = $obj.message.content
+                    if ($null -eq $mc) { $mc = $obj.content }   # 스키마 변형 대비(최상위 content)
+                    $txt = $null
+                    if ($mc -is [string]) { $txt = $mc }
+                    elseif ($mc) { $txt = ((@($mc) | Where-Object { $_.type -eq 'text' } | ForEach-Object { $_.text }) -join "`n") }
+                    if ([string]::IsNullOrWhiteSpace($txt)) { continue }
+                    if ($isUser -and -not $userFound) {
                         $userFound = $true
                         # 사용자가 스스로 루프를 끝내거나 범위를 한정했으면 정상 종료다.
                         #   'T<N>만'은 SKILL.md '재개 진입'이 명시적으로 허용하는 단일 task 실행.
-                        if ($utxt -match '그만|중단|멈춰|멈춤|여기까지|이제 ?됐|나중에|\bstop\b|T\d+\s*만') { $userStop = $true }
+                        if ($txt -match '그만|중단|멈춰|멈춤|여기까지|이제 ?됐|나중에|\bstop\b|T\d+\s*만') { $userStop = $true }
+                    } elseif ($isAsst -and $needAsst) {
+                        # ④ 폴백 — stdin 필드가 없을 때만. 마지막 assistant 텍스트로 예고를 판정한다.
+                        $needAsst = $false
+                        $advancePromise = (Test-AdvancePromise $txt)
                     }
                 }
             } catch { $loopSkill = $false }   # 읽기 실패 → fail-open
         }
     }
-
-    # 조건 ④: 마지막 응답이 '진행 예고'인가(positive) 그리고 정당한 정지 신호가 없는가(negative).
-    #   positive를 요구하는 이유: 부재 기반(정당 신호가 없으면 정지로 간주)만 쓰면 목록에 없는
-    #   모든 정상 종료 문구가 차단 후보가 된다. 실제 사고에는 예고 문구라는 양성 신호가 있다.
-    #   매칭은 어간 기반이다 — 리터럴로 잡으면 "정리 합니다"(어절 삽입)·"진행할게요"(어미 변형)를
-    #   전부 놓친다(실제 사고 문장이 리터럴 4문구 중 3개를 빗나갔다).
-    #   negative는 넓게 잡는다 — 넓힐수록 미차단(안전측)으로 기운다.
-    $lastMsgL = if ($data) { [string]$data.last_assistant_message } else { '' }
-    $rxAdvance = '(이어서|계속)\s*진행(하겠|할게|합니|하려)|여기까지[^\r\n]{0,20}정리\s*(하겠|합니|할게)|T\d+\s*(부터|까지)[^\r\n]{0,30}(진행|하겠|할게)'
-    $rxLegit = '⛔|🎉|⏸️|\?|승인|확인 요청|확인 부탁|선택해|중단 보고|Halt'
-    $advancePromise = (-not [string]::IsNullOrWhiteSpace($lastMsgL) -and $lastMsgL -match $rxAdvance -and $lastMsgL -notmatch $rxLegit)
 
     if ($loopOpen -and $loopSkill -and $advancePromise -and $userFound -and (-not $userStop)) {
 
