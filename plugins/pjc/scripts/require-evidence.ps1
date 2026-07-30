@@ -2,14 +2,20 @@
 # 에이전트가 작업 종료를 시도할 때 실행.
 # 마지막 커밋에 검증 증거가 없으면 stderr 경고 (강제 차단 X — 의도된 비차단).
 #
-# [설계: 왜 비차단(exit 0 + stderr)인가 — 공식 Stop hook 시맨틱 확인 결과]
+# [설계: 검사 1~3은 비차단(exit 0 + stderr) — 공식 Stop hook 시맨틱 확인 결과]
 #   Stop hook 피드백 경로는 셋: exit 2(=종료 차단 + stderr를 모델에 전달) /
-#   stdout JSON additionalContext(=종료 안 막고 '대화 계속' → 모델에 컨텍스트 주입) /
-#   exit 0 + stderr(=비차단, 사용자 transcript용, 모델엔 미전달).
+#   stdout JSON(decision=block → 종료 차단 + reason을 모델에 전달, 또는 additionalContext →
+#   종료 안 막고 컨텍스트 주입) / exit 0 + stderr(=비차단, 사용자 transcript용, 모델엔 미전달).
 #   이 hook은 implement-task 종료뿐 아니라 '모든' 종료 시도(일반 대화·질문 답변 후 포함)에
-#   발동하므로, 차단(exit 2)이나 대화-계속(additionalContext)으로 바꾸면 무관한 종료까지
-#   막거나 루프를 유발한다. 따라서 의도적으로 exit 0 + stderr 소프트 리마인더로 둔다
-#   (사용자가 transcript에서 보고 판단; 모델 강제는 안 함). 이 동작을 차단으로 바꾸지 말 것.
+#   발동하므로, **검사 1~3처럼 조건이 넓은 것**을 차단으로 바꾸면 무관한 종료까지 막는다.
+#   따라서 1~3은 의도적으로 exit 0 + stderr 소프트 리마인더로 둔다(사용자가 transcript에서
+#   보고 판단; 모델 강제는 안 함). **이 셋을 차단으로 바꾸지 말 것.**
+#
+# [예외: 검사 4만 조건부 차단 (v1.148.0)]
+#   아래 검사 4는 위 금지의 예외다 — 조건을 6개 AND로 좁혀 "무관한 종료에는 애초에 발동하지
+#   않기" 때문에 위 근거("모든 종료에 발동한다")가 성립하지 않는다. 자율 루프가 예고만 남기고
+#   멈추는 것은 경고로는 못 고친다(stderr는 모델에 전달되지 않아 루프가 되살아나지 않는다).
+#   판정 불가는 전부 fail-open이며, 차단해도 세션·plan당 3회가 상한이다.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -158,6 +164,146 @@ if ($porcelain) {
         foreach ($c in ($codeChanges | Select-Object -First 8)) { [Console]::Error.WriteLine("  - $c") }
         [Console]::Error.WriteLine("구현이 끝났으면 Phase D(commit)를 수행하거나, 의도된 미커밋이면 사용자에게 상태를 보고하세요.")
         Write-ReEvent '미커밋 코드 변경'
+    }
+}
+
+# ---- 4. 자율 루프 미완료 정지 차단 (v1.148.0) — 이 hook에서 유일한 차단 경로 ----
+# implement-task 자율 루프가 "예고만 남기고 turn을 끝내" 멈추는 것을 되돌린다.
+#   관측 사례: "여기까지 진행 상황을 정리 합니다. 계속 T5부터 이어서 진행하겠습니다." 출력 후 정지.
+#   질문이 아니라 평서문이라 "묻지 않는다" 규칙은 지킨 것처럼 보이지만, 도구 호출 없이 텍스트만
+#   내면 turn이 끝나 사용자 입력을 기다리게 되므로 결과는 확인 요청과 같은 루프 정지다.
+# [문구 정본] 아래 $rxAdvance가 잡는 문구의 정본은 implement-task/SKILL.md "🚫 금지 표현 ②"다.
+#   그 목록을 고치면 여기도 함께 고친다 — 갈리면 규칙에 없는 것을 잡거나 잡아야 할 것을 놓친다.
+# [6조건 AND] 하나라도 불충족이면 통과. 판정에 필요한 정보를 못 얻으면 전부 fail-open(통과).
+if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
+
+    # 조건 ②: plan에 미완료 task가 있는가.
+    #   task 형식 두 가지를 모두 인정한다 — ⓐ 템플릿 '- [ ] T1. 제목'(plan-template.md)
+    #   ⓑ heading '### T1 — 제목' + 그 안의 '- [ ] **Type**'(실사용 plan 형식).
+    #   한쪽만 잡으면 다른 형식으로 쓰인 plan에서 이 검사가 통째로 무발화한다.
+    #   plan 인정은 파일 수준 게이트로 한다 — docs/plans/에는 plan 아닌 문서(deferred.md)도 있다
+    #   (session-context.ps1:50-52와 같은 취지, 패턴만 두 형식으로 넓혔다).
+    $rxPlanAny  = '(?m)^\s*- \[[ /xX]\]\s*T\d+|^###\s*T\d+'
+    $rxPlanOpen = '(?m)^\s*- \[[ /]\]\s*T\d+|^\s*- \[[ /]\]\s*\*\*Type\*\*'
+
+    $loopPlanText = $null
+    try {
+        $cwdNow = (Get-Location).Path
+        $rootPlan = Join-Path $cwdNow 'plan.md'
+        if (Test-Path -LiteralPath $rootPlan -PathType Leaf) {
+            # 루트 plan.md가 있으면 그것만 본다 — docs/plans/로 폴백하면 과거 plan의 미완료분으로
+            #   무관한 세션을 차단할 수 있다(session-context.ps1:53-58과 동일 우선순위).
+            $t = Get-Content -LiteralPath $rootPlan -Raw -Encoding UTF8 -ErrorAction Stop
+            if ($t -match $rxPlanAny) { $loopPlanText = $t }
+        } else {
+            $plansDir = Join-Path $cwdNow 'docs/plans'
+            if (Test-Path -LiteralPath $plansDir -PathType Container) {
+                foreach ($pf in @(Get-ChildItem -LiteralPath $plansDir -Filter '*.md' -File -ErrorAction SilentlyContinue |
+                        Sort-Object LastWriteTime -Descending | Select-Object -First 5)) {
+                    $t = $null
+                    try { $t = Get-Content -LiteralPath $pf.FullName -Raw -Encoding UTF8 } catch {}
+                    if ($t -and $t -match $rxPlanAny) { $loopPlanText = $t; break }
+                }
+            }
+        }
+    } catch { $loopPlanText = $null }   # 읽기 실패 → fail-open
+
+    $loopOpen = ($null -ne $loopPlanText -and $loopPlanText -match $rxPlanOpen)
+
+    # 조건 ③⑤: transcript에서 implement-task 발동 흔적과 '직전 사용자 발화'를 함께 얻는다
+    #   (같은 파일을 두 번 읽지 않도록 한 번의 tail로 처리).
+    $loopSkill = $false
+    $userStop = $false
+    $userFound = $false
+    if ($loopOpen) {
+        $tpL = if ($data) { [string]$data.transcript_path } else { '' }
+        if (-not [string]::IsNullOrWhiteSpace($tpL) -and (Test-Path -LiteralPath $tpL -PathType Leaf)) {
+            try {
+                $tailL = @(Get-Content -LiteralPath $tpL -Tail 3000 -ErrorAction Stop)
+                $loopSkill = (($tailL -join "`n") -match '"skill"\s*:\s*"pjc:implement-task"|Launching skill: pjc:implement-task')
+
+                # 조건 ⑤ 추출 규칙: "type":"user" 엔트리 중 실제 사용자 텍스트만 본다.
+                #   tool_result도 user 역할로 기록되므로 반드시 제외한다 — 포함하면 마지막 user
+                #   텍스트가 늘 도구 결과가 되어 이 조건이 항상 참이 되고, 사용자가 "그만"이라고
+                #   한 세션에서도 차단이 걸린다(이 검사에서 가장 위험한 오작동).
+                for ($i = $tailL.Count - 1; $i -ge 0 -and -not $userFound; $i--) {
+                    $ln = $tailL[$i]
+                    if ($ln -notmatch '"type"\s*:\s*"user"') { continue }
+                    if ($ln -match '"type"\s*:\s*"tool_result"' -or $ln -match '"tool_use_id"') { continue }
+                    $obj = $null
+                    try { $obj = $ln | ConvertFrom-Json } catch { continue }
+                    $uc = $obj.message.content
+                    $utxt = $null
+                    if ($uc -is [string]) { $utxt = $uc }
+                    elseif ($uc) { $utxt = ((@($uc) | Where-Object { $_.type -eq 'text' } | ForEach-Object { $_.text }) -join "`n") }
+                    if (-not [string]::IsNullOrWhiteSpace($utxt)) {
+                        $userFound = $true
+                        # 사용자가 스스로 루프를 끝내거나 범위를 한정했으면 정상 종료다.
+                        #   'T<N>만'은 SKILL.md '재개 진입'이 명시적으로 허용하는 단일 task 실행.
+                        if ($utxt -match '그만|중단|멈춰|멈춤|여기까지|이제 ?됐|나중에|\bstop\b|T\d+\s*만') { $userStop = $true }
+                    }
+                }
+            } catch { $loopSkill = $false }   # 읽기 실패 → fail-open
+        }
+    }
+
+    # 조건 ④: 마지막 응답이 '진행 예고'인가(positive) 그리고 정당한 정지 신호가 없는가(negative).
+    #   positive를 요구하는 이유: 부재 기반(정당 신호가 없으면 정지로 간주)만 쓰면 목록에 없는
+    #   모든 정상 종료 문구가 차단 후보가 된다. 실제 사고에는 예고 문구라는 양성 신호가 있다.
+    #   매칭은 어간 기반이다 — 리터럴로 잡으면 "정리 합니다"(어절 삽입)·"진행할게요"(어미 변형)를
+    #   전부 놓친다(실제 사고 문장이 리터럴 4문구 중 3개를 빗나갔다).
+    #   negative는 넓게 잡는다 — 넓힐수록 미차단(안전측)으로 기운다.
+    $lastMsgL = if ($data) { [string]$data.last_assistant_message } else { '' }
+    $rxAdvance = '(이어서|계속)\s*진행(하겠|할게|합니|하려)|여기까지[^\r\n]{0,20}정리\s*(하겠|합니|할게)|T\d+\s*(부터|까지)[^\r\n]{0,30}(진행|하겠|할게)'
+    $rxLegit = '⛔|🎉|⏸️|\?|승인|확인 요청|확인 부탁|선택해|중단 보고|Halt'
+    $advancePromise = (-not [string]::IsNullOrWhiteSpace($lastMsgL) -and $lastMsgL -match $rxAdvance -and $lastMsgL -notmatch $rxLegit)
+
+    if ($loopOpen -and $loopSkill -and $advancePromise -and $userFound -and (-not $userStop)) {
+
+        # 조건 ② 교차 확인: 체크박스는 갱신 누락이 가능한 최약 신호다(SKILL.md '재개 진입' —
+        #   "세 신호가 어긋나면 git log를 신뢰"). 미완료로 표시된 task 중 완료 커밋(T<N>:)이
+        #   없는 것이 하나라도 있어야 실제 미완료로 본다. 조회는 200건으로 상한(hook 10초 타임아웃).
+        $openNums = New-Object System.Collections.Generic.List[string]
+        foreach ($mm in [regex]::Matches($loopPlanText, '(?m)^\s*- \[[ /]\]\s*T(\d+)')) { [void]$openNums.Add($mm.Groups[1].Value) }
+        foreach ($sec in [regex]::Matches($loopPlanText, '(?ms)^###\s*T(\d+)\b(.*?)(?=^###\s|\z)')) {
+            if ($sec.Groups[2].Value -match '(?m)^\s*- \[[ /]\]\s*\*\*Type\*\*') { [void]$openNums.Add($sec.Groups[1].Value) }
+        }
+        $stillOpen = $false
+        if ($openNums.Count -gt 0) {
+            $glogText = ''
+            try { $glogText = ((& git log --oneline -n 200 2>$null) -join "`n") } catch {}
+            foreach ($n in ($openNums | Select-Object -Unique)) {
+                if ($glogText -notmatch ('T' + $n + ':')) { $stillOpen = $true; break }
+            }
+        }
+
+        if ($stillOpen) {
+            # 차단 상한 (세션·plan당 3회) — 판정이 어긋나 반복 차단되더라도 사용자가 세션을
+            #   끝낼 수 없는 상태에 갇히지 않게 한다. 카운터는 경고 디듑과 같은 .state 계층.
+            $blkFile = $null
+            try {
+                $md5b = [System.Security.Cryptography.MD5]::Create()
+                $hb = ($md5b.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($reCwd + '|loop-block')) | ForEach-Object { $_.ToString('x2') }) -join ''
+                $blkFile = Join-Path $reStateDir ($reSid + '_' + $hb + '.count')
+            } catch {}
+            $blkCount = 0
+            if ($blkFile -and (Test-Path -LiteralPath $blkFile)) {
+                try { $blkCount = [int]((Get-Content -LiteralPath $blkFile -Raw -ErrorAction Stop).Trim()) } catch { $blkCount = 0 }
+            }
+
+            if ($blkCount -lt 3) {
+                try { if ($blkFile) { Set-Content -LiteralPath $blkFile -Value ([string]($blkCount + 1)) -Encoding ASCII } } catch {}
+                try {
+                    if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+                        Write-HookEvent 'require-evidence' 'block' '자율 루프 미완료 정지' ''
+                    }
+                } catch {}
+
+                $reasonText = '[pjc] 자율 루프가 미완료 상태로 종료하려 합니다. plan에 미완료 task가 남아 있고(완료 커밋 없음), 마지막 응답이 진행 예고로 끝났습니다 - implement-task 금지 표현 2(예고를 마지막 말로 남기고 turn을 끝내지 말 것)에 해당합니다. 지금 다음 task의 Phase P를 시작하세요(Read/grep 등 도구 호출로 이어갈 것). 상태 기록이 필요하면 대화에 요약을 출력하지 말고 plan.md에 쓰십시오. 정말 멈춰야 하는 상황이면 Halt 보고 형식(## 작업 중단)으로 사유를 적으십시오.'
+                [Console]::Out.WriteLine((@{ decision = 'block'; reason = $reasonText } | ConvertTo-Json -Compress))
+                exit 0
+            }
+        }
     }
 }
 
