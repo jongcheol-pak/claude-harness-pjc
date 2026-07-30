@@ -41,6 +41,12 @@ try {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($cwd) -and (Test-Path -LiteralPath $cwd -PathType Container)) {
+        # cwd 수집으로 라인이 늘었는지 판정하는 기준 개수 — vault 라인 게이팅에 쓴다.
+        #   compact 리마인더는 이 블록 밖에서 append되므로, 이 기준과 비교하면 리마인더가
+        #   자연히 게이팅 신호에서 제외된다($lines.Count -gt 0으로 판정하면 비 pjc 프로젝트의
+        #   요약 직후 세션에도 vault 라인이 붙는다).
+        $cwdBaseCount = $lines.Count
+
         # ---- plan 탐색: 루트 plan.md 우선 → docs/plans/ 폴백 ----
         # docs/plans/에는 plan이 아닌 파일(deferred.md 등)도 있으므로 task 체크박스(- [ ] T<N>)가
         # 있는 파일만 plan으로 인정한다. 최신 수정 5개만 검사(세션 시작 지연 상한).
@@ -111,6 +117,37 @@ try {
             }
         }
 
+        # ---- 위키 vault 설정 상태 판정 (라인 생성만 — 주입은 아래 수집 종료 후) ----
+        # 왜: 절차 K(코드 작업 전 위키 read-only 참조)는 "vault 미설정이면 조용히 통과"인데,
+        #   확인 없이 미설정으로 단정해 **설정·실재하는 위키를 통째로 건너뛴** 사고가 있었다
+        #   (2026-07-30). 기계가 상태를 1줄 주입하면 그 추측 여지 자체가 사라진다 —
+        #   AGENTS.md 전문 주입(아래)과 같은 구조의 해법이다.
+        # 미설정(config 파일 없음)은 주입하지 않는다: 위키를 쓰지 않는 사용자에게 매 세션
+        #   노이즈가 되고 절차 K의 "없으면 조용히 통과" 원칙과도 맞다. 그 대가로 "라인 부재"가
+        #   다의적(미설정/게이팅/hook 미설치)이 되므로, 절차 K 1이 "부재는 판정 근거가 아니다"로
+        #   받아 직접 확인하게 한다(문서와 hook이 한 쌍).
+        # USERPROFILE만 본다($HOME 폴백 없음) — 골든이 이 변수로 홈을 격리하므로 폴백을 두면
+        #   격리가 새고 실 사용자 홈을 읽을 수 있다.
+        $vaultLine = $null
+        $vaultInsertAt = $lines.Count      # AGENTS 라인보다 앞 위치를 미리 기록(전문이 길어 뒤에 붙으면 묻힌다)
+        $userHome = [string]$env:USERPROFILE
+        if (-not [string]::IsNullOrWhiteSpace($userHome)) {
+            $vaultCfg = Join-Path $userHome '.claude/llm-wiki-config.json'
+            if (Test-Path -LiteralPath $vaultCfg -PathType Leaf) {
+                $vaultPath = $null
+                # 손상 JSON·BOM·권한 오류는 조용히 통과(fail-open) — 세션 시작을 막지 않는다
+                try { $vaultPath = [string]((Get-Content -LiteralPath $vaultCfg -Raw -Encoding UTF8 | ConvertFrom-Json).vault_path) } catch {}
+                if (-not [string]::IsNullOrWhiteSpace($vaultPath)) {
+                    if (Test-Path -LiteralPath $vaultPath -PathType Container) {
+                        $vaultLine = "[pjc 세션 컨텍스트] 위키 vault: 설정됨 ($vaultPath) — 절차 K 참조 가능. `"미설정`"으로 단정하지 마세요."
+                    } else {
+                        # 파일을 가리키는 경우도 여기로 온다(-PathType Container 실패) — vault로 쓸 수 없으므로 부재와 동일 취급
+                        $vaultLine = "[pjc 세션 컨텍스트] 위키 vault: 설정 경로 부재 ($vaultPath) — 절차 K는 조용히 통과하되 건너뛴 사실을 K 1 형식으로 1줄 기록하세요. 위키 작업 요청 시 경로 재확인이 필요합니다."
+                    }
+                }
+            }
+        }
+
         # ---- AGENTS.md 전문 주입 (가이드 판단이 "읽혔는지"에 좌우되지 않게) ----
         # 왜: 세션에서 AGENTS.md 앞부분만 읽고 "관련 내용 없음"으로 단정하는 오답을 구조적으로 없앤다 —
         #   전문이 컨텍스트에 있으면 "부분만 읽는" 상황 자체가 성립하지 않는다. plan/notes와 달리
@@ -150,6 +187,17 @@ try {
                     }
                 }
             }
+        }
+
+        # ---- vault 라인 주입 (수집 종료 후 — 게이팅 판정을 여기서 한다) ----
+        # cwd 수집으로 라인이 하나라도 늘었을 때만 붙인다(plan·notes·AGENTS 중 하나라도 있음
+        #   = pjc 프로젝트 신호). 판정을 위(AGENTS 진입 전)에서 하면 AGENTS.md만 있고
+        #   plan/notes가 없는 프로젝트에서 라인이 억제되므로, 삽입 위치만 미리 기록하고
+        #   판정은 반드시 여기서 한다.
+        # 인덱스 클램프: 기록 후 라인은 AGENTS 블록만 추가하므로 초과할 수 없지만, Insert의
+        #   범위 예외는 바깥 catch로 흘러 이미 모은 plan/notes 라인까지 통째로 잃는다.
+        if ($vaultLine -and ($lines.Count -gt $cwdBaseCount)) {
+            $lines.Insert([Math]::Min($vaultInsertAt, $lines.Count), $vaultLine)
         }
     }
 
