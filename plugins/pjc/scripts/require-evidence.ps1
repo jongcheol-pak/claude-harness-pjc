@@ -175,6 +175,9 @@ if ($porcelain) {
 # [문구 정본] 아래 $rxAdvance가 잡는 문구의 정본은 implement-task/SKILL.md "🚫 금지 표현 ②"다.
 #   그 목록을 고치면 여기도 함께 고친다 — 갈리면 규칙에 없는 것을 잡거나 잡아야 할 것을 놓친다.
 # [6조건 AND] 하나라도 불충족이면 통과. 판정에 필요한 정보를 못 얻으면 전부 fail-open(통과).
+# [QUICK 우회] 차단 성격의 hook은 모두 $env:CLAUDE_HARNESS_QUICK='1' 탈출구를 둔다
+#   (require-plan-for-write·require-task-checkbox와 동일 관례) — 골든 러너·긴급 상황에서 차단을
+#   끌 수단이 없으면 오작동 시 세션을 끝낼 방법이 사라진다. 6조건과 별개인 운영 스위치다.
 if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
 
     # 조건 ②: plan에 미완료 task가 있는가.
