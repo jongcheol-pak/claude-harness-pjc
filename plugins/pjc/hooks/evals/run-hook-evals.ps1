@@ -747,6 +747,21 @@ if ($gitOk) {
     Assert-Case -Name "post-write: 추적 파일의 신규 시크릿 라인은 경고 (미탐 아님)" -R $r -ExpectExit 0 -ExpectContains '민감 정보'
 
     Remove-Item -Recurse -Force $pwRepo -ErrorAction SilentlyContinue
+
+    # ③ HEAD 없는 저장소(초기 커밋 전 staged) → 전재 폴백으로 경고 유지 (V-5 B1 회귀 가드)
+    #   ls-files는 staged 파일이면 HEAD 없이도 성공하지만 `diff HEAD`는 exit 128로 실패한다 —
+    #   그 실패를 무시하면 "추가 라인 0줄"과 구분되지 않아 스캔이 스킵되고 시크릿이 통째로 미탐된다.
+    #   위 ①②는 항상 커밋된 저장소만 쓰므로 이 공백을 잡지 못한다(그래서 별도 케이스).
+    $pwFresh = Join-Path $work 'pwfresh'; New-Item -ItemType Directory $pwFresh -Force | Out-Null
+    $pwFreshDoc = Join-Path $pwFresh 'sec.md'
+    Push-Location $pwFresh
+    git init -q; git config user.email t@t; git config user.name t
+    ('DATABASE_URL=' + $fakeUri) | Set-Content sec.md -Encoding UTF8
+    git add sec.md                      # 커밋하지 않는다 — HEAD 부재 상태를 만든다
+    Pop-Location
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pwFresh; tool_input = @{ file_path = $pwFreshDoc } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "post-write: HEAD 없는 저장소는 전재 폴백 — 시크릿 경고 유지" -R $r -ExpectExit 0 -ExpectContains '민감 정보'
+    Remove-Item -Recurse -Force $pwFresh -ErrorAction SilentlyContinue
 }
 
 # =====================================================================

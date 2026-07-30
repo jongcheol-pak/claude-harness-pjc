@@ -198,11 +198,19 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                 if ($fileDir -and (Test-Path -LiteralPath $fileDir -PathType Container)) {
                     $null = & git -C $fileDir ls-files --error-unmatch -- $file 2>$null
                     if ($LASTEXITCODE -eq 0) {
-                        $added = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null |
-                            Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } |
-                            ForEach-Object { $_.Substring(1) })
-                        # 추가 라인 0줄(삭제만 있거나 HEAD와 동일) = 스캔할 신규 내용이 없다
-                        $scanText = if ($added.Count -gt 0) { $added -join "`n" } else { '' }
+                        $diffOut = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null)
+                        # diff 성공 여부를 반드시 확인한다: ls-files는 staged 파일이면 HEAD 없이도
+                        #   성공하지만 `diff HEAD`는 초기 커밋 전 저장소에서 exit 128로 실패한다.
+                        #   그때 실패를 무시하면 "추가 라인 0줄"과 구분되지 않아 스캔이 통째로
+                        #   스킵되고(=시크릿 미탐지) 폴백이라는 설계가 무너진다.
+                        if ($LASTEXITCODE -eq 0) {
+                            $added = @($diffOut |
+                                Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } |
+                                ForEach-Object { $_.Substring(1) })
+                            # 추가 라인 0줄(삭제만 있거나 HEAD와 동일) = 스캔할 신규 내용이 없다
+                            $scanText = if ($added.Count -gt 0) { $added -join "`n" } else { '' }
+                        }
+                        # diff 실패면 $scanText는 위에서 넣은 $raw 그대로 — 전재 폴백
                     }
                 }
             } catch {
