@@ -564,6 +564,124 @@ if ($gitOk) {
     $r = Invoke-Hook 'require-evidence.ps1' $jd1
     Assert-Case -Name "evidence: 마커 생성 불가 → fail-open 경고 유지 (T5)" -R $r -ExpectExit 0 -ExpectContains 'checkpoint'
     Remove-Item -Force -LiteralPath $reMarkerDir
+
+    # ---- [v1.148.0 T3] 자율 루프 미완료 정지 차단 골든 (검사 4 — 이 hook의 유일한 차단 경로) ----
+    # 검사 1~3은 비차단 경고라 stderr만 보지만, 검사 4는 stdout에 {"decision":"block"}을 낸다.
+    #   Invoke-Hook이 2>&1로 합치므로 ExpectContains로 그 리터럴을 직접 고정한다.
+    # 음성을 두텁게(7건) 까는 이유: 오차단이 이 검사의 최악 실패다(사용자가 세션을 못 끝낸다).
+    #   음성은 ExpectSilent가 아니라 ExpectNotContains를 쓴다 — 검사 1~3의 stderr 경고가 함께
+    #   나올 수 있어 무출력이 아니며, 여기서 확인할 것은 "차단되지 않았다"뿐이다.
+    $loopMsg = '여기까지 진행 상황을 정리 합니다. 계속 T5부터 이어서 진행하겠습니다.'
+    $loopBlock = '"decision":"block"'
+    # 정상 transcript: implement-task 발동 흔적 + 평범한 사용자 발화
+    $loopTr = Join-Path $work 'tr-loop.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":"진행"}}'
+    ) | Set-Content -Encoding UTF8 $loopTr
+
+    # 미완료 task가 있는 저장소 2종 — task 형식 ⓑ(heading)와 ⓐ(템플릿).
+    #   한 형식만 픽스처로 두면 다른 형식에서의 무발화가 검출되지 않는다(plan 2회차 BLOCKER).
+    #   커밋 메시지에 'Build: OK'를 넣어 검사 2(증거 없음)가 함께 발동하지 않게 한다.
+    $ev4 = Join-Path $work 'evrepo4'; New-Item -ItemType Directory $ev4 -Force | Out-Null
+    Push-Location $ev4
+    git init -q; git config user.email t@t; git config user.name t
+    "# plan`n`n### T1 - first`n- [x] **Type**: C`n`n### T2 - second`n- [ ] **Type**: C`n" | Set-Content -Encoding UTF8 plan.md
+    'x' | Set-Content a.txt; git add .; git commit -qm 'T1: first (Build: OK)'
+    Pop-Location
+
+    $ev5 = Join-Path $work 'evrepo5'; New-Item -ItemType Directory $ev5 -Force | Out-Null
+    Push-Location $ev5
+    git init -q; git config user.email t@t; git config user.name t
+    "# plan`n`n- [x] T1. first`n- [ ] T2. second`n" | Set-Content -Encoding UTF8 plan.md
+    'x' | Set-Content a.txt; git add .; git commit -qm 'T1: first (Build: OK)'
+    Pop-Location
+
+    # (L1) 양성 ⓑ — heading 형식 + **실제 사고 문장 원문**.
+    #   리터럴 4문구가 아니라 어간 매칭이어야 걸린다(원문은 "여기까지 진행 상황을 정리 합니다"처럼
+    #   어절이 삽입돼 있어, 리터럴 "여기까지 정리합니다"로는 매치되지 않는다).
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp1'; transcript_path = $loopTr; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 루프 미완료 + 예고 문구(heading 형식·실제 사고 원문) → 차단 (T3 양성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L2) 양성 ⓐ — 템플릿 형식(`- [ ] T2. second`)
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev5; session_id = 'lp2'; transcript_path = $loopTr; last_assistant_message = '이어서 진행하겠습니다' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 루프 미완료 + 예고 문구(템플릿 형식) → 차단 (T3 양성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L3) 음성 — stop_hook_active=true (재귀 차단 방지: 이 hook이 건 block으로 Stop이 다시 돌 때)
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp3'; transcript_path = $loopTr; last_assistant_message = $loopMsg; stop_hook_active = $true } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: stop_hook_active=true → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L4) 음성 — 미완료 task 0 (전부 [x])
+    $ev6 = Join-Path $work 'evrepo6'; New-Item -ItemType Directory $ev6 -Force | Out-Null
+    Push-Location $ev6
+    git init -q; git config user.email t@t; git config user.name t
+    "# plan`n`n### T1 - only`n- [x] **Type**: C`n" | Set-Content -Encoding UTF8 plan.md
+    'x' | Set-Content a.txt; git add .; git commit -qm 'T1: only (Build: OK)'
+    Pop-Location
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev6; session_id = 'lp4'; transcript_path = $loopTr; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 미완료 task 0 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L5) 음성 — 정당한 정지 신호(Halt 보고 마커)가 함께 있음
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp5'; transcript_path = $loopTr; last_assistant_message = "## ⛔ 작업 중단: T2`n이어서 진행하겠습니다만 중단합니다" } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: Halt 보고 마커 동반 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L6) 음성 — **사용자가 중단을 지시**했다. 이 검사에서 가장 중요한 안전 조건:
+    #   어시스턴트 발화만 보면 사용자가 멈추라고 한 세션에 루프 재개를 강요하게 된다.
+    $loopTrStop = Join-Path $work 'tr-loop-stop.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":"오늘은 그만 하자"}}'
+    ) | Set-Content -Encoding UTF8 $loopTrStop
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp6'; transcript_path = $loopTrStop; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 사용자가 중단 지시 → 미차단 (T3 음성·최우선 안전 조건)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L7) 음성 — `docs/plans/deferred.md`만 있는 저장소는 plan으로 인정하지 않는다.
+    #   대장에는 task 패턴(ⓐ·ⓑ)이 없으므로 파일 수준 게이트에서 탈락해야 한다.
+    $ev7 = Join-Path $work 'evrepo7'; New-Item -ItemType Directory $ev7 -Force | Out-Null
+    Push-Location $ev7
+    git init -q; git config user.email t@t; git config user.name t
+    New-Item -ItemType Directory (Join-Path $ev7 'docs/plans') -Force | Out-Null
+    "# Deferred 대장`n`n## 대기`n`n- [2026-07-30] 미처리 항목`n" | Set-Content -Encoding UTF8 (Join-Path $ev7 'docs/plans/deferred.md')
+    'x' | Set-Content a.txt; git add .; git commit -qm 'T1: first (Build: OK)'
+    Pop-Location
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev7; session_id = 'lp7'; transcript_path = $loopTr; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: deferred.md만 있는 repo → plan 미인정, 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L8) 음성 — 직전 user 엔트리가 tool_result뿐이면 사용자 발화 추출 0건 → fail-open.
+    #   tool_result를 사용자 발화로 오인하면 이 조건이 항상 참이 되어 (L6)의 방어가 무너진다.
+    $loopTrTool = Join-Path $work 'tr-loop-tool.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x1","content":"ok"}]}}'
+    ) | Set-Content -Encoding UTF8 $loopTrTool
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp8'; transcript_path = $loopTrTool; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: user 엔트리가 tool_result뿐 → fail-open 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L9) 음성 — 예고 문구가 없는 평범한 종료(positive 매치가 실제 게이트로 작동하는지)
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp9'; transcript_path = $loopTr; last_assistant_message = '요청하신 조사를 마쳤습니다.' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 예고 문구 없는 종료 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L10) 음성 — stdin 필드가 없어도 transcript 폴백으로 판정한다(양성) / 그 폴백에서도 사용자
+    #   중단 지시는 억제된다. 필드 미제공 환경에서 검사가 죽은 코드가 되지 않음을 고정한다.
+    $loopTrFb = Join-Path $work 'tr-loop-fb.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":"진행"}}',
+        ('{"type":"assistant","message":{"content":[{"type":"text","text":"' + $loopMsg + '"}]}}')
+    ) | Set-Content -Encoding UTF8 $loopTrFb
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lpA'; transcript_path = $loopTrFb } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: stdin 필드 부재 + transcript 폴백 → 차단 (T3 양성·폴백)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L11) 상한 — 같은 세션·같은 plan에서 4회째는 차단하지 않는다(판정이 어긋나도 세션을 끝낼 수 있게).
+    $capJson = @{ cwd = $ev5; session_id = 'lpCap'; transcript_path = $loopTr; last_assistant_message = '계속 진행합니다' } | ConvertTo-Json -Compress
+    $r = Invoke-Hook 'require-evidence.ps1' $capJson
+    Assert-Case -Name "evidence: 차단 상한 1회차 → 차단 (T3)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+    $r = Invoke-Hook 'require-evidence.ps1' $capJson
+    Assert-Case -Name "evidence: 차단 상한 2회차 → 차단 (T3)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+    $r = Invoke-Hook 'require-evidence.ps1' $capJson
+    Assert-Case -Name "evidence: 차단 상한 3회차 → 차단 (T3)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+    $r = Invoke-Hook 'require-evidence.ps1' $capJson
+    Assert-Case -Name "evidence: 차단 상한 4회차 → 미차단 (T3 상한 실증)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
