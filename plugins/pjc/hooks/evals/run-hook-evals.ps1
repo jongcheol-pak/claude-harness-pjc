@@ -569,7 +569,7 @@ if ($gitOk) {
     # 검사 1~3은 비차단 경고라 stderr만 보지만, 검사 4는 stdout에 {"decision":"block"}을 낸다.
     #   Invoke-Hook이 2>&1로 합치므로 ExpectContains로 그 리터럴을 직접 고정한다.
     # 잡는 정지는 3유형 — ② 진행 예고 / ③ 세션 전환 제안 / ④ 중간 수동 실행 요청.
-    # 음성을 두텁게(9건) 까는 이유: 오차단이 이 검사의 최악 실패다(사용자가 세션을 못 끝낸다).
+    # 음성을 두텁게(10건) 까는 이유: 오차단이 이 검사의 최악 실패다(사용자가 세션을 못 끝낸다).
     #   음성은 ExpectSilent가 아니라 ExpectNotContains를 쓴다 — 검사 1~3의 stderr 경고가 함께
     #   나올 수 있어 무출력이 아니며, 여기서 확인할 것은 "차단되지 않았다"뿐이다.
     # ③④는 Weak 신호(물음표·"확인 요청")를 통과 근거로 인정하지 않으므로 오차단 표면이 ②보다
@@ -835,6 +835,18 @@ if ($gitOk) {
     # (L27) 음성 — 규칙 4를 수행하는 정상 보고. ③ ⓐ에서 상태 서술 명사를 뺀 이유의 회귀 고정.
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase '컨텍스트 관리 규칙에 따라 plan.md를 갱신했습니다. 이제 다음 작업자가 이어가시면 됩니다.')
     Assert-Case -Name "evidence: 규칙 4 수행 보고 → 미차단 (T3 음성·오차단 반례)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L28) 음성 — **Strong 마커가 ④도 억제하는가**. 위 델타 3짝은 Phase 0·규칙 12·plan-feature를
+    #   다루므로 F-8 확인 게이트가 빠져 있었다. ③뿐 아니라 ④ 어휘에도 마커가 통하는지 고정한다.
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase "## ⏸️ 구현 완료 — 확인 대기`n화면 표시는 여기서 한번 직접 확인해 보시겠어요?")
+    Assert-Case -Name "evidence: F-8 확인 게이트 마커 + ④ 어휘 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L29) 음성 — **루프 종료 후의 일반 대화**. 6조건은 "지금 루프가 도는가"가 아니라 세션에
+    #   발동 흔적이 있는지만 보므로(전 파일 스캔), 루프가 Halt·중단으로 끝난 뒤의 평범한 답변도
+    #   미완료 task가 남아 있으면 판정 대상이 된다. ④를 3요소로 좁힌 이유가 이 표면을 ② 수준의
+    #   희소성까지 줄이는 것이었고, 이 케이스가 그 잔여를 고정한다.
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase '그 설정은 config.toml에서 바꿉니다. 여기서 직접 수정하시면 반영됩니다.')
+    Assert-Case -Name "evidence: 루프 종료 후 일반 대화 → 미차단 (T3 음성·④ 잔여 표면)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
