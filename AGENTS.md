@@ -39,7 +39,7 @@
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
   다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합. 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
-- **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것**: Claude Code **PowerShell 도구의 내장 경로 보호**가 삭제 대상을 추출할 때 실제 대상이 아니라 **같은 명령 문자열 안 다른 위치의 따옴표 경로**를 집어 오차단한다(`Remove-Item on system path ''D:\Personal' is blocked.`). **하니스 hook과 무관하다**(`block-destructive`는 변형 11종을 전부 통과시킨다). `Remove-Item` 토큰과 공백 포함 경로가 **한 명령 문자열에 함께 있을 때만** 발화하는 조합 의존이라 "가끔 막힌다"로 보인다. **회피**: 검증 배치를 **스크립트 파일로 분리**(가장 확실) · **Bash 도구** 사용 · 환경변수 제거는 `$env:NAME = ''` 대입.
+- **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것**: Claude Code **PowerShell 도구의 내장 경로 보호**가 삭제 대상을 추출할 때 실제 대상이 아니라 **같은 명령 문자열 안 다른 위치의 따옴표 경로**를 집어 오차단한다(`Remove-Item on system path ''D:\Personal' is blocked.`). **하니스 hook과 무관하다** — `block-destructive`에 변형 11종을 stdin 주입한 결과 **11/11 exit 0**(차단 0건)이다. `Remove-Item` 토큰과 공백 포함 경로가 **한 명령 문자열에 함께 있을 때만** 발화하는 조합 의존이라 "가끔 막힌다"로 보인다. **회피**: 검증 배치를 **스크립트 파일로 분리**(가장 확실) · **Bash 도구** 사용 · 환경변수 제거는 `$env:NAME = ''` 대입.
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
 ### 검증 매핑 (task 검증 선택)
@@ -64,6 +64,10 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 │   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(버전 드리프트 경고)·session-context(SessionStart plan/notes 상태 + **위키 vault 설정 상태**(설정+실재 / 경로 부재만 1줄 주입, 미설정은 무출력 — 절차 K의 "미설정" 오판정 차단. 게이팅은 cwd 수집 라인 기준이고 compact 리마인더는 신호가 아니다) + AGENTS.md 전문 주입(**16KB 초과 시 목차 폴백**) — compact 포함)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log — 차단/경고 이벤트를 `~/.claude/.state/hook-events/`에 jsonl 적재, hook 아님) + 수동 도구 report-hook-events(이벤트 집계 리포트, 읽기 전용, hook 아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용). hooks.json command는 스크립트를 hook 셸에서 직접 실행한다(엔트리당 outer+inner 2프로세스 → outer 1프로세스. 실행 셸은 Claude Code가 powershell로 해석하며 실측상 pwsh 우선 — 크로스플랫폼 hook 디버깅 시 이 해석 규칙을 먼저 본다).
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
+├── docs/
+│   ├── hook-conventions.md          # hook 출력 규약 상세 (조건부 차단의 정본 — Conventions에서 포인터)
+│   ├── prd.md
+│   └── plans/deferred.md            # 미처리 Deferred 단일 대장
 ├── validate.ps1                     # 설치본 검증
 ├── install.ps1
 └── README.md                        # (notes.md·plan.md·notes-archive/ 는 .gitignore — 로컬 전용)
@@ -87,7 +91,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 ## Plan Location
 - 단일 plan: `plan.md`(덮어쓰기 방식).
 - **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — git에 안 올라간다. 커밋되는 건 코드·문서(README 등)뿐이며, 작업의 영구 기록은 로컬 `notes.md`에 둔다.
-- PRD: `docs/prd.md`. **소규모 후속 작업은 이 PRD에 닿는지 경량 확인만 하고**(plan-feature Step 1), 닿지 않으면 plan에 `**PRD**:` 줄을 두지 않는다 — 무관한 과거 PRD를 끌어와 거짓 미충족을 보고하지 않기 위함이다(Phase G 진입은 그 줄이 단일 신호).
+- PRD: `docs/prd.md` (Opus 5 세대 대응 작업분 — active FR 14건·NFR 6건). **소규모 후속 작업은 이 PRD에 닿는지 경량 확인만 하고**(plan-feature Step 1), 닿지 않으면 plan에 `**PRD**:` 줄을 두지 않는다 — 무관한 과거 PRD를 끌어와 거짓 미충족을 보고하지 않기 위함이다(Phase G 진입은 그 줄이 단일 신호).
 
 ## OS/플랫폼
 - Windows 검증 · macOS/Linux 실험적(hooks는 pwsh 7 cross-platform 의도). 검증/배포는 Windows 기준.
