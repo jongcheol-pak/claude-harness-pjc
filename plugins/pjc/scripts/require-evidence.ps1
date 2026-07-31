@@ -12,10 +12,12 @@
 #   보고 판단; 모델 강제는 안 함). **이 셋을 차단으로 바꾸지 말 것.**
 #
 # [예외: 검사 4만 조건부 차단 (v1.148.0)]
-#   아래 검사 4는 위 금지의 예외다 — 조건을 6개 AND로 좁혀 "무관한 종료에는 애초에 발동하지
-#   않기" 때문에 위 근거("모든 종료에 발동한다")가 성립하지 않는다. 자율 루프가 예고만 남기고
-#   멈추는 것은 경고로는 못 고친다(stderr는 모델에 전달되지 않아 루프가 되살아나지 않는다).
+#   아래 검사 4는 위 금지의 예외다 — 조건을 AND로 좁혀 "무관한 종료에는 애초에 발동하지
+#   않기" 때문에 위 근거("모든 종료에 발동한다")가 성립하지 않는다. 자율 루프가 멈추는 것은
+#   경고로는 못 고친다(stderr는 모델에 전달되지 않아 루프가 되살아나지 않는다).
 #   판정 불가는 전부 fail-open이며, 차단해도 세션·plan당 3회가 상한이다.
+#   잡는 정지는 **3유형**이다 — ② 진행 예고만 남기고 turn 종료 / ③ 세션 전환·컨텍스트 우려
+#   제안 / ④ 중간 수동 실행·확인 요청. 유형별 판정 규칙은 검사 4 본문 참조.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -167,14 +169,21 @@ if ($porcelain) {
     }
 }
 
-# ---- 4. 자율 루프 미완료 정지 차단 (v1.148.0) — 이 hook에서 유일한 차단 경로 ----
-# implement-task 자율 루프가 "예고만 남기고 turn을 끝내" 멈추는 것을 되돌린다.
-#   관측 사례: "여기까지 진행 상황을 정리 합니다. 계속 T5부터 이어서 진행하겠습니다." 출력 후 정지.
-#   질문이 아니라 평서문이라 "묻지 않는다" 규칙은 지킨 것처럼 보이지만, 도구 호출 없이 텍스트만
-#   내면 turn이 끝나 사용자 입력을 기다리게 되므로 결과는 확인 요청과 같은 루프 정지다.
-# [문구 정본] 아래 $rxAdvance가 잡는 문구의 정본은 implement-task/SKILL.md "🚫 금지 표현 ②"다.
-#   그 목록을 고치면 여기도 함께 고친다 — 갈리면 규칙에 없는 것을 잡거나 잡아야 할 것을 놓친다.
-# [6조건 AND] 하나라도 불충족이면 통과. 판정에 필요한 정보를 못 얻으면 전부 fail-open(통과).
+# ---- 4. 자율 루프 미완료 정지 차단 (v1.148.0, ③④ 확대 v1.149.0) — 이 hook에서 유일한 차단 경로 ----
+# implement-task 자율 루프가 미완료 상태로 멈추는 것을 되돌린다. 정지 3유형을 잡는다:
+#   ② 진행 예고만 남기고 turn 종료 — "여기까지 진행 상황을 정리 합니다. 계속 T5부터 이어서
+#      진행하겠습니다." 질문이 아니라 평서문이라 "묻지 않는다" 규칙은 지킨 것처럼 보이지만,
+#      도구 호출 없이 텍스트만 내면 turn이 끝나 결과는 확인 요청과 같은 루프 정지다.
+#   ③ 세션 전환·컨텍스트 우려 제안 — "이대로 계속할지, 새 세션으로 옮길지 알려주세요."
+#      컨텍스트 한계는 Halt 사유가 아니다(정답은 압축 통과). 이 유형은 위임 자체를 반납해
+#      사용자가 "새 세션으로"라고 답하면 대화 맥락이 통째로 버려진다.
+#   ④ 중간 수동 실행·확인 요청 — "여기서 한번 직접 실행해 보시겠어요?" 기계 검증으로 되는
+#      것은 직접 실행해야 하고, 안 되는 것은 ⏳ HUMAN-VERIFY로 최종 보고에 넘긴다.
+# [문구 정본] 아래 $rxAdvance(②)·$rxHandoff(③)·$rxManualAsk(④)가 잡는 문구의 정본은
+#   implement-task/SKILL.md "🚫 금지 표현" ②③④ 세 절이다. 그 목록을 고치면 여기도 함께
+#   고친다 — 갈리면 규칙에 없는 것을 잡거나 잡아야 할 것을 놓친다(골든 L12가 SKILL.md에서
+#   문구를 읽어 주입하므로 드리프트는 테스트 FAIL로 드러난다).
+# [조건 AND] 하나라도 불충족이면 통과. 판정에 필요한 정보를 못 얻으면 전부 fail-open(통과).
 # [QUICK 우회] 차단 성격의 hook은 모두 $env:CLAUDE_HARNESS_QUICK='1' 탈출구를 둔다
 #   (require-plan-for-write·require-task-checkbox와 동일 관례) — 골든 러너·긴급 상황에서 차단을
 #   끌 수단이 없으면 오작동 시 세션을 끝낼 방법이 사라진다. 6조건과 별개인 운영 스위치다.
@@ -220,11 +229,59 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     #   전부 놓친다(실제 사고 문장이 리터럴 4문구 중 3개를 빗나갔다).
     #   negative는 넓게 잡는다 — 넓힐수록 미차단(안전측)으로 기운다.
     $rxAdvance = '(이어서|계속)\s*진행(하겠|할게|합니|하려)|여기까지[^\r\n]{0,20}정리\s*(하겠|합니|할게)|T\d+\s*(부터|까지)[^\r\n]{0,30}(진행|하겠|할게)'
-    $rxLegit = '⛔|🎉|⏸️|\?|승인|확인 요청|확인 부탁|선택해|중단 보고|Halt'
-    function Test-AdvancePromise {
+
+    # ③ 세션 전환·컨텍스트 우려 제안 — 2요소 근접(어순 ⓐ→ⓑ 고정, 40자 이내).
+    #   ⓐ 세션 전환 명사 → ⓑ 전환·판단 위임 어미.
+    #   ⓐ에서 '컨텍스트'·'대화가 길-' 같은 **상태 서술 명사는 뺐다** — 그 명사는 규칙 4를
+    #   수행하는 정상 보고("컨텍스트 관리 규칙에 따라 plan.md를 갱신했고 다음 작업자가
+    #   이어가시면 됩니다")에도 자연스럽게 등장해, ⓑ의 흔한 존댓 어미와 만나면 **정답 행동이
+    #   차단된다**(리뷰 재현 반례). 실제 위반문은 예외 없이 '새 세션'·'/clear'처럼
+    #   **전환 대상을 명시**하므로 ⓐ를 좁힌 것만으로는 탐지력이 줄지 않는다(SKILL.md ③ 문구 전건
+    #   매치로 실증). **단 ⓑ는 폐쇄 목록이라 미탐이 있다** — "새 세션에서 계속하는 게 좋겠습니다"·
+    #   "새 세션으로 옮기는 것을 추천합니다" 같은 변형은 잡히지 않는다. ④와 같은 트레이드오프로
+    #   **의도적으로 수용**한다: 1차 방어선은 문서 규칙이고, 어미를 넓히면 정상 보고를 덮치는
+    #   오차단이 즉시 발생한다(F-7 m3).
+    $rxHandoff = '(새\s*세션|/clear|새\s*대화|세션을?\s*(옮|바꾸|나눠))[^\r\n]{0,40}(옮길지|옮길까|계속할지|새로\s*시작하시|권합니다|알려주세요|이어가시)'
+
+    # ④ 중간 수동 실행·확인 요청 — 3요소 결합(어순 ⓐ→ⓑ→ⓒ 고정, 각 25자 이내).
+    #   ⓐ 위임 부사 → ⓑ 실행·확인 동사 → ⓒ 요청 어미. 2요소(ⓑ+ⓒ)만으로 잡으면
+    #   "설치 후 동작을 확인해 주세요" 같은 **정상 보고가 전부 차단 후보**가 된다 —
+    #   대장 73번이 "물음표가 든 문장을 차단하면 정상적인 확인 요청까지 막는다"로 경고한 지점.
+    #   ⓒ에서 '주세요'·'주시'·'부탁' 단독을 뺀 이유도 같다 — 그 어미는 안내문에 워낙 흔해
+    #   "설치 후 동작을 직접 확인해 주세요"까지 걸렸다(리뷰 재현 반례). **사용자에게 행위를
+    #   넘기며 되묻는 형태**(보시겠·주시겠·보시는 게)로 좁힌다.
+    #   미탐(2인칭 지칭형·어순 역전·평서형 요청)은 의도적으로 수용한다 — 1차 방어선은 문서
+    #   규칙이고, 오차단은 즉시 피해인 반면 미탐은 규칙이 받는다.
+    $rxManualAsk = '(직접|한번|한 번|여기서|대신)[^\r\n]{0,25}(실행|테스트|확인|돌려|띄워|구동)[^\r\n]{0,25}(보시겠|보실래|보시는\s*게|해\s*보세요|주시겠|주시면\s*좋)'
+
+    # 정당 정지 신호 2층 (v1.149.0) — 기존 $rxLegit을 강도로 쪼갠 것이며 **합집합은 동일**하다.
+    #   Strong: 루프가 정상 도달한 종착점·규칙이 명시한 개입 지점의 헤더 마커. 전 유형에 통과.
+    #   Weak  : "질문했다"는 사실만 알려주는 표지. ②에만 통과 근거이고 ③④에는 인정하지 않는다 —
+    #           ③④는 **질문 형태를 띠는 것이 곧 위반**이라 Weak를 인정하면 검사가 성립하지 않는다
+    #           (물음표 하나로 영구 fail-open 되던 것이 이 확대 이전의 상태다).
+    #   Weak를 버리는 대신 정당 개입 지점에는 Strong 마커를 문면으로 부여했다(SKILL.md 마커 규약)
+    #   — Phase 0 사전 승인 확인·외부 작업 승인·리뷰 인프라 선택·plan-feature 세션 확인 등.
+    #   ⏸는 **VS16(U+FE0F)을 선택적으로** 잡는다 — 파일에 `⏸️`로 쓰면 U+23F8+U+FE0F 2문자
+    #   시퀀스가 되어, 모델이 VS16 없이 `⏸`만 출력하면 미매치다(실측). ⛔·🎉는 단일 코드포인트라
+    #   이 문제가 없고 ⏸만 구조적으로 좁다. Weak를 ③④에서 없앤 뒤로는 **마커가 유일한 방어**라,
+    #   한 코드포인트 차이로 Phase 0 승인 게이트가 차단될 수 있다(F-7 M1).
+    $rxLegitStrong = '⛔|🎉|⏸️?|중단 보고|Halt'
+    $rxLegitWeak = '\?|승인|확인 요청|확인 부탁|선택해'
+
+    # 정지 유형 판정 — 매치되는 첫 유형의 이름을 반환하고, 없으면 빈 문자열(fail-open).
+    #   **조기 반환 금지**: ②의 어휘가 매치됐더라도 Weak 때문에 ② 판정이 거짓이면 ③→④를
+    #   반드시 이어서 평가한다. 안 그러면 "컨텍스트가 찼습니다. 새 세션으로 옮길까요?
+    #   이어서 진행하겠습니다" 처럼 ②어휘+③어휘+물음표가 섞인 문장이 ②에서 통과 판정을 받고
+    #   ③ 검사에 닿지 못해, 이 확대가 막으려던 바로 그 정지가 다시 새어 나간다.
+    function Test-StopPhrase {
         param([string]$Text)
-        if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
-        return ($Text -match $script:rxAdvance -and $Text -notmatch $script:rxLegit)
+        if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
+        $strong = ($Text -match $script:rxLegitStrong)
+        if ($strong) { return '' }
+        if ($Text -match $script:rxAdvance -and $Text -notmatch $script:rxLegitWeak) { return 'advance' }
+        if ($Text -match $script:rxHandoff) { return 'handoff' }
+        if ($Text -match $script:rxManualAsk) { return 'manual' }
+        return ''
     }
 
     # 조건 ④ 1차 — stdin의 last_assistant_message가 오면 그것으로 즉시 판정한다(문자열 매칭만,
@@ -234,15 +291,15 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     #   프로덕션에서 영구 무발화하는데, 골든은 필드를 직접 주입하므로 green이라 발견되지 않는다.
     $lastMsgL = if ($data) { [string]$data.last_assistant_message } else { '' }
     $haveStdinMsg = -not [string]::IsNullOrWhiteSpace($lastMsgL)
-    $advancePromise = $false
-    if ($haveStdinMsg) { $advancePromise = (Test-AdvancePromise $lastMsgL) }
+    $stopKind = ''
+    if ($haveStdinMsg) { $stopKind = (Test-StopPhrase $lastMsgL) }
 
     # 조건 ③⑤(+ 필요 시 ④ 폴백): transcript를 한 번만 tail해서 함께 처리한다.
     #   stdin 필드가 왔는데 ④가 거짓이면 여기 진입하지 않는다(불필요한 I/O 제거).
     $loopSkill = $false
     $userStop = $false
     $userFound = $false
-    if ($loopOpen -and ($advancePromise -or -not $haveStdinMsg)) {
+    if ($loopOpen -and ($stopKind -or -not $haveStdinMsg)) {
         $tpL = if ($data) { [string]$data.transcript_path } else { '' }
         if (-not [string]::IsNullOrWhiteSpace($tpL) -and (Test-Path -LiteralPath $tpL -PathType Leaf)) {
             try {
@@ -288,18 +345,28 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                         $userFound = $true
                         # 사용자가 스스로 루프를 끝내거나 범위를 한정했으면 정상 종료다.
                         #   'T<N>만'은 SKILL.md '재개 진입'이 명시적으로 허용하는 단일 task 실행.
-                        if ($txt -match '그만|중단|멈춰|멈춤|여기까지|이제 ?됐|나중에|\bstop\b|T\d+\s*만') { $userStop = $true }
+                        #   세션 전환 어휘(v1.149.0): **사용자가 먼저** 새 세션·/clear를 꺼낸 대화에서
+                        #   그 응답을 ③으로 차단하면, 이 검사에서 가장 위험한 오작동인 "사용자 의사
+                        #   무시"가 된다. 유형 구분 없는 공통 조건이라 ②에도 함께 적용되는데, 그것도
+                        #   의도다 — fail-open 방향이고, 사용자가 전환을 꺼낸 대화에서 ②를 막는 것
+                        #   역시 같은 종류의 의사 무시다.
+                        #   지연·종료 표현(내일·이만·다음에·쉬자)도 함께 잡는다 — ③ 확대 이후
+                        #   "내일 하자" 뒤의 정상 안내("남은 T4~T6은 새 세션에서 이어가시면 재개됩니다")가
+                        #   차단되는 것이 실측으로 재현됐다(F-7 M2). 차단 reason이 "사용자 보고 없이
+                        #   계속하라"라서, **사용자가 중단시킨 작업을 재개하도록 밀어붙이는** 최악의
+                        #   오작동이 된다. 이 조건은 fail-open 방향이라 넓히는 쪽이 안전하다.
+                        if ($txt -match '그만|중단|멈춰|멈춤|여기까지|이제 ?됐|나중에|\bstop\b|T\d+\s*만|새\s*세션|/clear|세션[^\r\n]{0,4}(옮|바꾸|나눠|분리)|내일|이만|다음\s*에|쉬(자|죠|겠)') { $userStop = $true }
                     } elseif ($isAsst -and $needAsst) {
-                        # ④ 폴백 — stdin 필드가 없을 때만. 마지막 assistant 텍스트로 예고를 판정한다.
+                        # 조건 ④ 폴백 — stdin 필드가 없을 때만. 마지막 assistant 텍스트로 정지 유형을 판정한다.
                         $needAsst = $false
-                        $advancePromise = (Test-AdvancePromise $txt)
+                        $stopKind = (Test-StopPhrase $txt)
                     }
                 }
             } catch { $loopSkill = $false }   # 읽기 실패 → fail-open
         }
     }
 
-    if ($loopOpen -and $loopSkill -and $advancePromise -and $userFound -and (-not $userStop)) {
+    if ($loopOpen -and $loopSkill -and $stopKind -and $userFound -and (-not $userStop)) {
 
         # 조건 ② 교차 확인: 체크박스는 갱신 누락이 가능한 최약 신호다(SKILL.md '재개 진입' —
         #   "세 신호가 어긋나면 git log를 신뢰"). 미완료로 표시된 task 중 완료 커밋(T<N>:)이
@@ -340,7 +407,22 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     }
                 } catch {}
 
-                $reasonText = '[pjc] 자율 루프가 미완료 상태로 종료하려 합니다. plan에 미완료 task가 남아 있고(완료 커밋 없음), 마지막 응답이 진행 예고로 끝났습니다 - implement-task 금지 표현 2(예고를 마지막 말로 남기고 turn을 끝내지 말 것)에 해당합니다. 지금 다음 task의 Phase P를 시작하세요(Read/grep 등 도구 호출로 이어갈 것). 상태 기록이 필요하면 대화에 요약을 출력하지 말고 plan.md에 쓰십시오. 정말 멈춰야 하는 상황이면 Halt 보고 형식(## 작업 중단)으로 사유를 적으십시오.'
+                # reason은 유형별로 다르다 — ②의 문구를 ③④에 그대로 쓰면 모델이 무엇을 어겼는지
+                #   오인해 엉뚱하게 교정한다(예고를 지우고 다시 세션 전환을 제안하는 식).
+                $reasonHead = '[pjc] 자율 루프가 미완료 상태로 종료하려 합니다. plan에 미완료 task가 남아 있고(완료 커밋 없음), '
+                $reasonTail = ' 정말 멈춰야 하는 상황이면 Halt 보고 형식(## 작업 중단)으로 사유를 적으십시오.'
+                switch ($stopKind) {
+                    'handoff' {
+                        $reasonBody = '마지막 응답이 세션 전환·컨텍스트 우려 제안으로 끝났습니다 - implement-task 금지 표현 3에 해당합니다. 컨텍스트 한계는 Halt 사유가 아닙니다. 지금 할 일은 압축 통과입니다(컨텍스트 관리 규칙 4): 현재 task를 Phase V/D까지 끝내고 plan.md에 Progress Log/Next Steps/다음 task 시작점을 기록한 뒤, 사용자 보고 없이 같은 turn의 다음 도구 호출로 계속하십시오. 새 세션 권유는 루프 시작 전에만, 그것도 답을 기다리지 않는 공시로 합니다.'
+                    }
+                    'manual' {
+                        $reasonBody = '마지막 응답이 사용자에게 실행·확인을 요청하며 끝났습니다 - implement-task 금지 표현 4에 해당합니다. 기계 검증(빌드/테스트/정적 검사)으로 확인되는 것은 직접 실행하십시오. 기계로 확인할 수 없는 것(화면 표시/조작감 등)은 멈추지 말고 plan에 HUMAN-VERIFY로 표기해 최종 보고로 넘기고 다음 단계를 계속하십시오.'
+                    }
+                    default {
+                        $reasonBody = '마지막 응답이 진행 예고로 끝났습니다 - implement-task 금지 표현 2(예고를 마지막 말로 남기고 turn을 끝내지 말 것)에 해당합니다. 지금 다음 task의 Phase P를 시작하세요(Read/grep 등 도구 호출로 이어갈 것). 상태 기록이 필요하면 대화에 요약을 출력하지 말고 plan.md에 쓰십시오.'
+                    }
+                }
+                $reasonText = $reasonHead + $reasonBody + $reasonTail
                 [Console]::Out.WriteLine((@{ decision = 'block'; reason = $reasonText } | ConvertTo-Json -Compress))
                 exit 0
             }
