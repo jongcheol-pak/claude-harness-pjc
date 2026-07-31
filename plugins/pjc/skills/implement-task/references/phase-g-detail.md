@@ -55,8 +55,10 @@ active PRD의 각 FR/NFR에 대해:
 
 #### 한도 도달 Halt 보고 형식 (의무)
 
+> 제목의 `⏸️`는 **Strong 마커**다 — 이 정지가 규칙이 명시한 개입 지점임을 `require-evidence` 검사 4에 알린다(정본: `implement-task/SKILL.md` 금지 표현 예외 목록의 마커 규약). `⚠️` 같은 비-Strong 기호로 바꾸지 말 것.
+
 ```markdown
-## ⚠️ Phase G 재루프 한도 도달 (2회)
+## ⏸️ Phase G 재루프 한도 도달 (2회) — 선택 요청
 
 **충족**: <FR-1 ✅, FR-2 ✅, ...>
 **미충족 (Must)**: <FR-x — 한 줄 설명>
