@@ -848,6 +848,26 @@ if ($gitOk) {
     #   희소성까지 줄이는 것이었고, 이 케이스가 그 잔여를 고정한다.
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase '그 설정은 config.toml에서 바꿉니다. 여기서 직접 수정하시면 반영됩니다.')
     Assert-Case -Name "evidence: 루프 종료 후 일반 대화 → 미차단 (T3 음성·④ 잔여 표면)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L30) [F-7 M1] 음성 — **VS16(U+FE0F) 없는 `⏸`** 마커도 Strong으로 인정되는가.
+    #   파일에 `⏸️`로 쓰면 U+23F8+U+FE0F 2문자라, 모델이 VS16 없이 출력하면 미매치가 된다.
+    #   Weak를 ③④에서 없앤 뒤로는 마커가 유일한 방어이므로 한 코드포인트 차이가 곧 오차단이다.
+    #   프로브 문면은 ③ positive에 실제로 매치되는 것이어야 마커의 효과를 검증할 수 있다.
+    #   [char]0x23F8로 조립한다 — 소스에 리터럴로 쓰면 편집 과정에서 VS16이 다시 붙어 검사가 무의미해진다.
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase ('## ' + ([char]0x23F8) + " 사전 승인 확인`n새 세션에서 이어가시면 같은 지점부터 재개됩니다."))
+    Assert-Case -Name "evidence: VS16 없는 U+23F8 마커 + ③ 문면 → 미차단 (F-7 M1 회귀)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L31) [F-7 M2] 음성 — **사용자가 지연·종료를 지시한 뒤**의 정상 안내는 차단하지 않는다.
+    #   ③ 확대가 만든 신규 오차단 표면이다(v1.148.0에는 이 문장이 $rxAdvance에 안 걸렸다).
+    #   차단 reason이 "사용자 보고 없이 계속하라"라서, 사용자가 멈춘 작업을 재개하도록 밀어붙이는
+    #   최악의 오작동이 된다 — userStop 어휘에 지연 표현을 넣어 막는다.
+    $loopTrTomorrow = Join-Path $work 'tr-loop-tomorrow.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":"오늘은 여기까지, 내일 하자"}}'
+    ) | Set-Content -Encoding UTF8 $loopTrTomorrow
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase '알겠습니다. 남은 T4~T6은 새 세션에서 이어가시면 같은 지점부터 재개됩니다.' $ev4 $loopTrTomorrow)
+    Assert-Case -Name "evidence: 사용자 지연 지시 후 ③ 문면 → 미차단 (F-7 M2 회귀)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
