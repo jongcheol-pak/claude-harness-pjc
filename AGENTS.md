@@ -39,6 +39,7 @@
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
   네 곳의 공유 상수(파일 예산·통제 어휘)와 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치 — 절차 문자는 표에서 동적 캡처(신규 절차도 자동 검사), 체크리스트 등 비문자 행·중복 행·표에 없는 스트레이 헤딩 포함), wiki-schema 목차(부분 Read 인덱스) § ↔ `## N.` 헤딩 정합, procedures-ops F-1 실행 순서 인덱스 ↔ wiki-schema §7 검사 항목 번호 1:1 정합, 산문 크로스파일 포인터(파일-귀속 절차 라벨 ↔ 실제 `### X.` 헤딩 파일), templates.md 타입 ↔ schema §2 타입 집합을 기계 대조한다 — 전부 일치 exit 0, 불일치 exit 1, 파싱 앵커 실패 exit 2.
+- **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것 (2026-07-31 실측)**: Claude Code **PowerShell 도구의 내장 경로 보호**가 삭제 대상을 추출할 때 실제 대상이 아니라 **같은 명령 문자열 안 다른 위치의 따옴표 경로**를 집어 오차단한다(`'D:\Personal Project\…'`가 공백에서 잘려 → `Remove-Item on system path ''D:\Personal' is blocked.`). **하니스 hook과 무관하다** — `block-destructive`는 같은 명령을 통과시킨다(변형 11종 stdin 주입 **11/11 exit 0**). `Remove-Item` 토큰과 공백 포함 경로 리터럴이 **한 명령 문자열에 함께 있을 때만** 발화하는 조합 의존이라 "가끔 막힌다"로 보인다. **회피**: 검증 배치를 **스크립트 파일로 분리**(가장 확실) · **Bash 도구** 사용 · 환경변수 제거는 `$env:NAME = ''` 대입. hook 골든·스모크처럼 환경변수 조작이 섞인 검증에서 반복해 부딪힌다.
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
 ### 검증 매핑 (task 검증 선택)
