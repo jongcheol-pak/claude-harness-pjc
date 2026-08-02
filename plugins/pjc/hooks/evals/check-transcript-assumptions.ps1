@@ -249,10 +249,13 @@ foreach ($mode in @(@{ n = 'stdin 필드 있음'; stdin = $true }, @{ n = 'trans
 # =====================================================================
 # 위 재현(Invoke-ReverseScan)은 hook의 사본이라 원본이 바뀌면 조용히 어긋난다. 판정식 리터럴을
 #   직접 대조해, 하나라도 사라졌으면 이 스크립트 자체를 갱신하라는 신호를 낸다.
-# skip 4종만이 아니라 **구조 필터**(user·assistant 아닌 엔트리 제외)도 pin한다 — 그것이 빠진
-#   재현은 예산을 원본보다 빨리 태워 없는 결함을 보고한다(초안이 실제로 그랬고 리뷰가 잡았다).
+# pin 대상은 "skip 4종"이 아니라 **$parsed 예산에 관여하는 판정식 전부**다 — 구조 필터(user·assistant
+#   아닌 엔트리 제외)가 빠진 재현은 예산을 원본보다 빨리 태워 없는 결함을 보고했고(초안이 실제로 그랬다),
+#   반대로 tool_result 제외가 원본에서 사라지면 재현만 계속 걸러 **원본보다 적게 재어 드리프트를 놓친다**.
+#   어긋남은 양방향이므로 한쪽만 pin하면 반쪽짜리다.
 $skipPins = @(
     @{ n = '구조 필터 user/assistant'; lit = 'if (-not $isUser -and -not $isAsst) { continue }' },
+    @{ n = 'tool_result 제외';         lit = '($ln -match ''"type"\s*:\s*"tool_result"'' -or $ln -match ''"tool_use_id"'')' },
     @{ n = 'skip ① isMeta';           lit = '($ln -match ''"isMeta"\s*:\s*true'')' },
     @{ n = 'skip ② task-notification'; lit = '($ln -match ''"(content|text)"\s*:\s*"<task-notification>'')' },
     @{ n = 'skip ③ needAsst';          lit = 'if ($isAsst -and -not $needAsst) { continue }' },
@@ -266,7 +269,7 @@ if (-not (Test-Path -LiteralPath $hookPath -PathType Leaf)) {
     if ($missing.Count) {
         Write-Verdict -Kind DRIFT -Title '가정 5 (재현 pin)' -Detail "판정식이 사라졌습니다: $($missing -join ', ') — 이 스크립트의 Invoke-ReverseScan을 함께 갱신하세요."
     } else {
-        Write-Verdict -Kind OK -Title '가정 5 (재현 pin)' -Detail "구조 필터 + skip 4종 판정식 전건 실재 — 재현 로직이 원본과 일치합니다."
+        Write-Verdict -Kind OK -Title '가정 5 (재현 pin)' -Detail "예산 관여 판정식 $($skipPins.Count)종(구조 필터 · tool_result · skip ①~④) 전건 실재 — 재현 로직이 원본과 일치합니다."
     }
 }
 
