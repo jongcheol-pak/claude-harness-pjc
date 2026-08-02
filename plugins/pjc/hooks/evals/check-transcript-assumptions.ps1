@@ -180,6 +180,10 @@ function Invoke-ReverseScan {
         $ln = $Lines[$i]
         $isUser = ($ln -match '"type"\s*:\s*"user"')
         $isAsst = ($ln -match '"type"\s*:\s*"assistant"')
+        # user·assistant가 아닌 엔트리(system·summary 등)는 예산을 쓰지 않는다. 이 줄이 빠지면
+        #   그런 엔트리가 $parsed를 소모해 **원본보다 예산을 빨리 태우고**, 가정 4가 있지도 않은
+        #   예산 소진을 보고한다(과탐). skip 4종만 pin하고 이 구조 필터를 빠뜨려 실제로 겪었다.
+        if (-not $isUser -and -not $isAsst) { continue }
         if ($isUser -and ($ln -match '"type"\s*:\s*"tool_result"' -or $ln -match '"tool_use_id"')) { continue }
         if ($isUser -and ($ln -match '"isMeta"\s*:\s*true')) { continue }
         if ($isUser -and ($ln -match '"(content|text)"\s*:\s*"<task-notification>')) { continue }
@@ -241,11 +245,14 @@ foreach ($mode in @(@{ n = 'stdin 필드 있음'; stdin = $true }, @{ n = 'trans
 }
 
 # =====================================================================
-# 가정 5 — 재현 로직 pin: skip 4종의 판정식이 hook 소스에 그대로 실재하는가
+# 가정 5 — 재현 로직 pin: 예산에 관여하는 판정식이 hook 소스에 그대로 실재하는가
 # =====================================================================
 # 위 재현(Invoke-ReverseScan)은 hook의 사본이라 원본이 바뀌면 조용히 어긋난다. 판정식 리터럴을
 #   직접 대조해, 하나라도 사라졌으면 이 스크립트 자체를 갱신하라는 신호를 낸다.
+# skip 4종만이 아니라 **구조 필터**(user·assistant 아닌 엔트리 제외)도 pin한다 — 그것이 빠진
+#   재현은 예산을 원본보다 빨리 태워 없는 결함을 보고한다(초안이 실제로 그랬고 리뷰가 잡았다).
 $skipPins = @(
+    @{ n = '구조 필터 user/assistant'; lit = 'if (-not $isUser -and -not $isAsst) { continue }' },
     @{ n = 'skip ① isMeta';           lit = '($ln -match ''"isMeta"\s*:\s*true'')' },
     @{ n = 'skip ② task-notification'; lit = '($ln -match ''"(content|text)"\s*:\s*"<task-notification>'')' },
     @{ n = 'skip ③ needAsst';          lit = 'if ($isAsst -and -not $needAsst) { continue }' },
@@ -259,7 +266,7 @@ if (-not (Test-Path -LiteralPath $hookPath -PathType Leaf)) {
     if ($missing.Count) {
         Write-Verdict -Kind DRIFT -Title '가정 5 (재현 pin)' -Detail "판정식이 사라졌습니다: $($missing -join ', ') — 이 스크립트의 Invoke-ReverseScan을 함께 갱신하세요."
     } else {
-        Write-Verdict -Kind OK -Title '가정 5 (재현 pin)' -Detail "skip 4종 판정식 전건 실재 — 재현 로직이 원본과 일치합니다."
+        Write-Verdict -Kind OK -Title '가정 5 (재현 pin)' -Detail "구조 필터 + skip 4종 판정식 전건 실재 — 재현 로직이 원본과 일치합니다."
     }
 }
 
