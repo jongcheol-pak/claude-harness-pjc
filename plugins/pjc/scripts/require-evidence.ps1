@@ -19,6 +19,14 @@
 #   잡는 정지는 **4유형**이다 — ② 진행 예고만 남기고 turn 종료 / ③ 세션 전환·컨텍스트 우려
 #   제안 / ④ 중간 수동 실행·확인 요청 / ⑤ 순수 진행 요약으로 turn 종료.
 #   유형별 판정 규칙은 검사 4 본문 참조.
+#
+# [v1.151.0 — 이 검사가 "실제로 도는" 전제]
+#   조건 5가 읽는 '마지막 사용자 발화'는 transcript에서 **시스템 주입 텍스트를 걷어낸 뒤**의
+#   것이어야 한다. 걷어내지 않으면 스킬 발동 페이로드(SKILL.md 본문)가 그 자리를 차지하고,
+#   그 본문에 든 `중단`·`새 세션`이 $userStop을 켜서 **검사 4 전체가 통과**한다 —
+#   v1.148.0부터 스킬 발동 직후 구간이 이 상태였고 골든은 픽스처가 2~3줄이라 재현하지 못했다.
+#   제외 목록과 각 근거는 아래 역순 스캔의 [추출 원칙] 주석이 정본이다. **그 skip들을
+#   "군더더기"로 보고 지우면 이 검사는 조용히 무발화 상태로 돌아간다.**
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -346,13 +354,33 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                 $tailL = @(Get-Content -LiteralPath $tpL -Tail 3000 -ErrorAction Stop)
 
                 # 역순 1회 스캔으로 ⑤(마지막 user 텍스트)와 ④ 폴백(마지막 assistant 텍스트)을 함께 찾는다.
-                # 조건 ⑤ 추출 규칙: "type":"user" 엔트리 중 실제 사용자 텍스트만 본다.
-                #   tool_result도 user 역할로 기록되므로 반드시 제외한다 — 포함하면 마지막 user
-                #   텍스트가 늘 도구 결과가 되어 이 조건이 항상 참이 되고, 사용자가 "그만"이라고
-                #   한 세션에서도 차단이 걸린다(이 검사에서 가장 위험한 오작동).
+                #
+                # [추출 원칙 — v1.151.0] **시스템이 주입한 텍스트는 사용자 발화가 아니다.**
+                #   아래 skip 4종은 그 원칙의 현재 열거이지 닫힌 목록이 아니다. 새로운 주입 형태가
+                #   관측되면 여기에 더한다. 종전에는 tool_result 하나만 적혀 있었고, 그것이
+                #   "닫힌 목록"으로 읽힌 것이 v1.148.0부터 이어진 fail-open의 배경이었다.
+                #   ① tool_result — user 역할로 기록되므로 반드시 제외한다. 포함하면 마지막 user
+                #      텍스트가 늘 도구 결과가 되어 이 조건이 항상 참이 되고, 사용자가 "그만"이라고
+                #      한 세션에서도 차단이 걸린다(이 검사에서 가장 위험한 오작동).
+                #   ② isMeta:true — **스킬 발동 페이로드**(SKILL.md 전문 약 41K자)가 이 형태의 순수
+                #      user 텍스트로 기록된다. 스킬 문서는 Halt·중단 조건을 논하므로 그 본문에
+                #      `중단`·`새 세션`이 들어 있고, 그것이 아래 $userStop을 켜서 **스킬 발동 직후
+                #      구간의 ②③④⑤가 통째로 미발동**했다(8세션 실측: isMeta=true 20건이 전부 시스템
+                #      주입, 사용자 발화 0건). 사용자의 슬래시 커맨드 원문(`<command-name>`)은
+                #      isMeta=false라 이 skip에 걸리지 않는다 — 사용자 의사는 보존된다.
+                #   ③ <task-notification> — subagent 완료 알림도 user 엔트리다(실측 45건 = 진짜 사용자
+                #      발화와 동수). 사용자가 "그만" 한 직후 알림이 도착하면 중단 지시가 가려진다.
+                #      판정을 원시 필드 시작(`"content":"<task-notification>`)으로 하는 이유는, 사용자가
+                #      그 리터럴을 **언급**한 발화("task-notification이 왜 이래?")까지 삼키지 않기 위함이다.
+                #   ④ 불필요한 assistant 파싱 — 아래 두 조건. **②③만 넣으면 스캔이 더 과거로 내려가
+                #      $parsed 상한을 태우고 $userFound를 잃어 새 fail-open이 생긴다**(실측 104개 시점).
+                #      즉 ④는 선택적 최적화가 아니라 ②③의 성립 조건이다. 지우지 말 것.
                 # 파싱 상한 200: hook timeout이 10초(hooks.json)인데 ConvertFrom-Json은 호출당 비용이
                 #   있어, 텍스트 없는 엔트리가 수천 줄 이어지는 최악 입력에서 예산을 넘길 수 있다.
                 #   최근 200개 후보면 '직전 발화' 판정에 충분하다(더 거슬러 올라갈 이유가 없다).
+                #   4종 적용 후 실측 최댓값은 stdin 경로 1 · transcript 폴백 경로 87로, 종전(최대 175)보다
+                #   오히려 낮다(전 시점 스캔 — 매 turn 끝이 Stop hook 발동 지점이므로 종료 시점 1개만
+                #   재면 최댓값을 못 본다).
                 $needAsst = (-not $haveStdinMsg)
                 $parsed = 0
                 for ($i = $tailL.Count - 1; $i -ge 0; $i--) {
@@ -376,6 +404,18 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                         $loopActiveAfterUser = $true
                     }
                     if ($isUser -and ($ln -match '"type"\s*:\s*"tool_result"' -or $ln -match '"tool_use_id"')) { continue }
+                    # 위 [추출 원칙] ②③ — 시스템 주입 user 엔트리. 파싱 전 원시 문자열 판정이라 비용 0이고
+                    #   $parsed 예산도 쓰지 않는다(예산을 쓰면 ④를 넣어도 상한에 닿는다).
+                    if ($isUser -and ($ln -match '"isMeta"\s*:\s*true')) { continue }
+                    if ($isUser -and ($ln -match '"(content|text)"\s*:\s*"<task-notification>')) { continue }
+                    # 위 [추출 원칙] ④ — 파싱해도 결과를 버리는 assistant 엔트리를 사전 제외한다(판정 불변).
+                    #   ⓐ $needAsst가 거짓이면 아래 elseif가 아무 일도 하지 않는다(stdin 필드로 이미 판정됨).
+                    #   ⓑ 텍스트 없는 엔트리(도구 호출만)는 아래 IsNullOrWhiteSpace에서 어차피 continue된다.
+                    #      원시 판정 '"type":"text"'는 실제 텍스트 보유와 1:1 일치한다(653건 중 172건 실측).
+                    #      혹시 어긋나도 방향은 fail-open이다 — assistant 텍스트를 못 찾으면 $stopKind가
+                    #      빈 문자열로 남아 최종 AND가 거짓이 된다.
+                    if ($isAsst -and -not $needAsst) { continue }
+                    if ($isAsst -and ($ln -notmatch '"type"\s*:\s*"text"')) { continue }
                     $obj = $null
                     $parsed++
                     try { $obj = $ln | ConvertFrom-Json } catch { continue }
