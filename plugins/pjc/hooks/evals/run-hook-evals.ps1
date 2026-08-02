@@ -568,12 +568,13 @@ if ($gitOk) {
     # ---- [v1.148.0 T3 / v1.149.0 T3] 자율 루프 미완료 정지 차단 골든 (검사 4 — 유일한 차단 경로) ----
     # 검사 1~3은 비차단 경고라 stderr만 보지만, 검사 4는 stdout에 {"decision":"block"}을 낸다.
     #   Invoke-Hook이 2>&1로 합치므로 ExpectContains로 그 리터럴을 직접 고정한다.
-    # 잡는 정지는 3유형 — ② 진행 예고 / ③ 세션 전환 제안 / ④ 중간 수동 실행 요청.
+    # 잡는 정지는 4유형 — ② 진행 예고 / ③ 세션 전환 제안 / ④ 중간 수동 실행 요청 /
+    #   ⑤ 순수 진행 요약으로 turn 종료(v1.150.0).
     # 음성을 두텁게(v1.148.0의 7건 + v1.149.0의 10건 = **17건**) 까는 이유: 오차단이 이 검사의
     #   최악 실패다(사용자가 세션을 못 끝낸다).
     #   음성은 ExpectSilent가 아니라 ExpectNotContains를 쓴다 — 검사 1~3의 stderr 경고가 함께
     #   나올 수 있어 무출력이 아니며, 여기서 확인할 것은 "차단되지 않았다"뿐이다.
-    # ③④는 Weak 신호(물음표·"확인 요청")를 통과 근거로 인정하지 않으므로 오차단 표면이 ②보다
+    # ③④⑤는 Weak 신호(물음표·"확인 요청")를 통과 근거로 인정하지 않으므로 오차단 표면이 ②보다
     #   넓다. 그래서 **정당 개입 지점은 Strong 마커(⛔🎉⏸️)로 구분**하는데, 그 경계가 실제로
     #   작동하는지는 **마커 유무만 다른 델타 짝**(L20~L22)으로만 실증된다 — 애초에 정규식에
     #   닿지 않는 문면을 음성으로 깔면 그건 무회귀 케이스일 뿐 경계의 근거가 되지 못한다
@@ -690,20 +691,26 @@ if ($gitOk) {
     $r = Invoke-Hook 'require-evidence.ps1' $capJson
     Assert-Case -Name "evidence: 차단 상한 4회차 → 미차단 (T3 상한 실증)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
-    # (L12) 문서↔코드 동일성 대조 — SKILL.md 금지 표현 ②③④ **세 절**의 문구 목록을 파일에서
+    # (L12) 문서↔코드 동일성 대조 — SKILL.md 금지 표현 ②③④⑤ **네 절**의 문구 목록을 파일에서
     #   읽어 각 문구가 실제로 차단을 유발하는지 확인한다.
     #   여기서 문구를 하드코딩하면 안 된다: SKILL.md가 정본이므로 그쪽이 바뀌었는데 hook의
-    #   정규식($rxAdvance·$rxHandoff·$rxManualAsk)이 안 따라가면 "규칙에 있는데 안 잡히는"
+    #   정규식($rxAdvance·$rxHandoff·$rxManualAsk·$rxProgressOnly)이 안 따라가면 "규칙에 있는데 안 잡히는"
     #   상태가 되는데, 하드코딩 사본은 그 드리프트를 영원히 못 본다(사본이 낡은 채로 계속 green).
     #   어느 절이든 추출이 0건이면 그 자체가 FAIL이라 SKILL.md 구조 변경도 신호로 잡힌다.
     $skillMdPath = Join-Path $pluginRoot 'skills/implement-task/SKILL.md'
     $skillTxt = ''
     try { $skillTxt = Get-Content -LiteralPath $skillMdPath -Raw -Encoding UTF8 } catch {}
     # 절 헤더 리터럴은 SKILL.md가 정본이며 여기가 추종한다(T1이 고정한 문자열).
+    # key는 세션 id 조립용 **ASCII** 식별자다 — 절 헤더의 원 문자(②③④⑤)를 쓰면 안 된다:
+    #   hook이 session_id를 `[^\w.-]` → `_`로 정규화하는데 이 넷은 전부 `\w`가 아니라
+    #   네 절이 모두 같은 id(`lpP_1`…)로 뭉개진다. 그러면 차단 3회 상한 카운터를 공유해
+    #   **네 번째 절의 문구가 상한 초과로 미차단**되어 거짓 FAIL이 난다(⑤ 추가 시 실측으로 드러남 —
+    #   3절까지는 3회차라 우연히 통과하던 잠재 결함이다).
     foreach ($sec in @(
-            @{ label = '② 평서형 예고'; head = '② 평서형 예고' },
-            @{ label = '③ 세션 전환 제안'; head = '③ 세션 전환' },
-            @{ label = '④ 수동 실행 요청'; head = '④ 중간 수동' })) {
+            @{ label = '② 평서형 예고'; head = '② 평서형 예고'; key = 'a' },
+            @{ label = '③ 세션 전환 제안'; head = '③ 세션 전환'; key = 'b' },
+            @{ label = '④ 수동 실행 요청'; head = '④ 중간 수동'; key = 'c' },
+            @{ label = '⑤ 순수 진행 요약'; head = '⑤ 순수 진행'; key = 'd' })) {
         $phraseList = @()
         try {
             # 개행 클래스는 [\r\n]로 쓴다 — SKILL.md가 CRLF라 `\n+`는 `\r\n\r\n` 사이의 `\r`에 막힌다.
@@ -722,8 +729,8 @@ if ($gitOk) {
             # 문서의 자리표시자(T\<N\>)를 실제 번호로 바꿔 프로브 문장을 만든다.
             $probe = ($ph -replace '\\<N\\>', '5') -replace '<N>', '5'
             # 세션 id는 절·문구마다 고유해야 한다 — 차단 3회 상한 카운터가 세션·cwd 해시 단위라
-            #   재사용하면 4번째 케이스부터 상한에 걸려 거짓 FAIL이 난다.
-            $sid = 'lpP' + ($sec.head.Substring(0, 1)) + $phIdx
+            #   재사용하면 4번째 케이스부터 상한에 걸려 거짓 FAIL이 난다(위 key 주석 참조).
+            $sid = 'lpP' + $sec.key + $phIdx
             $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = $sid; transcript_path = $loopTr; last_assistant_message = $probe } | ConvertTo-Json -Compress)
             Assert-Case -Name "evidence: SKILL.md $($sec.label) 문구 $phIdx/$($phraseList.Count) '$probe' → 차단 (T3 문서<->코드 동일성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
         }
@@ -868,6 +875,135 @@ if ($gitOk) {
     ) | Set-Content -Encoding UTF8 $loopTrTomorrow
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase '알겠습니다. 남은 T4~T6은 새 세션에서 이어가시면 같은 지점부터 재개됩니다.' $ev4 $loopTrTomorrow)
     Assert-Case -Name "evidence: 사용자 지연 지시 후 ③ 문면 → 미차단 (F-7 M2 회귀)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # ---- [v1.150.0 T3] ⑤ 순수 진행 요약 골든 (L32~L44) ----
+    # ⑤는 ②③④와 결정적으로 다르다 — **정상 진행 보고와 문면이 같다**. 차이는 "그 뒤에 도구
+    #   호출이 있었나"뿐이고 Stop hook 시점엔 그 부재가 확정이라 문면만으로 판정하지만,
+    #   그만큼 오차단 표면이 넓어 음성·억제 케이스를 두텁게 깐다.
+
+    # (L32) 양성 5건 — 사용자가 "중간 보고를 하면 무조건 루프가 멈춘다"고 보고한 실제 형태들.
+    #   관측·설계 근거이므로 문면을 바꾸지 않는다.
+    foreach ($pos in @(
+            @{ n = '순수 진행 요약'; m = 'T3 완료. 변경 파일 3개, 빌드 통과. 리뷰 지적 2건 수정했습니다.' },
+            @{ n = '1줄 마커형'; m = 'T1 완료 (1/10) 다음은 T2 시작' },
+            @{ n = '구현 완료 서술형'; m = 'T2 구현을 마쳤습니다. 빌드와 테스트 모두 통과했습니다.' },
+            @{ n = '범위 요약형'; m = '현재까지 T1~T3을 마쳤고 남은 작업은 T4~T6입니다.' },
+            @{ n = '화살표형'; m = 'T2 완료 -> T3 시작' })) {
+        $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase $pos.m)
+        Assert-Case -Name "evidence: ⑤ $($pos.n) → 차단 (T3 양성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+    }
+
+    # (L33) 양성 — ①(질문형 확인 요청) 접두형의 **부수 차단**을 명시적으로 고정한다.
+    #   ②는 Weak(물음표)로 통과시키던 문면이지만 ⑤는 Weak를 안 보므로 잡힌다. 우연이 아니라
+    #   설계된 확장이며, plan Out of Scope가 "①의 전용 차단은 안 하되 이 접두형은 ⑤로 잡힌다"로
+    #   경계를 적어 둔 것의 실증이다. 이 케이스가 red면 Weak 정책이 ⑤로 새어 들어온 것이다.
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 계속할까요?')
+    Assert-Case -Name "evidence: ⑤ ① 접두형 부수 차단 → 차단 (T3 양성·경계)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L34) 양성 폴백 — stdin 필드 없이 transcript 마지막 assistant 텍스트로만 판정하는 경로.
+    #   last_assistant_message의 실환경 제공 여부가 미실증이라 **폴백이 프로덕션 주 경로일 수 있다**
+    #   (L16과 같은 취지 — stdin 경로만 검증하면 ⑤가 실환경에서 영구 무발화한 채 골든만 green).
+    $loopTrProg = Join-Path $work 'tr-loop-progress.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":"진행"}}',
+        '{"type":"assistant","message":{"content":[{"type":"text","text":"T3 완료. 변경 파일 3개, 빌드 통과."}]}}'
+    ) | Set-Content -Encoding UTF8 $loopTrProg
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp150fb'; transcript_path = $loopTrProg } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: ⑤ stdin 필드 부재 + transcript 폴백 → 차단 (T3 양성·폴백)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L35) 음성 5건 — **(?-i)\b 경계 회귀**. 이 다섯은 경계를 넣기 전 정규식에서 실제로 차단됐던
+    #   문면이다(plan 1회차 BLOCKER, 실측 재현). `-match`가 기본 case-insensitive라
+    #   `part1`·`test2`·`GPT5`·`checkpoint1`이 전부 T<N>으로 인정됐고, 문장부호 배제가 없으면
+    #   마침표 너머의 완료 어휘까지 끌어왔다. 경계를 되돌리면 여기서 즉시 red가 된다.
+    foreach ($neg in @(
+            @{ n = 'part1'; m = 'part1 작업을 마쳤습니다' },
+            @{ n = 'test2'; m = 'test2 케이스를 마무리했습니다' },
+            @{ n = 'GPT5'; m = 'GPT5 비교 조사를 마쳤습니다' },
+            @{ n = 'checkpoint1'; m = 'checkpoint1 단계를 끝냈습니다' },
+            @{ n = '문장 경계 넘김'; m = 'T3 관련 조사는 진행 중입니다. 다른 건 다 끝났습니다.' })) {
+        $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase $neg.m)
+        Assert-Case -Name "evidence: ⑤ 경계 회귀 $($neg.n) → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+    }
+
+    # (L36) 음성 5건 — 정규식 게이트가 애초에 닿지 않는 문면(T토큰만 있거나 완료 어휘만 있는 경우).
+    #   위 L35(경계 회귀)와 목적이 다르다: 이쪽은 "⑤가 정상 대화를 잡지 않는다"를 센다.
+    foreach ($neg in @(
+            @{ n = '호출부 설명'; m = '이 함수의 호출부는 3곳이며 모두 Domain 레이어에 있습니다.' },
+            @{ n = 'config 안내'; m = '그 설정은 config.toml에서 바꿉니다.' },
+            @{ n = 'acceptance 서술'; m = 'T3의 acceptance는 빌드 통과이고 Files는 3개입니다.' },
+            @{ n = 'plan 추가'; m = 'plan.md에 T4와 T5를 추가했습니다.' },
+            @{ n = '조사 완료'; m = '요청하신 조사를 마쳤습니다.' })) {
+        $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase $neg.m)
+        Assert-Case -Name "evidence: ⑤ 정상 대화 $($neg.n) → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+    }
+
+    # (L37) 델타 짝 — Strong 마커가 ⑤에도 통하는가. 본문은 ⑤ positive에 실제로 매치되는 것이어야
+    #   마커의 효과가 검증된다(애초에 안 걸리는 문면은 아무것도 증명하지 못한다 — L20~L22의 교훈).
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase "## ⛔ 작업 중단: T3`nT3 완료. 파괴적 작업이 필요해 승인을 기다립니다.")
+    Assert-Case -Name "evidence: ⑤ + Halt 마커 → 미차단 (T3 음성·델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 파괴적 작업이 필요해 승인을 기다립니다.')
+    Assert-Case -Name "evidence: ⑤ 마커 제거 시 → 차단 (T3 양성·델타 짝)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L38) 델타 짝 — 질문 답변 억제($userAsking). 사용자가 방금 물어봤으면 그 답이 "T<N> … 완료"
+    #   형태여도 정지가 아니라 대화다. 짝의 다른 쪽(지시 `진행`)은 차단이어야 억제가 탐지력을
+    #   죽이지 않았음이 실증된다.
+    $loopTrAsk = Join-Path $work 'tr-loop-ask.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":"T3 어디까지 됐어?"}}'
+    ) | Set-Content -Encoding UTF8 $loopTrAsk
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $loopTrAsk)
+    Assert-Case -Name "evidence: ⑤ 사용자 질문 뒤 답변 → 미차단 (T3 음성·억제 델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.')
+    Assert-Case -Name "evidence: ⑤ 지시 뒤 같은 문면 → 차단 (T3 양성·억제 델타 짝)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L39) 양성 2건 — **활성 게이트($loopActiveAfterUser) 회귀. 이 블록에서 가장 중요하다.**
+    #   자율 루프 중에는 tool_result가 user에서 제외되므로 "마지막 user 텍스트"가 루프 시작
+    #   지시로 고정된다. 그 지시에 질문 어휘가 섞여 있으면($rxUserAsk 매치) 게이트가 없을 때
+    #   억제가 **루프 전 구간 상수 참**이 되어 ⑤가 한 번도 발동하지 못한다 — 골든이 green인 채로
+    #   프로덕션에서만 무발화하는 형태다. 게이트만 제거해도 이 두 케이스는 즉시 red가 된다.
+    #   픽스처 순서가 핵심: 발동 엔트리가 **마지막 user 뒤**에 와야 게이트가 켜진다.
+    foreach ($gate in @(
+            @{ n = '왜 멈췄어 계속해'; u = '왜 멈췄어 계속해' },
+            @{ n = 'T6부터 어떻게 이어갈지'; u = 'T6부터 어떻게 이어갈지 알아서 진행' })) {
+        $trGate = Join-Path $work ('tr-loop-gate-' + $gate.u.Length + '.jsonl')
+        @(
+            ('{"type":"user","message":{"content":"' + $gate.u + '"}}'),
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}'
+        ) | Set-Content -Encoding UTF8 $trGate
+        $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trGate)
+        Assert-Case -Name "evidence: ⑤ 질문 어휘 재개 지시 + 루프 활성($($gate.n)) → 차단 (T3 양성·게이트 회귀)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+    }
+
+    # (L40) 음성 — 게이트 판정이 **assistant 엔트리에 한정**되는가. 이 레포 개발 세션에서는
+    #   골든 파일을 읽은 tool_result가 발동 패턴 리터럴을 그대로 담는데, 그것으로 게이트가 켜지면
+    #   억제가 꺼져 질문 답변이 차단된다(오차단 방향). tool_result는 user 타입이라 $isAsst 한정에
+    #   걸러져야 한다 — 한정을 빼면 이 케이스가 차단으로 red가 된다.
+    $loopTrTR = Join-Path $work 'tr-loop-toolresult.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":"T3 어디까지 됐어?"}}',
+        '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu1","content":"skill: pjc:implement-task 리터럴이 든 파일 내용"}]}}'
+    ) | Set-Content -Encoding UTF8 $loopTrTR
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $loopTrTR)
+    Assert-Case -Name "evidence: ⑤ tool_result 발동 리터럴은 게이트 미점화 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L41) 양성 — **수용된 잔여 표면**(plan Risks ⓐ). 사용자가 질문형이 아닌 명령형으로 상태를
+    #   요구하면($rxUserAsk 미매치) 그 답변이 차단된다. 억제 패턴을 넓히면 자율 루프 지시
+    #   ("진행해줘")와 표면이 겹치기 시작해 의도적으로 수용한 것이며, 나중에 이 형태의 오차단이
+    #   보고되면 이 케이스가 판단 근거가 된다(그때 red로 바꿔 좁힌다).
+    $loopTrOrder = Join-Path $work 'tr-loop-order.jsonl'
+    @(
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"user","message":{"content":"현재 상태 정리해봐"}}'
+    ) | Set-Content -Encoding UTF8 $loopTrOrder
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $loopTrOrder)
+    Assert-Case -Name "evidence: ⑤ 명령형 상태 요구 뒤 답변 → 차단 (T3 양성·수용된 잔여 표면)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L42) 음성 — 미완료 task 0이면 ⑤ 문면이어도 통과(조건 ① 불성립). L24의 ⑤ 버전.
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev6)
+    Assert-Case -Name "evidence: ⑤ + 미완료 task 0 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
