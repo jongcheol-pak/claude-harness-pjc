@@ -611,6 +611,30 @@ if ($gitOk) {
     $g7 | Set-Content -Encoding UTF8 $trG7
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG7)
     Assert-Case -Name "evidence: 텍스트 없는 assistant 250줄 너머의 사용자 발화 도달 → 차단 (T2 양성·예산)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L50) 양성 G8 — **skip ④ 단독 red**. 위 G7은 New-LoopCase가 last_assistant_message를 넣어
+    #   $needAsst가 거짓으로 시작하므로, 250줄이 skip ③(`$isAsst -and -not $needAsst`)에도 걸린다 —
+    #   즉 **skip ④만 지워도 red가 뜨지 않는** 무회귀 케이스이고 그 줄의 방어는 주석뿐이었다.
+    #   폴백 경로(stdin 필드 미제공 → $needAsst=true)에서는 skip ③이 원리적으로 발동하지 않아
+    #   250줄을 걸러내는 것이 오직 skip ④이고, 그때 비로소 그 줄이 단독으로 red가 된다.
+    #   ⚠ 줄 순서가 이 케이스의 전부다 — 텍스트 없는 250줄이 **가장 최근**이어야 역순 스캔이
+    #   $needAsst가 켜져 있는 구간에서 그것을 만난다. assistant 텍스트를 250줄보다 뒤(더 최근)에
+    #   두면 첫 엔트리에서 $needAsst가 꺼져 250줄이 skip ③으로 넘어가고 skip ④는 아무 일도 하지
+    #   않는다(G7이 그렇게 무회귀로 전락했다). 대장 원문의 "그 너머" = 더 오래된 쪽이다.
+    #   red(skip ④ 제거): 250줄이 $parsed를 200 상한까지 태워 break → assistant 텍스트·사용자
+    #   발화에 도달 못 함 → $stopKind=''·$userFound=false → **미차단 = FAIL**.
+    #   축 분리(skip ③ 제거): 250줄 구간은 $needAsst가 참이라 원래 skip ③이 발동하지 않으므로
+    #   판정 불변 → **PASS**. 이 비대칭이 곧 "이 케이스는 skip ④ 전용"의 실증이다.
+    $trG8 = Join-Path $work 'tr-g8-fallback-budget.jsonl'
+    $g8 = New-Object System.Collections.Generic.List[string]
+    $g8.Add('{"type":"user","message":{"content":"진행"}}')
+    $g8.Add('{"type":"assistant","message":{"content":[{"type":"text","text":"T3 완료. 빌드 통과."}]}}')
+    1..250 | ForEach-Object { $g8.Add($skillEntry) }
+    $g8 | Set-Content -Encoding UTF8 $trG8
+    # New-LoopCase를 쓰지 않는다 — 그 헬퍼는 last_assistant_message를 항상 넣어 폴백 경로 자체가
+    #   성립하지 않는다(기존 폴백 케이스 L10·L16·L34와 같은 이유로 stdin JSON을 직접 구성한다).
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp151g8'; transcript_path = $trG8 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 폴백 경로 + 텍스트 없는 assistant 250줄 → 차단 (T2 양성·skip④ 단독 red)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
