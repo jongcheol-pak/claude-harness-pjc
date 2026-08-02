@@ -54,7 +54,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 변경 파일 패턴 | 필수 검증 |
 |---|---|
-| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 |
+| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) |
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |

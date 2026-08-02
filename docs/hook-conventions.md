@@ -66,6 +66,10 @@
 
 > 구현 위치는 `require-evidence.ps1`의 역순 스캔 `[추출 원칙]` 주석 블록이다. **이 skip들을 "군더더기"로 보고 지우면 검사 4는 조용히 무발화 상태로 돌아간다.**
 
+**점검 수단** — 위 열거가 실 데이터와 어긋났는지는 `plugins/pjc/hooks/evals/check-transcript-assumptions.ps1`로 재확인한다(골든은 픽스처를 우리가 만들므로 스키마가 바뀌어도 green이라 이 축을 못 본다). 발동 건수 자체는 `plugins/pjc/scripts/report-hook-events.ps1`로 집계한다.
+
+**관측은 두 방향이다** — *fail-open*은 "차단 0이 계속되는가"(무발화)로, *오차단*은 "사용자가 중단을 지시한 직후에 차단이 찍혔는가"로 본다. 앞쪽은 이벤트 로그만으로 보이지만 뒤쪽은 로그에 맥락이 없어 실 transcript 대조가 필요하다.
+
 ## `warn-commit-secrets`의 조건부란
 
 고신뢰 라벨만 차단하고 저신뢰 라벨은 경고다.
