@@ -24,13 +24,20 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  **⚠ 실행 방법 (이대로 하지 않으면 완주하지 않는다 — 실측)**: 무인자 전체는 **출력을 파일로 리다이렉트(`*> <파일>`)해 백그라운드로** 실행한다. 원인은 둘이며 둘 다 피해야 한다 — ① `| Select-Object -Last N` 같은 **파이프라인이 출력을 끝까지 버퍼링**해 중단·미종료를 유발한다 ② 스위트가 **10분을 넘으므로 전경 실행은 시간 캡에 걸린다**(리다이렉트만 해도 전경이면 실패). 파일 출력은 즉시 기록돼 진행 상황(`[PASS]` 누적)도 실시간으로 보인다. 이 방법으로 **476/476 OK(FAIL 0)** 완주를 확인했다(케이스를 추가하면 이 숫자도 함께 갱신할 것 — 회귀 기준선으로 쓰인다). 과거 "환경상 실행 불가"로 F-2를 갈음한 사례들은 이 방법을 쓰지 않은 것이다.
+  **⚠ 실행 방법 (이대로 하지 않으면 완주하지 않는다 — 실측)**: 무인자 전체는 **출력을 파일로 리다이렉트(`*> <파일>`)해 백그라운드로** 실행한다. 원인은 둘이며 둘 다 피해야 한다 — ① `| Select-Object -Last N` 같은 **파이프라인이 출력을 끝까지 버퍼링**해 중단·미종료를 유발한다 ② 스위트가 **10분을 넘으므로 전경 실행은 시간 캡에 걸린다**(리다이렉트만 해도 전경이면 실패). 파일 출력은 즉시 기록돼 진행 상황(`[PASS]` 누적)도 실시간으로 보인다. 이 방법으로 **505/505 OK(FAIL 0)** 완주를 확인했다(케이스를 추가하면 이 숫자도 함께 갱신할 것 — 회귀 기준선으로 쓰인다). 과거 "환경상 실행 불가"로 F-2를 갈음한 사례들은 이 방법을 쓰지 않은 것이다.
 
-  **⚠ 도구 timeout까지 감안할 것**: 위 "백그라운드"만으로는 부족하다 — Bash 도구는 **timeout 상한이 10분**이라 `run_in_background`로 띄워도 그 시점에 killed된다. **스위트는 약 32분 걸린다**(476케이스 × pwsh 콜드스타트). 확실한 방법은 **세션에서 분리된 프로세스로 띄우고 완료를 폴링**하는 것이다:
+  **⚠ 도구 timeout까지 감안할 것**: 위 "백그라운드"만으로는 부족하다 — Bash 도구는 **timeout 상한이 10분**이라 `run_in_background`로 띄워도 그 시점에 killed된다. **스위트는 약 30분 걸린다**(505케이스 × pwsh 콜드스타트 — 2026-08-02 실측 30분 32초). 확실한 방법은 **세션에서 분리된 프로세스로 띄우고 완료를 폴링**하는 것이다. **단 `Start-Process`에 리다이렉트 파라미터를 직접 주는 형태는 쓰지 말 것** — `-RedirectStandardOutput <out> -NoNewWindow` 조합에서 **러너가 정상 종료했는데 출력 파일이 0바이트로 남는 경우가 실측됐다**(2026-08-02, 헤더조차 없어 "시작은 했는지"도 구분 불가). 대신 **래퍼 스크립트를 하나 만들어** 그 안에서 `*>>`로 전 스트림을 모으고 **시작 마커와 exit code를 직접 남긴다**:
+  ```powershell
+  # run-golden.ps1 (임시 폴더에 생성)
+  Set-Content -LiteralPath $out -Value ("START " + (Get-Date -Format 'HH:mm:ss')) -Encoding utf8NoBOM
+  Set-Location -LiteralPath $repo
+  & pwsh -NoProfile -ExecutionPolicy Bypass -File $runner *>> $out
+  Add-Content -LiteralPath $out -Value ("EXIT=" + $LASTEXITCODE + " END " + (Get-Date -Format 'HH:mm:ss'))
   ```
-  Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','plugins/pjc/hooks/evals/run-hook-evals.ps1' -RedirectStandardOutput <out> -RedirectStandardError <err> -NoNewWindow
   ```
-  그 뒤 `until grep -q "결과:" <out>; do sleep 15; done` 형태로 대기한다. **러너는 결과를 끝에 일괄 출력**하므로(케이스마다 append가 아니다) 실행 중 출력 파일은 헤더뿐이며, **"파일이 안 자란다 = 멈췄다"가 아니다** — 진행 확인은 `Get-Process pwsh`로 한다.
+  Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','<래퍼 경로>' -WindowStyle Minimized
+  ```
+  그 뒤 `until grep -q "EXIT=" <out>; do sleep 30; done` 으로 대기한다(완료 판정은 한글 `결과:`가 아니라 **ASCII `EXIT=`** 로 — `*>>` 리다이렉트는 콘솔 코드페이지를 타서 한글이 깨질 수 있고, 그러면 `결과:` grep이 영원히 안 걸린다. 결과 라인은 완료 후 `Get-Content -Encoding UTF8`로 읽는다). **러너는 결과를 끝에 일괄 출력**하므로(케이스마다 append가 아니다) 실행 중 출력 파일은 START 마커 + 헤더뿐이며, **"파일이 안 자란다 = 멈췄다"가 아니다** — 진행 확인은 `Get-Process`로 래퍼 PID 생존을 본다.
 
   격리 USERPROFILE에서 hook 11종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
   부분 실행 `-Filter <hook명>`(쉼표 복수, `.ps1` 생략 가능)은 **구현 중 반복 확인 전용**이고, task 검증과 Phase F-2는 무인자 **전체 실행**이 정본이다 — **부분 실행 결과로 검증 판정 금지**(골든 케이스가 hook 간 얽혀 있어 커버리지가 좁다).
