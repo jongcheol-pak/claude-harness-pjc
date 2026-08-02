@@ -979,12 +979,17 @@ if ($gitOk) {
     # (L40) 음성 — 게이트 판정이 **assistant 엔트리에 한정**되는가. 이 레포 개발 세션에서는
     #   골든 파일을 읽은 tool_result가 발동 패턴 리터럴을 그대로 담는데, 그것으로 게이트가 켜지면
     #   억제가 꺼져 질문 답변이 차단된다(오차단 방향). tool_result는 user 타입이라 $isAsst 한정에
-    #   걸러져야 한다 — 한정을 빼면 이 케이스가 차단으로 red가 된다.
+    #   걸러져야 한다 — 한정을 빼면 이 케이스가 차단으로 red가 된다(**mutation 테스트로 실증**:
+    #   $isAsst 조건만 제거한 사본에서 미차단→차단으로 뒤집히는 것을 확인했다).
+    #   content는 **게이트 정규식에 실제로 매치되는 리터럴**이어야 한다 — 사람이 읽는 설명문
+    #   ("skill: pjc:implement-task 리터럴이 든 내용")으로 바꾸면 어느 패턴에도 안 닿아
+    #   한정을 제거해도 green인 always-pass 케이스가 된다(초안이 실제로 그랬고 리뷰가 잡았다).
+    #   JSON 내부라 따옴표형(`"skill":"..."`)은 이스케이프로 깨지므로 `Launching skill:` 형태를 쓴다.
     $loopTrTR = Join-Path $work 'tr-loop-toolresult.jsonl'
     @(
         '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
         '{"type":"user","message":{"content":"T3 어디까지 됐어?"}}',
-        '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu1","content":"skill: pjc:implement-task 리터럴이 든 파일 내용"}]}}'
+        '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu1","content":"Launching skill: pjc:implement-task"}]}}'
     ) | Set-Content -Encoding UTF8 $loopTrTR
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $loopTrTR)
     Assert-Case -Name "evidence: ⑤ tool_result 발동 리터럴은 게이트 미점화 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
