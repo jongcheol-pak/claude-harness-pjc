@@ -1009,6 +1009,84 @@ if ($gitOk) {
     # (L42) 음성 — 미완료 task 0이면 ⑤ 문면이어도 통과(조건 ① 불성립). L24의 ⑤ 버전.
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev6)
     Assert-Case -Name "evidence: ⑤ + 미완료 task 0 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # ---- [v1.151.0 T2] 사용자 발화 추출 오염 차단 (skip 4종) ----
+    # 검사 4 조건 5가 읽는 '마지막 사용자 발화'에서 시스템 주입 텍스트를 걸러내는가.
+    # **픽스처 규약 2가지 — 어기면 케이스가 조용히 무의미해진다**:
+    #   ⓐ 줄 순서: 스캔이 역순이라 **오염 엔트리가 진짜 발화보다 아래(=더 최근)** 에 와야 재현된다.
+    #   ⓑ 발동 흔적: 모든 픽스처에 `"skill":"pjc:implement-task"` 리터럴이 있어야 한다. 없으면
+    #      조건 2($loopSkill)가 거짓이라 **무엇을 넣어도 미차단**이 되어, 음성은 always-pass로
+    #      전락하고 양성의 red도 사라진다(L40 주석이 기록한 것과 같은 함정).
+    # **진짜 델타는 G1·G2·G6·G7 넷**이고 G3·G4·G5는 무회귀 고정이다(델타로 세지 않는다).
+    # red 실증은 skip별로 나뉜다 — ①(isMeta) 제거 → G1·G6 FAIL / ②(알림) 제거 → G2 FAIL /
+    #   ③④(assistant 파싱) 제거 → G7 FAIL.
+    $metaPayload = '{"type":"user","isMeta":true,"message":{"content":"Base directory for this skill. Halt Condition 중단 조건과 새 세션 권유 규칙을 담은 스킬 본문이다."}}'
+    $skillEntry  = '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}'
+    # 알림 본문은 $rxUserAsk·$userStop 어휘를 피한 중립 문면이어야 한다 — 물음표나 '중단'이 섞이면
+    #   skip 제거 시에도 억제가 걸려 G2의 red가 조용히 사라진다.
+    $notifEntry  = '{"type":"user","message":{"content":"<task-notification><task-id>b1</task-id><summary>Agent finished</summary></task-notification>"}}'
+
+    # (L43) 양성 G1 — 스킬 발동 페이로드가 마지막 user 텍스트 자리를 빼앗던 결함 본체.
+    #   skip ①을 빼면 페이로드 본문의 '중단'·'새 세션'이 $userStop을 켜 미차단으로 red가 된다.
+    $trG1 = Join-Path $work 'tr-g1-meta.jsonl'
+    @('{"type":"user","message":{"content":"진행"}}', $skillEntry, $metaPayload) | Set-Content -Encoding UTF8 $trG1
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG1)
+    Assert-Case -Name "evidence: 스킬 페이로드(isMeta) 뒤 ⑤ → 차단 (T2 양성·델타)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L44) 음성 G2 — subagent 알림이 **사용자 중단 지시를 가리지 않는가**(D2의 핵심 이득).
+    #   skip ②를 빼면 알림이 마지막 발화가 되어 $userStop이 꺼지고 차단으로 red가 된다 —
+    #   그것이 곧 "사용자가 멈추라 한 작업에 재개를 강요하는" 최악 오작동이다.
+    $trG2 = Join-Path $work 'tr-g2-notif.jsonl'
+    @('{"type":"user","message":{"content":"오늘은 그만 하자"}}', $skillEntry, $notifEntry) | Set-Content -Encoding UTF8 $trG2
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG2)
+    Assert-Case -Name "evidence: 알림 뒤에도 사용자 중단 지시 유효 → 미차단 (T2 음성·델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L45) 음성 G3 — isMeta 제외 후에도 그 **앞**의 진짜 중단 지시를 찾아내는가 (무회귀 고정).
+    $trG3 = Join-Path $work 'tr-g3-meta-stop.jsonl'
+    @('{"type":"user","message":{"content":"오늘은 그만 하자"}}', $skillEntry, $metaPayload) | Set-Content -Encoding UTF8 $trG3
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG3)
+    Assert-Case -Name "evidence: 페이로드 뒤에도 사용자 중단 지시 유효 → 미차단 (T2 음성·무회귀)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L46) 음성 G4 — 슬래시 커맨드 원문은 isMeta=false라 **사용자 의사로 보존**된다(무회귀 고정).
+    #   제외가 이 형태까지 삼키면 사용자가 /clear를 친 대화에서 차단이 걸린다.
+    $trG4 = Join-Path $work 'tr-g4-slash.jsonl'
+    @('{"type":"user","message":{"content":"<command-name>/clear</command-name>"}}', $skillEntry) | Set-Content -Encoding UTF8 $trG4
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG4)
+    Assert-Case -Name "evidence: 슬래시 커맨드 원문은 사용자 의사로 인정 → 미차단 (T2 음성·무회귀)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L47) 음성 G5 — 제외 후 진짜 사용자 발화가 하나도 없으면 $userFound=false로 fail-open이다.
+    #   제외가 이 hook의 fail-open 원칙을 깨지 않음을 고정한다(무회귀).
+    $trG5 = Join-Path $work 'tr-g5-metaonly.jsonl'
+    @($skillEntry, $metaPayload) | Set-Content -Encoding UTF8 $trG5
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG5)
+    Assert-Case -Name "evidence: 페이로드만 있고 진짜 발화 0 → fail-open 미차단 (T2 음성·무회귀)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L48) 양성 G6 — **활성 게이트 정상화**(plan Risks ②). 페이로드가 $userFound를 즉시 켜면
+    #   게이트 판정 창이 0이 되어, 루프가 도는 중에도 게이트가 꺼진 채 $userAsking 억제가 걸린다.
+    #   skip ①로 창이 넓어져야 발동 엔트리를 보고 게이트가 켜진다.
+    #   ⚠ 이 케이스의 red(skip ① 제거)는 $userStop과 게이트가 **동시에** 뒤집히는 compound다 —
+    #   게이트 효과의 분리 실증이 아니라 **green 상태에서 게이트를 pin하는 것**이 이 케이스의 값이다
+    #   (게이트 자체를 제거하면 억제가 걸려 미차단으로 red가 된다 — 그 축은 L39가 담당).
+    $trG6 = Join-Path $work 'tr-g6-gate.jsonl'
+    @('{"type":"user","message":{"content":"T3 어디까지 됐어?"}}', $skillEntry, $metaPayload) | Set-Content -Encoding UTF8 $trG6
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG6)
+    Assert-Case -Name "evidence: 질문 발화 + 페이로드 + 루프 활성 → 차단 (T2 양성·게이트 정상화)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L49) 양성 G7 — **파싱 예산 방어**. 텍스트 없는 assistant가 상한(200)을 태우면 $userFound를
+    #   잃어 조용한 fail-open이 된다(실측 104개 시점). skip ③④가 그 낭비를 걷어낸다.
+    #   250줄인 이유: 상한 200을 확실히 넘겨야 skip 제거 시 red가 뜬다. 엔트리는 반드시
+    #   **텍스트 없는 형태**(tool_use만)여야 한다 — "type":"text"가 섞이면 skip ④가 적용되지 않아
+    #   이 케이스가 검증하려는 축이 사라진다.
+    #   ⚠ 픽스처에 isMeta 페이로드를 **넣지 않는다** — 넣으면 이 케이스가 skip ①에도 의존해
+    #   R1(isMeta 제거) 회차에서도 FAIL하고, 그러면 "무엇이 이 케이스를 red로 만드는가"가 흐려진다
+    #   (초안이 그랬고 red 실증 R1에서 드러났다). 케이스 하나는 축 하나만 검증한다.
+    $trG7 = Join-Path $work 'tr-g7-budget.jsonl'
+    $g7 = New-Object System.Collections.Generic.List[string]
+    $g7.Add('{"type":"user","message":{"content":"진행"}}')
+    1..250 | ForEach-Object { $g7.Add($skillEntry) }
+    $g7 | Set-Content -Encoding UTF8 $trG7
+    $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG7)
+    Assert-Case -Name "evidence: 텍스트 없는 assistant 250줄 너머의 사용자 발화 도달 → 차단 (T2 양성·예산)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
