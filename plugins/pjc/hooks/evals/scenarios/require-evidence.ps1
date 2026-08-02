@@ -191,7 +191,7 @@ if ($gitOk) {
     @(
         '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
         '{"type":"user","message":{"content":"진행"}}',
-        ('{"type":"assistant","message":{"content":[{"type":"text","text":"' + $loopMsg + '"}]}}')
+        (New-TranscriptLine -Type assistant -Text $loopMsg)
     ) | Set-Content -Encoding UTF8 $loopTrFb
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lpA'; transcript_path = $loopTrFb } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: stdin 필드 부재 + transcript 폴백 → 차단 (T3 양성·폴백)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
@@ -302,7 +302,7 @@ if ($gitOk) {
     @(
         '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
         '{"type":"user","message":{"content":"진행"}}',
-        ('{"type":"assistant","message":{"content":[{"type":"text","text":"' + $realIncident + '"}]}}')
+        (New-TranscriptLine -Type assistant -Text $realIncident)
     ) | Set-Content -Encoding UTF8 $loopTrHandoff
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp149fb'; transcript_path = $loopTrHandoff } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: ③ stdin 필드 부재 + transcript 폴백 → 차단 (T3 양성·폴백)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
@@ -485,7 +485,7 @@ if ($gitOk) {
             @{ n = 'T6부터 어떻게 이어갈지'; u = 'T6부터 어떻게 이어갈지 알아서 진행' })) {
         $trGate = Join-Path $work ('tr-loop-gate-' + $gate.u.Length + '.jsonl')
         @(
-            ('{"type":"user","message":{"content":"' + $gate.u + '"}}'),
+            (New-TranscriptLine -Type user -Text $gate.u),
             '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}'
         ) | Set-Content -Encoding UTF8 $trGate
         $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trGate)

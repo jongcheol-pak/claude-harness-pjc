@@ -105,6 +105,31 @@ function New-CommitJson([string]$cwd, [string]$msg) {
     return (@{ tool_name = 'Bash'; cwd = $cwd; tool_input = @{ command = "git commit -m `"$msg`"" } } | ConvertTo-Json -Compress)
 }
 
+function New-TranscriptLine {
+    # transcript JSONL 한 줄을 만든다(§4 폴백·게이트 픽스처 공용).
+    # 왜 헬퍼인가: 값을 문자열 이어붙이기로 끼우면 따옴표·백슬래시가 든 텍스트에서 JSON이
+    #   조용히 깨진다 — 깨진 픽스처는 hook이 파싱에 실패해도 그냥 미차단으로 통과하므로
+    #   그 케이스가 무엇을 검증하는지 알 수 없게 된다. 이스케이프를 ConvertTo-Json에 맡긴다.
+    # [ordered]와 -Depth 10은 장식이 아니다: 일반 해시테이블은 키 순서가 보장되지 않고 기본
+    #   Depth 2는 중첩 content[{type,text}]를 잘라내, 둘 중 하나만 빠져도 기존 리터럴과의
+    #   문자열 동일성이 깨진다(전환 등가성의 성립 조건).
+    # isMeta·tool_use 형태는 인자로 받지 않는다 — 이번에 전환한 3곳이 쓰지 않아서다.
+    #   그 형태의 픽스처를 전환할 때 파라미터를 함께 추가한다.
+    param(
+        [ValidateSet('user', 'assistant')][string]$Type,
+        [string]$Text
+    )
+    # 두 형태를 변수 하나로 합치지 않는다: 배열을 변수에 담아 넘기면 단일 요소가 언랩되어
+    #   content가 `[{...}]`가 아니라 `{...}`로 직렬화된다(실측). hook은 @()로 감싸 읽어서
+    #   골든은 green이지만 기존 리터럴과의 문자열 동일성은 그 자리에서 깨진다.
+    if ($Type -eq 'assistant') {
+        $entry = [ordered]@{ type = 'assistant'; message = [ordered]@{ content = @([ordered]@{ type = 'text'; text = $Text }) } }
+    } else {
+        $entry = [ordered]@{ type = 'user'; message = [ordered]@{ content = $Text } }
+    }
+    return ($entry | ConvertTo-Json -Compress -Depth 10)
+}
+
 function Invoke-Hook {
     param([string]$ScriptName, [string]$InputJson)
     $path = Join-Path $scriptsDir $ScriptName
