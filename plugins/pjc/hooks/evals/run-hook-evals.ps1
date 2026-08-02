@@ -1041,18 +1041,26 @@ if ($gitOk) {
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG2)
     Assert-Case -Name "evidence: 알림 뒤에도 사용자 중단 지시 유효 → 미차단 (T2 음성·델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
-    # (L45) 음성 G3 — isMeta 제외 후에도 그 **앞**의 진짜 중단 지시를 찾아내는가 (무회귀 고정).
+    # (L45) 음성 G3 — **skip ①의 델타 음성**(F-7 M1). 페이로드를 걷어낸 뒤 그 **앞**의 진짜 중단
+    #   지시를 찾아내는가 = "제외가 사용자 의사를 삼키지 않는가". 이 축이 이번 변경에서 가장
+    #   위험한 방향(오차단)인데 초안에는 델타가 없었다.
+    #   ⚠ 페이로드 본문이 **중립이어야 델타가 성립한다** — `중단`이 들어 있으면 skip ① 제거 시에도
+    #   그 어휘가 $userStop을 켜서 미차단이 유지되고(무회귀 전락), 초안이 실제로 그랬다.
+    #   중립 문면이면 skip ① 제거 → 페이로드가 마지막 발화 → $userStop=false → **차단 = red**.
+    $metaNeutral = '{"type":"user","isMeta":true,"message":{"content":"Base directory for this skill. 스킬 문서 본문이 여기에 이어진다."}}'
     $trG3 = Join-Path $work 'tr-g3-meta-stop.jsonl'
-    @('{"type":"user","message":{"content":"오늘은 그만 하자"}}', $skillEntry, $metaPayload) | Set-Content -Encoding UTF8 $trG3
+    @('{"type":"user","message":{"content":"오늘은 그만 하자"}}', $skillEntry, $metaNeutral) | Set-Content -Encoding UTF8 $trG3
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG3)
-    Assert-Case -Name "evidence: 페이로드 뒤에도 사용자 중단 지시 유효 → 미차단 (T2 음성·무회귀)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+    Assert-Case -Name "evidence: 페이로드 뒤에도 사용자 중단 지시 유효 → 미차단 (T2 음성·델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
-    # (L46) 음성 G4 — 슬래시 커맨드 원문은 isMeta=false라 **사용자 의사로 보존**된다(무회귀 고정).
-    #   제외가 이 형태까지 삼키면 사용자가 /clear를 친 대화에서 차단이 걸린다.
+    # (L46) 음성 G4 — 슬래시 커맨드 원문은 isMeta=false라 **사용자 의사로 보존**된다.
+    #   앞에 중립 발화(`진행`)를 한 줄 두는 이유(F-7 M1): 커맨드 원문이 제외 대상에 잘못 추가되는
+    #   회귀가 나면 그 앞의 `진행`이 잡혀 **차단으로 red**가 된다. 앞줄이 없으면 삼켜져도
+    #   $userFound=false로 fail-open 미차단이라 **PASS가 나서 회귀를 못 잡는다**.
     $trG4 = Join-Path $work 'tr-g4-slash.jsonl'
-    @('{"type":"user","message":{"content":"<command-name>/clear</command-name>"}}', $skillEntry) | Set-Content -Encoding UTF8 $trG4
+    @('{"type":"user","message":{"content":"진행"}}', '{"type":"user","message":{"content":"<command-name>/clear</command-name>"}}', $skillEntry) | Set-Content -Encoding UTF8 $trG4
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trG4)
-    Assert-Case -Name "evidence: 슬래시 커맨드 원문은 사용자 의사로 인정 → 미차단 (T2 음성·무회귀)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+    Assert-Case -Name "evidence: 슬래시 커맨드 원문은 사용자 의사로 인정 → 미차단 (T2 음성·델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
     # (L47) 음성 G5 — 제외 후 진짜 사용자 발화가 하나도 없으면 $userFound=false로 fail-open이다.
     #   제외가 이 hook의 fail-open 원칙을 깨지 않음을 고정한다(무회귀).
