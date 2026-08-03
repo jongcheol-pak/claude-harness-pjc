@@ -413,6 +413,8 @@ B) 2개 plan으로 분할 (앞부분 / 뒷부분)
 
 단, plan을 분할하면(위 "긴 plan 분할 권고") 덮어쓰기 모드여도 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적 위치를 쓴다(두 part 충돌 방지).
 
+**`## Investigation Log` 하위의 `### 전제 검증` 표를 채운다** (Type C/D task가 있는 plan은 의무 — 형식은 `references/plan-template.md`). 이 plan의 설계·acceptance가 **참으로 삼는 사실**을 뽑아 확인 근거와 짝짓는다. Investigation Log는 "확인한 것"만 적어 **확인하지 않고 전제로 삼은 것이 문서에 아예 나타나지 않는데**, 그 공백이 구현 중 *"계획이 잘못됐다"*며 루프가 서는 주된 원인이다. 확인하지 못한 전제는 지우지 말고 `⚠ 미확인`으로 남기고, **성립을 좌우하는 것**(부정되면 task 자체가 성립 불가)은 `## Open Questions`로 올려 승인 전에 해소한다(Step 6.5 「확인 이연 금지」와 같은 축).
+
 **`## 요구 이해`를 반드시 채운다** (원문 요청 인용 + 이해한 요구 3~5줄 — 형식·작성 규칙은 `references/plan-template.md` 정본). 승인 게이트를 통과한 요구 오해는 이후 어느 리뷰도 잡지 못하므로(구현 후 plan-completion-reviewer 항목 2.5가 요구 이해 ↔ 산출물 **커버**는 사후 대조하지만, 이해 자체의 옳음은 사용자만 판정), 이 섹션이 Step 10 승인 프롬프트 첫 항목으로 노출되어 사용자가 오해를 승인 전에 발견하는 장치다.
 
 > **plan 작성은 이 스킬 경유가 정본이다 — 스킬 없이 손으로 쓰지 않는다** (`require-plan-for-write` hook이 기계 강제, v1.118.0). plan을 직접 Write하면 Step 1~9의 자산(영향 범위 전수 조사·Deferred 대장 확인·적대적 plan-reviewer 검토·Type 분류·사전 승인 항목·Halt Forecast)이 통째로 우회되고, 그렇게 만든 plan이 `require-plan`의 "plan 있음" 판정을 켜서 **이후 모든 코드 변경이 무검증 통과**한다(AGENTS.md 직접 작성 금지와 동일 구조 — Step 1 참조). hook은 plan 파일 Write와 **체크박스를 새로 도입하는 Edit**을 이 스킬(또는 `implement-task`) 발동 흔적 없이는 차단한다. **기존 plan의 부분 갱신(체크박스 `[ ]`→`[x]`, Progress Log·Retry Ledger·Deferred append)은 게이트 대상이 아니므로** implement-task의 정상 갱신은 그대로 진행된다.
@@ -539,6 +541,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출. **제시 전
 - [ ] **근거 없는 단정 0** (핵심 주장이 모두 Investigation Log의 확인 근거와 매칭됨 — "아마도/보통" 같은 표현은 그 신호일 뿐, 판정 기준은 표현 유무가 아니라 근거 매칭. plan-reviewer 항목 1과 동일 기준)
 - [ ] `## 요구 이해` 작성됨 (원문 요청 인용 + 이해한 요구 3~5줄)
 - [ ] Impact Analysis 항목(4-A~4-D) 모두 ✓ — 신규 심볼이 있으면 4-D 재사용 확인 기록 포함
+- [ ] **`### 전제 검증` 표의 각 행에 확인 근거가 있고, `⚠ 미확인` 중 성립을 좌우하는 것이 0건** (Step 7 — Type C/D task가 있는 plan만. 성립을 좌우하는 미확인은 Open Question으로 해소돼야 한다)
 - [ ] **`## 동반 변경 판정` 섹션 작성됨** (Step 4-E — **필수**는 전건 task에 편입 완료, **선택**은 Step 8 질문 결과가 반영됨, 대상이 없으면 "해당 없음 + 확인한 축" 1줄)
 - [ ] plan-reviewer 이슈 0 (또는 MINOR만 follow-up으로 등록) — **미검증 심볼·미검토 항목 잔여분도 처리 완료** (Step 9 incomplete 규정: 직접 검증 또는 재호출, 조용한 통과 금지. Type A/B 자체 검토 대체 경로는 그 체크리스트 완주로 이 항목을 갈음). **도구 불가로 체크리스트 대조로 대체한 경우**(Step 9 예외 B)는 그 사실을 **승인 프롬프트에 1줄 명시**한다 — 사용자가 적대적 검토를 받은 plan으로 오인하지 않게 한다(Type A/B 대체 경로의 명시 의무와 동일 형식).
 - [ ] 각 task에 검증 가능한 acceptance 1개 이상 — **항목 간 동시 만족 가능**(상호 모순 0, 절대 규칙 8) + **성립을 좌우하는 확인이 구현으로 이연되지 않음**(Step 6.5)
