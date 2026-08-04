@@ -635,6 +635,86 @@ if ($gitOk) {
     #   성립하지 않는다(기존 폴백 케이스 L10·L16·L34와 같은 이유로 stdin JSON을 직접 구성한다).
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp151g8'; transcript_path = $trG8 } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: 폴백 경로 + 텍스트 없는 assistant 250줄 → 차단 (T2 양성·skip④ 단독 red)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # ---- [v1.154.0 T2] 루프 활성 화이트리스트 (조건 3의 문면 무관 판정) ----
+    # 검사 4의 조건 3이 "정지 문구 4유형 매치"에서 "**루프 활성이면 문면 무관하게 참**"으로 바뀌었다.
+    # **이 블록의 픽스처가 기존 것과 다른 단 하나의 지점은 줄 순서다** — 아래 $loopTrActive는
+    #   `user → skill` 순서이고 위쪽 표준 픽스처 $loopTr은 `skill → user` 순서인데, 그 차이가
+    #   활성/폴백 두 경로를 가르는 **유일한 장치**다:
+    #     역순 스캔은 user를 만나면 $userFound를 켜고 (stdin 필드가 있으면) 즉시 break하므로,
+    #     $loopTr처럼 skill이 user보다 **위(더 오래된 쪽)** 에 있으면 게이트 조건
+    #     (`$isAsst -and -not $userFound`)에 영원히 닿지 못해 $loopActiveAfterUser가 거짓이 된다.
+    #     실제 자율 루프 transcript는 반대 순서다("진행" 발화 → 스킬 발동 → 수백 turn).
+    #   ⚠ **두 픽스처를 "같은 것"으로 보고 통합하지 말 것** — 통합하는 순간 기존 음성 케이스들이
+    #     폴백 경로를 실증하지 못하게 되고(전부 활성 경로로 쏠린다), 무회귀의 근거가 사라진다.
+    # red 실증 축은 셋이다 — 화이트리스트 분기 제거 → L51·L53 FAIL / 진입 조건을 종전으로 되돌림
+    #   → L51·L53 FAIL(스캔 미진입으로 게이트가 영영 거짓) / 게이트의 tool_use 조건 제거 → L60 FAIL.
+    $loopTrActive = Join-Path $work 'tr-loop-active.jsonl'
+    @('{"type":"user","message":{"content":"진행"}}', $skillEntry) | Set-Content -Encoding UTF8 $loopTrActive
+
+    # (L51) 양성 — **이 전환의 존재 이유인 실제 관측 사고 문장**. 4정규식 **전부를 빗나간다**
+    #   (`여기까지`≠`여기서` · `T\d+ (부터|까지)` 아님 · ⓐ에 컨텍스트 명사 없음 · 완료 어휘 부재).
+    #   즉 이 케이스가 PASS하는 이유는 오직 화이트리스트뿐이라 축이 단독으로 분리된다.
+    $incident154 = 'T9~T13을 진행했습니다. 컨텍스트가 상당히 차서 여기서 상황을 정리해 보고합니다.'
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154a'; transcript_path = $loopTrActive; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 루프 활성 + 관측 사고 원문(4정규식 전부 미매치) → 차단 (T4 양성·화이트리스트)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L52) 양성 — **활성이어도 4정규식이 먼저 특정한 유형은 유지된다**(`-and -not $stopKind` 분기).
+    #   L51·L53과 축이 다르다: 저쪽은 "문면이 안 걸려도 잡는가", 이쪽은 "걸리면 그 유형을 쓰는가"다.
+    #   reason 문면으로 구분한다 — ⑤로 판정되면 '금지 표현 5'가, 화이트리스트면 그 문구가 없다.
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154b'; transcript_path = $loopTrActive; last_assistant_message = 'T3 완료. 빌드 통과.' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 루프 활성 + ⑤ 문면 → 차단하되 ⑤ 유형 유지 (T4 양성·유형 보존)" -R $r -ExpectExit 0 -ExpectContains '금지 표현 5'
+
+    # (L53) 양성 — 정지 의도가 어휘에 전혀 없는 평서문. 종전이라면 통과했을 문면이다.
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154c'; transcript_path = $loopTrActive; last_assistant_message = '조사 결과를 정리했습니다.' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 루프 활성 + 임의 평서문 → 차단 (T4 양성·문면 무관)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+
+    # (L54~L56) 음성 델타 — **Strong 마커가 화이트리스트 경로에서도 유일한 통과 근거인가.**
+    #   문면은 L51과 동일하고 마커 유무만 다르다(마커가 없으면 L51처럼 차단되므로 델타가 성립).
+    foreach ($mk in @(
+            @{ n = 'Halt 보고'; s = 'lp154d'; m = "## ⛔ 작업 중단: T2`n$incident154" },
+            @{ n = '최종 보고'; s = 'lp154e'; m = "🎉 구현 완료`n$incident154" },
+            @{ n = 'Phase 0 사전 승인'; s = 'lp154f'; m = "## ⏸️ 사전 승인 확인`n$incident154" })) {
+        $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = $mk.s; transcript_path = $loopTrActive; last_assistant_message = $mk.m } | ConvertTo-Json -Compress)
+        Assert-Case -Name "evidence: 루프 활성 + $($mk.n) 마커 → 미차단 (T4 음성·델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+    }
+
+    # (L57) 음성 — 사용자가 중단을 지시했으면 활성이어도 차단하지 않는다(조건 5 — 최우선 안전 조건).
+    #   차단 reason이 "계속하라"이므로, 이 방향의 오차단은 **사용자가 멈춘 작업에 재개를 강요**한다.
+    $trActiveStop = Join-Path $work 'tr-active-stop.jsonl'
+    @('{"type":"user","message":{"content":"오늘은 그만 하자"}}', $skillEntry) | Set-Content -Encoding UTF8 $trActiveStop
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154g'; transcript_path = $trActiveStop; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 루프 활성 + 사용자 중단 지시 → 미차단 (T4 음성·최우선 안전 조건)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L58) 경계 음성 — **폴백 경로 무회귀의 직접 실증**. 같은 문장을 표준 픽스처($loopTr = skill→user)로
+    #   주면 게이트가 꺼져 4정규식만 적용되고, L51의 문면은 그 넷 어디에도 안 걸리므로 통과해야 한다.
+    #   L51과 이 케이스의 차이는 **픽스처 줄 순서 하나뿐**이라, 둘이 짝으로 경로 분기를 고정한다.
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154h'; transcript_path = $loopTr; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 루프 비활성(폴백) + 같은 문장 → 미차단 (T4 음성·경로 분기 델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L59) 경계 음성 — 활성이어도 미완료 task가 0이면 조건 1이 불성립이라 통과한다.
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev6; session_id = 'lp154i'; transcript_path = $loopTrActive; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 루프 활성 + 미완료 task 0 → 미차단 (T4 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L60) 경계 음성 — **게이트 오점화 방어(D6)**. assistant가 발동 리터럴을 *인용*만 한 텍스트
+    #   엔트리는 게이트를 켜면 안 된다. 전환 전에는 이 오점화가 ⑤ 억제 해제(미탐 방향)로만 나타나
+    #   수용 가능했지만, 이제 게이트가 곧 차단 신호라 **인용 한 번이 오차단**이 된다.
+    #   이 레포는 그 리터럴을 산문으로 논하는 레포(hook 주석·이 파일·plan)라 실재하는 표면이다.
+    #   ⚠ **커버 경계**: 이 케이스는 **순수 텍스트 엔트리만** 고정한다. `"type":"text"`와
+    #     `"type":"tool_use"`가 **한 줄에 공존하는 혼합 엔트리**는 D6 이후에도 점화하며(줄 단위
+    #     정규식의 한계 — plan `## Deferred / Follow-up`으로 추적), 그 축은 여기서 검증되지 않는다.
+    #   red(게이트의 tool_use 조건 제거): 인용 엔트리가 게이트를 켜 활성으로 오판 → 차단 = FAIL.
+    #   ⚠ **줄 순서가 이 케이스의 전부다** — 진짜 발동 엔트리는 사용자 발화보다 **위(더 오래된 쪽)**
+    #     에 둔다. 조건 2($loopSkill)는 전 파일 스캔이라 그 위치에서도 참이지만, 게이트는
+    #     `-not $userFound` 구간에서만 켜지므로 발동 엔트리가 user 아래(더 최근)에 있으면
+    #     **tool_use 조건과 무관하게** 켜져 이 케이스가 always-fail이 된다.
+    $trQuote = Join-Path $work 'tr-active-quote.jsonl'
+    @($skillEntry,
+      '{"type":"user","message":{"content":"진행"}}',
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"게이트는 Launching skill: pjc:implement-task 리터럴로 판정합니다"}]}}') |
+        Set-Content -Encoding UTF8 $trQuote
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154j'; transcript_path = $trQuote; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 발동 리터럴 인용(tool_use 없음)은 게이트 미점화 → 미차단 (T4 음성·D6)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
