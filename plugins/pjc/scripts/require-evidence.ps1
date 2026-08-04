@@ -447,6 +447,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                 #   재면 최댓값을 못 본다).
                 $needAsst = (-not $haveStdinMsg)
                 $parsed = 0
+                $gateParsed = 0   # 게이트 구조 판정의 파싱 상한 카운터($parsed와 별개 — 아래 주석)
                 for ($i = $tailL.Count - 1; $i -ge 0; $i--) {
                     if ($userFound -and -not $needAsst) { break }
                     if ($parsed -ge 200) { break }
@@ -476,8 +477,14 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     #   그래서 후보 줄만 파싱해 **tool_use 블록의 name·input을 구조로 확인**한다.
                     #   평문 `Launching skill:` 패턴은 제거했다 — assistant 쪽은 **전수가 오점화**였고
                     #   (진짜 발동은 전부 이 JSON 구조) tool_result 쪽은 위 `$isAsst` 한정이 이미 배제한다.
-                    #   비용: 리터럴 보유 줄만 파싱하므로 `$parsed` 예산과 무관하다(실측 세션당 수십 건).
-                    if ($isAsst -and -not $userFound -and $ln -match '"skill"\s*:\s*"pjc:implement-task"') {
+                    #   비용: 리터럴 보유 줄만 파싱한다. **그래도 별도 상한($gateParsed 200)을 둔다** —
+                    #   이 branch는 `$parsed` 예산을 쓰지 않으므로 캡이 없으면 후보가 많은 세션에서
+                    #   6000줄까지 파싱할 수 있고, 그것은 위 tail 주석이 지키려는 10초 예산과 정면으로
+                    #   어긋난다(리뷰 M1). 상한 초과는 **점화하지 않음** = 폴백(4정규식)으로 내려가는
+                    #   미탐 방향이라 이 hook의 fail-open 원칙과 맞다. 실측은 세션당 수십 건이다.
+                    if ($isAsst -and -not $userFound -and $gateParsed -lt 200 -and
+                        $ln -match '"skill"\s*:\s*"pjc:implement-task"') {
+                        $gateParsed++
                         try {
                             $gateObj = $ln | ConvertFrom-Json
                             $gateContent = $gateObj.message.content

@@ -722,16 +722,32 @@ if ($gitOk) {
     #   — Edit 11 · Write 10 · Bash 8 · Agent 2 · PowerShell 1). **그 32건도 전부 `tool_use` 동반**이라
     #   D6의 "tool_use 동반 요구"로는 **하나도 걸러지지 않았다**(초안의 오판 — "83건 전건 tool_use
     #   동반"이라는 참인 관측을 "83건이 전부 발동"이라는 거짓 전제와 묶었다).
-    #   해소는 D8 — 후보 줄을 파싱해 **tool_use 블록의 `name`이 실제로 `Skill`인지** 구조로 확인한다.
-    #   red(평문 패턴을 게이트에 되돌리거나 구조 판정을 원시 매치로 되돌림): 이 엔트리가 게이트를
-    #   켜 활성으로 오판 → 차단 = FAIL.
+    #   해소는 D8이고 **방어가 두 겹이라 케이스도 둘로 나눈다** — 한 케이스로 뭉치면 어느 겹이
+    #   실제로 막았는지 구분되지 않는다(대장 [SKILL-IMPROVE] "케이스 하나가 축 하나만 검증하는가").
+    #     L61-a **평문 패턴 제거** — 실 데이터의 32건이 이 형태다. 새 게이트는 평문을 후보로
+    #             삼지 않으므로 **후보 진입 자체를 안 한다**(구조 판정까지 가지도 않는다).
+    #     L61-b **구조 판정** — 후보 필터(`"skill":"pjc:implement-task"`)에 **걸리는데도**
+    #             tool_use 블록의 `name`이 `Skill`이 아니라서 거부되는 경로. 이 축이 없으면
+    #             `name -eq 'Skill'` 조건을 지워도 골든이 전부 green이다(리뷰 B1이 지적한 공백).
     $trToolInput = Join-Path $work 'tr-active-toolinput.jsonl'
     @($skillEntry,
       '{"type":"user","message":{"content":"진행"}}',
       '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"scenarios/require-evidence.ps1","new_string":"Launching skill: pjc:implement-task"}}]}}') |
         Set-Content -Encoding UTF8 $trToolInput
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154k'; transcript_path = $trToolInput; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
-    Assert-Case -Name "evidence: 다른 도구(Edit) input의 발동 리터럴은 게이트 미점화 → 미차단 (T6 음성·D8)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+    Assert-Case -Name "evidence: 다른 도구 input의 평문 발동 리터럴 → 후보 미진입, 미차단 (T6 음성·D8-a)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L61-b) 경계 음성 — **구조 판정 경로를 실제로 태우는 케이스**. 후보 필터에 걸리는 JSON 리터럴이
+    #   Skill이 **아닌** 도구의 input에 있다(실 데이터에서는 도구 input의 따옴표가 JSON 직렬화 시
+    #   이스케이프돼 이 형태가 드물지만, **원리적으로 가능하고 구조 판정이 막아야 할 바로 그 축**이다).
+    #   red(`$gateBlk.name -eq 'Skill'` 조건 제거): tool_use이기만 하면 점화 → 차단 = FAIL.
+    $trFakeSkill = Join-Path $work 'tr-active-fakeskill.jsonl'
+    @($skillEntry,
+      '{"type":"user","message":{"content":"진행"}}',
+      '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"skill":"pjc:implement-task"}}]}}') |
+        Set-Content -Encoding UTF8 $trFakeSkill
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154m'; transcript_path = $trFakeSkill; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: Skill이 아닌 도구의 input.skill은 구조 판정이 거부 → 미차단 (T6 음성·D8-b)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
     # (L62) 양성 델타 짝 — 같은 위치에 **진짜 Skill tool_use**를 두면 게이트가 켜져 차단된다.
     #   L61과 이 케이스의 차이는 **tool_use 블록의 `name`·`input` 구조 하나뿐**이라, 둘이 짝으로
