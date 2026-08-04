@@ -394,7 +394,10 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     $userStop = $false
     $userFound = $false
     $userAsking = $false            # ⑤ 억제 — 마지막 사용자 발화가 질문·조회 요청인가
-    $loopActiveAfterUser = $false    # ⑤ 억제의 활성 게이트 — 마지막 사용자 발화 이후 루프가 (재)발동됐는가
+    # 마지막 사용자 발화 이후 루프가 (재)발동됐는가 = **자율 루프가 지금 도는 중인가**.
+    #   v1.154.0에서 역할이 승격됐다 — 종전에는 ⑤ 억제를 끄는 게이트였을 뿐이지만, 지금은
+    #   **조건 3(차단 판정)의 주 신호**이기도 하다(아래 화이트리스트 분기). 두 용도를 함께 쓴다.
+    $loopActiveAfterUser = $false
     if ($loopOpen -and -not $strongInMsg) {
         $tpL = if ($data) { [string]$data.transcript_path } else { '' }
         if (-not [string]::IsNullOrWhiteSpace($tpL) -and (Test-Path -LiteralPath $tpL -PathType Leaf)) {
