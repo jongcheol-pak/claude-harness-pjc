@@ -20,6 +20,23 @@
 #   제안 / ④ 중간 수동 실행·확인 요청 / ⑤ 순수 진행 요약으로 turn 종료.
 #   유형별 판정 규칙은 검사 4 본문 참조.
 #
+# [v1.154.0 — 문면 블랙리스트에서 "루프 활성 화이트리스트"로]
+#   위 4유형(정규식)은 **관측된 문구를 사후에 목록화하는 방식**이라, 같은 의도를 다른 어휘로
+#   쓰면 그대로 샌다("T9~T13을 진행했습니다. 컨텍스트가 상당히 차서 여기서 상황을 정리해
+#   보고합니다."가 4유형 전부를 빗나갔다 — 실측). 한국어 어미·조사 조합은 사실상 무한하므로
+#   목록에 문구를 더하는 방식으로는 수렴하지 않는다.
+#   그래서 **루프가 실제로 도는 중**($loopActiveAfterUser 참)이면 문면을 보지 않고, Strong 마커의
+#   부재만으로 정지를 판정한다. 근거는 이 hook이 도는 시점의 성질이다 — Stop hook은 "도구 호출
+#   없이 텍스트만 내고 turn을 끝냈다"가 **이미 확정된** 지점에서만 발동하므로, 무슨 말을 했는지는
+#   판정에 필요 없다(조건 3 ⑤가 쓰던 논리를 전 유형으로 일반화한 것).
+#   4정규식은 **루프 비활성 구간의 폴백으로 남긴다** — 지우면 루프 종료 후·사용자 개입 후 재개
+#   구간의 방어가 0이 되고, 골든의 문서↔코드 대조(L12)도 성립하지 않는다.
+#
+#   ⚠ **진입 조건을 되돌리면 이 화이트리스트는 조용히 무발화한다.** 아래 transcript 스캔 진입이
+#   종전처럼 `$stopKind -or -not $haveStdinMsg`로 좁혀지면, stdin 필드가 오고 문면이 정규식에
+#   안 걸리는 경우(=이 전환이 겨냥한 바로 그 상황) 스캔 자체를 건너뛰어 $loopActiveAfterUser가
+#   항상 거짓이 된다. 골든은 픽스처가 조건을 만족시켜 green이라 이 회귀를 잡지 못한다.
+#
 # [v1.151.0 — 이 검사가 "실제로 도는" 전제]
 #   조건 5가 읽는 '마지막 사용자 발화'는 transcript에서 **시스템 주입 텍스트를 걷어낸 뒤**의
 #   것이어야 한다. 걷어내지 않으면 스킬 발동 페이로드(SKILL.md 본문)가 그 자리를 차지하고,
@@ -57,6 +74,36 @@ function Write-ReEvent {
             Write-HookEvent 'require-evidence' 'warn' $Rule ''
         }
     } catch {}
+}
+
+# ---- transcript tail 읽기 (v1.154.0) ----
+# **`Get-Content -Tail`을 직접 쓰지 말 것.** 이 hook의 입력인 transcript JSONL은 한 줄이 수만 자에
+#   달하는 엔트리를 포함하는데(스킬 발동 페이로드 약 41K자), `-Tail`은 그런 파일에서 극단적으로
+#   느리다 — 7.3MB/2817줄 실측으로 **3.7~5.1초**다(`-Raw` 전체 읽기는 47ms. 약 90배).
+#   검사 2-1·3·4가 각각 tail을 부르므로 그대로 두면 hook 하나가 **10초 timeout을 넘어 죽고**,
+#   그러면 경고뿐 아니라 **검사 4의 차단까지 통째로 무발화**한다(성능이 곧 기능인 지점).
+#   반환값은 `-Tail`과 등가임을 실측 확인했다(같은 파일에서 건수 2817/2817·내용 불일치 0).
+# 같은 경로를 세 검사가 다시 읽으므로 파일 단위로 1회만 로드해 공유한다(재독 4회 → 1회).
+$script:reTailLines = $null
+$script:reTailPath = $null
+function Get-TranscriptTail {
+    param([string]$Path, [int]$Count)
+    if ($script:reTailPath -ne $Path) {
+        $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop
+        $lines = @($raw -split "`r?`n")
+        # 파일이 개행으로 끝나면 split 결과 끝에 빈 원소가 생긴다 — `-Tail`은 그것을 주지 않는다.
+        #   `Count -le 1`을 따로 처리하는 이유: 빈 파일이면 원소가 `''` 하나뿐인데, 그때
+        #   `$lines[0..(-1)]`은 PowerShell range가 **하강 시퀀스**(0, -1)로 해석돼 잘라내기는커녕
+        #   `@('', '')` 2원소를 만든다(실측). `-Tail`은 같은 입력에 빈 결과를 준다.
+        if ($lines.Count -gt 0 -and $lines[-1] -eq '') {
+            $lines = if ($lines.Count -le 1) { @() } else { @($lines[0..($lines.Count - 2)]) }
+        }
+        $script:reTailLines = $lines
+        $script:reTailPath = $Path
+    }
+    $all = $script:reTailLines
+    if ($null -eq $all -or $all.Count -le $Count) { return $all }
+    return $all[($all.Count - $Count)..($all.Count - 1)]
 }
 
 # ---- [세션 디듑] 같은 세션·같은 프로젝트의 동일 종류 경고를 1회로 억제 (v1.138.0) ----
@@ -132,7 +179,7 @@ if ($hasEvidence) {
     try {
         $tp = if ($data) { $data.transcript_path } else { $null }
         if ($tp -and (Test-Path -LiteralPath $tp -PathType Leaf)) {
-            $tail = Get-Content -LiteralPath $tp -Tail 3000 -ErrorAction Stop
+            $tail = Get-TranscriptTail -Path $tp -Count 3000
             # 표준 빌드/테스트 + 스크립트 기반 검증(build.ps1/sh/py·tsc·프로젝트 정적검사 스크립트)까지
             #   포함한다(v1.98.0) — 종전엔 표준 명령만 있어 './build.ps1'·'tsc'로 검증한 정직한 세션이
             #   실행 흔적 없음으로 오경고됐다.
@@ -155,7 +202,7 @@ $sessionEdited = $true
 try {
     $tp3 = if ($data) { $data.transcript_path } else { $null }
     if ($tp3 -and (Test-Path -LiteralPath $tp3 -PathType Leaf)) {
-        $tail3 = Get-Content -LiteralPath $tp3 -Tail 3000 -ErrorAction Stop
+        $tail3 = Get-TranscriptTail -Path $tp3 -Count 3000
         $sessionEdited = (($tail3 -join "`n") -match '"name"\s*:\s*"(Write|Edit|MultiEdit|NotebookEdit)"')
     }
 } catch { }
@@ -329,16 +376,29 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     $lastMsgL = if ($data) { [string]$data.last_assistant_message } else { '' }
     $haveStdinMsg = -not [string]::IsNullOrWhiteSpace($lastMsgL)
     $stopKind = ''
+    $lastAsstText = ''   # 폴백 경로에서 판정에 쓴 마지막 assistant 텍스트(화이트리스트 분기가 재사용)
     if ($haveStdinMsg) { $stopKind = (Test-StopPhrase $lastMsgL) }
 
-    # 조건 ③⑤(+ 필요 시 ④ 폴백): transcript를 한 번만 tail해서 함께 처리한다.
-    #   stdin 필드가 왔는데 ④가 거짓이면 여기 진입하지 않는다(불필요한 I/O 제거).
+    # Strong 마커 선판정 — 정당한 정지(Halt 보고·최종 보고·확인 게이트)는 여기서 끝난다.
+    #   아래 스캔 진입을 이것으로 가드해, 정당 정지의 I/O 비용을 0으로 유지한다.
+    $strongInMsg = $haveStdinMsg -and ($lastMsgL -match $rxLegitStrong)
+
+    # 조건 ③⑤(+ 필요 시 ④ 폴백) + **루프 활성 판정**: transcript를 한 번만 tail해서 함께 처리한다.
+    #   진입 조건은 `$loopOpen -and -not $strongInMsg`다(v1.154.0). 종전의
+    #   `$stopKind -or -not $haveStdinMsg` 가드를 뺀 이유는 헤더 [v1.154.0] 블록의 ⚠ 항목 —
+    #   그 가드가 있으면 문면 미매치 시 스캔을 건너뛰어 $loopActiveAfterUser가 항상 거짓이 되고,
+    #   화이트리스트가 런타임에서 통째로 죽는다. 대신 Strong 마커가 있으면 어차피 통과이므로
+    #   그때만 건너뛴다(정당 정지의 비용 0 유지). $loopOpen(미완료 task 존재)이 여전히 선행
+    #   게이트라, plan이 없거나 전 task가 끝난 세션에서는 스캔하지 않는다.
     $loopSkill = $false
     $userStop = $false
     $userFound = $false
     $userAsking = $false            # ⑤ 억제 — 마지막 사용자 발화가 질문·조회 요청인가
-    $loopActiveAfterUser = $false    # ⑤ 억제의 활성 게이트 — 마지막 사용자 발화 이후 루프가 (재)발동됐는가
-    if ($loopOpen -and ($stopKind -or -not $haveStdinMsg)) {
+    # 마지막 사용자 발화 이후 루프가 (재)발동됐는가 = **자율 루프가 지금 도는 중인가**.
+    #   v1.154.0에서 역할이 승격됐다 — 종전에는 ⑤ 억제를 끄는 게이트였을 뿐이지만, 지금은
+    #   **조건 3(차단 판정)의 주 신호**이기도 하다(아래 화이트리스트 분기). 두 용도를 함께 쓴다.
+    $loopActiveAfterUser = $false
+    if ($loopOpen -and -not $strongInMsg) {
         $tpL = if ($data) { [string]$data.transcript_path } else { '' }
         if (-not [string]::IsNullOrWhiteSpace($tpL) -and (Test-Path -LiteralPath $tpL -PathType Leaf)) {
             try {
@@ -351,7 +411,14 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                         '"skill"\s*:\s*"pjc:implement-task"',
                         'Launching skill: pjc:implement-task'))
                 # 조건 ⑤·④폴백은 '직전' 발화를 찾는 것이라 tail이 맞다(전 파일 역순 파싱은 비용이 크다).
-                $tailL = @(Get-Content -LiteralPath $tpL -Tail 3000 -ErrorAction Stop)
+                # tail 6000 (v1.154.0 — 종전 3000). 실측 최대 2817줄로 상한의 94%까지 차 있었고,
+                #   창을 넘으면 루프 시작 지점이 밖으로 밀려 $userFound·게이트를 함께 잃는다
+                #   (=fail-open). 하필 그 긴 루프가 이 검사가 가장 필요한 상황이다. 비용은 문자열
+                #   로드뿐이고 파싱 상한(200)은 그대로라 예산에 영향이 없다.
+                #   ⚠ 이 값을 바꾸면 evals/check-transcript-assumptions.ps1의 Invoke-ReverseScan
+                #     재현 창(`$EndIndex - 5999`)도 함께 고칠 것 — 그 도구가 hook의 창을 하드코딩
+                #     재현하므로, 갈리면 가정 4가 프로덕션과 다른 창으로 예산을 재게 된다.
+                $tailL = @(Get-TranscriptTail -Path $tpL -Count 6000)
 
                 # 역순 1회 스캔으로 ⑤(마지막 user 텍스트)와 ④ 폴백(마지막 assistant 텍스트)을 함께 찾는다.
                 #
@@ -383,6 +450,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                 #   재면 최댓값을 못 본다).
                 $needAsst = (-not $haveStdinMsg)
                 $parsed = 0
+                $gateParsed = 0   # 게이트 구조 판정의 파싱 상한 카운터($parsed와 별개 — 아래 주석)
                 for ($i = $tailL.Count - 1; $i -ge 0; $i--) {
                     if ($userFound -and -not $needAsst) { break }
                     if ($parsed -ge 200) { break }
@@ -399,9 +467,39 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     #   tool_result(발동 패턴 리터럴을 담는다)가 게이트를 켜서 억제가 꺼진다(오차단 방향).
                     #   반대로 tool_result 안의 'Launching skill:' 형태를 놓치는 쪽은 억제 과다 = 미탐 방향이라
                     #   이 hook의 fail-open 원칙과 맞다. JSON 파싱 전 원시 문자열 검사라 추가 I/O가 없다.
-                    if ($isAsst -and -not $userFound -and
-                        ($ln -match '"skill"\s*:\s*"pjc:implement-task"' -or $ln -match 'Launching skill: pjc:implement-task')) {
-                        $loopActiveAfterUser = $true
+                    #   **구조 판정 요구(v1.154.0/D8) — 원시 문자열 매치로는 원리적으로 구분할 수 없다.**
+                    #   이 게이트는 이제 ⑤ 억제만이 아니라 **차단 판정의 주 신호**라 오점화 한 번이 곧
+                    #   오차단인데, 이 레포는 발동 리터럴을 **도구 input에 실어 나른다** — hook·골든·plan을
+                    #   편집하거나 grep할 때마다 그렇다. 실측(전 세션 전수): 리터럴을 가진 assistant 엔트리
+                    #   91건 중 **진짜 Skill 발동은 59건**이고 **32건은 다른 도구의 input**이다
+                    #   (Edit 11 · Write 10 · Bash 8 · Agent 2 · PowerShell 1). **그 32건도 전부 tool_use
+                    #   동반**이라 "tool_use 동반 요구"로는 하나도 걸러지지 않는다(초안 D6의 오판 —
+                    #   "83건 전건 tool_use 동반"이라는 참인 관측을 "83건이 전부 발동"이라는 거짓 전제와
+                    #   묶었다). 골든 픽스처 자체가 `"name":"Skill"`과 `"skill":"pjc:implement-task"`를
+                    #   한 줄 문자열로 담으므로, **어떤 원시 패턴을 쓰든 그 파일을 편집하는 순간 재현된다.**
+                    #   그래서 후보 줄만 파싱해 **tool_use 블록의 name·input을 구조로 확인**한다.
+                    #   평문 `Launching skill:` 패턴은 제거했다 — assistant 쪽은 **전수가 오점화**였고
+                    #   (진짜 발동은 전부 이 JSON 구조) tool_result 쪽은 위 `$isAsst` 한정이 이미 배제한다.
+                    #   비용: 리터럴 보유 줄만 파싱한다. **그래도 별도 상한($gateParsed 200)을 둔다** —
+                    #   이 branch는 `$parsed` 예산을 쓰지 않으므로 캡이 없으면 후보가 많은 세션에서
+                    #   6000줄까지 파싱할 수 있고, 그것은 위 tail 주석이 지키려는 10초 예산과 정면으로
+                    #   어긋난다(리뷰 M1). 상한 초과는 **점화하지 않음** = 폴백(4정규식)으로 내려가는
+                    #   미탐 방향이라 이 hook의 fail-open 원칙과 맞다. 실측은 세션당 수십 건이다.
+                    if ($isAsst -and -not $userFound -and $gateParsed -lt 200 -and
+                        $ln -match '"skill"\s*:\s*"pjc:implement-task"') {
+                        $gateParsed++
+                        try {
+                            $gateObj = $ln | ConvertFrom-Json
+                            $gateContent = $gateObj.message.content
+                            if ($null -eq $gateContent) { $gateContent = $gateObj.content }
+                            foreach ($gateBlk in @($gateContent)) {
+                                if ($gateBlk.type -eq 'tool_use' -and $gateBlk.name -eq 'Skill' -and
+                                    $gateBlk.input.skill -eq 'pjc:implement-task') {
+                                    $loopActiveAfterUser = $true
+                                    break
+                                }
+                            }
+                        } catch { }   # 파싱 실패는 점화하지 않는다(fail-open)
                     }
                     if ($isUser -and ($ln -match '"type"\s*:\s*"tool_result"' -or $ln -match '"tool_use_id"')) { continue }
                     # 위 [추출 원칙] ②③ — 시스템 주입 user 엔트리. 파싱 전 원시 문자열 판정이라 비용 0이고
@@ -439,7 +537,14 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                         #   차단되는 것이 실측으로 재현됐다(F-7 M2). 차단 reason이 "사용자 보고 없이
                         #   계속하라"라서, **사용자가 중단시킨 작업을 재개하도록 밀어붙이는** 최악의
                         #   오작동이 된다. 이 조건은 fail-open 방향이라 넓히는 쪽이 안전하다.
-                        if ($txt -match '그만|중단|멈춰|멈춤|여기까지|이제 ?됐|나중에|\bstop\b|T\d+\s*만|새\s*세션|/clear|세션[^\r\n]{0,4}(옮|바꾸|나눠|분리)|내일|이만|다음\s*에|쉬(자|죠|겠)') { $userStop = $true }
+                        #   **`T\d+[^\r\n]{0,4}만`(v1.154.0/F-7 M2)** — 종전 `T\d+\s*만`은 *"T5까지만
+                        #   진행해줘"* 를 놓친다(`T5` 다음이 `까`). 전환 전에는 그 조합이 어차피
+                        #   통과였지만(문면이 4정규식에 안 걸림), **화이트리스트에서는 게이트가 켜져
+                        #   있으므로 문면 무관 차단**이라 사용자가 범위를 한정했는데도 "계속하라"는
+                        #   reason으로 되돌리게 된다 — 위키 규약이 *"미탐보다 나쁘다"*로 지목한 방향이다.
+                        #   넓히면 "T3을 하지만" 류가 함께 걸리지만 그것은 **미탐 방향**(차단 안 함)이라
+                        #   이 조건의 fail-open 원칙과 맞다(바로 위 주석의 "넓히는 쪽이 안전하다").
+                        if ($txt -match '그만|중단|멈춰|멈춤|여기까지|이제 ?됐|나중에|\bstop\b|T\d+[^\r\n]{0,4}만|새\s*세션|/clear|세션[^\r\n]{0,4}(옮|바꾸|나눠|분리)|내일|이만|다음\s*에|쉬(자|죠|겠)') { $userStop = $true }
                         # ⑤ 전용 억제 신호(위 $userStop과 독립 — 둘 다 억제 방향이지만 묻는 것이 다르다:
                         #   저쪽은 "사용자가 멈추라고 했나", 이쪽은 "사용자가 물어봤나").
                         if ($txt -match $script:rxUserAsk) { $userAsking = $true }
@@ -447,6 +552,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                         # 조건 ④ 폴백 — stdin 필드가 없을 때만. 마지막 assistant 텍스트로 정지 유형을 판정한다.
                         $needAsst = $false
                         $stopKind = (Test-StopPhrase $txt)
+                        $lastAsstText = $txt   # 아래 화이트리스트 분기가 Strong 마커를 다시 볼 대상
                     }
                 }
             } catch { $loopSkill = $false }   # 읽기 실패 → fail-open
@@ -456,6 +562,22 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     # ⑤ 억제 적용 — 루프가 도는 중이 아닌데(게이트 꺼짐) 사용자가 방금 질문했다면, 그 답변이
     #   "T<N> … 완료" 형태여도 정지가 아니라 대화다. ⑤에만 적용해 ②③④의 판정은 그대로 둔다.
     if (-not $loopActiveAfterUser -and $userAsking -and $stopKind -eq 'progress') { $stopKind = '' }
+
+    # ---- 루프 활성 화이트리스트 (v1.154.0) — 문면 무관 판정 ----
+    # 루프 활성 = 마지막 사용자 발화 이후 스킬이 (재)발동됐다 = 자율 루프가 지금 도는 중.
+    #   이 구간에서 Stop hook이 돌았다는 것 자체가 "도구 호출 없이 텍스트만 내고 turn을 끝냈다"는
+    #   확정 사실이므로 문면을 볼 필요가 없다(헤더 [v1.154.0] 블록 참조).
+    #   정당한 정지는 Strong 마커가 통과시킨다(개입 지점 10곳 전수 부여 — 전수 목록의 정본은
+    #   docs/hook-conventions.md. 새 개입 지점에는 마커를 함께 줄 것).
+    # 위 ⑤ 억제와는 **상호배타**다($loopActiveAfterUser의 반대 값을 보므로) — 순서 무관.
+    # 이미 4정규식이 유형을 특정했으면 그것을 유지한다(reason이 더 구체적이다).
+    if ($loopActiveAfterUser -and -not $stopKind) {
+        $lastText = if ($haveStdinMsg) { $lastMsgL } else { $lastAsstText }
+        # 텍스트를 못 얻으면 올리지 않는다 — 판정 불가는 통과(이 hook의 fail-open 원칙).
+        if (-not [string]::IsNullOrWhiteSpace($lastText) -and $lastText -notmatch $rxLegitStrong) {
+            $stopKind = 'active'
+        }
+    }
 
     if ($loopOpen -and $loopSkill -and $stopKind -and $userFound -and (-not $userStop)) {
 
@@ -511,6 +633,11 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     }
                     'progress' {
                         $reasonBody = '마지막 응답이 진행 상황 요약으로 끝났습니다 - implement-task 금지 표현 5에 해당합니다. 완료 사실만 서술해 규칙을 어긴 흔적이 없어 보이지만, 도구 호출 없이 텍스트만 내면 turn이 끝나 결과는 같은 루프 정지입니다. 한 줄 진행 마커는 같은 turn의 다음 도구 호출과 한 묶음일 때만 씁니다. 지금 다음 단계를 도구 호출로 시작하고, 남길 진행 상세는 대화가 아니라 plan.md의 Progress Log에 쓰십시오.'
+                    }
+                    'active' {
+                        # 문면으로 유형을 특정하지 않은 경우 - 원인을 "형태"로 알린다.
+                        #   여기서 특정 금지 표현을 지목하면 모델이 그 어휘만 피하고 같은 정지를 반복한다.
+                        $reasonBody = '마지막 응답이 도구 호출 없이 끝났습니다 - 자율 루프가 도는 중에는 어떤 문면이든 텍스트만 내고 turn을 끝내면 결과는 루프 정지입니다(implement-task 금지 표현 2와 5의 형태 기준 - 목록에 없는 표현이어도 동일합니다). 지금 다음 단계를 도구 호출로 시작하고, 남길 진행 상세는 대화가 아니라 plan.md의 Progress Log에 쓰십시오. 컨텍스트가 찼다면 그것은 멈출 사유가 아니라 압축을 통과할 사유입니다(컨텍스트 관리 규칙 4).'
                     }
                     default {
                         $reasonBody = '마지막 응답이 진행 예고로 끝났습니다 - implement-task 금지 표현 2(예고를 마지막 말로 남기고 turn을 끝내지 말 것)에 해당합니다. 지금 다음 task의 Phase P를 시작하세요(Read/grep 등 도구 호출로 이어갈 것). 상태 기록이 필요하면 대화에 요약을 출력하지 말고 plan.md에 쓰십시오.'
