@@ -92,7 +92,12 @@ function Get-TranscriptTail {
         $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop
         $lines = @($raw -split "`r?`n")
         # 파일이 개행으로 끝나면 split 결과 끝에 빈 원소가 생긴다 — `-Tail`은 그것을 주지 않는다.
-        if ($lines.Count -gt 0 -and $lines[-1] -eq '') { $lines = @($lines[0..($lines.Count - 2)]) }
+        #   `Count -le 1`을 따로 처리하는 이유: 빈 파일이면 원소가 `''` 하나뿐인데, 그때
+        #   `$lines[0..(-1)]`은 PowerShell range가 **하강 시퀀스**(0, -1)로 해석돼 잘라내기는커녕
+        #   `@('', '')` 2원소를 만든다(실측). `-Tail`은 같은 입력에 빈 결과를 준다.
+        if ($lines.Count -gt 0 -and $lines[-1] -eq '') {
+            $lines = if ($lines.Count -le 1) { @() } else { @($lines[0..($lines.Count - 2)]) }
+        }
         $script:reTailLines = $lines
         $script:reTailPath = $Path
     }
