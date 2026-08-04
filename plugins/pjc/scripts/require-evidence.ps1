@@ -463,16 +463,33 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     #   tool_result(발동 패턴 리터럴을 담는다)가 게이트를 켜서 억제가 꺼진다(오차단 방향).
                     #   반대로 tool_result 안의 'Launching skill:' 형태를 놓치는 쪽은 억제 과다 = 미탐 방향이라
                     #   이 hook의 fail-open 원칙과 맞다. JSON 파싱 전 원시 문자열 검사라 추가 I/O가 없다.
-                    #   **`"type":"tool_use"` 동반 요구(v1.154.0/D6)** — 이 게이트는 이제 ⑤ 억제만이
-                    #   아니라 **차단 판정의 주 신호**라, 오점화 한 번이 곧 오차단이다. 이 레포는 발동
-                    #   리터럴을 산문으로 논하는 레포(이 주석·골든·plan 자신)라 실재하는 위험이다.
-                    #   실측상 진짜 발동 엔트리는 **83건 전건이 tool_use 동반**(JSON 형태 58 + 평문 25)
-                    #   이므로 이 조건은 **미탐을 만들지 않으면서** 순수 인용을 걸러낸다.
-                    #   남는 구멍: 텍스트 블록과 무관한 도구 호출이 **한 엔트리에 공존**하면 여전히
-                    #   점화한다(줄 단위 정규식의 한계 — plan Deferred로 추적).
-                    if ($isAsst -and -not $userFound -and ($ln -match '"type"\s*:\s*"tool_use"') -and
-                        ($ln -match '"skill"\s*:\s*"pjc:implement-task"' -or $ln -match 'Launching skill: pjc:implement-task')) {
-                        $loopActiveAfterUser = $true
+                    #   **구조 판정 요구(v1.154.0/D8) — 원시 문자열 매치로는 원리적으로 구분할 수 없다.**
+                    #   이 게이트는 이제 ⑤ 억제만이 아니라 **차단 판정의 주 신호**라 오점화 한 번이 곧
+                    #   오차단인데, 이 레포는 발동 리터럴을 **도구 input에 실어 나른다** — hook·골든·plan을
+                    #   편집하거나 grep할 때마다 그렇다. 실측(전 세션 전수): 리터럴을 가진 assistant 엔트리
+                    #   91건 중 **진짜 Skill 발동은 59건**이고 **32건은 다른 도구의 input**이다
+                    #   (Edit 11 · Write 10 · Bash 8 · Agent 2 · PowerShell 1). **그 32건도 전부 tool_use
+                    #   동반**이라 "tool_use 동반 요구"로는 하나도 걸러지지 않는다(초안 D6의 오판 —
+                    #   "83건 전건 tool_use 동반"이라는 참인 관측을 "83건이 전부 발동"이라는 거짓 전제와
+                    #   묶었다). 골든 픽스처 자체가 `"name":"Skill"`과 `"skill":"pjc:implement-task"`를
+                    #   한 줄 문자열로 담으므로, **어떤 원시 패턴을 쓰든 그 파일을 편집하는 순간 재현된다.**
+                    #   그래서 후보 줄만 파싱해 **tool_use 블록의 name·input을 구조로 확인**한다.
+                    #   평문 `Launching skill:` 패턴은 제거했다 — assistant 쪽은 **전수가 오점화**였고
+                    #   (진짜 발동은 전부 이 JSON 구조) tool_result 쪽은 위 `$isAsst` 한정이 이미 배제한다.
+                    #   비용: 리터럴 보유 줄만 파싱하므로 `$parsed` 예산과 무관하다(실측 세션당 수십 건).
+                    if ($isAsst -and -not $userFound -and $ln -match '"skill"\s*:\s*"pjc:implement-task"') {
+                        try {
+                            $gateObj = $ln | ConvertFrom-Json
+                            $gateContent = $gateObj.message.content
+                            if ($null -eq $gateContent) { $gateContent = $gateObj.content }
+                            foreach ($gateBlk in @($gateContent)) {
+                                if ($gateBlk.type -eq 'tool_use' -and $gateBlk.name -eq 'Skill' -and
+                                    $gateBlk.input.skill -eq 'pjc:implement-task') {
+                                    $loopActiveAfterUser = $true
+                                    break
+                                }
+                            }
+                        } catch { }   # 파싱 실패는 점화하지 않는다(fail-open)
                     }
                     if ($isUser -and ($ln -match '"type"\s*:\s*"tool_result"' -or $ln -match '"tool_use_id"')) { continue }
                     # 위 [추출 원칙] ②③ — 시스템 주입 user 엔트리. 파싱 전 원시 문자열 판정이라 비용 0이고

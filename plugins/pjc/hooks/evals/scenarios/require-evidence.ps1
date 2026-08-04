@@ -700,9 +700,8 @@ if ($gitOk) {
     #   엔트리는 게이트를 켜면 안 된다. 전환 전에는 이 오점화가 ⑤ 억제 해제(미탐 방향)로만 나타나
     #   수용 가능했지만, 이제 게이트가 곧 차단 신호라 **인용 한 번이 오차단**이 된다.
     #   이 레포는 그 리터럴을 산문으로 논하는 레포(hook 주석·이 파일·plan)라 실재하는 표면이다.
-    #   ⚠ **커버 경계**: 이 케이스는 **순수 텍스트 엔트리만** 고정한다. `"type":"text"`와
-    #     `"type":"tool_use"`가 **한 줄에 공존하는 혼합 엔트리**는 D6 이후에도 점화하며(줄 단위
-    #     정규식의 한계 — plan `## Deferred / Follow-up`으로 추적), 그 축은 여기서 검증되지 않는다.
+    #   ⚠ **커버 경계**: 이 케이스는 **순수 텍스트 엔트리만** 고정한다. 이 레포에서 훨씬 흔한
+    #     "다른 도구의 input에 실린 리터럴"은 **아래 L61**이 담당한다(그쪽이 실제 주요 표면이다).
     #   red(게이트의 tool_use 조건 제거): 인용 엔트리가 게이트를 켜 활성으로 오판 → 차단 = FAIL.
     #   ⚠ **줄 순서가 이 케이스의 전부다** — 진짜 발동 엔트리는 사용자 발화보다 **위(더 오래된 쪽)**
     #     에 둔다. 조건 2($loopSkill)는 전 파일 스캔이라 그 위치에서도 참이지만, 게이트는
@@ -715,6 +714,32 @@ if ($gitOk) {
         Set-Content -Encoding UTF8 $trQuote
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154j'; transcript_path = $trQuote; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: 발동 리터럴 인용(tool_use 없음)은 게이트 미점화 → 미차단 (T4 음성·D6)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L61) 경계 음성 — **오점화의 주요 표면: 다른 도구의 input에 실린 발동 리터럴**(D8).
+    #   위 L60은 순수 `"type":"text"` 인용만 고정하는데, **실제로 이 레포에서 압도적으로 흔한 형태는
+    #   그게 아니라 이것**이다 — hook·골든·plan을 Edit/Write/Bash로 편집·검색할 때마다 발동 리터럴이
+    #   도구 input에 실린다(전 세션 실측: 리터럴 보유 assistant 엔트리 중 **32건이 이 형태**
+    #   — Edit 11 · Write 10 · Bash 8 · Agent 2 · PowerShell 1). **그 32건도 전부 `tool_use` 동반**이라
+    #   D6의 "tool_use 동반 요구"로는 **하나도 걸러지지 않았다**(초안의 오판 — "83건 전건 tool_use
+    #   동반"이라는 참인 관측을 "83건이 전부 발동"이라는 거짓 전제와 묶었다).
+    #   해소는 D8 — 후보 줄을 파싱해 **tool_use 블록의 `name`이 실제로 `Skill`인지** 구조로 확인한다.
+    #   red(평문 패턴을 게이트에 되돌리거나 구조 판정을 원시 매치로 되돌림): 이 엔트리가 게이트를
+    #   켜 활성으로 오판 → 차단 = FAIL.
+    $trToolInput = Join-Path $work 'tr-active-toolinput.jsonl'
+    @($skillEntry,
+      '{"type":"user","message":{"content":"진행"}}',
+      '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"scenarios/require-evidence.ps1","new_string":"Launching skill: pjc:implement-task"}}]}}') |
+        Set-Content -Encoding UTF8 $trToolInput
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154k'; transcript_path = $trToolInput; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 다른 도구(Edit) input의 발동 리터럴은 게이트 미점화 → 미차단 (T6 음성·D8)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
+    # (L62) 양성 델타 짝 — 같은 위치에 **진짜 Skill tool_use**를 두면 게이트가 켜져 차단된다.
+    #   L61과 이 케이스의 차이는 **tool_use 블록의 `name`·`input` 구조 하나뿐**이라, 둘이 짝으로
+    #   "구조 판정이 실제로 그 축을 본다"를 고정한다(문자열 존재 여부는 양쪽 동일).
+    $trRealSkill = Join-Path $work 'tr-active-realskill.jsonl'
+    @('{"type":"user","message":{"content":"진행"}}', $skillEntry) | Set-Content -Encoding UTF8 $trRealSkill
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154l'; transcript_path = $trRealSkill; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 진짜 Skill tool_use는 게이트 점화 → 차단 (T6 양성·D8 델타 짝)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
 } else {
     Write-Host "[SKIP] require-evidence 시나리오 (git 없음)"
 }
