@@ -169,7 +169,7 @@ if ($asstTotal -eq 0) {
 #   중간에 예산을 태우고 userFound를 잃은 구간을 못 본다.
 function Invoke-ReverseScan {
     param([string[]]$Lines, [int]$EndIndex, [bool]$HaveStdinMsg)
-    $start = [Math]::Max(0, $EndIndex - 2999)   # hook의 Get-Content -Tail 3000과 같은 창
+    $start = [Math]::Max(0, $EndIndex - 5999)   # hook의 Get-Content -Tail 6000과 같은 창 (v1.154.0에서 3000→6000)
     $needAsst = (-not $HaveStdinMsg)
     $parsed = 0
     $userFound = $false
