@@ -169,7 +169,12 @@ if ($asstTotal -eq 0) {
 #   중간에 예산을 태우고 userFound를 잃은 구간을 못 본다.
 function Invoke-ReverseScan {
     param([string[]]$Lines, [int]$EndIndex, [bool]$HaveStdinMsg)
-    $start = [Math]::Max(0, $EndIndex - 5999)   # hook의 Get-Content -Tail 6000과 같은 창 (v1.154.0에서 3000→6000)
+    # hook의 tail 창과 같은 크기(6000). v1.154.0에서 3000→6000으로 늘렸고, 같은 버전에서 hook의
+    #   읽기 방식도 `Get-Content -Tail` → `Get-TranscriptTail`(-Raw 기반)로 바뀌었다 — **창 크기는
+    #   동일하고 반환값도 등가**라 이 재현은 그대로 유효하다(등가는 경계 8종×2=16건 실측 확인).
+    #   ※ 같은 버전에서 hook 게이트에 JSON 구조 판정이 들어갔으나(`$gateParsed` 상한 200) 이 도구가
+    #     재는 축($parsed 예산·userFound 손실)에는 관여하지 않아 재현 대상이 아니다.
+    $start = [Math]::Max(0, $EndIndex - 5999)
     $needAsst = (-not $HaveStdinMsg)
     $parsed = 0
     $userFound = $false

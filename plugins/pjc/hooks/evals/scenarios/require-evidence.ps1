@@ -749,6 +749,16 @@ if ($gitOk) {
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154m'; transcript_path = $trFakeSkill; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: Skill이 아닌 도구의 input.skill은 구조 판정이 거부 → 미차단 (T6 음성·D8-b)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
+    # (L61-c) 경계 음성 — **사용자가 범위를 "한정"한 경우도 조건 5가 받아야 한다**(F-7 M2).
+    #   종전 `T\d+\s*만`은 *"T5까지만 진행해줘"* 를 놓쳤다(`T5` 다음이 `까`). 전환 전에는 그 조합이
+    #   어차피 통과였지만(문면이 4정규식에 안 걸린다), **화이트리스트에서는 게이트가 켜져 있어
+    #   문면 무관 차단**이므로 사용자가 한정한 작업에 "계속하라"를 들이대게 된다.
+    #   red(`T\d+[^\r\n]{0,4}만` → `T\d+\s*만` 복원): $userStop이 거짓이 되어 차단 = FAIL.
+    $trLimited = Join-Path $work 'tr-active-limited.jsonl'
+    @('{"type":"user","message":{"content":"T5까지만 진행해줘"}}', $skillEntry) | Set-Content -Encoding UTF8 $trLimited
+    $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154n'; transcript_path = $trLimited; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "evidence: 사용자 한정 지시(T5까지만) → 미차단 (T6 음성·F-7 M2)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
+
     # (L62) 양성 델타 짝 — 같은 위치에 **진짜 Skill tool_use**를 두면 게이트가 켜져 차단된다.
     #   L61과 이 케이스의 차이는 **tool_use 블록의 `name`·`input` 구조 하나뿐**이라, 둘이 짝으로
     #   "구조 판정이 실제로 그 축을 본다"를 고정한다(문자열 존재 여부는 양쪽 동일).
