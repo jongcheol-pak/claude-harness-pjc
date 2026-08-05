@@ -57,7 +57,7 @@
 
 정보 부족으로 결정 불가능한 항목은 Open Questions로 모은다.
 
-> **`AskUserQuestion` 도구로 물을 때의 규약**(옵션 4개 상한 대응·요구 원문 선택지 의무·근본 해결안 배치)은 **이 파일의 「(plan-feature Step 8) 질문 도구 사용 규약 (`AskUserQuestion`)」**이 정본이다(2026-08-05 `SKILL.md` Step 8에서 이관) — 위 D2 형식이 선택지 구성의 정본이고, 그 규약은 도구 경로에서 이 형식을 어떻게 지킬지를 다룬다.
+> **`AskUserQuestion` 도구로 물을 때의 규약**(옵션 4개 상한 대응·요구 원문 선택지 의무·근본 해결안 배치)은 **이 파일의 「(plan-feature Step 8) 질문 도구 사용 규약 (`AskUserQuestion`)」**이 정본이다(2026-08-05 `plugins/pjc/skills/plan-feature/SKILL.md` Step 8에서 이관) — 위 D2 형식이 선택지 구성의 정본이고, 그 규약은 도구 경로에서 이 형식을 어떻게 지킬지를 다룬다.
 
 ## (plan-feature Step 8) 질문 도구 사용 규약 (`AskUserQuestion`)
 
