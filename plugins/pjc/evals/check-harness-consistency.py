@@ -116,11 +116,15 @@ def check_reviewer_footnote(conv):
     blocks = re.findall(r"^\| \d+ \| `([^`]+)`", sec, re.M)
     if not blocks:
         die("「리뷰어 4종 공통 규약」에서 블록 목록 표를 추출하지 못함")
-    files = sorted(re.findall(r"`(plan-reviewer|spec-compliance-reviewer|"
-                              r"code-quality-reviewer|plan-completion-reviewer)`", sec))
-    files = sorted(set(files))
-    if len(files) != 4:
-        die("「리뷰어 4종 공통 규약」에서 리뷰어 4종 이름을 추출하지 못함 (찾은 것: %s)" % files)
+    # 리뷰어 이름도 문서에서 읽는다 — 코드에 목록을 박으면 5번째 리뷰어가 생겨도
+    # 조용히 4종만 검사한다(acceptance ③의 하드코딩 금지가 겨냥하는 바로 그 실패).
+    # 절 첫 문단의 `(...)` 안 백틱 목록이 그 정의다.
+    nm = re.search(r"리뷰어 \d+종\(([^)]+)\)", sec)
+    if not nm:
+        die("「리뷰어 4종 공통 규약」에서 리뷰어 이름 목록(첫 문단 괄호)을 추출하지 못함")
+    files = sorted(set(re.findall(r"`([a-z][a-z-]+-reviewer)`", nm.group(1))))
+    if not files:
+        die("리뷰어 이름 목록에서 이름을 하나도 추출하지 못함 (표기가 바뀌었는지 확인)")
     issues = []
     for name in files:
         p = os.path.join(ROOT, "plugins", "pjc", "agents", name + ".md")
@@ -153,10 +157,14 @@ def check_pointer_reachability():
     ⓒ agents/·docs/·references/·다른 SKILL.md → 대상 파일. 경로가 명시된 참조만
     대상으로 삼는 이유는, 경로 없는 「…」는 강조 표기와 구분되지 않아 오탐이 크기 때문이다.
     """
-    # `경로.md` 뒤 40자 안에 「절 이름」이 오는 형태
-    pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,40})「([^」\n]{2,60})」")
+    # `경로.md` **바로 뒤**에 「절 이름」이 오는 형태만 포인터로 본다.
+    # 창을 넓게 잡으면(초기 구현 40자) 경로가 나열된 문장과 그 뒤의 무관한 「…」이 묶여
+    # 오탐이 난다 — 실제로 "소비자는 `a.md`·`b.md` 둘이 더 있었다. 남은 것은 「X」 규약"이
+    # 한 포인터로 잡혔다. 정당한 포인터는 경로 직후 조사·공백 몇 자 안에 「」가 온다.
+    # `·`(경로 나열)와 `**`(강조 경계)가 사이에 끼면 다른 문장이므로 제외한다.
+    pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n·*]{0,12})「([^」\n]{2,60})」")
     heading_cache = {}
-    issues, checked = [], 0
+    issues, checked, skipped = [], 0, []
 
     def anchors_of(path):
         """도달 대상 = 헤딩 ∪ 굵은 텍스트.
@@ -180,6 +188,16 @@ def check_pointer_reachability():
             heading_cache[path] = hs
         return heading_cache[path]
 
+    # 부분 경로(`implement-task/SKILL.md`처럼 repo 루트 기준이 아닌 표기)를 해석하기 위한 색인.
+    # 이 repo의 문서는 같은 파일을 전체 경로·부분 경로 두 방식으로 가리키며, 부분 표기를
+    # 해석하지 않으면 그 참조가 통째로 검사에서 빠진다(초기 구현에서 8건이 그렇게 빠졌다).
+    by_suffix = {}
+    for f in _md_files():
+        rel = os.path.relpath(f, ROOT).replace(os.sep, "/")
+        parts = rel.split("/")
+        for i in range(len(parts)):
+            by_suffix.setdefault("/".join(parts[i:]), []).append(f)
+
     for src in _md_files():
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
         # 과거 plan·로컬 노트는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례)
@@ -187,15 +205,23 @@ def check_pointer_reachability():
             continue
         text = open(src, encoding="utf-8").read()
         for ref_path, sec_name in pat.findall(text):
-            cand = []
-            if ref_path.startswith(("docs/", "plugins/", ".claude-plugin/")):
-                cand.append(os.path.join(ROOT, ref_path.replace("/", os.sep)))
-            else:  # 상대 표기 — 원본 파일 기준, 그다음 repo 루트
-                cand.append(os.path.join(os.path.dirname(src), ref_path.replace("/", os.sep)))
-                cand.append(os.path.join(ROOT, ref_path.replace("/", os.sep)))
+            cand = [os.path.join(ROOT, ref_path.replace("/", os.sep)),
+                    os.path.join(os.path.dirname(src), ref_path.replace("/", os.sep))]
             target = next((c for c in cand if os.path.exists(c)), None)
             if target is None:
-                continue  # 파일 자체를 못 찾는 경우는 이 축의 대상이 아니다(경로 표기 다양성)
+                # 부분 경로 표기(`implement-task/references/recovery.md`처럼 `plugins/pjc/skills/`
+                # 접두가 빠진 형제-스킬 참조)를 접미 색인으로 해석한다. 후보가 여럿이면
+                # 어느 것을 뜻하는지 확정할 수 없으므로 해석하지 않는다(추측 금지).
+                hits = by_suffix.get(ref_path, [])
+                if len(hits) == 1:
+                    target = hits[0]
+            if target is None:
+                # 경로 표기가 다양해(상대·부분 경로) 해석 실패를 곧바로 결함으로 보면 오탐이 크다.
+                # 다만 **조용히 넘기지는 않는다** — 파일이 실제로 삭제·이동된 경우가 가장 심한
+                # 포인터 끊김인데 그것까지 침묵하면 이 축의 존재 이유가 사라진다. 건수를 노출해
+                # 사람이 검토할 신호를 남긴다.
+                skipped.append("%s → `%s`" % (rel_src, ref_path))
+                continue
             hs = anchors_of(target)
             if hs is None:
                 continue
@@ -206,6 +232,9 @@ def check_pointer_reachability():
                               % (rel_src, ref_path, sec_name))
     if checked == 0:
         die("포인터 도달성: 검사 대상 포인터를 하나도 찾지 못함 (패턴이 낡았는지 확인)")
+    if skipped:
+        print("[NOTE] 포인터 %d건은 대상 파일 경로를 해석하지 못해 검사에서 제외됨 — %s"
+              % (len(skipped), " / ".join(skipped[:5]) + (" …" if len(skipped) > 5 else "")))
     return issues, checked
 
 
