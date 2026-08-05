@@ -160,6 +160,246 @@
       "workspace": "no_plan",
       "query": "sample.py 맨 위에 주석 한 줄만 달아줘",
       "why": "주석 1줄 — trivial 예외"
+    },
+    {
+      "id": "wiki-pos-1",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "이 프로젝트를 위키에 등록해줘",
+      "why": "description의 1차 트리거 — \"위키에 추가/등록\""
+    },
+    {
+      "id": "wiki-pos-2",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "위키 점검 한번 돌려줘. 깨진 링크나 형식 오류 있는지",
+      "why": "lint(절차 F) 요청 — \"위키 점검/lint\""
+    },
+    {
+      "id": "wiki-pos-3",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "pending 큐에 쌓인 항목들 정리해줘",
+      "why": "경량 큐 소비(절차 M) — \"큐 정리/pending 정리\""
+    },
+    {
+      "id": "wiki-neg-1",
+      "skill": "pjc:llm-wiki",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "README에 이 스크립트 실행 방법을 한 문단 추가해줘",
+      "why": "레포 문서 편집이지 위키 작업이 아니다 — trivial 문서 수정 경로"
+    },
+    {
+      "id": "wiki-neg-2",
+      "skill": "pjc:llm-wiki",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "파이썬에서 데코레이터가 어떻게 동작하는지 설명해줘",
+      "why": "위키와 무관한 일반 지식 질문 — description이 명시적으로 제외"
+    },
+    {
+      "id": "dbg-pos-1",
+      "skill": "pjc:pjc-systematic-debugging",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "summarize()가 빈 리스트를 받으면 터져. 왜 이러지",
+      "why": "런타임 오류 보고 — 한국어 트리거 \"왜 이래/안 됨\" 계열"
+    },
+    {
+      "id": "dbg-pos-2",
+      "skill": "pjc:pjc-systematic-debugging",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "빌드가 어제까지 잘 됐는데 오늘부터 실패해",
+      "why": "빌드 실패 + 회귀 — description의 \"빌드 실패\" 트리거"
+    },
+    {
+      "id": "dbg-pos-3",
+      "skill": "pjc:pjc-systematic-debugging",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "가끔씩만 합계가 틀리게 나오는데 재현이 잘 안 돼",
+      "why": "간헐적 오동작 — \"이상한 현상·재현\" 트리거"
+    },
+    {
+      "id": "dbg-neg-1",
+      "skill": "pjc:pjc-systematic-debugging",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "sample.py의 변수 이름을 snake_case로 통일해줘",
+      "why": "\"fix\"처럼 들리지만 버그가 아니라 정리 작업 — description이 명시적으로 제외"
+    },
+    {
+      "id": "dbg-neg-2",
+      "skill": "pjc:pjc-systematic-debugging",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "로그 출력 포맷을 좀 더 읽기 좋게 바꿔줘",
+      "why": "개선 요청이지 결함 보고가 아니다"
+    },
+    {
+      "id": "dsvc-pos-1",
+      "skill": "pjc:add-domain-service",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "주문 금액에 쿠폰과 배송비를 적용하는 비즈니스 로직을 도메인 서비스로 추가해줘",
+      "why": "description의 \"비즈니스 로직·도메인 서비스\" 트리거"
+    },
+    {
+      "id": "dsvc-pos-2",
+      "skill": "pjc:add-domain-service",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "재고 차감 use case를 애플리케이션 레이어에 추가하고 DI 등록까지 해줘",
+      "why": "\"use case 추가\" + Application 레이어 + DI — 산출물이 정확히 이 스킬 범위"
+    },
+    {
+      "id": "dsvc-pos-3",
+      "skill": "pjc:add-domain-service",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "add a domain service that validates membership tiers",
+      "why": "영문 트리거 \"add a domain service\""
+    },
+    {
+      "id": "dsvc-neg-1",
+      "skill": "pjc:add-domain-service",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "확인 버튼 라벨을 '저장'으로 바꿔줘",
+      "why": "순수 UI 문구 — Domain 레이어와 무관(trivial 값 치환)"
+    },
+    {
+      "id": "dsvc-neg-2",
+      "skill": "pjc:add-domain-service",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "이 Order 애그리거트에 총액 계산 메서드 하나 넣어줘",
+      "why": "애그리거트 내부 메서드는 도메인 서비스가 아니다 — description이 명시적으로 제외"
+    },
+    {
+      "id": "vm-pos-1",
+      "skill": "pjc:add-viewmodel",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "WinUI 3 앱에 설정 화면을 새로 만들어줘. 테마 토글이랑 언어 선택이 들어가",
+      "why": "\"새 화면\" + WinUI — description의 1차 트리거"
+    },
+    {
+      "id": "vm-pos-2",
+      "skill": "pjc:add-viewmodel",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "WPF에서 파일 내보내기 다이얼로그 하나 추가하고 ViewModel도 같이 만들어줘",
+      "why": "\"다이얼로그 추가\" + \"ViewModel 추가\" + WPF"
+    },
+    {
+      "id": "vm-pos-3",
+      "skill": "pjc:add-viewmodel",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "MAUI 프로젝트에 프로필 페이지 만들어줘",
+      "why": "\"페이지 만들기\" + MAUI"
+    },
+    {
+      "id": "vm-neg-1",
+      "skill": "pjc:add-viewmodel",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "React로 로그인 폼 컴포넌트 하나 만들어줘",
+      "why": "비XAML 스택 — description이 React/web을 명시적으로 제외"
+    },
+    {
+      "id": "vm-neg-2",
+      "skill": "pjc:add-viewmodel",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "기존 SettingsViewModel에서 저장이 안 되는 이유 좀 찾아줘",
+      "why": "기존 ViewModel 디버깅 — pjc-systematic-debugging 영역(description이 명시)"
+    },
+    {
+      "id": "boot-pos-1",
+      "skill": "pjc:bootstrap-agents-md",
+      "expect": "trigger",
+      "workspace": "no_agents_md",
+      "query": "AGENTS.md 만들어줘",
+      "why": "description의 1차 트리거 — 파일 부재 상태"
+    },
+    {
+      "id": "boot-pos-2",
+      "skill": "pjc:bootstrap-agents-md",
+      "expect": "trigger",
+      "workspace": "no_agents_md",
+      "query": "이 프로젝트 가이드 문서를 자동으로 만들어줘. 빌드랑 테스트 방법이 들어가게",
+      "why": "\"프로젝트 가이드 문서 자동으로 만들어줘\" — description 예시 문구"
+    },
+    {
+      "id": "boot-pos-3",
+      "skill": "pjc:bootstrap-agents-md",
+      "expect": "trigger",
+      "workspace": "no_agents_md",
+      "query": "Claude가 이 프로젝트 컨벤션을 알 수 있게 설정해줘",
+      "why": "description 예시 — 파일 이름을 몰라도 발동해야 한다"
+    },
+    {
+      "id": "boot-neg-1",
+      "skill": "pjc:bootstrap-agents-md",
+      "expect": "no-trigger",
+      "workspace": "no_agents_md",
+      "query": "이 프로젝트 README를 새로 써줘",
+      "why": "다른 문서 — description이 \"README 작성\"을 명시적으로 제외"
+    },
+    {
+      "id": "boot-neg-2",
+      "skill": "pjc:bootstrap-agents-md",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "AGENTS.md에 빌드 명령 한 줄 추가해줘",
+      "why": "**기존 파일 편집** — record-project-fact 영역이다(경계 케이스). AGENTS.md가 있는 워크스페이스"
+    },
+    {
+      "id": "rec-pos-1",
+      "skill": "pjc:record-project-fact",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "방금 확인한 빌드 명령을 AGENTS.md에 기록해줘",
+      "why": "description의 1차 트리거 — \"빌드 명령 기록해줘\""
+    },
+    {
+      "id": "rec-pos-2",
+      "skill": "pjc:record-project-fact",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "이 DB 접근법 프로젝트 사실로 적어둬",
+      "why": "\"DB 접근법 적어둬\" — description 예시"
+    },
+    {
+      "id": "rec-pos-3",
+      "skill": "pjc:record-project-fact",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "AGENTS.md에서 이제 안 쓰는 테스트 명령 빼줘",
+      "why": "제거도 이 스킬 범위 — description이 \"추가·갱신·제거\" 모두 명시"
+    },
+    {
+      "id": "rec-neg-1",
+      "skill": "pjc:record-project-fact",
+      "expect": "no-trigger",
+      "workspace": "no_agents_md",
+      "query": "AGENTS.md 새로 만들어줘",
+      "why": "**신규 생성** — bootstrap-agents-md 영역이다(boot-neg-2의 거울상 경계)"
+    },
+    {
+      "id": "rec-neg-2",
+      "skill": "pjc:record-project-fact",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "summarize() 함수에 통화 단위 인자를 추가해줘",
+      "why": "코드 변경 요청 — 문서 기록이 아니다"
     }
   ]
 }
