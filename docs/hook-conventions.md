@@ -98,7 +98,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) |
 | `plugins/pjc/skills/implement-task/SKILL.md`의 **「🚫 금지 표현」 ②③④⑤ 절** | **Hook 골든 회귀** — hook을 한 줄도 안 고쳐도 깨질 수 있다. `hooks/evals/scenarios/require-evidence.ps1:216`의 L12 블록이 **그 SKILL.md를 열어 문구 목록을 파싱**해 hook 정규식과 대조하기 때문이다(추출 0건이면 그 자체가 FAIL). 아래 「골든 부분 실행의 판정 자격」 예외를 plan에 미리 적었다면 `-Filter require-evidence`로 갈음 가능 |
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals |
-| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」 표** | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0) — **⚠ 그 스크립트는 아직 없다**(plan T3에서 신설). **신설 전까지 이 행은 미적용**이며, 그 구간에는 「문서 로드 예산 기준선」 표를 **손으로 갱신**하는 의무만 적용된다(그 표의 서문 참조) |
+| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」·「리뷰어 4종 공통 규약」 절** · `plugins/pjc/agents/*.md` · `docs/plans/deferred.md` | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
 | 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) — 기본값 |
@@ -106,7 +106,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 ## 문서 로드 예산 기준선
 
-> **기계 대조 대상이다** — 단 대조기(`plugins/pjc/evals/check-harness-consistency.py`)는 **아직 없다**(하니스 개선 plan T3에서 신설 예정. **⚠ 이 단서는 T3 완료 시 제거하며, 같은 단서가 위 검증 매핑 행과 `docs/plans/deferred.md`의 「현행 잔량」 앵커 설명에도 있으므로 세 곳을 함께 지운다**). 신설되면 이 표를 파싱해 실측과 대조하고 어긋나면 FAIL한다. **그 전에도 이 표는 갱신 의무의 대상이다** — 대조기가 없다고 낡은 값을 두면 신설 시점에 곧바로 FAIL하고, 그때는 어느 task가 어긋냈는지 추적이 어렵다.
+> **기계 대조 대상이다.** `plugins/pjc/evals/check-harness-consistency.py`가 이 표를 파싱해 실측(파일 바이트·행 수·9,000B 경계 행)과 대조하고 어긋나면 FAIL한다.
 >
 > **이 표에 있는 파일을 편집한 task가 같은 task 안에서 이 표를 갱신한다.** 편집과 갱신이 같은 커밋에 있어야 값이 어긋나는 구간이 생기지 않는다 — 실제로 이 표를 신설한 task 자신이 같은 커밋에서 `implement-task/SKILL.md`를 함께 고치고 갱신을 빠뜨려 리뷰에서 잡혔다.
 >
@@ -129,7 +129,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 ## 리뷰어 4종 공통 규약 (각주 앵커)
 
-> **기계 대조 대상이다** — 대조기는 「문서 로드 예산 기준선」과 같은 스크립트이며 **아직 없다**(plan T3에서 신설. ⚠ 이 단서도 T3 완료 시 세 곳과 함께 제거).
+> **기계 대조 대상이다** — 대조기는 「문서 로드 예산 기준선」과 같은 스크립트(`plugins/pjc/evals/check-harness-consistency.py`)다.
 
 `plugins/pjc/agents/`의 리뷰어 4종(`plan-reviewer`·`spec-compliance-reviewer`·`code-quality-reviewer`·`plan-completion-reviewer`)은 아래 **6개 규약 블록을 각자 복제 보유**한다. 각 subagent는 자기 정의 파일만 로드하므로 **공통 파일로 추출할 수 없다** — 단일 소스화가 물리적으로 불가한 구조다.
 
