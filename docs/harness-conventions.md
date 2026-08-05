@@ -169,6 +169,55 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 **따라서 각주 앵커 축으로 충분하다.** 본문 동일성 검사는 무변경 상태에서 FAIL하고(위 「검사 범위」), 동기 토큰(`<!-- sync: reviewer-common v1 -->`)은 토큰 갱신 자체가 다시 사람 규율이라 실익이 불확실한데 — **막을 드리프트가 실측으로 0건이므로 도입 근거가 없다.** 이 판정은 **2026-08-06 시점의 것**이며, 리뷰어 개정 회차에서 같은 방법으로 재측정할 수 있다(블록 단위 추출 → diff).
 
+## 골든 러너 운용 (실행·대기·판정)
+
+> `AGENTS.md` 「Hook 골든 회귀」가 지목하는 정본이다. **이 절을 읽지 않고 돌리면 완주하지 않는다** — 과거 "환경상 실행 불가"로 Phase F-2를 갈음한 사례들이 전부 이 절차를 쓰지 않은 것이다.
+
+### 실행 모드 4종
+
+| 모드 | 명령 | 소요(531케이스 실측) | 용도 |
+|---|---|---|---|
+| **병렬 (기본)** | `run-hook-evals.ps1` | **약 15분**(898초·922초) | **판정 정본.** 시나리오를 12그룹으로 나눠 자식 프로세스에서 동시 실행(동시 상한 6) |
+| **순차** | `-Sequential` | **약 27분**(1,645초) | 병렬과의 등가 대조 기준 · 병렬 경로 장애 시 폴백. **판정 정본 자격은 병렬과 동일** |
+| **이어하기** | `-Resume` | 완료 그룹은 즉시 스킵(실측 3초) | 중단·kill 후 남은 그룹만. 완료 마커 없는 그룹은 판정 파일을 버리고 다시 돌린다 |
+| **부분** | `-Filter <hook명>` | 좁힌 범위만 | **개발 중 반복 확인 전용** — 판정 근거로 쓸 수 없다(아래 「골든 부분 실행의 판정 자격」의 예외 조건을 갖춘 경우만) |
+
+- **`-Filter`는 단일 문자열 콤마도 받는다**(`-Filter "a,b"`). v1.159.0 이전에는 배열 전달만 동작해 `"a,b"`가 통째로 한 이름이 되어 **매칭 0건 실패로만 드러났다**.
+- **소요 시간을 완료 판정에 쓰지 말 것** — 같은 스위트가 **19분 6초 ↔ 27분 14초로 실측**된 만큼 wall-clock 편차가 크다. 완료는 아래 `EXIT=` 마커로만 판정한다. 같은 이유로 **성능 비교는 같은 세션에서 두 모드를 연속 측정**해야 한다(교차 세션 비교는 근거가 못 된다).
+
+### 실행·대기 절차 (정본)
+
+**전경 실행도, `Start-Process`의 리다이렉트 파라미터도 쓰지 않는다.** 전자는 도구 시간 캡(Bash 10분)에 걸리고, 후자는 **`-RedirectStandardOutput` + `-NoNewWindow` 조합에서 러너가 정상 종료했는데 출력 파일이 0바이트로 남는 것이 실측됐다**(2026-08-02, 헤더조차 없어 "시작은 했는지"도 구분 불가. v1.159.0 병렬화 때 자식 12개의 `.out`이 전부 0바이트로 재현됐다). 대신 **래퍼 스크립트**에서 `*>>`로 전 스트림을 모으고 **시작 마커와 exit code를 직접 남긴다**:
+
+```powershell
+# run-golden.ps1 (임시 폴더에 생성)
+Set-Content -LiteralPath $out -Value ("START " + (Get-Date -Format 'HH:mm:ss')) -Encoding utf8NoBOM
+Set-Location -LiteralPath $repo
+$env:CLAUDE_HARNESS_ALLOW_SECRET = $null    # 러너도 내부에서 해제하지만 래퍼에서도 지운다(이중 방어)
+& pwsh -NoProfile -ExecutionPolicy Bypass -File $runner *>> $out
+Add-Content -LiteralPath $out -Value ("EXIT=" + $LASTEXITCODE + " END " + (Get-Date -Format 'HH:mm:ss'))
+```
+```
+Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','"<래퍼 경로>"' -WindowStyle Minimized
+```
+
+- **경로 인자는 큰따옴표로 감쌀 것** — `Start-Process -ArgumentList`는 배열 요소를 공백으로 이어 붙이기만 하고 자동 인용을 하지 않아, 이 repo처럼 경로에 공백이 있으면(`…\Personal Project\…`) `-File D:\Personal`로 잘린다. 증상이 "아무것도 시작되지 않았다"로만 나타나 원인이 보이지 않는다.
+- 그 뒤 **`Monitor` 도구**로 기다린다 — `until grep -q "EXIT=" <out>; do sleep 30; done` + `timeout_ms: 3600000`(60분). **Bash 폴링은 10분 캡에 끊기지만 Monitor는 무관.**
+- **판정은 ASCII `EXIT=`로 한다**(한글 `결과:` 아님) — `*>>`는 코드페이지를 타 한글이 깨진다. 결과 라인은 완료 후 `Get-Content -Encoding UTF8`로 읽는다.
+- **러너는 판정을 끝에 일괄 출력**하므로 실행 중 파일은 START 마커 + 헤더뿐이다 — **"파일이 안 자란다 = 멈췄다"가 아니다.** 진행은 `Get-Process`로 PID 생존을 본다.
+
+### 커버리지 판정 — 개수만 보지 말 것
+
+**`N/N OK (FAIL 0)`은 그 자체로 무회귀의 증거가 아니다.** 병렬화 회차에 **순차 531/531 ↔ 병렬 502/502**가 나왔는데 둘 다 exit 0이었다 — 29건이 조용히 빠진 것이 개수만 보면 통과로 읽혔다(원인: 증분 기록이 `Assert-Case`만 후킹했고 일부 시나리오는 `$results.Add()`를 직접 호출한다). 러너 자체를 고칠 때는 **`[PASS|FAIL|PENDING] + 케이스명`을 정렬해 diff 0줄**을 확인한다(FAIL 라인의 출력 head는 GUID 임시 경로가 실려 실행마다 달라지므로 제외).
+
+### 구조 (v1.159.0)
+
+- `run-hook-evals.ps1` — 코디네이터(그룹 병렬 디스패치 · 판정 취합 · `-Sequential` 순차 경로)
+- `run-scenario.ps1` — 자식(그룹 1개를 자기 격리 홈에서 실행 · 판정을 JSON 라인으로 증분 기록 + 완주 시 전량 덤프)
+- `eval-common.ps1` — 공용 격리 구성·헬퍼(`Invoke-Hook`·`Assert-Case`·`New-*Json`·`Test-HookSelected`)
+- `scenarios/*.ps1` 13개 — 케이스 본문(코디네이터를 모른다). 케이스 정본은 `hook-cases.json` + 이 13개.
+- **그룹은 12개다** — 대부분 시나리오가 독립이지만 `protect-harness-installed`와 `hook-event-log`는 `$vdCache`를 공유하고 후자가 격리 홈의 이벤트 로그 적재를 관찰하므로 **한 프로세스로 묶어** 분리 전 관찰 조건을 유지한다.
+
 ## 골든 부분 실행의 판정 자격 (예외 조건)
 
 `AGENTS.md`는 *"부분 실행 결과로 검증 판정 금지 — 무인자 전체가 정본"*으로 못박는다. 근거는 커버리지다: 섹션 게이트가 hook 단위라 케이스가 서로 얽혀 있고, 부분 실행은 그 얽힘 밖을 보지 못한다.

@@ -392,7 +392,10 @@ foreach ($sub in $subs) {
     #   — 후보 10종 실측에서 오차단 조합 0건. 경로 중간 토큰(C:\rmdir\build)은 뒤가 \ 라 애초에 미매치.
     #   ⚠️ 이 변경은 '오탐 수정'이 아니라 '미탐 보완'(차단 범위 확대)이라 AGENTS.md DO NOT 조항의 문면상
     #   예외가 아니었다 — 2026-07-20 코드 검토 보고에 대한 사용자 명시 승인으로 진행했고, 그 선례를
-    #   AGENTS.md:72에 인라인 기록했다(골든 red-green + 음성 4건 오차단 0 실증 조건).
+    #   AGENTS.md 「DO NOT」의 차단 동작 변경 조항에 인라인 기록했다(골든 red-green + 음성 4건
+    #   오차단 0 실증 조건). 줄번호로 가리키지 않는 이유: 종전 `AGENTS.md:72` 표기는 그 파일이
+    #   편집될 때마다 어긋났고(실제 조항이 83행 → 78행으로 밀린 것이 대장에 등재돼 있다) 절 이름은
+    #   밀리지 않는다.
     $delMatches = [regex]::Matches($norm, '(?i)(^|\s|["''\\])(' + $delCmdAlt + ')(\s|$)')
     foreach ($dm in $delMatches) {
         # git rm 제외 (v1.98.0): git rm은 git 인덱스가 추적해 git restore로 복구 가능한 비파괴 작업 —
