@@ -526,7 +526,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     if ($isUser -and -not $userFound) {
                         $userFound = $true
                         # 사용자가 스스로 루프를 끝내거나 범위를 한정했으면 정상 종료다.
-                        #   'T<N>만'은 SKILL.md '재개 진입'이 명시적으로 허용하는 단일 task 실행.
+                        #   'T<N>만'은 '재개 진입'이 명시적으로 허용하는 단일 task 실행(정본: implement-task references/recovery.md).
                         #   세션 전환 어휘(v1.149.0): **사용자가 먼저** 새 세션·/clear를 꺼낸 대화에서
                         #   그 응답을 ③으로 차단하면, 이 검사에서 가장 위험한 오작동인 "사용자 의사
                         #   무시"가 된다. 유형 구분 없는 공통 조건이라 ②에도 함께 적용되는데, 그것도
@@ -581,7 +581,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
 
     if ($loopOpen -and $loopSkill -and $stopKind -and $userFound -and (-not $userStop)) {
 
-        # 조건 ② 교차 확인: 체크박스는 갱신 누락이 가능한 최약 신호다(SKILL.md '재개 진입' —
+        # 조건 ② 교차 확인: 체크박스는 갱신 누락이 가능한 최약 신호다('재개 진입' 정본: references/recovery.md —
         #   "세 신호가 어긋나면 git log를 신뢰"). 미완료로 표시된 task 중 완료 커밋(T<N>:)이
         #   없는 것이 하나라도 있어야 실제 미완료로 본다. 조회는 200건으로 상한(hook 10초 타임아웃).
         $openNums = New-Object System.Collections.Generic.List[string]

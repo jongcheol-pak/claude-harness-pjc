@@ -32,7 +32,7 @@
 | 루프 실패 | Review subagent가 동일 이슈(BLOCKER/MAJOR, RECURRING 태그 포함)를 3회 연속 지적 |
 | 루프 실패 | 같은 task의 리뷰 지적(BLOCKER/MAJOR) 수정 사이클이 누적 5회 (매번 다른 지적이어도 — 무한 수정 루프 방지) |
 | 루프 실패 | 빌드/테스트 5회 연속 실패, 원인 미상 |
-| **루프 실패** | **같은 지점에 리뷰어 `[CONFLICT]`(이전 라운드 지적과 상충) 2회** — 메인의 채택/유지 판정으로도 수렴하지 않는다는 신호이므로 사용자 판단을 받는다. 새 상한 값이 아니라 checkpoint 복구와 **같은 2**이며, 계수는 `## Retry Ledger`에 영속화한다(정본 SKILL.md V-5 `[CONFLICT]` 수신 절차) |
+| **루프 실패** | **같은 지점에 리뷰어 `[CONFLICT]`(이전 라운드 지적과 상충) 2회** — 메인의 채택/유지 판정으로도 수렴하지 않는다는 신호이므로 사용자 판단을 받는다. 새 상한 값이 아니라 checkpoint 복구와 **같은 2**이며, 계수는 `## Retry Ledger`에 영속화한다(정본 `references/recovery.md` 「리뷰 결과 처리 (재리뷰 범위 · 이력 전달 · CONFLICT · incomplete · 이의)」) |
 | 범위 초과 | 변경이 plan.md에 없는 모듈로 번짐 |
 | 파괴적 작업 | force push, history rewrite, 데이터·파일·대량 삭제(DB DROP/TRUNCATE·WHERE 없는 DELETE/UPDATE·스키마 삭제·migration reset, rm -rf 등 재귀·대량 또는 plan에 없는 파일/디렉터리 삭제, plan에 없는 대량 코드 삭제), 권한·보안 설정 변경. **history rewrite는 공유·push된 이력 대상** — 로컬 미push 작업 브랜치의 Phase D ③ pre-review 커밋 amend는 해당 없음(amend에 한정, 다른 항목으로 확대 해석 금지) |
 | 외부 의존 | 새 라이브러리·외부 서비스·인증정보 도입 필요 |

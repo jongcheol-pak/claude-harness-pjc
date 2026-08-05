@@ -60,16 +60,67 @@ def build_workspace(kind, dest):
 
     kind='with_plan'이면 미완료 task가 있는 plan.md를 둔다 — implement-task는 '승인된 plan이
     이미 있을 때만' 발동하므로, plan 유무가 곧 트리거 조건의 일부다.
+
+    kind='no_agents_md'면 AGENTS.md를 만들지 않는다 — bootstrap-agents-md는 **그 파일의 부재**가
+    발동 조건이라, AGENTS.md가 있는 워크스페이스에서는 발동하지 않는 것이 정상이다(그 상태로
+    측정하면 "발동 안 함"이 스킬 결함이 아니라 픽스처 결함이 된다).
+
+    kind='ddd_project'·'xaml_project'는 **그 스킬의 발동 조건이 프로젝트 성격**이라 따로 만든다.
+    `add-domain-service`는 description이 "projects without a Domain/Application layer split
+    (single-project apps, scripts...)"를 명시적 제외로 두고, `add-viewmodel`은 "non-XAML stacks"를
+    제외한다 — 기본 워크스페이스(Python 단일 스크립트)로 재면 **미발동이 정상**이라 그 수치는
+    스킬 트리거 품질이 아니라 픽스처 불일치를 잰 것이 된다(no_agents_md와 같은 이유).
     """
     os.makedirs(dest, exist_ok=True)
-    with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(
-            "# AGENTS.md\n\n"
-            "## Stack\n- Python 3 단일 스크립트.\n\n"
-            "## Build & Test\n- Build: `python -m py_compile src/sample.py`\n"
-            "- Test: 없음\n\n"
-            "## Plan Location\n- 단일 plan: `plan.md`\n"
-        )
+    if kind == "ddd_project":
+        for sub in ("src/Domain/Orders", "src/Application/Orders", "src/Infrastructure"):
+            os.makedirs(os.path.join(dest, *sub.split("/")), exist_ok=True)
+        with open(os.path.join(dest, "src", "Domain", "Orders", "Order.cs"),
+                  "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("namespace Shop.Domain.Orders;\n\n"
+                     "public sealed class Order\n{\n"
+                     "    public Guid Id { get; init; }\n"
+                     "    public decimal Amount { get; private set; }\n}\n")
+        with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(
+                "# AGENTS.md\n\n"
+                "## Stack\n- .NET 8 / C# 12. **DDD 레이어 분리**(Domain · Application · Infrastructure).\n"
+                "- 비즈니스 로직은 Domain 레이어에 둔다. DI는 Microsoft.Extensions.DependencyInjection.\n\n"
+                "## Build & Test\n- Build: `dotnet build`\n- Test: `dotnet test`\n\n"
+                "## Plan Location\n- 단일 plan: `plan.md`\n"
+            )
+        return
+    if kind == "xaml_project":
+        for sub in ("Views", "ViewModels"):
+            os.makedirs(os.path.join(dest, sub), exist_ok=True)
+        with open(os.path.join(dest, "ViewModels", "MainViewModel.cs"),
+                  "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("using CommunityToolkit.Mvvm.ComponentModel;\n\n"
+                     "namespace App.ViewModels;\n\n"
+                     "public partial class MainViewModel : ObservableObject\n{\n"
+                     "    [ObservableProperty]\n    private string title = \"Home\";\n}\n")
+        with open(os.path.join(dest, "App.csproj"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write('<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n'
+                     "    <UseWinUI>true</UseWinUI>\n  </PropertyGroup>\n</Project>\n")
+        with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(
+                "# AGENTS.md\n\n"
+                "## Stack\n- **WinUI 3** (Windows App SDK) / C#. MVVM은 **CommunityToolkit.Mvvm**.\n"
+                "- View는 `Views/`, ViewModel은 `ViewModels/`에 둔다.\n\n"
+                "## Build & Test\n- Build: `dotnet build`\n- Test: 없음\n\n"
+                "## Plan Location\n- 단일 plan: `plan.md`\n"
+            )
+        return
+
+    if kind != "no_agents_md":
+        with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(
+                "# AGENTS.md\n\n"
+                "## Stack\n- Python 3 단일 스크립트.\n\n"
+                "## Build & Test\n- Build: `python -m py_compile src/sample.py`\n"
+                "- Test: 없음\n\n"
+                "## Plan Location\n- 단일 plan: `plan.md`\n"
+            )
     os.makedirs(os.path.join(dest, "src"), exist_ok=True)
     with open(os.path.join(dest, "src", "sample.py"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(
@@ -342,8 +393,10 @@ def run_suite(cases, isolation, model, out_dir, run_id):
     """한 격리 모드로 전 케이스를 돌리고 결과 JSON을 저장한 뒤 요약을 반환한다."""
     config_dir = prepare_isolated_config() if isolation == "isolated" else None
     tmp_root = tempfile.mkdtemp(prefix="pjc-eval-ws-")
+    # 케이스가 실제로 쓰는 종류만 만든다 — 케이스 파일에 새 workspace가 추가돼도
+    # 이 목록을 함께 고칠 필요가 없다(하드코딩 목록은 곧 조용한 KeyError다).
     workspaces = {}
-    for kind in ("with_plan", "no_plan"):
+    for kind in sorted({c["workspace"] for c in cases}):
         path = os.path.join(tmp_root, kind)
         build_workspace(kind, path)
         workspaces[kind] = path

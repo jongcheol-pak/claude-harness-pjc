@@ -292,3 +292,24 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 ## Open Questions
 - [ ] Q1: <질문> (사용자 답변 후 plan 갱신)
 ```
+
+## (plan-feature Step 5) 긴 plan 분할 권고 — 제시 문안과 분할 규약
+
+task가 **12개를 초과**하면 사용자에게 분할 여부를 묻는다. **task 수는 질문을 띄우는 조건일 뿐 분할 사유가 아니며, 기본값은 A다** — 수 기준을 쓰는 이유는 세면 끝나 판정이 세션마다 흔들리지 않기 때문이고(결합도 같은 주관 기준은 같은 plan에 다른 답을 낸다), 분할이 맞는지는 아래 B 조건으로 사용자가 판단한다.
+
+```
+이 plan은 <N>개 task로 큽니다. 분할 여부를 선택해 주세요.
+
+A) 그대로 진행 (기본) — 단일 plan은 컨텍스트가 압축돼도 이어집니다:
+   Progress Log + Phase Ledger + git log 기반 완료 판정으로 재개가 보장됩니다.
+B) 2개 plan으로 분할 (앞부분 / 뒷부분)
+   → part1 결과를 보고 part2 방향을 바꿀 여지가 있거나,
+     두 덩어리의 경계가 자연스러울 때만 유리합니다.
+     비용: part 경계에서 앞 세션의 암묵지가 유실되고(핸드오프 섹션으로도
+     열화 회수), Phase F/G 완결 검증이 part별로 분절됩니다.
+   → 첫 plan(part1) 완료 후 둘째 plan(part2) 별도 실행
+```
+
+사용자가 A를 택하면 그대로 진행하되, implement-task가 Progress Log를 적극 활용.
+
+**B(분할) 선택 시 규약** (드문 경로 — 둘째 plan 망각·번호 충돌·절반 구현 오판 방지): 각 분할 plan은 **T1부터 재번호**(독립 실행 — implement-task "첫 실행 T1" 전제와 정합), 저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적(`Plan Location: plan.md` 덮어쓰기여도 override), 상호 포인터(`**다음 plan**:`/`**이전 plan**:` — implement-task(분할 plan 호출)·plan-completion-reviewer·plan-reviewer(항목 12-a의 PRD Coverage 분할 스코프)가 이 표식으로 분할을 인지)와 Goal 범위 한정(`**전체 목표**:` 별도 줄 + Deferred/Next Steps에 다음 part 상기), 시작 part는 경로 명시 호출. **분할 시 두 part plan 파일을 동시 작성한다** — Step 7.5의 합집합 전수 검증과 plan-reviewer 12-a의 "다음 part 대응 task 실재" 확인이 두 파일의 존재를 전제하므로, part2를 나중에 쓰면 이 검증들이 성립하지 않는다. **전체 규약·템플릿(위치 가이드·분할 포인터·Goal 범위)은 이 파일의 해당 절이 정본이다.**
