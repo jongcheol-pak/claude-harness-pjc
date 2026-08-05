@@ -482,7 +482,7 @@ T<N>: <한 줄 요약>
 Type: <A/B/C/D>
 Build: <명령> → OK
 Tests: <X/Y passed>
-Review: spec OK (prefilter: <PASS/ESCALATE→C격상> — Type B만, 그 외 필드 생략), quality <OK/SKIPPED>
+Review: spec OK (prefilter: <PASS/ESCALATE→C격상> — Type B만, 그 외 필드 생략), quality <OK/SKIPPED> <(재리뷰를 생략·축소했으면 그 판정 근거 — 증분 재리뷰 표)>
 Caller-recheck: <확인한 심볼 수>개 심볼, 누락 0
 Self-honesty: PASS
 ```
