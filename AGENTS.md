@@ -69,7 +69,7 @@
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
 ├── docs/
-│   ├── harness-conventions.md          # hook 출력 규약 상세 (조건부 차단의 정본 — Conventions에서 포인터)
+│   ├── harness-conventions.md       # 하니스 전역 규약 상세 (hook 차단·검증 매핑·문서 예산·리뷰어 각주의 정본)
 │   ├── prd.md
 │   └── plans/deferred.md            # 미처리 Deferred 단일 대장
 ├── validate.ps1                     # 설치본 검증
