@@ -119,12 +119,17 @@ def check_reviewer_footnote(conv):
     # 리뷰어 이름도 문서에서 읽는다 — 코드에 목록을 박으면 5번째 리뷰어가 생겨도
     # 조용히 4종만 검사한다(acceptance ③의 하드코딩 금지가 겨냥하는 바로 그 실패).
     # 절 첫 문단의 `(...)` 안 백틱 목록이 그 정의다.
-    nm = re.search(r"리뷰어 \d+종\(([^)]+)\)", sec)
+    nm = re.search(r"리뷰어 (\d+)종\(([^)]+)\)", sec)
     if not nm:
         die("「리뷰어 4종 공통 규약」에서 리뷰어 이름 목록(첫 문단 괄호)을 추출하지 못함")
-    files = sorted(set(re.findall(r"`([a-z][a-z-]+-reviewer)`", nm.group(1))))
+    declared = int(nm.group(1))
+    files = sorted(set(re.findall(r"`([a-z][a-z-]+-reviewer)`", nm.group(2))))
     if not files:
         die("리뷰어 이름 목록에서 이름을 하나도 추출하지 못함 (표기가 바뀌었는지 확인)")
+    # 선언한 "N종"과 실제 나열된 이름 수가 어긋나면 문서 자신이 모순이다 — 하드코딩을
+    # 걷어내며 이 자기정합 검사까지 함께 잃지 않도록 남긴다(개수는 문서가 정한다).
+    if len(files) != declared:
+        die("리뷰어 이름 수 불일치 — 선언 %d종 / 나열 %d개(%s)" % (declared, len(files), files))
     issues = []
     for name in files:
         p = os.path.join(ROOT, "plugins", "pjc", "agents", name + ".md")
@@ -161,8 +166,12 @@ def check_pointer_reachability():
     # 창을 넓게 잡으면(초기 구현 40자) 경로가 나열된 문장과 그 뒤의 무관한 「…」이 묶여
     # 오탐이 난다 — 실제로 "소비자는 `a.md`·`b.md` 둘이 더 있었다. 남은 것은 「X」 규약"이
     # 한 포인터로 잡혔다. 정당한 포인터는 경로 직후 조사·공백 몇 자 안에 「」가 온다.
-    # `·`(경로 나열)와 `**`(강조 경계)가 사이에 끼면 다른 문장이므로 제외한다.
-    pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n·*]{0,12})「([^」\n]{2,60})」")
+    #
+    # ⚠ 배제 문자를 늘리지 말 것. 한때 `·`와 `*`를 배제했더니 이 문서군에서 흔한
+    # `` `경로`의 **「앵커」** `` 볼드-랩 스타일이 **매치 자체에서 빠져 무음 누락**됐다
+    # (정당한 포인터 2건이 `[NOTE]`에도 안 잡히고 사라졌다 — 검사 축소가 침묵으로 나타난 사례).
+    # 12자 창만으로 위 오탐은 이미 걸러진다(그 문장은 경로에서 「」까지 12자를 훨씬 넘는다).
+    pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,60})」")
     heading_cache = {}
     issues, checked, skipped = [], 0, []
 
@@ -280,6 +289,16 @@ def check_deferred_stats(ledger):
 
 
 def main():
+    # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
+    # 검증 매핑에 등록된 명령은 `python <이 파일>`이라 환경변수가 붙지 않으므로, 스스로 UTF-8로
+    # 재설정하지 않으면 **매 실행이 크래시해 검사 자체가 성립하지 않는다**(개발 중 `PYTHONUTF8=1`을
+    # 붙여 돌리면 이 결함이 보이지 않는다 — 실제로 그렇게 놓쳤다).
+    # 자매 스크립트 `skills/llm-wiki/evals/check_consistency.py`가 쓰는 것과 같은 패턴이다.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError):
+        pass  # 재설정 불가 환경(파이프 등)에서는 그대로 진행
+
     conv = read(CONV_MD)
     ledger = read(LEDGER_MD)
     impl = read(IMPL_MD)
