@@ -178,7 +178,8 @@ function Add-EvalResult {
     #   30분대 실행이 중단·kill되면 그때까지의 판정이 통째로 사라져 재실행이 곧 전량 재소요였다
     #   (백그라운드 kill로 프로세스가 동반 사망한 것이 2회 관측됐다).
     # **화면 출력은 하지 않는다** — 종전 러너가 판정을 메모리에 모아 맨 끝에 일괄 출력하는 동작을
-    #   그대로 보존한다(AGENTS.md의 골든 운용 안내도 "실행 중 파일은 START 마커 + 헤더뿐"을 전제한다).
+    #   그대로 보존한다(`docs/harness-conventions.md` 「골든 러너 운용」의 "실행 중 파일은 START 마커 +
+    #   헤더뿐"이 이 동작을 전제한다 — v1.159.0 T7이 그 서술을 AGENTS.md에서 그 문서로 옮겼다).
     #   출력 시점을 바꾸면 순차·병렬 등가 대조에서 형식이 어긋난다.
     param([bool]$Ok, [string]$Line, [string]$Name)
     $script:results.Add(@{ ok = $Ok; line = $Line })

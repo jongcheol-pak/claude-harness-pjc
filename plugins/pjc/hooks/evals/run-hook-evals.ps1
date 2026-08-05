@@ -79,10 +79,34 @@ $scenarioGroups = @(
 )
 
 Write-Host "== pjc hook 골든 회귀 =="
+
+# ---- 필터 정규화 + 이름 검증 (코디네이터에서 선행) ----
+# 정규화는 eval-common과 같은 규칙이다(단일 문자열 'a,b'도 나눈다). **코디네이터가 먼저 하는 이유는 둘**:
+#   ① -Resume 스코프 각인(아래)에 정규화된 집합이 필요하다.
+#   ② 병렬 경로는 자식을 숨김 창으로 띄우고 출력을 캡처하지 않으므로(0바이트 리다이렉트 실측 때문),
+#      eval-common이 내는 "[WARN] 알 수 없는 필터 이름" 안내가 사용자에게 도달하지 못한다 — 오타를
+#      냈을 때 "매칭 0건 → FAIL" 가드가 실패로 잡아주긴 하지만 **어느 이름이 왜 안 맞는지 알 수 없다.**
+#      그 진단을 여기서 되살린다(병렬화로 없앤 기존 출력의 복구).
+$script:NormalizedFilter = $null
 if ($Filter -and @($Filter).Count) {
-    # 단일 문자열 'a,b'도 나눠 표시한다(eval-common의 정규화와 같은 규칙)
-    $shown = @($Filter | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-    Write-Host "⚠ 부분 실행 모드 (-Filter: $($shown -join ', ')) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
+    $script:NormalizedFilter = @(
+        $Filter |
+            ForEach-Object { $_ -split ',' } |
+            ForEach-Object { ($_ -replace '\.ps1$', '').Trim().ToLowerInvariant() } |
+            Where-Object { $_ }
+    )
+    # 이름 목록은 eval-common과 같은 값이어야 한다 — 갈리면 한쪽만 경고를 내 진단이 어긋난다.
+    $knownFilterNames = @(
+        'block-destructive', 'protect-harness', 'require-plan-for-write', 'require-task-checkbox',
+        'post-write-checks', 'require-evidence', 'warn-external-ops', 'suggest-agents-record',
+        'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'session-context', 'hook-event-log'
+    )
+    foreach ($f in $script:NormalizedFilter) {
+        if ($knownFilterNames -notcontains $f) {
+            Write-Host "[WARN] 알 수 없는 필터 이름: '$f' (유효: $($knownFilterNames -join ', '))"
+        }
+    }
+    Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:NormalizedFilter -join ', ')) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
 }
 
 # =====================================================================
@@ -130,10 +154,34 @@ if ($Sequential) {
 if (-not $StateDir) {
     $StateDir = Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-evals-state'
 }
+
+# ---- -Resume 상태의 유효 범위 각인 (거짓 green 차단) ----
+# **왜 필요한가**: 상태를 그룹명만으로 식별하면 `-Resume`이 **다른 조건에서 만든 판정을 재사용**한다.
+#   실측 사고: `-Filter "stateless,pre-bash-dispatch"` 로 2그룹만 돌린 뒤 **무필터 `-Resume`** 을 실행하자
+#   12그룹을 전부 "완료"로 건너뛰고 `112/112 OK (FAIL 0)` exit 0을 냈다 — **419케이스가 조용히 빠졌는데
+#   부분 실행 경고조차 없어** 문서화된 판정 절차(EXIT 마커 + 결과 줄)로는 구분이 불가능했다.
+#   커밋이 달라진 경우도 같다: 커밋 A에서 완주 → 커밋 B에서 중단 → `-Resume`이면 A의 판정을 섞는다.
+# **해법은 상태를 스코프별로 격리하는 것**이다 — 필터 집합과 HEAD를 디렉터리 이름에 각인하면 조건이
+#   다른 상태는 **애초에 보이지 않아** 스킵 판정 자체가 성립하지 않는다(`Get-GroupFile`이 그룹 구성을
+#   파일명에 담아 낡은 상태를 무효화하는 것과 같은 방식 — 검사를 추가하는 것보다 구조가 단순하다).
+$scopeFilter = if ($script:NormalizedFilter) { ($script:NormalizedFilter | Sort-Object) -join ',' } else { 'all' }
+$scopeHead = 'nogit'
+try {
+    $sha = & git -C $evalsDirTop rev-parse HEAD 2>$null
+    if ($LASTEXITCODE -eq 0 -and $sha) { $scopeHead = ([string]$sha).Trim().Substring(0, 12) }
+} catch { }
+$scopeKey = "filter=$scopeFilter|head=$scopeHead"
+# 디렉터리 이름은 짧게 유지하되 사람이 스코프를 확인할 수 있어야 하므로 해시 + scope.txt를 함께 둔다.
+$scopeHash = [System.BitConverter]::ToString(
+    [System.Security.Cryptography.MD5]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($scopeKey))
+).Replace('-', '').Substring(0, 10).ToLowerInvariant()
+$StateDir = Join-Path $StateDir $scopeHash
 New-Item -ItemType Directory -Path $StateDir -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $StateDir 'scope.txt') -Value $scopeKey -Encoding utf8NoBOM
 
 function Get-GroupFile([string[]]$Group) {
     # 그룹 이름을 파일명으로 — 그룹 구성이 바뀌면 파일명도 바뀌므로 낡은 -Resume 상태를 자동으로 무시한다.
+    # (필터·HEAD 범위는 위 $StateDir 스코프 격리가 담당한다.)
     return (Join-Path $StateDir ((($Group -join '+') -replace '[^\w+-]', '') + '.jsonl'))
 }
 
@@ -166,18 +214,24 @@ foreach ($g in $scenarioGroups) {
     if ($Filter -and @($Filter).Count) { $argList += @('-Filter', ($Filter -join ',')) }
 
     # 동시 실행 상한 — 슬롯이 빌 때까지 기다린다.
+    # 폴링 400ms: 그룹 하나가 최소 수십 초라 이 간격이 총 시간에 미치는 영향은 무시할 수 있고,
+    # 더 짧게 잡으면 12그룹 대기 동안 폴링 자체가 CPU를 잠식해 자식과 경합한다.
     while (@($jobs | Where-Object { -not $_.Proc.HasExited }).Count -ge $MaxParallel) {
         Start-Sleep -Milliseconds 400
     }
     # 출력 리다이렉트는 쓰지 않는다 — `-RedirectStandardOutput` + `-NoNewWindow` 조합이 정상 종료에도
-    # 0바이트 파일을 남기는 것이 이 환경에서 실측됐다(AGENTS.md 골든 운용 항목). 진단이 필요한 정보는
+    # 0바이트 파일을 남기는 것이 이 환경에서 실측됐다(`docs/harness-conventions.md` 「골든 러너 운용」).
+    # 진단이 필요한 정보는
     # 자식이 판정 파일에 직접 쓰므로(예외도 FAIL 레코드로 기록) stdout을 신뢰하지 않는다.
     $proc = Start-Process pwsh -ArgumentList $argList -PassThru -WindowStyle Hidden
     $jobs += [pscustomobject]@{ Group = ($g -join '+'); File = $gf; Proc = $proc }
 }
 
 if ($skipped.Count) {
-    Write-Host ("[RESUME] 완료된 그룹 {0}개 건너뜀: {1}" -f $skipped.Count, ($skipped -join ', '))
+    # 스코프를 함께 낸다 — 무엇을 재사용했는지가 보이지 않으면 "몇 그룹 건너뜀"만으로는 그 판정이
+    # 이번 조건에서 유효한지 알 수 없다(스코프 격리가 잘못된 재사용을 이미 막지만, 재사용 사실 자체는
+    # 판정 근거로 남아야 한다).
+    Write-Host ("[RESUME] 완료된 그룹 {0}개 건너뜀 (스코프 {1}): {2}" -f $skipped.Count, $scopeKey, ($skipped -join ', '))
 }
 
 foreach ($j in $jobs) { $j.Proc.WaitForExit() }
@@ -222,7 +276,10 @@ foreach ($g in $scenarioGroups) {
         # 자식이 죽어 완료 마커가 없으면 **그 그룹을 FAIL로 보고하고 나머지는 완주**한다 —
         # 부분 결과를 조용히 통과시키면 커버리지가 줄어든 것이 초록으로 보인다.
         $deadGroups += $name
-        $allResults.Add(@{ ok = $false; line = "[FAIL] 그룹 $name — 완주하지 못했다(완료 마커 없음, 판정 $($allResults.Count)건까지 기록됨)" })
+        # 이 그룹이 남긴 판정 수만 센다 — 누적 전체($allResults.Count)를 쓰면 앞 그룹들의 케이스가
+        # 섞여 그 그룹의 진행이 실제보다 많아 보인다(진단 문구가 오히려 오해를 만든다).
+        $partial = @($lines | Where-Object { $_.Trim() -and $_ -notmatch '"(done|final)"\s*:\s*true' }).Count
+        $allResults.Add(@{ ok = $false; line = "[FAIL] 그룹 $name — 완주하지 못했다(완료 마커 없음, 이 그룹 판정 $partial건까지 기록됨)" })
     }
 }
 
