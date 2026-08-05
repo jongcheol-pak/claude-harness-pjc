@@ -87,25 +87,13 @@ Write-Host "== pjc hook 골든 회귀 =="
 #      eval-common이 내는 "[WARN] 알 수 없는 필터 이름" 안내가 사용자에게 도달하지 못한다 — 오타를
 #      냈을 때 "매칭 0건 → FAIL" 가드가 실패로 잡아주긴 하지만 **어느 이름이 왜 안 맞는지 알 수 없다.**
 #      그 진단을 여기서 되살린다(병렬화로 없앤 기존 출력의 복구).
-$script:NormalizedFilter = $null
-if ($Filter -and @($Filter).Count) {
-    $script:NormalizedFilter = @(
-        $Filter |
-            ForEach-Object { $_ -split ',' } |
-            ForEach-Object { ($_ -replace '\.ps1$', '').Trim().ToLowerInvariant() } |
-            Where-Object { $_ }
-    )
-    # 이름 목록은 eval-common과 같은 값이어야 한다 — 갈리면 한쪽만 경고를 내 진단이 어긋난다.
-    $knownFilterNames = @(
-        'block-destructive', 'protect-harness', 'require-plan-for-write', 'require-task-checkbox',
-        'post-write-checks', 'require-evidence', 'warn-external-ops', 'suggest-agents-record',
-        'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'session-context', 'hook-event-log'
-    )
-    foreach ($f in $script:NormalizedFilter) {
-        if ($knownFilterNames -notcontains $f) {
-            Write-Host "[WARN] 알 수 없는 필터 이름: '$f' (유효: $($knownFilterNames -join ', '))"
-        }
-    }
+# 이름 목록·정규화 규칙은 `filter-spec.ps1`이 단일 정본이다 — 여기와 eval-common이 각자 복제하면
+# 정규화가 갈릴 때 서로 다른 실제 필터가 같은 `-Resume` 스코프로 매핑돼 그 가드가 무력화된다.
+. (Join-Path $evalsDirTop 'filter-spec.ps1')
+
+$script:NormalizedFilter = Get-NormalizedFilter -Filter $Filter
+if ($script:NormalizedFilter) {
+    Write-UnknownFilterWarning -NormalizedFilter $script:NormalizedFilter
     Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:NormalizedFilter -join ', ')) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
 }
 
@@ -170,7 +158,30 @@ try {
     $sha = & git -C $evalsDirTop rev-parse HEAD 2>$null
     if ($LASTEXITCODE -eq 0 -and $sha) { $scopeHead = ([string]$sha).Trim().Substring(0, 12) }
 } catch { }
-$scopeKey = "filter=$scopeFilter|head=$scopeHead"
+# **검증 자산의 내용 해시도 각인한다.** HEAD만으로는 *"전체 실행 → kill → 코드 수정 → `-Resume`"* 을
+# 구분하지 못한다 — 커밋이 그대로이므로 낡은 코드로 낸 판정이 재사용되고 스코프 줄은 유효한 것처럼
+# 보인다(개발 중 흔한 시퀀스라 실해가 크다). 대상은 판정을 바꿀 수 있는 것 전부: 러너 3종 · 시나리오 ·
+# 케이스 JSON · hook 스크립트. 파일 수십 개의 MD5라 비용은 실행당 수십 ms다.
+$assetHash = 'none'
+try {
+    $assetFiles = @(
+        Get-ChildItem -LiteralPath $evalsDirTop -Filter *.ps1 -File
+        Get-ChildItem -LiteralPath (Join-Path $evalsDirTop 'scenarios') -Filter *.ps1 -File -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath $evalsDirTop -Filter *.json -File -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
+    ) | Sort-Object FullName
+    $md5 = [System.Security.Cryptography.MD5]::Create()
+    $acc = New-Object System.Text.StringBuilder
+    foreach ($f in $assetFiles) {
+        [void]$acc.Append($f.Name).Append(':').Append(
+            [System.BitConverter]::ToString($md5.ComputeHash([System.IO.File]::ReadAllBytes($f.FullName))).Replace('-', '')
+        ).Append(';')
+    }
+    $assetHash = [System.BitConverter]::ToString(
+        $md5.ComputeHash([Text.Encoding]::UTF8.GetBytes($acc.ToString()))
+    ).Replace('-', '').Substring(0, 10).ToLowerInvariant()
+} catch { }
+$scopeKey = "filter=$scopeFilter|head=$scopeHead|assets=$assetHash"
 # 디렉터리 이름은 짧게 유지하되 사람이 스코프를 확인할 수 있어야 하므로 해시 + scope.txt를 함께 둔다.
 $scopeHash = [System.BitConverter]::ToString(
     [System.Security.Cryptography.MD5]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($scopeKey))

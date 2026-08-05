@@ -55,28 +55,12 @@ $results = New-Object System.Collections.Generic.List[object]
 # ---- -Filter 정규화 + 섹션 선택 헬퍼 ----
 # 섹션 태그 원칙: 각 시나리오 섹션은 자기가 실행하는 hook 전부를 태그로 갖고, 필터에 하나라도
 # 걸리면 섹션 전체를 실행한다(소량 초과 실행 허용 — 케이스 단위 정밀 필터보다 구조 단순 우선).
-$script:FilterSet = $null
-if ($EvalFilter -and @($EvalFilter).Count) {
-    # 단일 문자열로 'a,b'가 들어오는 경로를 여기서 함께 푼다 — PowerShell은 [string[]] 파라미터에
-    # 문자열 하나를 넘기면 콤마를 나누지 않아 'a,b'가 통째로 한 이름이 됐고, 그러면 어느 필터에도
-    # 걸리지 않아 "매칭 0건" 실패로만 드러났다(2026-07-10 등재).
-    $script:FilterSet = @(
-        $EvalFilter |
-            ForEach-Object { $_ -split ',' } |
-            ForEach-Object { ($_ -replace '\.ps1$', '').Trim().ToLowerInvariant() } |
-            Where-Object { $_ }
-    )
-    $knownFilterNames = @(
-        'block-destructive', 'protect-harness', 'require-plan-for-write', 'require-task-checkbox',
-        'post-write-checks', 'require-evidence', 'warn-external-ops', 'suggest-agents-record',
-        'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'session-context', 'hook-event-log'
-    )
-    foreach ($f in $script:FilterSet) {
-        if ($knownFilterNames -notcontains $f) {
-            Write-Host "[WARN] 알 수 없는 필터 이름: '$f' (유효: $($knownFilterNames -join ', '))"
-        }
-    }
-}
+# 이름 목록·정규화 규칙의 정본은 `filter-spec.ps1` — 복제하면 정규화가 갈릴 때 코디네이터의
+# `-Resume` 스코프 키와 실제 게이트가 어긋난다(서로 다른 필터가 같은 스코프로 매핑되는 경로).
+. (Join-Path $evalsDir 'filter-spec.ps1')
+
+$script:FilterSet = Get-NormalizedFilter -Filter $EvalFilter
+if ($script:FilterSet) { Write-UnknownFilterWarning -NormalizedFilter $script:FilterSet }
 
 function Test-HookSelected {
     # $Hooks: 이 케이스/섹션이 실행하는 hook 기본명 목록. 필터 미지정이면 항상 실행.
