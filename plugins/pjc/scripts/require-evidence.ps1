@@ -568,7 +568,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     #   이 구간에서 Stop hook이 돌았다는 것 자체가 "도구 호출 없이 텍스트만 내고 turn을 끝냈다"는
     #   확정 사실이므로 문면을 볼 필요가 없다(헤더 [v1.154.0] 블록 참조).
     #   정당한 정지는 Strong 마커가 통과시킨다(개입 지점 10곳 전수 부여 — 전수 목록의 정본은
-    #   docs/hook-conventions.md. 새 개입 지점에는 마커를 함께 줄 것).
+    #   docs/harness-conventions.md. 새 개입 지점에는 마커를 함께 줄 것).
     # 위 ⑤ 억제와는 **상호배타**다($loopActiveAfterUser의 반대 값을 보므로) — 순서 무관.
     # 이미 4정규식이 유형을 특정했으면 그것을 유지한다(reason이 더 구체적이다).
     if ($loopActiveAfterUser -and -not $stopKind) {
