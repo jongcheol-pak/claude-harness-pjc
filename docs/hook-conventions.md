@@ -96,7 +96,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) |
 | `plugins/pjc/skills/implement-task/SKILL.md`의 **「🚫 금지 표현」 ②③④⑤ 절** | **Hook 골든 회귀** — hook을 한 줄도 안 고쳐도 깨질 수 있다. `hooks/evals/scenarios/require-evidence.ps1:216`의 L12 블록이 **그 SKILL.md를 열어 문구 목록을 파싱**해 hook 정규식과 대조하기 때문이다(추출 0건이면 그 자체가 FAIL). 아래 「골든 부분 실행의 판정 자격」 예외를 plan에 미리 적었다면 `-Filter require-evidence`로 갈음 가능 |
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals |
-| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」 표** | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0) |
+| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」 표** | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0) — **⚠ 그 스크립트는 아직 없다**(plan T3에서 신설). **신설 전까지 이 행은 미적용**이며, 그 구간에는 「문서 로드 예산 기준선」 표를 **손으로 갱신**하는 의무만 적용된다(그 표의 서문 참조) |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
 | 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) — 기본값 |
@@ -104,7 +104,9 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 ## 문서 로드 예산 기준선
 
-> **기계 대조 대상이다.** `plugins/pjc/evals/check-harness-consistency.py`가 이 표를 파싱해 실측과 대조하고, 어긋나면 FAIL한다. **이 표에 있는 파일을 편집한 task가 같은 task 안에서 이 표를 갱신한다** — 갱신하지 않으면 다음 검증이 FAIL한다.
+> **기계 대조 대상이다** — 단 대조기(`plugins/pjc/evals/check-harness-consistency.py`)는 **아직 없다**(하니스 개선 plan T3에서 신설 예정). 신설되면 이 표를 파싱해 실측과 대조하고 어긋나면 FAIL한다. **그 전에도 이 표는 갱신 의무의 대상이다** — 대조기가 없다고 낡은 값을 두면 신설 시점에 곧바로 FAIL하고, 그때는 어느 task가 어긋냈는지 추적이 어렵다.
+>
+> **이 표에 있는 파일을 편집한 task가 같은 task 안에서 이 표를 갱신한다.** 편집과 갱신이 같은 커밋에 있어야 값이 어긋나는 구간이 생기지 않는다 — 실제로 이 표를 신설한 task 자신이 같은 커밋에서 `implement-task/SKILL.md`를 함께 고치고 갱신을 빠뜨려 리뷰에서 잡혔다.
 >
 > **왜 재는가**: 스킬 본체(`SKILL.md`)는 발동 시 **전문이 로드**되고 리뷰어 정의는 subagent 호출마다 로드된다. `references/`는 필요할 때만 Read하므로, 조건부 절차를 그쪽으로 옮기면 상시 로드가 준다. 이 표는 그 절감이 실제로 유지되는지를 수치로 고정한다.
 >
@@ -114,7 +116,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
-| `plugins/pjc/skills/implement-task/SKILL.md` | 102,821 | 644 | 76 |
+| `plugins/pjc/skills/implement-task/SKILL.md` | 103,240 | 644 | 76 |
 | `plugins/pjc/skills/plan-feature/SKILL.md` | 76,798 | 507 | 84 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 48,483 | 213 | 80 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 25,940 | 353 | 135 |
