@@ -125,6 +125,7 @@ F-1 ~ F-6 중 어느 하나라도 결함 발견 → **추가 task 등록 후 Pha
 - BASE_SHA (implement-task 시작 전 커밋)
 - HEAD_SHA (마지막 task 완료 후 커밋)
 - AGENTS.md 위치
+- **이전 라운드 이력** (F-7 재호출일 때만 — `| 라운드 | 지적 | 심각도 | 반영 방식 |` 4열 표). `plan-completion-reviewer`의 「재리뷰 규약」이 이 표를 전제하며, 없으면 이전 BLOCKER 해소 여부를 판정할 수 없어 지적이 라운드마다 뒤집힐 수 있다. 첫 호출에는 전달하지 않는다.
 - **PRD 경로** (plan.md 상단 `**PRD**:` 줄이 있을 때) — 이 경우 F-7은 plan Goal 검토에 더해 **PRD의 FR/NFR 전수 대조**를 수행한다(plan-completion-reviewer 역할에 포함). **Phase G가 이 F-7 대조 결과를 재사용**하므로(phase-g-detail G-1), PRD가 있으면 이 전달을 빠뜨리지 않는다.
 
 F-7 검토에는 **요구 커버리지 대조**(plan `## 요구 이해` ↔ 산출물 — plan-completion-reviewer 항목 2.5)가 포함된다. **PRD 없는 plan에서 승인 게이트 이후 유일한 사후 요구 재검증 지점**이므로 생략하지 않는다(요구 이해 섹션이 없는 구 plan은 reviewer가 자동 skip).
@@ -135,7 +136,7 @@ F-7 검토에는 **요구 커버리지 대조**(plan `## 요구 이해` ↔ 산�
 - **MINOR** 있음 → plan.md follow-up에 기록하고 진행
 - **재호출 3회 연속 동일 BLOCKER** → Halt → 사용자에게 보고
 
-재진입(추가 task) 완료 후 최소 재실행 세트는 **Phase G G-2와 동형**이다 — **F-2 전체 테스트 1회 + F-7 재호출**(BLOCKER 해소 확인 — F-7은 지적 당사자이므로 G-2의 "F-7 Opus 면제"가 여기엔 적용되지 않는다). F-1~F-6 전체 반복은 불요. F-7 재호출도 **동기 호출**(`run_in_background: false`) — 결과 수신 전 진행 금지.
+재진입(추가 task) 완료 후 최소 재실행 세트는 **Phase G G-2와 동형**이다 — **F-2 전체 테스트 1회 + F-7 재호출**(BLOCKER 해소 확인 — F-7은 지적 당사자이므로 G-2의 "F-7 Opus 면제"가 여기엔 적용되지 않는다). F-1~F-6 전체 반복은 불요. F-7 재호출도 **동기 호출**(`run_in_background: false`) — 결과 수신 전 진행 금지. **재호출에는 위 전달 목록의 「이전 라운드 이력」 표를 함께 넘긴다**(진동 차단). 반환된 `### CONFLICT` 섹션은 SKILL.md V-5의 `[CONFLICT]` 수신 절차대로 소비한다 — Verdict가 OK여도 소비 전에는 통과로 보지 않는다.
 
 ## F-8. 시각 충실도·참조 정합 최종 관문 (디자인 정합·화면 이식 작업만)
 
