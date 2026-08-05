@@ -59,12 +59,18 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 `trigger-cases.json`의 `cases[]`에 `id`·`skill`·`expect`·`workspace`·`query`·`why`를 넣는다.
 
-**`workspace`는 3종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
-- `no_plan` — AGENTS.md·소스만 있는 기본 프로젝트.
+**`workspace`는 5종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
+- `no_plan` — AGENTS.md·소스만 있는 기본 프로젝트(Python 단일 스크립트).
 - `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `implement-task`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
-- `no_agents_md` — **AGENTS.md가 없는** 프로젝트. `bootstrap-agents-md`는 그 파일의 **부재**가 발동 조건이라, AGENTS.md가 있는 워크스페이스로 재면 "발동 안 함"이 스킬 결함이 아니라 **픽스처 결함**이 된다.
+- `no_agents_md` — **AGENTS.md가 없는** 프로젝트. `bootstrap-agents-md`는 그 파일의 **부재**가 발동 조건이다.
+- `ddd_project` — Domain/Application/Infrastructure 레이어 + DDD를 명시한 AGENTS.md. `add-domain-service`용.
+- `xaml_project` — Views/ViewModels + WinUI·CommunityToolkit.Mvvm을 명시한 AGENTS.md. `add-viewmodel`용.
 
-**케이스 설계 시**: 질의를 description 문구에서 그대로 베끼지 않는다 — 그러면 발동률이 아니라 **복창률**을 재게 된다. `no-trigger`는 **인접 스킬과 갈리는 경계**를 고르는 것이 가장 값지다(예: `bootstrap-agents-md`의 "AGENTS.md 새로 만들어줘" ↔ `record-project-fact`의 "AGENTS.md에 한 줄 추가해줘" — 두 방향을 모두 케이스로 두면 라우팅이 실제로 갈리는지 보인다). `why`는 러너가 읽지 않는 판정 근거이며, 케이스가 왜 그 기대값을 갖는지 후속 세션이 알 수 있게 남긴다.
+> **⚠ 워크스페이스가 스킬의 발동 조건과 어긋나면 "발동 안 함"이 스킬 결함이 아니라 픽스처 결함이 된다.** 뒤의 세 종류는 전부 그래서 생겼다 — 실제로 1차 측정에서 `add-domain-service`·`add-viewmodel`이 **0/3**이었는데, 두 스킬 description이 *"scripts·single-project apps"*·*"non-XAML stacks"*를 **명시적 제외**로 두므로 기본 워크스페이스(Python 스크립트)에서는 **미발동이 정상**이었다. 새 스킬 케이스를 추가할 때는 **그 스킬의 제외 조건부터 읽고** 워크스페이스가 거기 걸리지 않는지 확인할 것.
+
+**케이스 설계 시**: 질의를 description 문구에서 그대로 베끼지 않는다 — 그러면 발동률이 아니라 **복창률**을 재게 된다. **이것은 추정이 아니라 실측이다** — `bootstrap-agents-md` 양성 3건이 description 예시를 거의 그대로 쓴 상태에서 **3/3**이었는데, 그중 2건을 같은 의도의 자연스러운 발화로 바꾸자 **1/3**으로 떨어졌다. 두 수치의 차이가 곧 "복창으로 얻은 발동"이다.
+
+**질의에 스택·환경을 쓰지 않는다** — 그것은 워크스페이스(AGENTS.md)가 정한다. 워크스페이스가 WinUI인데 질의에 "MAUI 프로젝트에"라고 쓰면 **전제가 모순돼 미발동이 정상**이 되고, 그 FAIL은 트리거 품질과 무관하다(실제로 `vm-pos-3`이 그렇게 실패했다). `no-trigger`는 **인접 스킬과 갈리는 경계**를 고르는 것이 가장 값지다(예: `bootstrap-agents-md`의 "AGENTS.md 새로 만들어줘" ↔ `record-project-fact`의 "AGENTS.md에 한 줄 추가해줘" — 두 방향을 모두 케이스로 두면 라우팅이 실제로 갈리는지 보인다). `why`는 러너가 읽지 않는 판정 근거이며, 케이스가 왜 그 기대값을 갖는지 후속 세션이 알 수 있게 남긴다.
 
 ## rubric_eval.py
 

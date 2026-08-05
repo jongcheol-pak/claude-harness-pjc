@@ -245,7 +245,7 @@
       "id": "dsvc-pos-1",
       "skill": "pjc:add-domain-service",
       "expect": "trigger",
-      "workspace": "no_plan",
+      "workspace": "ddd_project",
       "query": "주문 금액에 쿠폰과 배송비를 적용하는 비즈니스 로직을 도메인 서비스로 추가해줘",
       "why": "description의 \"비즈니스 로직·도메인 서비스\" 트리거"
     },
@@ -253,7 +253,7 @@
       "id": "dsvc-pos-2",
       "skill": "pjc:add-domain-service",
       "expect": "trigger",
-      "workspace": "no_plan",
+      "workspace": "ddd_project",
       "query": "재고 차감 use case를 애플리케이션 레이어에 추가하고 DI 등록까지 해줘",
       "why": "\"use case 추가\" + Application 레이어 + DI — 산출물이 정확히 이 스킬 범위"
     },
@@ -261,7 +261,7 @@
       "id": "dsvc-pos-3",
       "skill": "pjc:add-domain-service",
       "expect": "trigger",
-      "workspace": "no_plan",
+      "workspace": "ddd_project",
       "query": "add a domain service that validates membership tiers",
       "why": "영문 트리거 \"add a domain service\""
     },
@@ -269,7 +269,7 @@
       "id": "dsvc-neg-1",
       "skill": "pjc:add-domain-service",
       "expect": "no-trigger",
-      "workspace": "no_plan",
+      "workspace": "ddd_project",
       "query": "확인 버튼 라벨을 '저장'으로 바꿔줘",
       "why": "순수 UI 문구 — Domain 레이어와 무관(trivial 값 치환)"
     },
@@ -277,7 +277,7 @@
       "id": "dsvc-neg-2",
       "skill": "pjc:add-domain-service",
       "expect": "no-trigger",
-      "workspace": "no_plan",
+      "workspace": "ddd_project",
       "query": "이 Order 애그리거트에 총액 계산 메서드 하나 넣어줘",
       "why": "애그리거트 내부 메서드는 도메인 서비스가 아니다 — description이 명시적으로 제외"
     },
@@ -285,7 +285,7 @@
       "id": "vm-pos-1",
       "skill": "pjc:add-viewmodel",
       "expect": "trigger",
-      "workspace": "no_plan",
+      "workspace": "xaml_project",
       "query": "WinUI 3 앱에 설정 화면을 새로 만들어줘. 테마 토글이랑 언어 선택이 들어가",
       "why": "\"새 화면\" + WinUI — description의 1차 트리거"
     },
@@ -293,7 +293,7 @@
       "id": "vm-pos-2",
       "skill": "pjc:add-viewmodel",
       "expect": "trigger",
-      "workspace": "no_plan",
+      "workspace": "xaml_project",
       "query": "WPF에서 파일 내보내기 다이얼로그 하나 추가하고 ViewModel도 같이 만들어줘",
       "why": "\"다이얼로그 추가\" + \"ViewModel 추가\" + WPF"
     },
@@ -301,15 +301,15 @@
       "id": "vm-pos-3",
       "skill": "pjc:add-viewmodel",
       "expect": "trigger",
-      "workspace": "no_plan",
-      "query": "MAUI 프로젝트에 프로필 페이지 만들어줘",
-      "why": "\"페이지 만들기\" + MAUI"
+      "workspace": "xaml_project",
+      "query": "프로필 페이지 하나 추가해줘. 아바타랑 닉네임 편집이 들어가",
+      "why": "\"페이지 만들기\" 트리거. **스택을 질의에 쓰지 않는다** — 워크스페이스가 WinUI인데 \"MAUI 프로젝트에\"라고 물으면 전제가 모순돼 미발동이 정상이 된다(초안이 그랬고 실제로 FAIL했다). 스택은 AGENTS.md가 정하고 질의는 사용자가 실제로 말하는 대로 쓴다"
     },
     {
       "id": "vm-neg-1",
       "skill": "pjc:add-viewmodel",
       "expect": "no-trigger",
-      "workspace": "no_plan",
+      "workspace": "xaml_project",
       "query": "React로 로그인 폼 컴포넌트 하나 만들어줘",
       "why": "비XAML 스택 — description이 React/web을 명시적으로 제외"
     },
@@ -317,7 +317,7 @@
       "id": "vm-neg-2",
       "skill": "pjc:add-viewmodel",
       "expect": "no-trigger",
-      "workspace": "no_plan",
+      "workspace": "xaml_project",
       "query": "기존 SettingsViewModel에서 저장이 안 되는 이유 좀 찾아줘",
       "why": "기존 ViewModel 디버깅 — pjc-systematic-debugging 영역(description이 명시)"
     },
@@ -327,23 +327,23 @@
       "expect": "trigger",
       "workspace": "no_agents_md",
       "query": "AGENTS.md 만들어줘",
-      "why": "description의 1차 트리거 — 파일 부재 상태"
+      "why": "description 예시와 같은 문구지만 **의도적으로 유지**한다 — 파일명을 직접 부르는 가장 직접적인 요청이라 실사용 빈도가 높고, description이 그 실사용 문구를 담은 것이다. 이 케이스를 빼면 '직접 지명' 경로의 커버리지가 사라진다(T6 spec M2 판정)"
     },
     {
       "id": "boot-pos-2",
       "skill": "pjc:bootstrap-agents-md",
       "expect": "trigger",
       "workspace": "no_agents_md",
-      "query": "이 프로젝트 가이드 문서를 자동으로 만들어줘. 빌드랑 테스트 방법이 들어가게",
-      "why": "\"프로젝트 가이드 문서 자동으로 만들어줘\" — description 예시 문구"
+      "query": "새로 합류한 사람이 빌드랑 테스트 방법을 바로 알 수 있게 문서 하나 만들어줘",
+      "why": "description 예시를 베끼지 않은 실사용 발화 — 파일 이름을 모르는 상태의 요청(T6 spec M2 반영)"
     },
     {
       "id": "boot-pos-3",
       "skill": "pjc:bootstrap-agents-md",
       "expect": "trigger",
       "workspace": "no_agents_md",
-      "query": "Claude가 이 프로젝트 컨벤션을 알 수 있게 설정해줘",
-      "why": "description 예시 — 파일 이름을 몰라도 발동해야 한다"
+      "query": "이 레포에 Claude가 참고할 규칙 파일이 하나도 없는데 하나 만들어 줄래",
+      "why": "파일 부재를 사용자가 인지한 형태. description 문구와 겹치지 않는다(T6 spec M2 반영)"
     },
     {
       "id": "boot-neg-1",
