@@ -94,7 +94,7 @@
 > **(참고) 승인 후 하네스 레포에서 번들을 실제로 수정할 때의 규칙** — 위키 세션이 아니라 plan-feature 승인을 거친 하네스 세션에서 적용:
 > - 규칙 번들 수정 시 frontmatter `version`을 올린다.
 > - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` §3~§4, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `references/procedures-ops.md` F-1(이 파일)에 동일 항목을 문서화한다.
-> - **이 동기 정합은 `python "<skill>/evals/check_consistency.py"`(인자 없음)로 기계 검증한다** — 세 곳(+§4 예산표·템플릿 주석·§7↔F-1 번호)의 드리프트를 손 대조 대신 자동으로 잡는다. 수동 3중 갱신에 의존하지 말고 번들 수정 후 반드시 돌린다(레포 루트 `AGENTS.md` 검증 매핑이 `llm-wiki/**` 수정 시 이 실행을 요구 — 이 포인터는 그 게이트를 절차에서도 발견 가능하게 한다).
+> - **이 동기 정합은 `python "<skill>/evals/check_consistency.py"`(인자 없음)로 기계 검증한다** — 세 곳(+§4 예산표·템플릿 주석·§7↔F-1 번호)의 드리프트를 손 대조 대신 자동으로 잡는다. 수동 3중 갱신에 의존하지 말고 번들 수정 후 반드시 돌린다(레포 루트 `AGENTS.md`가 지목하는 검증 매핑 표 — 표 본체는 `docs/hook-conventions.md` — 가 `llm-wiki/**` 수정 시 이 실행을 요구한다. 이 포인터는 그 게이트를 절차에서도 발견 가능하게 한다).
 
 #### H-3. 범위 제한 (SSOT 우선)
 - **SSOT 우선 판정**: 위키 실제 상태가 규칙과 다르면, 기본은 **규칙(SSOT)이 옳고 위키가 틀린 것**으로 본다 — 규칙을 위키에 맞추지 말고, 위키 콘텐츠를 규칙에 맞추거나(절차 B/F) 판단이 갈리면 사용자에게 확인한다. "위키가 이러니 규칙을 바꾸자"는 H-3 자기정당화 루프의 입구다.

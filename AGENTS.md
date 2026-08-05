@@ -50,16 +50,8 @@
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
 ### 검증 매핑 (task 검증 선택)
-task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 패턴에 걸치면 해당 행 전부 — 합집합). 전체 검증은 Phase F-2가 1회 보장하므로 매 task 전량 실행은 중복이다.
-
-| 변경 파일 패턴 | 필수 검증 |
-|---|---|
-| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) |
-| `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals |
-| JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
-| `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
-| 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) — 기본값 |
-| `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·Phase F-2에 포함하지 않는다**(실제 모델 호출이라 비용이 크다) |
+**표 정본은 `docs/hook-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증. task 단위 검증은 그 표에서 변경 파일에 맞는 행만 실행하고(여러 패턴이면 합집합), 전체 검증은 Phase F-2가 1회 보장한다. 표를 여기 두지 않는 이유는 이 파일의 16KB 주입 상한이다.
+같은 문서의 **「골든 부분 실행의 판정 자격」**(부분 실행으로 갈음할 수 있는 조건 — plan에 미리 명시 + 커밋 `Tests:` 범위 기재)과 **「문서 로드 예산 기준선」**(스킬·리뷰어 파일 바이트 기계 대조)도 함께 읽는다.
 
 ## Repository Structure
 ```

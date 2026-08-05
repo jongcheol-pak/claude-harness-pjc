@@ -1,8 +1,8 @@
-# hook 출력 규약 — 상세
+# hook 출력 규약 · 검증 매핑 — AGENTS.md 상세
 
-> `AGENTS.md`의 `## Conventions` → **hook 출력 규약** 항목의 상세본이다. AGENTS.md는 세션 시작 시 전문이 자동 주입되므로 **16KB 상한**(`session-context.ps1`의 `$agentsMaxBytes`)을 지켜야 하고, 그 예산에 담기지 않는 조건부 차단의 세부 조건·스캔 범위·라벨 매치 형태를 여기로 옮겼다.
+> `AGENTS.md`에서 분리된 상세본이다. AGENTS.md는 세션 시작 시 전문이 자동 주입되므로 **16KB 상한**(`session-context.ps1`의 `$agentsMaxBytes`)을 지켜야 하고, 그 예산에 담기지 않는 것을 여기로 옮겼다 — ① 조건부 차단의 세부 조건·스캔 범위·라벨 매치 형태 ② **검증 매핑 표**(변경 파일 패턴 → 필수 검증)와 그 부분 실행 예외 ③ **문서 로드 예산 기준선**.
 >
-> **AGENTS.md에는 요약(차단 형태 2종 · 각 형태의 hook 이름 · 우회 변수 2종)이 남아 있다.** 이 파일은 그 요약을 펼친 것이며, hook을 수정하거나 차단 범위를 문서에 적을 때 읽는다.
+> **AGENTS.md에는 요약과 포인터만 남아 있다**(차단 형태 2종 · 각 형태의 hook 이름 · 우회 변수 2종 · 검증 매핑 절의 포인터). 이 파일은 그것을 펼친 것이며, hook을 수정하거나 차단 범위를 문서에 적거나 **task 검증 범위를 고를 때** 읽는다.
 
 ## 출력 형태
 
@@ -84,6 +84,44 @@
 **점검 수단** — 위 열거가 실 데이터와 어긋났는지는 `plugins/pjc/hooks/evals/check-transcript-assumptions.ps1`로 재확인한다(골든은 픽스처를 우리가 만들므로 스키마가 바뀌어도 green이라 이 축을 못 본다). 발동 건수 자체는 `plugins/pjc/scripts/report-hook-events.ps1`로 집계한다.
 
 **관측은 두 방향이다** — *fail-open*은 "차단 0이 계속되는가"(무발화)로, *오차단*은 "사용자가 중단을 지시한 직후에 차단이 찍혔는가"로 본다. 앞쪽은 이벤트 로그만으로 보이지만 뒤쪽은 로그에 맥락이 없어 실 transcript 대조가 필요하다.
+
+## 검증 매핑 (task 검증 선택)
+
+> **이 표가 정본이다.** `AGENTS.md`의 같은 이름 절은 여기를 가리키는 포인터다(주입 상한 때문에 표 본체를 여기 둔다). `implement-task` V-2의 조건부 축소는 *"AGENTS.md(또는 그것이 지목하는 문서)에 검증 매핑 표가 있으면"* 을 게이트로 쓰므로, **이 절을 없애면 그 축소가 꺼져 매 task가 전체 스위트를 돈다.**
+
+task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 패턴에 걸치면 해당 행 전부 — 합집합). 전체 검증은 Phase F-2가 1회 보장하므로 매 task 전량 실행은 중복이다.
+
+| 변경 파일 패턴 | 필수 검증 |
+|---|---|
+| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) |
+| `plugins/pjc/skills/implement-task/SKILL.md`의 **「🚫 금지 표현」 ②③④⑤ 절** | **Hook 골든 회귀** — hook을 한 줄도 안 고쳐도 깨질 수 있다. `hooks/evals/scenarios/require-evidence.ps1:216`의 L12 블록이 **그 SKILL.md를 열어 문구 목록을 파싱**해 hook 정규식과 대조하기 때문이다(추출 0건이면 그 자체가 FAIL). 아래 「골든 부분 실행의 판정 자격」 예외를 plan에 미리 적었다면 `-Filter require-evidence`로 갈음 가능 |
+| `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals |
+| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」 표** | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0) |
+| JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
+| `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
+| 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) — 기본값 |
+| `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·Phase F-2에 포함하지 않는다**(실제 모델 호출이라 비용이 크다) |
+
+## 문서 로드 예산 기준선
+
+> **기계 대조 대상이다.** `plugins/pjc/evals/check-harness-consistency.py`가 이 표를 파싱해 실측과 대조하고, 어긋나면 FAIL한다. **이 표에 있는 파일을 편집한 task가 같은 task 안에서 이 표를 갱신한다** — 갱신하지 않으면 다음 검증이 FAIL한다.
+>
+> **왜 재는가**: 스킬 본체(`SKILL.md`)는 발동 시 **전문이 로드**되고 리뷰어 정의는 subagent 호출마다 로드된다. `references/`는 필요할 때만 Read하므로, 조건부 절차를 그쪽으로 옮기면 상시 로드가 준다. 이 표는 그 절감이 실제로 유지되는지를 수치로 고정한다.
+>
+> **단위는 실제 파일 바이트(CRLF 포함, `os.path.getsize`)다.** LF 환산값과 파일당 수백 바이트 차이가 나므로 단위를 섞지 말 것 — `AGENTS.md` 주입 상한(16,384B) 판정도 같은 단위다.
+>
+> **9,000B 경계 행**은 auto-compact 후 스킬이 앞 5,000토큰만 재부착된다는 사양에서 온 값이다(1토큰 ≈ 2.17B, 여유를 두어 9,000B). 그 행 번호 이후의 내용은 압축 후 유실된다 — **이관 작업은 이 경계 안쪽 텍스트를 바꾸지 않는다.**
+
+| 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
+|---|---|---|---|
+| `plugins/pjc/skills/implement-task/SKILL.md` | 102,821 | 644 | 76 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 76,798 | 507 | 84 |
+| `plugins/pjc/skills/llm-wiki/SKILL.md` | 48,483 | 213 | 80 |
+| `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 25,940 | 353 | 135 |
+| `plugins/pjc/agents/plan-reviewer.md` | 39,626 | 358 | 110 |
+| `plugins/pjc/agents/spec-compliance-reviewer.md` | 25,583 | 282 | 132 |
+| `plugins/pjc/agents/code-quality-reviewer.md` | 24,972 | 248 | 87 |
+| `plugins/pjc/agents/plan-completion-reviewer.md` | 24,068 | 296 | 109 |
 
 ## 골든 부분 실행의 판정 자격 (예외 조건)
 
