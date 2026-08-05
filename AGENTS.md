@@ -37,7 +37,7 @@
   ```
   Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','<래퍼 경로>' -WindowStyle Minimized
   ```
-  그 뒤 **`Monitor` 도구**로 완료를 기다린다 — `until grep -q "EXIT=" <out>; do sleep 30; done` + `timeout_ms: 3600000`(60분). **Bash 폴링은 10분 캡에 끊기지만 Monitor는 무관**(실측 11분 완주). 판정은 **ASCII `EXIT=`**로 — `*>>`는 코드페이지를 타 한글이 깨진다. 결과 라인은 완료 후 `Get-Content -Encoding UTF8`로 읽는다. **러너는 결과를 끝에 일괄 출력**하므로 실행 중 파일은 START 마커 + 헤더뿐이며, **"파일이 안 자란다 = 멈췄다"가 아니다** — 진행은 `Get-Process`로 래퍼 PID 생존을 본다.
+  그 뒤 **`Monitor` 도구**로 완료를 기다린다 — `until grep -q "EXIT=" <out>; do sleep 30; done` + `timeout_ms: 3600000`(60분). **Bash 폴링은 10분 캡에 끊기지만 Monitor는 무관**(실측 11분 완주). 판정은 **ASCII `EXIT=`**로(한글 `결과:` 아님) — `*>>`는 코드페이지를 타 한글이 깨진다. 결과 라인은 완료 후 `Get-Content -Encoding UTF8`로 읽는다. **러너는 결과를 끝에 일괄 출력**하므로 실행 중 파일은 START 마커 + 헤더뿐이며, **"파일이 안 자란다 = 멈췄다"가 아니다** — 진행은 `Get-Process`로 래퍼 PID 생존을 본다.
 
   격리 USERPROFILE에서 hook 11종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
   부분 실행 `-Filter <hook명>`(쉼표 복수, `.ps1` 생략 가능)은 **구현 중 반복 확인 전용**이고, task 검증과 Phase F-2는 무인자 **전체 실행**이 정본이다 — **부분 실행 결과로 검증 판정 금지**(골든 케이스가 hook 간 얽혀 있어 커버리지가 좁다).
