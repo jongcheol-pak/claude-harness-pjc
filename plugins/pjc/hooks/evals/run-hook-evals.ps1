@@ -226,6 +226,14 @@ foreach ($g in $scenarioGroups) {
     }
 }
 
+# ---- 그룹 공유 임시 픽스처 정리 ----
+# `scenarios/require-plan-for-write.ps1`이 만드는 `%TEMP%\pjc-hook-eval-scratch`는 **의도적으로
+# 시스템 임시 폴더 하위**에 있다(require-plan-for-write가 temp 하위를 무조건 통과시키는 완화 경로를
+# 그 위치에서만 재현할 수 있다). 그래서 자식의 $EvalWork 하위로 옮길 수 없고, 자식은 자기 격리
+# 폴더만 지우므로 **어느 쪽 책임에도 걸리지 않는다** — 순차 경로에만 정리가 있어 병렬(기본값)에서
+# 매 실행마다 남던 회귀를 여기서 닫는다. 자식이 모두 끝난 뒤 코디네이터가 지운다.
+Remove-Item -Recurse -Force (Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-eval-scratch') -ErrorAction SilentlyContinue
+
 $failCount = 0
 foreach ($res in $allResults) {
     Write-Host $res.line
