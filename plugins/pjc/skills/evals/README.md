@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 50건 (8스킬 × 최소 5건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 56건 (8스킬 × 최소 5건, `plan-feature`는 16건) | `trigger-<isolation>-<run_id>.json` |
 | `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 | `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
 
@@ -112,4 +112,4 @@ python compare_evals.py <before.json> <after.json>
 
 ## 비용
 
-`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(50건 → 100세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(56건 → 112세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
