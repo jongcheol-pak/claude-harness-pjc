@@ -37,6 +37,10 @@ try:
 except Exception:
     pass
 
+# 예산 근접 경고 임계 — wiki-schema §4 "예산 80% 도달 시 압축" 규정의 기계 신호(§7-2).
+#  초과(WARN)보다 앞선 단계라 INFO로 낸다: 수리 의무가 아니라 "다음 편집 전에 덜어낼 것"이라는 예고다.
+BUDGET_NEAR_RATIO = 0.8
+
 BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 — v1.138.0 줄 수→문자 수 전환)
     #  줄 수는 밀도를 못 담아(한 줄에 500자를 써도 통과) 예산이 무의미했다 → 문자 수로 전환.
     #  단 index.md는 '행 수(등록 항목 개수)'가 본질적 단위라 문자로 못 바꾼다(INDEX_* 별도 경로 유지),
@@ -629,6 +633,9 @@ def main():
             if chars > SPECIAL_BUDGET[r]:
                 warn(f"예산 초과: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
                      f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)", r)
+            elif chars >= SPECIAL_BUDGET[r] * BUDGET_NEAR_RATIO:
+                infos.append(f"예산 근접: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
+                             f"({chars / SPECIAL_BUDGET[r] * 100:.0f}%) — 다음 기록 전에 롤오버 (wiki-schema §8)")
         elif not in_archive:
             budget = None
             chars = len(text)
@@ -661,6 +668,16 @@ def main():
                 hint = (" — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)"
                         if typ == "decision-log" else "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{fence_note}){hint}", r)
+            elif budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r):
+                # L-4: 초과 전에 알린다 — 예산은 "넘으면 고친다"가 아니라 "넘기 전에 덜어낸다"가 규정인데
+                #   (§4 "예산 80% 도달 시 압축") 그 문장에 기계 신호가 없어 사문이었다. 초과 시점에야
+                #   발견하면 그 세션이 하려던 작업(항목 1건 추가)이 압축 반복에 막힌다 — 실제로 project
+                #   허브에서 여유 35자를 만나 7차례 압축을 반복한 관측이 있다. **자동 수리는 하지 않는다**
+                #   (무엇을 덜어낼지는 판단이라 §4 index 자동 분할의 결정론 근거가 성립하지 않는다 — 신호만).
+                near_hint = {"project": " — 초과분은 recipe/patterns로 분리 (§2.2)",
+                             "decision-log": " — 오래된 항목 롤오버 준비 (§2.8)"}.get(typ, "")
+                infos.append(f"예산 근접: {r} {eff_chars}/{budget}자 "
+                             f"({eff_chars / budget * 100:.0f}%, type={typ}){near_hint}")
 
         # platform 통제어휘 (90_archive/ 제외 — 동결 백업은 wiki-schema §2.8·§8 자동 제외 원칙)
         plat = fm.get("platform")
