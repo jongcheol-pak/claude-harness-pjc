@@ -29,6 +29,11 @@ except Exception:
 # 두 러너가 공유하는 것은 이 상위 구조뿐이다(코드는 공유하지 않는다).
 REQUIRED_KEYS = ("run_id", "kind", "cases")
 
+# 트리거 run에서 **판정이 이뤄지지 않은** status. 결과가 아니라 "판정을 못 한 것"이라
+# 회귀·개선 어느 버킷에도 넣지 않는다 — 넣으면 관측 실패가 품질 회귀로 둔갑한다.
+# (`inconclusive`는 should-trigger 케이스가 스킬 호출 전에 턴이 소진된 경우 — trigger_eval.py)
+UNJUDGED_TRIGGER_STATUSES = ("timeout", "error", "inconclusive")
+
 
 def load_run(path):
     """run JSON을 읽고 D4 상위 구조를 검증한다. 어긋나면 즉시 종료한다."""
@@ -63,8 +68,8 @@ def align(before, after, key_field):
 
 
 def trigger_verdict(case):
-    """트리거 케이스의 판정을 한 단어로 만든다. 판정 불가(timeout/error)는 그대로 노출한다."""
-    if case.get("status") in ("timeout", "error"):
+    """트리거 케이스의 판정을 한 단어로 만든다. 판정 불가는 status를 그대로 노출한다."""
+    if case.get("status") in UNJUDGED_TRIGGER_STATUSES:
         return case["status"]
     return "발동" if case.get("fired") else "미발동"
 
@@ -75,10 +80,14 @@ def compare_trigger(before, after):
     rows, regressions, improvements = [], [], []
     for cid, b, a in pairs:
         bv, av = trigger_verdict(b), trigger_verdict(a)
-        b_ok, a_ok = b.get("status") == "pass", a.get("status") == "pass"
-        if b_ok and not a_ok:
+        # 한쪽이라도 판정 불가면 증감을 만들지 않는다 — 없는 판정을 실패로 두면 허위 회귀가
+        # 생긴다(루브릭 쪽 N/A 처리와 같은 원칙). 대신 변화 칸에 그 사실을 드러낸다.
+        if (b.get("status") in UNJUDGED_TRIGGER_STATUSES
+                or a.get("status") in UNJUDGED_TRIGGER_STATUSES):
+            mark, bucket = "판정 불가", None
+        elif b.get("status") == "pass" and a.get("status") != "pass":
             mark, bucket = "회귀", regressions
-        elif a_ok and not b_ok:
+        elif a.get("status") == "pass" and b.get("status") != "pass":
             mark, bucket = "개선", improvements
         else:
             mark, bucket = "", None
