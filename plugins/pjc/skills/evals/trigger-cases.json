@@ -93,17 +93,17 @@
       "id": "plan-pos-2",
       "skill": "pjc:plan-feature",
       "expect": "trigger",
-      "workspace": "no_plan",
+      "workspace": "multi_file",
       "query": "이 프로젝트 에러 처리 방식을 여러 파일에 걸쳐 바꿔야 해",
-      "why": "다중 파일 변경 — plan 필요 규모"
+      "why": "다중 파일 변경 — plan 필요 규모. **교정(2026-08-06)**: 질의는 그대로 두고 workspace만 `no_plan`→`multi_file`로 옮겼다 — 기본 워크스페이스는 `src/sample.py` 하나뿐이라 \"여러 파일에 걸쳐\"라는 전제가 실제와 어긋났고, 모델이 \"요청 전제와 실제 상태가 맞지 않는다\"고 답하며 미발동했다"
     },
     {
       "id": "plan-pos-3",
       "skill": "pjc:plan-feature",
       "expect": "trigger",
       "workspace": "no_plan",
-      "query": "설정 화면 만들어줘",
-      "why": "'만들어줘' — 신규 컴포넌트 생성 요청"
+      "query": "합계 결과를 CSV로 내보내는 기능 만들어줘",
+      "why": "'만들어줘' 단문 — 계획을 요청하지 않았는데도 발동해야 하는 신규 컴포넌트 생성 축. **교정(2026-08-06)**: 옛 질의 \"설정 화면 만들어줘\"는 GUI 스택을 질의에 실어 워크스페이스(Python 단일 스크립트)와 전제가 모순됐다(README \"질의에 스택·환경을 쓰지 않는다\" 위반 — `vm-pos-3`과 같은 실패형). 축 중복 가드: `plan-pos-1`은 `계획 세워줘`가 명시된 발화, `plan-pos-7`은 앱 신규 개발 — 이 케이스는 **기존 코드에 기능 추가**다"
     },
     {
       "id": "plan-pos-4",
@@ -414,24 +414,24 @@
       "skill": "pjc:record-project-fact",
       "expect": "trigger",
       "workspace": "no_plan",
-      "query": "방금 확인한 빌드 명령을 AGENTS.md에 기록해줘",
-      "why": "description의 1차 트리거 — \"빌드 명령 기록해줘\""
+      "query": "빌드가 `python -m py_compile src/sample.py`로 도는 걸 확인했어. AGENTS.md에 남겨줘",
+      "why": "확인된 빌드 명령을 기존 AGENTS.md에 누적하는 축. **교정(2026-08-06)**: 옛 질의 \"방금 확인한 빌드 명령을…\"은 선행 대화를 전제해 단발 `-p` 세션에서 모델이 \"확인한 적 없는 명령은 추측해 적을 수 없다\"며 정상적으로 되물었다(스킬 규칙 4 준수) — 기록할 사실을 질의에 실어 자기완결로 바꿨다. description 인용 문구와 3어절 연속 일치 0"
     },
     {
       "id": "rec-pos-2",
       "skill": "pjc:record-project-fact",
       "expect": "trigger",
       "workspace": "no_plan",
-      "query": "이 DB 접근법 프로젝트 사실로 적어둬",
-      "why": "\"DB 접근법 적어둬\" — description 예시"
+      "query": "DB 접속은 환경변수 DB_CONNECTION을 쓰는 걸로 확인했어. AGENTS.md에 남겨둬",
+      "why": "DB 접근 방법 기록 축(description의 DB access method). **교정(2026-08-06)**: 옛 질의 \"이 DB 접근법…\"의 지시대명사가 선행 대화를 전제했고 문구 자체가 description 예시 복창이었다 — 접근법을 질의에 명시하고 표현을 바꿨다(실제 값이 아니라 환경변수 이름만 쓴다 — 스킬 규칙 3). description 인용 문구와 3어절 연속 일치 0"
     },
     {
       "id": "rec-pos-3",
       "skill": "pjc:record-project-fact",
       "expect": "trigger",
-      "workspace": "no_plan",
+      "workspace": "stale_agents_md",
       "query": "AGENTS.md에서 이제 안 쓰는 테스트 명령 빼줘",
-      "why": "제거도 이 스킬 범위 — description이 \"추가·갱신·제거\" 모두 명시"
+      "why": "제거도 이 스킬 범위 — description이 \"추가·갱신·제거\" 모두 명시. **교정(2026-08-06)**: 질의는 그대로 두고 workspace만 `no_plan`→`stale_agents_md`로 옮겼다 — 기본 워크스페이스는 AGENTS.md가 `Test: 없음`이라 **지울 대상이 실재하지 않아** 픽스처 결함으로 미발동했다. 복창 대조(D7): 인용 문구 `테스트 명령 기록`과 2어절(\"테스트 명령\") 일치라 3어절 기준은 통과하나 수동 확인 대상 — 그 두 어절은 이 케이스가 재려는 대상 자체(어떤 종류의 사실을 빼는가)를 가리키므로 바꾸면 축이 흐려진다. D7 우선순위대로 축을 유지한다"
     },
     {
       "id": "rec-neg-1",

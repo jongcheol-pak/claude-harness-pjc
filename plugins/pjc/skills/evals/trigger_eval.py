@@ -77,6 +77,11 @@ def build_workspace(kind, dest):
     (single-project apps, scripts...)"를 명시적 제외로 두고, `add-viewmodel`은 "non-XAML stacks"를
     제외한다 — 기본 워크스페이스(Python 단일 스크립트)로 재면 **미발동이 정상**이라 그 수치는
     스킬 트리거 품질이 아니라 픽스처 불일치를 잰 것이 된다(no_agents_md와 같은 이유).
+
+    kind='multi_file'·'stale_agents_md'도 같은 이유로 생겼다 — **질의가 전제하는 상태가 기본
+    워크스페이스에 없어서** 미발동하던 케이스들이다(2026-08-06 실측). 전자는 "여러 파일에 걸쳐"를
+    전제하는데 기본 워크스페이스는 `src/sample.py` 하나뿐이었고, 후자는 "안 쓰는 테스트 명령을
+    빼 달라"인데 AGENTS.md가 `Test: 없음`이라 지울 대상이 아예 없었다.
     """
     os.makedirs(dest, exist_ok=True)
     if kind == "ddd_project":
@@ -118,15 +123,52 @@ def build_workspace(kind, dest):
                 "## Plan Location\n- 단일 plan: `plan.md`\n"
             )
         return
+    if kind == "multi_file":
+        # 에러 처리를 **서로 다르게** 흩어 둔다 — "여러 파일에 걸쳐 바꿔야 한다"는 질의가
+        # 성립하려면 흩어진 상태가 실재해야 한다(한 파일에 모여 있으면 그 요청이 모순이 된다).
+        os.makedirs(os.path.join(dest, "src"), exist_ok=True)
+        modules = {
+            "loader.py": ("import json\n\n\n"
+                          "def load(path):\n    try:\n"
+                          "        with open(path, encoding='utf-8') as fh:\n"
+                          "            return json.load(fh)\n"
+                          "    except Exception:\n        return None\n"),
+            "summary.py": ("def summarize(rows):\n    total = 0\n"
+                           "    for row in rows:\n        try:\n"
+                           "            total += row['amount']\n"
+                           "        except KeyError as e:\n            print('누락 필드', e)\n"
+                           "    return total\n"),
+            "report.py": ("def render(total):\n    if total is None:\n"
+                          "        raise ValueError('집계 결과가 없습니다')\n"
+                          "    return f'합계: {total}'\n"),
+        }
+        for name, body in modules.items():
+            with open(os.path.join(dest, "src", name), "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(body)
+        with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(
+                "# AGENTS.md\n\n"
+                "## Stack\n- Python 3. `src/` 아래 모듈 3개(loader · summary · report).\n\n"
+                "## Build & Test\n- Build: `python -m compileall src`\n- Test: 없음\n\n"
+                "## Plan Location\n- 단일 plan: `plan.md`\n"
+            )
+        with open(os.path.join(dest, "README.md"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("# Sales Report\n\nJSON을 읽어 합계를 내고 문자열로 렌더하는 예제.\n")
+        return
 
     if kind != "no_agents_md":
+        # stale_agents_md만 Test 줄이 다르다 — "이제 안 쓰는 테스트 명령을 빼 달라"는 질의는
+        # 지울 대상이 실재해야 성립한다(`tests/`가 없는 옛 명령을 심어 stale임이 드러나게 한다).
+        # 다른 kind의 생성 내용은 바뀌지 않는다.
+        test_line = ("- Test: `python -m pytest tests/` (tests/ 디렉터리 없음 — 옛 명령)\n"
+                     if kind == "stale_agents_md" else "- Test: 없음\n")
         with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(
                 "# AGENTS.md\n\n"
                 "## Stack\n- Python 3 단일 스크립트.\n\n"
                 "## Build & Test\n- Build: `python -m py_compile src/sample.py`\n"
-                "- Test: 없음\n\n"
-                "## Plan Location\n- 단일 plan: `plan.md`\n"
+                + test_line +
+                "\n## Plan Location\n- 단일 plan: `plan.md`\n"
             )
     os.makedirs(os.path.join(dest, "src"), exist_ok=True)
     with open(os.path.join(dest, "src", "sample.py"), "w", encoding="utf-8", newline="\n") as fh:
