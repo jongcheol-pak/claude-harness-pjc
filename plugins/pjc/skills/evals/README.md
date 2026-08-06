@@ -29,7 +29,7 @@ python trigger_eval.py --filter impl-     # id 접두 필터 (스모크용)
 python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 ```
 
-각 케이스를 `claude -p <query> --output-format stream-json`으로 실행하고 **Skill 도구 호출**을 관측해 발동 여부를 판정한다. 워크스페이스(`plan.md` 유무)는 실행 시점에 임시 폴더에 만든다 — repo `.gitignore`가 `plan.md`를 무시해 픽스처로 체크인할 수 없다.
+각 케이스를 `claude --output-format stream-json … -p -- <query>`로 실행하고 **Skill 도구 호출**을 관측해 발동 여부를 판정한다. **질의는 옵션을 다 쌓은 뒤 맨 뒤에 `-p -- ` 로 붙인다** — `-`로 시작하는 질의(불릿 목록 등 실사용 발화)를 CLI가 옵션으로 파싱해 죽는 것을 막기 위함이다. `--` 뒤는 전부 positional이므로 **그 뒤에 옵션을 두면 무시된다**(질의만 전달되고 `--output-format`이 먹지 않는다). 워크스페이스(`plan.md` 유무)는 실행 시점에 임시 폴더에 만든다 — repo `.gitignore`가 `plan.md`를 무시해 픽스처로 체크인할 수 없다.
 
 ### 이 러너가 반드시 지키는 것
 
