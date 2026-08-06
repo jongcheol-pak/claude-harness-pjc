@@ -118,8 +118,8 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
-| `plugins/pjc/skills/implement-task/SKILL.md` | 90,664 | 612 | 76 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 69,310 | 462 | 83 |
+| `plugins/pjc/skills/implement-task/SKILL.md` | 91,335 | 612 | 75 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 72,116 | 466 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 48,564 | 213 | 80 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 25,940 | 353 | 135 |
 | `plugins/pjc/agents/plan-reviewer.md` | 41,023 | 366 | 110 |
@@ -161,11 +161,11 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | 블록 | 판정 | 근거 (실측) |
 |---|---|---|
 | 재리뷰 규약 | **역할 차이** | 본문 841~846자로 거의 동일하고 차이는 **검토 대상 명칭 한 단어**뿐이다 — "바뀐 **코드**"(spec·quality) / "바뀐 **plan 문면**"(`plan-reviewer.md:310`~) / "바뀐 **산출물**"(`plan-completion-reviewer.md:247`~) |
-| 거짓양성 억제 | **역할 차이** | 거짓양성의 **비용을 각자의 후속 절차로** 서술한다 — "자율 루프를 되돌린다"(spec) / "거짓 BLOCKER는 **plan 재작성(최대 3회)**"(`plan-reviewer.md:330`) / "**Phase G 자율 재루프(사용자 확인 없는 재구현)** 를 촉발하므로 비용이 특히 크다"(`plan-completion-reviewer.md:267`). 「강등 금지 예외」도 자기 축으로 정의한다(spec=acceptance 미충족 / plan-reviewer=호출자 누락·acceptance 미충족급 / completion=PRD FR 미충족). **`code-quality`에만 그 예외가 없는 것도 의도다** — `code-quality-reviewer.md:233`이 *"acceptance 충족 여부는 이 상한의 판정 대상이 아니다 — 이 리뷰어는 spec 충족을 다루지 않는다"*로 부재 사유를 명시한다 |
+| 거짓양성 억제 | **역할 차이** | 거짓양성의 **비용을 각자의 후속 절차로** 서술한다 — "자율 루프를 되돌린다"(spec) / "거짓 BLOCKER는 **plan 재작성(최대 2회)**"(`plan-reviewer.md:330` — v1.162.0에서 3→2) / "**Phase G 자율 재루프(사용자 확인 없는 재구현)** 를 촉발하므로 비용이 특히 크다"(`plan-completion-reviewer.md:267`). 「강등 금지 예외」도 자기 축으로 정의한다(spec=acceptance 미충족 / plan-reviewer=호출자 누락·acceptance 미충족급 / completion=PRD FR 미충족). **`code-quality`에만 그 예외가 없는 것도 의도다** — `code-quality-reviewer.md:233`이 *"acceptance 충족 여부는 이 상한의 판정 대상이 아니다 — 이 리뷰어는 spec 충족을 다루지 않는다"*로 부재 사유를 명시한다 |
 | 표현 지적의 심각도 상한 | **역할 차이** | 가르는 기준이 대상에 맞춰 달라진다 — *"실행 결과·절차 경로가 달라지는가"*(spec·quality) ↔ *"**구현자의 행동**·절차 경로가 달라지는가"*(`plan-reviewer.md:350` — plan은 실행물이 아니라 지시서다). 강등 금지 예시 목록도 검토 대상에 따라 다르다(코드 리뷰 계열은 stale 주석·사용자 노출 문구를 보유) |
 | CONFLICT (출력 형식) | **문면 동일** | 4파일 **245자 완전 일치** — 차이 자체가 없다(드리프트도 역할 차이도 아님) |
 | 검토 효율 | **역할 차이** | 각자 **읽는 입력물과 항목 번호**가 다르다 — `git diff` 1회(spec·quality) / `plan.md` 전체 1회 + 항목 3·9 우선(`plan-reviewer`) / AGENTS.md 대조 + 항목 A·B 확인 grep 예외(`code-quality`) / acceptance 전체 + 누적 git log 개별 매핑(`plan-completion`) |
-| 재호출 인지 | **역할 차이** | 구성 요소(RECURRING 표시 · 3회 연속 · 이력 표 전제)를 **4파일 전부 보유**하고, 앞머리만 대상에 맞춘다 — plan을 보는 두 리뷰어에만 *"같은 plan이 재호출되면 이전 이슈·BLOCKER가 해결되었는지 확인"*이 붙는다 |
+| 재호출 인지 | **역할 차이** | 구성 요소(RECURRING 표시 · 잔존 라운드 임계 · 이력 표 전제)를 **4파일 전부 보유**하고 — **임계값은 대상별로 다르다: `plan-reviewer`만 2회 연속**(v1.162.0에서 plan 재작성 상한이 2로 줄어 3회 연속은 도달 불가), **task 리뷰 3종은 3회 연속**(`implement-task`의 동일 지적 3회 Halt 카운터) — 앞머리만 대상에 맞춘다, 앞머리만 대상에 맞춘다 — plan을 보는 두 리뷰어에만 *"같은 plan이 재호출되면 이전 이슈·BLOCKER가 해결되었는지 확인"*이 붙는다 |
 
 **따라서 각주 앵커 축으로 충분하다.** 본문 동일성 검사는 무변경 상태에서 FAIL하고(위 「검사 범위」), 동기 토큰(`<!-- sync: reviewer-common v1 -->`)은 토큰 갱신 자체가 다시 사람 규율이라 실익이 불확실한데 — **막을 드리프트가 실측으로 0건이므로 도입 근거가 없다.** 이 판정은 **2026-08-06 시점의 것**이며, 리뷰어 개정 회차에서 같은 방법으로 재측정할 수 있다(블록 단위 추출 → diff).
 
