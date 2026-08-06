@@ -16,7 +16,8 @@
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
-      / index.md 부재(ERR — 인덱스 기반 검사 불능 신호)
+      / index.md 부재·읽기 실패(ERR — 인덱스 기반 검사 불능 신호. 두 사유는 처방이 정반대라
+        각각 다른 ERR: 부재는 골격 생성, 읽기 실패는 인코딩 복구)
       / 위키 뒤처짐(INFO — 허브 synced_commit 이후 레포에 쌓인 커밋 수, §7-26. fail-open)
       / (미검증)·미해결 question 집계(INFO)
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
@@ -557,6 +558,9 @@ def main():
     feat_files, index_feat_links = set(), set()
     link_targets = set()   # 위키 전체에서 링크된 대상 (고아 검사용)
     pages = {}             # rel -> (frontmatter, type, 본문 텍스트)
+    unreadable = set()     # 읽기 실패한 rel 경로 — 부재와 구분해 진단하기 위해 실패 지점에서 기록한다
+                           #  (파일 실존을 나중에 os.path.exists로 되묻지 않는 이유: OSError(권한·잠금)는
+                           #   실존해도 실패하므로 같은 사유가 두 번 다르게 판정된다)
 
     for p in md:
         r = rel(p)
@@ -569,6 +573,7 @@ def main():
             text = raw_bytes.decode("utf-8-sig")
         except (UnicodeDecodeError, OSError) as e:
             errors.append(f"파일 읽기 실패({type(e).__name__}): {r} — UTF-8(BOM 없음)로 저장하세요.")
+            unreadable.add(r)
             continue
         # binary 읽기는 text-mode의 universal-newline 변환을 하지 않으므로 CRLF→LF로 정규화한다 —
         #   frontmatter '^---\n' 매치·줄 수 계산이 CRLF 파일에서 깨지지 않게(text-mode 열기와 동등).
@@ -826,8 +831,9 @@ def main():
     sub_files = sorted(glob.glob(os.path.join(glob.escape(vault), "index-*.md")))  # L-3: vault만 escape('index-*'의 *는 패턴 유지)
     # M-2 격리 복원: 메인 루프가 읽어 둔 본문을 재사용한다(두 번 읽지 않는다) — 종전에는 여기서
     #   index.md를 예외 처리 없이 다시 열어, CP949로 저장된 index.md 하나가 lint 전체를 traceback으로
-    #   죽였다(파일별 격리가 정작 가장 중요한 파일에서만 무력화돼 있었다). pages 멤버십으로 판정하면
-    #   읽기 실패 파일은 메인 루프가 낸 ERR만 남고 인덱스 검사는 조용히 건너뛴다(중복 ERR 없음).
+    #   죽였다(파일별 격리가 정작 가장 중요한 파일에서만 무력화돼 있었다). pages 멤버십은 부재와
+    #   읽기 실패를 구분하지 못하므로, else에서 unreadable로 사유를 갈라 각각 다른 ERR을 낸다
+    #   (종전에는 읽기 실패도 "index.md 없음 … 골격 생성 필요"로 오진해 처방이 정반대였다).
     #   BOM은 utf-8-sig로 이미 흡수됐고 개행도 메인 루프가 LF로 정규화했다(534-544행).
     if "index.md" in pages:
         itext = pages["index.md"][2]
@@ -947,6 +953,12 @@ def main():
                 if has_gh != has_gl:
                     warn(f"가이드 한/영 병기 누락: '{gname}' ({'한글만' if has_gh else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
 
+    elif "index.md" in unreadable:
+        # 파일은 실재하는데 못 읽은 경우 — 처방이 부재와 정반대라(골격 생성 ✗ / 인코딩 복구 ✓)
+        #  같은 ERR을 쓰면 실재하는 인덱스를 덮어쓰도록 지시하게 된다.
+        errors.append("index.md 읽기 실패: 인덱스 기반 검사(§7-6·14·15·16·23)를 건너뜀 — "
+                      "파일은 실재하므로 골격 생성이 아니라 인코딩 복구가 필요 "
+                      "(위 '파일 읽기 실패' 참조)")
     else:
         # 인덱스 기반 검사(§7-6·14·15·16·23) 전체가 불능인 구조 결함 — 침묵 대신 ERR 1건으로 신호
         #  (특히 §7-23은 index.md가 없으면 '질문 유실' 최악 시나리오를 못 잡는다).

@@ -157,9 +157,13 @@
       "bad_index": true,
       "expect_keywords": [
         "파일 읽기 실패",
-        "index.md"
+        "index.md",
+        "index.md 읽기 실패: 인덱스 기반 검사"
       ],
-      "rationale": "M-2 격리가 index.md에도 적용되는지 — index.md는 메인 루프 밖에서 한 번 더 읽히던 유일한 파일이라 예외 처리가 없던 시절엔 CP949 index.md 하나로 lint 전체가 traceback 종료됐다(보고서 한 줄도 못 냄). 러너가 '== llm-wiki Lint:' 헤더 부재를 크래시로 판정하므로(run_lint_evals 197행) 이 케이스의 통과 자체가 '끝까지 완주했다'는 실증이다. 알려진 부작용: index.md를 못 읽으면 else 분기가 '없음'으로 오진해 ERR 1건이 더 나온다(파일은 실재하는데 '골격 생성 필요'를 지시) — 진단 정확도 개선은 별건 follow-up."
+      "expect_absent": [
+        "카탈로그 골격 생성 필요"
+      ],
+      "rationale": "M-2 격리가 index.md에도 적용되는지 — index.md는 메인 루프 밖에서 한 번 더 읽히던 유일한 파일이라 예외 처리가 없던 시절엔 CP949 index.md 하나로 lint 전체가 traceback 종료됐다(보고서 한 줄도 못 냄). 러너가 '== llm-wiki Lint:' 헤더 부재를 크래시로 판정하므로(run_lint_evals 213행) 이 케이스의 통과 자체가 '끝까지 완주했다'는 실증이다. 진단 정확도(v1.163.0 해소): 종전에는 읽기 실패도 else 분기로 합류해 '없음'으로 오진했다 — 파일은 실재하는데 '골격 생성 필요'라는 정반대 처방을 지시했고, 그대로 따르면 실재하는 인덱스를 덮어쓴다. 지금은 unreadable 집합으로 사유를 갈라 '읽기 실패' 전용 ERR을 내며, expect_absent가 부재 문구의 재유입을 가드한다(부재 경로 자체는 no-index 케이스가 별도로 고정)."
     },
     {
       "fixture": "clean",
