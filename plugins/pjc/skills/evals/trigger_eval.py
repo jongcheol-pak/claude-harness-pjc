@@ -306,8 +306,13 @@ def run_claude(query, workspace, config_dir, model, stop_skill=None):
     stop_skill이 주어지면 그 스킬의 발동을 관측하는 즉시 종료한다 — 트리거 판정에 필요한
     정보를 이미 얻었으므로 남은 턴은 시간과 토큰만 쓴다.
     """
+    # 옵션을 먼저 쌓고 질의를 **맨 뒤에 `-p -- <query>`로** 붙인다. `-`로 시작하는 질의(불릿
+    # 목록 등 실사용 발화)를 CLI가 옵션으로 파싱해 죽는 것을 막기 위함이다 — 그 형태의 케이스가
+    # 재시도 2회 모두 0.6초 만에 error로 끝나는 것이 실측됐다. `--` 뒤는 전부 positional이라
+    # **그 뒤에는 어떤 옵션도 올 수 없다**(2026-08-06 실증: `-p -- <q> --output-format json`은
+    # 질의만 전달되고 옵션이 무시됐다).
     cmd = [
-        "claude", "-p", query,
+        "claude",
         "--output-format", "stream-json", "--verbose",
         "--max-turns", str(MAX_TURNS),
         "--permission-mode", "manual",
@@ -315,6 +320,7 @@ def run_claude(query, workspace, config_dir, model, stop_skill=None):
     ]
     if model:
         cmd += ["--model", model]
+    cmd += ["-p", "--", query]
 
     env = os.environ.copy()
     env["PYTHONUTF8"] = "1"
