@@ -48,11 +48,18 @@ EVALS_DIR = os.path.dirname(os.path.abspath(__file__))
 PLUGIN_DIR = os.path.dirname(os.path.dirname(EVALS_DIR))  # .../plugins/pjc
 CASES_JSON = os.path.join(EVALS_DIR, "trigger-cases.json")
 
-# 케이스당 상한. 트리거 판정은 첫 도구 호출 시점에 끝나므로 턴 수는 작아도 충분하다.
-MAX_TURNS = 3
+# 케이스당 상한. 판정에 필요한 만큼만 넓히고 그 이상은 비용이다.
+# 3이던 값을 8로 올린 이유: 모델이 스킬을 부르기 전에 프로젝트를 훑는 케이스가 있는데
+# (2026-08-06 재현 실측 — 탐색 도구 3~5회 관측, 그마저 3턴에서 잘린 하한이다), 3턴에서는
+# 그 탐색만으로 상한에 닿아 **스킬 호출 기회 자체가 없었다**. 발동하는 케이스는 stop_skill이
+# 즉시 끊으므로(run_claude) 상한을 올려도 비용이 늘지 않는다 — 늘어나는 것은 미발동 케이스뿐.
+MAX_TURNS = 8
 # 2026-07-29 기준선 40세션의 최장 케이스가 108.7초였다 — 그보다 넉넉히 잡아 정상 케이스가
 # timeout으로 버려지지 않게 하되, 응답이 끊긴 세션이 러너를 무한정 붙잡지도 않게 한다.
 CASE_TIMEOUT_SEC = 180
+# 미발동 케이스에 싣는 진단의 상한. 원인을 읽기엔 충분하고 결과 JSON을 부풀리지 않는 선.
+MAX_DIAG_TOOLS = 20
+MAX_DIAG_TEXT = 300
 
 
 def build_workspace(kind, dest):
@@ -70,6 +77,11 @@ def build_workspace(kind, dest):
     (single-project apps, scripts...)"를 명시적 제외로 두고, `add-viewmodel`은 "non-XAML stacks"를
     제외한다 — 기본 워크스페이스(Python 단일 스크립트)로 재면 **미발동이 정상**이라 그 수치는
     스킬 트리거 품질이 아니라 픽스처 불일치를 잰 것이 된다(no_agents_md와 같은 이유).
+
+    kind='multi_file'·'stale_agents_md'도 같은 이유로 생겼다 — **질의가 전제하는 상태가 기본
+    워크스페이스에 없어서** 미발동하던 케이스들이다(2026-08-06 실측). 전자는 "여러 파일에 걸쳐"를
+    전제하는데 기본 워크스페이스는 `src/sample.py` 하나뿐이었고, 후자는 "안 쓰는 테스트 명령을
+    빼 달라"인데 AGENTS.md가 `Test: 없음`이라 지울 대상이 아예 없었다.
     """
     os.makedirs(dest, exist_ok=True)
     if kind == "ddd_project":
@@ -111,15 +123,52 @@ def build_workspace(kind, dest):
                 "## Plan Location\n- 단일 plan: `plan.md`\n"
             )
         return
+    if kind == "multi_file":
+        # 에러 처리를 **서로 다르게** 흩어 둔다 — "여러 파일에 걸쳐 바꿔야 한다"는 질의가
+        # 성립하려면 흩어진 상태가 실재해야 한다(한 파일에 모여 있으면 그 요청이 모순이 된다).
+        os.makedirs(os.path.join(dest, "src"), exist_ok=True)
+        modules = {
+            "loader.py": ("import json\n\n\n"
+                          "def load(path):\n    try:\n"
+                          "        with open(path, encoding='utf-8') as fh:\n"
+                          "            return json.load(fh)\n"
+                          "    except Exception:\n        return None\n"),
+            "summary.py": ("def summarize(rows):\n    total = 0\n"
+                           "    for row in rows:\n        try:\n"
+                           "            total += row['amount']\n"
+                           "        except KeyError as e:\n            print('누락 필드', e)\n"
+                           "    return total\n"),
+            "report.py": ("def render(total):\n    if total is None:\n"
+                          "        raise ValueError('집계 결과가 없습니다')\n"
+                          "    return f'합계: {total}'\n"),
+        }
+        for name, body in modules.items():
+            with open(os.path.join(dest, "src", name), "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(body)
+        with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(
+                "# AGENTS.md\n\n"
+                "## Stack\n- Python 3. `src/` 아래 모듈 3개(loader · summary · report).\n\n"
+                "## Build & Test\n- Build: `python -m compileall src`\n- Test: 없음\n\n"
+                "## Plan Location\n- 단일 plan: `plan.md`\n"
+            )
+        with open(os.path.join(dest, "README.md"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("# Sales Report\n\nJSON을 읽어 합계를 내고 문자열로 렌더하는 예제.\n")
+        return
 
     if kind != "no_agents_md":
+        # stale_agents_md만 Test 줄이 다르다 — "이제 안 쓰는 테스트 명령을 빼 달라"는 질의는
+        # 지울 대상이 실재해야 성립한다(`tests/`가 없는 옛 명령을 심어 stale임이 드러나게 한다).
+        # 다른 kind의 생성 내용은 바뀌지 않는다.
+        test_line = ("- Test: `python -m pytest tests/` (tests/ 디렉터리 없음 — 옛 명령)\n"
+                     if kind == "stale_agents_md" else "- Test: 없음\n")
         with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(
                 "# AGENTS.md\n\n"
                 "## Stack\n- Python 3 단일 스크립트.\n\n"
                 "## Build & Test\n- Build: `python -m py_compile src/sample.py`\n"
-                "- Test: 없음\n\n"
-                "## Plan Location\n- 단일 plan: `plan.md`\n"
+                + test_line +
+                "\n## Plan Location\n- 단일 plan: `plan.md`\n"
             )
     os.makedirs(os.path.join(dest, "src"), exist_ok=True)
     with open(os.path.join(dest, "src", "sample.py"), "w", encoding="utf-8", newline="\n") as fh:
@@ -191,14 +240,24 @@ def kill_tree(proc):
 
 
 def parse_events(lines):
-    """stream-json 줄들에서 (init 이벤트, 발동 스킬 목록, result 이벤트)를 뽑는다.
+    """stream-json 줄들에서 (init, 발동 스킬 목록, result, 도구 시퀀스, 최종 텍스트)를 뽑는다.
 
     첫 줄이 init이라고 가정하면 안 된다 — pjc hook이 있으면 hook_started가 먼저 온다.
     플러그인 스킬은 네임스페이스 이름(`pjc:implement-task`)으로 등재되므로 그대로 수집한다.
+
+    도구 시퀀스와 최종 텍스트는 **미발동 케이스의 원인 규명용**이다. 이것이 없으면 결과 JSON에
+    "발동 안 함"만 남아 ⓐ 질의가 선행 대화를 전제해 모델이 되물은 것 ⓑ 픽스처와 전제가 어긋난 것
+    ⓒ 탐색만 하다 턴이 소진된 것 ⓓ 진짜로 description이 안 맞은 것이 구분되지 않는다(2026-08-06에
+    실제로 그 오진이 Deferred 대장에 등재됐다). 같은 순회에서 함께 모으므로 추가 파싱 비용이 없다.
+
+    `tool_calls`는 호출 **시도**의 기록이다 — 결과(성공/거부)는 보지 않으므로 permission-mode가
+    manual일 때 거부된 호출도 들어간다. 분류에 쓸 때 "실제로 그 작업을 했다"로 읽지 말 것.
     """
     init_ev = None
     result_ev = None
     triggered = []
+    tool_calls = []
+    final_text = ""
     for line in lines:
         line = line.strip()
         if not line or not line.startswith("{"):
@@ -213,11 +272,15 @@ def parse_events(lines):
             result_ev = ev
         elif ev.get("type") == "assistant":
             for block in (ev.get("message") or {}).get("content") or []:
-                if block.get("type") == "tool_use" and block.get("name") == "Skill":
-                    name = (block.get("input") or {}).get("skill")
-                    if name and name not in triggered:
-                        triggered.append(name)
-    return init_ev, triggered, result_ev
+                if block.get("type") == "tool_use":
+                    tool_calls.append(block.get("name") or "?")
+                    if block.get("name") == "Skill":
+                        name = (block.get("input") or {}).get("skill")
+                        if name and name not in triggered:
+                            triggered.append(name)
+                elif block.get("type") == "text" and (block.get("text") or "").strip():
+                    final_text = block["text"].strip()  # 마지막 것만 남는다
+    return init_ev, triggered, result_ev, tool_calls, final_text
 
 
 def is_skill_call(line, skill):
@@ -306,6 +369,7 @@ def run_case(case, config_dir, model, workspaces):
     started = time.time()
     attempts = 0
     init_ev = triggered = result_ev = None
+    tool_calls, final_text = [], ""
     stderr = ""
     timed_out = False
 
@@ -318,7 +382,7 @@ def run_case(case, config_dir, model, workspaces):
     while attempts < 2:
         attempts += 1
         lines, stderr, timed_out = run_claude(case["query"], ws, config_dir, model, stop_skill)
-        init_ev, triggered, result_ev = parse_events(lines)
+        init_ev, triggered, result_ev, tool_calls, final_text = parse_events(lines)
         if timed_out:
             break
         if init_ev is not None and not is_fatal(result_ev):
@@ -347,7 +411,26 @@ def run_case(case, config_dir, model, workspaces):
 
     hit = case["skill"] in base["triggered"]
     base["fired"] = hit
-    base["status"] = "pass" if hit == (case["expect"] == "trigger") else "fail"
+    stop_reason = (result_ev or {}).get("subtype")
+
+    if not hit:
+        # 진단은 미발동 케이스에만 싣는다 — 발동 케이스는 stop_skill이 즉시 끊어 남길 정보가
+        # 없고, 전 케이스에 실으면 결과 JSON만 커진다. 절단은 표시한다(조용한 절단 금지).
+        base["stop_reason"] = stop_reason
+        base["tool_calls"] = tool_calls[:MAX_DIAG_TOOLS]
+        if len(tool_calls) > MAX_DIAG_TOOLS:
+            base["tool_calls"].append(f"…(+{len(tool_calls) - MAX_DIAG_TOOLS} more)")
+        base["final_text"] = (final_text[:MAX_DIAG_TEXT] + "…(절단)"
+                              if len(final_text) > MAX_DIAG_TEXT else final_text)
+
+    if not hit and case["expect"] == "trigger" and stop_reason == "error_max_turns":
+        # 스킬을 안 쓰기로 판단한 것이 아니라 **호출 기회에 닿지 못한** 것이라 판정 불가다
+        # (timeout과 같은 성격 — 판정을 못 한 것이지 결과가 아니다). 발동률 분모에서 뺀다.
+        # expect=no-trigger에는 적용하지 않는다 — 그쪽은 "발동 없음"을 확인하려 설계상 끝까지
+        # 돌리므로 턴 소진이 정상 경로이고, 여기 포함시키면 오발동률 분모가 통째로 무너진다.
+        base["status"] = "inconclusive"
+    else:
+        base["status"] = "pass" if hit == (case["expect"] == "trigger") else "fail"
     return base, init_ev
 
 
@@ -369,7 +452,11 @@ def assert_plugin_loaded(init_ev, isolation):
 
 
 def summarize(cases):
-    """should-trigger 발동률과 should-not-trigger 오발동률을 집계한다."""
+    """should-trigger 발동률과 should-not-trigger 오발동률을 집계한다.
+
+    분모는 **판정된 케이스만**이다(`pass`/`fail`). timeout·error·inconclusive를 섞으면
+    환경 장애나 관측 실패가 트리거 품질 저하로 둔갑한다.
+    """
     pos = [c for c in cases if c["expect"] == "trigger"]
     neg = [c for c in cases if c["expect"] == "no-trigger"]
     pos_judged = [c for c in pos if c["status"] in ("pass", "fail")]
@@ -382,6 +469,7 @@ def summarize(cases):
         "failed": sum(1 for c in cases if c["status"] == "fail"),
         "timeout": sum(1 for c in cases if c["status"] == "timeout"),
         "error": sum(1 for c in cases if c["status"] == "error"),
+        "inconclusive": sum(1 for c in cases if c["status"] == "inconclusive"),
         "judged_positive": len(pos_judged),
         "judged_negative": len(neg_judged),
         "trigger_rate": round(len(fired_pos) / len(pos_judged), 3) if pos_judged else None,
@@ -409,7 +497,8 @@ def run_suite(cases, isolation, model, out_dir, run_id):
             result, init_ev = run_case(case, config_dir, model, workspaces)
             if load_info is None and init_ev is not None:
                 load_info = assert_plugin_loaded(init_ev, isolation)
-            mark = {"pass": "PASS", "fail": "FAIL", "timeout": "TIME", "error": "ERR "}[result["status"]]
+            mark = {"pass": "PASS", "fail": "FAIL", "timeout": "TIME",
+                    "error": "ERR ", "inconclusive": "INCO"}[result["status"]]
             fired = ", ".join(result["triggered"]) or "(발동 없음)"
             print(f"[{mark}] {idx:2d}/{len(cases)} {result['id']:12s} {result['duration_sec']:6.1f}s  → {fired}")
             if result.get("detail"):
@@ -442,7 +531,8 @@ def run_suite(cases, isolation, model, out_dir, run_id):
         sys.exit(1)
 
     print(f"\n  판정 {summary['passed']}/{summary['total']} PASS "
-          f"(fail {summary['failed']} · timeout {summary['timeout']} · error {summary['error']})")
+          f"(fail {summary['failed']} · timeout {summary['timeout']} · error {summary['error']}"
+          f" · 판정불가 {summary['inconclusive']})")
     print(f"  발동률(should-trigger): {summary['trigger_rate']} "
           f"({summary['judged_positive']}건 판정)")
     print(f"  오발동률(should-not-trigger): {summary['false_trigger_rate']} "
