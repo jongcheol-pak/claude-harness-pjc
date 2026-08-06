@@ -162,6 +162,54 @@
       "why": "주석 1줄 — trivial 예외"
     },
     {
+      "id": "plan-pos-6",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "- 언어 변경시 메뉴 문구 변경 안되는 문제 수정\n- 화면 깜빡임 수정\n- 안내 문구 표시\n- 전체 문구 하드코딩 → 리소스 → 다국어 적용",
+      "why": "다중 sub-task를 불릿으로 나열 + i18n 리소스 리팩토링 — 발화가 목록 형태인 경우를 다른 케이스가 다루지 않는다 (구형 evals.json id=2 흡수)"
+    },
+    {
+      "id": "plan-pos-7",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "메모장 앱 만들어줘",
+      "why": "앱 신규 개발의 최단 발화 — Step 0.5 대규모 판정(PRD 진입)까지 발동해야 한다. plan-pos-4는 같은 축을 영어 CLI 도구로 재므로 짧은 한글 발화는 미커버였다 (구형 id=13 흡수)"
+    },
+    {
+      "id": "plan-pos-8",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "필요한 기능들을 검토해서 할 일 관리 도구를 만들어줘",
+      "why": "요구 자체를 위임한 발화('필요한 기능 검토') + 앱 신규 — 대규모 판정 + PRD 작성 대상. 위임 표현 축은 다른 케이스에 없다 (구형 id=14 흡수)"
+    },
+    {
+      "id": "plan-pos-9",
+      "skill": "pjc:plan-feature",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "리스트 아이템 간격 좀 넓히고 스크롤바도 항상 보이게 바꿔줘",
+      "why": "값 치환과 동작성 변경이 섞인 경계 — 순수 값 치환이면 trivial이지만 '항상 보이게'는 동작 변경이라 애매 3갈래(A/B 질문) 규칙 적용 대상이고, 그 판정을 하려면 스킬이 발동해야 한다 (구형 id=18 흡수)"
+    },
+    {
+      "id": "plan-neg-6",
+      "skill": "pjc:plan-feature",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "이 코드 리뷰해줘",
+      "why": "리뷰 요청 — 변경 작업이 아니라 읽고 판정하는 일이다. 리뷰 요청 축은 다른 케이스에 없다 (구형 id=12 흡수)"
+    },
+    {
+      "id": "plan-neg-7",
+      "skill": "pjc:plan-feature",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "설정 화면 카드 3개 padding 16px로, 제목 font-size 18px로, 포인트 색 #336699로 바꿔줘. 구조나 로직은 그대로 두고 값만.",
+      "why": "다건 순수 값 치환 — 개수가 많아도 trivial(Trivial Bypass 예외)이라 직접 수정 대상. plan-neg-2는 단건이라 '개수가 많으면 발동'으로 오학습될 여지가 남았다 (구형 id=17 흡수)"
+    },
+    {
       "id": "wiki-pos-1",
       "skill": "pjc:llm-wiki",
       "expect": "trigger",

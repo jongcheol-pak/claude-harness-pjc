@@ -24,20 +24,7 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  **⚠ 실행 방법 (이대로 하지 않으면 완주하지 않는다 — 실측)**: 무인자 전체는 **출력을 파일로 리다이렉트(`*> <파일>`)해 백그라운드로** 실행한다. 원인은 둘이며 둘 다 피해야 한다 — ① `| Select-Object -Last N` 같은 **파이프라인이 출력을 끝까지 버퍼링**해 중단·미종료를 유발한다 ② 스위트가 **10분을 넘으므로 전경 실행은 시간 캡에 걸린다**(리다이렉트만 해도 전경이면 실패). 파일 출력은 즉시 기록돼 진행 상황(`[PASS]` 누적)도 실시간으로 보인다. 이 방법으로 **531/531 OK(FAIL 0)** 완주를 확인했다(케이스를 추가하면 이 숫자도 함께 갱신할 것 — 회귀 기준선으로 쓰인다). 과거 "환경상 실행 불가"로 F-2를 갈음한 사례들은 이 방법을 쓰지 않은 것이다.
-
-  **⚠ 도구 timeout까지 감안할 것**: 위 "백그라운드"만으로는 부족하다 — Bash 도구는 **timeout 상한이 10분**이라 `run_in_background`로 띄워도 그 시점에 killed된다. **스위트는 20~30분 걸린다**(531케이스 — 실측 18분 1초~30분 32초로 편차가 크다. 완료는 시간이 아니라 `EXIT=` 마커로 판정할 것). 확실한 방법은 **세션에서 분리된 프로세스로 띄우고 완료를 폴링**하는 것이다. **단 `Start-Process`에 리다이렉트 파라미터를 직접 주는 형태는 쓰지 말 것** — `-RedirectStandardOutput <out> -NoNewWindow` 조합에서 **러너가 정상 종료했는데 출력 파일이 0바이트로 남는 경우가 실측됐다**(2026-08-02, 헤더조차 없어 "시작은 했는지"도 구분 불가). 대신 **래퍼 스크립트를 하나 만들어** 그 안에서 `*>>`로 전 스트림을 모으고 **시작 마커와 exit code를 직접 남긴다**:
-  ```powershell
-  # run-golden.ps1 (임시 폴더에 생성)
-  Set-Content -LiteralPath $out -Value ("START " + (Get-Date -Format 'HH:mm:ss')) -Encoding utf8NoBOM
-  Set-Location -LiteralPath $repo
-  & pwsh -NoProfile -ExecutionPolicy Bypass -File $runner *>> $out
-  Add-Content -LiteralPath $out -Value ("EXIT=" + $LASTEXITCODE + " END " + (Get-Date -Format 'HH:mm:ss'))
-  ```
-  ```
-  Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','<래퍼 경로>' -WindowStyle Minimized
-  ```
-  그 뒤 **`Monitor` 도구**로 완료를 기다린다 — `until grep -q "EXIT=" <out>; do sleep 30; done` + `timeout_ms: 3600000`(60분). **Bash 폴링은 10분 캡에 끊기지만 Monitor는 무관**(실측 11분 완주). 판정은 **ASCII `EXIT=`**로(한글 `결과:` 아님) — `*>>`는 코드페이지를 타 한글이 깨진다. 결과 라인은 완료 후 `Get-Content -Encoding UTF8`로 읽는다. **러너는 결과를 끝에 일괄 출력**하므로 실행 중 파일은 START 마커 + 헤더뿐이며, **"파일이 안 자란다 = 멈췄다"가 아니다** — 진행은 `Get-Process`로 래퍼 PID 생존을 본다.
+  **⚠ 이대로 실행하면 완주하지 않는다** — 스위트가 **약 15분**(531케이스, 병렬 기본)인데 Bash 도구의 시간 캡은 **전경·`run_in_background` 모두 10분**이라 어느 쪽으로 띄워도 killed되고, `Start-Process`의 리다이렉트 파라미터는 0바이트 파일을 남긴다. **분리 프로세스 + 래퍼 스크립트 + `Monitor` 폴링**이 정본 절차이며 **실행·대기·판정·모드(`-Sequential`·`-Resume`·`-Filter`) 상세는 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」이 정본**이다. 그 절을 읽지 않고 돌리면 과거처럼 "환경상 실행 불가"로 F-2를 갈음하게 된다.
 
   격리 USERPROFILE에서 hook 11종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
   부분 실행 `-Filter <hook명>`(쉼표 복수, `.ps1` 생략 가능)은 **구현 중 반복 확인 전용**이고, task 검증과 Phase F-2는 무인자 **전체 실행**이 정본이다 — **부분 실행 결과로 검증 판정 금지**(골든 케이스가 hook 간 얽혀 있어 커버리지가 좁다).
@@ -50,12 +37,12 @@
   ```
   python plugins/pjc/evals/check-harness-consistency.py
   ```
-  다섯 축(문서 로드 예산 · 리뷰어 각주 앵커 · 포인터 도달성 · 마커 동기 · Deferred 잔량)을 **문서 기록값 ↔ 실측**으로 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). 축별 기준표는 `docs/hook-conventions.md`.
+  다섯 축(문서 로드 예산 · 리뷰어 각주 앵커 · 포인터 도달성 · 마커 동기 · Deferred 잔량)을 **문서 기록값 ↔ 실측**으로 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). 축별 기준표는 `docs/harness-conventions.md`.
 - **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것**: Claude Code **PowerShell 도구의 내장 경로 보호**가 삭제 대상을 추출할 때 실제 대상이 아니라 **같은 명령 문자열 안 다른 위치의 따옴표 경로**를 집어 오차단한다(`Remove-Item on system path ''D:\Personal' is blocked.`). **하니스 hook과 무관하다** — `block-destructive`에 변형 11종을 stdin 주입한 결과 **11/11 exit 0**(차단 0건)이다. `Remove-Item` 토큰과 공백 포함 경로가 **한 명령 문자열에 함께 있을 때만** 발화하는 조합 의존이라 "가끔 막힌다"로 보인다. **회피**: 검증 배치를 **스크립트 파일로 분리**(가장 확실) · **Bash 도구** 사용 · 환경변수 제거는 `$env:NAME = ''` 대입.
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
 ### 검증 매핑 (task 검증 선택)
-**표 정본은 `docs/hook-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증. task 단위 검증은 그 표에서 변경 파일에 맞는 행만 실행하고(여러 패턴이면 합집합), 전체 검증은 Phase F-2가 1회 보장한다. 표를 여기 두지 않는 이유는 이 파일의 16KB 주입 상한이다.
+**표 정본은 `docs/harness-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증. task 단위 검증은 그 표에서 변경 파일에 맞는 행만 실행하고(여러 패턴이면 합집합), 전체 검증은 Phase F-2가 1회 보장한다. 표를 여기 두지 않는 이유는 이 파일의 16KB 주입 상한이다.
 같은 문서의 **「골든 부분 실행의 판정 자격」**(부분 실행으로 갈음할 수 있는 조건 — plan에 미리 명시 + 커밋 `Tests:` 범위 기재)과 **「문서 로드 예산 기준선」**(스킬·리뷰어 파일 바이트 기계 대조)도 함께 읽는다.
 
 ## Repository Structure
@@ -69,7 +56,7 @@
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
 ├── docs/
-│   ├── hook-conventions.md          # hook 출력 규약 상세 (조건부 차단의 정본 — Conventions에서 포인터)
+│   ├── harness-conventions.md       # 하니스 전역 규약 상세 (hook 차단·검증 매핑·문서 예산·리뷰어 각주의 정본)
 │   ├── prd.md
 │   └── plans/deferred.md            # 미처리 Deferred 단일 대장
 ├── validate.ps1                     # 설치본 검증
@@ -81,7 +68,7 @@
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **파일 크기**: 1500라인은 분리 "검토" 신호(강제 분리선 아님).
-- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단 형태는 **둘**이다 — ① **`exit 2`**: `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox` + **`warn-commit-secrets`(조건부)** ② **`stdout JSON`(`{"decision":"block","reason":…}`) + `exit 0`**: **`require-evidence`(조건부)**. ②는 Stop hook 전용으로 종료를 막고 `reason`을 모델에 전달해 루프를 잇는다(도구 호출이 아니라 *종료를 되돌린다*). **두 조건부의 세부 조건·스캔 범위·라벨 매치 형태는 `docs/hook-conventions.md`가 정본이다** — hook을 수정하거나 문서에 차단 범위를 적기 전에 반드시 읽을 것(차단 범위를 실제보다 넓게 쓰면 "차단한다고 썼는데 안 잡는" 상태가 된다). **우회 변수는 둘이며 서로 대체되지 않는다** — `require-evidence`는 `CLAUDE_HARNESS_QUICK=1`, `warn-commit-secrets`는 전용 변수 `CLAUDE_HARNESS_ALLOW_SECRET=1`(QUICK으로는 꺼지지 않는다).
+- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단 형태는 **둘**이다 — ① **`exit 2`**: `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox` + **`warn-commit-secrets`(조건부)** ② **`stdout JSON`(`{"decision":"block","reason":…}`) + `exit 0`**: **`require-evidence`(조건부)**. ②는 Stop hook 전용으로 종료를 막고 `reason`을 모델에 전달해 루프를 잇는다(도구 호출이 아니라 *종료를 되돌린다*). **두 조건부의 세부 조건·스캔 범위·라벨 매치 형태는 `docs/harness-conventions.md`가 정본이다** — hook을 수정하거나 문서에 차단 범위를 적기 전에 반드시 읽을 것(차단 범위를 실제보다 넓게 쓰면 "차단한다고 썼는데 안 잡는" 상태가 된다). **우회 변수는 둘이며 서로 대체되지 않는다** — `require-evidence`는 `CLAUDE_HARNESS_QUICK=1`, `warn-commit-secrets`는 전용 변수 `CLAUDE_HARNESS_ALLOW_SECRET=1`(QUICK으로는 꺼지지 않는다).
 - **`require-plan-for-write`는 게이트 3종을 담는다**: ① plan 존재 게이트(코드 Write 시 plan 필요 — `docs/plans/`는 **체크박스 plan 실재**로 판정, 디렉터리 존재만으로는 안 켜짐) ② **plan 작성 게이트**(plan 파일 Write·체크박스 도입 Edit은 `pjc:plan-feature`/`implement-task` 발동 흔적 필요) ③ AGENTS.md bootstrap 게이트. ①과 ②는 같은 정규식(`$planTaskRx`)을 공유한다 — **기준이 갈리면 그 차이가 곧 우회 경로**이므로 한쪽만 고치지 말 것.
 - **SKILL 문서 작성**: `plugins/pjc/skills/AUTHORING.md` 참조("왜"를 설명, 절대 규칙만 단호하게).
 - **README.md 갱신 규약**: 버전별 수정 내역(`> v1.x.y: …` changelog 블록) 기재 **금지** — 현재 기능 설명만 유지한다(변경 반영은 이력 서술 append가 아니라 기존 문장을 현재 동작에 맞게 수정, 제거된 기능 설명은 삭제). 버전 표기는 상단 `**버전**:` 1곳만 두고 릴리즈 시 `plugin.json` version과 **함께** 갱신한다. **이력은 git 커밋이 정본이다.** (이 규칙은 실제로 버전 동기화가 누락되고 changelog가 재유입된 사고를 겪은 뒤 확정됐다 — 관례가 아니라 재발 방지책이다.)

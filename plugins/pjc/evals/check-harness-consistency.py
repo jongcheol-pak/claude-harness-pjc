@@ -6,7 +6,7 @@
 무엇을: 이 repo는 마크다운이 곧 실행 규칙이라, 문서가 서로 어긋나면 그것이 곧 동작 결함이다.
 아래 다섯 축은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다:
 
-  ① 문서 로드 예산  — 스킬·리뷰어 파일의 바이트가 `docs/hook-conventions.md` 「문서 로드 예산
+  ① 문서 로드 예산  — 스킬·리뷰어 파일의 바이트가 `docs/harness-conventions.md` 「문서 로드 예산
      기준선」 표와 일치하는가. 그 표는 조건부 절차를 references로 밀어낸 절감이 유지되는지를
      수치로 고정한다. 파일을 고친 task가 표를 갱신하지 않으면 여기서 잡힌다.
   ② 리뷰어 각주 앵커 — 리뷰어 4종이 복제 보유하는 규약 블록에 동기 신호(각주)가 전부 있는가.
@@ -33,7 +33,7 @@ import sys
 # repo 루트 = 이 파일의 3단계 상위 (plugins/pjc/evals/ → repo)
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 
-CONV_MD = os.path.join(ROOT, "docs", "hook-conventions.md")
+CONV_MD = os.path.join(ROOT, "docs", "harness-conventions.md")
 LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
 IMPL_MD = os.path.join(ROOT, "plugins", "pjc", "skills", "implement-task", "SKILL.md")
 
@@ -319,7 +319,7 @@ def main():
         for m in all_issues:
             print("[MISMATCH] %s" % m)
         print("\n결과: 불일치 %d건 — 해당 파일을 고친 task가 기준선·앵커를 함께 갱신해야 합니다"
-              "(`docs/hook-conventions.md` 「문서 로드 예산 기준선」 서문 참조)." % len(all_issues))
+              "(`docs/harness-conventions.md` 「문서 로드 예산 기준선」 서문 참조)." % len(all_issues))
         sys.exit(1)
     print("결과: 대조 전부 일치 (%s)" % " + ".join(parts))
     sys.exit(0)

@@ -59,7 +59,7 @@
 
 ## 컨텍스트 한계는 Halt 사유가 아니다 (압축 통과)
 
-컨텍스트가 과밀해도 멈추거나 "새 세션에서 계속할까요?"라고 묻지 않는다 — 그 발화는 **SKILL.md 금지 표현 ③**이며 `require-evidence` Stop hook이 종료를 되돌린다(문서 규칙 + hook 이중 방어. 조건·신호 분류의 정본은 `docs/hook-conventions.md`). **압축 통과 절차의 정본은 SKILL.md 컨텍스트 관리 규칙 4**: 현재 task를 Phase V/D까지 완료(중간 절단 금지) → plan.md에 상태 완전 기록(Progress Log + Next Steps + 다음 task 시작점) → 사용자 보고 없이 계속 → 압축 감지 시 첫 행동은 이 SKILL.md(implement-task) + plan.md + AGENTS.md 재읽기(요약 기억만으로 이어가지 않음). 실패가 아니라 품질 보존을 위한 정상 흐름이며 루프는 마지막 task까지 끊기지 않는다.
+컨텍스트가 과밀해도 멈추거나 "새 세션에서 계속할까요?"라고 묻지 않는다 — 그 발화는 **SKILL.md 금지 표현 ③**이며 `require-evidence` Stop hook이 종료를 되돌린다(문서 규칙 + hook 이중 방어. 조건·신호 분류의 정본은 `docs/harness-conventions.md`). **압축 통과 절차의 정본은 SKILL.md 컨텍스트 관리 규칙 4**: 현재 task를 Phase V/D까지 완료(중간 절단 금지) → plan.md에 상태 완전 기록(Progress Log + Next Steps + 다음 task 시작점) → 사용자 보고 없이 계속 → 압축 감지 시 첫 행동은 이 SKILL.md(implement-task) + plan.md + AGENTS.md 재읽기(요약 기억만으로 이어가지 않음). 실패가 아니라 품질 보존을 위한 정상 흐름이며 루프는 마지막 task까지 끊기지 않는다.
 
 ## "사소한 문제"는 중단 사유가 아니다
 
@@ -70,7 +70,7 @@
 
 ### 중간 수동 테스트 요청은 중단 사유가 아니다
 
-**"여기서 한번 직접 실행해 보시는 게 좋겠습니다"라며 멈추는 것은 Halt가 아니라 규칙 위반이다.** 위 표에 없는 사유이며, 자율 루프는 마지막 task까지 가는 것이 계약이다. 실제로 루프 중간에 테스트를 요청하며 멈춘 사례가 관측됐다. 이 유형은 **SKILL.md 금지 표현 ④**로 명문화돼 있고 `require-evidence` Stop hook이 종료를 되돌린다(문서 규칙 + hook 이중 방어 — 정본 `docs/hook-conventions.md`).
+**"여기서 한번 직접 실행해 보시는 게 좋겠습니다"라며 멈추는 것은 Halt가 아니라 규칙 위반이다.** 위 표에 없는 사유이며, 자율 루프는 마지막 task까지 가는 것이 계약이다. 실제로 루프 중간에 테스트를 요청하며 멈춘 사례가 관측됐다. 이 유형은 **SKILL.md 금지 표현 ④**로 명문화돼 있고 `require-evidence` Stop hook이 종료를 되돌린다(문서 규칙 + hook 이중 방어 — 정본 `docs/harness-conventions.md`).
 
 - **기계 검증(빌드·테스트·정적 검사)으로 확인되는 것**은 직접 실행해 확인한다 — 사용자에게 대신 돌려 달라고 하지 않는다.
 - **기계 검증이 불가능한 것**(GUI 조작감·시각 확인·사용자 체감)은 **멈추지 말고 `⏳ HUMAN-VERIFY`로 표기해 최종 보고로 넘긴다**(`phase-g-detail.md` G-1 표기 규약). 이 표기는 **정직한 보고 수단이지 중간 정지 신호가 아니다** — 루프는 계속 진행하고, 사용자는 완료 시점에 한 번에 확인한다.
