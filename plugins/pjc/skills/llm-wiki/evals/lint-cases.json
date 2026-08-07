@@ -1,5 +1,5 @@
 {
-  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 25개 lint 검사 중 대표 17개(깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(기능별 인덱스 §7-16 + 가이드 alias §7-27)·시크릿·decision 어휘·index 부재·feature 각주·구현 방법 섹션 부재·updated 누락·관련 파일 섹션/경로(§7-21)·각주/관련 파일 경로 실존(§7-20·21)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)). 나머지는 Deferred(plan 참조).",
+  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 31개 lint 검사 중 대표 19개(깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(기능별 인덱스 §7-16 + 가이드 alias §7-27)·시크릿·decision 어휘·index 부재·feature 각주·구현 방법 섹션 부재·updated 누락·관련 파일 섹션/경로(§7-21)·각주/관련 파일 경로 실존(§7-20·21)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산+신선도 면제(§7-2·§7-3)·이동·분리 도달 경로(§7-30ⓐ정·ⓑ역)·작업 규약 미마이그레이션(§7-31)). 나머지는 Deferred(plan 참조).",
   "cases": [
     {
       "fixture": "clean",
@@ -352,6 +352,58 @@
         "sub-index 미등록"
       ],
       "rationale": "§7-14 순번 sub-index 자동 분할 신호(INFO) — index-work-1.md가 본문 400줄 임계 초과라 '순번 파일 자동 분할' INFO를 낸다(wiki-schema §4 3단계). 동시에 index.md에 순번 stem(index-work-1/-2)이 등록됐는데 §7-15 '미등록' WARN이 안 나는지 실증 — mentioned 정규식 index-[a-z]+(?:-\\d+)?가 순번 suffix를 포착(구 index-[a-z]+는 index-work로만 잡혀 index-work-1을 미등록 오탐, expect_absent가 그 회귀를 가드)."
+    },
+    {
+      "fixture": "convention-over",
+      "expect_keywords": [
+        "예산 초과",
+        "conventions.md",
+        "13059/12000",
+        "type=convention",
+        "무효 항목 제거",
+        "하위 파일"
+      ],
+      "expect_absent": [
+        "90일+ 미편집",
+        "60일+ 미편집"
+      ],
+      "rationale": "§7-2 convention 예산(12000자) 초과 WARN + 처방 힌트 — 신규 타입이 BUDGET에 편입돼 문자 수로 판정되고, 초과 시점에 수리 경로(무효 항목 제거 → 하위 파일 분리)를 안내하는지 함께 실증한다(wiki-schema §2.9·§4·§7-2). 근접 INFO만 힌트를 주고 초과 WARN이 침묵하면 정작 고쳐야 할 때 방법을 못 받는다. expect_absent는 신선도 오탐 가드: convention은 §7-3·§8 예외 1-3으로 60/90일 전체 면제인데, ARCHIVE_EXEMPT_TYPES 갈래로 구현하면 90일 분기만 막혀 60일 INFO로 떨어지므로 두 라벨 모두 부재를 검증한다(picked-up: 이 픽스처의 updated는 2026-08-01이라 두 임계 모두 미달이지만, 구현이 잘못돼 타입 무관 오탐을 내면 여기서 드러난다)."
+    },
+    {
+      "fixture": "convention-legacy-hub",
+      "expect_keywords": [
+        "작업 규약 미마이그레이션",
+        "conventions.md로 이전 대상"
+      ],
+      "rationale": "§7-31 검출 — 허브에 옛 '## 작업 규약·주의사항' 섹션이 남아 있으면 conventions.md 이전 대상으로 알린다(wiki-schema §2.9). 미마이그레이션 허브를 매 lint에서 가시화해 다음 ingest가 처리하게 만드는 신호다."
+    },
+    {
+      "fixture": "convention-legacy-hub",
+      "expect_clean": true,
+      "rationale": "§7-31 심각도 가드(D5: INFO 고정) — 위 케이스와 같은 픽스처를 ERR·WARN 0으로 검증한다. 사용자가 기존 허브 12개의 점진 마이그레이션을 택했으므로 이 신호가 WARN이면 미마이그레이션 허브 전부가 매 lint마다 경고를 내 실제 결함이 묻히고, ERR이면 exit code까지 바뀐다. expect_clean과 expect_keywords는 한 케이스에 합칠 수 없어(runner의 clean 분기가 early return) 축을 두 케이스로 나눴다."
+    },
+    {
+      "fixture": "convention-broken",
+      "expect_keywords": [
+        "변경 이력 아카이브 포인터 깨짐",
+        "gone/changes.md"
+      ],
+      "expect_absent": [
+        "포인터 누락"
+      ],
+      "rationale": "§7-30ⓐ 정방향 — 허브 '## 아카이브' 포인터가 실재하지 않는 changes.md를 가리키면 WARN(wiki-schema §2.2·§8). 롤오버한 변경 이력에 도달하지 못하면 이동이 곧 유실이므로 §7-24 decisions 포인터와 같은 계열로 검사한다. expect_absent '포인터 누락'은 역방향 오발화 가드 — 이 픽스처에는 90_archive 하위 changes.md가 없어 역방향은 침묵해야 한다."
+    },
+    {
+      "fixture": "convention-broken",
+      "expect_keywords": [
+        "규약 하위 문서 목록 누락",
+        "conventions-release.md",
+        "조회 홉 1"
+      ],
+      "expect_absent": [
+        "목록 깨짐"
+      ],
+      "rationale": "§7-30ⓑ 역방향 — conventions-release.md가 실재하는데 conventions.md '## 하위 문서' 목록에 없으면 WARN(wiki-schema §2.9). 목록이 조회 진입점이라 미등재는 분리한 규약이 절차 K의 조회 경로 밖으로 나가는 것이다(조회 홉 1 위반). expect_absent '목록 깨짐'은 정방향 오발화 가드 — 목록이 가리키는 없는 파일이 없으므로 정방향은 침묵해야 한다. 고아 페이지 WARN이 함께 나오는 것은 미등재 상태의 필연적 동반 신호(링크 부재)이며 이 케이스 판정에 영향이 없다."
     }
   ]
 }
