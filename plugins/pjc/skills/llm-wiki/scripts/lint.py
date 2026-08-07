@@ -1113,11 +1113,15 @@ def main():
     # ⓑ conventions '## 하위 문서' 목록 ↔ 하위 파일 양방향.
     #  wikilink(무확장자)·평문 경로 둘 다 인정한다 — §7-24 포인터가 평문, §7-15 목록이 파일명 언급
     #  기준인 두 선례를 모두 수용(형식 위반은 §7-1 링크 검사가 별도로 본다).
-    sub_conv_rx = re.compile(r"(20_projects/[^\s`()|\]]+/conventions-[^\s`()|\]]+?)(?:\.md)?(?=[\s`()|\]]|$)")
+    #  본체 문자 클래스에서 `.`·`\`를 배제한다 — 배제하지 않으면 Obsidian 표의 이스케이프 파이프
+    #  (`conventions-git.md\|`)에서 `.md\`가 본체로 흡수돼 코드가 다시 '.md'를 붙여 실재하지 않는
+    #  경로를 만들고, 정상 등재 항목을 "목록 깨짐"으로 오탐한다. 확장자는 `(?:\.md)?`가 담당하고
+    #  주제명은 네이밍 규약상 영문소문자·하이픈뿐(§3)이라 본체에 `.`이 올 일이 없다.
+    sub_conv_rx = re.compile(r"(20_projects/[^\s`()|\]\\.]+/conventions-[^\s`()|\]\\.]+?)(?:\.md)?(?=[\s`()|\]\\.]|$)")
     for r, (fm, typ, text) in pages.items():
         if typ != "convention" or r.startswith("90_archive/"):
             continue
-        if "/conventions.md" not in "/" + r:
+        if os.path.basename(r) != "conventions.md":
             continue          # 하위 파일(conventions-*.md) 자신은 목록 보유 대상이 아니다
         listed = {m.group(1) + ".md" for m in sub_conv_rx.finditer(section(text, "하위 문서") or "")}
         for t in sorted(listed):
