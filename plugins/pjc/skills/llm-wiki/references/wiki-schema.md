@@ -557,6 +557,7 @@ tags: [convention, 프로젝트태그]
 - **예외 1-1**: 폐기 표시(`status: deprecated` 또는 `deprecated:` 필드, §2.3) 페이지도 시간 기반 신선도 처리에서 제외 — 코드에서 제거된 frozen 이력이라 미편집이 정상이다(lint §7-17ⓒ)
 - **예외 1-2**: `decision-log` 타입도 시간 기반 신선도 처리 전체에서 제외 — 결정 이력은 미편집이 정상이다(§2.8)
 - **예외 1-3**: `convention` 타입도 시간 기반 신선도 처리 전체에서 제외 — 작업 규약은 오래돼도 유효하므로 미편집이 정상이며(§2.9), `confidence` 필드가 없어 60일 하락 라벨도 성립하지 않는다
+- **예외 1-4**: `question` 타입도 시간 기반 신선도 처리 전체에서 제외 — resolved question은 동결된 이력 기록이라 편집이 정상적으로 멈추고(`lint-*` 리포트 포함) open question은 §7-12 집계가 이미 추적하며(§2.7), `confidence` 필드가 없어(priority 사용) 60일 하락 라벨도 성립하지 않는다. 구현(`lint.py`의 `FRESHNESS_EXEMPT_TYPES`)과 §7-3은 이 면제를 처음부터 적용해 왔고 이 목록에만 빠져 있었다(`evals/check_consistency.py`의 타입 열거 정합 축이 검출)
 - **예외 2**: `feature`·`guide` 타입은 시간 기반 아카이브 제외 (confidence 하락만 적용, 이동하지 않음)
 - 아카이브 구조: 원래 경로를 `90_archive/` 하위에 재현
 - 부활: 아카이브 페이지가 다시 참조되면 원래 위치로 복귀

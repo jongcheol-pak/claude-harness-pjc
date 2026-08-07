@@ -33,6 +33,15 @@
 ⑨ templates.md ↔ schema §2 타입 집합 정합 — H-2 "타입 바뀌면 templates 동기" 규약을 기계로 잡는다.
 타입 신설·삭제·개명이라는 구조 드리프트만 대조(필드 단위 아님 — 오탐 방지).
 
+⑩ 신규 타입 열거 누락 정합 — 새 페이지 타입을 도입할 때 **기존 타입이 산문으로 열거된 자리**가
+조용히 낡는 사각을 잡는다(⑨는 타입 집합의 존재만 보고 산문 열거는 읽지 않는다). 두 그룹으로
+나뉘고 기대 집합의 정본이 서로 다르다 — ⓐ 값의 정본이 lint.py 상수인 자리(§3 origin·confidence,
+§7-3, §7-9, §7-28, §8 아카이브 예외, §11 적용 대상)는 상수 ↔ 산문을 집합 대조하고, ⓑ 정본이
+schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.md 목차, §12 description 권장/비대상)는
+전 타입 등장(§12는 권장·비대상 **분할 커버**)을 요구한다. 새 타입 누락을 강제로 잡는 것은 ⓑ다.
+계기: v1.164.0이 `convention` 타입을 신설하며 이 자리들을 일회성 정규식 스캔으로 손수 찾아냈고,
+그 스캔은 자산이 아니라 임시 스크립트였다.
+
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
   - 불일치 → 항목별 소스 값 나열 + exit 1
@@ -434,6 +443,174 @@ def check_templates_types(schema_text):
     return issues, len(tmpl_types | schema_types)
 
 
+# ⑩ 타입 열거 정합용 — 산문이 다른 상수를 **이름으로 참조**하는 자리의 치환표.
+#  §7-9가 "origin 필수 타입 + question + ..."처럼 집합을 문장으로 더하므로, 토큰 추출 전에
+#  그 리터럴을 실제 집합으로 바꿔 놓지 않으면 항상 5개가 모자라 불일치가 난다.
+PROSE_SET_ALIASES = {"origin 필수 타입": "ORIGIN_REQUIRED_TYPES"}
+
+# ⑩-ⓐ 코드↔문서 — 값의 정본이 lint.py 상수인 자리. {ID: (구간 앵커, lint 도출)}
+#  앵커의 group(1)이 타입 토큰을 담은 구간이며, 매치가 없으면 die(앵커 파싱 실패 = exit 2).
+#  구간을 넓게 잡으면 안 된다 — 이물 토큰이 섞이면 문서를 고쳐도 영원히 불일치가 된다(A4 주석 참조).
+TYPE_ENUM_SITES_LINT = {
+    # §3 origin/confidence 두 줄: '—' 뒤 ~ '공통 필수 필드' 앞. 그 뒤 괄호 부기
+    #  ('(decision-log·convention은 대상 아님)')는 리터럴 뒤라 자동 배제된다.
+    "A1-origin": (r"^- \*\*`origin` 통제 어휘\(고정\)\*\*:[^\n]*?—(.+?)공통 필수 필드",
+                  lambda lint: lint.ORIGIN_REQUIRED_TYPES),
+    "A1-confidence": (r"^- \*\*`confidence` 통제 어휘\(고정\)\*\*:[^\n]*?—(.+?)공통 필수 필드",
+                      lambda lint: lint.ORIGIN_REQUIRED_TYPES),
+    # §7-9: 상수명을 문서가 직접 인용하는 자리 (PROSE_SET_ALIASES 치환 대상)
+    "A2-updated": (r"`UPDATED_REQUIRED_TYPES` = (.+?),", lambda lint: lint.UPDATED_REQUIRED_TYPES),
+    # §7-3 신선도 항목 줄 전체 — 한 줄에 규칙 4개(아카이브 제외/전체 면제 3종)가 섞여 있어
+    #  세부 앵커로 쪼개면 문구 의존이 심해진다. 합집합으로 대조하는 편이 견고하다.
+    "A3-freshness": (r"^3\. \*\*신선도\*\*(.+)$",
+                     lambda lint: lint.FRESHNESS_EXEMPT_TYPES | lint.ARCHIVE_EXEMPT_TYPES),
+    # §7-28: '**제외**:' 뒤 ~ 첫 ' — ' 앞
+    "A5-release": (r"\*\*제외\*\*: (.+?) — ", lambda lint: lint.RELEASE_MARKER_EXEMPT_TYPES),
+    # §11 적용 대상 줄. '적용 대상'만으로 잡으면 §4의 '- **적용 대상**: 하위 페이지 분리 처방을
+    #  가진 전 타입 — feature·entity·…'(볼드)를 먼저 물어 green에 도달할 수 없다 → §11로 스코프 한정.
+    "A6-validation": (r"^## 11\.[\s\S]*?^- 적용 대상: (.+)$", lambda lint: lint.ORIGIN_REQUIRED_TYPES),
+}
+
+# ⑩-ⓑ 전 타입 커버 — 값의 정본이 schema §2 타입 집합인 자리. 기대 집합을 계산으로 도출하므로
+#  코드에 타입 값을 적지 않는다(B2의 매핑 2건만 예외 — 태그 표기가 타입명과 갈리는 지점).
+TYPE_ENUM_SITES_COVER = {
+    "B1-toc": r"^\| 2 \| [^|(]*\(([^)]+)\)",          # 목차 §2 행 내용열의 괄호 안 타입 나열
+    "B2-tags": r"^- 계층 태그: (.+)$",                 # §3 계층 태그
+    # §12 description 권장/비대상 2줄. **절 스코프가 필수다** — 스코프 없이 '은 대상이 아니다'로
+    #  잡으면 §2.8의 '구현 세부 결정(…)은 대상이 아니다'(:256)를 먼저 물어 비대상 집합이 통째로
+    #  비어 버린다(구현 중 실측). A6이 §11로 스코프를 한정한 것과 같은 이유다.
+    "B4-desc-recommended": r"^### description \(권장 필드\)[\s\S]*?^- (.+?5타입 frontmatter에)",
+    "B4-desc-excluded": r"^### description \(권장 필드\)[\s\S]*?^- (.+?은 대상이 아니다)",
+}
+# B2 계층 태그는 §2 타입과 1:1이 아니다 — source-stub이 'source'로 표기되고 recipe(guide 하위
+#  종류)가 추가된다. 이 둘이 축 ⑩ 전체에서 코드에 값을 적는 유일한 자리다.
+TAG_ALIAS = {"source-stub": "source"}
+TAG_EXTRA = {"recipe"}
+
+
+def extract_type_tokens(text, vocab):
+    """구간 text에서 어휘 vocab에 속하는 타입 토큰만 뽑아 집합으로 반환.
+
+    길이 내림차순 alternation이 필수다 — 'source-stub'이 'source'로 잘리면 B2가 항상 불일치한다.
+    앞뒤 경계로 [a-z-]를 배제해 'decision-log'가 'decision'으로 잘리는 것과 '20_projects'의
+    'project' 오탐을 함께 막는다(뒤에 's'가 오면 매치되지 않는다). 백틱·볼드 마크업은 무시된다.
+    숫자·언더스코어는 배제 클래스에 넣지 않았다 — 현재 10개 자리의 문면에 'project_'류 인접
+    표기가 없어서이며, 그런 표기가 들어오는 자리가 생기면 [a-z0-9_-]로 넓힌다(\b를 쓰지 않는
+    이유는 하이픈 복합 타입명 보존이다)."""
+    if not vocab:
+        return set()
+    pat = "|".join(re.escape(t) for t in sorted(vocab, key=len, reverse=True))
+    return set(re.findall(r"(?<![a-z-])(" + pat + r")(?![a-z-])", text))
+
+
+def _enum_span(text, rx, label):
+    """자리 앵커로 구간을 잡아 group(1)을 반환. 못 찾으면 die (exit 2 — 조용한 통과 금지)."""
+    m = re.search(rx, text, re.M)
+    if not m:
+        die(f"⑩ 타입 열거 자리 '{label}' 앵커를 찾지 못함 (문서 문면 변경 신호)")
+    return m.group(1)
+
+
+def check_type_enumerations(schema_text, lint):
+    """⑩ 신규 타입 열거 누락 정합.
+
+    새 페이지 타입을 도입할 때 **기존 타입이 산문으로 열거된 자리**가 조용히 낡는 사각을 잡는다
+    (v1.164.0이 `convention` 신설 때 그 자리들을 일회성 정규식 스캔으로 손수 찾아낸 것이 계기).
+    두 그룹으로 나뉘며 기대 집합의 정본이 서로 다르다 —
+      ⓐ 값의 정본이 lint.py 상수인 자리: 상수 ↔ 문서 산문을 집합 대조(축 ②와 같은 구조).
+        새 타입이 그 자리에 없어도 lint 상수에 없으면 정상이므로 '미판정'은 검출하지 않는다.
+      ⓑ 값의 정본이 schema §2 타입 집합인 자리: 전 타입이 등장(또는 분할 커버)해야 한다.
+        새 타입 누락을 강제로 잡는 역할은 이쪽이 담당한다.
+
+    ⚠ 검출 방향은 **누락 한쪽뿐이다** — 토큰 어휘를 실재 타입으로 한정하므로(오탐 차단이 1급
+    요건) 타입을 **삭제한 뒤 산문에 남은 유령 이름**은 애초에 추출되지 않아 조용히 통과한다
+    (개명은 새 이름이 없어서, 오타는 기대 토큰이 없어서 잡히지만 순수 잔존은 안 잡힌다).
+    아래 issue 문면의 '문서에만 [...]' 분기가 ⓑ에서 비는 이유가 이것이며, 넓히려면 어휘를
+    열어야 하는데 그러면 산문 단어 오탐이 들어온다 — 의식적 트레이드오프다(F-7 m2).
+    반환: (불일치 목록, 대조 항목 수)."""
+    types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(schema_text)}
+    if not types:
+        die("wiki-schema.md '### 2.N <type>' 헤딩을 찾지 못함(⑩)")
+    issues = []
+    checked = 0
+
+    # ⓐ 코드↔문서
+    for label, (rx, derive) in sorted(TYPE_ENUM_SITES_LINT.items()):
+        span = _enum_span(schema_text, rx, label)
+        for alias, attr in PROSE_SET_ALIASES.items():
+            if alias in span:
+                span = span.replace(alias, " ".join(getattr(lint, attr)))
+        checked += 1
+        found = extract_type_tokens(span, types)
+        expected = set(derive(lint))
+        if found != expected:
+            issues.append(f"타입 열거 '{label}' 불일치: 문서에만 {sorted(found - expected)} / "
+                          f"lint 상수에만 {sorted(expected - found)}")
+
+    # ⓐ A4 — §8 「아카이브」 예외 목록. 절 전체가 아니라 '- **예외' 줄만 모은다:
+    #  같은 절에 'confidence 하락은 … 모든 타입(project·feature 포함)에 적용된다'가 있어
+    #  절 전체를 구간으로 쓰면 project가 섞여 문서를 고쳐도 불일치가 풀리지 않는다.
+    sec = re.search(r"^### 아카이브\n(.*?)(?=^### |\Z)", schema_text, re.M | re.S)
+    if not sec:
+        die("wiki-schema.md §8 '### 아카이브' 절을 찾지 못함(⑩ A4)")
+    exc = [ln for ln in sec.group(1).splitlines() if re.match(r"^- \*\*예외", ln)]
+    if not exc:
+        die("§8 '### 아카이브' 절에서 '- **예외' 줄을 하나도 찾지 못함(⑩ A4)")
+    checked += 1
+    found = extract_type_tokens("\n".join(exc), types)
+    expected = lint.FRESHNESS_EXEMPT_TYPES | lint.ARCHIVE_EXEMPT_TYPES
+    if found != expected:
+        issues.append(f"타입 열거 'A4-archive-exceptions' 불일치: 문서에만 {sorted(found - expected)} / "
+                      f"lint 상수에만 {sorted(expected - found)}")
+
+    # ⓑ 전 타입 커버
+    cover_expected = {
+        "B1-toc": types,
+        "B2-tags": {TAG_ALIAS.get(t, t) for t in types} | TAG_EXTRA,
+    }
+    cover_vocab = {"B2-tags": types | set(TAG_ALIAS.values()) | TAG_EXTRA}
+    for label in ("B1-toc", "B2-tags"):
+        span = _enum_span(schema_text, TYPE_ENUM_SITES_COVER[label], label)
+        checked += 1
+        found = extract_type_tokens(span, cover_vocab.get(label, types))
+        expected = cover_expected[label]
+        if found != expected:
+            issues.append(f"타입 열거 '{label}' 불일치: 문서에만 {sorted(found - expected)} / "
+                          f"§2 타입 기준에만 {sorted(expected - found)}")
+
+    # ⓑ B3 — templates.md 목차 ↔ 그 파일의 type: 값 집합. 기존 ⑨는 type:만 보고 목차는 읽지 않아
+    #  목차 누락이 기계에 걸리지 않았다(v1.164.0이 사람 확인 항목으로 남긴 자리).
+    tmpl_text = read(TEMPLATES_MD)
+    tm = re.search(r"^## 목차\n(.*?)(?=^## )", tmpl_text, re.M | re.S)
+    if not tm:
+        die("templates.md '## 목차' 섹션을 찾지 못함(⑩ B3)")
+    tmpl_types = set(re.findall(r"^type:\s*([a-z][a-z-]*)$", tmpl_text, re.M))
+    if not tmpl_types:
+        die("templates.md에서 'type:' frontmatter 값을 찾지 못함(⑩ B3)")
+    checked += 1
+    found = extract_type_tokens(tm.group(1), tmpl_types)
+    if found != tmpl_types:
+        issues.append(f"타입 열거 'B3-templates-toc' 불일치: 목차에만 {sorted(found - tmpl_types)} / "
+                      f"템플릿 본문에만 {sorted(tmpl_types - found)}")
+
+    # ⓑ B4 — §12 description 권장/비대상의 **분할 커버**. 합집합이 §2 전 타입이어야 하고
+    #  교집합은 공집합이어야 한다(한 타입이 양쪽에 적히는 모순 검출). 새 타입이 어느 쪽에도
+    #  들어가지 않으면 여기서 걸린다 — 이 축이 겨냥한 실패 모드다.
+    rec = extract_type_tokens(
+        _enum_span(schema_text, TYPE_ENUM_SITES_COVER["B4-desc-recommended"], "B4-desc-recommended"),
+        types)
+    exd = extract_type_tokens(
+        _enum_span(schema_text, TYPE_ENUM_SITES_COVER["B4-desc-excluded"], "B4-desc-excluded"), types)
+    checked += 1
+    if rec | exd != types:
+        issues.append(f"타입 열거 'B4-description' 분할 커버 위반: 어느 쪽에도 없는 타입 "
+                      f"{sorted(types - (rec | exd))} / §2에 없는 표기 {sorted((rec | exd) - types)}")
+    if rec & exd:
+        issues.append(f"타입 열거 'B4-description' 중복: {sorted(rec & exd)}가 권장·비대상 양쪽에 있음")
+
+    return issues, checked
+
+
 def parse_schema_vocab(text):
     out = {}
     for key, (rx, _attr) in VOCAB_LINES.items():
@@ -502,6 +679,10 @@ def main():
     checked += tmpl_checked
     mismatches.extend(tmpl_issues)
 
+    enum_issues, enum_checked = check_type_enumerations(schema_text, lint)
+    checked += enum_checked
+    mismatches.extend(enum_issues)
+
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
         for m in mismatches:
@@ -512,7 +693,7 @@ def main():
     print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 + "
           f"절차 배치 {placement_checked}항목 + schema 목차 {toc_checked}§ + "
           f"F-1↔§7 {f1_checked}항목 + 산문 포인터 {pointer_checked}건 + templates 타입 "
-          f"{tmpl_checked}종 — 항목당 소스 2~4곳 대조)")
+          f"{tmpl_checked}종 + 타입 열거 {enum_checked}항목 — 항목당 소스 2~4곳 대조)")
     sys.exit(0)
 
 
