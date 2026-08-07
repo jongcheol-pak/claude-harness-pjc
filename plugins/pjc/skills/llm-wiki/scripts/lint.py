@@ -108,6 +108,19 @@ SPECIAL_BUDGET = {"log.md": 6000}
 INFRA_TYPES = {"index", "log", "dashboard", "schema"}
 # 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
 ARCHIVE_EXEMPT_TYPES = {"feature", "guide"}
+# 신선도: 시간 기반 처리 **전체**(60일 confidence 하락 + 90일 아카이브 후보)에서 면제하는 타입
+#  (§7-3 · §8 예외 1-2·1-3·1-4). ARCHIVE_EXEMPT_TYPES와 갈리는 지점: 그 집합은 90일 분기에서만
+#  걸러 60일 분기로 떨어지는데, 아래 셋은 confidence 필드 자체가 없어 '60일+ confidence 하락 후보'
+#  라벨이 성립하지 않는다 — 그래서 90일만이 아니라 전체를 면제한다.
+#    decision-log: 결정 이력은 미편집이 정상 (§2.8)
+#    question:     resolved question은 동결된 이력 기록이라 편집이 정상적으로 멈추고(lint-* 리포트 포함),
+#                  open question은 §7-12 집계가 이미 추적한다 (§2.7 — priority를 쓰고 confidence가 없다)
+#    convention:   작업 규약은 오래돼도 유효하므로 미편집이 정상 (§2.9)
+FRESHNESS_EXEMPT_TYPES = {"decision-log", "question", "convention"}
+# §7-28 본문 릴리즈 마커 검사에서 제외하는 타입 — 재작성 대상이 아닌 동결 기록이라 WARN이
+#  수리 불가능한 소음이 된다(decision-log는 항목 불변 이력, question은 발견 원문 인용 보존).
+#  convention은 미편입 — 규약은 갱신이 정상이라 동결 기록이 아니다(§5 changelog 미러링 금지가 그대로 적용).
+RELEASE_MARKER_EXEMPT_TYPES = {"decision-log", "question"}
 # index.md 분할 신호 임계 (wiki-schema.md §4 — index.md 초과는 B/F 세션이 2단계 파일 분할을 자동 수행,
 #   sub-index(순번 파일) 초과는 순번 파일(index-{cat}-{n}.md)로 자동 분할)
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
@@ -748,20 +761,12 @@ def main():
             if upd > today and not in_archive:
                 # 미래 날짜 ERR도 90_archive/ 제외 — 동결 백업이 exit 1을 유발하지 않게 (§2.8·§8 자동 제외)
                 errors.append(f"미래 날짜: {r} updated={upd}")
-            # decision-log는 신선도 전체 면제(60·90 둘 다) — 이력 페이지는 미편집이 정상 (wiki-schema §2.8·§8 예외 1-2)
-            # convention도 전체 면제 — 작업 규약은 오래돼도 유효하므로 미편집이 정상이다(§2.9·§8 예외 1-3).
-            #   ARCHIVE_EXEMPT_TYPES에 넣지 않는 이유: 그 집합은 90일 분기에서만 걸러 60일 분기로 떨어지고,
-            #   convention은 confidence 필드가 없어 '60일+ confidence 하락 후보' 라벨이 성립하지 않는다
-            #   (question 제외와 동일 구조 — 그래서 여기 조건식으로 전체 면제한다).
+            # 타입 기반 전체 면제 3종(decision-log·question·convention)의 근거는 FRESHNESS_EXEMPT_TYPES 정의부.
             # status: paused·archived도 전체 면제 — 의도적으로 중단/보관한 frozen 상태라 미편집이 정상 (§8 예외 1)
             # lint 리포트(lint-YYYYMMDD, type: question)도 제외 — 갱신 안 되는 보존 스냅샷이라 90일 후 매 실행
             #   자기 자신을 '아카이브 후보'로 오탐한다(§7-8 고아 제외와 동일 계열, bcc6558 정합).
-            # type: question 전체 제외 — resolved question은 동결된 이력 기록이라 편집이 정상적으로 멈춰
-            #   매 실행 '아카이브 후보'로 오탐되고, open question은 §7-12 집계가 이미 추적한다. 게다가
-            #   question은 confidence 필드가 없어(priority 사용, §2.7) '60일+ confidence 하락 후보' 라벨이
-            #   성립하지 않는다 — decision-log·lint-* 제외와 동일 계열(신선도는 confidence 있는 콘텐츠용).
-            elif (typ not in INFRA_TYPES and typ != "decision-log" and typ != "question"
-                  and typ != "convention"
+            #   (타입으로는 question이라 위 집합에도 걸리지만, 파일명 기반 판정이라 별도 절로 남긴다.)
+            elif (typ not in INFRA_TYPES and typ not in FRESHNESS_EXEMPT_TYPES
                   and not in_archive
                   and fm.get("status") not in ("paused", "archived") and not is_dep
                   and not is_lint_report(r)):
@@ -823,10 +828,9 @@ def main():
 
             # 릴리즈 마커 (§7-28) — 본문의 vX.Y.Z는 changelog 미러링 신호(§5 금지 형태 — 이력은
             #   레포 git·notes·릴리즈가 정본, 위키 서술은 현재형·이유 중심 §2.3).
-            #   decision-log(항목 불변 이력)·question(발견 원문 인용 보존, lint-* 포함)은 제외 —
-            #   재작성 대상이 아닌 동결 기록이라 WARN이 수리 불가능한 소음이 된다.
+            #   제외 타입(RELEASE_MARKER_EXEMPT_TYPES 정의부에 근거)에는 걸지 않는다.
             #   90_archive/·루트 인프라·pending.md는 위 prefix 가드가 이미 배제한다.
-            if typ not in ("decision-log", "question"):
+            if typ not in RELEASE_MARKER_EXEMPT_TYPES:
                 rm_hits = len(RELEASE_MARKER_RX.findall(body))
                 if rm_hits:
                     warn(f"릴리즈 마커 {rm_hits}건(§5 changelog 미러링 금지): {r} — "
