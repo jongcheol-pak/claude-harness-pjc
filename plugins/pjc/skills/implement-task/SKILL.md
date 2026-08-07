@@ -492,7 +492,7 @@ Self-honesty: PASS
 ## Next Steps
 - 권장 다음 액션: <명확한 한 줄> (예: T7부터 implement-task 재개 / PR 생성 후 /code-review 호출)
 - Suggested skills: <쉼표 구분> (예: pjc:implement-task, 공식 /code-review, 공식 /security-review)
-- 위키 갱신 (llm-wiki 사용 중이고 이 프로젝트가 등록돼 있을 때만): 위키 반영 여부는 F-6.5에서 **능동적으로 사용자에게 묻는다**(여기 Next Steps에 묻어두는 것으로 대체하지 않음). 동의 시 `pjc:llm-wiki` 절차 B를 별도 세션에서 진행 (구현 세션은 위키 직접 수정 안 함). **사용자가 미루면 그 사실을 `[K-DRIFT]` 큐에 1줄 남긴다**(F-6.5 — 묻고 끝내면 미반영이 대화와 함께 사라져 위키가 조용히 뒤처진다).
+- 위키 갱신 (llm-wiki 사용 중이고 이 프로젝트가 등록돼 있을 때만): 위키 반영 여부는 F-6.5에서 **능동적으로 사용자에게 묻는다**(여기 Next Steps에 묻어두는 것으로 대체하지 않음). 동의 시 `pjc:llm-wiki` 절차 B를 별도 세션에서 진행 (구현 세션은 ingest·본문 편집을 하지 않는다 — 구현 세션의 위키 쓰기는 F-6.5의 `[DECISION]`·`[PROJECT-FACT]` 큐 자동 소비로 한정). **사용자가 미루면 그 사실을 `[K-DRIFT]` 큐에 1줄 남긴다**(F-6.5 — 묻고 끝내면 미반영이 대화와 함께 사라져 위키가 조용히 뒤처진다).
 ```
 
 목적: ① 압축 직후의 Claude 자신이 plan.md만 읽고 정확히 재개할 수 있게 함 (압축 생존의 핵심), ② Halt·완료 시 종철님이 plan.md만 보고도 무엇을 호출할지 즉시 알 수 있게 함. handoff 패턴 차용.
@@ -575,7 +575,7 @@ Self-honesty: PASS
 
 전체 plan 통합 검증. **진입 조건표와 F-1~F-8 상세는 `references/phase-f-detail.md` 「진입 조건」이 정본**이다(1 task+Type A=생략 / 1 task+Type B=F-1·F-2·F-6만 / 2+ tasks 또는 Type C/D=전체).
 
-**생략·축소를 타지 않는 것 둘** — ① **F-6.5**(notes 기록 + 아카이브 이동)는 코드 변경이 있었으면 항상 수행한다(누락 빈발 지점). 이때 구현 중 **새로 생긴** `## Deferred / Follow-up`·`## Out of Scope`는 `[DECISION]` 큐에, 확인된 **작업 규약·함정 사실**은 `[PROJECT-FACT]` 큐에 1줄씩 기록한다(`pjc:llm-wiki` 절차 K 5-2·5-3 정본, vault 없으면 그 규약의 폴백). ② **F-8**은 plan에 `## 시각 요소 분해`가 있으면 항상 수행하고 위치는 **완료 선언 직전**이다(PRD 연결 plan은 Phase G 통과 후 — 재루프가 시각 요소를 다시 바꿀 수 있어 선언 직전 1회로 모은다). V-9가 인계한 `⏳ 미확인`이 하나라도 남으면 **완료 선언을 보류하고 Halt**한다.
+**생략·축소를 타지 않는 것 둘** — ① **F-6.5**(notes 기록 + 아카이브 이동)는 코드 변경이 있었으면 항상 수행한다(누락 빈발 지점). 이때 구현 중 **새로 생긴** `## Deferred / Follow-up`·`## Out of Scope`는 `[DECISION]` 큐에, 확인된 **작업 규약·함정 사실**은 `[PROJECT-FACT]` 큐에 1줄씩 기록하고, **같은 절이 규정하는 「큐 자동 소비」로 그 두 큐를 소비한다**(대상 프로젝트 한정 · 최종 보고 직전 1회 · 보류 8종은 큐 유지 — 상세는 `references/phase-f-detail.md`의 「F-6.5. 문서 갱신 (notes/README) + notes 아카이브」. 큐잉 규정 정본은 `pjc:llm-wiki` 절차 K 5-2·5-3, vault 없으면 그 규약의 폴백). ② **F-8**은 plan에 `## 시각 요소 분해`가 있으면 항상 수행하고 위치는 **완료 선언 직전**이다(PRD 연결 plan은 Phase G 통과 후 — 재루프가 시각 요소를 다시 바꿀 수 있어 선언 직전 1회로 모은다). V-9가 인계한 `⏳ 미확인`이 하나라도 남으면 **완료 선언을 보류하고 Halt**한다.
 
 **F-7**은 `plan-completion-reviewer`(Opus) **동기 호출**(`run_in_background: false`) — 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
 
