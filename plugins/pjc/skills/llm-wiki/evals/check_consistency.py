@@ -521,6 +521,12 @@ def check_type_enumerations(schema_text, lint):
         새 타입이 그 자리에 없어도 lint 상수에 없으면 정상이므로 '미판정'은 검출하지 않는다.
       ⓑ 값의 정본이 schema §2 타입 집합인 자리: 전 타입이 등장(또는 분할 커버)해야 한다.
         새 타입 누락을 강제로 잡는 역할은 이쪽이 담당한다.
+
+    ⚠ 검출 방향은 **누락 한쪽뿐이다** — 토큰 어휘를 실재 타입으로 한정하므로(오탐 차단이 1급
+    요건) 타입을 **삭제한 뒤 산문에 남은 유령 이름**은 애초에 추출되지 않아 조용히 통과한다
+    (개명은 새 이름이 없어서, 오타는 기대 토큰이 없어서 잡히지만 순수 잔존은 안 잡힌다).
+    아래 issue 문면의 '문서에만 [...]' 분기가 ⓑ에서 비는 이유가 이것이며, 넓히려면 어휘를
+    열어야 하는데 그러면 산문 단어 오탐이 들어온다 — 의식적 트레이드오프다(F-7 m2).
     반환: (불일치 목록, 대조 항목 수)."""
     types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(schema_text)}
     if not types:
@@ -687,7 +693,7 @@ def main():
     print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 + "
           f"절차 배치 {placement_checked}항목 + schema 목차 {toc_checked}§ + "
           f"F-1↔§7 {f1_checked}항목 + 산문 포인터 {pointer_checked}건 + templates 타입 "
-          f"{tmpl_checked}종 + 타입 열거 {enum_checked}자리 — 항목당 소스 2~4곳 대조)")
+          f"{tmpl_checked}종 + 타입 열거 {enum_checked}항목 — 항목당 소스 2~4곳 대조)")
     sys.exit(0)
 
 

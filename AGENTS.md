@@ -32,7 +32,7 @@
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
-  다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합 / **타입 열거 정합 11자리**(새 타입이 산문 열거에서 조용히 빠지는 사각 — ⓐ `lint.py` 타입 집합 상수 ↔ 문서 산문 7항목(§3 origin·confidence·§7-3·§7-9·§7-28·§8 아카이브 예외·§11) ⓑ §2 타입 전 커버 4항목(목차 §2 행·계층 태그·templates 목차·§12 권장/비대상 분할 커버)). 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
+  다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합 / **타입 열거 정합 10자리·11항목**(새 타입이 산문 열거에서 조용히 빠지는 사각 — ⓐ `lint.py` 타입 집합 상수 ↔ 문서 산문 7항목(§3 origin·confidence·§7-3·§7-9·§7-28·§8 아카이브 예외·§11) ⓑ §2 타입 전 커버 4항목(목차 §2 행·계층 태그·templates 목차·§12 권장/비대상 분할 커버)). 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
 - **하니스 정합 셀프체크 (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·`deferred.md` 수정 시 필수)**:
   ```
   python plugins/pjc/evals/check-harness-consistency.py
