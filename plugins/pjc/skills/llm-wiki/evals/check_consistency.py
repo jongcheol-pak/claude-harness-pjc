@@ -455,20 +455,20 @@ TYPE_ENUM_SITES_LINT = {
     # §3 origin/confidence 두 줄: '—' 뒤 ~ '공통 필수 필드' 앞. 그 뒤 괄호 부기
     #  ('(decision-log·convention은 대상 아님)')는 리터럴 뒤라 자동 배제된다.
     "A1-origin": (r"^- \*\*`origin` 통제 어휘\(고정\)\*\*:[^\n]*?—(.+?)공통 필수 필드",
-                  lambda m: m.ORIGIN_REQUIRED_TYPES),
+                  lambda lint: lint.ORIGIN_REQUIRED_TYPES),
     "A1-confidence": (r"^- \*\*`confidence` 통제 어휘\(고정\)\*\*:[^\n]*?—(.+?)공통 필수 필드",
-                      lambda m: m.ORIGIN_REQUIRED_TYPES),
+                      lambda lint: lint.ORIGIN_REQUIRED_TYPES),
     # §7-9: 상수명을 문서가 직접 인용하는 자리 (PROSE_SET_ALIASES 치환 대상)
-    "A2-updated": (r"`UPDATED_REQUIRED_TYPES` = (.+?),", lambda m: m.UPDATED_REQUIRED_TYPES),
+    "A2-updated": (r"`UPDATED_REQUIRED_TYPES` = (.+?),", lambda lint: lint.UPDATED_REQUIRED_TYPES),
     # §7-3 신선도 항목 줄 전체 — 한 줄에 규칙 4개(아카이브 제외/전체 면제 3종)가 섞여 있어
     #  세부 앵커로 쪼개면 문구 의존이 심해진다. 합집합으로 대조하는 편이 견고하다.
     "A3-freshness": (r"^3\. \*\*신선도\*\*(.+)$",
-                     lambda m: m.FRESHNESS_EXEMPT_TYPES | m.ARCHIVE_EXEMPT_TYPES),
+                     lambda lint: lint.FRESHNESS_EXEMPT_TYPES | lint.ARCHIVE_EXEMPT_TYPES),
     # §7-28: '**제외**:' 뒤 ~ 첫 ' — ' 앞
-    "A5-release": (r"\*\*제외\*\*: (.+?) — ", lambda m: m.RELEASE_MARKER_EXEMPT_TYPES),
+    "A5-release": (r"\*\*제외\*\*: (.+?) — ", lambda lint: lint.RELEASE_MARKER_EXEMPT_TYPES),
     # §11 적용 대상 줄. '적용 대상'만으로 잡으면 §4의 '- **적용 대상**: 하위 페이지 분리 처방을
     #  가진 전 타입 — feature·entity·…'(볼드)를 먼저 물어 green에 도달할 수 없다 → §11로 스코프 한정.
-    "A6-validation": (r"^## 11\.[\s\S]*?^- 적용 대상: (.+)$", lambda m: m.ORIGIN_REQUIRED_TYPES),
+    "A6-validation": (r"^## 11\.[\s\S]*?^- 적용 대상: (.+)$", lambda lint: lint.ORIGIN_REQUIRED_TYPES),
 }
 
 # ⑩-ⓑ 전 타입 커버 — 값의 정본이 schema §2 타입 집합인 자리. 기대 집합을 계산으로 도출하므로
@@ -493,7 +493,10 @@ def extract_type_tokens(text, vocab):
 
     길이 내림차순 alternation이 필수다 — 'source-stub'이 'source'로 잘리면 B2가 항상 불일치한다.
     앞뒤 경계로 [a-z-]를 배제해 'decision-log'가 'decision'으로 잘리는 것과 '20_projects'의
-    'project' 오탐을 함께 막는다(뒤에 's'가 오면 매치되지 않는다). 백틱·볼드 마크업은 무시된다."""
+    'project' 오탐을 함께 막는다(뒤에 's'가 오면 매치되지 않는다). 백틱·볼드 마크업은 무시된다.
+    숫자·언더스코어는 배제 클래스에 넣지 않았다 — 현재 10개 자리의 문면에 'project_'류 인접
+    표기가 없어서이며, 그런 표기가 들어오는 자리가 생기면 [a-z0-9_-]로 넓힌다(\b를 쓰지 않는
+    이유는 하이픈 복합 타입명 보존이다)."""
     if not vocab:
         return set()
     pat = "|".join(re.escape(t) for t in sorted(vocab, key=len, reverse=True))
