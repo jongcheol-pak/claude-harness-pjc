@@ -21,7 +21,10 @@
       / 위키 뒤처짐(INFO — 허브 synced_commit 이후 레포에 쌓인 커밋 수, §7-26. fail-open)
       / (미검증)·미해결 question 집계(INFO)
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
-      / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트 제외).
+      / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트 제외)
+      / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향
+        ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향)
+      / 작업 규약 미마이그레이션(§7-31 — 허브에 '## 작업 규약·주의사항' 잔존 시 INFO, conventions.md 이전 대상).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 자동 백업 — schema §7 서두 정본).
 범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
@@ -38,8 +41,9 @@ try:
 except Exception:
     pass
 
-# 예산 근접 경고 임계 — wiki-schema §4 "예산 80% 도달 시 압축" 규정의 기계 신호(§7-2).
-#  초과(WARN)보다 앞선 단계라 INFO로 낸다: 수리 의무가 아니라 "다음 편집 전에 덜어낼 것"이라는 예고다.
+# 예산 근접 경고 임계 — wiki-schema §4 "예산 80% 도달 시 해당 타입 처방을 수행" 규정의 기계 신호(§7-2).
+#  초과(WARN)보다 앞선 단계라 INFO로 낸다: 수리 의무가 아니라 "다음 편집 전에 옮길 것"이라는 예고다.
+#  처방은 전 타입이 이동·분리(롤오버·하위 분리·재분할)이며 요약으로 줄이는 압축은 쓰지 않는다.
 BUDGET_NEAR_RATIO = 0.8
 
 BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 — v1.138.0 줄 수→문자 수 전환)
@@ -49,6 +53,9 @@ BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 —
     "source-stub": 1800, "project": 13000, "feature": 22000,
     "entity": 6000, "concept": 5000, "question": 3500,
     "decision-log": 6000,  # 결정 이력 (wiki-schema §2.8 — 초과 시 90_archive 원경로 이동)
+    #  작업 규약 (§2.9 — 초과 시 무효 항목 제거 → 주제별 하위 분리 → 재분할. 아카이브 롤오버는 안 한다:
+    #  절차 K가 매 작업 전에 읽으므로 아카이브로 옮기면 조회 경로 밖이 되어 이동이 곧 유실이다)
+    "convention": 12000,
 }
 GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
 PLATFORM_VOCAB = {"windows-desktop", "web", "mobile", "cli", "cross"}
@@ -84,13 +91,17 @@ EMOJI_RX = re.compile(
 # decisions '## 아카이브' 포인터 패턴 — §7-24 판정(main)과 --fix(apply_fixes)가 같은 대상을 보도록
 #  단일 출처로 둔다(한쪽만 고치면 lint 판정과 fix 대상이 조용히 어긋나는 드리프트 방지 — T2 리뷰 m1).
 DEC_PTR_RX = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
+# 허브 '## 아카이브' 포인터 패턴 (§7-30ⓐ — 최근 주요 변경 롤오버 대상). DEC_PTR_RX와 같은 형태를
+#  대상 파일만 바꿔 쓴다. 통합 함수를 만들지 않는 이유: 대상 섹션·현행 경로 도출 규칙·--fix 대상
+#  여부가 달라(§7-30은 --fix 비대상) 분기 파라미터만 늘고 --fix 안전 경계가 흐려진다.
+CHG_PTR_RX = re.compile(r"(90_archive/[^\s`()]+changes\.md)")
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
 CATEGORY_VOCAB = {"personal", "work"}
 # updated 필수 타입 (§7-9 — 필드가 없으면 신선도(§7-3)·미래날짜 검사가 조용히 건너뛰어져 추적 사각.
 #  source-stub은 불변 스텁이라 ingested를 쓰므로 제외)
-UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log"}
+UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log", "convention"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, wiki-schema §4·§8)
 SPECIAL_BUDGET = {"log.md": 6000}
 # 신선도·고아·타입 검사에서 제외하는 인프라 타입 (위키 본문 페이지가 아님)
@@ -669,18 +680,24 @@ def main():
             #   예산 검사에서 제외한다(§7-12/23 집계·등록 제외와 동일 기준) — 자기 리포트가 다음 lint에서
             #   영구 '예산 초과' WARN을 만드는 것을 막는다.
             if budget and eff_chars > budget and not is_lint_report(r):
-                # decision-log는 수리 방법이 롤오버+포인터라 일반 문구와 분기 (§2.8)
-                hint = (" — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)"
-                        if typ == "decision-log" else "")
+                # 수리 경로가 정해진 타입은 초과 시점에도 그 처방을 병기한다 — 근접(80%) INFO만
+                #  안내하고 초과 WARN에서 침묵하면, 정작 고쳐야 할 시점에 방법을 못 받는다.
+                hint = {
+                    "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)",
+                    "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약은 conventions.md로 분리 (wiki-schema §2.2·§2.9)",
+                    "convention": " — 무효 항목 제거 → 주제별 하위 파일(conventions-{주제}.md) 분리 + '## 하위 문서' 목록 갱신 (wiki-schema §2.9)",
+                }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{fence_note}){hint}", r)
             elif budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r):
-                # L-4: 초과 전에 알린다 — 예산은 "넘으면 고친다"가 아니라 "넘기 전에 덜어낸다"가 규정인데
-                #   (§4 "예산 80% 도달 시 압축") 그 문장에 기계 신호가 없어 사문이었다. 초과 시점에야
-                #   발견하면 그 세션이 하려던 작업(항목 1건 추가)이 압축 반복에 막힌다 — 실제로 project
-                #   허브에서 여유 35자를 만나 7차례 압축을 반복한 관측이 있다. **자동 수리는 하지 않는다**
-                #   (무엇을 덜어낼지는 판단이라 §4 index 자동 분할의 결정론 근거가 성립하지 않는다 — 신호만).
-                near_hint = {"project": " — 초과분은 recipe/patterns로 분리 (§2.2)",
-                             "decision-log": " — 오래된 항목 롤오버 준비 (§2.8)"}.get(typ, "")
+                # L-4: 초과 전에 알린다 — 예산은 "넘으면 고친다"가 아니라 "넘기 전에 옮긴다"가 규정인데
+                #   (§4 "예산 80% 도달 시 해당 타입 처방을 수행") 그 문장에 기계 신호가 없어 사문이었다.
+                #   초과 시점에야 발견하면 그 세션이 하려던 작업(항목 1건 추가)이 막힌다 — 실제로 project
+                #   허브에서 여유 35자를 만나 7차례 압축을 반복한 관측이 있고, 그 압축 반복을 없애려고
+                #   전 타입 처방을 이동·분리로 바꿨다(§4·§8). **자동 수리는 하지 않는다**
+                #   (무엇을 옮길지는 판단이라 §4 index 자동 분할의 결정론 근거가 성립하지 않는다 — 신호만).
+                near_hint = {"project": " — '최근 주요 변경' 초과분 롤오버 준비(§2.2·§8), 작업 규약은 conventions.md 분리(§2.9)",
+                             "decision-log": " — 오래된 항목 롤오버 준비 (§2.8)",
+                             "convention": " — 무효 항목 제거 후 주제별 하위 분리 준비 (§2.9)"}.get(typ, "")
                 infos.append(f"예산 근접: {r} {eff_chars}/{budget}자 "
                              f"({eff_chars / budget * 100:.0f}%, type={typ}){near_hint}")
 
@@ -732,6 +749,10 @@ def main():
                 # 미래 날짜 ERR도 90_archive/ 제외 — 동결 백업이 exit 1을 유발하지 않게 (§2.8·§8 자동 제외)
                 errors.append(f"미래 날짜: {r} updated={upd}")
             # decision-log는 신선도 전체 면제(60·90 둘 다) — 이력 페이지는 미편집이 정상 (wiki-schema §2.8·§8 예외 1-2)
+            # convention도 전체 면제 — 작업 규약은 오래돼도 유효하므로 미편집이 정상이다(§2.9·§8 예외 1-3).
+            #   ARCHIVE_EXEMPT_TYPES에 넣지 않는 이유: 그 집합은 90일 분기에서만 걸러 60일 분기로 떨어지고,
+            #   convention은 confidence 필드가 없어 '60일+ confidence 하락 후보' 라벨이 성립하지 않는다
+            #   (question 제외와 동일 구조 — 그래서 여기 조건식으로 전체 면제한다).
             # status: paused·archived도 전체 면제 — 의도적으로 중단/보관한 frozen 상태라 미편집이 정상 (§8 예외 1)
             # lint 리포트(lint-YYYYMMDD, type: question)도 제외 — 갱신 안 되는 보존 스냅샷이라 90일 후 매 실행
             #   자기 자신을 '아카이브 후보'로 오탐한다(§7-8 고아 제외와 동일 계열, bcc6558 정합).
@@ -740,6 +761,7 @@ def main():
             #   question은 confidence 필드가 없어(priority 사용, §2.7) '60일+ confidence 하락 후보' 라벨이
             #   성립하지 않는다 — decision-log·lint-* 제외와 동일 계열(신선도는 confidence 있는 콘텐츠용).
             elif (typ not in INFRA_TYPES and typ != "decision-log" and typ != "question"
+                  and typ != "convention"
                   and not in_archive
                   and fm.get("status") not in ("paused", "archived") and not is_dep
                   and not is_lint_report(r)):
@@ -989,7 +1011,7 @@ def main():
     #  다음 ingest/lint 세션이 소비하게 한다 (0건·파일 없음이면 생략). 태그별 분리 —
     #  [K-DRIFT]는 위키 세션이 반영 후 제거, [SKILL-IMPROVE]는 사용자 보고 대상(제거는 사용자 지시),
     #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비),
-    #  [PROJECT-FACT]는 해당 프로젝트 허브 '## 작업 규약·주의사항'에 반영 후 제거(자가 소비),
+    #  [PROJECT-FACT]는 해당 프로젝트 conventions.md(§2.9)에 반영 후 제거(자가 소비),
     #  [K-MISS]는 레포 근거 대조 후 feature/recipe 반영 또는 기각 보고 후 제거(수요 신호 — 자동 생성 아님),
     #  [SYMPTOM]은 증상별 인덱스(§6)에 등재 게이트 검증 후 반영 또는 보류(해법 페이지 부재)·기각(미검증 원인) 후 제거.
     #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
@@ -1000,7 +1022,7 @@ def main():
         pend_tags = (("K-DRIFT", "K-DRIFT {n}건"),
                      ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)"),
                      ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비)"),
-                     ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — 허브 '작업 규약·주의사항' 반영 대상, 게이트는 DECISION 동형)"),
+                     ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — conventions.md 반영 대상(§2.9), 게이트는 DECISION 동형)"),
                      ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)"),
                      ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)"))
         parts = []
@@ -1057,6 +1079,59 @@ def main():
         if cur in pages and r not in pages[cur][2]:
             warn(f"decisions 아카이브 포인터 누락: {cur}의 '## 아카이브'에 {r} 미등재 "
                  f"— 오래된 결정이 검색에서 유실 (wiki-schema §2.8)", cur)
+
+    # 이동·분리한 내용의 도달 경로 정합 (§7-30): ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향
+    #  ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향. 둘 다 "옮긴 자리를 읽는 경로"를 검사한다 —
+    #  §2.2 롤오버·§2.9 하위 분리는 압축을 없앤 대가로 도달 경로에 의존하므로, 그 경로가 깨지면
+    #  이동이 곧 유실이 된다(§7-24 decisions 포인터·§7-15 sub-index 목록·§7-19 log 인덱스와 동일 계열).
+    #  --fix 대상은 아니다 — §7 서두가 --fix를 참조 무결성 3종으로 한정한다.
+    for r, (fm, typ, text) in pages.items():
+        if typ != "project" or r.startswith("90_archive/"):
+            continue
+        # ⓐ-정방향: 허브 포인터가 가리키는 changes 아카이브 실재
+        for m in CHG_PTR_RX.finditer(text):
+            if m.group(1) not in pages:
+                warn(f"변경 이력 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (wiki-schema §2.2·§8)", r)
+        # §7-31: 허브에 '## 작업 규약·주의사항' 잔존 = conventions.md 미마이그레이션 신호.
+        #  INFO 고정 — 사용자가 점진 마이그레이션을 택했고(각 프로젝트 ingest 때 적용) WARN이면
+        #  미마이그레이션 허브 전부가 매 lint마다 경고를 낸다. exit code 불변.
+        if section(text, "작업 규약·주의사항"):
+            infos.append(f"작업 규약 미마이그레이션: {r}의 '## 작업 규약·주의사항'을 "
+                         f"conventions.md로 이전 대상 (wiki-schema §2.9 — 다음 ingest에서 처리)")
+    # ⓐ-역방향: changes 아카이브가 실재하는데 대응 현행 허브에 포인터 미등재 (검색 유실).
+    #  경로 도출이 §7-24와 다르다 — decisions는 아카이브·현행이 같은 파일명이라 접두만 떼면 되지만,
+    #  changes는 '90_archive/20_projects/{cat}/{proj}/changes.md' → 현행 허브 '20_projects/{cat}/{proj}.md'로
+    #  폴더가 파일이 된다. 대응 허브가 없으면 절차 C 보존-삭제 이력이므로 건너뛴다(§7-24 동형 —
+    #  없으면 삭제된 프로젝트의 아카이브가 영구 WARN이 된다).
+    for r in pages:
+        if not (r.startswith("90_archive/") and r.endswith("/changes.md")):
+            continue
+        hub = r[len("90_archive/"):-len("/changes.md")] + ".md"
+        if hub in pages and r not in pages[hub][2]:
+            warn(f"변경 이력 아카이브 포인터 누락: {hub}의 '## 아카이브'에 {r} 미등재 "
+                 f"— 롤오버한 변경 이력이 검색에서 유실 (wiki-schema §2.2·§8)", hub)
+    # ⓑ conventions '## 하위 문서' 목록 ↔ 하위 파일 양방향.
+    #  wikilink(무확장자)·평문 경로 둘 다 인정한다 — §7-24 포인터가 평문, §7-15 목록이 파일명 언급
+    #  기준인 두 선례를 모두 수용(형식 위반은 §7-1 링크 검사가 별도로 본다).
+    #  본체 문자 클래스에서 `.`·`\`를 배제한다 — 배제하지 않으면 Obsidian 표의 이스케이프 파이프
+    #  (`conventions-git.md\|`)에서 `.md\`가 본체로 흡수돼 코드가 다시 '.md'를 붙여 실재하지 않는
+    #  경로를 만들고, 정상 등재 항목을 "목록 깨짐"으로 오탐한다. 확장자는 `(?:\.md)?`가 담당하고
+    #  주제명은 네이밍 규약상 영문소문자·하이픈뿐(§3)이라 본체에 `.`이 올 일이 없다.
+    sub_conv_rx = re.compile(r"(20_projects/[^\s`()|\]\\.]+/conventions-[^\s`()|\]\\.]+?)(?:\.md)?(?=[\s`()|\]\\.]|$)")
+    for r, (fm, typ, text) in pages.items():
+        if typ != "convention" or r.startswith("90_archive/"):
+            continue
+        if os.path.basename(r) != "conventions.md":
+            continue          # 하위 파일(conventions-*.md) 자신은 목록 보유 대상이 아니다
+        listed = {m.group(1) + ".md" for m in sub_conv_rx.finditer(section(text, "하위 문서") or "")}
+        for t in sorted(listed):
+            if t not in pages:
+                warn(f"규약 하위 문서 목록 깨짐: {r} -> {t} 없음 (wiki-schema §2.9)", r)
+        prefix = r[:-len("conventions.md")] + "conventions-"
+        for other in sorted(pages):
+            if other.startswith(prefix) and other.endswith(".md") and other not in listed:
+                warn(f"규약 하위 문서 목록 누락: {r}의 '## 하위 문서'에 {other} 미등재 "
+                     f"— 분리한 규약이 조회 경로 밖(조회 홉 1 위반, wiki-schema §2.9)", r)
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
