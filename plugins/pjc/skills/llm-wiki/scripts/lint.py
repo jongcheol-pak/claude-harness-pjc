@@ -109,9 +109,10 @@ INFRA_TYPES = {"index", "log", "dashboard", "schema"}
 # 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
 ARCHIVE_EXEMPT_TYPES = {"feature", "guide"}
 # 신선도: 시간 기반 처리 **전체**(60일 confidence 하락 + 90일 아카이브 후보)에서 면제하는 타입
-#  (§7-3 · §8 예외 1-2·1-3·1-4). ARCHIVE_EXEMPT_TYPES와 갈리는 지점: 그 집합은 90일 분기에서만
+#  (§7-3 · §8 「아카이브」 예외 목록). ARCHIVE_EXEMPT_TYPES와 갈리는 지점: 그 집합은 90일 분기에서만
 #  걸러 60일 분기로 떨어지는데, 아래 셋은 confidence 필드 자체가 없어 '60일+ confidence 하락 후보'
 #  라벨이 성립하지 않는다 — 그래서 90일만이 아니라 전체를 면제한다.
+#  (§ 번호가 아니라 절 제목으로 인용하는 이유: 예외 항목이 늘면 번호가 밀려 주석만 낡는다.)
 #    decision-log: 결정 이력은 미편집이 정상 (§2.8)
 #    question:     resolved question은 동결된 이력 기록이라 편집이 정상적으로 멈추고(lint-* 리포트 포함),
 #                  open question은 §7-12 집계가 이미 추적한다 (§2.7 — priority를 쓰고 confidence가 없다)
