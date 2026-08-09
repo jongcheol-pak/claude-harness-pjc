@@ -88,7 +88,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 ### 안전
 10. **파괴적 작업 · 새 의존성 → 자동 실행 금지, Halt.**
-    - force push, history rewrite, rm -rf, DB drop, 권한·보안 변경 — **history rewrite는 공유·push된 이력 대상이다**: 로컬 미push 작업 브랜치에서 **Phase D ③이 규정한 pre-review 커밋 amend는 해당하지 않는다**(스킬 자신의 정상 절차 — 이 예외는 그 amend에만 한정되며 force push 등 다른 항목으로 확대 해석하지 않는다)
+    - force push, history rewrite, rm -rf, DB drop, 권한·보안 변경 — **history rewrite는 공유·push된 이력 대상이다**: 로컬 미push 작업 브랜치에서 **Phase D ③이 규정한 pre-review 커밋 amend와 F-6.5 ⓓ가 규정한 서사 병합 amend는 해당하지 않는다**(둘 다 스킬 자신의 정상 절차 — 이 예외는 **그 두 amend에만 한정**되며 force push 등 다른 항목으로 확대 해석하지 않는다)
     - **DB 데이터 삭제·변조**: DROP/TRUNCATE, WHERE 없는(또는 전체 대상) DELETE·UPDATE, 스키마 삭제, migration reset/down, ORM 대량 삭제(RemoveRange·deleteMany({})·delete_all 등). 코드로 작성하든 명령으로 실행하든, 데이터 손실·전체 변조 가능 작업은 **사용자 승인 전 금지** (DB 데이터는 git으로 복구 불가). 단 `DELETE/UPDATE ... WHERE <특정 조건>` 같은 일상적·국소적 작업은 plan에 명시돼 있으면 진행 가능.
     - **새 라이브러리·외부 서비스 도입** — 단 plan의 `## 사전 승인 항목 (일괄 승인 대상)`에 등록·일괄 승인된 **비파괴 패키지/라이브러리 의존성 추가·버전 변경**은 그 지점에서 진행한다(Halt 안 함). **인증정보가 필요한 신규 외부 서비스 도입은 carve-out 제외 — Halt 유지**(자격증명 도입은 보안상 별개).
     - **기존 외부 서비스로의 비가역 부작용 호출**: 운영 API 쓰기·이메일/알림/SMS 발송·결제·외부 상태 변경 등. 신규 도입이 아니어도 검증·실행 중 이런 비가역 부작용 호출은 사용자 승인 전 금지(테스트는 mock·스테이징). plan에 명시·승인됐으면 진행 가능.
@@ -579,7 +579,7 @@ Self-honesty: PASS
 
 **F-7**은 `plan-completion-reviewer`(Opus) **동기 호출**(`run_in_background: false`) — 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
 
-**Phase Ledger 갱신**: 통과 시 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를, PRD 연결 plan은 추가로 `Phase G 통과 (Must 100%)`를 기록한다. **같은 지점에서 F-6.5의 「회차 서사 커밋」을 1회 만든다**(규정 본문은 `references/phase-f-detail.md` F-6.5 ⓒ·ⓓ — 명령·시점·재진입 규칙이 거기 있다) — 재개 시 Phase F(F-7 Opus) 중복 실행을 막고 새 세션의 완료 판정 신호가 된다(재개 진입의 Phase Ledger 판정 · phase-g-detail G-4).
+**Phase Ledger 갱신**: 통과 시 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를, PRD 연결 plan은 추가로 `Phase G 통과 (Must 100%)`를 기록한다 — 재개 시 Phase F(F-7 Opus) 중복 실행을 막고 새 세션의 완료 판정 신호가 된다. **같은 지점에서 F-6.5의 「회차 서사 커밋」을 1회 만든다**(규정 본문은 `references/phase-f-detail.md` F-6.5 ⓒ·ⓓ·ⓕ — 명령·시점·재진입 규칙이 거기 있다). **단 PRD 연결 plan의 서사 커밋 지점은 여기가 아니라 Phase G의 G-4**다(G-2 재루프가 뒤에 오기 때문 — `references/phase-g-detail.md` G-4)(재개 진입의 Phase Ledger 판정 · phase-g-detail G-4).
 
 ## Phase G — 요구 재검증 (PRD 있을 때만)
 
