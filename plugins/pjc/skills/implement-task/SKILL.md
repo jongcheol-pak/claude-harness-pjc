@@ -575,11 +575,11 @@ Self-honesty: PASS
 
 전체 plan 통합 검증. **진입 조건표와 F-1~F-8 상세는 `references/phase-f-detail.md` 「진입 조건」이 정본**이다(1 task+Type A=생략 / 1 task+Type B=F-1·F-2·F-6만 / 2+ tasks 또는 Type C/D=전체).
 
-**생략·축소를 타지 않는 것 둘** — ① **F-6.5**(notes 기록 + 아카이브 이동)는 코드 변경이 있었으면 항상 수행한다(누락 빈발 지점). 이때 구현 중 **새로 생긴** `## Deferred / Follow-up`·`## Out of Scope`는 `[DECISION]` 큐에, 확인된 **작업 규약·함정 사실**은 `[PROJECT-FACT]` 큐에 1줄씩 기록하고, **같은 절이 규정하는 「큐 자동 소비」로 그 두 큐를 소비한다**(대상 프로젝트 한정 · 최종 보고 직전 1회 · 보류 8종은 큐 유지 — 상세는 `references/phase-f-detail.md`의 「F-6.5. 문서 갱신 (notes/README) + notes 아카이브」. 큐잉 규정 정본은 `pjc:llm-wiki` 절차 K 5-2·5-3, vault 없으면 그 규약의 폴백). ② **F-8**은 plan에 `## 시각 요소 분해`가 있으면 항상 수행하고 위치는 **완료 선언 직전**이다(PRD 연결 plan은 Phase G 통과 후 — 재루프가 시각 요소를 다시 바꿀 수 있어 선언 직전 1회로 모은다). V-9가 인계한 `⏳ 미확인`이 하나라도 남으면 **완료 선언을 보류하고 Halt**한다.
+**생략·축소를 타지 않는 것 둘** — ① **F-6.5**(README 갱신 + 회차 서사 커밋)는 코드 변경이 있었으면 항상 수행한다(누락 빈발 지점). 이때 구현 중 **새로 생긴** `## Deferred / Follow-up`·`## Out of Scope`는 `[DECISION]` 큐에, 확인된 **작업 규약·함정 사실**은 `[PROJECT-FACT]` 큐에 1줄씩 기록하고, **같은 절이 규정하는 「큐 자동 소비」로 그 두 큐를 소비한다**(대상 프로젝트 한정 · 최종 보고 직전 1회 · 보류 8종은 큐 유지 — 상세는 `references/phase-f-detail.md`의 「F-6.5. 문서 갱신 (README) + 회차 서사 커밋」. 큐잉 규정 정본은 `pjc:llm-wiki` 절차 K 5-2·5-3, vault 없으면 그 규약의 폴백). ② **F-8**은 plan에 `## 시각 요소 분해`가 있으면 항상 수행하고 위치는 **완료 선언 직전**이다(PRD 연결 plan은 Phase G 통과 후 — 재루프가 시각 요소를 다시 바꿀 수 있어 선언 직전 1회로 모은다). V-9가 인계한 `⏳ 미확인`이 하나라도 남으면 **완료 선언을 보류하고 Halt**한다.
 
 **F-7**은 `plan-completion-reviewer`(Opus) **동기 호출**(`run_in_background: false`) — 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
 
-**Phase Ledger 갱신**: 통과 시 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를, PRD 연결 plan은 추가로 `Phase G 통과 (Must 100%)`를 기록한다 — 재개 시 Phase F(F-7 Opus) 중복 실행을 막고 새 세션의 완료 판정 신호가 된다(재개 진입의 Phase Ledger 판정 · phase-g-detail G-4).
+**Phase Ledger 갱신**: 통과 시 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를, PRD 연결 plan은 추가로 `Phase G 통과 (Must 100%)`를 기록한다. **같은 지점에서 F-6.5의 「회차 서사 커밋」을 1회 만든다**(규정 본문은 `references/phase-f-detail.md` F-6.5 ⓒ·ⓓ — 명령·시점·재진입 규칙이 거기 있다) — 재개 시 Phase F(F-7 Opus) 중복 실행을 막고 새 세션의 완료 판정 신호가 된다(재개 진입의 Phase Ledger 판정 · phase-g-detail G-4).
 
 ## Phase G — 요구 재검증 (PRD 있을 때만)
 
