@@ -1,6 +1,6 @@
-﻿# session-context.ps1 — SessionStart: 로컬 plan/notes 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단)
+﻿# session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단)
 #
-# 왜: ① 글로벌 CLAUDE.md의 "작업 시작 전 plan.md·notes.md 최근 항목 확인" 규칙이 전적으로
+# 왜: ① 글로벌 CLAUDE.md의 "작업 시작 전 plan.md 확인" 규칙이 전적으로
 #   모델 자율에 맡겨져 있어 긴 세션·새 세션에서 누락되기 쉽다 — 세션 시작 시점에 기계가
 #   상태 요약 1~3줄을 주입해 규칙을 구조화한다(v1.112.0).
 #   ② 컨텍스트 요약(auto-compact) 직후는 자율 루프(implement-task)의 절차 규칙·plan 상태가
@@ -9,11 +9,11 @@
 #   스킬은 압축 후 앞 5,000토큰만 재부착되고 동일 스킬 재invoke는 "이미 로드됨"만 반환해
 #   복구되지 않으므로, "재확인하라"는 지시만으로는 무엇을 읽을지가 비어 있다.
 # 어떻게: stdin(SessionStart JSON)의 cwd에서 plan(루트 plan.md 우선, 없으면 docs/plans/ 최신
-#   수정 5개 중 task 체크박스가 있는 파일 — 글로벌 CLAUDE.md의 확인 순서와 동일)과 notes.md를
-#   찾아 미완료 task 수·최신 항목 날짜를 stdout으로 출력한다(SessionStart 규약: stdout=컨텍스트
+#   수정 5개 중 task 체크박스가 있는 파일 — 글로벌 CLAUDE.md의 확인 순서와 동일)을 찾아
+#   미완료 task 수를 stdout으로 출력한다(SessionStart 규약: stdout=컨텍스트
 #   주입, exit 0). 추가로 프로젝트 루트 AGENTS.md가 있으면 전문(16KB 초과 시 목차+Read 지시)을
-#   함께 주입한다 — AGENTS.md는 에이전트용 가이드라 plan/notes가 없어도 존재하면 주입한다.
-#   plan·notes·AGENTS.md가 모두 없으면 무출력(비 pjc 프로젝트 노이즈 방지) — 단 compact
+#   함께 주입한다 — AGENTS.md는 에이전트용 가이드라 plan이 없어도 존재하면 주입한다.
+#   plan·AGENTS.md가 모두 없으면 무출력(비 pjc 프로젝트 노이즈 방지) — 단 compact
 #   리마인더는 유무와 무관하게 출력한다(요약 직후엔 plan 없어도 스킬 규약 재확인 가치).
 # 안전: 정보 주입 hook(차단·경고 아님 — hook-event-log 적재 대상 아님). 모든 실패 경로는
 #   조용히 exit 0 (fail-open — 세션 시작을 절대 막지 않는다). warn-version-drift와 동일 골격.
@@ -21,7 +21,7 @@
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 # stdin도 UTF-8로 디코딩 (v1.129.0) — Claude Code는 UTF-8 바이트로 보내는데 콘솔 기본 코드페이지(cp949)로
-#   읽으면 한글 경로가 깨져 plan/notes 탐색이 어긋난다. 실패해도 종전 동작 유지.
+#   읽으면 한글 경로가 깨져 plan 탐색이 어긋난다. 실패해도 종전 동작 유지.
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 try {
@@ -82,7 +82,7 @@ try {
                 $open = [regex]::Matches($planText, '(?m)^- \[[ /]\] T\d+').Count
                 if ($all -gt 0) {
                     if ($open -gt 0) {
-                        $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 중 미완료 ${open}개 — 작업 시작 전 plan.md 진행 상태와 notes.md 최근 항목을 확인하세요.")
+                        $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 중 미완료 ${open}개 — 작업 시작 전 plan.md 진행 상태를 확인하세요.")
                         # 압축 직후 + 미완료 task = 자율 루프가 규칙을 잃은 채 재개될 최위험 조합.
                         #   스킬은 auto-compact 후 앞 5,000토큰만 재부착되므로 뒷부분(Phase 절차·Halt
                         #   조건·재시도 카운터)이 통째로 빠지는데, 동일 스킬 재invoke는 "이미 로드됨"만
@@ -100,19 +100,6 @@ try {
                 } else {
                     # task 체크박스가 없는 plan.md(비 pjc 형식) — 카운트 오보 대신 존재만 알림
                     $lines.Add("[pjc 세션 컨텍스트] ${planLabel} 존재 — 작업 시작 전 진행 상태를 확인하세요.")
-                }
-            }
-        }
-
-        # ---- notes.md 최신 항목 날짜 (## 최근 변경 첫 항목) ----
-        $notesPath = Join-Path $cwd 'notes.md'
-        if (Test-Path -LiteralPath $notesPath -PathType Leaf) {
-            $notesText = $null
-            try { $notesText = Get-Content -LiteralPath $notesPath -Raw -Encoding UTF8 } catch {}
-            if ($notesText) {
-                $m = [regex]::Match($notesText, '(?m)^- (\d{4}-\d{2}-\d{2})')
-                if ($m.Success) {
-                    $lines.Add("[pjc 세션 컨텍스트] notes.md 최근 항목: $($m.Groups[1].Value)")
                 }
             }
         }
@@ -150,12 +137,12 @@ try {
 
         # ---- AGENTS.md 전문 주입 (가이드 판단이 "읽혔는지"에 좌우되지 않게) ----
         # 왜: 세션에서 AGENTS.md 앞부분만 읽고 "관련 내용 없음"으로 단정하는 오답을 구조적으로 없앤다 —
-        #   전문이 컨텍스트에 있으면 "부분만 읽는" 상황 자체가 성립하지 않는다. plan/notes와 달리
-        #   AGENTS.md는 에이전트에게 읽히려고 두는 파일이라 plan/notes가 없어도 존재하면 주입한다.
+        #   전문이 컨텍스트에 있으면 "부분만 읽는" 상황 자체가 성립하지 않는다. plan과 달리
+        #   AGENTS.md는 에이전트에게 읽히려고 두는 파일이라 plan이 없어도 존재하면 주입한다.
         #   16KB 초과 시에는 전문 대신 섹션 목차 + 전문 Read 지시로 폴백(주입 비용 상방 고정).
         # 크기 판정은 읽기 전 FileInfo 1회로 확정한다 — 읽은 뒤 재조회하면 그 사이 삭제·잠금 시
         #   null 크기가 상한 비교(-le)를 조용히 통과하고, 초대형 파일은 읽기 자체가 hook 타임아웃(10초)을
-        #   위협해 이미 모은 plan/notes 라인까지 통째로 유실시킨다.
+        #   위협해 이미 모은 plan 라인까지 통째로 유실시킨다.
         $agentsMaxBytes = 16384      # 전문 주입 상한 — 하니스 생성 템플릿·이 repo가 모두 전문 주입 범위에 들어가는 값 (v1.135.0 기준 실측 최대 약 12KB)
         $agentsTocMaxBytes = 1048576 # 목차 폴백 상한(1MB) — 초과 시 읽기·목차 스캔 자체를 생략 (비정상 대형 파일 방어)
         $agentsPath = Join-Path $cwd 'AGENTS.md'
@@ -190,12 +177,12 @@ try {
         }
 
         # ---- vault 라인 주입 (수집 종료 후 — 게이팅 판정을 여기서 한다) ----
-        # cwd 수집으로 라인이 하나라도 늘었을 때만 붙인다(plan·notes·AGENTS 중 하나라도 있음
+        # cwd 수집으로 라인이 하나라도 늘었을 때만 붙인다(plan·AGENTS 중 하나라도 있음
         #   = pjc 프로젝트 신호). 판정을 위(AGENTS 진입 전)에서 하면 AGENTS.md만 있고
-        #   plan/notes가 없는 프로젝트에서 라인이 억제되므로, 삽입 위치만 미리 기록하고
+        #   plan이 없는 프로젝트에서 라인이 억제되므로, 삽입 위치만 미리 기록하고
         #   판정은 반드시 여기서 한다.
         # 인덱스 클램프: 기록 후 라인은 AGENTS 블록만 추가하므로 초과할 수 없지만, Insert의
-        #   범위 예외는 바깥 catch로 흘러 이미 모은 plan/notes 라인까지 통째로 잃는다.
+        #   범위 예외는 바깥 catch로 흘러 이미 모은 plan 라인까지 통째로 잃는다.
         if ($vaultLine -and ($lines.Count -gt $cwdBaseCount)) {
             $lines.Insert([Math]::Min($vaultInsertAt, $lines.Count), $vaultLine)
         }
