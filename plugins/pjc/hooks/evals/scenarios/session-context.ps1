@@ -1,12 +1,12 @@
-﻿# scenarios/session-context.ps1 — session-context 시나리오 (§13 — plan/notes 요약·AGENTS 주입·vault 라인) (dot-source 전용, 단독 실행 금지)
+﻿# scenarios/session-context.ps1 — session-context 시나리오 (§13 — plan 요약·AGENTS 주입·vault 라인) (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
 # =====================================================================
-# 13) session-context 시나리오 (SessionStart — plan/notes 상태 요약 주입, v1.112.0)
+# 13) session-context 시나리오 (SessionStart — plan 상태 요약 주입, v1.112.0)
 # =====================================================================
 if (Test-HookSelected @('session-context')) {
-    # 픽스처: plan.md(T 3개 중 미완료 2 — [x]/[/]/[ ] 혼합) + notes.md(최근 항목 날짜)
+    # 픽스처: plan.md(T 3개 중 미완료 2 — [x]/[/]/[ ] 혼합)
     $scProj = Join-Path $work 'sc-proj'
     New-Item -ItemType Directory $scProj -Force | Out-Null
     @(
@@ -16,12 +16,10 @@ if (Test-HookSelected @('session-context')) {
         '- [/] T2: in progress (Type B)',
         '- [ ] T3: todo (Type C)'
     ) | Set-Content -Encoding UTF8 (Join-Path $scProj 'plan.md')
-    @('## 최근 변경', '- 2026-07-01: 테스트 항목') | Set-Content -Encoding UTF8 (Join-Path $scProj 'notes.md')
 
-    # SC1: startup → plan 미완료 카운트 + notes 날짜 주입 (같은 실행 결과로 2개 확인)
+    # SC1: startup → plan 미완료 카운트 주입
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: plan 미완료 카운트 주입 (SC1)" -R $r -ExpectExit 0 -ExpectContains '미완료 2'
-    Assert-Case -Name "session-context: notes 최근 항목 날짜 주입 (SC1b)" -R $r -ExpectExit 0 -ExpectContains '2026-07-01'
 
     # SC2: compact → 재확인 리마인더 추가 주입
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
@@ -69,8 +67,8 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scBig } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 16KB 초과 AGENTS.md 목차 폴백 (SC9)" -R $r -ExpectExit 0 -ExpectContains '섹션:'
 
-    # SC10: AGENTS.md 없는 기존 픽스처($scProj: plan+notes만)는 AGENTS 문자열 무오염 — T1 acceptance ⓑ의 영구 그물.
-    #   SC3(완전 빈 폴더)은 plan/notes는 있고 AGENTS만 없는 이 경로를 고정 못 하므로 별도 케이스로 둔다.
+    # SC10: AGENTS.md 없는 기존 픽스처($scProj: plan만)는 AGENTS 문자열 무오염 — T1 acceptance ⓑ의 영구 그물.
+    #   SC3(완전 빈 폴더)은 plan은 있고 AGENTS만 없는 이 경로를 고정 못 하므로 별도 케이스로 둔다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: AGENTS.md 없는 픽스처 무오염 (SC10)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains 'AGENTS'
 
@@ -134,7 +132,7 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: vault 설정됨 상태 주입 (SC18)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
     Assert-Case -Name "session-context: vault 단정 금지 문구 (SC18b)" -R $r -ExpectExit 0 -ExpectContains '단정하지 마세요'
 
-    # SC21 (델타): 설정+실재인데 비 pjc cwd(plan/notes/AGENTS 전무) → 게이팅으로 미주입.
+    # SC21 (델타): 설정+실재인데 비 pjc cwd(plan·AGENTS 전무) → 게이팅으로 미주입.
     #   vault는 cwd와 무관한 사용자 홈 자원이라, 게이팅이 없으면 위키를 쓰는 사용자의 모든 세션에 라인이 붙는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 비 pjc cwd는 vault 라인 미주입 (SC21)" -R $r -ExpectExit 0 -ExpectSilent $true
@@ -144,7 +142,7 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 리마인더는 vault 게이팅 신호 아님 (SC23)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains '위키 vault'
 
-    # SC22 (델타): AGENTS.md만 있고 plan/notes 없는 cwd → vault 라인이 주입되고 AGENTS 라인보다 **앞**에 온다.
+    # SC22 (델타): AGENTS.md만 있고 plan 없는 cwd → vault 라인이 주입되고 AGENTS 라인보다 **앞**에 온다.
     #   ① 게이팅을 AGENTS 진입 전 시점에 판정하면 이 케이스가 억제된다(과억제 검출).
     #   ② 순서 단정은 Assert-Case로 불가하다 — ExpectContains가 [regex]::Escape를 거쳐 전후 관계를 비교할 수단이 없으므로
     #      IndexOf 비교 후 결과를 직접 push한다(§11 (b) 패턴과 동일).

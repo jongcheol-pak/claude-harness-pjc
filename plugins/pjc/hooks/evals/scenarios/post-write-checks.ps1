@@ -51,23 +51,6 @@ $vernegPath = Join-Path $pw 'ver-neg.md'
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $vernegPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 버전 문자열 IP 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-# ---- notes.md 아카이브 시점 경고 (v1.112.0 — 초과 경고·디듑·경계 음성) ----
-# 픽스처는 순수 한글 1줄(시크릿·IP·영문 주석·1500라인 트리거 없음) — 아카이브 경고만 단독 검증.
-$naDir = Join-Path $pw 'notes-arch'; New-Item -ItemType Directory $naDir -Force | Out-Null
-$naPath = Join-Path $naDir 'notes.md'
-[System.IO.File]::WriteAllText($naPath, [string]::new([char]'가', 30001), [System.Text.UTF8Encoding]::new($false))
-$naj = @{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $naPath } } | ConvertTo-Json -Compress
-$r = Invoke-Hook 'post-write-checks.ps1' $naj
-Assert-Case -Name "post-write: notes.md 30,000자 초과 아카이브 경고 (NA1)" -R $r -ExpectExit 0 -ExpectContains '아카이브'
-$r = Invoke-Hook 'post-write-checks.ps1' $naj
-Assert-Case -Name "post-write: notes.md 아카이브 경고 2회차 무출력 (NA2 디듑)" -R $r -ExpectExit 0 -ExpectSilent $true
-# 경계: 정확히 30,000자는 "초과" 아님 → 무경고 (디듑 키가 경로 기반이라 별도 폴더로 분리)
-$naDir2 = Join-Path $pw 'notes-arch-neg'; New-Item -ItemType Directory $naDir2 -Force | Out-Null
-$naPath2 = Join-Path $naDir2 'notes.md'
-[System.IO.File]::WriteAllText($naPath2, [string]::new([char]'가', 30000), [System.Text.UTF8Encoding]::new($false))
-$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $naPath2 } } | ConvertTo-Json -Compress)
-Assert-Case -Name "post-write: notes.md 정확히 30,000자 무경고 (NA3 경계)" -R $r -ExpectExit 0 -ExpectSilent $true
-
 # ---- [L5] 옥텟 초과(999.x)는 IP 아님 — 무경고 (옥텟 0-255 제한 회귀 가드) ----
 $octnegPath = Join-Path $pw 'oct-neg.md'
 [System.IO.File]::WriteAllText($octnegPath, '식별자 999.999.999.999 는 IP 아님.', [System.Text.UTF8Encoding]::new($false))
