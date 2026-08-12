@@ -195,6 +195,7 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 | explorer | Haiku | 컨텍스트 수집용 빠른 탐색 | 단순 조회 — 빠르고 저렴 |
 | spec-compliance-reviewer | Sonnet | 구현이 계획대로 됐는지 검증 | 정확성과 비용의 균형 |
 | code-quality-reviewer | Sonnet | 코드 품질·보안 검증 | 균형 |
+| root-cause-analyzer | Sonnet | 같은 지적이 반복될 때 근본 원인 진단 | 균형 — 진단은 깊이가 필요하나 판정은 아님 |
 | plan-reviewer | Opus | 계획 적대적 검토 | 가장 깊은 추론 필요 |
 | plan-completion-reviewer | Opus | 전체 완료 통합 검증 | 가장 깊은 추론 필요 |
 
