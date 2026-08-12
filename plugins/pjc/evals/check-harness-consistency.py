@@ -18,7 +18,9 @@
      어긋나지 않는가. v1.154.0 이전에 정본 6곳 ↔ 사본 8곳으로 역전돼 있었고, 그 차이가 곧
      오차단 경로였다.
   ⑤ Deferred 집계   — 대장의 「현행 잔량」 앵커가 실제 항목 수와 일치하는가. "정리 직후 수치만
-     적고 등재분을 반영하지 않는" 실수가 이 대장의 반복 패턴이다.
+     적고 등재분을 반영하지 않는" 실수가 이 대장의 반복 패턴이다. 앵커는 4필드이며 누계 2종은
+     실측 불가(삭제분은 파일에 없다)라 **불변식** `대기 + 종결 + 삭제누계 == 총등재누계`로 검사한다
+     — 종전에 사람이 batch 전후로 대조하던 「무손실 대조」를 기계화한 것이다.
 
 왜 하드코딩하지 않는가: 검사 대상 목록·기대값을 코드에 박으면 문서가 바뀌어도 검사가 낡는다.
 모든 기대값은 문서에서 파싱하며, 앵커를 못 찾으면 통과가 아니라 `[ANCHOR FAIL]`(exit 2)이다 —
@@ -268,9 +270,14 @@ def check_marker_sync(conv, impl):
 # ⑤ Deferred 집계
 # ─────────────────────────────────────────────────────────────
 def check_deferred_stats(ledger):
-    m = re.search(r"현행 잔량\(기계 대조 대상\)\*\*: 대기 (\d+) / 종결 (\d+)", ledger)
+    # 줄 끝(`$`)까지 앵커링한다 — 접두 매치로 두면 필드가 빠지거나 늘어도 조용히 통과해
+    # 대장↔대조기 lockstep이 성립하지 않는다(4필드 도입 시 실측으로 드러났다).
+    m = re.search(
+        r"현행 잔량\(기계 대조 대상\)\*\*: 대기 (\d+) / 종결 (\d+)"
+        r" / 정리 삭제 누계 (\d+) / 총 등재 누계 (\d+)\s*$",
+        ledger, re.M)
     if not m:
-        die("대장에서 「현행 잔량」 전용 앵커를 찾지 못함")
+        die("대장에서 「현행 잔량」 전용 앵커를 찾지 못함(4필드 형식이 아닐 수 있다)")
     lines = ledger.split("\n")
     try:
         w = next(i for i, l in enumerate(lines) if l.strip() == "## 대기")
@@ -281,10 +288,16 @@ def check_deferred_stats(ledger):
     # `\]`로 닫으면 조용히 누락된다. 종결은 `[등록일 → 종결일]` 범위 형식.
     wait = sum(1 for l in lines[w:d] if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l))
     done = sum(1 for l in lines[d:] if re.match(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]", l))
+    a_wait, a_done, purged, enrolled = (int(g) for g in m.groups())
     issues = []
-    if (wait, done) != (int(m.group(1)), int(m.group(2))):
-        issues.append("Deferred 집계 — 앵커 대기 %s/종결 %s / 실측 대기 %d/종결 %d"
-                      % (m.group(1), m.group(2), wait, done))
+    if (wait, done) != (a_wait, a_done):
+        issues.append("Deferred 집계 — 앵커 대기 %d/종결 %d / 실측 대기 %d/종결 %d"
+                      % (a_wait, a_done, wait, done))
+    # 누계 2종은 실측 대조가 불가능하므로(삭제된 항목은 파일에 없다) 불변식으로만 구속한다.
+    # 어긋나면 누계를 서로 맞춰 green을 만들지 말고 원인 연산을 고칠 것 — 대장 「카운트 기준」.
+    if a_wait + a_done + purged != enrolled:
+        issues.append("Deferred 불변식 — 대기 %d + 종결 %d + 삭제누계 %d = %d ≠ 총등재누계 %d"
+                      % (a_wait, a_done, purged, a_wait + a_done + purged, enrolled))
     return issues, wait + done
 
 
