@@ -353,6 +353,7 @@ Task Type에 따라 다른 흐름:
 - **재리뷰 시 `| 라운드 | 지적 | 심각도 | 반영 방식 |` 4열 이력 표를 전달한다 (의무).** 없으면 리뷰어가 이전 판정을 알 수 없어 **같은 지점이 라운드마다 뒤집히는 진동**이 생긴다. 첫 호출에는 전달하지 않는다(이력이 없다).
 - **`[CONFLICT]`와 `incomplete`는 Verdict가 OK여도 통과가 아니다.** 전자는 메인이 채택/유지를 판정해 `## Retry Ledger`에 기록한 뒤에만(같은 지점 2회면 Halt), 후자는 미검토분을 직접 대조하거나 재호출해 해소한 뒤에만 다음 단계로 간다. **조용히 통과시키면 리뷰어의 정직한 보고가 무의미해진다.**
 - **지적 이의는 근거 있는 반증만 허용된다.** 파일:라인 인용으로 사실 오류를 반증해 같은 리뷰어를 재호출하되, **재호출에도 같은 지적이 유지되면 수용하거나 Halt**한다(반박의 끝을 보장). 근거 없는 묵살은 금지이며, 이 반증 재호출은 수정 사이클 카운터에 포함된다.
+- **동일 BLOCKER/MAJOR가 2회 연속이면 Phase I 복귀 전에 `auto-debug pass`를 1회 태운다 (task당 1회).** 같은 지적을 두 번 고쳤는데도 남았다면 세 번째 수정도 **이미 두 번 빗나간 가정을 물려받은 채** 하게 된다 — `root-cause-analyzer`를 동기 호출해 오염되지 않은 컨텍스트의 진단서(원인 + 근거 위치 + 기각된 가설)를 받고 그것을 입력으로 고친다. **2회 시점 자체는 Halt 지점이 아니며, auto-debug는 어떤 Halt 카운터도 증감시키지 않는다**(진단 후 재리뷰에서 같은 지적이면 그때가 3회째). **발동 조건·전달물 5종·호출 실패 처리(B 분기 미적용)·계수 규칙 3줄·Retry Ledger 기록 형식은 `references/recovery.md` 「auto-debug pass (동일 BLOCKER 2회 — Halt 직전 구제)」가 정본.**
 
 ### V-6. Code Quality Review (subagent, Type C/D 항상) — V-5와 병렬 수행
 - `code-quality-reviewer` subagent 호출 (위 V-5에서 **병렬로 함께 호출**). 자체 검토 금지 — **예외는 호출 자체가 불가한 환경뿐이며 그때는 "Reviewer 호출 실패 대응" B 분기**(체크리스트 대체 + 의무 3종). **기존 plan의 Type 라인에 남은 `(quality-review)` 플래그는 no-op**(종전 opt-in 표기 — 이미 기본이라 중복 명시일 뿐, 오류 아님). 호출은 V-5와 함께 **동기 호출**(`run_in_background: false`).
@@ -411,6 +412,7 @@ plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만*
 - 같은 task에서 **리뷰 지적(BLOCKER/MAJOR) 수정 사이클 누적 5회** → Halt (매번 다른 지적으로 도는 무한 수정 루프 방지).
 - 한 task에서 **빌드·수정 사이클 10회 이상** 반복하고도 미완 → Halt (무한 그라인딩). 위 두 캡(리뷰 지적 한정)과 아래 "빌드 5회 연속 실패"(원인 미상 한정) 캡이 **모두 못 잡는** 시나리오 — 원인은 매번 알지만 끝나지 않는 그라인딩 — 를 이 상한이 유일하게 잡는다.
 - 같은 지점에 리뷰어 **`[CONFLICT]` 2회** → Halt (V-5의 `[CONFLICT]` 수신 절차 — 새 상한 값이 아니라 checkpoint 복구와 같은 2).
+- **동일 BLOCKER/MAJOR 2회 연속 → `auto-debug pass` 1회**(Halt가 아니라 그 직전 구제 — `root-cause-analyzer` 동기 호출로 fresh context 진단만 받는다). **어떤 Halt 카운터도 증감시키지 않고** 자체 상한 `1/1`만 가지므로 **위 상한들의 도달 시점은 그대로다.** 정본 `references/recovery.md` 「auto-debug pass (동일 BLOCKER 2회 — Halt 직전 구제)」.
 - 이 넷 + 나머지 카운터(checkpoint 복구 2회·빌드 5회 연속 실패), **카운터 영속화**(plan.md `## Retry Ledger`에 기록해 auto-compact·재개에서 그 값부터 이어 셈 — G5), 상세 복구 절차는 모두 `references/recovery.md`에 일원화(단일 출처).
 
 ## Phase D — Done
