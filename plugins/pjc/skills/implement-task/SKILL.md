@@ -413,7 +413,7 @@ plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만*
 - 한 task에서 **빌드·수정 사이클 10회 이상** 반복하고도 미완 → Halt (무한 그라인딩). 위 두 캡(리뷰 지적 한정)과 아래 "빌드 5회 연속 실패"(원인 미상 한정) 캡이 **모두 못 잡는** 시나리오 — 원인은 매번 알지만 끝나지 않는 그라인딩 — 를 이 상한이 유일하게 잡는다.
 - 같은 지점에 리뷰어 **`[CONFLICT]` 2회** → Halt (V-5의 `[CONFLICT]` 수신 절차 — 새 상한 값이 아니라 checkpoint 복구와 같은 2).
 - **동일 BLOCKER/MAJOR 2회 연속 → `auto-debug pass` 1회**(Halt가 아니라 그 직전 구제 — `root-cause-analyzer` 동기 호출로 fresh context 진단만 받는다). **어떤 Halt 카운터도 증감시키지 않고** 자체 상한 `1/1`만 가지므로 **위 상한들의 도달 시점은 그대로다.** 정본 `references/recovery.md` 「auto-debug pass (동일 BLOCKER 2회 — Halt 직전 구제)」.
-- 이 넷 + 나머지 카운터(checkpoint 복구 2회·빌드 5회 연속 실패), **카운터 영속화**(plan.md `## Retry Ledger`에 기록해 auto-compact·재개에서 그 값부터 이어 셈 — G5), 상세 복구 절차는 모두 `references/recovery.md`에 일원화(단일 출처).
+- 이 넷(위 Halt 트리거 넷 — **바로 위 auto-debug는 Halt가 아니라 구제라 여기 포함되지 않는다**) + 나머지 카운터(checkpoint 복구 2회·빌드 5회 연속 실패), **카운터 영속화**(plan.md `## Retry Ledger`에 기록해 auto-compact·재개에서 그 값부터 이어 셈 — G5), 상세 복구 절차는 모두 `references/recovery.md`에 일원화(단일 출처).
 
 ## Phase D — Done
 
