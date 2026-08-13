@@ -1,6 +1,6 @@
 ﻿# PostToolUse hook (병합) - PowerShell 버전
 # Write/Edit/MultiEdit/NotebookEdit 후 두 검사를 한 프로세스에서 수행한다:
-#   [check-utf8-and-lines] BOM 검사 · 1500라인 초과 경고 · 영문 주석 비율 · 민감 정보
+#   [check-utf8-and-lines] BOM 검사 · 영문 주석 비율 · 민감 정보
 #   [impact-warn]          변경된 public/internal 심볼의 caller 경고
 #
 # 한 검사의 오류가 다른 검사를 막지 않도록 각 섹션을 try/catch로 격리한다.
@@ -86,7 +86,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
 }
 
 # =====================================================================
-# 섹션 1: check-utf8-and-lines (BOM · 라인 수 · 영문 주석 · 민감 정보)
+# 섹션 1: check-utf8-and-lines (BOM · 영문 주석 · 민감 정보)
 #   절대경로($file)만 쓰므로 cwd에 의존하지 않는다 → 섹션 2의 Set-Location 앞에 둔다.
 #   (토글 제거 — 이 검사는 항상 실행된다.)
 # =====================================================================
@@ -111,7 +111,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             }
         }
 
-        # ---- 파일 내용 1회 읽기 (라인 수·영문 주석·시크릿 검사가 공유) ----
+        # ---- 파일 내용 1회 읽기 (영문 주석·시크릿 검사가 공유) ----
         $raw = $null
         $content = $null
         try {
@@ -121,26 +121,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             # 바이너리 등 읽기 불가 파일은 각 검사의 $null 가드로 조용히 통과
         }
 
-        # ---- 2. 라인 수 검사 ----
-        # 자동 생성 파일은 수천 라인이 정상이므로 제외 (경고 노이즈 방지)
-        $isGenerated = $file -match '\.(Designer|designer)\.cs$' -or
-                       $file -match '\.g(\.i)?\.cs$' -or
-                       $file -match '\.generated\.\w+$' -or
-                       $file -match '\.(resx|resw)$' -or
-                       $file -match '(^|[\\/])(obj|bin)[\\/]' -or
-                       $file -match '\.min\.(js|css)$' -or
-                       $file -match '(package-lock\.json|yarn\.lock|Cargo\.lock|go\.sum)$'
-
-        if ((-not $isGenerated) -and $null -ne $content) {
-            # $content 는 끝 개행 뒤 빈 요소를 포함할 수 있어 Get-Content 기준으로 보정 (라인 수 정확도 유지)
-            $lineCount = @($content).Count
-            if ($raw.EndsWith("`n")) { $lineCount-- }
-            if ($lineCount -gt 1500) {
-                $utf8Warnings.Add("파일 라인 수 $lineCount (>1500). 분리 '검토' 신호 - 여러 독립 책임이 섞였으면 책임 단위로 분리, 단일 책임인데 길 뿐이면 그대로 둔다(억지 분리는 지역성을 해침). 분리 시 plan에 등록.")
-            }
-        }
-
-        # ---- 3. 영문 주석 비율 (코드 파일만) ----
+        # ---- 2. 영문 주석 비율 (코드 파일만) ----
         # 주석 검사용 코드 확장자 — impact 섹션의 caller 검색용 목록($codeExtsImpact)과 다르므로 분리 유지.
         $extComment = [System.IO.Path]::GetExtension($file).ToLower()
         $codeExtsComment = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')

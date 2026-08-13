@@ -57,6 +57,15 @@ $octnegPath = Join-Path $pw 'oct-neg.md'
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $octnegPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 옥텟 초과 999.x IP 무경고 (L5)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+# ---- [T1] 라인 수 검사 제거 회귀 가드 (v1.172.0) ----
+# 종전에는 1500라인 초과 시 "분리 검토" 경고가 났다. 그 고정 임계를 폐기하고 판정을 규칙 8로
+# 옮겼으므로, 대용량 파일이어도 hook은 아무 말도 하지 않아야 한다. ExpectSilent로 고정하면
+# 라인 수 경고 재유입뿐 아니라 다른 검사의 우발 발화까지 함께 잡힌다.
+$bigPath = Join-Path $pw 'big-2000.md'
+[System.IO.File]::WriteAllText($bigPath, (((1..2000 | ForEach-Object { "본문 $_ 번째 줄." }) -join "`n")), [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $bigPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 2000줄 파일 무경고(음성 — 라인 수 임계 폐기)" -R $r -ExpectExit 0 -ExpectSilent $true
+
 # ---- [P1T2] password 값 제외 조건 (타입 선언·env 조회·키워드 — 오탐 방지, v1.98.0) ----
 # hook이 권장하는 패턴(환경변수 조회)까지 'password 값'으로 경고하던 늑대소년화 수정의 회귀 가드.
 $pwnegPath = Join-Path $pw 'pw-neg.md'
