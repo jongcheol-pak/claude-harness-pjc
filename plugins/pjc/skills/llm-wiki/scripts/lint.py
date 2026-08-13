@@ -46,6 +46,21 @@ except Exception:
 #  처방은 전 타입이 이동·분리(롤오버·하위 분리·재분할)이며 요약으로 줄이는 압축은 쓰지 않는다.
 BUDGET_NEAR_RATIO = 0.8
 
+# 예산 임박 임계 — 근접(80%) 위의 2단계. 근접이 참인 파일 중 아래 둘 중 하나면 WARN으로 올린다.
+#  왜 두 축인가: 비율만 쓰면 여유 414자인 decision-log(93%)를 놓치고, 절대값만 쓰면 예산이 작은
+#  타입(source-stub 1800)에서 72%짜리가 임박이 된다. 근접 선행 + OR 결합이 실측 분포를 정확히 가른다.
+#  왜 INFO가 아니라 WARN인가: 근접 INFO 하나로는 여유 28자와 1,624자가 같은 줄로 나와, 정작 급한 것이
+#  INFO 더미에 묻힌다(실측 INFO 99건 중 근접 10건). 실제로 그 상태로 방치돼 여유 28자까지 왔다.
+BUDGET_CRITICAL_RATIO = 0.95
+BUDGET_CRITICAL_SLACK = 500
+
+# 「분리 불가 판정」(frontmatter budget_split) — 나눌 하위 주제가 없는 페이지(단일 주제 recipe·concept)는
+#  §4의 이동·분리 처방이 성립하지 않는다. 판정을 기록하면 임박 WARN만 억제하고 근접 INFO로 강등한다.
+#  판정 시점 문자 수(budget_split_chars) 대비 이 마진을 넘게 자라면 억제가 풀려 재판정을 강제한다 —
+#  영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어 판정이 곧 사각이 된다.
+BUDGET_REJUDGE_MARGIN = 0.10
+BUDGET_SPLIT_VOCAB = {"none"}
+
 BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 — v1.138.0 줄 수→문자 수 전환)
     #  줄 수는 밀도를 못 담아(한 줄에 500자를 써도 통과) 예산이 무의미했다 → 문자 수로 전환.
     #  단 index.md는 '행 수(등록 항목 개수)'가 본질적 단위라 문자로 못 바꾼다(INDEX_* 별도 경로 유지),
@@ -275,6 +290,23 @@ def is_lint_report(rel_path):
     """lint-YYYYMMDD 리포트 페이지 판정: type: question을 쓰지만 '질문'이 아니라 lint 결과 보존물 —
     §7-12 미해결 집계와 §7-23 인덱스 등록 요구에서 같은 기준으로 제외한다(집계↔등록 모순 방지)."""
     return os.path.basename(rel_path).startswith("lint-")
+
+
+def budget_split_suppressed(fm, chars):
+    """「분리 불가 판정」이 유효해 임박 WARN을 억제해야 하는지 판정한다(§7-2·§4).
+    유효 조건은 둘이다 — ① budget_split이 통제 어휘 안(none) ② 현재 문자 수가 판정 시점
+    (budget_split_chars) 대비 BUDGET_REJUDGE_MARGIN 이내. 판정 시점보다 그만큼 자랐으면 판정의
+    전제(더 나눌 것이 없다)가 흔들린 것이므로 억제를 풀어 재판정을 강제한다.
+    budget_split_chars가 없거나 정수가 아니면 억제하지 않는다 — 판정 시점을 알 수 없으면 재판정
+    시점도 정할 수 없어 영구 면제가 되기 때문이다(신호를 살리는 쪽으로 폴백).
+    억제는 임박에만 적용되고 근접 INFO·초과 WARN은 그대로 난다(상태는 계속 보여야 한다)."""
+    if str(fm.get("budget_split", "")).strip() not in BUDGET_SPLIT_VOCAB:
+        return False
+    try:
+        judged = int(str(fm.get("budget_split_chars", "")).strip())
+    except (TypeError, ValueError):
+        return False
+    return judged > 0 and chars <= judged * (1 + BUDGET_REJUDGE_MARGIN)
 
 
 def is_feat_recipe_row(line):
@@ -702,6 +734,22 @@ def main():
                     "convention": " — 무효 항목 제거 → 주제별 하위 파일(conventions-{주제}.md) 분리 + '## 하위 문서' 목록 갱신 (wiki-schema §2.9)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{fence_note}){hint}", r)
+            elif (budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r)
+                  and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
+                       or budget - eff_chars < BUDGET_CRITICAL_SLACK)
+                  and not budget_split_suppressed(fm, eff_chars)):
+                # L-5: 근접 위의 2단계 — 압박도를 구분한다. 근접 INFO 하나로는 여유 28자와 1,624자가
+                #   같은 줄로 나와 정작 급한 것이 INFO 더미에 묻힌다(실측: INFO 99건 중 근접 10건이었고
+                #   그 상태로 방치돼 feature 하나가 여유 28자까지 왔다). 여기서 WARN으로 올려 lint
+                #   세션(F-2)·ingest(A-4·B-3)가 처방을 수행할 대상으로 삼게 한다.
+                #   억제(budget_split)가 걸리면 이 분기를 건너뛰어 아래 근접 INFO로 강등된다 —
+                #   나눌 하위가 없는 페이지에 실행 불가능한 처방을 반복 요구하지 않기 위함이다.
+                crit_hint = {"project": " — '최근 주요 변경' 롤오버(§2.2·§8) 또는 작업 규약 conventions.md 분리(§2.9)",
+                             "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 (§2.8)",
+                             "convention": " — 무효 항목 제거 → 주제별 하위 파일 분리 (§2.9)"}.get(typ, "")
+                warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
+                     f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
+                     f"{crit_hint} — 다음 편집 전에 §4 처방 수행 (나눌 하위가 없으면 budget_split 판정)", r)
             elif budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r):
                 # L-4: 초과 전에 알린다 — 예산은 "넘으면 고친다"가 아니라 "넘기 전에 옮긴다"가 규정인데
                 #   (§4 "예산 80% 도달 시 해당 타입 처방을 수행") 그 문장에 기계 신호가 없어 사문이었다.
