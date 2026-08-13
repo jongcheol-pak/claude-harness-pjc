@@ -61,7 +61,7 @@
 - **에러 처리**: `Result<T, E>` 패턴 또는 throw + global handler. 정책 일관.
 - **비동기**: `async`/`await`. `.then()` 체인 금지.
 - **테스트**: 단위는 `tests/<domain>.test.ts` 또는 `src/<file>.test.ts`. 통합은 별도.
-- **파일**: 1500라인 내외, UTF-8, 주석은 한글
+- **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8, 주석은 한글
 - **Import**: 절대 경로(`@/`) 또는 baseUrl 설정 일관
 
 ## DO NOT

@@ -171,7 +171,7 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 - **테스트**: Domain·Data는 JVM 단위, UI는 Compose Test 또는 Journeys
 - **리소스**: 문자열은 `strings.xml`, 색상은 `colors.xml` (하드코딩 금지)
 - **적응형**: 고정 폭 가정 금지, `WindowSizeClass` 기준 분기
-- **파일**: 1500라인 내외, UTF-8, 주석은 한글
+- **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8, 주석은 한글
 
 ## DO NOT
 - `gradle.properties`(민감), `keystore`, `google-services.json` 커밋

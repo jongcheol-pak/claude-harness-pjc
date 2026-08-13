@@ -46,7 +46,7 @@
 - 새 의존성은 `App.xaml.cs`의 `ConfigureServices`에 등록.
 - 로깅은 Serilog. 콘솔 직접 출력 금지.
 - 비동기 메서드는 `Async` 접미사. `Wait()`, `.Result` 금지.
-- 파일 1500라인 내외 유지.
+- 파일은 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정).
 - 주석은 한글. "왜"를 설명.
 - 파일 UTF-8 (BOM 없음), `.ps1`만 BOM.
 
@@ -112,7 +112,7 @@
 - 네트워크 결과는 `Result<T>` 또는 sealed class (`Loading/Success/Error`)로 표현.
 - 로깅은 **Timber**. `Log.d` 직접 호출 금지.
 - 문자열 리소스는 `strings.xml`에 정의 (하드코딩 금지). 다국어 키는 snake_case.
-- 파일 1500라인 내외 유지. Composable은 한 함수당 100라인 내외 권장.
+- 파일은 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정). Composable은 한 함수당 100라인 내외 권장.
 - 주석은 한글, KDoc(`/** ... */`) 사용. "왜"를 설명.
 - 파일 UTF-8 (BOM 없음).
 

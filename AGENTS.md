@@ -24,15 +24,15 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  **⚠ 이대로 실행하면 완주하지 않는다** — 스위트가 **약 6~15분**(527케이스, 병렬 기본 — 338초~922초로 wall-clock 편차가 크다)인데 Bash 도구의 시간 캡은 **전경·`run_in_background` 모두 10분**이라 어느 쪽으로 띄워도 killed되고, `Start-Process`의 리다이렉트 파라미터는 0바이트 파일을 남긴다. **분리 프로세스 + 래퍼 스크립트 + `Monitor` 폴링**이 정본 절차이며 **실행·대기·판정·모드(`-Sequential`·`-Resume`·`-Filter`) 상세는 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」이 정본**이다. 그 절을 읽지 않고 돌리면 과거처럼 "환경상 실행 불가"로 F-2를 갈음하게 된다.
+  **⚠ 이대로 실행하면 완주하지 않는다** — 스위트가 **약 6~15분**(528케이스, 병렬 기본 — 338초~922초로 wall-clock 편차가 크다)인데 Bash 도구의 시간 캡은 **전경·`run_in_background` 모두 10분**이라 어느 쪽으로 띄워도 killed되고, `Start-Process`의 리다이렉트 파라미터는 0바이트 파일을 남긴다. **분리 프로세스 + 래퍼 스크립트 + `Monitor` 폴링**이 정본 절차이며 **실행·대기·판정·모드(`-Sequential`·`-Resume`·`-Filter`) 상세는 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」이 정본**이다. 그 절을 읽지 않고 돌리면 과거처럼 "환경상 실행 불가"로 F-2를 갈음하게 된다.
 
   격리 USERPROFILE에서 hook 11종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
   부분 실행 `-Filter <hook명>`(쉼표 복수, `.ps1` 생략 가능)은 **구현 중 반복 확인 전용**이고, task 검증과 Phase F-2는 무인자 **전체 실행**이 정본이다 — **부분 실행 결과로 검증 판정 금지**(골든 케이스가 hook 간 얽혀 있어 커버리지가 좁다).
-- **llm-wiki 상수·배치 정합 셀프체크 (SKILL.md 예산표·라우팅 표·references/procedures-*.md·wiki-schema §2/§3/§4/§7/§8/§11/§12·목차·templates.md·lint.py 상수 수정 시 필수)**:
+- **llm-wiki 상수·배치 정합 셀프체크 (SKILL.md 예산표·「예산 단계 신호」 표·라우팅 표·references/procedures-*.md·wiki-schema §2/§3/§4/§7/§8/§11/§12·목차·templates.md·lint.py 상수 수정 시 필수)**:
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
-  다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합 / **타입 열거 정합 10자리·11항목**(새 타입이 산문 열거에서 조용히 빠지는 사각 — ⓐ `lint.py` 타입 집합 상수 ↔ 문서 산문 7항목(§3 origin·confidence·§7-3·§7-9·§7-28·§8 아카이브 예외·§11) ⓑ §2 타입 전 커버 4항목(목차 §2 행·계층 태그·templates 목차·§12 권장/비대상 분할 커버)). 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
+  다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합 / **예산 단계 임계·판정 어휘**(SKILL 「예산 단계 신호」 표 ↔ lint 상수 4값+어휘 — 임계는 이 축 말고는 어디서도 대조되지 않는다) / **타입 열거 정합 10자리·11항목**(새 타입이 산문 열거에서 조용히 빠지는 사각 — ⓐ `lint.py` 타입 집합 상수 ↔ 문서 산문 7항목(§3 origin·confidence·§7-3·§7-9·§7-28·§8 아카이브 예외·§11) ⓑ §2 타입 전 커버 4항목(목차 §2 행·계층 태그·templates 목차·§12 권장/비대상 분할 커버)). 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
 - **하니스 정합 셀프체크 (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·`deferred.md` 수정 시 필수)**:
   ```
   python plugins/pjc/evals/check-harness-consistency.py
@@ -67,7 +67,7 @@
 ## Conventions
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
-- **파일 크기**: 1500라인은 분리 "검토" 신호(강제 분리선 아님).
+- **파일 크기**: 분할은 줄 수가 아니라 책임·읽기 부담으로 판정한다(`implement-task` 규칙 8의 네 질문이 정본).
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단 형태는 **둘**이다 — ① **`exit 2`**: `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox` + **`warn-commit-secrets`(조건부)** ② **`stdout JSON`(`{"decision":"block","reason":…}`) + `exit 0`**: **`require-evidence`(조건부)**. ②는 Stop hook 전용으로 종료를 막고 `reason`을 모델에 전달해 루프를 잇는다(도구 호출이 아니라 *종료를 되돌린다*). **두 조건부의 세부 조건·스캔 범위·라벨 매치 형태는 `docs/harness-conventions.md`가 정본이다** — hook을 수정하거나 문서에 차단 범위를 적기 전에 반드시 읽을 것(차단 범위를 실제보다 넓게 쓰면 "차단한다고 썼는데 안 잡는" 상태가 된다). **우회 변수는 둘이며 서로 대체되지 않는다** — `require-evidence`는 `CLAUDE_HARNESS_QUICK=1`, `warn-commit-secrets`는 전용 변수 `CLAUDE_HARNESS_ALLOW_SECRET=1`(QUICK으로는 꺼지지 않는다).
 - **`require-plan-for-write`는 게이트 3종을 담는다**: ① plan 존재 게이트(코드 Write 시 plan 필요 — `docs/plans/`는 **체크박스 plan 실재**로 판정, 디렉터리 존재만으로는 안 켜짐) ② **plan 작성 게이트**(plan 파일 Write·체크박스 도입 Edit은 `pjc:plan-feature`/`implement-task` 발동 흔적 필요) ③ AGENTS.md bootstrap 게이트. ①과 ②는 같은 정규식(`$planTaskRx`)을 공유한다 — **기준이 갈리면 그 차이가 곧 우회 경로**이므로 한쪽만 고치지 말 것.
 - **SKILL 문서 작성**: `plugins/pjc/skills/AUTHORING.md` 참조("왜"를 설명, 절대 규칙만 단호하게).

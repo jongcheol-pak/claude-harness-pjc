@@ -61,7 +61,7 @@
 - **동시성**: goroutine + channel. `context.Context` 전파 의무 (timeout/cancel).
 - **테스트**: table-driven test 패턴 권장. `t.Parallel()` 활용.
 - **로깅**: 구조화 로그 (slog, zap, zerolog). `fmt.Println` 금지.
-- **파일**: 1500라인 내외, UTF-8, 주석은 한글 + godoc 컨벤션 (export 함수는 영어 첫 줄)
+- **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8, 주석은 한글 + godoc 컨벤션 (export 함수는 영어 첫 줄)
 
 ## DO NOT
 - `vendor/` 커밋 (대부분 — `GOFLAGS=-mod=vendor` 정책 아니면 gitignore)

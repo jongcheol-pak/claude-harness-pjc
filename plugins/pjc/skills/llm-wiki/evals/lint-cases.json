@@ -404,6 +404,32 @@
         "목록 깨짐"
       ],
       "rationale": "§7-30ⓑ 역방향 — conventions-release.md가 실재하는데 conventions.md '## 하위 문서' 목록에 없으면 WARN(wiki-schema §2.9). 목록이 조회 진입점이라 미등재는 분리한 규약이 절차 K의 조회 경로 밖으로 나가는 것이다(조회 홉 1 위반). expect_absent '목록 깨짐'은 정방향 오발화 가드 — 목록이 가리키는 없는 파일이 없으므로 정방향은 침묵해야 한다. 고아 페이지 WARN이 함께 나오는 것은 미등재 상태의 필연적 동반 신호(링크 부재)이며 이 케이스 판정에 영향이 없다."
+    },
+    {
+      "fixture": "budget-critical",
+      "expect_keywords": [
+        "예산 임박: 10_sources/personal/src-near.md 1450/1800자 (81%, 여유 350자, type=source-stub)",
+        "예산 임박: 20_projects/personal/demo/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
+        "무효 항목 제거 → 주제별 하위 파일 분리 (§2.9)"
+      ],
+      "expect_absent": [
+        "예산 근접: 10_sources/personal/src-near.md",
+        "예산 근접: 20_projects/personal/demo/conventions.md"
+      ],
+      "rationale": "§7-2 임박 단계(WARN) — D1의 OR 두 항을 각각 실증한다. src-near는 81%로 비율 조건(95%) 미충족이나 여유 350자<500이라 '잔여 조건'만으로 발화하고, conventions.md는 여유가 정확히 500자라 잔여 조건(< 500) 미충족이나 96%라 '비율 조건'만으로 발화한다 — 한 축만 구현하면 둘 중 하나가 반드시 빠진다. expect_absent는 elif 체인 확인: 임박이 발화한 파일은 근접 INFO를 함께 내지 않는다(같은 파일 두 줄이면 다시 노이즈가 된다). 수리 경로가 정해진 타입(convention)에는 처방 힌트가 병기되는지도 함께 본다."
+    },
+    {
+      "fixture": "budget-split-none",
+      "expect_keywords": [
+        "예산 근접: 20_projects/personal/demo/conventions.md 11500/12000자 (96%, type=convention)",
+        "예산 임박: 20_projects/personal/demo2/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
+        "예산 근접: 40_guides/ui-ux/fence-split.md 5670/6000자 (94%, type=guide)"
+      ],
+      "expect_absent": [
+        "예산 임박: 20_projects/personal/demo/conventions.md",
+        "예산 임박: 40_guides/ui-ux/fence-split.md"
+      ],
+      "rationale": "「분리 불가 판정」(budget_split) 억제와 재판정 임계 — 두 파일은 문자 수·타입·예산이 모두 같고 budget_split_chars만 다르다(demo=11500=현재값 / demo2=10000). demo는 판정 시점 이내라 임박이 억제되고 근접 INFO로 강등되며(expect_absent + 근접 keyword), demo2는 10000*1.10=11000 < 11500이라 억제가 풀려 임박이 재발화한다. 억제를 영구 면제로 만들면 이 재발화가 사라져 '한 번 판정하면 초과까지 무신호'가 된다. 세 번째 파일 `fence-split.md`는 **펜스 제외 판정 타입(ui-ux guide)**의 회귀다 — 유효 문자 수 5,670/6,000(94%, 여유 330<500)이라 임박 조건을 충족하는데 억제로 근접에 머문다. **이 케이스가 고정하는 것은 「코드가 `eff_chars`를 넘기는가」다** — 헬퍼에 파일 전체 `chars`를 넘기도록 바꾸면 이 파일만 임박 WARN을 내며 FAIL한다(다른 예산 픽스처는 전부 `eff==chars` 타입이라 그 변조를 잡지 못하는 유일한 판별자다). **반대로 페이지가 `budget_split_chars`에 잘못된 기준의 값(파일 전체 길이)을 적는 것은 이 케이스가 잡지 못한다** — lint은 기록값의 옳음을 검증하지 않기 때문이며, 그 공백은 Deferred 대장에 등재돼 있다."
     }
   ]
 }

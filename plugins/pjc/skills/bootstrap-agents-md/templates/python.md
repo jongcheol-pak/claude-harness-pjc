@@ -62,7 +62,7 @@
 - **비동기**: `async`/`await` (FastAPI 등). 동기/비동기 코드 혼용 주의.
 - **테스트**: pytest fixture 활용. mock은 `pytest-mock` 또는 `unittest.mock`.
 - **포맷**: PEP 8 + ruff/black. line length 100~120.
-- **파일**: 1500라인 내외, UTF-8, 주석/docstring은 한글
+- **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8, 주석/docstring은 한글
 - **Naming**: snake_case (함수/변수), PascalCase (클래스), UPPER_CASE (상수)
 
 ## DO NOT

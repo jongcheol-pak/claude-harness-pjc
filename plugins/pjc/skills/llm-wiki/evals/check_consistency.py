@@ -611,6 +611,65 @@ def check_type_enumerations(schema_text, lint):
     return issues, checked
 
 
+# 예산 단계 신호 표(SKILL.md '## 예산 단계 신호') 행 라벨 → (lint 상수명, 해석 방식).
+#  이 표를 `## 파일 예산` 절 밖의 형제 `##`로 둔 이유는 parse_skill_budget이 그 절을 다음 `##`까지
+#  통째로 잡고 parse_budget_table이 구간 내 모든 `|`행을 훑기 때문이다 — 절 안에 두면 이 표의
+#  헤더행이 예산 데이터로 잡혀 die()가 난다(그래서 별도 앵커가 필요했다).
+BUDGET_STAGE_ROWS = {
+    "근접": ("BUDGET_NEAR_RATIO", "percent"),
+    "임박(비율)": ("BUDGET_CRITICAL_RATIO", "percent"),
+    "임박(잔여)": ("BUDGET_CRITICAL_SLACK", "chars"),
+    "재판정 마진": ("BUDGET_REJUDGE_MARGIN", "percent"),
+    "판정 어휘": ("BUDGET_SPLIT_VOCAB", "vocab"),
+}
+
+
+def check_budget_stages(skill_text, lint):
+    """예산 단계 임계·판정 어휘 정합 — SKILL.md '## 예산 단계 신호' 표 ↔ lint.py 상수.
+
+    기존 예산 축(값 4소스 대조)이 다루지 않는 자리다: 임계 상수(BUDGET_NEAR_RATIO 계열)와
+    budget_split 통제 어휘는 어느 대조에도 들어 있지 않아, 한쪽만 고쳐도 조용히 통과했다.
+    문서 측 앵커를 표 하나로 좁힌 이유는 산문에 흩어진 수치를 파싱하면 문면이 조금만 바뀌어도
+    앵커가 깨져 exit 2(파싱 실패)가 나기 때문이다."""
+    m = re.search(r"^## 예산 단계 신호\n(.*?)(?=^## |\Z)", skill_text, re.M | re.S)
+    if not m:
+        die("SKILL.md '## 예산 단계 신호' 섹션을 찾지 못함")
+    found = {}
+    for line in m.group(1).splitlines():
+        cm = re.match(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|", line)
+        if not cm:
+            continue
+        label, val = cm.group(1), cm.group(2)
+        if label not in BUDGET_STAGE_ROWS:
+            continue  # 헤더·구분선·미등록 행
+        found[label] = val
+    missing = sorted(set(BUDGET_STAGE_ROWS) - set(found))
+    if missing:
+        die(f"SKILL.md 예산 단계 표에서 행을 찾지 못함: {missing}")
+
+    issues, checked = [], 0
+    for label, (const, kind) in BUDGET_STAGE_ROWS.items():
+        raw = found[label]
+        lint_val = getattr(lint, const)
+        checked += 1
+        if kind == "vocab":
+            doc_vals = set(re.findall(r"`([^`]+)`", raw))
+            if doc_vals != set(lint_val):
+                issues.append(f"예산 단계 '{label}' 어휘 불일치: SKILL={sorted(doc_vals)} / "
+                              f"lint.{const}={sorted(lint_val)}")
+            continue
+        nm = re.match(r"(\d+(?:\.\d+)?)", raw)
+        if not nm:
+            die(f"SKILL.md 예산 단계 '{label}' 행에서 선두 숫자를 찾지 못함: {raw[:40]}")
+        doc_num = float(nm.group(1))
+        # percent 행은 문서가 %로 적고 lint은 비율로 갖는다(80% ↔ 0.8) — 단위를 맞춰 비교한다.
+        doc_val = doc_num / 100 if kind == "percent" else doc_num
+        if abs(doc_val - float(lint_val)) > 1e-9:
+            issues.append(f"예산 단계 '{label}' 불일치: SKILL={raw.strip()} / "
+                          f"lint.{const}={lint_val}")
+    return issues, checked
+
+
 def parse_schema_vocab(text):
     out = {}
     for key, (rx, _attr) in VOCAB_LINES.items():
@@ -683,6 +742,10 @@ def main():
     checked += enum_checked
     mismatches.extend(enum_issues)
 
+    stage_issues, stage_checked = check_budget_stages(skill_text, lint)
+    checked += stage_checked
+    mismatches.extend(stage_issues)
+
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
         for m in mismatches:
@@ -693,7 +756,8 @@ def main():
     print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 + "
           f"절차 배치 {placement_checked}항목 + schema 목차 {toc_checked}§ + "
           f"F-1↔§7 {f1_checked}항목 + 산문 포인터 {pointer_checked}건 + templates 타입 "
-          f"{tmpl_checked}종 + 타입 열거 {enum_checked}항목 — 항목당 소스 2~4곳 대조)")
+          f"{tmpl_checked}종 + 타입 열거 {enum_checked}항목 + 예산 단계 {stage_checked}항목 "
+          f"— 항목당 소스 2~4곳 대조)")
     sys.exit(0)
 
 

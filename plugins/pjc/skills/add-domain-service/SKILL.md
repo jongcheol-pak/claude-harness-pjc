@@ -54,7 +54,7 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 2. **Domain 레이어는 인프라 의존 0.** EF Core, HttpClient, 파일 IO, ILogger 직접 사용 금지. 필요하면 Domain에서 인터페이스만 정의하고 구현은 Infrastructure에 둔다. (금지/허용 목록·검증·Halt 정본은 아래 **"Domain 의존 방향 검증"** 섹션.)
 3. **불변성 우선.** 가능하면 `record`, `readonly`, `immutable collection` 사용.
 4. **Aggregate 경계 존중.** 한 트랜잭션에서 여러 Aggregate를 수정하지 않는다.
-5. **한글 주석 / UTF-8 / 1500라인 / 직접 검증한 코드만 사용.**
+5. **한글 주석 / UTF-8 / 파일 단일 책임 / 직접 검증한 코드만 사용.**
 
 ## 실행 단계
 
