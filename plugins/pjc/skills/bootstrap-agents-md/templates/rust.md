@@ -67,7 +67,7 @@ Workspace 사용 시 `members = ["crates/*"]`로 구분.
 - **테스트**: 단위는 `#[cfg(test)] mod tests`, 통합은 `tests/` 디렉터리.
 - **문서화**: `///` doc comment + `//!` for module. 한글 가능하지만 코드 예시는 영문/실행 가능 형태.
 - **Cargo.lock**: 커밋 (binary·library 모두 — 현행 Cargo 공식 권장. 기존 프로젝트에 library 무시 정책이 있으면 그것을 따름)
-- **파일**: 단일 책임 유지 — 분할은 줄 수가 아니라 책임·읽기 부담으로 판정 (Rust는 module 분리가 강해 그 단위가 자연스럽다), UTF-8, 주석은 한글
+- **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정 — Rust는 module 분리가 강해 그 단위가 자연스럽다), UTF-8, 주석은 한글
 
 ## DO NOT
 - `target/` 커밋 (gitignore 필수)
