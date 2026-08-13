@@ -180,6 +180,9 @@ confidence: high | medium | low
 updated: YYYY-MM-DD
 related_projects: [프로젝트1, 프로젝트2]
 tags: [concept, 패턴태그]
+# budget_split: none            # (선택) 나눌 하위 주제가 없을 때만 — wiki-schema §3·§4
+# budget_split_chars: 0         #   판정 필드를 부착한 뒤의 파일 전체 문자 수(재측정해 수렴)
+# budget_split_reason: ""       #   왜 나눌 수 없는가 ("작아서"는 사유가 아니다)
 ---
 
 # 패턴명
@@ -206,6 +209,9 @@ confidence: high | medium | low
 updated: YYYY-MM-DD
 related_projects: [프로젝트1]
 tags: [guide, recipe, 플랫폼태그]
+# budget_split: none            # (선택) 단일 레시피처럼 나눌 하위가 없을 때만 — wiki-schema §3·§4
+# budget_split_chars: 0         #   판정 필드를 부착한 뒤의 파일 전체 문자 수(재측정해 수렴)
+# budget_split_reason: ""       #   왜 나눌 수 없는가 ("작아서"는 사유가 아니다)
 ---
 
 # 제목
