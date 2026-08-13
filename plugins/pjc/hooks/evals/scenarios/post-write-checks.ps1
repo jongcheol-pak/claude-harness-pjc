@@ -58,7 +58,7 @@ $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; too
 Assert-Case -Name "post-write: 옥텟 초과 999.x IP 무경고 (L5)" -R $r -ExpectExit 0 -ExpectSilent $true
 
 # ---- [T1] 라인 수 검사 제거 회귀 가드 (v1.172.0) ----
-# 종전에는 1500라인 초과 시 "분리 검토" 경고가 났다. 그 고정 임계를 폐기하고 판정을 규칙 8로
+# 종전에는 고정 라인 임계를 넘으면 "분리 검토" 경고가 났다. 그 임계를 폐기하고 판정을 규칙 8로
 # 옮겼으므로, 대용량 파일이어도 hook은 아무 말도 하지 않아야 한다. ExpectSilent로 고정하면
 # 라인 수 경고 재유입뿐 아니라 다른 검사의 우발 발화까지 함께 잡힌다.
 $bigPath = Join-Path $pw 'big-2000.md'
