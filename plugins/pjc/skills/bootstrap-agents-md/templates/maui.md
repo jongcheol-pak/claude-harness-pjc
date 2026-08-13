@@ -91,7 +91,7 @@ public static MauiApp CreateMauiApp()
 - **에러 처리**: `Result<T>` 패턴 권장
 - **비동기**: `async`/`await` 일관. `.Result`/`.Wait()` 금지, `async void`는 이벤트 핸들러만
 - **테마/색**: `AppThemeBinding` (Light/Dark 대응). 색 하드코딩 금지
-- **파일**: 1500라인 내외, UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
+- **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 - **접근성**: `SemanticProperties.Description`, `SemanticProperties.HeadingLevel`
 
 ## Repository Structure

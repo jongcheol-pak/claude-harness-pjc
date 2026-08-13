@@ -67,7 +67,7 @@
 ## Conventions
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
-- **파일 크기**: 1500라인은 분리 "검토" 신호(강제 분리선 아님).
+- **파일 크기**: 분할은 줄 수가 아니라 책임·읽기 부담으로 판정한다(`implement-task` 규칙 8의 네 질문이 정본).
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단 형태는 **둘**이다 — ① **`exit 2`**: `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox` + **`warn-commit-secrets`(조건부)** ② **`stdout JSON`(`{"decision":"block","reason":…}`) + `exit 0`**: **`require-evidence`(조건부)**. ②는 Stop hook 전용으로 종료를 막고 `reason`을 모델에 전달해 루프를 잇는다(도구 호출이 아니라 *종료를 되돌린다*). **두 조건부의 세부 조건·스캔 범위·라벨 매치 형태는 `docs/harness-conventions.md`가 정본이다** — hook을 수정하거나 문서에 차단 범위를 적기 전에 반드시 읽을 것(차단 범위를 실제보다 넓게 쓰면 "차단한다고 썼는데 안 잡는" 상태가 된다). **우회 변수는 둘이며 서로 대체되지 않는다** — `require-evidence`는 `CLAUDE_HARNESS_QUICK=1`, `warn-commit-secrets`는 전용 변수 `CLAUDE_HARNESS_ALLOW_SECRET=1`(QUICK으로는 꺼지지 않는다).
 - **`require-plan-for-write`는 게이트 3종을 담는다**: ① plan 존재 게이트(코드 Write 시 plan 필요 — `docs/plans/`는 **체크박스 plan 실재**로 판정, 디렉터리 존재만으로는 안 켜짐) ② **plan 작성 게이트**(plan 파일 Write·체크박스 도입 Edit은 `pjc:plan-feature`/`implement-task` 발동 흔적 필요) ③ AGENTS.md bootstrap 게이트. ①과 ②는 같은 정규식(`$planTaskRx`)을 공유한다 — **기준이 갈리면 그 차이가 곧 우회 경로**이므로 한쪽만 고치지 말 것.
 - **SKILL 문서 작성**: `plugins/pjc/skills/AUTHORING.md` 참조("왜"를 설명, 절대 규칙만 단호하게).

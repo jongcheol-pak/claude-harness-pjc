@@ -57,7 +57,7 @@
 - **에러 처리**: `Result<T>` 패턴 권장 (또는 명시된 예외 정책)
 - **비동기**: `async`/`await` 일관성. `.Result`, `.Wait()` 금지.
 - **테스트**: 단위 테스트는 Domain/Application, 통합은 Infrastructure 별도
-- **파일**: 1500라인 내외, UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
+- **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 
 ## DO NOT
 - `secrets.json`, `appsettings.Development.json`의 실제 credential 커밋
