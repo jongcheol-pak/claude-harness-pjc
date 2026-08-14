@@ -1100,15 +1100,17 @@ def main():
         #  아닌 줄은 **어느 태그에도 안 잡히고 버려진다** — 큐가 쌓여 있어도 잔량 0으로 보고돼
         #  "0건"과 "형식이 틀려 못 셈"이 구분되지 않는다(실측: 17줄이 0건으로 집계된 사례).
         #  집계 숫자의 신뢰성 문제라 INFO가 아니라 WARN이다.
-        pend_tag_rx = re.compile(r"\[(" + "|".join(t for t, _ in pend_tags) + r")\]")
-        pend_ok_rx = re.compile(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[(" + "|".join(t for t, _ in pend_tags) + r")\]")
+        # **선두 태그만 본다 (본문 언급 오탐 차단)**: 종전엔 줄 어디에든 태그가 있으면(search)
+        #  위반 후보로 삼았는데, 그러면 **선두 태그가 이 파일 소관이 아닌 줄**이 본문에 소관 태그를
+        #  언급했을 때 오탐한다 — 실제로 큐 분리 직후 `- [날짜] [SKILL-IMPROVE] … `[PROJECT-FACT]` 큐에…`
+        #  1줄이 pending.md에서 형식 위반으로 잡혔다(선두는 집합 밖, 본문은 집합 안). 아래처럼
+        #  **불릿 직후의 태그**를 잡고 그 앞의 날짜 유무로 판정하면 본문 언급은 애초에 매치되지 않는다.
+        pend_lead_rx = re.compile(r"^\s*-\s*(?:\[(\d{4}-\d{2}-\d{2})\]\s*)?\[("
+                                  + "|".join(t for t, _ in pend_tags) + r")\]")
+        #  공백 폭을 `\s*`로 둔 이유는 종전과 같다 — `-[TAG]`처럼 대시 뒤 공백이 없는 줄도
+        #  위반으로 잡아야 이 검사가 없애려던 사각지대가 남지 않는다.
         malformed = sum(1 for line in pend_text.splitlines()
-                        if re.match(r"^\s*-\s*", line)         # 큐 항목은 불릿 — 헤더·산문 제외
-                                                               #  (공백 폭은 pend_ok_rx와 동일하게 \s* — 더 엄격하면
-                                                               #   '-[TAG]'처럼 대시 뒤 공백 없는 줄이 정상에도 위반에도
-                                                               #   안 잡혀 이 검사가 없애려던 사각지대가 그대로 남는다)
-                        and pend_tag_rx.search(line)           # 태그가 있는데
-                        and not pend_ok_rx.match(line))        # 날짜 선두 형식이 아님
+                        if (m := pend_lead_rx.match(line)) and not m.group(1))
         if malformed:
             warn(f"pending.md 형식 위반 {malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
                  f"아니라 위 잔량 집계에서 누락됨(K 5 큐 형식 규약, 정규화 필요)", "pending.md")
@@ -1135,12 +1137,11 @@ def main():
                          + " — 하네스 레포 세션(plan-feature Step 1)이 할 일 후보로 조회, "
                            "lint는 F-0 보고 후 F-2 승인 시 소비")
 
-        fb_tag_rx = re.compile(r"\[(" + "|".join(t for t, _ in fb_tags) + r")\]")
-        fb_ok_rx = re.compile(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[(" + "|".join(t for t, _ in fb_tags) + r")\]")
+        # 선두 태그만 본다 — pending 블록과 동일 구조(본문 언급 오탐 차단, 위 주석이 근거).
+        fb_lead_rx = re.compile(r"^\s*-\s*(?:\[(\d{4}-\d{2}-\d{2})\]\s*)?\[("
+                                + "|".join(t for t, _ in fb_tags) + r")\]")
         fb_malformed = sum(1 for line in fb_text.splitlines()
-                           if re.match(r"^\s*-\s*", line)
-                           and fb_tag_rx.search(line)
-                           and not fb_ok_rx.match(line))
+                           if (m := fb_lead_rx.match(line)) and not m.group(1))
         if fb_malformed:
             warn(f"skill-feedback.md 형식 위반 {fb_malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
                  f"아니라 위 잔량 집계에서 누락됨(K 5-1 큐 형식 규약, 정규화 필요)", "skill-feedback.md")
