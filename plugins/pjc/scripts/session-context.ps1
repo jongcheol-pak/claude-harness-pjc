@@ -116,6 +116,7 @@ try {
         # USERPROFILE만 본다($HOME 폴백 없음) — 골든이 이 변수로 홈을 격리하므로 폴백을 두면
         #   격리가 새고 실 사용자 홈을 읽을 수 있다.
         $vaultLine = $null
+        $feedbackLine = $null              # 스킬 개선 큐 잔량 (하네스 레포 세션에서만 — 아래)
         $vaultInsertAt = $lines.Count      # AGENTS 라인보다 앞 위치를 미리 기록(전문이 길어 뒤에 붙으면 묻힌다)
         $userHome = [string]$env:USERPROFILE
         if (-not [string]::IsNullOrWhiteSpace($userHome)) {
@@ -127,6 +128,35 @@ try {
                 if (-not [string]::IsNullOrWhiteSpace($vaultPath)) {
                     if (Test-Path -LiteralPath $vaultPath -PathType Container) {
                         $vaultLine = "[pjc 세션 컨텍스트] 위키 vault: 설정됨 ($vaultPath) — 절차 K 참조 가능. `"미설정`"으로 단정하지 마세요."
+
+                        # ---- 스킬 개선 큐 잔량 (하네스 레포 세션에서만) ----
+                        # 왜: [SKILL-IMPROVE] 큐는 유입만 자동이고 착수 지점이 없어 12건이 최장 22일
+                        #   방치됐다. plan-feature Step 1이 계획할 때 조회하지만 **계획을 열지 않는
+                        #   세션에서는 잔량이 보이지 않는다** — 이 1줄이 하네스 세션마다 그 사각을 메운다.
+                        #   특히 체류(최고령)를 함께 내는 이유는 실제 증상이 잔량이 아니라 체류이기
+                        #   때문이다(1건이어도 반년을 묵으면 그것이 이 채널의 실패다).
+                        # 하네스 레포 판정은 cwd 아래 plugin.json 존재이며 **상위 탐색을 하지 않는다**
+                        #   — plan-feature Step 1과 같은 기준이어야 한다(갈리면 한쪽만 발화한다).
+                        # 본문은 주입하지 않는다(건수·최고령만) — 컨텍스트 예산 보호.
+                        # 전 구간 try/catch로 감싼다: 큐 읽기 실패가 세션 시작을 막지 않게(fail-open).
+                        try {
+                            $pluginJson = Join-Path $cwd 'plugins/pjc/.claude-plugin/plugin.json'
+                            if (Test-Path -LiteralPath $pluginJson -PathType Leaf) {
+                                $fbPath = Join-Path $vaultPath 'skill-feedback.md'
+                                if (Test-Path -LiteralPath $fbPath -PathType Leaf) {
+                                    $fbDates = @()
+                                    foreach ($fbLine in (Get-Content -LiteralPath $fbPath -Encoding UTF8)) {
+                                        $fbMatch = [regex]::Match($fbLine, '^\s*-\s*\[(\d{4}-\d{2}-\d{2})\]\s*\[SKILL-IMPROVE\]')
+                                        if ($fbMatch.Success) { $fbDates += $fbMatch.Groups[1].Value }
+                                    }
+                                    if ($fbDates.Count -gt 0) {
+                                        $fbOldest = ($fbDates | Sort-Object)[0]
+                                        $fbAge = [int]([math]::Floor(((Get-Date).Date - [datetime]::ParseExact($fbOldest, 'yyyy-MM-dd', $null)).TotalDays))
+                                        $feedbackLine = "[pjc 세션 컨텍스트] 스킬 개선 큐(skill-feedback.md): 대기 $($fbDates.Count)건 / 최고령 ${fbAge}일 — plan-feature Step 1이 할 일 후보로 조회합니다."
+                                    }
+                                }
+                            }
+                        } catch {}
                     } else {
                         # 파일을 가리키는 경우도 여기로 온다(-PathType Container 실패) — vault로 쓸 수 없으므로 부재와 동일 취급
                         $vaultLine = "[pjc 세션 컨텍스트] 위키 vault: 설정 경로 부재 ($vaultPath) — 절차 K는 조용히 통과하되 건너뛴 사실을 K 1 형식으로 1줄 기록하세요. 위키 작업 요청 시 경로 재확인이 필요합니다."
@@ -185,6 +215,11 @@ try {
         #   범위 예외는 바깥 catch로 흘러 이미 모은 plan 라인까지 통째로 잃는다.
         if ($vaultLine -and ($lines.Count -gt $cwdBaseCount)) {
             $lines.Insert([Math]::Min($vaultInsertAt, $lines.Count), $vaultLine)
+            # 스킬 개선 큐 라인은 vault 라인 바로 뒤에 둔다 — 같은 게이팅(cwd 수집분 존재)을
+            #   공유하며, vault 라인 없이 단독으로 나오지 않는다(큐는 vault 안에 있으므로).
+            if ($feedbackLine) {
+                $lines.Insert([Math]::Min($vaultInsertAt + 1, $lines.Count), $feedbackLine)
+            }
         }
     }
 

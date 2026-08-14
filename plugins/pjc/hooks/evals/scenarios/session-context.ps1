@@ -170,6 +170,42 @@ if (Test-HookSelected @('session-context')) {
     $env:USERPROFILE = $iso
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미설정 홈은 vault 라인 미주입 (SC20)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains '위키 vault'
-    Remove-Item -Recurse -Force $isoV, $isoV2 -ErrorAction SilentlyContinue
+
+    # SC24~SC27: 스킬 개선 큐 잔량 주입 — [SKILL-IMPROVE] 큐가 하네스 세션마다 보이게 하는 축.
+    #   구성은 SC18~SC23과 같은 원리다: 주입 1건(SC24) + 델타 3건(SC25 파일 부재·SC26 비하네스
+    #   cwd 과다 주입·SC27 상위 탐색 금지). 통과만 확인하는 케이스는 게이팅을 고정하지 못한다.
+    #   SC27이 특히 중요하다 — 상위 탐색을 넣으면 하네스 repo 하위 폴더에서 연 무관한 세션까지
+    #   하네스로 오판하는데, plan-feature Step 1도 같은 기준이라 둘이 함께 어긋난다.
+    $scHarn = Join-Path $work ("sc-harness-" + $suffix)
+    New-Item -ItemType Directory -Path (Join-Path $scHarn 'plugins/pjc/.claude-plugin') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $scHarn 'sub') -Force | Out-Null
+    '{ "name": "pjc" }' | Set-Content -Encoding UTF8 (Join-Path $scHarn 'plugins/pjc/.claude-plugin/plugin.json')
+    "- [ ] T1. 미완료`n- [ ] T2. 미완료" | Set-Content -Encoding UTF8 (Join-Path $scHarn 'plan.md')
+    "- [ ] T1. 미완료`n- [ ] T2. 미완료" | Set-Content -Encoding UTF8 (Join-Path $scHarn 'sub/plan.md')
+    "- [2026-07-22] [SKILL-IMPROVE] implement-task: 요지 1.`n- [2026-08-02] [SKILL-IMPROVE] plan-feature: 요지 2." |
+        Set-Content -Encoding UTF8 (Join-Path $isoVault 'skill-feedback.md')
+    $env:USERPROFILE = $isoV
+
+    # SC24: 하네스 repo cwd + 큐 2건 → 건수·최고령이 1줄로 주입된다(본문은 미주입 — 예산 보호).
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarn } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 스킬 개선 큐 잔량 주입 (SC24)" -R $r -ExpectExit 0 -ExpectContains '스킬 개선 큐'
+    Assert-Case -Name "session-context: 큐 건수 집계 (SC24b)" -R $r -ExpectExit 0 -ExpectContains '대기 2건'
+    Assert-Case -Name "session-context: 큐 본문 미주입 (SC24c)" -R $r -ExpectExit 0 -ExpectNotContains '요지 1'
+
+    # SC26 (델타): 비하네스 cwd(plugin.json 없음) + 큐 존재 → vault 라인은 나오되 큐 라인은 미주입.
+    #   게이팅이 없으면 위키를 쓰는 모든 프로젝트 세션에 하네스 개선 항목이 끌려온다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 비하네스 cwd는 큐 라인 미주입 (SC26)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
+
+    # SC27 (델타): 하네스 repo의 **서브디렉터리** cwd → 상위 탐색을 하지 않으므로 큐 라인 미주입.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = (Join-Path $scHarn 'sub') } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 서브디렉터리 cwd는 상위 탐색 안 함 (SC27)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
+
+    # SC25 (델타): 하네스 cwd인데 큐 파일 부재 → 큐 라인만 미주입(vault 라인은 유지, fail-open).
+    Remove-Item -Force (Join-Path $isoVault 'skill-feedback.md') -ErrorAction SilentlyContinue
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarn } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 큐 파일 부재 시 미주입 (SC25)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
+
+    Remove-Item -Recurse -Force $isoV, $isoV2, $scHarn -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 
