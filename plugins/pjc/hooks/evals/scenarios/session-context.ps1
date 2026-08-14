@@ -202,6 +202,8 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: 서브디렉터리 cwd는 상위 탐색 안 함 (SC27)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
 
     # SC25 (델타): 하네스 cwd인데 큐 파일 부재 → 큐 라인만 미주입(vault 라인은 유지, fail-open).
+    #   **번호와 실행 순서가 다른 이유**: 이 케이스만 큐 파일을 삭제하는 파괴적 조작이라 SC24·26·27이
+    #   그 파일을 쓰고 난 뒤 마지막에 둔다(순서를 번호대로 바꾸면 뒤 케이스들이 파일 없는 상태를 본다).
     Remove-Item -Force (Join-Path $isoVault 'skill-feedback.md') -ErrorAction SilentlyContinue
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarn } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 큐 파일 부재 시 미주입 (SC25)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
