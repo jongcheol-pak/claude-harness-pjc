@@ -1,3 +1,4 @@
 - [SKILL-IMPROVE] llm-wiki: lint 제외 목록에 decision-log가 없다. (2026-07-28)
 -[SKILL-IMPROVE] implement-task: 골든 red 실증에 축 겹침 점검이 없다. (2026-08-02)
 - [2026-08-14] [SKILL-IMPROVE] implement-task: 리뷰 subagent가 판정문 없이 끝나는 일이 잦다.
+- [2026-8-2] [SKILL-IMPROVE] demo: 날짜 형식 불일치(한 자리 월·일) — 집계 정규식에도 안 잡히는 줄.

@@ -82,6 +82,10 @@ CONFIDENCE_VOCAB = {"high", "medium", "low"}
 #  둘로 나뉜 이유는 소비 주체가 다르기 때문이다 — pending.md는 위키 세션이 반영 후 제거,
 #  skill-feedback.md는 플러그인 개선 후보라 위키에 반영하지 않고 사용자 보고만 한다(SKILL K 5-1).
 ROOT_QUEUE_FILES = {"pending.md", "skill-feedback.md"}
+# 큐 항목의 정상 접두 — `[YYYY-MM-DD] ` 하나뿐이다(§7-25 형식 규약). 형식 위반 판정이
+#  이 정규식과 어긋나는 접두를 위반으로 센다: 날짜 누락(`- [TAG]`)·형식 불일치(`[2026-7-2]`)·
+#  대괄호 없음(`- 2026-07-02 [TAG]`) 셋 다 여기서 걸린다.
+QUEUE_DATE_PREFIX_RX = re.compile(r"^\[\d{4}-\d{2}-\d{2}\]\s*$")
 # decision-log 항목 결정 어휘 (wiki-schema §2.8·§3 — 어긋나면 타임라인 합성·번복 추적 누락)
 DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
@@ -1105,12 +1109,17 @@ def main():
         #  언급했을 때 오탐한다 — 실제로 큐 분리 직후 `- [날짜] [SKILL-IMPROVE] … `[PROJECT-FACT]` 큐에…`
         #  1줄이 pending.md에서 형식 위반으로 잡혔다(선두는 집합 밖, 본문은 집합 안). 아래처럼
         #  **불릿 직후의 태그**를 잡고 그 앞의 날짜 유무로 판정하면 본문 언급은 애초에 매치되지 않는다.
-        pend_lead_rx = re.compile(r"^\s*-\s*(?:\[(\d{4}-\d{2}-\d{2})\]\s*)?\[("
+        #  **접두를 15자로 제한하는 것이 본문 언급과 선두 위치를 가르는 축이다.** 정상 접두
+        #  `[YYYY-MM-DD] `가 13자이고 위반 형태(날짜 누락·형식 불일치·대괄호 없음)도 그보다 짧은데,
+        #  본문에 태그를 언급하는 줄은 접두가 수십 자라 이 제한에 걸려 애초에 매치되지 않는다.
+        #  **접두를 날짜 형식으로 좁히면 안 된다** — `[2026-7-2]`·대괄호 없는 날짜처럼 **집계
+        #  정규식에도 안 잡히는 줄**(이 WARN이 존재하는 이유의 정중앙)이 미검출로 새어 나간다.
+        pend_lead_rx = re.compile(r"^\s*-\s*(.{0,15}?)\[("
                                   + "|".join(t for t, _ in pend_tags) + r")\]")
         #  공백 폭을 `\s*`로 둔 이유는 종전과 같다 — `-[TAG]`처럼 대시 뒤 공백이 없는 줄도
         #  위반으로 잡아야 이 검사가 없애려던 사각지대가 남지 않는다.
         malformed = sum(1 for line in pend_text.splitlines()
-                        if (m := pend_lead_rx.match(line)) and not m.group(1))
+                        if (m := pend_lead_rx.match(line)) and not QUEUE_DATE_PREFIX_RX.match(m.group(1)))
         if malformed:
             warn(f"pending.md 형식 위반 {malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
                  f"아니라 위 잔량 집계에서 누락됨(K 5 큐 형식 규약, 정규화 필요)", "pending.md")
@@ -1137,11 +1146,11 @@ def main():
                          + " — 하네스 레포 세션(plan-feature Step 1)이 할 일 후보로 조회, "
                            "lint는 F-0 보고 후 F-2 승인 시 소비")
 
-        # 선두 태그만 본다 — pending 블록과 동일 구조(본문 언급 오탐 차단, 위 주석이 근거).
-        fb_lead_rx = re.compile(r"^\s*-\s*(?:\[(\d{4}-\d{2}-\d{2})\]\s*)?\[("
+        # 선두 태그만 본다 — pending 블록과 동일 구조(접두 15자 제한·날짜 형식 판정, 위 주석이 근거).
+        fb_lead_rx = re.compile(r"^\s*-\s*(.{0,15}?)\[("
                                 + "|".join(t for t, _ in fb_tags) + r")\]")
         fb_malformed = sum(1 for line in fb_text.splitlines()
-                           if (m := fb_lead_rx.match(line)) and not m.group(1))
+                           if (m := fb_lead_rx.match(line)) and not QUEUE_DATE_PREFIX_RX.match(m.group(1)))
         if fb_malformed:
             warn(f"skill-feedback.md 형식 위반 {fb_malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
                  f"아니라 위 잔량 집계에서 누락됨(K 5-1 큐 형식 규약, 정규화 필요)", "skill-feedback.md")

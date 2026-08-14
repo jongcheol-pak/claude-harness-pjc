@@ -190,6 +190,9 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarn } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 스킬 개선 큐 잔량 주입 (SC24)" -R $r -ExpectExit 0 -ExpectContains '스킬 개선 큐'
     Assert-Case -Name "session-context: 큐 건수 집계 (SC24b)" -R $r -ExpectExit 0 -ExpectContains '대기 2건'
+    # 체류 축은 D9ⓑ의 "append 시점에만 평가되는 사각"을 닫으려고 넣은 것이라, 문자열이 사라지거나
+    #   형식이 깨지면 그 취지가 조용히 죽는다. 값은 날짜 의존이지만 '최고령' 라벨은 고정 가능하다.
+    Assert-Case -Name "session-context: 큐 체류(최고령) 축 (SC24d)" -R $r -ExpectExit 0 -ExpectContains '최고령'
     Assert-Case -Name "session-context: 큐 본문 미주입 (SC24c)" -R $r -ExpectExit 0 -ExpectNotContains '요지 1'
 
     # SC26 (델타): 비하네스 cwd(plugin.json 없음) + 큐 존재 → vault 라인은 나오되 큐 라인은 미주입.

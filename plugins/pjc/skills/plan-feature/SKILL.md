@@ -460,6 +460,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출. **제시 전
 - [ ] Open Questions 모두 해결됨
 - [ ] **사용자가 방향을 지정한 요청이면, 그 원문 안이 선택지에 있었는가** (Step 8 「질문 도구 사용 규약」 ⓐ — 대안만 제시하고 원문 안을 빠뜨리면 사용자는 자기가 말한 것을 고를 수 없다. 해당 없는 경우 skip)
 - [ ] 코드 작성 중 사용자에게 물을 결정 분기 0
+- [ ] **각 task가 `- [ ] T<N>. …` 체크박스 목록 항목으로 작성됨** (`### T1 …` 헤더 방식 아님 — 체크박스가 없으면 `require-task-checkbox` hook이 찾을 것을 못 찾아 **fail-open으로 통과**하고 Phase D의 구조적 게이트가 조용히 꺼진다. 형식 상세는 `references/plan-template.md` `## Tasks` 주석)
 - [ ] 각 task에 Type(A/B/C/D) 분류 명시
 - [ ] Design 필드 작성됨 — Type D 전 task + 신규 심볼 도입 Type C task (4요소, Step 5 Design 필드 규정)
 - [ ] 각 task에 Edge Cases 명시 (Type 게이트 6.5-A — Type A skip, B 빈/null·경계값, C/D 해당 카테고리)
