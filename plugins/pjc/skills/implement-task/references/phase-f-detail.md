@@ -185,6 +185,7 @@ git commit --allow-empty -m "문서: Phase F 통과 기록" -m "<서사 본문 �
 - BASE_SHA (implement-task 시작 전 커밋)
 - HEAD_SHA (마지막 task 완료 후 커밋)
 - AGENTS.md 위치
+- **Bash 쓰기 금지 1구**: *"조사 금지: `git checkout`·`stash`·`reset` 등 워킹트리·인덱스를 바꾸는 명령 — 과거 상태는 `git show <sha>:<path>`로 읽을 것."* — `plan-completion-reviewer`도 Bash를 보유한다. 근거·이력은 `implement-task/SKILL.md` V-5의 같은 항목.
 - **이전 라운드 이력** (F-7 재호출일 때만 — `| 라운드 | 지적 | 심각도 | 반영 방식 |` 4열 표). `plan-completion-reviewer`의 「재리뷰 규약」이 이 표를 전제하며, 없으면 이전 BLOCKER 해소 여부를 판정할 수 없어 지적이 라운드마다 뒤집힐 수 있다. 첫 호출에는 전달하지 않는다.
 - **PRD 경로** (plan.md 상단 `**PRD**:` 줄이 있을 때) — 이 경우 F-7은 plan Goal 검토에 더해 **PRD의 FR/NFR 전수 대조**를 수행한다(plan-completion-reviewer 역할에 포함). **Phase G가 이 F-7 대조 결과를 재사용**하므로(phase-g-detail G-1), PRD가 있으면 이 전달을 빠뜨리지 않는다.
 
