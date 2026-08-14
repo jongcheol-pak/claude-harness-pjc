@@ -214,7 +214,34 @@
         "DECISION 1건",
         "PROJECT-FACT 1건"
       ],
-      "rationale": "§7-25 형식 위반 WARN — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두가 아닌 줄이 잔량 집계에서 조용히 누락되던 사각지대를 검출한다(실측: 실 vault 큐 17줄이 0건으로 집계돼 20건 잔량 경고가 통째로 침묵). 픽스처는 위반 2종을 담는다 — ⓐ 날짜가 끝 괄호로 밀린 줄 ⓑ 대시 뒤 공백 없는 줄(불릿 판별을 pend_ok_rx보다 엄격하게 두면 정상에도 위반에도 안 잡히는 2차 사각지대가 생겨, 두 정규식의 공백 폭을 맞춘 것을 고정). 정상 줄 1건을 섞어 **위반 WARN과 잔량 INFO가 병존**함을 검증하고, expect_absent로 위반 줄이 태그별 집계에 잘못 포함되지 않음(과다 집계 0)을 못 박는다. 짝: 정상 픽스처 pending-backlog의 expect_absent '형식 위반'이 오탐 0을 고정한다"
+      "rationale": "§7-25 형식 위반 WARN(pending.md) — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두가 아닌 줄이 잔량 집계에서 조용히 누락되던 사각지대를 검출한다(실측: 실 vault 큐 17줄이 0건으로 집계돼 20건 잔량 경고가 통째로 침묵). 픽스처는 위반 2종을 담는다 — ⓐ 날짜가 끝 괄호로 밀린 줄 ⓑ 대시 뒤 공백 없는 줄(불릿 판별을 pend_ok_rx보다 엄격하게 두면 정상에도 위반에도 안 잡히는 2차 사각지대가 생겨, 두 정규식의 공백 폭을 맞춘 것을 고정). 정상 줄 1건을 섞어 **위반 WARN과 잔량 INFO가 병존**함을 검증하고, expect_absent로 위반 줄이 태그별 집계에 잘못 포함되지 않음(과다 집계 0)을 못 박는다. 짝: 정상 픽스처 pending-backlog의 expect_absent '형식 위반'이 오탐 0을 고정한다"
+    },
+    {
+      "fixture": "skill-feedback-backlog",
+      "expect_keywords": [
+        "skill-feedback.md 미처리 잔량",
+        "SKILL-IMPROVE 2건"
+      ],
+      "expect_absent": [
+        "pending.md 미처리 잔량",
+        "깨진 링크",
+        "경로 없는 wikilink",
+        "형식 위반"
+      ],
+      "rationale": "§7-25 skill-feedback.md 잔량 집계 INFO — [SKILL-IMPROVE] 큐가 pending.md에서 분리된 뒤 **전용 파일에서 집계되는지**를 고정한다(분리 전 코드는 이 파일을 아예 읽지 않아 잔량 0으로 침묵했다). expect_absent의 'pending.md 미처리 잔량'이 **INFO가 파일별 별도 줄로 나온다**는 설계를 못 박는다 — 두 파일을 한 줄로 합치면 어느 큐가 밀렸는지가 뭉개지고, 기존 pending 케이스 2건도 함께 깨진다. **추가(§7-1 큐 제외)**: 큐 항목의 wikilink가 부재 대상이어도 깨진 링크 ERR·경로없음 WARN이 나지 않아야 한다 — 제외 집합이 ROOT_QUEUE_FILES로 확장됐는지 검증하며, 빠지면 큐 항목 하나가 lint를 exit 1로 죽인다. 짝: skill-feedback-malformed의 expect_absent와 대칭"
+    },
+    {
+      "fixture": "skill-feedback-malformed",
+      "expect_keywords": [
+        "skill-feedback.md 형식 위반 2건",
+        "skill-feedback.md 미처리 잔량",
+        "SKILL-IMPROVE 1건"
+      ],
+      "expect_absent": [
+        "SKILL-IMPROVE 3건",
+        "pending.md 형식 위반"
+      ],
+      "rationale": "§7-25 형식 위반 WARN(skill-feedback.md) — pending.md 쪽과 **같은 두 검사가 새 파일에도 적용되는지**를 고정한다(태그 목록과 위반 검사가 파일별로 같은 상수를 공유해야 하며, 한쪽만 태그를 추가하면 조용한 사각지대가 생긴다). 픽스처는 pending-malformed와 동일한 위반 2종(ⓐ 날짜가 끝 괄호로 밀린 줄 ⓑ 대시 뒤 공백 없는 줄) + 정상 1건을 담아 **위반 WARN과 잔량 INFO 병존**을 검증한다. expect_absent 'SKILL-IMPROVE 3건'이 위반 줄의 과다 집계 0을 못 박고, 'pending.md 형식 위반'이 **파일명이 뒤바뀌어 보고되지 않음**을 고정한다(두 블록이 같은 문구를 쓰면 어느 파일이 위반인지 알 수 없다)"
     },
     {
       "fixture": "guide-kind-missing",
