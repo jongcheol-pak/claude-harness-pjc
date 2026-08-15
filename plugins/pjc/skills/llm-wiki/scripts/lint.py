@@ -2,7 +2,7 @@
 """llm-wiki Lint 보조 스크립트.
 
 사용법: python lint.py "<vault_path>" [--fix]
-검사: 깨진/경로 없는 wikilink(루트 pending.md 큐는 제외 — §7-1) / 예산 초과·guide_kind 부재/오타(§7-2 —
+검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md·skill-feedback.md는 제외 — §7-1) / 예산 초과·guide_kind 부재/오타(§7-2 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
       / updated 필드 누락(§7-9 — 신선도 추적 전제) / feature '## 구현 방법' 섹션 부재(§7-18 확장)
@@ -11,7 +11,9 @@
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
-      / pending.md 미처리 잔량 집계(INFO — 절차 K 큐, [K-DRIFT]/[SKILL-IMPROVE]/[DECISION]/[PROJECT-FACT]/[K-MISS]/[SYMPTOM] 태그별, §7-25)
+      / 큐 잔량 집계(INFO — 절차 K 큐, **두 파일을 각각 별도 줄로**, §7-25)
+        · pending.md: [K-DRIFT]/[DECISION]/[PROJECT-FACT]/[K-MISS]/[SYMPTOM] 태그별
+        · skill-feedback.md: [SKILL-IMPROVE] (플러그인 개선 후보 — SKILL K 5-1)
         + 형식 위반(WARN — 태그는 있으나 날짜 선두가 아니라 집계에서 누락되는 줄, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
@@ -76,6 +78,14 @@ GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
 PLATFORM_VOCAB = {"windows-desktop", "web", "mobile", "cli", "cross"}
 ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
+# vault 루트 소비 대기 큐 (wiki-schema §6·§7-1·§9 — 지식 페이지가 아니라 검사 대상에서 제외되는 축).
+#  둘로 나뉜 이유는 소비 주체가 다르기 때문이다 — pending.md는 위키 세션이 반영 후 제거,
+#  skill-feedback.md는 플러그인 개선 후보라 위키에 반영하지 않고 사용자 보고만 한다(SKILL K 5-1).
+ROOT_QUEUE_FILES = {"pending.md", "skill-feedback.md"}
+# 큐 항목의 정상 접두 — `[YYYY-MM-DD] ` 하나뿐이다(§7-25 형식 규약). 형식 위반 판정이
+#  이 정규식과 어긋나는 접두를 위반으로 센다: 날짜 누락(`- [TAG]`)·형식 불일치(`[2026-7-2]`)·
+#  대괄호 없음(`- 2026-07-02 [TAG]`) 셋 다 여기서 걸린다.
+QUEUE_DATE_PREFIX_RX = re.compile(r"^\[\d{4}-\d{2}-\d{2}\]\s*$")
 # decision-log 항목 결정 어휘 (wiki-schema §2.8·§3 — 어긋나면 타임라인 합성·번복 추적 누락)
 DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
@@ -677,10 +687,11 @@ def main():
             #   지우도록 유도하는 오탐이다(예산·인덱스·고아 검사가 이미 아카이브를 제외하는 것과 정합).
             #   link_targets.add는 위에서 무조건 수행 — 고아 검사가 아카이브발 링크도 '링크됨'으로
             #   인정해야 무회귀(가드를 add 위로 올리면 아카이브만 링크한 페이지가 고아로 오탐).
-            # 루트 pending.md(소비 대기 큐)도 제외 — 큐 항목은 지식 페이지가 아니라 링크 규약(§3)
-            #   대상이 아니다(§6·§7-1). 큐에 적힌 wikilink 대상이 이후 삭제·이름변경돼도 lint를
-            #   exit 1로 죽이지 않는다(시크릿 스캔·§7-25 잔량 집계·link_targets 수집은 유지).
-            if not in_archive and r != "pending.md":
+            # 루트 큐 파일(pending.md·skill-feedback.md, 소비 대기 큐)도 제외 — 큐 항목은 지식
+            #   페이지가 아니라 링크 규약(§3) 대상이 아니다(§6·§7-1). 큐에 적힌 wikilink 대상이
+            #   이후 삭제·이름변경돼도 lint를 exit 1로 죽이지 않는다(시크릿 스캔·§7-25 잔량
+            #   집계·link_targets 수집은 유지).
+            if not in_archive and r not in ROOT_QUEUE_FILES:
                 if "/" in t:
                     if t_norm not in existing_cf:
                         errors.append(f"깨진 링크: {r} -> [[{t}]]")
@@ -1064,7 +1075,7 @@ def main():
     #  다음 소비 세션이 소비하게 한다 (0건·파일 없음이면 생략). 소비 주체는 ingest/lint 세션이고,
     #  [DECISION]·[PROJECT-FACT] 둘은 implement-task F-6.5의 큐 자동 소비(절차 M 자동 경로)도 소비 주체다
     #  — 자동 소비는 그 세션 대상 프로젝트분만 닿으므로 이 INFO가 0이 되지 않는 것은 정상. 태그별 분리 —
-    #  [K-DRIFT]는 위키 세션이 반영 후 제거, [SKILL-IMPROVE]는 사용자 보고 대상(제거는 사용자 지시),
+    #  [K-DRIFT]는 위키 세션이 반영 후 제거,
     #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비),
     #  [PROJECT-FACT]는 해당 프로젝트 conventions.md(§2.9)에 반영 후 제거(자가 소비),
     #  [K-MISS]는 레포 근거 대조 후 feature/recipe 반영 또는 기각 보고 후 제거(수요 신호 — 자동 생성 아님),
@@ -1075,7 +1086,6 @@ def main():
         # 태그 목록은 아래 잔량 집계와 형식 위반 검사가 공유한다 — 한쪽만 태그를 추가하면
         #  새 태그가 집계되지 않거나 위반 검출에서 빠져 조용히 사각지대가 생긴다(단일 출처).
         pend_tags = (("K-DRIFT", "K-DRIFT {n}건"),
-                     ("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상)"),
                      ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비, implement-task F-6.5는 대상 프로젝트분 자동 소비)"),
                      ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — conventions.md 반영 대상(§2.9), 소비 주체·게이트는 DECISION 동형)"),
                      ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)"),
@@ -1094,18 +1104,60 @@ def main():
         #  아닌 줄은 **어느 태그에도 안 잡히고 버려진다** — 큐가 쌓여 있어도 잔량 0으로 보고돼
         #  "0건"과 "형식이 틀려 못 셈"이 구분되지 않는다(실측: 17줄이 0건으로 집계된 사례).
         #  집계 숫자의 신뢰성 문제라 INFO가 아니라 WARN이다.
-        pend_tag_rx = re.compile(r"\[(" + "|".join(t for t, _ in pend_tags) + r")\]")
-        pend_ok_rx = re.compile(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[(" + "|".join(t for t, _ in pend_tags) + r")\]")
+        # **선두 태그만 본다 (본문 언급 오탐 차단)**: 종전엔 줄 어디에든 태그가 있으면(search)
+        #  위반 후보로 삼았는데, 그러면 **선두 태그가 이 파일 소관이 아닌 줄**이 본문에 소관 태그를
+        #  언급했을 때 오탐한다 — 실제로 큐 분리 직후 `- [날짜] [SKILL-IMPROVE] … `[PROJECT-FACT]` 큐에…`
+        #  1줄이 pending.md에서 형식 위반으로 잡혔다(선두는 집합 밖, 본문은 집합 안). 아래처럼
+        #  **불릿 직후의 태그**를 잡고 그 앞의 날짜 유무로 판정하면 본문 언급은 애초에 매치되지 않는다.
+        #  **접두를 15자로 제한하는 것이 본문 언급과 선두 위치를 가르는 축이다.** 정상 접두
+        #  `[YYYY-MM-DD] `가 13자이고 위반 형태(날짜 누락·형식 불일치·대괄호 없음)도 그보다 짧은데,
+        #  본문에 태그를 언급하는 줄은 접두가 수십 자라 이 제한에 걸려 애초에 매치되지 않는다.
+        #  **접두를 날짜 형식으로 좁히면 안 된다** — `[2026-7-2]`·대괄호 없는 날짜처럼 **집계
+        #  정규식에도 안 잡히는 줄**(이 WARN이 존재하는 이유의 정중앙)이 미검출로 새어 나간다.
+        #  **수용된 한계**: 접두가 15자를 넘는 위반(`- [2026-07-02 재확] [TAG]`·`- (보류) 2026-07-02 [TAG]`)은
+        #  미검출로 남는다. 본문 언급과 접두 길이가 같은 축이라 **이 방식으로는 원리상 분리되지 않는다** —
+        #  대안("불릿 직후 첫 대괄호 토큰")은 그 형태를 회복하는 대신 `- 2026-07-02 [TAG]`(대괄호 없는 날짜)를
+        #  잃어 우월하지 않다(F-7 2R 실측). 둘 다 덮으려면 두 축의 OR가 필요하다.
+        pend_lead_rx = re.compile(r"^\s*-\s*(.{0,15}?)\[("
+                                  + "|".join(t for t, _ in pend_tags) + r")\]")
+        #  공백 폭을 `\s*`로 둔 이유는 종전과 같다 — `-[TAG]`처럼 대시 뒤 공백이 없는 줄도
+        #  위반으로 잡아야 이 검사가 없애려던 사각지대가 남지 않는다.
         malformed = sum(1 for line in pend_text.splitlines()
-                        if re.match(r"^\s*-\s*", line)         # 큐 항목은 불릿 — 헤더·산문 제외
-                                                               #  (공백 폭은 pend_ok_rx와 동일하게 \s* — 더 엄격하면
-                                                               #   '-[TAG]'처럼 대시 뒤 공백 없는 줄이 정상에도 위반에도
-                                                               #   안 잡혀 이 검사가 없애려던 사각지대가 그대로 남는다)
-                        and pend_tag_rx.search(line)           # 태그가 있는데
-                        and not pend_ok_rx.match(line))        # 날짜 선두 형식이 아님
+                        if (m := pend_lead_rx.match(line)) and not QUEUE_DATE_PREFIX_RX.match(m.group(1)))
         if malformed:
             warn(f"pending.md 형식 위반 {malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
                  f"아니라 위 잔량 집계에서 누락됨(K 5 큐 형식 규약, 정규화 필요)", "pending.md")
+
+    # skill-feedback.md 미처리 잔량 집계 (§7-25 — [SKILL-IMPROVE] 전용 큐, SKILL K 5-1)
+    #  위 pending.md 블록과 같은 형식·같은 두 검사(잔량 INFO + 형식 위반 WARN)를 쓰되 **파일을
+    #  나눠 각각 처리**한다 — 태그를 한 튜플에 합치면 어느 파일이 밀렸는지가 INFO 한 줄에 뭉개지고,
+    #  두 큐는 소비 주체가 다르다(pending은 위키 세션이 반영 후 제거, 이쪽은 사용자에게 보고만 하고
+    #  제거는 지시가 있을 때만 — B-1 0). **INFO를 별도 줄로 내는 것은 골든 무회귀 요건이기도 하다**:
+    #  기존 케이스가 "pending.md 미처리 잔량" 문자열을 고정하고 있어 한 줄로 합치면 깨진다.
+    if "skill-feedback.md" in pages:
+        fb_text = pages["skill-feedback.md"][2]
+        # 태그 목록은 아래 잔량 집계와 형식 위반 검사가 공유한다(pending 블록과 동일 구조 —
+        #  한쪽만 태그를 추가하면 조용한 사각지대가 생긴다).
+        fb_tags = (("SKILL-IMPROVE", "SKILL-IMPROVE {n}건(플러그인 개선 후보 — 사용자 보고 대상, 제거는 사용자 지시 시)"),)
+        parts = []
+        for tag, label in fb_tags:
+            n = sum(1 for line in fb_text.splitlines()
+                    if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[" + tag + r"\]", line))
+            if n:
+                parts.append(label.format(n=n))
+        if parts:
+            infos.append("skill-feedback.md 미처리 잔량 — " + " / ".join(parts)
+                         + " — 하네스 레포 세션(plan-feature Step 1)이 할 일 후보로 조회, "
+                           "lint는 F-0 보고 후 F-2 승인 시 소비")
+
+        # 선두 태그만 본다 — pending 블록과 동일 구조(접두 15자 제한·날짜 형식 판정, 위 주석이 근거).
+        fb_lead_rx = re.compile(r"^\s*-\s*(.{0,15}?)\[("
+                                + "|".join(t for t, _ in fb_tags) + r")\]")
+        fb_malformed = sum(1 for line in fb_text.splitlines()
+                           if (m := fb_lead_rx.match(line)) and not QUEUE_DATE_PREFIX_RX.match(m.group(1)))
+        if fb_malformed:
+            warn(f"skill-feedback.md 형식 위반 {fb_malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
+                 f"아니라 위 잔량 집계에서 누락됨(K 5-1 큐 형식 규약, 정규화 필요)", "skill-feedback.md")
 
     # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
     #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시

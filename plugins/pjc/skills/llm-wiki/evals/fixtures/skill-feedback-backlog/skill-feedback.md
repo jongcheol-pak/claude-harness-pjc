@@ -1,0 +1,2 @@
+- [2026-07-22] [SKILL-IMPROVE] implement-task: 순수 함수 단위테스트가 통과해도 그 함수가 호출되는지는 검증되지 않는다.
+- [2026-08-02] [SKILL-IMPROVE] plan-feature: 제거·재타입 심볼의 호출부가 어느 task Files에 있는지가 3라운드 연속 재발했다. [[40_guides/recipes/demo/gone-recipe|없는 recipe]]

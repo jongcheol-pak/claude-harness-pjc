@@ -249,6 +249,7 @@ RIGHT: H1의 예측("TTL=0이면 사라짐")을 검증하는 한 지점만 계�
 `implement-task`의 Phase V 절차를 따른다:
 - 빌드 / 테스트 / 린트
 - spec-compliance-reviewer + code-quality-reviewer subagent
+- 리뷰어 호출 프롬프트에 **Bash 쓰기 금지 1구**를 붙인다: *"조사 금지: `git checkout`·`stash`·`reset` 등 워킹트리·인덱스를 바꾸는 명령 — 과거 상태는 `git show <sha>:<path>`로 읽을 것."* — 이 절이 호출하는 셋(spec·quality·아래 경량 검증의 `spec-prefilter`)이 **전부 Bash를 보유**한다. 근거·이력은 `implement-task/SKILL.md` V-5의 같은 항목.
 - BLOCKER 0까지 반복
 
 > **경량 검증 허용 (소규모 수정).** 수정이 **단일 파일·10줄 이하**이고 **회귀 테스트가 GREEN**(4-A에서 버그를 재현하던 테스트가 이제 통과)이면, full Sonnet 리뷰(spec-compliance + code-quality) 대신 **`spec-prefilter`(Haiku) 경량 검증**으로 대체할 수 있다(Type B 수준의 저위험 수정과 동일 기준). prefilter가 ESCALATE하면 정상 full 리뷰로 올린다. 수정이 다중 파일이거나 10줄을 넘거나 회귀 테스트가 없으면 이 경량 대체를 쓰지 않고 full 리뷰를 수행한다. 경량 대체 호출도 **동기 호출**(`run_in_background: false`) — PASS/ESCALATE 판정을 받아야 다음이 정해진다.
