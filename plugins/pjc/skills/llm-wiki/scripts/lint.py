@@ -23,7 +23,7 @@
       / 위키 뒤처짐(INFO — 허브 synced_commit 이후 레포에 쌓인 커밋 수, §7-26. fail-open)
       / (미검증)·미해결 question 집계(INFO)
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
-      / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트 제외)
+      / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
       / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향
         ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향)
       / 작업 규약 미마이그레이션(§7-31 — 허브에 '## 작업 규약·주의사항' 잔존 시 INFO, conventions.md 이전 대상).
@@ -147,6 +147,14 @@ FRESHNESS_EXEMPT_TYPES = {"decision-log", "question", "convention"}
 #  수리 불가능한 소음이 된다(decision-log는 항목 불변 이력, question은 발견 원문 인용 보존).
 #  convention은 미편입 — 규약은 갱신이 정상이라 동결 기록이 아니다(§5 changelog 미러링 금지가 그대로 적용).
 RELEASE_MARKER_EXEMPT_TYPES = {"decision-log", "question"}
+# §7-29 장식 이모지 검사에서 제외하는 타입 — decision-log는 §2.8 「항목 불변」이라 항목에 이모지가
+#  섞여 들어오면 **고칠 수 없는 WARN**이 영구히 남는다(규약이 수정을 금지한 파일에 수리를 요구하는 모순).
+#  RELEASE_MARKER_EXEMPT_TYPES와 값을 공유하지 않고 따로 두는 이유는 제외 근거가 다르기 때문이다 —
+#  그쪽은 "동결 기록이라 재작성 대상이 아님"이고 여기는 "규약상 수정이 금지됨"이라, 한쪽 제외를
+#  바꿀 때 다른 쪽이 조용히 따라 바뀌면 안 된다(ARCHIVE_EXEMPT_TYPES를 별도로 둔 것과 같은 이유).
+#  question을 넣지 않은 이유: 항목 불변 규정이 없어 본문 편집이 가능하고, 인용 원문의 이모지는
+#  대개 코드펜스 안이라 strip_code가 이미 걷어낸다.
+EMOJI_EXEMPT_TYPES = {"decision-log"}
 # index.md 분할 신호 임계 (wiki-schema.md §4 — index.md 초과는 B/F 세션이 2단계 파일 분할을 자동 수행,
 #   sub-index(순번 파일) 초과는 순번 파일(index-{cat}-{n}.md)로 자동 분할)
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
@@ -659,7 +667,7 @@ def main():
             dep_count += 1  # F1-ⓐ 현행 vault deprecated 집계(이력 가시성, §7-17)
             # F1-ⓑ 폐기 안내 정합: deprecated인데 "코드에서 제거" 안내가 없으면 경고
             if "코드에서 제거" not in text:
-                warn(f"deprecated 표기 안내 누락: {r} ('⚠️ 코드에서 제거됨' 안내 권장, schema §2.3)", r)
+                warn(f"deprecated 표기 안내 누락: {r} ('⚠ 코드에서 제거됨' 안내 권장, schema §2.3)", r)
         # F2 구현 근거 각주 게이트(§7-18): '## 구현 방법'은 필수 섹션(§2.3)이므로 ⓐ 섹션 자체가 없으면
         #  WARN(섹션을 통째로 빼서 각주 게이트를 우회하는 구멍 차단), ⓑ 섹션이 있는데 [^src-...] 각주가
         #  0개면 얕은 feature 의심 WARN. 각주 '존재'는 여기서, 각주 경로의 레포 실존은 §7-20 블록이
@@ -900,7 +908,8 @@ def main():
         #  위키 본문은 평문이 원칙(장식 이모지는 정보가 아니라 소음). 코드펜스·인라인코드는 strip_code로 제외
         #  (코드 스니펫의 이모지는 정당할 수 있음), lint-* 리포트는 자체 심각도 이모지(🔴🟡🔵)를 담으므로
         #  제외(§7-12·§7-28의 lint-* 제외와 동일 계열). 화살표(→)·흑백 기호(⚠★✔)는 EMOJI_RX 정의상 비검출.
-        if r.startswith(("20_", "30_", "40_")) and not is_lint_report(r):
+        #  타입 제외(EMOJI_EXEMPT_TYPES 정의부에 근거): decision-log는 §2.8 항목 불변이라 수리 불가.
+        if r.startswith(("20_", "30_", "40_")) and not is_lint_report(r) and typ not in EMOJI_EXEMPT_TYPES:
             emo_body = strip_code(re.sub(r"^---\n.*?\n---", "", text, count=1, flags=re.S))
             emo_fm_lines = text.count("\n") - emo_body.count("\n")  # 본문 시작 줄 오프셋(줄 번호 보고용, §7-22 방식)
             for eli, eline in enumerate(emo_body.splitlines(), start=emo_fm_lines + 1):

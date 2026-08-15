@@ -466,6 +466,10 @@ TYPE_ENUM_SITES_LINT = {
                      lambda lint: lint.FRESHNESS_EXEMPT_TYPES | lint.ARCHIVE_EXEMPT_TYPES),
     # §7-28: '**제외**:' 뒤 ~ 첫 ' — ' 앞
     "A5-release": (r"\*\*제외\*\*: (.+?) — ", lambda lint: lint.RELEASE_MARKER_EXEMPT_TYPES),
+    # §7-29: '**제외 타입**:' 뒤 ~ 첫 ' — ' 앞. A5의 '**제외**: '와는 문면이 달라 서로 물지 않는다.
+    #  구간을 첫 ' — '에서 끊는 것이 필수다 — 그 뒤에 'question은 제외하지 않는다'는 근거가 오는데,
+    #  구간에 들어오면 found에 question이 섞여 엄격 비교가 영원히 불일치가 된다(A4·A6 주석과 같은 함정).
+    "A7-emoji": (r"\*\*제외 타입\*\*: (.+?) — ", lambda lint: lint.EMOJI_EXEMPT_TYPES),
     # §11 적용 대상 줄. '적용 대상'만으로 잡으면 §4의 '- **적용 대상**: 하위 페이지 분리 처방을
     #  가진 전 타입 — feature·entity·…'(볼드)를 먼저 물어 green에 도달할 수 없다 → §11로 스코프 한정.
     "A6-validation": (r"^## 11\.[\s\S]*?^- 적용 대상: (.+)$", lambda lint: lint.ORIGIN_REQUIRED_TYPES),
