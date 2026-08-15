@@ -47,7 +47,7 @@
 26. `[기계]` 위키 뒤처짐 — 허브 `synced_commit` ↔ 레포 HEAD 커밋 수 (INFO, fail-open)
 27. `[기계]` 가이드/레시피 섹션 가이드 행 한/영 병기 (§7-27 — recipe 제외, platform/ui-ux 가이드 alias)
 28. `[기계]` 본문 릴리즈 마커 (§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
-29. `[기계]` 장식 이모지 검출 (§7-29 — 20_/30_/40_ 산문의 Emoji_Presentation 이모지, 코드펜스·lint-* 제외)
+29. `[기계]` 장식 이모지 검출 (§7-29 — 20_/30_/40_ 산문의 Emoji_Presentation 이모지, 코드펜스·lint-*·decision-log 제외)
 30. `[기계]` 이동·분리 도달 경로 정합 (§7-30 — ⓐ 허브 `## 아카이브` 포인터 ↔ `changes.md` 양방향 ⓑ `conventions.md` `## 하위 문서` 목록 ↔ 하위 파일 양방향. `--fix` 비대상)
 31. `[기계]` 작업 규약 미마이그레이션 (§7-31 — 허브에 `## 작업 규약·주의사항` 잔존 시 INFO, `conventions.md` 이전 대상)
 
