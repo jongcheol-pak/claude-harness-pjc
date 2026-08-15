@@ -322,5 +322,13 @@ if ($deadGroups.Count) {
     Write-Host ("[WARN] 완주하지 못한 그룹 {0}개: {1} — -Resume 으로 이어서 돌릴 수 있습니다." -f $deadGroups.Count, ($deadGroups -join ', '))
 }
 Write-Host ("[MODE] 병렬 실행 (그룹 {0}개, 동시 상한 {1}) · 상태 {2}" -f $scenarioGroups.Count, $MaxParallel, $StateDir)
-Write-Host ("결과: {0}/{1} OK (FAIL {2})" -f ($total - $failCount), $total, $failCount)
+# 미완주가 있으면 **결과 줄 자체**에 분모의 성격을 적는다 — 위 [WARN]은 결과 줄 위에 따로 떠서
+# 읽는 사람이 `FAIL 1`을 회귀로 오해한다(v1.173.0 F-7에서 실제로 메인·리뷰어가 둘 다 오독했다).
+# 미실행 케이스 수는 세지 않는다 — 그러려면 시나리오 파서가 필요한데, 막으려는 것이 오독이라
+# "분모가 전체가 아니다"를 말하는 것으로 충분하다.
+$deadSuffix = ''
+if ($deadGroups.Count) {
+    $deadSuffix = ' — ⚠ 그룹 {0}개 미완주, 분모는 실행분 기준(전체 아님)' -f $deadGroups.Count
+}
+Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
 exit $(if ($failCount) { 1 } else { 0 })
