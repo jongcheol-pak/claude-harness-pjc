@@ -120,7 +120,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 |---|---|---|---|
 | `plugins/pjc/skills/implement-task/SKILL.md` | 97,732 | 624 | 72 |
 | `plugins/pjc/skills/plan-feature/SKILL.md` | 84,155 | 493 | 83 |
-| `plugins/pjc/skills/llm-wiki/SKILL.md` | 66,152 | 257 | 81 |
+| `plugins/pjc/skills/llm-wiki/SKILL.md` | 66,163 | 257 | 81 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,713 | 354 | 135 |
 | `plugins/pjc/agents/plan-reviewer.md` | 45,250 | 384 | 104 |
 | `plugins/pjc/agents/spec-compliance-reviewer.md` | 28,022 | 294 | 132 |
