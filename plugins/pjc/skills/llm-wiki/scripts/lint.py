@@ -43,21 +43,21 @@ try:
 except Exception:
     pass
 
-# 예산 근접 경고 임계 — wiki-schema §4 "예산 근접 도달 시 해당 타입 처방을 수행" 규정의 기계 신호(§7-2).
-#  초과(WARN)보다 앞선 단계라 INFO로 낸다: 수리 의무가 아니라 "다음 편집 전에 옮길 것"이라는 예고다.
-#  처방은 전 타입이 이동·분리(롤오버·하위 분리·재분할)이며 요약으로 줄이는 압축은 쓰지 않는다.
+# 임박 판정의 선행 게이트 — 자체 신호를 내지 않는 내부 임계다(v1.177.0에서 근접 INFO 폐지).
+#  이 상수를 지우면 안 되는 이유: 임박은 `이 비율 이상 AND (비율 조건 OR 잔여 조건)`이라,
+#  선행 게이트가 빠지면 예산이 작은 타입(source-stub 1800)에서 72%짜리가 잔여 조건만으로 임박이 된다.
 BUDGET_NEAR_RATIO = 0.8
 
-# 예산 임박 임계 — 근접(80%) 위의 2단계. 근접이 참인 파일 중 아래 둘 중 하나면 WARN으로 올린다.
+# 예산 임박 임계 — 초과 전에 나는 유일한 신호다. 선행 게이트가 참인 파일 중 아래 둘 중 하나면 WARN.
 #  왜 두 축인가: 비율만 쓰면 여유 414자인 decision-log(93%)를 놓치고, 절대값만 쓰면 예산이 작은
-#  타입(source-stub 1800)에서 72%짜리가 임박이 된다. 근접 선행 + OR 결합이 실측 분포를 정확히 가른다.
-#  왜 INFO가 아니라 WARN인가: 근접 INFO 하나로는 여유 28자와 1,624자가 같은 줄로 나와, 정작 급한 것이
-#  INFO 더미에 묻힌다(실측 INFO 99건 중 근접 10건). 실제로 그 상태로 방치돼 여유 28자까지 왔다.
+#  타입(source-stub 1800)에서 72%짜리가 임박이 된다. 선행 게이트 + OR 결합이 실측 분포를 정확히 가른다.
+#  왜 단일 단계인가: 80% INFO를 함께 내던 때는 여유 28자와 1,624자가 같은 줄로 나와 정작 급한 것이
+#  INFO 더미에 묻혔다(실측 INFO 99건 중 10건). 묻히는 층을 없애고 WARN 하나만 남긴다.
 BUDGET_CRITICAL_RATIO = 0.95
 BUDGET_CRITICAL_SLACK = 500
 
 # 「분리 불가 판정」(frontmatter budget_split) — 나눌 하위 주제가 없는 페이지(단일 주제 recipe·concept)는
-#  §4의 이동·분리 처방이 성립하지 않는다. 판정을 기록하면 임박 WARN만 억제하고 근접 INFO로 강등한다.
+#  §4의 이동·분리 처방이 성립하지 않는다. 판정을 기록하면 임박 WARN을 「분리 불가 판정 유지」 INFO로 강등한다.
 #  판정 시점 문자 수(budget_split_chars) 대비 이 마진을 넘게 자라면 억제가 풀려 재판정을 강제한다 —
 #  영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어 판정이 곧 사각이 된다.
 BUDGET_REJUDGE_MARGIN = 0.10
@@ -317,7 +317,8 @@ def budget_split_suppressed(fm, chars):
     전제(더 나눌 것이 없다)가 흔들린 것이므로 억제를 풀어 재판정을 강제한다.
     budget_split_chars가 없거나 정수가 아니면 억제하지 않는다 — 판정 시점을 알 수 없으면 재판정
     시점도 정할 수 없어 영구 면제가 되기 때문이다(신호를 살리는 쪽으로 폴백).
-    억제는 임박에만 적용되고 근접 INFO·초과 WARN은 그대로 난다(상태는 계속 보여야 한다)."""
+    억제는 임박에만 적용되고 초과 WARN은 그대로 난다. 억제된 임박은 침묵하지 않고
+    「분리 불가 판정 유지」 INFO로 강등된다 — 상태가 계속 보여야 재판정 시점을 놓치지 않는다."""
     if str(fm.get("budget_split", "")).strip() not in BUDGET_SPLIT_VOCAB:
         return False
     try:
@@ -714,9 +715,15 @@ def main():
             if chars > SPECIAL_BUDGET[r]:
                 warn(f"예산 초과: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
                      f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)", r)
-            elif chars >= SPECIAL_BUDGET[r] * BUDGET_NEAR_RATIO:
-                infos.append(f"예산 근접: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
-                             f"({chars / SPECIAL_BUDGET[r] * 100:.0f}%) — 다음 기록 전에 롤오버 (wiki-schema §8)")
+            elif (chars >= SPECIAL_BUDGET[r] * BUDGET_NEAR_RATIO
+                  and (chars >= SPECIAL_BUDGET[r] * BUDGET_CRITICAL_RATIO
+                       or SPECIAL_BUDGET[r] - chars < BUDGET_CRITICAL_SLACK)):
+                # 이 경로에는 임박 계층이 없어 근접 INFO만 있었다 — 그것을 지우면 log.md는 초과 전
+                #  무신호가 되고, "임박 도달 시 소비 지점이 처방을 수행한다"는 규정이 이 타입에만
+                #  도달하지 못한다. 일반 예산 분기와 같은 임계·같은 OR 결합을 쓴다(새 임계 없음).
+                warn(f"예산 임박: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
+                     f"({chars / SPECIAL_BUDGET[r] * 100:.0f}%, 여유 {SPECIAL_BUDGET[r] - chars}자) "
+                     f"— 다음 기록 전에 §8 롤오버 수행 (wiki-schema §8)", r)
         elif not in_archive:
             budget = None
             chars = len(text)
@@ -745,7 +752,7 @@ def main():
             #   예산 검사에서 제외한다(§7-12/23 집계·등록 제외와 동일 기준) — 자기 리포트가 다음 lint에서
             #   영구 '예산 초과' WARN을 만드는 것을 막는다.
             if budget and eff_chars > budget and not is_lint_report(r):
-                # 수리 경로가 정해진 타입은 초과 시점에도 그 처방을 병기한다 — 근접(80%) INFO만
+                # 수리 경로가 정해진 타입은 초과 시점에도 그 처방을 병기한다 — 임박 WARN에서만
                 #  안내하고 초과 WARN에서 침묵하면, 정작 고쳐야 할 시점에 방법을 못 받는다.
                 hint = {
                     "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)",
@@ -757,30 +764,28 @@ def main():
                   and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
                        or budget - eff_chars < BUDGET_CRITICAL_SLACK)
                   and not budget_split_suppressed(fm, eff_chars)):
-                # L-5: 근접 위의 2단계 — 압박도를 구분한다. 근접 INFO 하나로는 여유 28자와 1,624자가
-                #   같은 줄로 나와 정작 급한 것이 INFO 더미에 묻힌다(실측: INFO 99건 중 근접 10건이었고
-                #   그 상태로 방치돼 feature 하나가 여유 28자까지 왔다). 여기서 WARN으로 올려 lint
-                #   세션(F-2)·ingest(A-4·B-3)가 처방을 수행할 대상으로 삼게 한다.
-                #   억제(budget_split)가 걸리면 이 분기를 건너뛰어 아래 근접 INFO로 강등된다 —
-                #   나눌 하위가 없는 페이지에 실행 불가능한 처방을 반복 요구하지 않기 위함이다.
+                # L-5: 초과 전에 나는 유일한 신호다. 80% INFO를 함께 내던 때는 여유 28자와 1,624자가
+                #   같은 줄로 나와 정작 급한 것이 INFO 더미에 묻혔고(실측: INFO 99건 중 10건이 그것이었고
+                #   그 상태로 방치돼 feature 하나가 여유 28자까지 왔다), 그래서 묻히는 층을 없앴다.
+                #   이 WARN을 받은 lint 세션(F-2)·ingest(A-4·B-3)는 §4 처방을 승인 없이 자동 수행한다.
+                #   억제(budget_split)가 걸리면 이 분기를 건너뛰어 아래 「분리 불가 판정 유지」 INFO로
+                #   강등된다 — 나눌 하위가 없는 페이지에 실행 불가능한 처방을 반복 요구하지 않기 위함이다.
                 crit_hint = {"project": " — '최근 주요 변경' 롤오버(§2.2·§8) 또는 작업 규약 conventions.md 분리(§2.9)",
                              "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 (§2.8)",
                              "convention": " — 무효 항목 제거 → 주제별 하위 파일 분리 (§2.9)"}.get(typ, "")
                 warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
                      f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
                      f"{crit_hint} — 다음 편집 전에 §4 처방 수행 (나눌 하위가 없으면 budget_split 판정)", r)
-            elif budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r):
-                # L-4: 초과 전에 알린다 — 예산은 "넘으면 고친다"가 아니라 "넘기 전에 옮긴다"가 규정인데
-                #   (§4 "예산 근접 도달 시 해당 타입 처방을 수행") 그 문장에 기계 신호가 없어 사문이었다.
-                #   초과 시점에야 발견하면 그 세션이 하려던 작업(항목 1건 추가)이 막힌다 — 실제로 project
-                #   허브에서 여유 35자를 만나 7차례 압축을 반복한 관측이 있고, 그 압축 반복을 없애려고
-                #   전 타입 처방을 이동·분리로 바꿨다(§4·§8). **자동 수리는 하지 않는다**
-                #   (무엇을 옮길지는 판단이라 §4 index 자동 분할의 결정론 근거가 성립하지 않는다 — 신호만).
-                near_hint = {"project": " — '최근 주요 변경' 초과분 롤오버 준비(§2.2·§8), 작업 규약은 conventions.md 분리(§2.9)",
-                             "decision-log": " — 오래된 항목 롤오버 준비 (§2.8)",
-                             "convention": " — 무효 항목 제거 후 주제별 하위 분리 준비 (§2.9)"}.get(typ, "")
-                infos.append(f"예산 근접: {r} {eff_chars}/{budget}자 "
-                             f"({eff_chars / budget * 100:.0f}%, type={typ}){near_hint}")
+            elif (budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r)
+                  and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
+                       or budget - eff_chars < BUDGET_CRITICAL_SLACK)):
+                # L-4: 위 임박 분기가 budget_split 억제로 건너뛴 파일이 여기로 내려온다(조건식은 임박과
+                #   동일하고 억제 여부만 다르다 — 선행 게이트만으로 잡으면 82%짜리가 「임박」으로 오표기된다).
+                #   침묵시키지 않는 이유: 억제를 영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어
+                #   판정 자체가 사각이 된다. 상태는 보이되 수리 의무는 없으므로 WARN이 아니라 INFO다.
+                infos.append(f"예산 임박(분리 불가 판정 유지): {r} {eff_chars}/{budget}자 "
+                             f"({eff_chars / budget * 100:.0f}%, type={typ}) "
+                             f"— 재판정 마진 초과 시 자동 재발화")
 
         # platform 통제어휘 (90_archive/ 제외 — 동결 백업은 wiki-schema §2.8·§8 자동 제외 원칙)
         plat = fm.get("platform")
