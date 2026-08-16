@@ -231,9 +231,9 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 | guide (ui-ux) | 6000 |
 | guide (recipe) | 8500 |
 | question | 3500 |
-| decision-log | 6000 (초과 시 오래된 항목부터 90_archive 원경로 이동 — schema §2.8) |
-| convention | 12000 (작업 규약 — 초과 시 무효 항목 제거 → 주제별 하위 파일 분리 → 재분할. 아카이브 롤오버 안 함: 절차 K가 매 작업 전에 읽어 이동이 곧 유실 — schema §2.9) |
-| log.md | 6000자(문자 수) |
+| decision-log | 6000 (**임박 도달 또는 초과** 시 오래된 항목부터 90_archive 원경로 이동 — schema §2.8) |
+| convention | 12000 (작업 규약 — **임박 도달 또는 초과** 시 무효 항목 제거 → 주제별 하위 파일 분리 → 재분할. 아카이브 롤오버 안 함: 절차 K가 매 작업 전에 읽어 이동이 곧 유실 — schema §2.9) |
+| log.md | 6000자(문자 수) (**임박 도달 또는 초과** 시 가장 오래된 항목부터 `90_archive/log/{YYYY-MM}.md`로 월별 이동 — schema §8) |
 | index.md | 제한 없음 (본문 400줄 / 기능별 인덱스 200행 초과 시 **B/F 세션이 파일 분할을 자동 수행** — lint INFO, 승인 불요. **index는 등록 항목 개수가 본질이라 행/줄 수 단위 유지** — 산문 타입만 문자 수(v1.138.0). sub-index `index-*.md`도 동일 임계 측정 — 초과 시 B/F 세션이 순번 파일(`index-{cat}-{n}.md`)로 자동 분할(승인 불요, §4 3단계 — 등록 순서 순번 청크). 분할 절차 상세는 `wiki-schema.md` §4) |
 - **예산 임박 도달 시(§7-2가 WARN 하나로 알린다 — 초과를 기다리지 않는다. 임계·심각도는 아래 「예산 단계 신호」 절) 위 표의 해당 타입 처방을 수행한다** — 전 타입이 **이동·분리 처방**(롤오버·하위 분리·재분할·흡수 보존)을 가지므로 내용을 요약으로 줄이는 압축은 쓰지 않는다(압축은 매번 근거·경위를 소실시키고 무한 반복된다 — wiki-schema §4·§8). 대표 경로: project 허브는 `## 최근 주요 변경` 초과분을 `90_archive/…/changes.md`로 롤오버 + `## 아카이브` 포인터 갱신하고 작업 규약은 `conventions.md`로 분리, feature·entity·concept·guide·convention은 하위 페이지 분리(하위가 다시 초과하면 §4 「재분할 일반 규칙」), log.md는 문자 수 기준 월별 롤오버(**임박 도달 또는 초과** → `90_archive/log/{YYYY-MM}.md`로 이동, 3000자 이하까지).
 - **guide(platform-bootstrap·ui-ux)의 예산 판정은 코드 펜스 내부 문자를 제외한 유효 문자 수**로 한다(recipe는 펜스 포함 — 판정 방식 정본은 wiki-schema §2.6). 가이드가 유효 문자 수로도 초과하면 허브+하위 분할 — 실행 절차는 I-2b(`references/procedures-content.md`).
