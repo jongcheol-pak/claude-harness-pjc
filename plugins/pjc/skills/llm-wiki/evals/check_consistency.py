@@ -4,7 +4,8 @@
 사용법: python check_consistency.py   (인자 없음 — 번들 내 상대 위치로 세 파일을 찾는다)
        python check_consistency.py --trigger-report
          축 ⑪(예산 트리거 조건 어휘 유일성)의 위반·화이트리스트·차집합 목록만 출력한다.
-         정합 대조는 돌지 않고 exit 0으로 끝난다(리포트 전용 — main 축에 미편입).
+         정합 대조는 돌지 않고 exit 0으로 끝난다(위반 여부는 인자 없는 기본 실행이 축으로 본다 —
+         여기는 차집합·면제 잔여까지 펼쳐 보는 상세 리포트다).
 
 무엇을: llm-wiki의 공유 상수(파일 예산·통제 어휘)는 네 곳에 존재한다 —
   ① lint.py 상수(BUDGET·GUIDE_BUDGET·SPECIAL_BUDGET·INDEX_*·*_VOCAB)
@@ -915,7 +916,8 @@ def check_trigger_locality():
     위반뿐 아니라 **화이트리스트 앵커별 매치 수**와 **차집합 처분 상태**를 함께 내야
     하고(그 둘이 각각 「면제가 엉뚱한 줄을 덮지 않는가」·「정규식이 좁아 놓친 것이
     없는가」를 지키는 장치다), 2-튜플로는 그 정보가 담기지 않는다. main() 축으로 편입할
-    때는 앞의 두 값만 `(issues, checked)`로 접어 기존 집계 루프에 맞춘다.
+    `main()`은 앞의 두 값만 `(issues, checked)`로 접어 기존 집계 루프에 맞추고,
+    뒤의 둘은 `--trigger-report`에서만 펼친다.
 
     위반 = 정본 앵커 밖 + 화이트리스트 밖인데 조건어가 있는 스캔 대상 줄.
     이 목록이 곧 「포인터로 바꿔야 할 자리」의 전수다 — 사람이 grep으로 세면 형태가
@@ -984,9 +986,10 @@ def check_trigger_locality():
 def report_trigger_locality():
     """`--trigger-report` 진입점. 목록만 출력하고 실패시키지 않는다 (exit 0).
 
-    main()에 축으로 편입하지 않는 이유: 이 검사기는 llm-wiki 파일을 만지는 모든 task의
-    필수 검증(AGENTS.md)이라, 위반이 남은 소진 도중에 축으로 넣으면 매 task 검증이
-    FAIL해 자율 루프가 그라인딩한다. 소진이 끝난 뒤 main()에 편입한다."""
+    축은 `main()`에 편입돼 있고(v1.178.0 T7) 위반이 남으면 기본 실행이 exit 1이다.
+    이 리포트 모드를 함께 남긴 이유: **차집합·면제 잔여는 사람이 판정할 목록**이라
+    `main()` 집계에 접히지 않는다. 편입을 소진이 끝난 뒤로 미룬 것도 같은 축의 판단이었다 —
+    위반이 남은 도중에 넣었으면 매 task 검증이 FAIL해 자율 루프가 그라인딩했을 것이다."""
     violations, allow_report, diffset, residual = check_trigger_locality()
 
     print("== ⑪ 예산 트리거 조건 어휘 유일성 (리포트 모드 — 실패시키지 않음) ==")
