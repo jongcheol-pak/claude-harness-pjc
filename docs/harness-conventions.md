@@ -118,20 +118,20 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
-| `plugins/pjc/skills/implement-task/SKILL.md` | 98,871 | 628 | 72 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 84,155 | 493 | 83 |
+| `plugins/pjc/skills/implement-task/SKILL.md` | 98,848 | 628 | 72 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 84,201 | 493 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 66,423 | 257 | 81 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,713 | 354 | 135 |
-| `plugins/pjc/agents/plan-reviewer.md` | 45,250 | 384 | 104 |
-| `plugins/pjc/agents/spec-compliance-reviewer.md` | 28,022 | 294 | 132 |
-| `plugins/pjc/agents/code-quality-reviewer.md` | 30,639 | 269 | 87 |
-| `plugins/pjc/agents/plan-completion-reviewer.md` | 26,507 | 308 | 109 |
+| `plugins/pjc/agents/plan-reviewer.md` | 47,179 | 396 | 88 |
+| `plugins/pjc/agents/spec-compliance-reviewer.md` | 29,951 | 306 | 109 |
+| `plugins/pjc/agents/code-quality-reviewer.md` | 32,568 | 281 | 84 |
+| `plugins/pjc/agents/plan-completion-reviewer.md` | 28,436 | 320 | 94 |
 
 ## 리뷰어 4종 공통 규약 (각주 앵커)
 
 > **기계 대조 대상이다** — 대조기는 「문서 로드 예산 기준선」과 같은 스크립트(`plugins/pjc/evals/check-harness-consistency.py`)다.
 
-`plugins/pjc/agents/`의 리뷰어 4종(`plan-reviewer`·`spec-compliance-reviewer`·`code-quality-reviewer`·`plan-completion-reviewer`)은 아래 **7개 규약 블록을 각자 복제 보유**한다. 각 subagent는 자기 정의 파일만 로드하므로 **공통 파일로 추출할 수 없다** — 단일 소스화가 물리적으로 불가한 구조다.
+`plugins/pjc/agents/`의 리뷰어 4종(`plan-reviewer`·`spec-compliance-reviewer`·`code-quality-reviewer`·`plan-completion-reviewer`)은 아래 **8개 규약 블록을 각자 복제 보유**한다. 각 subagent는 자기 정의 파일만 로드하므로 **공통 파일로 추출할 수 없다** — 단일 소스화가 물리적으로 불가한 구조다.
 
 | # | 블록 | 성격 |
 |---|---|---|
@@ -142,8 +142,9 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | 5 | `## 검토 효율 (필수)` | diff 1회·grep 절약·incomplete 명시 |
 | 6 | `- **재호출 인지.**` (「행동 원칙」 안의 불릿) | 이력 표 기반 RECURRING 판정 |
 | 7 | `## 출력 형식` 첫 문단 (판정문 출력 의무) | 조사 서술로 끝내는 빈 응답 차단 |
+| 8 | `## 실행 예산 (검토 전에 먼저 읽는다)` | 예산 자기인지 · 조기 골격 · 사용량 계측 |
 
-**동기 신호는 각주다.** 일곱 블록 각각에 아래 **앵커 문자열**을 포함한 각주가 붙어 있다:
+**동기 신호는 각주다.** 여덟 블록 각각에 아래 **앵커 문자열**을 포함한 각주가 붙어 있다:
 
 ```
 한 곳을 고치면 나머지 셋도 함께 고친다
@@ -153,11 +154,11 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 - **닫는 것**: 절 통째 누락 · 한 파일만 각주 수정 · 신규 리뷰어 추가 시 각주 누락.
 - **닫지 못하는 것**: "각주는 같은데 본문만 한쪽이 바뀌는" 드리프트. **다만 그 차이가 의도인지는 아래에서 판정됐다** — 24지점 실측 결과 드리프트 0건이라 본문 축을 넣을 근거가 없다.
-- 기대값은 **4파일 × 7블록 = 28지점**이며, 파일당 앵커 7회다. **이 값은 검사기에 박혀 있지 않다** — `check-harness-consistency.py:118`이 위 표의 행을 세어 기대값으로 쓰므로, 블록을 늘리면 이 문서만 고치면 된다.
+- 기대값은 **4파일 × 8블록 = 32지점**이며, 파일당 앵커 8회다. **이 값은 검사기에 박혀 있지 않다** — `check-harness-consistency.py:118`이 위 표의 행을 세어 기대값으로 쓰므로, 블록을 늘리면 이 문서만 고치면 된다.
 
 ### 블록별 문면 판정 (24지점 실측 — 2026-08-06)
 
-> **왜 판정했나**: 위 「닫지 못하는 것」이 남긴 물음(문면 차이가 역할 차이인가 드리프트인가)에 답하지 않으면 **본문 축 검사·각주 동기 토큰을 넣을지 결정할 수 없다.** 4파일 × 6블록을 블록 단위로 추출해 diff로 대조한 결과가 아래다. **판정 결과: 드리프트 0건 — 본문 축 검사와 동기 토큰은 도입하지 않는다.** **7번째 블록(판정문 출력 의무)은 이 판정의 대상이 아니다** — v1.173.0에 신설돼 이 실측 이후에 생겼고, 앵커만 붙였을 뿐 본문 대조는 하지 않았다.
+> **왜 판정했나**: 위 「닫지 못하는 것」이 남긴 물음(문면 차이가 역할 차이인가 드리프트인가)에 답하지 않으면 **본문 축 검사·각주 동기 토큰을 넣을지 결정할 수 없다.** 4파일 × 6블록을 블록 단위로 추출해 diff로 대조한 결과가 아래다. **판정 결과: 드리프트 0건 — 본문 축 검사와 동기 토큰은 도입하지 않는다.** **7번째 블록(판정문 출력 의무)과 8번째 블록(실행 예산)은 이 판정의 대상이 아니다** — 각각 v1.173.0·v1.179.0에 신설돼 이 실측 이후에 생겼고, 앵커만 붙였을 뿐 본문 대조는 하지 않았다. **8번째는 본문이 파일마다 실제로 다르다**(예산 수치가 그 파일의 `maxTurns`에서 도출되므로) — 본문 축 검사를 도입한다면 그 차이를 역할 차이로 다뤄야 한다.
 
 | 블록 | 판정 | 근거 (실측) |
 |---|---|---|
