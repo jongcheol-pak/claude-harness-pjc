@@ -45,6 +45,12 @@ schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.
 계기: v1.164.0이 `convention` 타입을 신설하며 이 자리들을 일회성 정규식 스캔으로 손수 찾아냈고,
 그 스캔은 자산이 아니라 임시 스크립트였다.
 
+⑪ 예산 트리거 조건 어휘 유일성 — 예산 처방의 발동·종료·재발동·승급 조건은 wiki-schema §7-2
+(와 임계 정본인 SKILL '## 예산 단계 신호' 표)에서만 서술하고, 나머지 자리는 조건을 다시 쓰지 않고
+`§7-2 발동 시` 포인터만 둔다. 그 자리들이 저마다 조건을 다시 쓰던 것이 v1.177 회차에서 6라운드
+연속 드리프트를 낸 원인이다(헤딩은 「임박」인데 본문은 「초과」 같은 반쪽 상태). 조건이 한 곳에만
+있으면 그 상태를 만들 수 없다. 상세 리포트(차집합·면제 잔여)는 `--trigger-report`로 본다.
+
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
   - 불일치 → 항목별 소스 값 나열 + exit 1
@@ -1098,6 +1104,13 @@ def main():
     checked += stage_checked
     mismatches.extend(stage_issues)
 
+    # ⑪ 트리거 유일성 — 3-튜플의 앞 두 값만 접어 쓴다. 차집합·면제 잔여는 사람이
+    #  판정할 리포트라 `--trigger-report`에만 나오고, 여기서는 **위반 유무**만 본다.
+    trigger_issues, trigger_allow, _diffset, _residual = check_trigger_locality()
+    trigger_checked = len(trigger_allow) + len(TRIGGER_ANCHORS)
+    checked += trigger_checked
+    mismatches.extend(trigger_issues)
+
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
         for m in mismatches:
@@ -1108,7 +1121,8 @@ def main():
     print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 + "
           f"절차 배치 {placement_checked}항목 + schema 목차 {toc_checked}§ + "
           f"F-1↔§7 {f1_checked}항목 + 산문 포인터 {pointer_checked}건 + templates 타입 "
-          f"{tmpl_checked}종 + 타입 열거 {enum_checked}항목 + 예산 단계 {stage_checked}항목 "
+          f"{tmpl_checked}종 + 타입 열거 {enum_checked}항목 + 예산 단계 {stage_checked}항목 + "
+          f"트리거 유일성 {trigger_checked}항목 "
           f"— 항목당 소스 2~4곳 대조)")
     sys.exit(0)
 
