@@ -726,7 +726,7 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_MD, "| index.md | 제한 없음", "§7-14 index 트리거 — 줄/행 기준이라 문자 예산 무관"),
     (SCHEMA_MD, '**트리거는 "그 시점 임계 초과"**', "§7-14 index 분할 트리거의 시점 규정"),
     (SCHEMA_MD, "> lint §7-14 INFO(본문 400줄", "§4 분할 수행 절차 서두의 §7-14 신호 인용"),
-    (SCHEMA_MD, "- **범위는 2단계 category 분할과 3단계", "index 분할 자동화 범위 — §7-14 축"),
+    (SCHEMA_MD, "- **범위는 2단계 category 분할과 3단계", "index 분할 자동화 근거(2·3단계 라우팅 결정론) — §7-14 축"),
     (SCHEMA_MD, "- **수행 시점은 그 세션의 주 작업 완료 후**다", "index 분할 수행 시점 — 「임계를 넘는다」는 §7-14 축"),
     (SCHEMA_MD, "- **3단계(순번)**: 초과한 sub-index가 무순번", "index 3단계 순번 분할 — §7-14 축"),
     (SCHEMA_MD, "3. **내용 이동(잘라내기)**", "index 분할의 초과분 이동 — §7-14 축"),
@@ -895,7 +895,7 @@ def _anchor_span(path, lines):
 
 
 def check_trigger_locality():
-    """⑪ 예산 트리거 조건 어휘 유일성. 반환: (위반 목록, 화이트리스트 검증 목록, 차집합 목록).
+    """⑪ 예산 트리거 조건 어휘 유일성. 반환: (위반, 화이트리스트 검증, 차집합, 면제 잔여).
 
     다른 축은 `(issues, checked)` 2-튜플을 반환하는데 이 축만 3-튜플인 이유: 리포트가
     위반뿐 아니라 **화이트리스트 앵커별 매치 수**와 **차집합 처분 상태**를 함께 내야
@@ -909,6 +909,7 @@ def check_trigger_locality():
     violations = []
     allow_report = []
     diffset = []
+    residual = []
 
     for path, kind in TRIGGER_SCAN_SCOPE:
         name = os.path.basename(path)
@@ -928,6 +929,19 @@ def check_trigger_locality():
                 violations.append(
                     f"{name}: 화이트리스트 앵커가 {len(hits)}건 매치 (1건이어야 함) — {needle!r}")
             allowed_nos.update(hits)
+            # 면제 잔여 — 앵커가 설명하는 조건어를 지운 **나머지**에 조건어가 또 있으면 보고한다.
+            #  화이트리스트는 줄 단위라, 한 줄에 정당한 면제(예: index 축)와 진짜 트리거 서술이
+            #  함께 있으면 **후자가 통째로 숨는다.** 실제로 `wiki-schema.md:384`가 그렇게 숨었다 —
+            #  index 자동화 근거를 말하는 줄 안에 §7 결과 처리 예외 ②의 구 문구가 복제돼 있었고,
+            #  같은 문구를 `:536`에서는 치환했는데 여기만 면제로 넘어갔다.
+            #  하드 위반으로 내지 않는 이유: 앵커가 조건어를 포함하지 않는 정당한 항목이 많아
+            #  (앵커는 「그 줄을 특정하는 조각」이지 「면제할 조건어」가 아니다) 전건이 잔여로 잡힌다.
+            #  판정은 사람이 하되 **보이게** 만드는 것이 목적이다(차집합 절과 같은 취급).
+            for no in hits:
+                rest = dict(scan)[no].replace(needle, "")
+                for m in TRIGGER_COND_RX.finditer(rest):
+                    ctx = rest[max(0, m.start() - 30):m.start() + 40].strip()
+                    residual.append((name, no, m.group(0), ctx, reason))
 
         for no, ln in scan:
             if no in anchor_nos or no in allowed_nos:
@@ -944,7 +958,7 @@ def check_trigger_locality():
             reason = next((r for nd, r in notes if nd is None or nd in ln), None)
             diffset.append((name, no, ln.strip()[:100], reason))
 
-    return violations, allow_report, diffset
+    return violations, allow_report, diffset, residual
 
 
 def report_trigger_locality():
@@ -953,7 +967,7 @@ def report_trigger_locality():
     main()에 축으로 편입하지 않는 이유: 이 검사기는 llm-wiki 파일을 만지는 모든 task의
     필수 검증(AGENTS.md)이라, 위반이 남은 소진 도중에 축으로 넣으면 매 task 검증이
     FAIL해 자율 루프가 그라인딩한다. 소진이 끝난 뒤 main()에 편입한다."""
-    violations, allow_report, diffset = check_trigger_locality()
+    violations, allow_report, diffset, residual = check_trigger_locality()
 
     print("== ⑪ 예산 트리거 조건 어휘 유일성 (리포트 모드 — 실패시키지 않음) ==")
     print(f"\n[위반] {len(violations)}건 — 정본 앵커·화이트리스트 밖의 조건어")
@@ -979,6 +993,12 @@ def report_trigger_locality():
     print("    해당 task의 치환 대상에 편입한다.")
     for name, no, text, reason in unresolved:
         print(f"  ?? {name}:{no}: {text}")
+
+    print(f"\n[면제 잔여] {len(residual)}건 — 화이트리스트 줄에서 **앵커를 지운 나머지**에 남은 조건어")
+    print("  ⚠ 줄 단위 면제라 한 줄에 정당한 면제와 진짜 트리거 서술이 섞이면 후자가 숨는다.")
+    print("    각 줄이 그 사유로 정말 덮이는지 확인하고, 아니면 치환 대상으로 꺼낸다.")
+    for name, no, word, ctx, reason in residual:
+        print(f"  ~~ {name}:{no} [{word}] {ctx[:70]} — 사유: {reason[:40]}")
 
     total_exempt = len(TRIGGER_ALLOWLIST) + len(TRIGGER_DIFFSET_NOTES)
     print(f"\n[면제 총계] 화이트리스트 {len(TRIGGER_ALLOWLIST)} + 차집합 사유 "
