@@ -69,8 +69,8 @@ BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 —
     #  log.md도 이미 문자 수(SPECIAL_BUDGET). 즉 산문 타입만 이 딕셔너리로 문자 수 판정한다.
     "source-stub": 1800, "project": 13000, "feature": 22000,
     "entity": 6000, "concept": 5000, "question": 3500,
-    "decision-log": 6000,  # 결정 이력 (wiki-schema §2.8 — 초과 시 90_archive 원경로 이동)
-    #  작업 규약 (§2.9 — 초과 시 무효 항목 제거 → 주제별 하위 분리 → 재분할. 아카이브 롤오버는 안 한다:
+    "decision-log": 6000,  # 결정 이력 (wiki-schema §2.8 — 임박 도달 또는 초과 시 90_archive 원경로 이동)
+    #  작업 규약 (§2.9 — 임박 도달 또는 초과 시 무효 항목 제거 → 주제별 하위 분리 → 재분할. 아카이브 롤오버는 안 한다:
     #  절차 K가 매 작업 전에 읽으므로 아카이브로 옮기면 조회 경로 밖이 되어 이동이 곧 유실이다)
     "convention": 12000,
 }
