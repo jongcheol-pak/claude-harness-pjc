@@ -173,6 +173,23 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 **따라서 각주 앵커 축으로 충분하다.** 본문 동일성 검사는 무변경 상태에서 FAIL하고(위 「검사 범위」), 동기 토큰(`<!-- sync: reviewer-common v1 -->`)은 토큰 갱신 자체가 다시 사람 규율이라 실익이 불확실한데 — **막을 드리프트가 실측으로 0건이므로 도입 근거가 없다.** 이 판정은 **2026-08-06 시점의 것**이며, 리뷰어 개정 회차에서 같은 방법으로 재측정할 수 있다(블록 단위 추출 → diff).
 
+## 개념 정본 유일성 (축 ⑫ 기준표)
+
+> **기계 대조 대상이다** — `plugins/pjc/evals/check-harness-consistency.py --concept-report`가 이 표를 파싱해 스캔한다. **T3 시점에는 리포트 전용**이고 기본 실행(`main()`)에는 편입돼 있지 않다(T11에서 승격 — 축 ⑪의 전례대로 소진이 끝난 뒤 편입한다).
+
+**무엇을 재는가**: 하나의 개념이 여러 파일에 흩어져 각자 서술되면, 한쪽을 고칠 때 나머지가 조용히 낡는다. 이 축은 개념마다 **정본 1곳**을 선언하고 그 밖의 언급을 **축 ⑪과 같은 구획**으로 가른다 — **정본**(앵커 구간 안) · **화이트리스트**(정본 식별자를 동반한 포인터 = 면제) · **위반**(정본 밖 + 식별자 없음 = 정본화 검토 대상) · **차집합**(세 분류 어디에도 안 드는 줄 — 이 구현은 전수를 덮으므로 구조적으로 0이고, 분류에 구멍이 생기면 여기서 드러난다) · **면제 잔여**(화이트리스트 줄인데 개념어가 식별자 수보다 많은 자리 — 한 줄에 포인터와 독자 서술이 섞여 후자가 면제 뒤에 숨는 형태). **위반이 곧 T4·T5의 작업 목록**이며 **사람이 표로 열거하지 않는다**(v1.178.0 실증: 사람이 센 29건 ↔ 가드가 센 38건).
+
+| 개념 | 정본 위치 | 정본 앵커 | 스캔 스코프 | 스캔 어휘 | 참조 식별자 (면제) |
+|---|---|---|---|---|---|
+| 자기 유발 이연 금지 | `plugins/pjc/skills/implement-task/SKILL.md` | `^4-1\. \*\*자기 유발 결함은 이연할 수 없다` | `plugins/pjc/skills/` `plugins/pjc/agents/` | `자기 유발` | `4-1` |
+| 동기 호출 규약 | `plugins/pjc/skills/implement-task/references/recovery.md` | `^## Subagent 호출 규약` | `plugins/pjc/skills/implement-task/` `plugins/pjc/skills/plan-feature/` `plugins/pjc/skills/pjc-systematic-debugging/` | `동기 호출` | `Subagent 호출 규약`, `recovery.md` |
+| incomplete 처리 | `plugins/pjc/skills/implement-task/references/recovery.md` | `^## 리뷰 결과 처리` | `plugins/pjc/skills/implement-task/` `plugins/pjc/skills/plan-feature/` `plugins/pjc/skills/pjc-systematic-debugging/` | `incomplete` | `리뷰 결과 처리`, `recovery.md`, `V-5` |
+| 등재 게이트 | `plugins/pjc/skills/implement-task/references/phase-f-detail.md` | `^- \*\*등재 게이트` | `plugins/pjc/skills/implement-task/` | `등재 게이트` | `F-6.5`, `phase-f-detail` |
+
+- **스코프가 좁은 이유는 동명이의다.** `등재 게이트`는 `llm-wiki`(§6 증상 큐잉)에도 있고, `incomplete`는 리뷰어 정의 파일에서 **리뷰어 자신의 출력 규약**을 뜻한다 — 도메인이 달라 같은 축으로 재면 오탐이 폭증한다(vault `conventions.md`의 `confidence` 이중 개념 교훈과 같은 형태).
+- **`판정 유보`는 이 축의 대상이 아니다.** 리뷰어 4종이 **구조상 복제 보유**하는 규약이라 정본이 4곳이며(단일 소스화가 물리적으로 불가), 그 동기는 위 「리뷰어 4종 공통 규약」의 각주 앵커 축이 이미 담당한다. 정본이 1곳이 아닌 개념을 이 축에 넣으면 「앵커 1건」 검사가 원리상 실패한다.
+- **위반은 결함 단정이 아니라 판정 대기다.** 정당한 인용·요약도 걸리므로, 처분은 ⓐ 정본으로 흡수 ⓑ 참조 식별자를 붙여 포인터화 ⓒ 면제 열거에 사유와 함께 등재 셋 중 하나이며, 그 판정은 T4·T5가 한다.
+
 ## 골든 러너 운용 (실행·대기·판정)
 
 > `AGENTS.md` 「Hook 골든 회귀」가 지목하는 정본이다. **이 절을 읽지 않고 돌리면 완주하지 않는다** — 과거 "환경상 실행 불가"로 Phase F-2를 갈음한 사례들이 전부 이 절차를 쓰지 않은 것이다.

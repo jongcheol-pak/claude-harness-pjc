@@ -197,6 +197,124 @@ def check_reviewer_budget():
 
 
 # ─────────────────────────────────────────────────────────────
+# ⑫ 개념 정본 유일성 (리포트 전용 — main 편입은 T11)
+# ─────────────────────────────────────────────────────────────
+def _concept_table(conv):
+    """「개념 정본 유일성 (축 ⑫ 기준표)」 표의 데이터 행을 파싱한다.
+
+    절 잘라내기는 기존 `section()`을 그대로 쓴다(같은 문서의 같은 형태를 두 번
+    구현하지 않는다). 반환은 6필드 dict의 리스트이며, **기대값을 코드에 박지 않는
+    다는 이 파일의 원칙대로** 개념·앵커·스코프·어휘·면제가 전부 문서에서 온다.
+    """
+    sec = section(conv, r"^## 개념 정본 유일성", label="개념 정본 유일성 (축 ⑫ 기준표)")
+    rows = []
+    for line in sec.split("\n"):
+        cells = [c.strip() for c in line.strip().strip("|").split("|")] if line.strip().startswith("|") else []
+        if len(cells) != 6 or cells[0] in ("개념", "---") or set(cells[0]) <= {"-", ":"}:
+            continue
+        def unbt(s):
+            return [x.strip().strip("`") for x in s.split("`,") if x.strip()] if "`," in s else [s.strip().strip("`")]
+        rows.append({
+            "name": cells[0],
+            "canon": cells[1].strip("`"),
+            "anchor": cells[2].strip("`"),
+            "scopes": [x.strip("`") for x in cells[3].split() if x.strip("`")],
+            "word": cells[4].strip("`"),
+            "refs": unbt(cells[5]),
+        })
+    if not rows:
+        die("「개념 정본 유일성」 표에서 데이터 행을 추출하지 못함")
+    return rows
+
+
+def _anchor_block(txt, anchor_rx):
+    """정본 앵커가 여는 구간(앵커 줄 ~ 다음 동급 이상 헤딩/번호 규칙 전)의 줄 번호 집합.
+
+    매치 수도 함께 돌려준다 — 축 ⑪의 1R MAJOR가 "앵커가 문서 전체에서 몇 건
+    매치되는지 세지 않으면 첫 매치를 그냥 쓴다"였고, 그 실패를 여기서 반복하지 않는다.
+    """
+    lines = txt.split("\n")
+    hits = [i for i, l in enumerate(lines) if re.search(anchor_rx, l)]
+    if len(hits) != 1:
+        return set(), len(hits)
+    start = hits[0]
+    # 구간의 끝: 같은 수준의 다음 블록. 헤딩 앵커면 다음 `## `, 번호 규칙이면 다음 최상위 번호.
+    if lines[start].startswith("#"):
+        depth = len(lines[start]) - len(lines[start].lstrip("#"))
+        end = next((i for i in range(start + 1, len(lines))
+                    if lines[i].startswith("#") and (len(lines[i]) - len(lines[i].lstrip("#"))) <= depth), len(lines))
+    else:
+        end = next((i for i in range(start + 1, len(lines))
+                    if re.match(r"^(#{1,6} |\d+(-\d+)?\. \*\*)", lines[i])), len(lines))
+    return set(range(start, end)), 1
+
+
+def check_concept_locality(conv, report=False):
+    """개념마다 정본 1곳을 선언하고 그 밖의 언급을 넷으로 가른다.
+
+    네 구획은 축 ⑪의 이름을 그대로 쓴다 — **정본**(앵커 구간 안) / **화이트리스트**(정본
+    식별자를 동반한 포인터 = 면제) / **위반**(정본 밖 + 식별자 없음 = 정본화 검토 대상) /
+    **차집합**(위 셋 어디에도 들지 않는 줄 — 이 구현은 세 분류가 전수를 덮으므로 구조적으로
+    0이며, 분류 로직이 바뀌어 구멍이 생기면 여기서 드러난다) / **면제 잔여**(화이트리스트 줄인데
+    개념어가 식별자 수보다 많이 나오는 자리 — 한 줄에 포인터와 독자 서술이 섞이면 후자가 면제
+    뒤에 숨는다. 축 ⑪ T3 1R BLOCKER ⓑ가 잡은 형태).
+
+    **위반은 결함 단정이 아니라 판정 대기**다 — 정당한 인용·요약도 걸린다. 처분(정본 흡수 ·
+    포인터화 · 면제 등재)은 T4·T5가 한다.
+    """
+    issues, checked = [], 0
+    out = []
+    for row in _concept_table(conv):
+        canon_path = os.path.join(ROOT, row["canon"].replace("/", os.sep))
+        if not os.path.exists(canon_path):
+            issues.append("개념 정본 %s — 정본 파일 없음 %s" % (row["name"], row["canon"]))
+            continue
+        canon_txt = read(canon_path)
+        block, n_anchor = _anchor_block(canon_txt, row["anchor"])
+        checked += 1
+        if n_anchor != 1:
+            issues.append("개념 정본 %s — 앵커가 %d건 매치(정확히 1건이어야 한다): %s"
+                          % (row["name"], n_anchor, row["anchor"]))
+            continue
+        canon_rel = row["canon"]
+        buckets = {"정본": [], "화이트리스트": [], "위반": [], "차집합": [], "면제 잔여": []}
+        for scope in row["scopes"]:
+            base = os.path.join(ROOT, scope.replace("/", os.sep))
+            for b, _, names in os.walk(base):
+                for nm in sorted(names):
+                    if not nm.endswith(".md"):
+                        continue
+                    f = os.path.join(b, nm)
+                    rel = os.path.relpath(f, ROOT).replace(os.sep, "/")
+                    for i, line in enumerate(read(f).split("\n")):
+                        if row["word"] not in line:
+                            continue
+                        if rel == canon_rel and i in block:
+                            buckets["정본"].append((rel, i + 1, line.strip()))
+                            continue
+                        hit_ref = [r for r in row["refs"] if r in line]
+                        if hit_ref:
+                            buckets["화이트리스트"].append((rel, i + 1, line.strip()))
+                            # 면제 잔여: 한 줄에 포인터와 **독자 서술**이 섞인 자리.
+                            # 개념어가 식별자 수보다 많이 나오면 그중 일부는 포인터가 아니다
+                            # (축 ⑪ T3 1R BLOCKER ⓑ — 정당한 면제 뒤에 진짜 위반이 숨던 형태).
+                            if line.count(row["word"]) > len(hit_ref):
+                                buckets["면제 잔여"].append((rel, i + 1, line.strip()))
+                        else:
+                            buckets["위반"].append((rel, i + 1, line.strip()))
+        out.append((row["name"], buckets))
+    if checked == 0:
+        die("개념 정본 유일성: 검사 대상 개념을 하나도 찾지 못함")
+    if report:
+        for name, b in out:
+            print("\n== 개념 「%s」 ==" % name)
+            for k in ("정본", "화이트리스트", "위반", "차집합", "면제 잔여"):
+                print("  [%s] %d건" % (k, len(b[k])))
+                for rel, ln, s in b[k]:
+                    print("    %s:%d  %s" % (rel, ln, s[:110]))
+    return issues, checked
+
+# ─────────────────────────────────────────────────────────────
 # ③ 포인터 도달성
 # ─────────────────────────────────────────────────────────────
 def _md_files():
@@ -353,6 +471,7 @@ def check_deferred_stats(ledger):
 
 
 def main():
+
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
     # 검증 매핑에 등록된 명령은 `python <이 파일>`이라 환경변수가 붙지 않으므로, 스스로 UTF-8로
     # 재설정하지 않으면 **매 실행이 크래시해 검사 자체가 성립하지 않는다**(개발 중 `PYTHONUTF8=1`을
@@ -362,6 +481,16 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
     except (AttributeError, OSError):
         pass  # 재설정 불가 환경(파이프 등)에서는 그대로 진행
+
+    # 축 ⑫는 T3 시점에 리포트 전용이다 — `main()` 편입은 T11(축 ⑪의 전례: 소진이 끝나기
+    # 전에 편입하면 그 사이 모든 task의 검증이 FAIL한다).
+    if "--concept-report" in sys.argv:
+        conv = read(os.path.join(ROOT, "docs", "harness-conventions.md"))
+        issues, n = check_concept_locality(conv, report=True)
+        print("\n== 개념 %d개 검사 ==" % n)
+        for m in issues:
+            print("[MISMATCH] %s" % m)
+        sys.exit(1 if issues else 0)
 
     conv = read(CONV_MD)
     ledger = read(LEDGER_MD)
