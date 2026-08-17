@@ -749,6 +749,8 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_MD, "| project (허브) | 13000자 |", "§4 표 project 행 — 3열 롤오버 구가 §2.2 항목 개수 축"),
     (SCHEMA_MD, "**project 허브 `## 최근 주요 변경`**: 3~5개를 유지하고", "§8 롤오버 — §2.2 항목 개수 축"),
     (TEMPLATES_MD, "<!-- 3~5개 유지. 초과분은 압축하지 않고", "허브 템플릿 주석 — §2.2 항목 개수 축"),
+    (TEMPLATES_MD, "# budget_split_chars: 0         #   lint 예산 판정과 같은 기준의 문자 수(=임박 메시지의 {현재} 값,",
+     "`budget_split_chars` 필드 설명 — 「임박 메시지」는 §7-2 신호의 이름 인용이지 조건 서술이 아니다", 2),  # 템플릿 2곳 공통 문면
 
     # ── 예산과 무관한 「초과」·「넘」 — 축어 정규식이 넓어 걸리지만 트리거 서술이 아니다
     (SCHEMA_MD, "소비 대상은 두 태그뿐이다", "절차 M 보류 8종의 상황 범주 열거 — 예산은 그중 한 항목명"),
@@ -921,14 +923,19 @@ def check_trigger_locality():
 
         # 화이트리스트 앵커를 줄 번호로 해소 (0건·2건 이상은 그 자체가 issue)
         allowed_nos = set()
-        for a_path, needle, reason in TRIGGER_ALLOWLIST:
+        for entry in TRIGGER_ALLOWLIST:
+            a_path, needle, reason = entry[0], entry[1], entry[2]
+            # 4번째 원소는 **기대 매치 수**(생략 시 1). 같은 문면이 한 파일에 여러 벌
+            # 복제된 자리가 실재해서(템플릿 두 곳의 동일 필드 주석) 필요하다 — 그때
+            # "몇 벌인가"를 열거에 적어 두면 벌 수가 달라지는 것 자체가 신호가 된다.
+            expected = entry[3] if len(entry) > 3 else 1
             if a_path != path:
                 continue
             hits = [no for no, ln in scan if needle in ln]
             allow_report.append((name, needle, len(hits), reason))
-            if len(hits) != 1:
+            if len(hits) != expected:
                 violations.append(
-                    f"{name}: 화이트리스트 앵커가 {len(hits)}건 매치 (1건이어야 함) — {needle!r}")
+                    f"{name}: 화이트리스트 앵커가 {len(hits)}건 매치 ({expected}건이어야 함) — {needle!r}")
             allowed_nos.update(hits)
             # 면제 잔여 — 앵커가 설명하는 조건어를 지운 **나머지**에 조건어가 또 있으면 보고한다.
             #  화이트리스트는 줄 단위라, 한 줄에 정당한 면제(예: index 축)와 진짜 트리거 서술이
@@ -976,8 +983,10 @@ def report_trigger_locality():
         print(f"  {v}")
 
     print(f"\n[화이트리스트] {len(allow_report)}건 — 앵커별 매치 수(1이어야 정상)")
+    expected_by = {(os.path.basename(e[0]), e[1]): (e[3] if len(e) > 3 else 1)
+                   for e in TRIGGER_ALLOWLIST}
     for name, needle, hits, reason in allow_report:
-        flag = "OK " if hits == 1 else "!! "
+        flag = "OK " if hits == expected_by.get((name, needle), 1) else "!! "
         print(f"  {flag}{name} ({hits}건) {needle[:50]!r} — {reason}")
 
     unresolved = [d for d in diffset if d[3] is None]
