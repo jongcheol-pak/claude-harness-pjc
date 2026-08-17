@@ -914,7 +914,8 @@ def check_trigger_locality():
     for path, kind in TRIGGER_SCAN_SCOPE:
         name = os.path.basename(path)
         scan = _scan_lines(path, kind)
-        scan_nos = {no for no, _ in scan}
+        scan_by_no = dict(scan)
+        scan_nos = set(scan_by_no)
         anchor_nos, anchor_issues = _anchor_span(path, scan)
         violations.extend(anchor_issues)
 
@@ -938,7 +939,7 @@ def check_trigger_locality():
             #  (앵커는 「그 줄을 특정하는 조각」이지 「면제할 조건어」가 아니다) 전건이 잔여로 잡힌다.
             #  판정은 사람이 하되 **보이게** 만드는 것이 목적이다(차집합 절과 같은 취급).
             for no in hits:
-                rest = dict(scan)[no].replace(needle, "")
+                rest = scan_by_no[no].replace(needle, "")
                 for m in TRIGGER_COND_RX.finditer(rest):
                     ctx = rest[max(0, m.start() - 30):m.start() + 40].strip()
                     residual.append((name, no, m.group(0), ctx, reason))
