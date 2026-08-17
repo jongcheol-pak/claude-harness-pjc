@@ -2,6 +2,9 @@
 """SKILL.md ↔ wiki-schema.md ↔ lint.py 공유 상수 정합 셀프체크.
 
 사용법: python check_consistency.py   (인자 없음 — 번들 내 상대 위치로 세 파일을 찾는다)
+       python check_consistency.py --trigger-report
+         축 ⑪(예산 트리거 조건 어휘 유일성)의 위반·화이트리스트·차집합 목록만 출력한다.
+         정합 대조는 돌지 않고 exit 0으로 끝난다(리포트 전용 — main 축에 미편입).
 
 무엇을: llm-wiki의 공유 상수(파일 예산·통제 어휘)는 네 곳에 존재한다 —
   ① lint.py 상수(BUDGET·GUIDE_BUDGET·SPECIAL_BUDGET·INDEX_*·*_VOCAB)
@@ -69,6 +72,8 @@ SCHEMA_MD = os.path.join(SKILL_DIR, "references", "wiki-schema.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
 TEMPLATES_MD = os.path.join(SKILL_DIR, "references", "templates.md")
 LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
+CONTENT_MD = os.path.join(SKILL_DIR, "references", "procedures-content.md")
+LINT_CASES_JSON = os.path.join(EVALS_DIR, "lint-cases.json")
 
 # schema §2.x 헤딩 → 예산 키 (### 2.N 뒤 첫 토큰이 타입명)
 SCHEMA_TYPE_HEADING_RX = re.compile(r"^### 2\.\d+\s+([a-z-]+)", re.M)
@@ -674,6 +679,290 @@ def check_budget_stages(skill_text, lint):
     return issues, checked
 
 
+# ⑪ 예산 트리거 조건 어휘 유일성 — 예산 처방의 발동·종료·재발동·승급 조건은
+#  wiki-schema §7-2(와 임계 정본인 SKILL '## 예산 단계 신호' 표)에서만 서술하고,
+#  다른 자리는 조건을 적지 않고 `§7-2 발동 시` 포인터만 둔다. 그 자리들이 저마다 조건을
+#  다시 쓰던 것이 v1.177 회차에서 6라운드 연속 드리프트를 낸 원인이다(헤딩은 「임박」인데
+#  본문은 「초과」 같은 반쪽 상태). 조건이 한 곳에만 있으면 그 상태를 만들 수 없다.
+#
+# 조건어는 **어미를 열거하지 않고 축어만** 쓴다. 어미 열거형은 두 번 뚫렸다 —
+#  `초과 시|초과하면|초과면` 계열은 `초과가 확실하면`(procedures-content I-2b)을 놓쳤고,
+#  그것을 고치며 `넘기?[면는]`로 남긴 갈래는 `넘길 것 같으면`(schema §2.2 온보딩)을 놓쳤다.
+#  반증(예산과 무관한 「초과」·「넘」)은 정규식을 좁히는 대신 아래 화이트리스트로만 거른다 —
+#  면제는 늘어나는 것이 보이지만 정규식의 사각은 보이지 않기 때문이다.
+TRIGGER_COND_RX = re.compile(r"임박|예산\s*이내|초과|넘")
+
+# 조사용 광의 패턴 — 위 조건어보다 넓게 잡아 **차집합**(광의에는 걸리는데 축 ⑪ 스캔에는
+#  안 들어오는 줄)을 만든다. 그 차집합이 비어 있지 않은 것은 정상이고, 처분되지 않은 줄이
+#  남는 것이 실패다. 정규식이 좁아 놓친 것과 정말 무관한 것을 구분하는 유일한 장치다.
+TRIGGER_BROAD_RX = re.compile(r"임박|초과|넘|예산|한도|여유")
+
+# 스캔 스코프 — 규정을 **서술**하는 자리만 본다. `lint.py`의 출력 f-string(`예산 임박: …`)과
+#  `lint-cases.json`의 expect 문자열은 규정 서술이 아니라 **신호 그 자체**라, 금지하면
+#  정본 출력을 없애라는 뜻이 된다.
+TRIGGER_SCAN_SCOPE = [
+    (SKILL_MD, "md"),
+    (SCHEMA_MD, "md"),
+    (CONTENT_MD, "md"),
+    (OPS_MD, "md"),
+    (TEMPLATES_MD, "md"),
+    (LINT_PY, "py"),          # `#` 주석 + docstring만
+    (LINT_CASES_JSON, "json"),  # "rationale" 값만
+]
+
+# 정본 앵커 — 구간이다(줄이 아니다). §7-2는 착수 시점에 한 줄이지만 소불릿으로 나뉘면
+#  여러 줄이 되므로, 줄로 잡으면 정본을 정리하는 순간 그 정리가 위반으로 잡힌다.
+TRIGGER_ANCHORS = {
+    SCHEMA_MD: (r"^2\. \*\*예산 준수\*\*", r"^3\. \*\*"),
+    SKILL_MD: (r"^## 예산 단계 신호", r"^## "),
+}
+
+# 면제 열거 — 「파일, 줄 내용 앵커, 사유」. 줄 번호가 아니라 **줄 내용**으로 잡는 이유는
+#  후속 task의 편집으로 번호가 밀리기 때문이다. 앵커는 대상 파일의 스캔 대상 줄에서
+#  정확히 1건 매치해야 한다(0건 = 문면이 바뀌어 면제가 허공을 가리킴, 2건 이상 = 면제가
+#  의도하지 않은 줄까지 덮음 — 둘 다 issue로 낸다).
+TRIGGER_ALLOWLIST = [
+    # ── index 줄/행 축(§7-14) — 문자 예산이 아니라 본문 400줄·기능별 인덱스 200행이 트리거다
+    (SCHEMA_MD, "| index.md | 제한 없음", "§7-14 index 트리거 — 줄/행 기준이라 문자 예산 무관"),
+    (SCHEMA_MD, '**트리거는 "그 시점 임계 초과"**', "§7-14 index 분할 트리거의 시점 규정"),
+    (SKILL_MD, "| index.md | 제한 없음", "§7-14 index 트리거 — 줄/행 기준"),
+    (OPS_MD, "`[기계]` index·sub-index 분할 신호", "F-1 인덱스의 §7-14 라벨"),
+    (LINT_PY, "# index.md 분할 신호 임계", "INDEX_BODY_LINES 상수 주석 — index 축"),
+    (LINT_PY, "#   sub-index(순번 파일) 초과는", "위 상수 주석의 이어지는 줄 — index 축"),
+    (LINT_PY, "# sub-index(순번 파일)가 초과하면", "§7-14 3단계 자동 분할 구현 주석"),
+
+    # ── §2.2 항목 개수 축 — `## 최근 주요 변경`은 6번째 항목이 트리거이고 문자 예산과 무관하다
+    #    (§7 결과 처리가 "⚠ project 허브만 트리거가 다르다"로 명시 배제한 대상이다).
+    #    `§7-2 발동 시`로 치환하면 정본이 되려는 §7-2가 자기 배제 규정과 충돌한다.
+    (SCHEMA_MD, "**초과분은 압축하지 않고 롤오버한다**", "§2.2 6번째 항목 트리거 — 문자 예산 무관"),
+    (SCHEMA_MD, "| project (허브) | 13000자 |", "§4 표 project 행 — 3열 롤오버 구가 §2.2 항목 개수 축"),
+    (SCHEMA_MD, "**project 허브 `## 최근 주요 변경`**: 3~5개를 유지하고", "§8 롤오버 — §2.2 항목 개수 축"),
+    (TEMPLATES_MD, "<!-- 3~5개 유지. 초과분은 압축하지 않고", "허브 템플릿 주석 — §2.2 항목 개수 축"),
+
+    # ── 예산과 무관한 「초과」·「넘」 — 축어 정규식이 넓어 걸리지만 트리거 서술이 아니다
+    (SCHEMA_MD, "소비 대상은 두 태그뿐이다", "절차 M 보류 8종의 상황 범주 열거 — 예산은 그중 한 항목명"),
+    (SCHEMA_MD, "7. **기록**: `log.md`에", "log 기록 형식의 `(사유: 임계 초과)` 예시 문자열"),
+    (CONTENT_MD, "그 파일은 프로젝트 단위 규약", "「스택을 넘는 일반 패턴」 — 귀속 판정이지 예산 아님"),
+    (CONTENT_MD, "5. **델타 신뢰도 점검**", "허브 `updated` 30일 초과 = 신선도 축"),
+    (CONTENT_MD, "> **축소 조건 (소규모 갱신)**", "변경 파일 5개 초과 = 개수 조건, 예산 무관"),
+    (SKILL_MD, '**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "절차 K 조회 순서 — 「경계를 넘는 지식」"),
+    (SKILL_MD, "**무매칭 = 사실대로 보고(합성 금지)**", "「기록 없이 넘기면」 — 큐 기록 규약"),
+    (SKILL_MD, "- **잔량·체류 경고**: append 시 둘 중", "skill-feedback 큐 잔량·체류 임계"),
+    (SKILL_MD, "- **입도 기준(필수 — 노이즈 방지)**", "[DECISION] 큐 입도 — 「범위를 넘는」"),
+    (SKILL_MD, "- **잔량 경고**: append 시 `pending.md`", "pending 큐 잔량 임계"),
+    (LINT_PY, "#   기존 `[^\\n]*`는 줄바꿈을 못 넘어", "펜스 정규식 구현 주석 — 예산 무관"),
+    (LINT_PY, "#  **수용된 한계**: 접두가 15자를 넘는 위반", "큐 형식 접두 길이 — 예산 무관"),
+
+    # ── `lint.py` 구현 주석 — 임계 상수의 근거와 억제 로직 설명. 신호를 만드는 코드 옆의
+    #    주석이라 §7-2·SKILL 예산 단계 표의 코드측 대응이며, 규정을 다시 서술하는 자리가 아니다.
+    (LINT_PY, "# 임박 판정의 선행 게이트", "BUDGET_NEAR_RATIO 상수 근거"),
+    (LINT_PY, "#  이 상수를 지우면 안 되는 이유", "위 상수 근거의 이어지는 줄"),
+    (LINT_PY, "#  선행 게이트가 빠지면 예산이 작은 타입", "위 상수 근거의 이어지는 줄"),
+    (LINT_PY, "# 예산 임박 임계 — 초과 전에 나는 유일한 신호다", "BUDGET_CRITICAL_* 상수 근거"),
+    (LINT_PY, "#  타입(source-stub 1800)에서 72%짜리가 임박이 된다", "위 상수 근거의 이어지는 줄"),
+    (LINT_PY, "#  §4의 이동·분리 처방이 성립하지 않는다", "BUDGET_REJUDGE_MARGIN 상수 근거"),
+    (LINT_PY, "#  판정 시점 문자 수(budget_split_chars) 대비", "위 상수 근거의 이어지는 줄"),
+    (LINT_PY, '#  영구 면제로 두면 "한 번 판정하면', "위 상수 근거의 이어지는 줄"),
+    (LINT_PY, '"""「분리 불가 판정」이 유효해', "budget_split 억제 판정 함수 docstring"),
+    (LINT_PY, "억제는 임박에만 적용되고", "위 docstring의 이어지는 줄"),
+    (LINT_PY, "# 이 경로에는 임박 계층이 없어", "SPECIAL_BUDGET 임박 분기 구현 주석"),
+    (LINT_PY, '#  무신호가 되고, "임박 도달 시', "위 분기 주석의 이어지는 줄"),
+    (LINT_PY, "#   영구 '예산 초과' WARN을 만드는 것을 막는다", "억제 로직 구현 주석"),
+    (LINT_PY, "# 수리 경로가 정해진 타입은 초과 시점에도", "초과 WARN 힌트 병기 구현 주석"),
+    (LINT_PY, "#  안내하고 초과 WARN에서 침묵하면", "위 주석의 이어지는 줄"),
+    (LINT_PY, "# L-5: 초과 전에 나는 유일한 신호다", "임박 WARN 분기 구현 주석"),
+    (LINT_PY, "# L-4: 위 임박 분기가 budget_split", "억제 강등 INFO 분기 구현 주석"),
+    (LINT_PY, "#   동일하고 억제 여부만 다르다", "위 분기 주석의 이어지는 줄"),
+    (LINT_PY, "#   침묵시키지 않는 이유: 억제를 영구 면제로", "위 분기 주석의 이어지는 줄"),
+
+    # ── eval 실증 서술 — 케이스가 무엇을 실증하는지의 기록이지 규정 서술이 아니다
+    #    (`:398`은 폐지된 근접 INFO를 인용한 stale이라 T6의 치환 대상 — 여기 넣지 않는다).
+    (LINT_CASES_JSON, '"rationale": "§7-2 파일 예산 초과 (WARN)"', "초과 WARN 케이스 실증 서술"),
+    (LINT_CASES_JSON, '"rationale": "§7-2 펜스 제외 판정', "펜스 제외 판정 케이스 실증 서술"),
+    (LINT_CASES_JSON, '"rationale": "§7-14 순번 sub-index', "index 축 케이스 실증 서술"),
+    (LINT_CASES_JSON, '"rationale": "§7-2 임박 단계(WARN)', "임박 OR 두 항 케이스 실증 서술"),
+    (LINT_CASES_JSON, '"rationale": "「분리 불가 판정」(budget_split)', "억제·재판정 케이스 실증 서술"),
+
+    # ── budget_split 부속 — 「분리 불가 판정」 필드 정의(§3). 처방 불가 판정의 기록 규약이지
+    #    발동 조건 서술이 아니다.
+    (SCHEMA_MD, "- **`budget_split` 3필드 (선택", "§3 budget_split 필드 정의"),
+]
+
+# 차집합 사유 — 광의 패턴에는 걸리지만 예산 트리거가 아닌 줄. 위 화이트리스트와 자료구조를
+#  나누는 이유는 이쪽이 **스캔 밖**의 줄이라 「앵커 1건 매치」 검증의 대상이 아니기 때문이다.
+#  섞으면 두 검사의 의미가 충돌한다.
+#  앵커가 `None`이면 **그 파일의 스코프 정의가 의도적으로 뺀 부류 전체**를 덮는다 — 같은
+#  사유를 줄마다 25번 적는 것이 오히려 노이즈이기 때문이다. 대신 리포트가 **덮은 줄 수를
+#  출력**해 면제가 조용히 자라는 것을 볼 수 있게 한다(D6가 지키려는 것은 "면제 열거"라는
+#  형식이 아니라 "면제가 보인다"는 성질이다). md 파일은 전 줄이 스캔 대상이라 차집합이
+#  구조적으로 0이고, 부류 사유를 쓰는 것은 스코프를 좁힌 두 파일뿐이다.
+TRIGGER_DIFFSET_NOTES = [
+    (LINT_PY, None,
+     "스코프 정의상 제외 — 코드·출력 f-string. 규정 서술이 아니라 신호 그 자체이며, "
+     "여기를 금지하면 정본 출력(`예산 임박: …`)을 없애라는 뜻이 된다(D5)"),
+    (LINT_CASES_JSON, None,
+     "스코프 정의상 제외 — expect 문자열·`_note`. lint 출력의 기대값이라 "
+     "`run_lint_evals.py`가 정본으로 검증한다(여기서 다시 고정하면 이중 관리)"),
+]
+
+
+def _scan_lines(path, kind):
+    """파일에서 '규정을 서술하는 줄'만 [(줄번호, 원문)]로 뽑는다 (스코프 한정 — D5)."""
+    lines = read(path).split("\n")
+    if kind == "md":
+        return [(i + 1, ln) for i, ln in enumerate(lines)]
+    if kind == "json":
+        return [(i + 1, ln) for i, ln in enumerate(lines) if '"rationale"' in ln]
+    if kind == "py":
+        out = []
+        in_doc = False
+        for i, ln in enumerate(lines):
+            s = ln.strip()
+            is_scannable = s.startswith("#") or in_doc or s.startswith('"""')
+            # 여는/닫는 `"""`가 한 줄에 하나만 있을 때만 상태를 뒤집는다
+            # (`"""한 줄 docstring"""`은 두 개라 상태 불변).
+            if s.count('"""') == 1:
+                in_doc = not in_doc
+            # 코드 뒤 **인라인** 주석도 규정을 서술한다 — `BUDGET` 딕셔너리의 타입별 주석이
+            # 그 예다. 선두 `#`만 보면 그 자리가 통째로 스캔 밖으로 빠진다(차집합 검사가
+            # `lint.py:72`를 미처분으로 드러내 발견한 사각).
+            if not is_scannable and _py_inline_comment(ln) is not None:
+                is_scannable = True
+            if is_scannable:
+                out.append((i + 1, ln))
+        return out
+    die(f"⑪ 알 수 없는 스캔 스코프 종류: {kind}")
+
+
+def _py_inline_comment(line):
+    """코드 뒤 인라인 주석 본문을 반환. 주석이 없으면 None.
+
+    문자열 리터럴 안의 `#`을 주석으로 오인하지 않도록 따옴표 상태를 따라간다
+    (`warn(f"... #tag ...")` 같은 줄이 통째로 주석 취급되는 것을 막는다)."""
+    quote = None
+    escaped = False
+    for idx, ch in enumerate(line):
+        if escaped:
+            escaped = False
+            continue
+        if ch == "\\":
+            escaped = True
+            continue
+        if quote:
+            if ch == quote:
+                quote = None
+            continue
+        if ch in "\"'":
+            quote = ch
+            continue
+        if ch == "#":
+            return line[idx:]
+    return None
+
+
+def _anchor_span(path, lines):
+    """정본 앵커 구간의 줄 번호 집합. 앵커가 없는 파일은 빈 집합."""
+    if path not in TRIGGER_ANCHORS:
+        return set()
+    start_rx, end_rx = TRIGGER_ANCHORS[path]
+    start = None
+    for no, ln in lines:
+        if start is None:
+            if re.match(start_rx, ln):
+                start = no
+            continue
+        if re.match(end_rx, ln):
+            return set(range(start, no))
+    if start is None:
+        die(f"⑪ 정본 앵커 시작을 찾지 못함: {os.path.basename(path)} /{start_rx}/")
+    return set(range(start, lines[-1][0] + 1))
+
+
+def check_trigger_locality():
+    """⑪ 예산 트리거 조건 어휘 유일성. 반환: (위반 목록, 화이트리스트 검증 목록, 차집합 목록).
+
+    위반 = 정본 앵커 밖 + 화이트리스트 밖인데 조건어가 있는 스캔 대상 줄.
+    이 목록이 곧 「포인터로 바꿔야 할 자리」의 전수다 — 사람이 grep으로 세면 형태가
+    다른 자리를 놓치지만(6라운드 실증), 기계가 세면 놓치지 않는다."""
+    violations = []
+    allow_report = []
+    diffset = []
+
+    for path, kind in TRIGGER_SCAN_SCOPE:
+        name = os.path.basename(path)
+        scan = _scan_lines(path, kind)
+        scan_nos = {no for no, _ in scan}
+        anchor_nos = _anchor_span(path, scan)
+
+        # 화이트리스트 앵커를 줄 번호로 해소 (0건·2건 이상은 그 자체가 issue)
+        allowed_nos = set()
+        for a_path, needle, reason in TRIGGER_ALLOWLIST:
+            if a_path != path:
+                continue
+            hits = [no for no, ln in scan if needle in ln]
+            allow_report.append((name, needle, len(hits), reason))
+            if len(hits) != 1:
+                violations.append(
+                    f"{name}: 화이트리스트 앵커가 {len(hits)}건 매치 (1건이어야 함) — {needle!r}")
+            allowed_nos.update(hits)
+
+        for no, ln in scan:
+            if no in anchor_nos or no in allowed_nos:
+                continue
+            if TRIGGER_COND_RX.search(ln):
+                violations.append(f"{name}:{no}: {ln.strip()[:120]}")
+
+        # 차집합 — 광의에는 걸리는데 스캔 대상이 아닌 줄
+        notes = [(nd, r) for p, nd, r in TRIGGER_DIFFSET_NOTES if p == path]
+        for i, ln in enumerate(read(path).split("\n")):
+            no = i + 1
+            if no in scan_nos or not TRIGGER_BROAD_RX.search(ln):
+                continue
+            reason = next((r for nd, r in notes if nd is None or nd in ln), None)
+            diffset.append((name, no, ln.strip()[:100], reason))
+
+    return violations, allow_report, diffset
+
+
+def report_trigger_locality():
+    """`--trigger-report` 진입점. 목록만 출력하고 실패시키지 않는다 (exit 0).
+
+    main()에 축으로 편입하지 않는 이유: 이 검사기는 llm-wiki 파일을 만지는 모든 task의
+    필수 검증(AGENTS.md)이라, 위반이 남은 소진 도중에 축으로 넣으면 매 task 검증이
+    FAIL해 자율 루프가 그라인딩한다. 소진이 끝난 뒤 main()에 편입한다."""
+    violations, allow_report, diffset = check_trigger_locality()
+
+    print("== ⑪ 예산 트리거 조건 어휘 유일성 (리포트 모드 — 실패시키지 않음) ==")
+    print(f"\n[위반] {len(violations)}건 — 정본 앵커·화이트리스트 밖의 조건어")
+    for v in violations:
+        print(f"  {v}")
+
+    print(f"\n[화이트리스트] {len(allow_report)}건 — 앵커별 매치 수(1이어야 정상)")
+    for name, needle, hits, reason in allow_report:
+        flag = "OK " if hits == 1 else "!! "
+        print(f"  {flag}{name} ({hits}건) {needle[:50]!r} — {reason}")
+
+    unresolved = [d for d in diffset if d[3] is None]
+    print(f"\n[차집합] {len(diffset)}건 (사유 등재 {len(diffset) - len(unresolved)} / "
+          f"미처분 {len(unresolved)}) — 광의 패턴에는 걸리나 스캔 대상이 아닌 줄")
+    covered = {}
+    for name, _no, _text, reason in diffset:
+        if reason is not None:
+            covered[name] = covered.get(name, 0) + 1
+    for name, cnt in sorted(covered.items()):
+        print(f"  OK {name}: {cnt}줄이 부류 사유로 덮임")
+    print("  ⚠ 미처분 줄은 둘 중 하나로 처분한다: 트리거가 아니면 TRIGGER_DIFFSET_NOTES에")
+    print("    사유를 등재하고, 트리거이면 사유를 붙이지 말고 TRIGGER_COND_RX를 넓히거나")
+    print("    해당 task의 치환 대상에 편입한다.")
+    for name, no, text, reason in unresolved:
+        print(f"  ?? {name}:{no}: {text}")
+
+    total_exempt = len(TRIGGER_ALLOWLIST) + len(TRIGGER_DIFFSET_NOTES)
+    print(f"\n[면제 총계] 화이트리스트 {len(TRIGGER_ALLOWLIST)} + 차집합 사유 "
+          f"{len(TRIGGER_DIFFSET_NOTES)} = {total_exempt} (상한 130 — 넘으면 면제가 규칙을 삼킨 것)")
+    sys.exit(0)
+
+
 def parse_schema_vocab(text):
     out = {}
     for key, (rx, _attr) in VOCAB_LINES.items():
@@ -689,6 +978,8 @@ def parse_schema_vocab(text):
 
 
 def main():
+    if "--trigger-report" in sys.argv[1:]:
+        report_trigger_locality()  # exit 0으로 끝난다
     skill_text = read(SKILL_MD)
     schema_text = read(SCHEMA_MD)
     lint = load_lint()
