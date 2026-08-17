@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 포인터 도달성 · 마커 목록 · Deferred 집계.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · Deferred 집계.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
 무엇을: 이 repo는 마크다운이 곧 실행 규칙이라, 문서가 서로 어긋나면 그것이 곧 동작 결함이다.
-아래 다섯 축은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다:
+아래 여섯 축은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다:
 
   ① 문서 로드 예산  — 스킬·리뷰어 파일의 바이트가 `docs/harness-conventions.md` 「문서 로드 예산
      기준선」 표와 일치하는가. 그 표는 조건부 절차를 references로 밀어낸 절감이 유지되는지를
@@ -12,6 +12,9 @@
   ② 리뷰어 각주 앵커 — 리뷰어 4종이 복제 보유하는 규약 블록에 동기 신호(각주)가 전부 있는가.
      subagent는 자기 파일만 로드해 단일 소스화가 불가하므로 각주가 유일한 드리프트 신호다.
      **본문 동일성은 검사하지 않는다** — 네 파일의 같은 블록은 역할 차이로 실제로 다르다.
+  ②-b 실행 예산 수치 — 리뷰어의 frontmatter `maxTurns`와 「실행 예산」 절 본문의 예산·중단선·계측
+     수치가 일치하는가. 그 수치는 상한에서 파생되는데 사람이 손으로 옮겨 적으므로, 상한만 바꾸고
+     본문을 빠뜨리면 ②(개수만 셈)는 통과한다. 기대값은 코드가 아니라 frontmatter에서 파생한다.
   ③ 포인터 도달성   — `<경로>` … 「<절 이름>」 형태의 크로스파일 포인터가 실제 헤딩에 닿는가.
      조건부 절차를 references로 이관하면 이 포인터가 유일한 연결이라, 끊기면 규칙이 사라진다.
   ④ 마커 목록 동기  — 정당 정지 마커의 전수 목록(정본)과 `implement-task/SKILL.md`의 대표 예시가
@@ -144,6 +147,53 @@ def check_reviewer_footnote(conv):
                           % (name, cnt, len(blocks)))
     return issues, len(files) * len(blocks)
 
+
+# ─────────────────────────────────────────────────────────────
+# ②-b 리뷰어 실행 예산 수치 (frontmatter ↔ 본문)
+# ─────────────────────────────────────────────────────────────
+def check_reviewer_budget():
+    """리뷰어 정의의 frontmatter `maxTurns` ↔ 「실행 예산」 절 본문 수치를 대조한다.
+
+    예산 고지(maxTurns − 4)와 중단선(그 2/3)은 상한에서 파생되는데 **사람이 손으로 옮겨
+    적는다** — 상한만 바꾸고 본문을 빠뜨려도 각주 축(앵커 개수만 셈)은 통과하므로,
+    「고지된 예산과 실제 상한이 갈리는」 드리프트를 잡을 축이 따로 필요하다.
+    대상은 「실행 예산」 절을 가진 `agents/*.md` 전부다(이름을 코드에 박지 않는다 —
+    5번째 리뷰어가 생기면 자동으로 검사 대상이 된다).
+    """
+    agents = os.path.join(ROOT, "plugins", "pjc", "agents")
+    issues, checked = [], 0
+    for name in sorted(os.listdir(agents)):
+        if not name.endswith(".md"):
+            continue
+        txt = read(os.path.join(agents, name))
+        if "## 실행 예산" not in txt:
+            continue
+        mt = re.search(r"^maxTurns: (\d+)$", txt, re.M)
+        if not mt:
+            issues.append("실행 예산 %s — 「실행 예산」 절은 있는데 frontmatter에 maxTurns가 없다" % name)
+            continue
+        limit = int(mt.group(1))
+        want_budget = limit - 4
+        want_stop = (want_budget * 2) // 3
+        # 본문 3자리를 각각 뽑아 파생값과 대조한다. 한 자리라도 못 찾으면 절의 문면이
+        # 바뀐 것이므로 통과시키지 않는다(ANCHOR FAIL이 아니라 issue — 파일별로 다를 수 있다).
+        for label, rx, want in (
+            ("예산 고지", r"도구 호출 예산은 (\d+)회다\*\*\(`maxTurns: (\d+)`", (want_budget, limit)),
+            ("중단선", r"\*\*도구 호출 (\d+)회에 도달하면", (want_stop,)),
+            ("계측 표기", r"`도구 호출 <실제>회 / 예산 (\d+)회`", (want_budget,)),
+        ):
+            m = re.search(rx, txt)
+            if not m:
+                issues.append("실행 예산 %s — %s 문면을 찾지 못함(절 표기가 바뀌었는지 확인)" % (name, label))
+                continue
+            got = tuple(int(g) for g in m.groups())
+            if got != want:
+                issues.append("실행 예산 %s %s — 본문 %s / maxTurns %d에서 파생한 기대값 %s"
+                              % (name, label, got, limit, want))
+            checked += 1
+    if checked == 0:
+        die("실행 예산: 「실행 예산」 절을 가진 리뷰어를 하나도 찾지 못함 (절 제목이 바뀌었는지 확인)")
+    return issues, checked
 
 # ─────────────────────────────────────────────────────────────
 # ③ 포인터 도달성
@@ -320,6 +370,7 @@ def main():
     for label, (issues, n) in [
         ("예산 기준선", check_doc_budget(conv)),
         ("리뷰어 각주", check_reviewer_footnote(conv)),
+        ("실행 예산 수치", check_reviewer_budget()),
         ("포인터 도달성", check_pointer_reachability()),
         ("마커 동기", check_marker_sync(conv, impl)),
         ("Deferred 집계", check_deferred_stats(ledger)),
@@ -327,7 +378,7 @@ def main():
         all_issues.extend(issues)
         parts.append("%s %d항목" % (label, n))
 
-    print("== 하니스 정합 셀프체크 (문서 예산 · 리뷰어 각주 · 포인터 · 마커 · Deferred) ==")
+    print("== 하니스 정합 셀프체크 (문서 예산 · 리뷰어 각주 · 실행 예산 · 포인터 · 마커 · Deferred) ==")
     if all_issues:
         for m in all_issues:
             print("[MISMATCH] %s" % m)

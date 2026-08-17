@@ -122,9 +122,9 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/skills/plan-feature/SKILL.md` | 84,201 | 493 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 66,423 | 257 | 81 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,713 | 354 | 135 |
-| `plugins/pjc/agents/plan-reviewer.md` | 47,663 | 398 | 78 |
-| `plugins/pjc/agents/spec-compliance-reviewer.md` | 30,557 | 308 | 108 |
-| `plugins/pjc/agents/code-quality-reviewer.md` | 33,174 | 283 | 82 |
+| `plugins/pjc/agents/plan-reviewer.md` | 50,037 | 412 | 78 |
+| `plugins/pjc/agents/spec-compliance-reviewer.md` | 30,796 | 308 | 104 |
+| `plugins/pjc/agents/code-quality-reviewer.md` | 33,399 | 283 | 79 |
 | `plugins/pjc/agents/plan-completion-reviewer.md` | 28,920 | 322 | 93 |
 
 ## 리뷰어 4종 공통 규약 (각주 앵커)
@@ -143,6 +143,8 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | 6 | `- **재호출 인지.**` (「행동 원칙」 안의 불릿) | 이력 표 기반 RECURRING 판정 |
 | 7 | `## 출력 형식` 첫 문단 (판정문 출력 의무) | 조사 서술로 끝내는 빈 응답 차단 |
 | 8 | `## 실행 예산 (검토 전에 먼저 읽는다)` | 예산 자기인지 · 조기 골격 · 사용량 계측 |
+
+> **블록 8만은 각주 축 위에 수치 대조 축이 하나 더 붙는다** — 그 절의 예산·중단선·계측 수치는 각 파일 frontmatter의 `maxTurns`에서 파생되므로, `check-harness-consistency.py`의 **실행 예산 수치** 축이 `maxTurns` ↔ 본문 3자리를 대조한다(기대값을 문서가 아니라 frontmatter에서 파생한다). 각주 축은 개수만 세므로 상한만 바꾸고 본문을 빠뜨린 드리프트를 잡지 못한다.
 
 **동기 신호는 각주다.** 여덟 블록 각각에 아래 **앵커 문자열**을 포함한 각주가 붙어 있다:
 
