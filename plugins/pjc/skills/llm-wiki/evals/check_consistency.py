@@ -861,25 +861,36 @@ def _py_inline_comment(line):
 
 
 def _anchor_span(path, lines):
-    """정본 앵커 구간의 줄 번호 집합. 앵커가 없는 파일은 빈 집합."""
+    """정본 앵커 구간의 줄 번호 집합과 issue 목록. 앵커가 없는 파일은 (빈 집합, []).
+
+    시작 정규식은 **문서 전체에서 1건**이어야 한다 — 여러 건이면 첫 매치를 말없이 골라
+    엉뚱한 구간을 정본으로 삼는다(화이트리스트 앵커에 건 것과 같은 검증을 여기에도 둔다.
+    한쪽에만 두면 "자리마다 매치가 1건인가를 실측한다"는 원칙이 반쪽이 된다)."""
     if path not in TRIGGER_ANCHORS:
-        return set()
+        return set(), []
     start_rx, end_rx = TRIGGER_ANCHORS[path]
-    start = None
-    for no, ln in lines:
-        if start is None:
-            if re.match(start_rx, ln):
-                start = no
-            continue
-        if re.match(end_rx, ln):
-            return set(range(start, no))
-    if start is None:
+    starts = [no for no, ln in lines if re.match(start_rx, ln)]
+    if not starts:
         die(f"⑪ 정본 앵커 시작을 찾지 못함: {os.path.basename(path)} /{start_rx}/")
-    return set(range(start, lines[-1][0] + 1))
+    issues = []
+    if len(starts) > 1:
+        issues.append(f"{os.path.basename(path)}: 정본 앵커 시작이 {len(starts)}건 매치 "
+                      f"(1건이어야 함) — /{start_rx}/ @ {starts}")
+    start = starts[0]
+    for no, ln in lines:
+        if no > start and re.match(end_rx, ln):
+            return set(range(start, no)), issues
+    return set(range(start, lines[-1][0] + 1)), issues
 
 
 def check_trigger_locality():
     """⑪ 예산 트리거 조건 어휘 유일성. 반환: (위반 목록, 화이트리스트 검증 목록, 차집합 목록).
+
+    다른 축은 `(issues, checked)` 2-튜플을 반환하는데 이 축만 3-튜플인 이유: 리포트가
+    위반뿐 아니라 **화이트리스트 앵커별 매치 수**와 **차집합 처분 상태**를 함께 내야
+    하고(그 둘이 각각 「면제가 엉뚱한 줄을 덮지 않는가」·「정규식이 좁아 놓친 것이
+    없는가」를 지키는 장치다), 2-튜플로는 그 정보가 담기지 않는다. main() 축으로 편입할
+    때는 앞의 두 값만 `(issues, checked)`로 접어 기존 집계 루프에 맞춘다.
 
     위반 = 정본 앵커 밖 + 화이트리스트 밖인데 조건어가 있는 스캔 대상 줄.
     이 목록이 곧 「포인터로 바꿔야 할 자리」의 전수다 — 사람이 grep으로 세면 형태가
@@ -892,7 +903,8 @@ def check_trigger_locality():
         name = os.path.basename(path)
         scan = _scan_lines(path, kind)
         scan_nos = {no for no, _ in scan}
-        anchor_nos = _anchor_span(path, scan)
+        anchor_nos, anchor_issues = _anchor_span(path, scan)
+        violations.extend(anchor_issues)
 
         # 화이트리스트 앵커를 줄 번호로 해소 (0건·2건 이상은 그 자체가 issue)
         allowed_nos = set()
