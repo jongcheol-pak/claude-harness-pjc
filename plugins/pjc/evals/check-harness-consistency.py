@@ -228,25 +228,54 @@ def _concept_table(conv):
 
 
 def _anchor_block(txt, anchor_rx):
-    """정본 앵커가 여는 구간(앵커 줄 ~ 다음 동급 이상 헤딩/번호 규칙 전)의 줄 번호 집합.
+    """정본 앵커가 여는 구간의 줄 번호 집합과 앵커 매치 수를 돌려준다.
 
-    매치 수도 함께 돌려준다 — 축 ⑪의 1R MAJOR가 "앵커가 문서 전체에서 몇 건
-    매치되는지 세지 않으면 첫 매치를 그냥 쓴다"였고, 그 실패를 여기서 반복하지 않는다.
+    매치 수를 함께 세는 이유는 축 ⑪의 1R MAJOR가 "앵커가 문서 전체에서 몇 건
+    매치되는지 세지 않으면 첫 매치를 그냥 쓴다"였기 때문이다.
+
+    **구간의 끝은 앵커 유형마다 다르다** — 기준표에 실재하는 세 유형을 모두 다룬다.
+    이분법(헤딩/그 외)으로 두면 불릿 앵커가 번호-규칙 분기로 흘러, 같은 레벨의 다음
+    불릿에서 멈추지 못하고 다음 헤딩까지 수십 줄을 통째로 정본으로 삼킨다 — 그러면
+    그 구간 안의 재서술이 위반이 아니라 "정본"으로 조용히 흡수돼, 이 축이 잡아야 할
+    드리프트를 놓친다(T3 quality M1 실측: `등재 게이트` 앵커가 38줄·무관 불릿 7개를 삼켰다).
     """
     lines = txt.split("\n")
     hits = [i for i, l in enumerate(lines) if re.search(anchor_rx, l)]
     if len(hits) != 1:
         return set(), len(hits)
     start = hits[0]
-    # 구간의 끝: 같은 수준의 다음 블록. 헤딩 앵커면 다음 `## `, 번호 규칙이면 다음 최상위 번호.
-    if lines[start].startswith("#"):
-        depth = len(lines[start]) - len(lines[start].lstrip("#"))
-        end = next((i for i in range(start + 1, len(lines))
-                    if lines[i].startswith("#") and (len(lines[i]) - len(lines[i].lstrip("#"))) <= depth), len(lines))
-    else:
-        end = next((i for i in range(start + 1, len(lines))
-                    if re.match(r"^(#{1,6} |\d+(-\d+)?\. \*\*)", lines[i])), len(lines))
+    head = lines[start]
+    if head.startswith("#"):                       # ① 헤딩 — 다음 동급 이상 헤딩까지
+        depth = len(head) - len(head.lstrip("#"))
+        stop = lambda l: l.startswith("#") and (len(l) - len(l.lstrip("#"))) <= depth
+    elif re.match(r"^\s*[-*] ", head):              # ② 불릿 — 같은 들여쓰기의 다음 불릿 또는 상위 헤딩까지
+        indent = len(head) - len(head.lstrip())
+        stop = lambda l: (l.startswith("#")
+                          or (re.match(r"^\s*[-*] ", l) and (len(l) - len(l.lstrip())) <= indent))
+    else:                                          # ③ 번호 규칙(`4-1. **…`) — 다음 최상위 번호 또는 헤딩까지
+        stop = lambda l: bool(re.match(r"^(#{1,6} |\d+(-\d+)?\. \*\*)", l))
+    end = next((i for i in range(start + 1, len(lines)) if stop(lines[i])), len(lines))
     return set(range(start, end)), 1
+
+
+def _scope_lines(scopes, word):
+    """스코프 디렉터리들을 걸어 `word`가 든 줄을 (rel, 0기반 줄번호, 원문)으로 낸다.
+
+    분류 로직과 파일 순회를 한 함수에 두면 중첩이 6단계까지 내려가 읽기 부담이 커진다
+    (축 ⑪이 같은 이유로 `_scan_lines`를 분리했다 — 그 함수를 재사용하지 않는 것은
+    Design ④의 비추상화 선언대로 스코프·앵커 형태가 달라서다).
+    """
+    for scope in scopes:
+        base = os.path.join(ROOT, scope.replace("/", os.sep))
+        for b, _, names in os.walk(base):
+            for nm in sorted(names):
+                if not nm.endswith(".md"):
+                    continue
+                f = os.path.join(b, nm)
+                rel = os.path.relpath(f, ROOT).replace(os.sep, "/")
+                for i, line in enumerate(read(f).split("\n")):
+                    if word in line:
+                        yield rel, i, line
 
 
 def check_concept_locality(conv, report=False):
@@ -278,30 +307,21 @@ def check_concept_locality(conv, report=False):
             continue
         canon_rel = row["canon"]
         buckets = {"정본": [], "화이트리스트": [], "위반": [], "차집합": [], "면제 잔여": []}
-        for scope in row["scopes"]:
-            base = os.path.join(ROOT, scope.replace("/", os.sep))
-            for b, _, names in os.walk(base):
-                for nm in sorted(names):
-                    if not nm.endswith(".md"):
-                        continue
-                    f = os.path.join(b, nm)
-                    rel = os.path.relpath(f, ROOT).replace(os.sep, "/")
-                    for i, line in enumerate(read(f).split("\n")):
-                        if row["word"] not in line:
-                            continue
-                        if rel == canon_rel and i in block:
-                            buckets["정본"].append((rel, i + 1, line.strip()))
-                            continue
-                        hit_ref = [r for r in row["refs"] if r in line]
-                        if hit_ref:
-                            buckets["화이트리스트"].append((rel, i + 1, line.strip()))
-                            # 면제 잔여: 한 줄에 포인터와 **독자 서술**이 섞인 자리.
-                            # 개념어가 식별자 수보다 많이 나오면 그중 일부는 포인터가 아니다
-                            # (축 ⑪ T3 1R BLOCKER ⓑ — 정당한 면제 뒤에 진짜 위반이 숨던 형태).
-                            if line.count(row["word"]) > len(hit_ref):
-                                buckets["면제 잔여"].append((rel, i + 1, line.strip()))
-                        else:
-                            buckets["위반"].append((rel, i + 1, line.strip()))
+        for rel, i, line in _scope_lines(row["scopes"], row["word"]):
+            entry = (rel, i + 1, line.strip())
+            if rel == canon_rel and i in block:
+                buckets["정본"].append(entry)
+                continue
+            hit_ref = [r for r in row["refs"] if r in line]
+            if not hit_ref:
+                buckets["위반"].append(entry)
+                continue
+            buckets["화이트리스트"].append(entry)
+            # 면제 잔여: 한 줄에 포인터와 **독자 서술**이 섞인 자리. 개념어가 식별자 수보다
+            # 많이 나오면 그중 일부는 포인터가 아니다(축 ⑪ T3 1R BLOCKER ⓑ — 정당한 면제
+            # 뒤에 진짜 위반이 숨던 형태).
+            if line.count(row["word"]) > len(hit_ref):
+                buckets["면제 잔여"].append(entry)
         out.append((row["name"], buckets))
     if checked == 0:
         die("개념 정본 유일성: 검사 대상 개념을 하나도 찾지 못함")
@@ -313,6 +333,7 @@ def check_concept_locality(conv, report=False):
                 for rel, ln, s in b[k]:
                     print("    %s:%d  %s" % (rel, ln, s[:110]))
     return issues, checked
+
 
 # ─────────────────────────────────────────────────────────────
 # ③ 포인터 도달성
@@ -485,7 +506,7 @@ def main():
     # 축 ⑫는 T3 시점에 리포트 전용이다 — `main()` 편입은 T11(축 ⑪의 전례: 소진이 끝나기
     # 전에 편입하면 그 사이 모든 task의 검증이 FAIL한다).
     if "--concept-report" in sys.argv:
-        conv = read(os.path.join(ROOT, "docs", "harness-conventions.md"))
+        conv = read(CONV_MD)
         issues, n = check_concept_locality(conv, report=True)
         print("\n== 개념 %d개 검사 ==" % n)
         for m in issues:
