@@ -2,7 +2,7 @@
 """llm-wiki Lint 보조 스크립트.
 
 사용법: python lint.py "<vault_path>" [--fix]
-검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md·skill-feedback.md는 제외 — §7-1) / 예산 초과·guide_kind 부재/오타(§7-2 —
+검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md·skill-feedback.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
       / updated 필드 누락(§7-9 — 신선도 추적 전제) / feature '## 구현 방법' 섹션 부재(§7-18 확장)
@@ -69,8 +69,8 @@ BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 —
     #  log.md도 이미 문자 수(SPECIAL_BUDGET). 즉 산문 타입만 이 딕셔너리로 문자 수 판정한다.
     "source-stub": 1800, "project": 13000, "feature": 22000,
     "entity": 6000, "concept": 5000, "question": 3500,
-    "decision-log": 6000,  # 결정 이력 (wiki-schema §2.8 — 초과 시 90_archive 원경로 이동)
-    #  작업 규약 (§2.9 — 초과 시 무효 항목 제거 → 주제별 하위 분리 → 재분할. 아카이브 롤오버는 안 한다:
+    "decision-log": 6000,  # 결정 이력 (wiki-schema §2.8 — §7-2 발동 시 90_archive 원경로 이동)
+    #  작업 규약 (§2.9 — §7-2 발동 시 ① 무효 항목 제거 → ② ①로도 해소 안 되면 하위 분리 → 재분할. 아카이브 롤오버는 안 한다:
     #  절차 K가 매 작업 전에 읽으므로 아카이브로 옮기면 조회 경로 밖이 되어 이동이 곧 유실이다)
     "convention": 12000,
 }
