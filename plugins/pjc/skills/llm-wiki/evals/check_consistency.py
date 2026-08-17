@@ -797,6 +797,8 @@ TRIGGER_ALLOWLIST = [
     (LINT_CASES_JSON, '"rationale": "§7-14 순번 sub-index', "index 축 케이스 실증 서술"),
     (LINT_CASES_JSON, '"rationale": "§7-2 임박 단계(WARN)', "임박 OR 두 항 케이스 실증 서술"),
     (LINT_CASES_JSON, '"rationale": "「분리 불가 판정」(budget_split)', "억제·재판정 케이스 실증 서술"),
+    (LINT_CASES_JSON, '"rationale": "§7-2 convention 예산(12000자) 초과 WARN + 처방 힌트',
+     "convention 초과 WARN·힌트 병기 케이스 실증 서술 — 「초과 WARN」은 §7-2가 내는 신호의 이름이고 이 케이스가 실증하는 대상이다"),
 
     # ── budget_split 부속 — 「분리 불가 판정」 필드 정의(§3). 처방 불가 판정의 기록 규약이지
     #    발동 조건 서술이 아니다.
