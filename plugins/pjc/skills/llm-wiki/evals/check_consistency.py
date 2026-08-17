@@ -909,7 +909,7 @@ def _anchor_span(path, lines):
 def check_trigger_locality():
     """⑪ 예산 트리거 조건 어휘 유일성. 반환: (위반, 화이트리스트 검증, 차집합, 면제 잔여).
 
-    다른 축은 `(issues, checked)` 2-튜플을 반환하는데 이 축만 3-튜플인 이유: 리포트가
+    다른 축은 `(issues, checked)` 2-튜플을 반환하는데 이 축만 4-튜플인 이유: 리포트가
     위반뿐 아니라 **화이트리스트 앵커별 매치 수**와 **차집합 처분 상태**를 함께 내야
     하고(그 둘이 각각 「면제가 엉뚱한 줄을 덮지 않는가」·「정규식이 좁아 놓친 것이
     없는가」를 지키는 장치다), 2-튜플로는 그 정보가 담기지 않는다. main() 축으로 편입할
@@ -1104,7 +1104,7 @@ def main():
     checked += stage_checked
     mismatches.extend(stage_issues)
 
-    # ⑪ 트리거 유일성 — 3-튜플의 앞 두 값만 접어 쓴다. 차집합·면제 잔여는 사람이
+    # ⑪ 트리거 유일성 — 4-튜플의 앞 두 값만 접어 쓴다. 차집합·면제 잔여는 사람이
     #  판정할 리포트라 `--trigger-report`에만 나오고, 여기서는 **위반 유무**만 본다.
     trigger_issues, trigger_allow, _diffset, _residual = check_trigger_locality()
     trigger_checked = len(trigger_allow) + len(TRIGGER_ANCHORS)
