@@ -99,12 +99,27 @@ def frontmatter_span(text):
     return (m.start(1), m.end(1)) if m else None
 
 
-def insert_label(text, label):
-    """frontmatter 끝에 `index_label` 한 줄을 넣은 사본. 본문은 건드리지 않는다."""
-    span = frontmatter_span(text)
+def yaml_label(label):
+    """frontmatter에 넣을 라벨 값. YAML 문자열을 깨는 문자만 최소로 다듬는다 —
+    큰따옴표는 작은따옴표로, 개행은 공백으로. dry-run 미리보기도 **이 함수를 거쳐**
+    출력한다(미리보기와 실제 기록이 다르면 미리보기를 신뢰한 승인이 배신당한다)."""
+    return label.replace('"', "'").replace("\n", " ").strip()
+
+
+def insert_label(raw_text, label, crlf, bom):
+    """frontmatter 끝에 `index_label` 한 줄을 넣은 **바이트**. 본문은 건드리지 않는다.
+
+    줄바꿈·BOM을 원본 그대로 되돌린다 — 정규화한 텍스트를 그대로 쓰면 CRLF 파일의
+    **모든 줄**이 바뀌어, git diff가 "한 줄 추가"가 아니라 "전체 변경"으로 나온다.
+    되돌리기를 git에 맡기기로 한 이 스크립트의 전제(1줄만 손댄다)가 거기서 깨진다.
+    (`lint.py`의 `write()`가 지키는 관례와 같다.)"""
+    span = frontmatter_span(raw_text)
     assert span, "frontmatter 없는 페이지는 호출 전에 걸러진다"
-    head, body = text[:span[1]], text[span[1]:]
-    return head + 'index_label: "%s"\n' % label.replace('"', "'") + body
+    head, body = raw_text[:span[1]], raw_text[span[1]:]
+    out = head + 'index_label: "%s"\n' % yaml_label(label) + body
+    if crlf:
+        out = out.replace("\n", "\r\n")
+    return (("﻿" if bom else "") + out).encode("utf-8")
 
 
 def main():
@@ -119,16 +134,23 @@ def main():
         print("인덱스 표에서 라벨을 하나도 찾지 못했습니다 — vault 경로나 index.md 형식을 확인하세요.")
         return 1
 
-    planned, already, no_label, no_fm, conflicts = [], [], [], [], []
+    planned, already, no_label, no_fm, conflicts, unreadable = [], [], [], [], [], []
     for p in sorted(glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)):
         rel = os.path.relpath(p, vault).replace("\\", "/")
+        # 루트 파일(`"/" not in rel`)은 큐·log·인덱스라 이미 제외되지만, 하위에 index* 이름을
+        #  둘 가능성까지 막아 둔다(방어적 중복 — 인덱스 자신을 대상으로 삼으면 자기참조가 된다).
         if rel.startswith("90_archive/") or rel.startswith("index") or "/" not in rel:
-            continue          # 아카이브·인덱스 자신·루트 파일(큐·log)은 대상이 아니다
+            continue
         try:
             with open(p, "rb") as fh:
-                text = fh.read().decode("utf-8-sig")
-        except (UnicodeDecodeError, OSError):
+                raw = fh.read()
+            text = raw.decode("utf-8-sig")
+        except (UnicodeDecodeError, OSError) as e:
+            # 조용히 넘기면 요약 합계와 실제 스캔 수가 어긋나도 그 차이가 어디서 났는지 알 수 없다
+            unreadable.append((rel, type(e).__name__))
             continue
+        bom = raw.startswith(b"\xef\xbb\xbf")
+        crlf = b"\r\n" in raw
         text = text.replace("\r\n", "\n").replace("\r", "\n")
         span = frontmatter_span(text)
         if span is None:
@@ -144,14 +166,17 @@ def main():
             continue
         if len(cands) > 1:
             conflicts.append((rel, cands))
-        planned.append((rel, cands[0], p, text))
+        planned.append((rel, cands[0], p, text, crlf, bom))
 
     print("== index_label 역이관 %s ==" % ("--apply (파일 변경)" if apply_changes else "dry-run (파일 미변경)"))
     print("대상 %d건 · 라벨 미발견 %d건 · 이미 있음 %d건 · frontmatter 없음 %d건 · 라벨 충돌 %d건"
           % (len(planned), len(no_label), len(already), len(no_fm), len(conflicts)))
+    if unreadable:
+        print("읽기 실패 %d건 (아래 목록 — 요약 합계에서 빠진 몫이다)" % len(unreadable))
     print()
-    for rel, label, _p, _t in planned:
-        print("  %s\n      index_label: \"%s\"" % (rel, label))
+    for rel, label, _p, _t, _c, _b in planned:
+        # 미리보기도 실제 기록과 같은 변환을 거친다 — 다르면 미리보기를 신뢰한 승인이 배신당한다
+        print("  %s\n      index_label: \"%s\"" % (rel, yaml_label(label)))
     if conflicts:
         print("\n-- 라벨 충돌 (인덱스마다 다른 라벨 — 첫 값을 쓰되 사람이 확인할 것) --")
         for rel, cands in conflicts:
@@ -164,6 +189,11 @@ def main():
         print("\n-- frontmatter 없음 (신설은 이 스크립트의 일이 아니다) --")
         for rel in no_fm:
             print("  %s" % rel)
+    if unreadable:
+        print()
+        print("-- 읽기 실패 (UTF-8이 아니거나 열 수 없다 — lint가 별도로 ERR을 낸다) --")
+        for rel, err in unreadable:
+            print("  %s (%s)" % (rel, err))
     if already:
         print("\n-- 이미 index_label 보유 (덮어쓰지 않는다 — 재실행 안전) --")
         for rel in already:
@@ -175,10 +205,10 @@ def main():
         return 0
 
     written, failed = 0, []
-    for rel, label, p, text in planned:
+    for rel, label, p, text, crlf, bom in planned:
         try:
             with open(p, "wb") as fh:
-                fh.write(insert_label(text, label).encode("utf-8"))
+                fh.write(insert_label(text, label, crlf, bom))
             written += 1
         except OSError as e:
             failed.append((rel, type(e).__name__))
