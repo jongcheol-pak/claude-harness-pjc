@@ -33,7 +33,7 @@
       (커밋 '수'만 셈). 어느 쪽도 코드 내용은 해석하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
-(H-2 규약(references/procedures-ops.md): SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
+(H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3~§4·이 파일 3중 동기화).
 """
 import os, re, sys, glob, shutil, datetime, subprocess
 

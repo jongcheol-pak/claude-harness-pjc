@@ -78,6 +78,9 @@ SKILL_DIR = os.path.dirname(EVALS_DIR)
 SKILL_MD = os.path.join(SKILL_DIR, "SKILL.md")
 SCHEMA_MD = os.path.join(SKILL_DIR, "references", "wiki-schema.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
+# 쓰기 세션 전용 규칙(파일 예산·예산 단계 신호·네이밍·J 부트스트랩)이 SKILL.md에서 분리된 자리(v1.180.0 T8).
+#  코드 세션(절차 K)이 로드하지 않도록 뺀 것이라 예산 표·예산 단계 파싱도 이 파일을 본다.
+OPS_RULES_MD = os.path.join(SKILL_DIR, "references", "wiki-ops-rules.md")
 TEMPLATES_MD = os.path.join(SKILL_DIR, "references", "templates.md")
 LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
 CONTENT_MD = os.path.join(SKILL_DIR, "references", "procedures-content.md")
@@ -154,10 +157,11 @@ def parse_budget_table(section_text, source_label):
 
 
 def parse_skill_budget(text):
+    """예산 표는 references/wiki-ops-rules.md에 있다(v1.180.0 T8 분리). text는 그 파일 내용이다."""
     m = re.search(r"^## 파일 예산\n(.*?)(?=^## |\Z)", text, re.M | re.S)
     if not m:
-        die("SKILL.md '## 파일 예산' 섹션을 찾지 못함")
-    return parse_budget_table(m.group(1), "SKILL.md 예산표")
+        die("wiki-ops-rules.md '## 파일 예산' 섹션을 찾지 못함")
+    return parse_budget_table(m.group(1), "wiki-ops-rules.md 예산표")
 
 
 def parse_schema_table_budget(text):
@@ -374,6 +378,7 @@ def build_letter_file_map():
     result = {}
     sources = {
         "SKILL.md": read(SKILL_MD),
+        "wiki-ops-rules.md": read(OPS_RULES_MD),
         "references/procedures-content.md": read(
             os.path.join(SKILL_DIR, "references", "procedures-content.md")),
         "references/procedures-ops.md": read(OPS_MD),
@@ -641,16 +646,16 @@ BUDGET_STAGE_ROWS = {
 }
 
 
-def check_budget_stages(skill_text, lint):
+def check_budget_stages(ops_rules_text, lint):
     """예산 단계 임계·판정 어휘 정합 — SKILL.md '## 예산 단계 신호' 표 ↔ lint.py 상수.
 
     기존 예산 축(값 4소스 대조)이 다루지 않는 자리다: 임계 상수(BUDGET_NEAR_RATIO 계열)와
     budget_split 통제 어휘는 어느 대조에도 들어 있지 않아, 한쪽만 고쳐도 조용히 통과했다.
     문서 측 앵커를 표 하나로 좁힌 이유는 산문에 흩어진 수치를 파싱하면 문면이 조금만 바뀌어도
     앵커가 깨져 exit 2(파싱 실패)가 나기 때문이다."""
-    m = re.search(r"^## 예산 단계 신호\n(.*?)(?=^## |\Z)", skill_text, re.M | re.S)
+    m = re.search(r"^## 예산 단계 신호\n(.*?)(?=^## |\Z)", ops_rules_text, re.M | re.S)
     if not m:
-        die("SKILL.md '## 예산 단계 신호' 섹션을 찾지 못함")
+        die("wiki-ops-rules.md '## 예산 단계 신호' 섹션을 찾지 못함")
     found = {}
     for line in m.group(1).splitlines():
         cm = re.match(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|", line)
@@ -662,7 +667,7 @@ def check_budget_stages(skill_text, lint):
         found[label] = val
     missing = sorted(set(BUDGET_STAGE_ROWS) - set(found))
     if missing:
-        die(f"SKILL.md 예산 단계 표에서 행을 찾지 못함: {missing}")
+        die(f"wiki-ops-rules.md 예산 단계 표에서 행을 찾지 못함: {missing}")
 
     issues, checked = [], 0
     for label, (const, kind) in BUDGET_STAGE_ROWS.items():
@@ -677,7 +682,7 @@ def check_budget_stages(skill_text, lint):
             continue
         nm = re.match(r"(\d+(?:\.\d+)?)", raw)
         if not nm:
-            die(f"SKILL.md 예산 단계 '{label}' 행에서 선두 숫자를 찾지 못함: {raw[:40]}")
+            die(f"wiki-ops-rules.md 예산 단계 '{label}' 행에서 선두 숫자를 찾지 못함: {raw[:40]}")
         doc_num = float(nm.group(1))
         # percent 행은 문서가 %로 적고 lint은 비율로 갖는다(80% ↔ 0.8) — 단위를 맞춰 비교한다.
         doc_val = doc_num / 100 if kind == "percent" else doc_num
@@ -711,6 +716,7 @@ TRIGGER_BROAD_RX = re.compile(r"임박|초과|넘|예산|한도|여유")
 #  정본 출력을 없애라는 뜻이 된다.
 TRIGGER_SCAN_SCOPE = [
     (SKILL_MD, "md"),
+    (OPS_RULES_MD, "md"),
     (SCHEMA_MD, "md"),
     (CONTENT_MD, "md"),
     (OPS_MD, "md"),
@@ -723,7 +729,7 @@ TRIGGER_SCAN_SCOPE = [
 #  여러 줄이 되므로, 줄로 잡으면 정본을 정리하는 순간 그 정리가 위반으로 잡힌다.
 TRIGGER_ANCHORS = {
     SCHEMA_MD: (r"^2\. \*\*예산 준수\*\*", r"^3\. \*\*"),
-    SKILL_MD: (r"^## 예산 단계 신호", r"^## "),
+    OPS_RULES_MD: (r"^## 예산 단계 신호", r"^## "),
 }
 
 # 면제 열거 — 「파일, 줄 내용 앵커, 사유[, 기대 매치 수]」. 줄 번호가 아니라 **줄 내용**으로
@@ -747,7 +753,7 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_MD, "- **도달 경로(4번 등록)의 기계 검증은 타입에 따라",
      "「lint 통과만 보고 넘기면」 — 예산 무관"),
     (SCHEMA_MD, "2b. **델타 신뢰도 점검**", "허브 `updated` 30일 초과 = 신선도 축(§7-3)"),
-    (SKILL_MD, "| index.md | 제한 없음", "§7-14 index 트리거 — 줄/행 기준"),
+    (OPS_RULES_MD, "| index.md | 제한 없음", "§7-14 index 트리거 — 줄/행 기준"),
     (OPS_MD, "`[기계]` index·sub-index 분할 신호", "F-1 인덱스의 §7-14 라벨"),
     (LINT_PY, "# index.md 분할 신호 임계", "INDEX_BODY_LINES 상수 주석 — index 축"),
     (LINT_PY, "#   sub-index(순번 파일) 초과는", "위 상수 주석의 이어지는 줄 — index 축"),
@@ -1049,12 +1055,13 @@ def main():
     if "--trigger-report" in sys.argv[1:]:
         report_trigger_locality()  # exit 0으로 끝난다
     skill_text = read(SKILL_MD)
+    ops_rules_text = read(OPS_RULES_MD)
     schema_text = read(SCHEMA_MD)
     lint = load_lint()
 
     budget_sources = {
         "lint.py": lint_budget(lint),
-        "SKILL.md 예산표": parse_skill_budget(skill_text),
+        "wiki-ops-rules.md 예산표": parse_skill_budget(ops_rules_text),
         "schema §2 타입별 줄": parse_schema_type_budget(schema_text),
         "schema §4 표": parse_schema_table_budget(schema_text),
     }
@@ -1105,7 +1112,7 @@ def main():
     checked += enum_checked
     mismatches.extend(enum_issues)
 
-    stage_issues, stage_checked = check_budget_stages(skill_text, lint)
+    stage_issues, stage_checked = check_budget_stages(ops_rules_text, lint)
     checked += stage_checked
     mismatches.extend(stage_issues)
 

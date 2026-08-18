@@ -1,7 +1,8 @@
 # llm-wiki 절차 — 운영 (F·G·H·L·M)
 
 > 이 파일은 `llm-wiki` SKILL.md의 절차 본문이다(컨텍스트 예산 지연 로드 분할 — 본체의 절차 목차 라우팅 표에서 연결).
-> **본체 SKILL.md의 §0 시작 절차·사전 준수 사항을 먼저 적용한 뒤** 이 파일의 절차를 수행한다.
+> **본체 SKILL.md의 §0 시작 절차·공통 사전 준수 사항을 먼저 적용한 뒤** 이 파일의 절차를 수행한다.
+> **그리고 `references/wiki-ops-rules.md`도 함께 Read한다** — 위키를 쓰는 절차가 지켜야 할 규칙(백업 누적 금지·log 월별 롤오버·병렬 분업·lint 실행 폴백·지침 자동 갱신·파일 네이밍·파일 예산·예산 단계 신호)이 그 파일에 있다(v1.180.0 T8에서 본체와 분리 — 코드 세션이 쓰기 규칙을 로드하지 않게 하려는 것이라, **쓰기 세션은 반드시 읽어야 한다**).
 > 수록: F. Lint(건강 검진) / G. Query(위키 질문) / H. 지침 자동 갱신 / L. 복구(백업 되돌리기) / M. 큐 소비(경량).
 > **쓰기 완료 전 체크리스트**: 이 파일의 절차가 위키 파일을 생성·수정하는 경우(F-2 승인 후 수정, G 4~5 파일백·question 생성, L 복구, M 큐 소비), 작업 완료 전 `references/procedures-content.md`의 "## 체크리스트 (작업 완료 전)" 절만 **부분 Read**(Grep/offset)해 점검한다 — 콘텐츠 절차 전문까지 정독할 필요 없다.
 
@@ -13,7 +14,7 @@
 - **큐 잔량 확인 (보고만 — 소비는 F-2 승인 후)**: vault 루트 **두 큐 파일**을 읽어 잔량을 집계·보고한다(어떤 태그가 몇 건, 어느 프로젝트인지 — **파일별로 나눠 보고**한다) — `pending.md`의 `[K-DRIFT]`·`[DECISION]`·`[PROJECT-FACT]`·`[K-MISS]`·`[SYMPTOM]`과 **`skill-feedback.md`의 `[SKILL-IMPROVE]`**. 각 파일이 없으면 그 파일은 건너뛴다. **F-0에서는 소비(제거·표식 부착·decisions.md 반영)를 하지 않는다** — 실제 소비는 **F-2 결과 보고에서 사용자 승인과 함께** 처리한다(수정 승인 게이트에 합류 — 큐 소비도 위키를 바꾸는 쓰기이므로 lint 수정 승인과 같은 지점에서 함께 확인받는다). 소비 시점의 규칙은 **B-1 0의 소비 규칙과 동일**하다(정본 `references/procedures-content.md` B-1 0 — 여기 재열거 안 함): K-DRIFT는 반영 후 제거, SKILL-IMPROVE는 위키 미반영·"플러그인 개선 후보" 보고 후 재보고 억제, DECISION은 대상 프로젝트 decisions.md 추가 후 제거·다른 프로젝트는 동의 게이트·미등록 프로젝트 등록 확인, PROJECT-FACT는 대상 프로젝트 `conventions.md`(schema §2.9) 반영 후 제거(파일 없으면 생성 + 허브 링크 1회, 게이트 규칙은 DECISION과 동형), K-MISS는 레포 근거 대조 후 feature/recipe 반영 또는 기각 사유 보고 후 제거(수요 신호 — 자동 생성 아님), SYMPTOM은 증상별 인덱스(schema §6) 등재 게이트 3종 검증 후 반영 — 해법 페이지 부재면 보류(recipe/question 선행)·미검증 원인이면 기각 후 제거. 미처리 잔량은 이번 점검 보고에 포함하고 관련 프로젝트 정합 확인에 반영한다.
   - **형식 위반 WARN(§7-25)이 뜨면 잔량 숫자를 그대로 신뢰하지 않는다** — 태그는 있으나 날짜 선두 형식이 아닌 줄은 집계에서 빠지므로, 실제 잔량이 보고된 수보다 많다(극단적으로 전건 위반이면 잔량 0으로 보인다). 위반 줄을 규약 형식으로 정규화한 뒤 잔량을 재확인하고, 그 정규화도 F-2 승인 대상에 포함한다.
 - `python "<skill>/scripts/lint.py" "<vault>"` 로 **아래 F-1 인덱스의 `[기계]` 표시 항목 전체**를 기계적으로 1차 점검(읽기 전용 — 항목 상세 정본은 schema §7, F-1은 실행 순서 인덱스). 그 결과를 아래 항목과 합쳐 보고한다.
-- **폴백 (python 부재·실행 실패)**: 본체 SKILL.md 사전 준수 사항의 **lint 실행 폴백(공통)** 을 따른다(정본 — 건너뛰기 + "기계 lint 미실행" 보고 명시). F에서는 건너뛴 뒤 §7-10 에이전트 수동 점검으로 진행한다.
+- **폴백 (python 부재·실행 실패)**: `references/wiki-ops-rules.md`의 **lint 실행 폴백(공통)** 을 따른다(정본 — 건너뛰기 + "기계 lint 미실행" 보고 명시). F에서는 건너뛴 뒤 §7-10 에이전트 수동 점검으로 진행한다.
 
 #### F-1. 실행 순서 (검사 항목 인덱스)
 
@@ -58,7 +59,7 @@
   - **안전장치는 §4 「분할 수행 절차」를 그대로 쓴다** — 착수 직전 사본 → 수행 → 결과 검증 → **실패 시 원복 후 보고(자동 재시도 금지)**. 완료 후 **무엇을 어디로 옮겼는지와 되돌리는 방법을 사후 보고**하고 `log.md`에 기록한다. 승인을 받지 않는 대신 되돌릴 수 있어야 한다.
 - 사용자 승인 후 수정. **단 다음 셋은 승인 대상이 아니다** — ① **§7-14의 index/sub-index 분할**(§4 2단계 category + 3단계 순번 파일) ② **§7-2 발동으로 소비 지점(F-2·A-4·B-3)이 착수한 산문 타입 하위 분리 및 그 판정 결과인 `budget_split` 3필드 부착**(위 F-2 예산 신호 소비 지점) ③ **롤오버**(project 허브·decision-log·`log.md` — 보존 이동이라 원문 손실이 없다, §2.2·§2.8·§8). **시점은 각 절이 정한다** — decision-log·`log.md`는 **§7-2 발동**, **project 허브는 §2.2의 「6번째 항목」이라 문자 예산과 무관**하다. 셋 다 주 작업 완료 후 자동 수행하고 사후 보고한다(§4 분할 수행 절차 1번·6번). **참조 무결성 3종(§7-23·§7-24·§7-19 stale 행)은 수기 편집 대신 `python "<skill>/scripts/lint.py" "<vault>" --fix`로 대체할 수 있다**(자동 백업·[FIXED] 요약 출력 — 대상·안전장치 정본은 schema §7 서두, 승인 전 실행 금지).
 - **두 큐 파일 소비도 이 승인 지점에서 함께 처리**(F-0 잔량 보고 → 여기서 소비): 승인 시 B-1 0 규칙대로 `pending.md`의 K-DRIFT·DECISION(대상 프로젝트)·PROJECT-FACT(대상 프로젝트)·K-MISS(대상 프로젝트)·SYMPTOM(대상 프로젝트)과 **`skill-feedback.md`의 SKILL-IMPROVE**를 소비한다. 소비 전 `references/procedures-content.md`의 B-1 0 절만 부분 Read(Grep/offset)해 제거 시점 재읽기-병합·중복 검사·롤오버·표식 규칙을 따른다(요약만으로 소비 금지). 다른 프로젝트 [DECISION]·[PROJECT-FACT]·[K-MISS]·[SYMPTOM]는 B-1 0의 동의 게이트를 따른다.
-- `log.md` (**위키 파일이 실제로 변했을 때만** — 본체 SKILL.md 사전 준수 사항의 log 기록 조건이 정본): `- [YYYY-MM-DD] [LINT] 위키 점검. {발견}건 발견, {수정}건 수정. 표본: {코드 정합 샘플링 feature 목록}.` — 표본 명시는 다음 lint의 로테이션 근거다(F-1 10, schema §7-10).
+- `log.md` (**위키 파일이 실제로 변했을 때만** — `references/wiki-ops-rules.md`의 log 기록 조건이 정본): `- [YYYY-MM-DD] [LINT] 위키 점검. {발견}건 발견, {수정}건 수정. 표본: {코드 정합 샘플링 feature 목록}.` — 표본 명시는 다음 lint의 로테이션 근거다(F-1 10, schema §7-10).
   - **기록 대상**: 수정 적용(수기·`--fix`) · 큐 소비(`pending.md`·`skill-feedback.md` **어느 쪽이든** 변경) · 리포트 페이지 생성(`questions/lint-*.md`) **중 하나라도 있었을 때**.
   - **미기록**: 발견 0건이거나, 발견은 있었으나 사용자가 수정을 승인하지 않아 **위키 파일이 하나도 안 변한** 경우 — log를 쓰면 그 자체가 vault 쓰기가 되어 비 git vault 사전 백업까지 연쇄 발동한다(무변경 점검이 부작용을 낳는 구조). 결과는 대화 보고로만 전달한다.
 
@@ -97,7 +98,7 @@
 
 > **(참고) 승인 후 하네스 레포에서 번들을 실제로 수정할 때의 규칙** — 위키 세션이 아니라 plan-feature 승인을 거친 하네스 세션에서 적용:
 > - 규칙 번들 수정 시 frontmatter `version`을 올린다.
-> - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `SKILL.md` 예산표, `wiki-schema.md` **§2.N 타입절(`- **예산**:` 줄)·§3~§4**, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/FRESHNESS_EXEMPT_TYPES/RELEASE_MARKER_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **예산 단계 임계·판정 어휘**(BUDGET_NEAR_RATIO/BUDGET_CRITICAL_RATIO/BUDGET_CRITICAL_SLACK/BUDGET_REJUDGE_MARGIN/BUDGET_SPLIT_VOCAB)는 `llm-wiki/SKILL.md`의 **「예산 단계 신호」 표**가 문서 측 정본이며 `check_consistency.py`가 그 표와 lint 상수를 기계 대조한다 — 산문(§7-2·§4)에는 수치를 복제하지 말고 상수명만 쓴다(복제하면 그 자리가 무가드로 남는다). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `references/procedures-ops.md` F-1(이 파일)에 동일 항목을 문서화한다.
+> - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `references/wiki-ops-rules.md` 예산표, `wiki-schema.md` **§2.N 타입절(`- **예산**:` 줄)·§3~§4**, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/FRESHNESS_EXEMPT_TYPES/RELEASE_MARKER_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **예산 단계 임계·판정 어휘**(BUDGET_NEAR_RATIO/BUDGET_CRITICAL_RATIO/BUDGET_CRITICAL_SLACK/BUDGET_REJUDGE_MARGIN/BUDGET_SPLIT_VOCAB)는 `references/wiki-ops-rules.md`의 **「예산 단계 신호」 표**가 문서 측 정본이며 `check_consistency.py`가 그 표와 lint 상수를 기계 대조한다 — 산문(§7-2·§4)에는 수치를 복제하지 말고 상수명만 쓴다(복제하면 그 자리가 무가드로 남는다). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `references/procedures-ops.md` F-1(이 파일)에 동일 항목을 문서화한다.
 > - **이 동기 정합은 `python "<skill>/evals/check_consistency.py"`(인자 없음)로 기계 검증한다** — 세 곳(+§4 예산표·템플릿 주석·§7↔F-1 번호·**타입 열거 정합**)의 드리프트를 손 대조 대신 자동으로 잡는다. **타입 열거 정합**은 새 타입을 도입할 때 기존 타입이 산문으로 열거된 자리(§3 origin·confidence 통제어휘 서술 · §7-3 · §7-9 · §7-28 · §8 아카이브 예외 · §11 · 목차 §2 행 · 계층 태그 · `templates.md` 목차 · §12 description 권장/비대상)가 조용히 낡는 것을 막는다 — **새 타입을 만들면 이 자리들도 함께 갱신해야 exit 0이 된다.** 수동 3중 갱신에 의존하지 말고 번들 수정 후 반드시 돌린다(레포 루트 `AGENTS.md`가 지목하는 검증 매핑 표 — 표 본체는 `docs/harness-conventions.md` — 가 `llm-wiki/**` 수정 시 이 실행을 요구한다. 이 포인터는 그 게이트를 절차에서도 발견 가능하게 한다).
 
 #### H-3. 범위 제한 (SSOT 우선)
