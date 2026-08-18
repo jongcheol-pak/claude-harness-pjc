@@ -56,6 +56,11 @@ BUDGET_NEAR_RATIO = 0.8
 BUDGET_CRITICAL_RATIO = 0.95
 BUDGET_CRITICAL_SLACK = 500
 
+# 백업 자동 정리 임계(§8) — `-presplit` 사본을 며칠까지 보존하는가.
+#  §8의 "30일 지난 폴더는 삭제한다"를 그대로 쓴다. 접미사 없는 `{YYYY-MM-DD}/`는 이 값과 무관하게
+#  「오늘 것만 남긴다」로 더 빨리 회수된다(위키 decisions [2026-08-13] 채택 — 아래 cleanup_backups).
+BACKUP_KEEP_DAYS = 30
+
 # 「분리 불가 판정」(frontmatter budget_split) — 나눌 하위 주제가 없는 페이지(단일 주제 recipe·concept)는
 #  §4의 이동·분리 처방이 성립하지 않는다. 판정을 기록하면 임박 WARN을 「분리 불가 판정 유지」 INFO로 강등한다.
 #  판정 시점 문자 수(budget_split_chars) 대비 이 마진을 넘게 자라면 억제가 풀려 재판정을 강제한다 —
@@ -392,6 +397,51 @@ def repo_root_for_hub(hub_text):
     return root if os.path.isdir(root) else None
 
 
+def cleanup_backups(vault, today):
+    """§8 백업 정리 — `--fix`가 새 백업을 만들기 **전에** 1회 호출된다. 두 규칙을 함께 집행한다:
+      ① **접미사 없는 `{YYYY-MM-DD}/` 중 오늘이 아닌 것 제거** — git vault는 사전 백업이 면제인데
+         `--fix` 자동 백업만 쌓이는 것을 막는다. 제거 시점을 「세션 종료」가 아니라 「다음 --fix 시작」으로
+         두는 이유: 미커밋 상태로 세션이 끝나면 git 복구(checkout은 미커밋을 못 되돌린다)와 백업이
+         동시에 없어져 복구 수단이 0이 된다. 한 세션분을 남기면 복구 창이 유지되고 누적은 1개로 상한된다.
+      ② **`{YYYY-MM-DD}-presplit/` 중 BACKUP_KEEP_DAYS 경과분 제거** — 원본이 vault에 그대로 있는
+         수정 백업 성격이라 30일 정리 대상이다(§8 — `-deleted`·`-pre-restore` 같은 보존 특례가 없다).
+    **`-deleted`(삭제 백업 = 유일 사본)와 `-pre-restore`(복구 재백업)는 어느 규칙에도 걸리지 않는다** —
+    지우면 복구가 영구 불가해진다. 날짜로 읽히지 않는 이름(사람이 만든 임의 폴더)도 건드리지 않는다.
+    반환: 제거한 항목의 `{폴더명} ({사유})` 목록 — 호출부가 [CLEANUP] 줄로 보고한다."""
+    root = os.path.join(vault, "90_archive", "backup")
+    if not os.path.isdir(root):
+        return []
+    removed = []
+    for name in sorted(os.listdir(root)):
+        path = os.path.join(root, name)
+        if not os.path.isdir(path):
+            continue
+        m = re.match(r"^(\d{4}-\d{2}-\d{2})(-.+)?$", name)
+        if not m:
+            continue
+        day = parse_date(m.group(1))
+        if day is None:   # 2026-13-45 같은 형식만 맞는 이름 — 판정 불가라 건드리지 않는다
+            continue
+        suffix = m.group(2) or ""
+        if suffix == "":
+            if day == today:
+                continue
+            reason = "이전 날짜 — 누적 금지"
+        elif suffix == "-presplit":
+            if (today - day).days <= BACKUP_KEEP_DAYS:
+                continue
+            reason = f"{BACKUP_KEEP_DAYS}일 경과"
+        else:
+            continue   # -deleted·-pre-restore 등 보존 특례
+        try:
+            shutil.rmtree(path)
+            removed.append(f"{name} ({reason})")
+        except OSError as e:
+            # 항목별 실패 격리 — apply_fixes의 [FIX-FAIL]과 같은 규약(그 폴더만 건너뛰고 계속).
+            print(f"[CLEANUP-FAIL] {name} 제거 실패({type(e).__name__}) — 건너뜀")
+    return removed
+
+
 def apply_fixes(vault):
     """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 3종만 자동 수정한다 (§7 —fix 규약) —
       ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거 —
@@ -403,8 +453,11 @@ def apply_fixes(vault):
     안전장치: 수정 전 원본을 90_archive/backup/{오늘}/ 원경로에 백업(목적지 존재 시 미덮어쓰기 — §8,
       복구는 절차 L 그대로 적용). 인코딩(BOM)·줄바꿈은 원본 상태를 보존한다. 항목별 실패는 격리
       (그 파일만 [FIX-FAIL] 보고 후 계속). 위반 0이면 파일 무변경·백업 미생성.
-    플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변."""
+    **백업 정리는 새 백업을 만들기 전에 1회 수행한다**(cleanup_backups — §8 누적 금지·30일 정리).
+      순서가 중요하다: 나중에 하면 방금 만든 오늘 백업을 지울 판정을 다시 하게 된다.
+    플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변(정리도 여기서만 일어난다)."""
     today = datetime.date.today()
+    cleaned = cleanup_backups(vault, today)
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
     raws, pages = {}, {}   # rel -> (bom, 원본 텍스트) / rel -> (fm, type, 정규화 텍스트)
@@ -577,6 +630,8 @@ def apply_fixes(vault):
             failed.append(f"log.md 수정 실패({type(e).__name__}) — 건너뜀")
 
     print("== --fix 적용 (안전 3종: §7-23 / §7-24 / §7-19 stale 제거) ==")
+    for c in cleaned:
+        print("[CLEANUP] 백업 제거: " + c)
     if fixed:
         for f in fixed:
             print("[FIXED] " + f)
