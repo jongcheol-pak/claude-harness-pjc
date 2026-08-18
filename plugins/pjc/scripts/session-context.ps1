@@ -31,7 +31,7 @@ try {
     $inp = $null
     try { $inp = $raw | ConvertFrom-Json } catch { exit 0 }
     $cwd = [string]$inp.cwd
-    $source = [string]$inp.source   # startup|resume|clear|compact (부재 시 빈 문자열 → 비compact 취급)
+    $source = [string]$inp.source   # startup|resume|clear|compact|fork (부재 시 빈 문자열 → 비compact 취급. fork는 compact가 아니라 startup과 같은 경로를 탄다)
 
     $lines = New-Object System.Collections.Generic.List[string]
 
