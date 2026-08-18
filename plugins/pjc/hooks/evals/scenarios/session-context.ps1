@@ -166,6 +166,14 @@ if (Test-HookSelected @('session-context')) {
         $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC22 주입·순서 위반 (exit=$($r.code), vault=$iVault, agents=$iAgents)" })
     }
 
+    # SC22b/SC22c: 위 SC22와 **같은 조건을 source=fork로** 한 번 더 — fork 경로에서 vault 라인과
+    #   AGENTS.md 전문이 함께 주입되는지 고정한다. 앞의 SC2b는 plan 축만 보는데, fork matcher를 넣은
+    #   목적은 그 세션에 plan·vault·AGENTS 셋이 다 들어가게 하는 것이라 나머지 두 축도 골든에 박아 둔다
+    #   ($source는 이 두 블록을 게이팅하지 않으므로 startup과 결과가 같아야 한다 — 그 사실 자체가 검증 대상).
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'fork'; cwd = $scVOnly } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: fork도 vault 라인 주입 (SC22b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
+    Assert-Case -Name "session-context: fork도 AGENTS 전문 주입 (SC22c)" -R $r -ExpectExit 0 -ExpectContains 'SC_VAULT_ORDER_MARKER'
+
     # SC19: 설정됐으나 폴더 부재(이동·삭제) → 부재 문구 주입 (경로 재확인 신호)
     $isoV2 = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-vault-gone-" + $suffix)
     New-Item -ItemType Directory -Path (Join-Path $isoV2 '.claude') -Force | Out-Null
