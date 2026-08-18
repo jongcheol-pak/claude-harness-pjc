@@ -407,11 +407,12 @@ def cleanup_backups(vault, today):
          수정 백업 성격이라 30일 정리 대상이다(§8 — `-deleted`·`-pre-restore` 같은 보존 특례가 없다).
     **`-deleted`(삭제 백업 = 유일 사본)와 `-pre-restore`(복구 재백업)는 어느 규칙에도 걸리지 않는다** —
     지우면 복구가 영구 불가해진다. 날짜로 읽히지 않는 이름(사람이 만든 임의 폴더)도 건드리지 않는다.
-    반환: 제거한 항목의 `{폴더명} ({사유})` 목록 — 호출부가 [CLEANUP] 줄로 보고한다."""
+    반환: `(제거 목록, 실패 목록)` — 둘 다 호출부가 `--fix` 헤더 **아래**에서 [CLEANUP]·[CLEANUP-FAIL]로
+    보고한다(여기서 바로 print하면 그 줄만 헤더 밖으로 나가 [FIXED]/[FIX-FAIL]과 형식이 어긋난다)."""
     root = os.path.join(vault, "90_archive", "backup")
     if not os.path.isdir(root):
-        return []
-    removed = []
+        return [], []
+    removed, failed = [], []
     for name in sorted(os.listdir(root)):
         path = os.path.join(root, name)
         if not os.path.isdir(path):
@@ -438,8 +439,8 @@ def cleanup_backups(vault, today):
             removed.append(f"{name} ({reason})")
         except OSError as e:
             # 항목별 실패 격리 — apply_fixes의 [FIX-FAIL]과 같은 규약(그 폴더만 건너뛰고 계속).
-            print(f"[CLEANUP-FAIL] {name} 제거 실패({type(e).__name__}) — 건너뜀")
-    return removed
+            failed.append(f"{name} 제거 실패({type(e).__name__}) — 건너뜀")
+    return removed, failed
 
 
 def apply_fixes(vault):
@@ -457,7 +458,7 @@ def apply_fixes(vault):
       순서가 중요하다: 나중에 하면 방금 만든 오늘 백업을 지울 판정을 다시 하게 된다.
     플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변(정리도 여기서만 일어난다)."""
     today = datetime.date.today()
-    cleaned = cleanup_backups(vault, today)
+    cleaned, cleanup_failed = cleanup_backups(vault, today)
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
     raws, pages = {}, {}   # rel -> (bom, 원본 텍스트) / rel -> (fm, type, 정규화 텍스트)
@@ -632,6 +633,8 @@ def apply_fixes(vault):
     print("== --fix 적용 (안전 3종: §7-23 / §7-24 / §7-19 stale 제거) ==")
     for c in cleaned:
         print("[CLEANUP] 백업 제거: " + c)
+    for c in cleanup_failed:
+        print("[CLEANUP-FAIL] " + c)
     if fixed:
         for f in fixed:
             print("[FIXED] " + f)
