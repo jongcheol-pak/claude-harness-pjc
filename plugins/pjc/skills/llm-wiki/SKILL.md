@@ -44,7 +44,7 @@ description: >
 > - WRONG: 라우팅 표만 보고 B(ingest)를 수행 → pending 큐 소비(B-1 0)·망라 재대조(B-1a)·recipe 게이트(A-3a) 등 필수 단계 생략
 > - RIGHT: `references/procedures-content.md`를 Read한 뒤 B-1부터 순서대로 수행
 >
-> **본체 = §0 + 공통 사전 준수 사항 + 절차 K.** 쓰기 세션 전용 규칙은 `references/wiki-ops-rules.md`로 분리했다 — **쓰기 절차(A~F·I·M)는 그 파일도 함께 Read한다.** 단 「비 git vault 사전 백업」은 본체에 남아 있다(절차 M이 코드 세션에서 요구).
+> **본체 = §0 + 공통 사전 준수 사항 + 절차 K + Wikilink 형식.** 쓰기 세션 전용 규칙은 `references/wiki-ops-rules.md`로 분리했다 — **쓰기 절차(A~F·I·M)는 그 파일도 함께 Read한다.** 단 「비 git vault 사전 백업」은 본체에 남아 있다(절차 M이 코드 세션에서 요구).
 
 ## 0. 시작 절차 (모든 작업 전 1회 실행)
 

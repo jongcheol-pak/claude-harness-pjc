@@ -156,7 +156,7 @@ def parse_budget_table(section_text, source_label):
     return rows
 
 
-def parse_skill_budget(text):
+def parse_ops_rules_budget(text):
     """예산 표는 references/wiki-ops-rules.md에 있다(v1.180.0 T8 분리). text는 그 파일 내용이다."""
     m = re.search(r"^## 파일 예산\n(.*?)(?=^## |\Z)", text, re.M | re.S)
     if not m:
@@ -634,7 +634,7 @@ def check_type_enumerations(schema_text, lint):
 
 
 # 예산 단계 신호 표(SKILL.md '## 예산 단계 신호') 행 라벨 → (lint 상수명, 해석 방식).
-#  이 표를 `## 파일 예산` 절 밖의 형제 `##`로 둔 이유는 parse_skill_budget이 그 절을 다음 `##`까지
+#  이 표를 `## 파일 예산` 절 밖의 형제 `##`로 둔 이유는 parse_ops_rules_budget이 그 절을 다음 `##`까지
 #  통째로 잡고 parse_budget_table이 구간 내 모든 `|`행을 훑기 때문이다 — 절 안에 두면 이 표의
 #  헤더행이 예산 데이터로 잡혀 die()가 난다(그래서 별도 앵커가 필요했다).
 BUDGET_STAGE_ROWS = {
@@ -1061,7 +1061,7 @@ def main():
 
     budget_sources = {
         "lint.py": lint_budget(lint),
-        "wiki-ops-rules.md 예산표": parse_skill_budget(ops_rules_text),
+        "wiki-ops-rules.md 예산표": parse_ops_rules_budget(ops_rules_text),
         "schema §2 타입별 줄": parse_schema_type_budget(schema_text),
         "schema §4 표": parse_schema_table_budget(schema_text),
     }
