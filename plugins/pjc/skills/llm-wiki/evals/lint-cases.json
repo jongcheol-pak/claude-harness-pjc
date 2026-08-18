@@ -476,6 +476,46 @@
         "이전 날짜 — 누적 금지",
         "30일 경과"
       ]
+    },
+    {
+      "fixture": "build-index",
+      "build_index": true,
+      "why": "FR-9/FR-10 인덱스 생성 — frontmatter에서 7섹션을 파생하고, index_label이 있으면 그것을 라벨로 쓰고 없으면 폴백(feature_name·concept_name·H1)에 「미역이관」 표식을 붙인다. 마커 밖 텍스트(증상별 인덱스·참조·머리말)는 한 글자도 바뀌지 않아야 하고, --dry-run은 파일을 쓰지 않아야 한다(파일 바이트 앞뒤 비교로 실증).",
+      "expect_keywords": [
+        "== --build-index --dry-run (파일 미변경) ==",
+        "라벨 미역이관 3건",
+        "20_projects/personal/demo/feat-beta.md",
+        "데모 프로젝트 (Demo)",
+        "업무 데모 (work demo)",
+        "데모 레시피 (demo recipe)",
+        "데모 기술 (DemoTech)",
+        "데모 미해결 질문 (demo open question)",
+        "베타 기능",
+        "데모 부트스트랩 (demo bootstrap)",
+        "데모 패턴",
+        "[[index-personal|개인 프로젝트 기능별 인덱스]]",
+        "## 증상별 인덱스",
+        "마커 밖 수기 행 — 생성이 지우면 안 된다",
+        "마커 밖 참조 섹션 — 이 줄도 보존 대상이다",
+        "> 마커 밖 머리말 — 생성이 건드리면 안 되는 자리.",
+        "---- index-personal.md ----",
+        "알파 기능 (alpha feature)"
+      ],
+      "expect_absent": [
+        "(여기는 --build-index가 통째로 치환한다)",
+        "(라벨 미정)"
+      ]
+    },
+    {
+      "fixture": "clean",
+      "build_index": true,
+      "expect_rc": 1,
+      "why": "생성 마커가 없는 기존 vault는 덮어쓰지 않는다 — 안내만 내고 exit 1. 마커 도입 전의 vault에서 --build-index를 잘못 돌려 수기 index.md가 통째로 날아가는 것을 막는 게이트다.",
+      "expect_keywords": [
+        "생성 마커 없음 -- index.md를 덮어쓰지 않았습니다.",
+        "<!-- AUTO-INDEX:BEGIN -->",
+        "마커 밖(증상별 인덱스·참조·머리말)은 생성이 건드리지 않습니다."
+      ]
     }
   ]
 }

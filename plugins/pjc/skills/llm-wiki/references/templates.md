@@ -40,6 +40,7 @@ tags: [source, 프로젝트태그]
 ```markdown
 ---
 type: project
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 project: 프로젝트명
 category: personal | work
 description: "한 줄 요약 (권장 — wiki-schema §12, 검색·인덱스 스니펫용)"
@@ -99,6 +100,7 @@ tags: [project, 카테고리, 프로젝트태그]
 ```markdown
 ---
 type: feature
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 project: 프로젝트명
 category: personal | work
 feature_name: "기능명"
@@ -146,6 +148,7 @@ tags: [feature, 기능태그, 프로젝트태그]
 ```markdown
 ---
 type: entity
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 entity_name: "기술명"
 description: "한 줄 요약 (권장 — wiki-schema §12)"
 domain: tech
@@ -173,6 +176,7 @@ tags: [entity, 기술태그]
 ```markdown
 ---
 type: concept
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 concept_name: "패턴명"
 description: "한 줄 요약 (권장 — wiki-schema §12)"
 origin: agent-synthesized | human-validated
@@ -202,6 +206,7 @@ tags: [concept, 패턴태그]
 ```markdown
 ---
 type: guide
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 guide_kind: platform-bootstrap | ui-ux | recipe
 description: "한 줄 요약 (권장 — wiki-schema §12)"
 platform: windows-desktop | web | mobile | cli | cross
@@ -227,6 +232,7 @@ tags: [guide, recipe, 플랫폼태그]
 ```markdown
 ---
 type: question
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 status: open | investigating | resolved
 priority: high | medium | low
 related_pages: ["[[경로|이름]]"]

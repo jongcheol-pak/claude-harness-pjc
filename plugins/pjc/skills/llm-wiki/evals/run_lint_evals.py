@@ -183,6 +183,20 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
     return tmp, dest
 
 
+def _snapshot_md(root):
+    """vault 안 모든 .md의 (상대경로 -> 바이트) 스냅샷. --build-index --dry-run이 정말로
+    아무것도 쓰지 않았는지 앞뒤 비교로 증명하기 위한 것 — 출력 부재는 미변경의 증거가 아니다."""
+    snap = {}
+    for dirpath, _dirs, files in os.walk(root):
+        for name in files:
+            if not name.endswith(".md"):
+                continue
+            p = os.path.join(dirpath, name)
+            with open(p, "rb") as fh:
+                snap[os.path.relpath(p, root).replace(chr(92), "/")] = fh.read()
+    return snap
+
+
 def check_case(case):
     """한 case를 실행·대조해 (passed, detail) 반환."""
     fixture = case["fixture"]
@@ -203,6 +217,33 @@ def check_case(case):
     #  stdout 키워드만으로는 "지워지지 않아야 할 것이 남았는가"를 증명할 수 없어(출력이 없는 것은
     #  보존의 증거가 아니다) 실제 디렉터리 목록을 본다. 무플래그 실행도 함께 돌려 read-only 계약
     #  (정리는 --fix에서만 일어난다)을 같은 케이스에서 실증한다.
+    # build_index 케이스: `--build-index`(생성)를 임시 복사본에서 돌린다.
+    #  ① dry-run은 파일을 한 바이트도 바꾸지 않아야 하고(계약), ② 마커 밖 텍스트가 생성 출력에
+    #  그대로 살아 있어야 하며, ③ 마커가 없는 vault는 덮어쓰지 않고 안내만 내야 한다.
+    #  키워드 대조만으로는 ①을 증명할 수 없어(출력이 없는 것은 미변경의 증거가 아니다) 실제
+    #  파일 바이트를 앞뒤로 비교한다.
+    if case.get("build_index"):
+        tmp, dest = prepare_placeholder_vault(vault)
+        before = _snapshot_md(dest)
+        out, rc, err = run_lint(dest, ["--build-index", "--dry-run"])
+        after = _snapshot_md(dest)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if err.strip():
+            return False, "stderr 발생: " + err.strip().splitlines()[-1]
+        if before != after:
+            changed = sorted(set(before) ^ set(after)) or [
+                k for k in before if before[k] != after.get(k)]
+            return False, "--dry-run이 파일을 변경함: " + ", ".join(changed[:3])
+        if rc != case.get("expect_rc", 0):
+            return False, f"종료 코드 불일치 — 기대 {case.get('expect_rc', 0)} / 실제 {rc}"
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+        if missing:
+            return False, "생성 출력 키워드 누락: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "생성 출력에 있으면 안 되는 문구: " + ", ".join(present)
+        return True, "생성 대조 + 파일 미변경 확인: " + ", ".join(case.get("expect_keywords", []))
+
     if case.get("backup_cleanup"):
         tmp, dest, names = prepare_backup_cleanup_vault(vault)
         root = os.path.join(dest, "90_archive", "backup")

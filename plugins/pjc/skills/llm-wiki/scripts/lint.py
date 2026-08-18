@@ -443,6 +443,270 @@ def cleanup_backups(vault, today):
     return removed, failed
 
 
+# --- 인덱스 생성 (--build-index) ------------------------------------------
+# index.md는 손으로 유지하기에는 원천이 너무 흩어져 있다(수백 페이지의 frontmatter). 생성 마커
+# 사이만 파생으로 채우고 밖은 손대지 않는다 -- 증상별 인덱스·참조처럼 판단이 들어가는 섹션은
+# 사람이 쓰는 자리로 남긴다(wiki-schema §6 「생성 마커」).
+AUTO_INDEX_BEGIN = "<!-- AUTO-INDEX:BEGIN -->"
+AUTO_INDEX_END = "<!-- AUTO-INDEX:END -->"
+
+
+def _fm_list(fm, key):
+    """frontmatter의 `[a, b]` 또는 `a, b` 형식 값을 리스트로. 없으면 빈 리스트."""
+    raw = fm.get(key, "").strip()
+    if not raw:
+        return []
+    raw = raw.strip("[]")
+    return [x.strip().strip('"').strip("'") for x in raw.split(",") if x.strip()]
+
+
+def scan_index_pages(vault):
+    """인덱스 생성용 최소 스캔 -- 검사는 돌리지 않고 frontmatter와 본문만 모은다.
+    `90_archive/`·루트 큐 파일·인덱스 자신은 생성 대상이 아니라 제외한다."""
+    pages = {}
+    for p in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True):
+        r = os.path.relpath(p, vault).replace("\\", "/")
+        if r.startswith("90_archive/") or r in ROOT_QUEUE_FILES or r.startswith("index"):
+            continue
+        try:
+            with open(p, "rb") as fh:
+                text = fh.read().decode("utf-8-sig")
+        except (UnicodeDecodeError, OSError):
+            continue   # 읽기 실패는 lint 본 검사가 ERR로 보고한다 -- 생성은 그 파일만 건너뛴다
+        # 정규화를 frontmatter 파싱 **전에** 한다 -- frontmatter()의 `^---` 매치가 CRLF 파일에서
+        #  실패해 전 섹션이 빈 인덱스로 생성되는 것을 막는다(본 검사 루프와 같은 순서).
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        pages[r] = (frontmatter(text), text)
+    return pages
+
+
+def display_label(fm, text, fallback_field):
+    """표시 라벨 -> (라벨, 미역이관 여부). `index_label`이 1차 원천이고, 없으면 타입별 폴백
+    원천(feature_name·entity_name 등) 또는 H1을 쓴다. 폴백값은 인덱스 표기 규약(한/영 병기
+    §7-16·§7-27)을 만족하지 못할 수 있으므로 「미역이관」으로 표시해 구분한다 --
+    파일명에서 라벨을 유도하지는 않는다(추측 금지)."""
+    lbl = fm.get("index_label", "").strip()
+    if lbl:
+        return lbl, False
+    fb = fm.get(fallback_field, "").strip() if fallback_field else ""
+    if not fb:
+        m = re.search(r"^#\s+(.+)$", text, re.M)
+        fb = m.group(1).strip() if m else ""
+    return (fb or "(라벨 미정)"), True
+
+
+def _rows_projects(pages, category):
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if fm.get("type") != "project" or fm.get("category") != category:
+            continue
+        lbl, todo = display_label(fm, text, "project")
+        if todo:
+            pend.append(r)
+        stack = ", ".join(_fm_list(fm, "tech_stack"))
+        rows.append("| [[%s\\|%s]] | %s | %s | %s |"
+                    % (r[:-3], lbl, fm.get("platform", "-"), stack or "-", fm.get("status", "-")))
+    return rows, pend
+
+
+def _rows_features(pages, category):
+    """category에 속한 feature 행. category가 None이면 recipe(가이드 레시피) 행만."""
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if category is None:
+            if fm.get("type") != "guide" or fm.get("guide_kind") != "recipe":
+                continue
+            lbl, todo = display_label(fm, text, None)
+            proj = "(레시피)"
+        else:
+            if fm.get("type") != "feature" or fm.get("category") != category:
+                continue
+            lbl, todo = display_label(fm, text, "feature_name")
+            proj = fm.get("project", "-")
+        if todo:
+            pend.append(r)
+        kind = "recipe" if category is None else "feature"
+        rows.append("| %s | %s | %s | [[%s\\|%s]] |"
+                    % (lbl, fm.get("platform", "-"), proj, r[:-3], kind))
+    return rows, pend
+
+
+def _rows_guides(pages):
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if fm.get("type") != "guide" or fm.get("guide_kind") == "recipe":
+            continue
+        lbl, todo = display_label(fm, text, None)
+        if todo:
+            pend.append(r)
+        rows.append("| [[%s\\|%s]] | %s | %s |"
+                    % (r[:-3], lbl, fm.get("guide_kind", "-"), fm.get("platform", "-")))
+    return rows, pend
+
+
+def _rows_knowledge(pages, typ, field, list_key):
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if fm.get("type") != typ:
+            continue
+        lbl, todo = display_label(fm, text, field)
+        if todo:
+            pend.append(r)
+        rows.append("| [[%s\\|%s]] | %s |"
+                    % (r[:-3], lbl, ", ".join(_fm_list(fm, list_key)) or "-"))
+    return rows, pend
+
+
+def _rows_questions(pages):
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if fm.get("type") != "question" or question_is_resolved(fm):
+            continue
+        lbl, todo = display_label(fm, text, None)
+        if todo:
+            pend.append(r)
+        rows.append("| [[%s\\|%s]] | %s | %s |"
+                    % (r[:-3], lbl, fm.get("status", "open"),
+                       ", ".join(_fm_list(fm, "related")) or "-"))
+    return rows, pend
+
+
+def _table(header, sep, rows, empty_note):
+    out = [header, sep]
+    out.extend(rows if rows else ["<!-- %s -->" % empty_note])
+    return out
+
+
+def build_index(vault, dry_run):
+    """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 7섹션으로 채우고, category별
+    sub-index를 함께 생성한다. 마커 밖은 한 글자도 바꾸지 않는다.
+    반환: 종료 코드(0 정상 / 1 마커 없음·읽기·쓰기 실패)."""
+    pages = scan_index_pages(vault)
+    pending = []          # 라벨 미역이관 페이지 (index_label 부재)
+    body, sub_files = [], {}
+
+    for cat, title in (("personal", "개인 프로젝트"), ("work", "업무 프로젝트")):
+        rows, pend = _rows_projects(pages, cat)
+        pending += pend
+        body.append("## " + title)
+        body.append("")
+        body += _table("| 프로젝트 | 플랫폼 | 기술 스택 | 상태 |",
+                       "|----------|--------|-----------|------|", rows,
+                       "아직 없음 -- %s project 페이지 0개" % cat)
+        body.append("")
+
+    # 기능별 인덱스: 본체에는 recipe 행만 두고 프로젝트 feature는 category별 sub-index로 낸다
+    #  (§4 2단계 분할 -- 본체를 얇게 유지하면서 category 단위로 grep이 좁혀진다)
+    sub_links = []
+    for cat, title in (("personal", "개인"), ("work", "업무")):
+        rows, pend = _rows_features(pages, cat)
+        pending += pend
+        if not rows:
+            continue
+        name = "index-%s" % cat
+        sub_links.append("[[%s|%s 프로젝트 기능별 인덱스]]" % (name, title))
+        sub_files[name] = _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                                 "|------|--------|----------|------|", rows, "없음")
+    rows, pend = _rows_features(pages, None)
+    pending += pend
+    body.append("## 기능별 인덱스")
+    body.append("")
+    if sub_links:
+        body.append("> **분할 인덱스**: 프로젝트 feature의 기능별 인덱스는 category별로 분할돼 "
+                    "있다 -- " + " · ".join(sub_links) + ". 아래에는 레시피(cross-stack) 행만 남는다.")
+        body.append("")
+    body += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                   "|------|--------|----------|------|", rows, "레시피 없음")
+    body.append("")
+
+    rows, pend = _rows_guides(pages)
+    pending += pend
+    body.append("## 가이드 / 레시피")
+    body.append("")
+    body += _table("| 가이드 | 종류 | 플랫폼 |", "|--------|------|--------|", rows, "가이드 없음")
+    body.append("")
+
+    rows, pend = _rows_knowledge(pages, "entity", "entity_name", "used_by")
+    pending += pend
+    body.append("## 기술 스택 지식 (tech/)")
+    body.append("")
+    body += _table("| 기술 | 사용 프로젝트 |", "|------|--------------|", rows, "entity 없음")
+    body.append("")
+
+    rows, pend = _rows_knowledge(pages, "concept", "concept_name", "related_projects")
+    pending += pend
+    body.append("## 범용 패턴 (patterns/)")
+    body.append("")
+    body += _table("| 패턴 | 관련 프로젝트 |", "|------|--------------|", rows, "concept 없음")
+    body.append("")
+
+    rows, pend = _rows_questions(pages)
+    pending += pend
+    body.append("## 미해결 질문")
+    body.append("")
+    body += _table("| 질문 | 상태 | 관련 |", "|------|------|------|", rows, "미해결 질문 없음")
+
+    generated = "\n".join(body)
+
+    idx_path = os.path.join(vault, "index.md")
+    try:
+        with open(idx_path, "rb") as fh:
+            cur = fh.read().decode("utf-8-sig")
+    except (UnicodeDecodeError, OSError) as e:
+        print("index.md 읽기 실패(%s) -- 생성을 중단합니다." % type(e).__name__)
+        return 1
+    cur_n = cur.replace("\r\n", "\n").replace("\r", "\n")
+    if AUTO_INDEX_BEGIN not in cur_n or AUTO_INDEX_END not in cur_n:
+        print("생성 마커 없음 -- index.md를 덮어쓰지 않았습니다.")
+        print("  도입하려면 생성 대상 구역(프로젝트 테이블~미해결 질문)을 다음 두 줄로 감싸세요:")
+        print("    %s" % AUTO_INDEX_BEGIN)
+        print("    %s" % AUTO_INDEX_END)
+        print("  마커 밖(증상별 인덱스·참조·머리말)은 생성이 건드리지 않습니다.")
+        return 1
+
+    head, rest = cur_n.split(AUTO_INDEX_BEGIN, 1)
+    _, tail = rest.split(AUTO_INDEX_END, 1)
+    new = head + AUTO_INDEX_BEGIN + "\n" + generated + "\n" + AUTO_INDEX_END + tail
+
+    if pending:
+        print("라벨 미역이관 %d건 -- `index_label` 부재로 폴백값을 썼습니다(한/영 병기 미보증):"
+              % len(pending))
+        for r in pending[:10]:
+            print("  - %s" % r)
+        if len(pending) > 10:
+            print("  ... 외 %d건" % (len(pending) - 10))
+
+    if dry_run:
+        print("== --build-index --dry-run (파일 미변경) ==")
+        print(new)
+        for name, lines in sorted(sub_files.items()):
+            print("---- %s.md ----" % name)
+            print("\n".join(lines))
+        return 0
+
+    try:
+        with open(idx_path, "wb") as fh:
+            fh.write(new.encode("utf-8"))
+        for name, lines in sorted(sub_files.items()):
+            title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
+            sub_text = ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
+                        "# %s\n\n> [[index|위키 인덱스]]에서 분할된 기능별 인덱스"
+                        " (wiki-schema §4 2단계). 이 파일은 `--build-index`가 생성한다.\n\n"
+                        "## 기능별 인덱스\n\n%s\n") % (name, title, "\n".join(lines))
+            with open(os.path.join(vault, name + ".md"), "wb") as fh:
+                fh.write(sub_text.encode("utf-8"))
+    except OSError as e:
+        print("인덱스 쓰기 실패(%s)" % type(e).__name__)
+        return 1
+    print("index.md 생성 구역 갱신 · sub-index %d개 생성" % len(sub_files))
+    return 0
+
+
 def apply_fixes(vault):
     """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 3종만 자동 수정한다 (§7 —fix 규약) —
       ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거 —
@@ -648,11 +912,14 @@ def apply_fixes(vault):
 
 def main():
     if len(sys.argv) < 2:
-        print("사용법: python lint.py \"<vault_path>\" [--fix]")
+        print("사용법: python lint.py \"<vault_path>\" [--fix] [--build-index [--dry-run]]")
         sys.exit(1)
     vault = sys.argv[1].rstrip("/\\")
     # --fix는 opt-in — 지정 시 안전 3종을 먼저 수정하고, 이어지는 본 lint가 수정 후 상태를 보고한다.
     #  (기본 실행은 완전 read-only 불변)
+    # --build-index는 검사와 독립이다 -- 생성만 하고 끝낸다(검사가 섞이면 결과가 진단에 묻힌다).
+    if "--build-index" in sys.argv[2:]:
+        sys.exit(build_index(vault, "--dry-run" in sys.argv[2:]))
     if "--fix" in sys.argv[2:]:
         apply_fixes(vault)
     # L-3: vault 경로에 glob 메타문자([ ] * ? 등)가 있어도 리터럴로 취급 — glob.escape로 감싸지 않으면
