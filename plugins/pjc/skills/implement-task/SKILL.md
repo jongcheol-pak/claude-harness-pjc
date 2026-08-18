@@ -17,19 +17,11 @@ disallowed-tools: AskUserQuestion
 >
 > 멈춤은 **Halt Condition**에서만 발생. 사소한 결정은 plan.md follow-up으로 기록 후 계속.
 
-```
-plan-feature                    | implement-task (이 skill)
-USER-INTERACTIVE                | FULLY AUTONOMOUS
-                                |
-질문 OK (Open Questions에 모음) | 질문 금지 (Halt만 가능)
-사용자 승인 1회 (게이트)         | plan = 전체 위임장
-                                |
-                  ↑ 모든 질문 해결 후 ─── 이 시점부터 자율 ───
-```
-
 > **질문 도구 제거(`disallowed-tools`)는 보조 장치일 뿐 — 1차 방어선은 이 문서의 규칙이다**(실동작·해제 시점·영향 범위는 `references/authoring-detail.md` 「질문 도구 제거의 실동작」).
 
 ## 절대 규칙 (Hard Rules)
+
+> **위임 경계 (압축 후에도 살아야 한다)**: 로컬 작업 브랜치의 checkpoint·task 완료 commit은 plan 승인에 포함된 위임이라 **그 지점에서 묻지 않는다**. push·main 병합·태그·릴리즈·PR은 위임 밖이며 각각 별도 승인(규칙 12 · Phase D ③).
 
 ### 완료 정의
 1. **Done = Proof.** 빌드 통과, 테스트 통과, 또는 재현 가능한 출력 없이는 완료 선언 금지.
@@ -106,11 +98,6 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 
 > **상세 안티패턴 표는 `references/antipatterns.md` 참조.**
 > **중단 조건 전체 표 + 중단 보고 양식은 `references/halt-conditions.md` 참조 — Halt 여부가 애매하면 먼저 확인.**
-
-> **압축 후에도 남아야 하는 셋 (요지 — 조건·예외는 각 규칙 본문)**
-> - **주석은 코드와 함께 고친다** — 수정한 코드에 딸린 주석·docstring이 새 동작과 어긋나면 같은 task에서 갱신하거나 지운다. 틀린 주석은 없는 것보다 나쁘다(규칙 7-1).
-> - **task 완료 커밋은 자동이다** — 로컬 작업 브랜치의 checkpoint·완료 commit은 plan 승인에 포함된 위임 범위이며 그 지점에서 묻지 않는다. push·병합·태그·릴리즈는 위임 밖(Phase D ③·규칙 12).
-> - **자기 유발 결함은 이연할 수 없다** — 이연 가능한 것은 셋뿐이다: ⓐ 이번 변경 이전부터 있던 별개 문제 ⓑ 사용자가 범위 밖으로 정한 것 ⓒ MINOR·SUGGEST 개선 제안(규칙 4-1).
 
 ## 자율 루프 (Autonomous Loop)
 
