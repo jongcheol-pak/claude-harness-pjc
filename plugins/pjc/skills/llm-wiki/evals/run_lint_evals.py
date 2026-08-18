@@ -222,6 +222,46 @@ def check_case(case):
     #  그대로 살아 있어야 하며, ③ 마커가 없는 vault는 덮어쓰지 않고 안내만 내야 한다.
     #  키워드 대조만으로는 ①을 증명할 수 없어(출력이 없는 것은 미변경의 증거가 아니다) 실제
     #  파일 바이트를 앞뒤로 비교한다.
+    # build_index_write 케이스: **실제 쓰기 경로**(--dry-run 없이)를 돈다. dry-run만 돌리면
+    #  파일을 만드는 분기가 한 번도 실행되지 않아, sub-index 생성·마커 치환·마커 밖 보존이
+    #  "출력에서만" 맞는 상태로 통과할 수 있다. 여기서는 쓰인 파일을 다시 읽어 대조한다.
+    if case.get("build_index_write"):
+        tmp, dest = prepare_placeholder_vault(vault)
+        idx = os.path.join(dest, "index.md")
+        with open(idx, "rb") as fh:
+            before = fh.read().decode("utf-8")
+        out, rc, err = run_lint(dest, ["--build-index"])
+        with open(idx, "rb") as fh:
+            after = fh.read().decode("utf-8")
+        subs = sorted(n for n in os.listdir(dest)
+                      if n.startswith("index-") and n.endswith(".md"))
+        leftovers = [n for n in os.listdir(dest) if n.endswith(".tmp-build-index")]
+        sub_text = ""
+        for n in subs:
+            with open(os.path.join(dest, n), "rb") as fh:
+                sub_text += fh.read().decode("utf-8")
+        shutil.rmtree(tmp, ignore_errors=True)
+        if err.strip():
+            return False, "stderr 발생: " + err.strip().splitlines()[-1]
+        if rc != 0:
+            return False, f"쓰기 실행이 실패함 (rc={rc}): {out.strip()[:120]}"
+        if leftovers:
+            return False, "임시 파일 잔존: " + ", ".join(leftovers)
+        if subs != case.get("expect_sub_files", []):
+            return False, f"sub-index 파일 불일치 — 기대 {case.get('expect_sub_files', [])} / 실제 {subs}"
+        for kw in case.get("expect_outside_preserved", []):
+            if kw not in after:
+                return False, "마커 밖 텍스트가 사라짐: " + kw
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in after + sub_text]
+        if missing:
+            return False, "쓰인 파일에 누락: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in after + sub_text]
+        if present:
+            return False, "쓰인 파일에 있으면 안 되는 것: " + ", ".join(present)
+        if before == after:
+            return False, "index.md가 갱신되지 않음(마커 치환 미발생)"
+        return True, "실제 쓰기 대조: sub-index %d개 · 마커 밖 보존 · 임시 파일 0" % len(subs)
+
     if case.get("build_index"):
         tmp, dest = prepare_placeholder_vault(vault)
         before = _snapshot_md(dest)

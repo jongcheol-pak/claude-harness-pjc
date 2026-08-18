@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """llm-wiki Lint 보조 스크립트.
 
-사용법: python lint.py "<vault_path>" [--fix]
+사용법: python lint.py "<vault_path>" [--fix] [--build-index [--dry-run]]
 검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md·skill-feedback.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
@@ -582,6 +582,17 @@ def _table(header, sep, rows, empty_note):
     return out
 
 
+def _sub_index_text(name, rows):
+    """category sub-index 파일 본문. 생성물이므로 머리말에 그 사실을 적는다 --
+    수기로 고쳐도 다음 `--build-index`가 덮어쓴다는 것을 파일 자신이 알려야 한다."""
+    title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
+    return ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
+            "# %s\n\n> [[index|위키 인덱스]]에서 분할된 기능별 인덱스"
+            " (wiki-schema §4 2단계). **이 파일은 `--build-index`가 생성한다 --"
+            " 수기 편집은 다음 생성에서 사라진다.**\n\n"
+            "## 기능별 인덱스\n\n%s\n") % (name, title, "\n".join(rows))
+
+
 def build_index(vault, dry_run):
     """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 7섹션으로 채우고, category별
     sub-index를 함께 생성한다. 마커 밖은 한 글자도 바꾸지 않는다.
@@ -669,7 +680,12 @@ def build_index(vault, dry_run):
         print("  마커 밖(증상별 인덱스·참조·머리말)은 생성이 건드리지 않습니다.")
         return 1
 
-    head, rest = cur_n.split(AUTO_INDEX_BEGIN, 1)
+    head, _sep, rest = cur_n.partition(AUTO_INDEX_BEGIN)
+    if AUTO_INDEX_END not in rest:
+        # END가 BEGIN보다 앞에 있는 malformed 파일 -- "마커 없음"과 같은 경로로 닫는다
+        #  (여기서 split을 그냥 하면 ValueError로 죽어, 안내 없이 트레이스백만 남는다).
+        print("마커 순서 이상(END가 BEGIN보다 앞) -- index.md를 덮어쓰지 않았습니다.")
+        return 1
     _, tail = rest.split(AUTO_INDEX_END, 1)
     new = head + AUTO_INDEX_BEGIN + "\n" + generated + "\n" + AUTO_INDEX_END + tail
 
@@ -689,19 +705,28 @@ def build_index(vault, dry_run):
             print("\n".join(lines))
         return 0
 
+    # 여러 파일을 순차로 덮어쓰면 중간 실패가 **깨진 상태**를 남긴다 -- index.md는 이미
+    #  [[index-personal]]을 가리키는데 그 파일은 없는 식이다. 전부 `.tmp-build-index`로 쓴 뒤
+    #  한꺼번에 os.replace로 치환한다. (치환 자체는 파일 단위 원자성이라 다중 파일 전체를
+    #  보장하지는 않지만, 실패가 몰리는 지점인 '쓰기'를 치환 앞으로 모아 창을 최소화한다.)
+    staged = []
     try:
-        with open(idx_path, "wb") as fh:
-            fh.write(new.encode("utf-8"))
-        for name, lines in sorted(sub_files.items()):
-            title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
-            sub_text = ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
-                        "# %s\n\n> [[index|위키 인덱스]]에서 분할된 기능별 인덱스"
-                        " (wiki-schema §4 2단계). 이 파일은 `--build-index`가 생성한다.\n\n"
-                        "## 기능별 인덱스\n\n%s\n") % (name, title, "\n".join(lines))
-            with open(os.path.join(vault, name + ".md"), "wb") as fh:
-                fh.write(sub_text.encode("utf-8"))
+        for path, content in [(idx_path, new)] + [
+                (os.path.join(vault, name + ".md"), _sub_index_text(name, lines))
+                for name, lines in sorted(sub_files.items())]:
+            tmp = path + ".tmp-build-index"
+            with open(tmp, "wb") as fh:
+                fh.write(content.encode("utf-8"))
+            staged.append((tmp, path))
+        for tmp, path in staged:
+            os.replace(tmp, path)
     except OSError as e:
-        print("인덱스 쓰기 실패(%s)" % type(e).__name__)
+        for tmp, _path in staged:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass   # 임시 파일 정리 실패는 원본에 영향이 없다 -- 원 실패를 가리지 않는다
+        print("인덱스 쓰기 실패(%s) -- 원본을 그대로 두었습니다." % type(e).__name__)
         return 1
     print("index.md 생성 구역 갱신 · sub-index %d개 생성" % len(sub_files))
     return 0
