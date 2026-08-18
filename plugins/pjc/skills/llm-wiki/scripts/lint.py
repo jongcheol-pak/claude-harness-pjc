@@ -767,6 +767,7 @@ def apply_fixes(vault):
         pages[rel(p)] = (fm, fm.get("type", ""), norm)
 
     fixed, failed = [], []
+    skipped_fix = []   # 생성기가 담당해 이번 --fix에서 제외한 항목 (D11)
     backed = set()
 
     def backup(r):
@@ -823,7 +824,16 @@ def apply_fixes(vault):
         return raw[:m.start()] + new_seg + raw[m.end():], False
 
     # ── ① §7-23 미해결 질문 인덱스 동기 ──────────────────────────────
-    if "index.md" in pages:
+    # 생성 마커가 있는 vault에서는 이 항목을 건너뛴다 -- `## 미해결 질문`이 `--build-index`의
+    #  생성 구역이 되어 writer가 둘이 되기 때문이다(같은 섹션에 두 주체가 쓰면 어느 쪽이 근거인지
+    #  사라진다). 생성기가 같은 정합을 매 실행 보장하므로 자동수정이 할 일이 없다.
+    #  **못 잡게 되는 것**: 마커 있는 vault에서 생성기를 돌리지 않은 채 open question이 늘면
+    #  index.md가 그만큼 뒤처진다 -- 그 상태는 다음 `--build-index` 한 번으로 닫히고, 검사(§7-23)
+    #  자체는 그대로 남아 보고한다(수정만 생성기가 맡는다).
+    #  **마커 없는 vault는 무회귀** -- 종전대로 안전 3종이 모두 동작한다(D11).
+    if AUTO_INDEX_BEGIN in pages.get("index.md", (None, None, ""))[2]:
+        skipped_fix.append("§7-23 미해결 질문 동기 — 생성 구역이라 --build-index가 담당 (D11)")
+    elif "index.md" in pages:
         try:
             inorm = pages["index.md"][2]
             q_sec = section(strip_code(inorm), "미해결 질문") or ""
@@ -927,6 +937,9 @@ def apply_fixes(vault):
         print("[CLEANUP] 백업 제거: " + c)
     for c in cleanup_failed:
         print("[CLEANUP-FAIL] " + c)
+    for s in skipped_fix:
+        # 건너뛴 것을 조용히 두면 "3종을 다 돌렸다"로 읽힌다 -- 무엇이 왜 빠졌는지 남긴다.
+        print("[SKIP] " + s)
     if fixed:
         for f in fixed:
             print("[FIXED] " + f)
