@@ -155,7 +155,7 @@ RIGHT: H1: 만료된 캐시 항목을 stale로 반환한다 — 예측: TTL을 0
 
 **가장 그럴듯한 하나에만 매몰되지 않는다.** Occam's razor는 좋지만, 빠른 결론은 디버깅의 함정.
 
-- **가설별 증거 위치 병렬 수집 (explorer 팬아웃 — locating만)**: 가설이 2개 이상이고 각 가설의 관련 코드 위치를 찾는 조사가 서로 독립이면, 가설별로 `explorer` subagent를 한 turn에 병렬 호출해 **증거가 있을 후보 위치**(관련 심볼·호출부·설정)를 모은다(대기 시간만 줄이는 locating). **가설의 검증·판정과 Phase 3-A의 진단 실행(임시 로그·단위 테스트·breakpoint·격리 스크립트 실행)은 위임하지 않는다** — explorer는 read-only 발췌라 진단·판정에 부적합하고, 부작용 있는 실행은 메인 몫이다(위임 금지 가드 — Phase P-2/P-3와 동일 원칙). 위치 후보를 받아 **실제 가설 확정은 메인이 Phase 3에서 직접** 한다. 단일 원인 확정 예외(아래 통과 조건)로 가설이 1개면 이 팬아웃은 불필요하다. 이 팬아웃도 **동기 호출**(`run_in_background: false`) — 결과 수신 전 다음 단계로 가지 않는다.
+- **가설별 증거 위치 병렬 수집 (explorer 팬아웃 — locating만 · 호출 규약은 `implement-task`의 `recovery.md` 「Subagent 호출 규약」)**: 가설이 2개 이상이고 각 가설의 관련 코드 위치를 찾는 조사가 서로 독립이면, 가설별로 `explorer` subagent를 한 turn에 병렬 호출해 **증거가 있을 후보 위치**(관련 심볼·호출부·설정)를 모은다(대기 시간만 줄이는 locating). **가설의 검증·판정과 Phase 3-A의 진단 실행(임시 로그·단위 테스트·breakpoint·격리 스크립트 실행)은 위임하지 않는다** — explorer는 read-only 발췌라 진단·판정에 부적합하고, 부작용 있는 실행은 메인 몫이다(위임 금지 가드 — Phase P-2/P-3와 동일 원칙). 위치 후보를 받아 **실제 가설 확정은 메인이 Phase 3에서 직접** 한다. 단일 원인 확정 예외(아래 통과 조건)로 가설이 1개면 이 팬아웃은 불필요하다. 이 팬아웃도 **동기 호출**(`run_in_background: false`) — 결과 수신 전 다음 단계로 가지 않는다.
 
 ### Phase 2 통과 조건
 
@@ -252,7 +252,7 @@ RIGHT: H1의 예측("TTL=0이면 사라짐")을 검증하는 한 지점만 계�
 - 리뷰어 호출 프롬프트에 **Bash 쓰기 금지 1구**를 붙인다: *"조사 금지: `git checkout`·`stash`·`reset` 등 워킹트리·인덱스를 바꾸는 명령 — 과거 상태는 `git show <sha>:<path>`로 읽을 것."* — 이 절이 호출하는 셋(spec·quality·아래 경량 검증의 `spec-prefilter`)이 **전부 Bash를 보유**한다. 근거·이력은 `implement-task/SKILL.md` V-5의 같은 항목.
 - BLOCKER 0까지 반복
 
-> **경량 검증 허용 (소규모 수정).** 수정이 **단일 파일·10줄 이하**이고 **회귀 테스트가 GREEN**(4-A에서 버그를 재현하던 테스트가 이제 통과)이면, full Sonnet 리뷰(spec-compliance + code-quality) 대신 **`spec-prefilter`(Haiku) 경량 검증**으로 대체할 수 있다(Type B 수준의 저위험 수정과 동일 기준). prefilter가 ESCALATE하면 정상 full 리뷰로 올린다. 수정이 다중 파일이거나 10줄을 넘거나 회귀 테스트가 없으면 이 경량 대체를 쓰지 않고 full 리뷰를 수행한다. 경량 대체 호출도 **동기 호출**(`run_in_background: false`) — PASS/ESCALATE 판정을 받아야 다음이 정해진다.
+> **경량 검증 허용 (소규모 수정 — 리뷰 호출은 `recovery.md` 「Subagent 호출 규약」을 따른다).** 수정이 **단일 파일·10줄 이하**이고 **회귀 테스트가 GREEN**(4-A에서 버그를 재현하던 테스트가 이제 통과)이면, full Sonnet 리뷰(spec-compliance + code-quality) 대신 **`spec-prefilter`(Haiku) 경량 검증**으로 대체할 수 있다(Type B 수준의 저위험 수정과 동일 기준). prefilter가 ESCALATE하면 정상 full 리뷰로 올린다. 수정이 다중 파일이거나 10줄을 넘거나 회귀 테스트가 없으면 이 경량 대체를 쓰지 않고 full 리뷰를 수행한다. 경량 대체 호출도 **동기 호출**(`run_in_background: false`) — PASS/ESCALATE 판정을 받아야 다음이 정해진다.
 
 > **plan.md 없이 디버깅한 경우(별도 `debug-*.md`만 작성)**: spec-compliance-reviewer는 plan.md task의 acceptance를 기준으로 검증하므로, plan.md가 없으면 task 섹션 대신 **변경 파일 목록 + 4-A의 회귀 테스트를 acceptance 기준으로** 전달한다("이 버그가 회귀 테스트로 차단되는가 + cross-file caller 일관"이 검증 기준 — spec-compliance 입력의 "또는 변경 파일 목록" 경로). plan-feature를 거쳐 plan.md가 있으면 평소대로 해당 task 섹션을 전달한다.
 

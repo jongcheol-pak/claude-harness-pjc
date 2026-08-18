@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 포인터 도달성 · 마커 목록 · Deferred 집계.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
 무엇을: 이 repo는 마크다운이 곧 실행 규칙이라, 문서가 서로 어긋나면 그것이 곧 동작 결함이다.
-아래 다섯 축은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다:
+아래 일곱 축은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다:
 
   ① 문서 로드 예산  — 스킬·리뷰어 파일의 바이트가 `docs/harness-conventions.md` 「문서 로드 예산
      기준선」 표와 일치하는가. 그 표는 조건부 절차를 references로 밀어낸 절감이 유지되는지를
@@ -12,11 +12,18 @@
   ② 리뷰어 각주 앵커 — 리뷰어 4종이 복제 보유하는 규약 블록에 동기 신호(각주)가 전부 있는가.
      subagent는 자기 파일만 로드해 단일 소스화가 불가하므로 각주가 유일한 드리프트 신호다.
      **본문 동일성은 검사하지 않는다** — 네 파일의 같은 블록은 역할 차이로 실제로 다르다.
+  ②-b 실행 예산 수치 — 리뷰어의 frontmatter `maxTurns`와 「실행 예산」 절 본문의 예산·중단선·계측
+     수치가 일치하는가. 그 수치는 상한에서 파생되는데 사람이 손으로 옮겨 적으므로, 상한만 바꾸고
+     본문을 빠뜨리면 ②(개수만 셈)는 통과한다. 기대값은 코드가 아니라 frontmatter에서 파생한다.
   ③ 포인터 도달성   — `<경로>` … 「<절 이름>」 형태의 크로스파일 포인터가 실제 헤딩에 닿는가.
      조건부 절차를 references로 이관하면 이 포인터가 유일한 연결이라, 끊기면 규칙이 사라진다.
   ④ 마커 목록 동기  — 정당 정지 마커의 전수 목록(정본)과 `implement-task/SKILL.md`의 대표 예시가
      어긋나지 않는가. v1.154.0 이전에 정본 6곳 ↔ 사본 8곳으로 역전돼 있었고, 그 차이가 곧
      오차단 경로였다.
+  ⑫ 개념 정본      — 한 개념의 정의성 서술이 정본 1곳 밖에 흩어져 있지 않은가. 흩어지면 한쪽을 고칠 때
+     나머지가 조용히 낡는다(실측: `동기 호출`이 7파일 22회, `incomplete`가 11파일 22회). 개념·앵커·스코프·
+     어휘·면제는 전부 `docs/harness-conventions.md` 「개념 정본 유일성」 표에서 온다. 상세 리포트는
+     `--concept-report`(정본/화이트리스트/위반/차집합/면제 잔여 5구획).
   ⑤ Deferred 집계   — 대장의 「현행 잔량」 앵커가 실제 항목 수와 일치하는가. "정리 직후 수치만
      적고 등재분을 반영하지 않는" 실수가 이 대장의 반복 패턴이다. 앵커는 4필드이며 누계 2종은
      실측 불가(삭제분은 파일에 없다)라 **불변식** `대기 + 종결 + 삭제누계 == 총등재누계`로 검사한다
@@ -143,6 +150,193 @@ def check_reviewer_footnote(conv):
             issues.append("리뷰어 각주 %s.md — 앵커 %d회 / 기대 %d회(블록 수)"
                           % (name, cnt, len(blocks)))
     return issues, len(files) * len(blocks)
+
+
+# ─────────────────────────────────────────────────────────────
+# ②-b 리뷰어 실행 예산 수치 (frontmatter ↔ 본문)
+# ─────────────────────────────────────────────────────────────
+def check_reviewer_budget():
+    """리뷰어 정의의 frontmatter `maxTurns` ↔ 「실행 예산」 절 본문 수치를 대조한다.
+
+    예산 고지(maxTurns − 4)와 중단선(그 2/3)은 상한에서 파생되는데 **사람이 손으로 옮겨
+    적는다** — 상한만 바꾸고 본문을 빠뜨려도 각주 축(앵커 개수만 셈)은 통과하므로,
+    「고지된 예산과 실제 상한이 갈리는」 드리프트를 잡을 축이 따로 필요하다.
+    대상은 「실행 예산」 절을 가진 `agents/*.md` 전부다(이름을 코드에 박지 않는다 —
+    5번째 리뷰어가 생기면 자동으로 검사 대상이 된다).
+    """
+    agents = os.path.join(ROOT, "plugins", "pjc", "agents")
+    issues, checked = [], 0
+    for name in sorted(os.listdir(agents)):
+        if not name.endswith(".md"):
+            continue
+        txt = read(os.path.join(agents, name))
+        if "## 실행 예산" not in txt:
+            continue
+        mt = re.search(r"^maxTurns: (\d+)$", txt, re.M)
+        if not mt:
+            issues.append("실행 예산 %s — 「실행 예산」 절은 있는데 frontmatter에 maxTurns가 없다" % name)
+            continue
+        limit = int(mt.group(1))
+        want_budget = limit - 4
+        want_stop = (want_budget * 2) // 3
+        # 본문 3자리를 각각 뽑아 파생값과 대조한다. 한 자리라도 못 찾으면 절의 문면이
+        # 바뀐 것이므로 통과시키지 않는다(ANCHOR FAIL이 아니라 issue — 파일별로 다를 수 있다).
+        for label, rx, want in (
+            ("예산 고지", r"도구 호출 예산은 (\d+)회다\*\*\(`maxTurns: (\d+)`", (want_budget, limit)),
+            ("중단선", r"\*\*도구 호출 (\d+)회에 도달하면", (want_stop,)),
+            ("계측 표기", r"`도구 호출 <실제>회 / 예산 (\d+)회`", (want_budget,)),
+        ):
+            m = re.search(rx, txt)
+            if not m:
+                issues.append("실행 예산 %s — %s 문면을 찾지 못함(절 표기가 바뀌었는지 확인)" % (name, label))
+                continue
+            got = tuple(int(g) for g in m.groups())
+            if got != want:
+                issues.append("실행 예산 %s %s — 본문 %s / maxTurns %d에서 파생한 기대값 %s"
+                              % (name, label, got, limit, want))
+            checked += 1
+    if checked == 0:
+        die("실행 예산: 「실행 예산」 절을 가진 리뷰어를 하나도 찾지 못함 (절 제목이 바뀌었는지 확인)")
+    return issues, checked
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑫ 개념 정본 유일성 (리포트 전용 — main 편입은 T11)
+# ─────────────────────────────────────────────────────────────
+def _concept_table(conv):
+    """「개념 정본 유일성 (축 ⑫ 기준표)」 표의 데이터 행을 파싱한다.
+
+    절 잘라내기는 기존 `section()`을 그대로 쓴다(같은 문서의 같은 형태를 두 번
+    구현하지 않는다). 반환은 6필드 dict의 리스트이며, **기대값을 코드에 박지 않는
+    다는 이 파일의 원칙대로** 개념·앵커·스코프·어휘·면제가 전부 문서에서 온다.
+    """
+    sec = section(conv, r"^## 개념 정본 유일성", label="개념 정본 유일성 (축 ⑫ 기준표)")
+    rows = []
+    for line in sec.split("\n"):
+        cells = [c.strip() for c in line.strip().strip("|").split("|")] if line.strip().startswith("|") else []
+        if len(cells) != 6 or cells[0] in ("개념", "---") or set(cells[0]) <= {"-", ":"}:
+            continue
+        def unbt(s):
+            return [x.strip().strip("`") for x in s.split("`,") if x.strip()] if "`," in s else [s.strip().strip("`")]
+        rows.append({
+            "name": cells[0],
+            "canon": cells[1].strip("`"),
+            "anchor": cells[2].strip("`"),
+            "scopes": [x.strip("`") for x in cells[3].split() if x.strip("`")],
+            "word": cells[4].strip("`"),
+            "refs": unbt(cells[5]),
+        })
+    if not rows:
+        die("「개념 정본 유일성」 표에서 데이터 행을 추출하지 못함")
+    return rows
+
+
+def _anchor_block(txt, anchor_rx):
+    """정본 앵커가 여는 구간의 줄 번호 집합과 앵커 매치 수를 돌려준다.
+
+    매치 수를 함께 세는 이유는 축 ⑪의 1R MAJOR가 "앵커가 문서 전체에서 몇 건
+    매치되는지 세지 않으면 첫 매치를 그냥 쓴다"였기 때문이다.
+
+    **구간의 끝은 앵커 유형마다 다르다** — 기준표에 실재하는 세 유형을 모두 다룬다.
+    이분법(헤딩/그 외)으로 두면 불릿 앵커가 번호-규칙 분기로 흘러, 같은 레벨의 다음
+    불릿에서 멈추지 못하고 다음 헤딩까지 수십 줄을 통째로 정본으로 삼킨다 — 그러면
+    그 구간 안의 재서술이 위반이 아니라 "정본"으로 조용히 흡수돼, 이 축이 잡아야 할
+    드리프트를 놓친다(T3 quality M1 실측: `등재 게이트` 앵커가 38줄·무관 불릿 7개를 삼켰다).
+    """
+    lines = txt.split("\n")
+    hits = [i for i, l in enumerate(lines) if re.search(anchor_rx, l)]
+    if len(hits) != 1:
+        return set(), len(hits)
+    start = hits[0]
+    head = lines[start]
+    if head.startswith("#"):                       # ① 헤딩 — 다음 동급 이상 헤딩까지
+        depth = len(head) - len(head.lstrip("#"))
+        stop = lambda l: l.startswith("#") and (len(l) - len(l.lstrip("#"))) <= depth
+    elif re.match(r"^\s*[-*] ", head):              # ② 불릿 — 같은 들여쓰기의 다음 불릿 또는 상위 헤딩까지
+        indent = len(head) - len(head.lstrip())
+        stop = lambda l: (l.startswith("#")
+                          or (re.match(r"^\s*[-*] ", l) and (len(l) - len(l.lstrip())) <= indent))
+    else:                                          # ③ 번호 규칙(`4-1. **…`) — 다음 최상위 번호 또는 헤딩까지
+        stop = lambda l: bool(re.match(r"^(#{1,6} |\d+(-\d+)?\. \*\*)", l))
+    end = next((i for i in range(start + 1, len(lines)) if stop(lines[i])), len(lines))
+    return set(range(start, end)), 1
+
+
+def _scope_lines(scopes, word):
+    """스코프 디렉터리들을 걸어 `word`가 든 줄을 (rel, 0기반 줄번호, 원문)으로 낸다.
+
+    분류 로직과 파일 순회를 한 함수에 두면 중첩이 6단계까지 내려가 읽기 부담이 커진다
+    (축 ⑪의 `_scan_lines`도 파일 순회를 따로 두지만 그 분리 사유는 **스코프 한정**이다 — md/json/py마다 「규정을 서술하는 줄」의 정의가 달라서다. 여기서 그 함수를 재사용하지 않는 것은
+    Design ④의 비추상화 선언대로 스코프·앵커 형태가 달라서다).
+    """
+    for scope in scopes:
+        base = os.path.join(ROOT, scope.replace("/", os.sep))
+        for b, _, names in os.walk(base):
+            for nm in sorted(names):
+                if not nm.endswith(".md"):
+                    continue
+                f = os.path.join(b, nm)
+                rel = os.path.relpath(f, ROOT).replace(os.sep, "/")
+                for i, line in enumerate(read(f).split("\n")):
+                    if word in line:
+                        yield rel, i, line
+
+
+def check_concept_locality(conv, report=False):
+    """개념마다 정본 1곳을 선언하고 그 밖의 언급을 넷으로 가른다.
+
+    네 구획은 축 ⑪의 이름을 그대로 쓴다 — **정본**(앵커 구간 안) / **화이트리스트**(정본
+    식별자를 동반한 포인터 = 면제) / **위반**(정본 밖 + 식별자 없음 = 정본화 검토 대상) /
+    **차집합**(위 셋 어디에도 들지 않는 줄 — 이 구현은 세 분류가 전수를 덮으므로 구조적으로
+    0이며, 분류 로직이 바뀌어 구멍이 생기면 여기서 드러난다) / **면제 잔여**(화이트리스트 줄인데
+    개념어가 식별자 수보다 많이 나오는 자리 — 한 줄에 포인터와 독자 서술이 섞이면 후자가 면제
+    뒤에 숨는다. 축 ⑪ T3 1R BLOCKER ⓑ가 잡은 형태).
+
+    **위반은 결함 단정이 아니라 판정 대기**다 — 정당한 인용·요약도 걸린다. 처분(정본 흡수 ·
+    포인터화 · 면제 등재)은 T4·T5가 한다.
+    """
+    issues, checked = [], 0
+    out = []
+    for row in _concept_table(conv):
+        canon_path = os.path.join(ROOT, row["canon"].replace("/", os.sep))
+        if not os.path.exists(canon_path):
+            issues.append("개념 정본 %s — 정본 파일 없음 %s" % (row["name"], row["canon"]))
+            continue
+        canon_txt = read(canon_path)
+        block, n_anchor = _anchor_block(canon_txt, row["anchor"])
+        checked += 1
+        if n_anchor != 1:
+            issues.append("개념 정본 %s — 앵커가 %d건 매치(정확히 1건이어야 한다): %s"
+                          % (row["name"], n_anchor, row["anchor"]))
+            continue
+        canon_rel = row["canon"]
+        buckets = {"정본": [], "화이트리스트": [], "위반": [], "차집합": [], "면제 잔여": []}
+        for rel, i, line in _scope_lines(row["scopes"], row["word"]):
+            entry = (rel, i + 1, line.strip())
+            if rel == canon_rel and i in block:
+                buckets["정본"].append(entry)
+                continue
+            hit_ref = [r for r in row["refs"] if r in line]
+            if not hit_ref:
+                buckets["위반"].append(entry)
+                continue
+            buckets["화이트리스트"].append(entry)
+            # 면제 잔여: 한 줄에 포인터와 **독자 서술**이 섞인 자리. 개념어가 식별자 수보다
+            # 많이 나오면 그중 일부는 포인터가 아니다(축 ⑪ T3 1R BLOCKER ⓑ — 정당한 면제
+            # 뒤에 진짜 위반이 숨던 형태).
+            if line.count(row["word"]) > len(hit_ref):
+                buckets["면제 잔여"].append(entry)
+        out.append((row["name"], buckets))
+    if checked == 0:
+        die("개념 정본 유일성: 검사 대상 개념을 하나도 찾지 못함")
+    if report:
+        for name, b in out:
+            print("\n== 개념 「%s」 ==" % name)
+            for k in ("정본", "화이트리스트", "위반", "차집합", "면제 잔여"):
+                print("  [%s] %d건" % (k, len(b[k])))
+                for rel, ln, s in b[k]:
+                    print("    %s:%d  %s" % (rel, ln, s[:110]))
+    return issues, checked
 
 
 # ─────────────────────────────────────────────────────────────
@@ -302,6 +496,7 @@ def check_deferred_stats(ledger):
 
 
 def main():
+
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
     # 검증 매핑에 등록된 명령은 `python <이 파일>`이라 환경변수가 붙지 않으므로, 스스로 UTF-8로
     # 재설정하지 않으면 **매 실행이 크래시해 검사 자체가 성립하지 않는다**(개발 중 `PYTHONUTF8=1`을
@@ -312,6 +507,17 @@ def main():
     except (AttributeError, OSError):
         pass  # 재설정 불가 환경(파이프 등)에서는 그대로 진행
 
+    # 축 ⑫는 v1.179.0 T11에서 `main()`에 편입됐다(그전까지는 리포트 전용 — 소진이 끝나기 전에
+    # 편입하면 그 사이 모든 task의 검증이 FAIL하기 때문. 축 ⑪의 전례를 그대로 따랐다).
+    # `--concept-report`는 승격 후에도 상세 목록을 보기 위해 남긴다.
+    if "--concept-report" in sys.argv:
+        conv = read(CONV_MD)
+        issues, n = check_concept_locality(conv, report=True)
+        print("\n== 개념 %d개 검사 ==" % n)
+        for m in issues:
+            print("[MISMATCH] %s" % m)
+        sys.exit(1 if issues else 0)
+
     conv = read(CONV_MD)
     ledger = read(LEDGER_MD)
     impl = read(IMPL_MD)
@@ -320,14 +526,16 @@ def main():
     for label, (issues, n) in [
         ("예산 기준선", check_doc_budget(conv)),
         ("리뷰어 각주", check_reviewer_footnote(conv)),
+        ("실행 예산 수치", check_reviewer_budget()),
         ("포인터 도달성", check_pointer_reachability()),
         ("마커 동기", check_marker_sync(conv, impl)),
+        ("개념 정본", check_concept_locality(conv)),
         ("Deferred 집계", check_deferred_stats(ledger)),
     ]:
         all_issues.extend(issues)
         parts.append("%s %d항목" % (label, n))
 
-    print("== 하니스 정합 셀프체크 (문서 예산 · 리뷰어 각주 · 포인터 · 마커 · Deferred) ==")
+    print("== 하니스 정합 셀프체크 (문서 예산 · 리뷰어 각주 · 실행 예산 · 포인터 · 마커 · 개념 정본 · Deferred) ==")
     if all_issues:
         for m in all_issues:
             print("[MISMATCH] %s" % m)

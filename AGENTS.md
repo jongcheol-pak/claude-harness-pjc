@@ -39,7 +39,7 @@
   ```
   python plugins/pjc/evals/check-harness-consistency.py
   ```
-  다섯 축(문서 로드 예산 · 리뷰어 각주 앵커 · 포인터 도달성 · 마커 동기 · Deferred 잔량)을 **문서 기록값 ↔ 실측**으로 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). 축별 기준표는 `docs/harness-conventions.md`.
+  일곱 축(문서 로드 예산 · 리뷰어 각주 앵커 · **실행 예산 수치** · 포인터 도달성 · 마커 동기 · **개념 정본** · Deferred 잔량)을 **문서 기록값 ↔ 실측**으로 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). 축별 기준표는 `docs/harness-conventions.md`.
 - **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것**: Claude Code **PowerShell 도구의 내장 경로 보호**가 삭제 대상을 추출할 때 실제 대상이 아니라 **같은 명령 문자열 안 다른 위치의 따옴표 경로**를 집어 오차단한다(`Remove-Item on system path ''D:\Personal' is blocked.`). **하니스 hook과 무관하다** — `block-destructive`에 변형 11종을 stdin 주입한 결과 **11/11 exit 0**(차단 0건)이다. `Remove-Item` 토큰과 공백 포함 경로가 **한 명령 문자열에 함께 있을 때만** 발화하는 조합 의존이라 "가끔 막힌다"로 보인다. **회피**: 검증 배치를 **스크립트 파일로 분리**(가장 확실) · **Bash 도구** 사용 · 환경변수 제거는 `$env:NAME = ''` 대입.
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
