@@ -21,7 +21,7 @@ disallowed-tools: AskUserQuestion
 
 ## 절대 규칙 (Hard Rules)
 
-> **위임 경계 (압축 후에도 살아야 한다)**: 로컬 작업 브랜치의 checkpoint·task 완료 commit은 plan 승인에 포함된 위임이라 **그 지점에서 묻지 않는다**. push·main 병합·태그·릴리즈·PR은 위임 밖이며 각각 별도 승인(규칙 12 · Phase D ③).
+> **커밋 위임 경계 (압축 후에도 살아야 한다 — `halt-conditions.md`의 「위임 경계」와 다른 축이다)**: 로컬 작업 브랜치의 checkpoint·task 완료 commit은 plan 승인에 포함된 위임이라 **그 지점에서 묻지 않는다**. push·main 병합·태그·릴리즈·PR은 위임 밖이며 각각 별도 승인(규칙 12 · Phase D ③).
 
 ### 완료 정의
 1. **Done = Proof.** 빌드 통과, 테스트 통과, 또는 재현 가능한 출력 없이는 완료 선언 금지.
