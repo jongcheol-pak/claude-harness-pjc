@@ -537,7 +537,10 @@ def _rows_guides(pages):
     rows, pend = [], []
     for r in sorted(pages):
         fm, text = pages[r]
-        if fm.get("type") != "guide" or fm.get("guide_kind") == "recipe":
+        # recipe도 이 섹션에 남긴다 -- wiki-schema §4가 "recipe는 본체 기능별 인덱스·`## 가이드 /
+        #  레시피` 섹션에서 관리한다"로 **양쪽 등재**를 규정하고, §3(§7-27)도 이 섹션에 recipe 행이
+        #  있음을 전제한다(그 행만 병기 검사에서 빼는 규칙이 있다). 빼면 규약 위반이자 100행 소실이다.
+        if fm.get("type") != "guide":
             continue
         lbl, todo = display_label(fm, text, None)
         if todo:
