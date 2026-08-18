@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """llm-wiki Lint 보조 스크립트.
 
-사용법: python lint.py "<vault_path>" [--fix]
+사용법: python lint.py "<vault_path>" [--fix] [--build-index [--dry-run]]
 검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md·skill-feedback.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
@@ -33,7 +33,7 @@
       (커밋 '수'만 셈). 어느 쪽도 코드 내용은 해석하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
-(H-2 규약(references/procedures-ops.md): SKILL 예산표·wiki-schema §3~§4·이 파일 3중 동기화).
+(H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3~§4·이 파일 3중 동기화).
 """
 import os, re, sys, glob, shutil, datetime, subprocess
 
@@ -55,6 +55,11 @@ BUDGET_NEAR_RATIO = 0.8
 #  INFO 더미에 묻혔다(실측 INFO 99건 중 10건). 묻히는 층을 없애고 WARN 하나만 남긴다.
 BUDGET_CRITICAL_RATIO = 0.95
 BUDGET_CRITICAL_SLACK = 500
+
+# 백업 자동 정리 임계(§8) — `-presplit` 사본을 며칠까지 보존하는가.
+#  §8의 "30일 지난 폴더는 삭제한다"를 그대로 쓴다. 접미사 없는 `{YYYY-MM-DD}/`는 이 값과 무관하게
+#  「오늘 것만 남긴다」로 더 빨리 회수된다(위키 decisions [2026-08-13] 채택 — 아래 cleanup_backups).
+BACKUP_KEEP_DAYS = 30
 
 # 「분리 불가 판정」(frontmatter budget_split) — 나눌 하위 주제가 없는 페이지(단일 주제 recipe·concept)는
 #  §4의 이동·분리 처방이 성립하지 않는다. 판정을 기록하면 임박 WARN을 「분리 불가 판정 유지」 INFO로 강등한다.
@@ -392,6 +397,344 @@ def repo_root_for_hub(hub_text):
     return root if os.path.isdir(root) else None
 
 
+def cleanup_backups(vault, today):
+    """§8 백업 정리 — `--fix`가 새 백업을 만들기 **전에** 1회 호출된다. 두 규칙을 함께 집행한다:
+      ① **접미사 없는 `{YYYY-MM-DD}/` 중 오늘이 아닌 것 제거** — git vault는 사전 백업이 면제인데
+         `--fix` 자동 백업만 쌓이는 것을 막는다. 제거 시점을 「세션 종료」가 아니라 「다음 --fix 시작」으로
+         두는 이유: 미커밋 상태로 세션이 끝나면 git 복구(checkout은 미커밋을 못 되돌린다)와 백업이
+         동시에 없어져 복구 수단이 0이 된다. 한 세션분을 남기면 복구 창이 유지되고 누적은 1개로 상한된다.
+      ② **`{YYYY-MM-DD}-presplit/` 중 BACKUP_KEEP_DAYS 경과분 제거** — 원본이 vault에 그대로 있는
+         수정 백업 성격이라 30일 정리 대상이다(§8 — `-deleted`·`-pre-restore` 같은 보존 특례가 없다).
+    **`-deleted`(삭제 백업 = 유일 사본)와 `-pre-restore`(복구 재백업)는 어느 규칙에도 걸리지 않는다** —
+    지우면 복구가 영구 불가해진다. 날짜로 읽히지 않는 이름(사람이 만든 임의 폴더)도 건드리지 않는다.
+    반환: `(제거 목록, 실패 목록)` — 둘 다 호출부가 `--fix` 헤더 **아래**에서 [CLEANUP]·[CLEANUP-FAIL]로
+    보고한다(여기서 바로 print하면 그 줄만 헤더 밖으로 나가 [FIXED]/[FIX-FAIL]과 형식이 어긋난다)."""
+    root = os.path.join(vault, "90_archive", "backup")
+    if not os.path.isdir(root):
+        return [], []
+    removed, failed = [], []
+    for name in sorted(os.listdir(root)):
+        path = os.path.join(root, name)
+        if not os.path.isdir(path):
+            continue
+        m = re.match(r"^(\d{4}-\d{2}-\d{2})(-.+)?$", name)
+        if not m:
+            continue
+        day = parse_date(m.group(1))
+        if day is None:   # 2026-13-45 같은 형식만 맞는 이름 — 판정 불가라 건드리지 않는다
+            continue
+        suffix = m.group(2) or ""
+        if suffix == "":
+            if day == today:
+                continue
+            reason = "이전 날짜 — 누적 금지"
+        elif suffix == "-presplit":
+            if (today - day).days <= BACKUP_KEEP_DAYS:
+                continue
+            reason = f"{BACKUP_KEEP_DAYS}일 경과"
+        else:
+            continue   # -deleted·-pre-restore 등 보존 특례
+        try:
+            shutil.rmtree(path)
+            removed.append(f"{name} ({reason})")
+        except OSError as e:
+            # 항목별 실패 격리 — apply_fixes의 [FIX-FAIL]과 같은 규약(그 폴더만 건너뛰고 계속).
+            failed.append(f"{name} 제거 실패({type(e).__name__}) — 건너뜀")
+    return removed, failed
+
+
+# --- 인덱스 생성 (--build-index) ------------------------------------------
+# index.md는 손으로 유지하기에는 원천이 너무 흩어져 있다(수백 페이지의 frontmatter). 생성 마커
+# 사이만 파생으로 채우고 밖은 손대지 않는다 -- 증상별 인덱스·참조처럼 판단이 들어가는 섹션은
+# 사람이 쓰는 자리로 남긴다(wiki-schema §6 「생성 마커」).
+AUTO_INDEX_BEGIN = "<!-- AUTO-INDEX:BEGIN -->"
+AUTO_INDEX_END = "<!-- AUTO-INDEX:END -->"
+
+
+def _fm_list(fm, key):
+    """frontmatter의 `[a, b]` 또는 `a, b` 형식 값을 리스트로. 없으면 빈 리스트."""
+    raw = fm.get(key, "").strip()
+    if not raw:
+        return []
+    raw = raw.strip("[]")
+    return [x.strip().strip('"').strip("'") for x in raw.split(",") if x.strip()]
+
+
+def scan_index_pages(vault):
+    """인덱스 생성용 최소 스캔 -- 검사는 돌리지 않고 frontmatter와 본문만 모은다.
+    `90_archive/`·루트 큐 파일·인덱스 자신은 생성 대상이 아니라 제외한다."""
+    pages = {}
+    for p in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True):
+        r = os.path.relpath(p, vault).replace("\\", "/")
+        if r.startswith("90_archive/") or r in ROOT_QUEUE_FILES or r.startswith("index"):
+            continue
+        try:
+            with open(p, "rb") as fh:
+                text = fh.read().decode("utf-8-sig")
+        except (UnicodeDecodeError, OSError):
+            continue   # 읽기 실패는 lint 본 검사가 ERR로 보고한다 -- 생성은 그 파일만 건너뛴다
+        # 정규화를 frontmatter 파싱 **전에** 한다 -- frontmatter()의 `^---` 매치가 CRLF 파일에서
+        #  실패해 전 섹션이 빈 인덱스로 생성되는 것을 막는다(본 검사 루프와 같은 순서).
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        pages[r] = (frontmatter(text), text)
+    return pages
+
+
+def display_label(fm, text, fallback_field):
+    """표시 라벨 -> (라벨, 미역이관 여부). `index_label`이 1차 원천이고, 없으면 타입별 폴백
+    원천(feature_name·entity_name 등) 또는 H1을 쓴다. 폴백값은 인덱스 표기 규약(한/영 병기
+    §7-16·§7-27)을 만족하지 못할 수 있으므로 「미역이관」으로 표시해 구분한다 --
+    파일명에서 라벨을 유도하지는 않는다(추측 금지)."""
+    lbl = fm.get("index_label", "").strip()
+    if lbl:
+        return lbl, False
+    fb = fm.get(fallback_field, "").strip() if fallback_field else ""
+    if not fb:
+        m = re.search(r"^#\s+(.+)$", text, re.M)
+        fb = m.group(1).strip() if m else ""
+    return (fb or "(라벨 미정)"), True
+
+
+def _rows_projects(pages, category):
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if fm.get("type") != "project" or fm.get("category") != category:
+            continue
+        lbl, todo = display_label(fm, text, "project")
+        if todo:
+            pend.append(r)
+        stack = ", ".join(_fm_list(fm, "tech_stack"))
+        rows.append("| [[%s\\|%s]] | %s | %s | %s |"
+                    % (r[:-3], lbl, fm.get("platform", "-"), stack or "-", fm.get("status", "-")))
+    return rows, pend
+
+
+def _rows_features(pages, category):
+    """category에 속한 feature 행. category가 None이면 recipe(가이드 레시피) 행만."""
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if category is None:
+            if fm.get("type") != "guide" or fm.get("guide_kind") != "recipe":
+                continue
+            lbl, todo = display_label(fm, text, None)
+            proj = "(레시피)"
+        else:
+            if fm.get("type") != "feature" or fm.get("category") != category:
+                continue
+            lbl, todo = display_label(fm, text, "feature_name")
+            proj = fm.get("project", "-")
+        if todo:
+            pend.append(r)
+        kind = "recipe" if category is None else "feature"
+        rows.append("| %s | %s | %s | [[%s\\|%s]] |"
+                    % (lbl, fm.get("platform", "-"), proj, r[:-3], kind))
+    return rows, pend
+
+
+def _rows_guides(pages):
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        # recipe도 이 섹션에 남긴다 -- wiki-schema §4가 "recipe는 본체 기능별 인덱스·`## 가이드 /
+        #  레시피` 섹션에서 관리한다"로 **양쪽 등재**를 규정하고, §3(§7-27)도 이 섹션에 recipe 행이
+        #  있음을 전제한다(그 행만 병기 검사에서 빼는 규칙이 있다). 빼면 규약 위반이자 100행 소실이다.
+        if fm.get("type") != "guide":
+            continue
+        lbl, todo = display_label(fm, text, None)
+        if todo:
+            pend.append(r)
+        rows.append("| [[%s\\|%s]] | %s | %s |"
+                    % (r[:-3], lbl, fm.get("guide_kind", "-"), fm.get("platform", "-")))
+    return rows, pend
+
+
+def _rows_knowledge(pages, typ, field, list_key):
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if fm.get("type") != typ:
+            continue
+        lbl, todo = display_label(fm, text, field)
+        if todo:
+            pend.append(r)
+        rows.append("| [[%s\\|%s]] | %s |"
+                    % (r[:-3], lbl, ", ".join(_fm_list(fm, list_key)) or "-"))
+    return rows, pend
+
+
+def _rows_questions(pages):
+    rows, pend = [], []
+    for r in sorted(pages):
+        fm, text = pages[r]
+        if fm.get("type") != "question" or question_is_resolved(fm):
+            continue
+        lbl, todo = display_label(fm, text, None)
+        if todo:
+            pend.append(r)
+        rows.append("| [[%s\\|%s]] | %s | %s |"
+                    % (r[:-3], lbl, fm.get("status", "open"),
+                       ", ".join(_fm_list(fm, "related")) or "-"))
+    return rows, pend
+
+
+def _table(header, sep, rows, empty_note):
+    out = [header, sep]
+    out.extend(rows if rows else ["<!-- %s -->" % empty_note])
+    return out
+
+
+def _sub_index_text(name, rows):
+    """category sub-index 파일 본문. 생성물이므로 머리말에 그 사실을 적는다 --
+    수기로 고쳐도 다음 `--build-index`가 덮어쓴다는 것을 파일 자신이 알려야 한다."""
+    title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
+    return ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
+            "# %s\n\n> [[index|위키 인덱스]]에서 분할된 기능별 인덱스"
+            " (wiki-schema §4 2단계). **이 파일은 `--build-index`가 생성한다 --"
+            " 수기 편집은 다음 생성에서 사라진다.**\n\n"
+            "## 기능별 인덱스\n\n%s\n") % (name, title, "\n".join(rows))
+
+
+def build_index(vault, dry_run):
+    """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 7섹션으로 채우고, category별
+    sub-index를 함께 생성한다. 마커 밖은 한 글자도 바꾸지 않는다.
+    반환: 종료 코드(0 정상 / 1 마커 없음·읽기·쓰기 실패)."""
+    pages = scan_index_pages(vault)
+    pending = []          # 라벨 미역이관 페이지 (index_label 부재)
+    body, sub_files = [], {}
+
+    for cat, title in (("personal", "개인 프로젝트"), ("work", "업무 프로젝트")):
+        rows, pend = _rows_projects(pages, cat)
+        pending += pend
+        body.append("## " + title)
+        body.append("")
+        body += _table("| 프로젝트 | 플랫폼 | 기술 스택 | 상태 |",
+                       "|----------|--------|-----------|------|", rows,
+                       "아직 없음 -- %s project 페이지 0개" % cat)
+        body.append("")
+
+    # 기능별 인덱스: 본체에는 recipe 행만 두고 프로젝트 feature는 category별 sub-index로 낸다
+    #  (§4 2단계 분할 -- 본체를 얇게 유지하면서 category 단위로 grep이 좁혀진다)
+    sub_links = []
+    for cat, title in (("personal", "개인"), ("work", "업무")):
+        rows, pend = _rows_features(pages, cat)
+        pending += pend
+        if not rows:
+            continue
+        name = "index-%s" % cat
+        sub_links.append("[[%s|%s 프로젝트 기능별 인덱스]]" % (name, title))
+        sub_files[name] = _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                                 "|------|--------|----------|------|", rows, "없음")
+    rows, pend = _rows_features(pages, None)
+    pending += pend
+    body.append("## 기능별 인덱스")
+    body.append("")
+    if sub_links:
+        body.append("> **분할 인덱스**: 프로젝트 feature의 기능별 인덱스는 category별로 분할돼 "
+                    "있다 -- " + " · ".join(sub_links) + ". 아래에는 레시피(cross-stack) 행만 남는다.")
+        body.append("")
+    body += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                   "|------|--------|----------|------|", rows, "레시피 없음")
+    body.append("")
+
+    rows, pend = _rows_guides(pages)
+    pending += pend
+    body.append("## 가이드 / 레시피")
+    body.append("")
+    body += _table("| 가이드 | 종류 | 플랫폼 |", "|--------|------|--------|", rows, "가이드 없음")
+    body.append("")
+
+    rows, pend = _rows_knowledge(pages, "entity", "entity_name", "used_by")
+    pending += pend
+    body.append("## 기술 스택 지식 (tech/)")
+    body.append("")
+    body += _table("| 기술 | 사용 프로젝트 |", "|------|--------------|", rows, "entity 없음")
+    body.append("")
+
+    rows, pend = _rows_knowledge(pages, "concept", "concept_name", "related_projects")
+    pending += pend
+    body.append("## 범용 패턴 (patterns/)")
+    body.append("")
+    body += _table("| 패턴 | 관련 프로젝트 |", "|------|--------------|", rows, "concept 없음")
+    body.append("")
+
+    rows, pend = _rows_questions(pages)
+    pending += pend
+    body.append("## 미해결 질문")
+    body.append("")
+    body += _table("| 질문 | 상태 | 관련 |", "|------|------|------|", rows, "미해결 질문 없음")
+
+    generated = "\n".join(body)
+
+    idx_path = os.path.join(vault, "index.md")
+    try:
+        with open(idx_path, "rb") as fh:
+            cur = fh.read().decode("utf-8-sig")
+    except (UnicodeDecodeError, OSError) as e:
+        print("index.md 읽기 실패(%s) -- 생성을 중단합니다." % type(e).__name__)
+        return 1
+    cur_n = cur.replace("\r\n", "\n").replace("\r", "\n")
+    if AUTO_INDEX_BEGIN not in cur_n or AUTO_INDEX_END not in cur_n:
+        print("생성 마커 없음 -- index.md를 덮어쓰지 않았습니다.")
+        print("  도입하려면 생성 대상 구역(프로젝트 테이블~미해결 질문)을 다음 두 줄로 감싸세요:")
+        print("    %s" % AUTO_INDEX_BEGIN)
+        print("    %s" % AUTO_INDEX_END)
+        print("  마커 밖(증상별 인덱스·참조·머리말)은 생성이 건드리지 않습니다.")
+        return 1
+
+    head, _sep, rest = cur_n.partition(AUTO_INDEX_BEGIN)
+    if AUTO_INDEX_END not in rest:
+        # END가 BEGIN보다 앞에 있는 malformed 파일 -- "마커 없음"과 같은 경로로 닫는다
+        #  (여기서 split을 그냥 하면 ValueError로 죽어, 안내 없이 트레이스백만 남는다).
+        print("마커 순서 이상(END가 BEGIN보다 앞) -- index.md를 덮어쓰지 않았습니다.")
+        return 1
+    _, tail = rest.split(AUTO_INDEX_END, 1)
+    new = head + AUTO_INDEX_BEGIN + "\n" + generated + "\n" + AUTO_INDEX_END + tail
+
+    if pending:
+        print("라벨 미역이관 %d건 -- `index_label` 부재로 폴백값을 썼습니다(한/영 병기 미보증):"
+              % len(pending))
+        for r in pending[:10]:
+            print("  - %s" % r)
+        if len(pending) > 10:
+            print("  ... 외 %d건" % (len(pending) - 10))
+
+    if dry_run:
+        print("== --build-index --dry-run (파일 미변경) ==")
+        print(new)
+        for name, lines in sorted(sub_files.items()):
+            print("---- %s.md ----" % name)
+            print("\n".join(lines))
+        return 0
+
+    # 여러 파일을 순차로 덮어쓰면 중간 실패가 **깨진 상태**를 남긴다 -- index.md는 이미
+    #  [[index-personal]]을 가리키는데 그 파일은 없는 식이다. 전부 `.tmp-build-index`로 쓴 뒤
+    #  한꺼번에 os.replace로 치환한다. (치환 자체는 파일 단위 원자성이라 다중 파일 전체를
+    #  보장하지는 않지만, 실패가 몰리는 지점인 '쓰기'를 치환 앞으로 모아 창을 최소화한다.)
+    staged = []
+    try:
+        for path, content in [(idx_path, new)] + [
+                (os.path.join(vault, name + ".md"), _sub_index_text(name, lines))
+                for name, lines in sorted(sub_files.items())]:
+            tmp = path + ".tmp-build-index"
+            with open(tmp, "wb") as fh:
+                fh.write(content.encode("utf-8"))
+            staged.append((tmp, path))
+        for tmp, path in staged:
+            os.replace(tmp, path)
+    except OSError as e:
+        for tmp, _path in staged:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass   # 임시 파일 정리 실패는 원본에 영향이 없다 -- 원 실패를 가리지 않는다
+        print("인덱스 쓰기 실패(%s) -- 원본을 그대로 두었습니다." % type(e).__name__)
+        return 1
+    print("index.md 생성 구역 갱신 · sub-index %d개 생성" % len(sub_files))
+    return 0
+
+
 def apply_fixes(vault):
     """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 3종만 자동 수정한다 (§7 —fix 규약) —
       ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거 —
@@ -403,8 +746,11 @@ def apply_fixes(vault):
     안전장치: 수정 전 원본을 90_archive/backup/{오늘}/ 원경로에 백업(목적지 존재 시 미덮어쓰기 — §8,
       복구는 절차 L 그대로 적용). 인코딩(BOM)·줄바꿈은 원본 상태를 보존한다. 항목별 실패는 격리
       (그 파일만 [FIX-FAIL] 보고 후 계속). 위반 0이면 파일 무변경·백업 미생성.
-    플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변."""
+    **백업 정리는 새 백업을 만들기 전에 1회 수행한다**(cleanup_backups — §8 누적 금지·30일 정리).
+      순서가 중요하다: 나중에 하면 방금 만든 오늘 백업을 지울 판정을 다시 하게 된다.
+    플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변(정리도 여기서만 일어난다)."""
     today = datetime.date.today()
+    cleaned, cleanup_failed = cleanup_backups(vault, today)
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
     raws, pages = {}, {}   # rel -> (bom, 원본 텍스트) / rel -> (fm, type, 정규화 텍스트)
@@ -421,6 +767,7 @@ def apply_fixes(vault):
         pages[rel(p)] = (fm, fm.get("type", ""), norm)
 
     fixed, failed = [], []
+    skipped_fix = []   # 생성기가 담당해 이번 --fix에서 제외한 항목 (D11)
     backed = set()
 
     def backup(r):
@@ -477,7 +824,16 @@ def apply_fixes(vault):
         return raw[:m.start()] + new_seg + raw[m.end():], False
 
     # ── ① §7-23 미해결 질문 인덱스 동기 ──────────────────────────────
-    if "index.md" in pages:
+    # 생성 마커가 있는 vault에서는 이 항목을 건너뛴다 -- `## 미해결 질문`이 `--build-index`의
+    #  생성 구역이 되어 writer가 둘이 되기 때문이다(같은 섹션에 두 주체가 쓰면 어느 쪽이 근거인지
+    #  사라진다). 생성기가 같은 정합을 매 실행 보장하므로 자동수정이 할 일이 없다.
+    #  **못 잡게 되는 것**: 마커 있는 vault에서 생성기를 돌리지 않은 채 open question이 늘면
+    #  index.md가 그만큼 뒤처진다 -- 그 상태는 다음 `--build-index` 한 번으로 닫히고, 검사(§7-23)
+    #  자체는 그대로 남아 보고한다(수정만 생성기가 맡는다).
+    #  **마커 없는 vault는 무회귀** -- 종전대로 안전 3종이 모두 동작한다(D11).
+    if AUTO_INDEX_BEGIN in pages.get("index.md", (None, None, ""))[2]:
+        skipped_fix.append("§7-23 미해결 질문 동기 — 생성 구역이라 --build-index가 담당 (D11)")
+    elif "index.md" in pages:
         try:
             inorm = pages["index.md"][2]
             q_sec = section(strip_code(inorm), "미해결 질문") or ""
@@ -577,6 +933,13 @@ def apply_fixes(vault):
             failed.append(f"log.md 수정 실패({type(e).__name__}) — 건너뜀")
 
     print("== --fix 적용 (안전 3종: §7-23 / §7-24 / §7-19 stale 제거) ==")
+    for c in cleaned:
+        print("[CLEANUP] 백업 제거: " + c)
+    for c in cleanup_failed:
+        print("[CLEANUP-FAIL] " + c)
+    for s in skipped_fix:
+        # 건너뛴 것을 조용히 두면 "3종을 다 돌렸다"로 읽힌다 -- 무엇이 왜 빠졌는지 남긴다.
+        print("[SKIP] " + s)
     if fixed:
         for f in fixed:
             print("[FIXED] " + f)
@@ -590,11 +953,14 @@ def apply_fixes(vault):
 
 def main():
     if len(sys.argv) < 2:
-        print("사용법: python lint.py \"<vault_path>\" [--fix]")
+        print("사용법: python lint.py \"<vault_path>\" [--fix] [--build-index [--dry-run]]")
         sys.exit(1)
     vault = sys.argv[1].rstrip("/\\")
     # --fix는 opt-in — 지정 시 안전 3종을 먼저 수정하고, 이어지는 본 lint가 수정 후 상태를 보고한다.
     #  (기본 실행은 완전 read-only 불변)
+    # --build-index는 검사와 독립이다 -- 생성만 하고 끝낸다(검사가 섞이면 결과가 진단에 묻힌다).
+    if "--build-index" in sys.argv[2:]:
+        sys.exit(build_index(vault, "--dry-run" in sys.argv[2:]))
     if "--fix" in sys.argv[2:]:
         apply_fixes(vault)
     # L-3: vault 경로에 glob 메타문자([ ] * ? 등)가 있어도 리터럴로 취급 — glob.escape로 감싸지 않으면

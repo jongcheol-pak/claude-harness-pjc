@@ -97,7 +97,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 |---|---|
 | `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) |
 | `plugins/pjc/skills/implement-task/SKILL.md`의 **「🚫 금지 표현」 ②③④⑤ 절** | **Hook 골든 회귀** — hook을 한 줄도 안 고쳐도 깨질 수 있다. `hooks/evals/scenarios/require-evidence.ps1:216`의 L12 블록이 **그 SKILL.md를 열어 문구 목록을 파싱**해 hook 정규식과 대조하기 때문이다(추출 0건이면 그 자체가 FAIL). 아래 「골든 부분 실행의 판정 자격」 예외를 plan에 미리 적었다면 `-Filter require-evidence`로 갈음 가능 |
-| `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals |
+| `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
 | `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」·「리뷰어 4종 공통 규약」 절** · `plugins/pjc/agents/*.md` · `docs/plans/deferred.md` | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
@@ -131,9 +131,9 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
-| `plugins/pjc/skills/implement-task/SKILL.md` | 97,900 | 618 | 67 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 87,311 | 505 | 83 |
-| `plugins/pjc/skills/llm-wiki/SKILL.md` | 66,423 | 257 | 81 |
+| `plugins/pjc/skills/implement-task/SKILL.md` | 97,535 | 619 | 67 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 88,134 | 509 | 83 |
+| `plugins/pjc/skills/llm-wiki/SKILL.md` | 54,237 | 182 | 80 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,873 | 354 | 135 |
 | `plugins/pjc/agents/plan-reviewer.md` | 51,274 | 416 | 78 |
 | `plugins/pjc/agents/spec-compliance-reviewer.md` | 30,796 | 308 | 104 |
@@ -251,7 +251,7 @@ task 1개가 통과하는 검증·리뷰 지점은 **19곳**이다 — Phase V�
 - **`-Resume`이 스킵하지 *않는* 범위**: 상태는 **필터 집합 + HEAD 커밋 + 검증 자산 내용 해시**로 격리된다(디렉터리 이름에 각인 — `scope.txt`로 확인 가능). 그래서 **다른 필터·다른 커밋·러너나 시나리오나 hook을 고친 뒤의 판정은 재사용되지 않는다** — 조건이 다르면 상태가 애초에 보이지 않아 그 그룹을 다시 돌린다. 이 격리가 없던 v1.159.0 개발 중에 **`-Filter`로 2그룹만 돌린 뒤 무필터 `-Resume`을 실행하자 12그룹을 전부 건너뛰고 `112/112 OK (FAIL 0)` exit 0**이 나왔다(419케이스가 조용히 빠졌고 부분 실행 경고도 없었다). **내용 해시를 함께 넣는 이유**: HEAD만 각인하면 *"전체 실행 → kill → 코드 수정 → `-Resume`"* 에서 **낡은 코드로 낸 판정**이 재사용되고 스코프 줄은 유효한 것처럼 보인다(커밋이 그대로이므로). 스킵이 일어나면 출력에 `[RESUME] … (스코프 filter=…|head=…|assets=…)`가 찍히므로 재사용 사실과 범위를 그 줄로 확인한다.
 - **`-Filter`는 단일 문자열 콤마도 받는다**(`-Filter "a,b"`). v1.159.0 이전에는 배열 전달만 동작해 `"a,b"`가 통째로 한 이름이 되어 **매칭 0건 실패로만 드러났다**.
 - **소요 시간을 완료 판정에 쓰지 말 것** — 같은 스위트가 **19분 6초 ↔ 27분 14초로 실측**된 만큼 wall-clock 편차가 크다. 완료는 아래 `EXIT=` 마커로만 판정한다. 같은 이유로 **성능 비교는 같은 세션에서 두 모드를 연속 측정**해야 한다(교차 세션 비교는 근거가 못 된다).
-- **현행 케이스 수 535가 회귀 기준선이다 — 케이스를 추가·삭제하면 이 값을 함께 갱신할 것.** (2026-08-15 무인자 전체 실행 실측 `535/535 OK (FAIL 0)`. 직전 기록값 528은 그 사이 늘어난 케이스가 반영되지 않아 낡은 값이었다 — `docs/plans/deferred.md`가 535로 적고 있었던 것이 맞다.) 이 숫자는 「문서 로드 예산 기준선」처럼 기계 대조되지 않으므로(그 표는 스킬·리뷰어 파일 바이트만 추적한다) **문서를 갱신하지 않으면 드리프트를 막을 장치가 없다.**
+- **현행 케이스 수 539가 회귀 기준선이다 — 케이스를 추가·삭제하면 이 값을 함께 갱신할 것.** (2026-08-15 무인자 전체 실행 실측 `535/535 OK (FAIL 0)`. 직전 기록값 528은 그 사이 늘어난 케이스가 반영되지 않아 낡은 값이었다 — `docs/plans/deferred.md`가 535로 적고 있었던 것이 맞다.) **(2026-08-18 재실측 `539/539 OK (FAIL 0)` — v1.180.0이 SessionStart `fork` matcher 케이스 4건(SC2b·SC2c·SC22b·SC22c)을 더했다.)** 이 숫자는 「문서 로드 예산 기준선」처럼 기계 대조되지 않으므로(그 표는 스킬·리뷰어 파일 바이트만 추적한다) **문서를 갱신하지 않으면 드리프트를 막을 장치가 없다.**
 
 ### 실행·대기 절차 (정본)
 

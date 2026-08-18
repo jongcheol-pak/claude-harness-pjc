@@ -24,6 +24,7 @@ lint.py 자체는 수정하지 않고 subprocess로 호출만 한다(실사용 �
 
 exit code: 전 case PASS면 0, 하나라도 FAIL이면 1.
 """
+import datetime
 import json
 import os
 import shutil
@@ -75,6 +76,35 @@ def prepare_placeholder_vault(fixture_dir):
                 with open(path, "w", encoding="utf-8", newline="") as fh:
                     fh.write(text.replace("__FIXTURE_ROOT__", root_token))
     return tmp, dest
+
+
+def prepare_backup_cleanup_vault(fixture_dir):
+    """fixture를 임시 복사하고 90_archive/backup/ 아래에 날짜 폴더 8종을 만든다(§8 정리 골든).
+    **날짜를 fixture에 체크인할 수 없어서** 여기서 만든다 — 오늘·어제·31일 전 판정은 실행 시점
+    기준 상대값이라, 고정 날짜를 커밋하면 시간이 지나며 기대 결과가 조용히 뒤집힌다.
+    반환: (정리용 임시 루트, vault 경로, {케이스 토큰: 실제 폴더명} 매핑)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-backup-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    today = datetime.date.today()
+    d1 = (today - datetime.timedelta(days=1)).isoformat()
+    d31 = (today - datetime.timedelta(days=31)).isoformat()
+    names = {
+        "TODAY": today.isoformat(),          # 남는다 — 한 세션분 복구 창
+        "D1": d1,                            # 제거 — 접미사 없는 이전 날짜(누적 금지)
+        "D31": d31,                          # 제거 — 같은 규칙(30일보다 먼저 걸린다)
+        "D1-deleted": d1 + "-deleted",       # 남는다 — 유일 사본
+        "D1-pre-restore": d1 + "-pre-restore",  # 남는다 — 복구 재백업
+        "D1-presplit": d1 + "-presplit",     # 남는다 — 30일 이내
+        "D31-presplit": d31 + "-presplit",   # 제거 — 30일 경과
+        "NOTADATE": "manual-note",           # 남는다 — 날짜로 읽히지 않는 임의 폴더
+    }
+    root = os.path.join(dest, "90_archive", "backup")
+    for folder in names.values():
+        os.makedirs(os.path.join(root, folder), exist_ok=True)
+        with open(os.path.join(root, folder, "sample.md"), "w", encoding="utf-8", newline="") as fh:
+            fh.write("백업 사본 더미\n")
+    return tmp, dest, names
 
 
 def prepare_bad_encoding_vault(fixture_dir):
@@ -153,6 +183,20 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
     return tmp, dest
 
 
+def _snapshot_md(root):
+    """vault 안 모든 .md의 (상대경로 -> 바이트) 스냅샷. --build-index --dry-run이 정말로
+    아무것도 쓰지 않았는지 앞뒤 비교로 증명하기 위한 것 — 출력 부재는 미변경의 증거가 아니다."""
+    snap = {}
+    for dirpath, _dirs, files in os.walk(root):
+        for name in files:
+            if not name.endswith(".md"):
+                continue
+            p = os.path.join(dirpath, name)
+            with open(p, "rb") as fh:
+                snap[os.path.relpath(p, root).replace(chr(92), "/")] = fh.read()
+    return snap
+
+
 def check_case(case):
     """한 case를 실행·대조해 (passed, detail) 반환."""
     fixture = case["fixture"]
@@ -169,6 +213,99 @@ def check_case(case):
     #  ② 수정 후 재lint 출력에 after_expect_absent(원 위반 문구) 전부 부재
     #  ③ 수정 후 재lint 출력에 after_expect_keywords 전부 존재 — "--fix가 건드리지 않아야 하는
     #     위반이 그대로 남았는가"(보수 동작: §7-24 섹션 밖 비제거 등)를 실증하는 보조 필드
+    # backup_cleanup 케이스: §8 백업 정리(cleanup_backups)를 폴더 집합으로 대조한다.
+    #  stdout 키워드만으로는 "지워지지 않아야 할 것이 남았는가"를 증명할 수 없어(출력이 없는 것은
+    #  보존의 증거가 아니다) 실제 디렉터리 목록을 본다. 무플래그 실행도 함께 돌려 read-only 계약
+    #  (정리는 --fix에서만 일어난다)을 같은 케이스에서 실증한다.
+    # build_index 케이스: `--build-index`(생성)를 임시 복사본에서 돌린다.
+    #  ① dry-run은 파일을 한 바이트도 바꾸지 않아야 하고(계약), ② 마커 밖 텍스트가 생성 출력에
+    #  그대로 살아 있어야 하며, ③ 마커가 없는 vault는 덮어쓰지 않고 안내만 내야 한다.
+    #  키워드 대조만으로는 ①을 증명할 수 없어(출력이 없는 것은 미변경의 증거가 아니다) 실제
+    #  파일 바이트를 앞뒤로 비교한다.
+    # build_index_write 케이스: **실제 쓰기 경로**(--dry-run 없이)를 돈다. dry-run만 돌리면
+    #  파일을 만드는 분기가 한 번도 실행되지 않아, sub-index 생성·마커 치환·마커 밖 보존이
+    #  "출력에서만" 맞는 상태로 통과할 수 있다. 여기서는 쓰인 파일을 다시 읽어 대조한다.
+    if case.get("build_index_write"):
+        tmp, dest = prepare_placeholder_vault(vault)
+        idx = os.path.join(dest, "index.md")
+        with open(idx, "rb") as fh:
+            before = fh.read().decode("utf-8")
+        out, rc, err = run_lint(dest, ["--build-index"])
+        with open(idx, "rb") as fh:
+            after = fh.read().decode("utf-8")
+        subs = sorted(n for n in os.listdir(dest)
+                      if n.startswith("index-") and n.endswith(".md"))
+        leftovers = [n for n in os.listdir(dest) if n.endswith(".tmp-build-index")]
+        sub_text = ""
+        for n in subs:
+            with open(os.path.join(dest, n), "rb") as fh:
+                sub_text += fh.read().decode("utf-8")
+        shutil.rmtree(tmp, ignore_errors=True)
+        if err.strip():
+            return False, "stderr 발생: " + err.strip().splitlines()[-1]
+        if rc != 0:
+            return False, f"쓰기 실행이 실패함 (rc={rc}): {out.strip()[:120]}"
+        if leftovers:
+            return False, "임시 파일 잔존: " + ", ".join(leftovers)
+        if subs != case.get("expect_sub_files", []):
+            return False, f"sub-index 파일 불일치 — 기대 {case.get('expect_sub_files', [])} / 실제 {subs}"
+        for kw in case.get("expect_outside_preserved", []):
+            if kw not in after:
+                return False, "마커 밖 텍스트가 사라짐: " + kw
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in after + sub_text]
+        if missing:
+            return False, "쓰인 파일에 누락: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in after + sub_text]
+        if present:
+            return False, "쓰인 파일에 있으면 안 되는 것: " + ", ".join(present)
+        if before == after:
+            return False, "index.md가 갱신되지 않음(마커 치환 미발생)"
+        return True, "실제 쓰기 대조: sub-index %d개 · 마커 밖 보존 · 임시 파일 0" % len(subs)
+
+    if case.get("build_index"):
+        tmp, dest = prepare_placeholder_vault(vault)
+        before = _snapshot_md(dest)
+        out, rc, err = run_lint(dest, ["--build-index", "--dry-run"])
+        after = _snapshot_md(dest)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if err.strip():
+            return False, "stderr 발생: " + err.strip().splitlines()[-1]
+        if before != after:
+            changed = sorted(set(before) ^ set(after)) or [
+                k for k in before if before[k] != after.get(k)]
+            return False, "--dry-run이 파일을 변경함: " + ", ".join(changed[:3])
+        if rc != case.get("expect_rc", 0):
+            return False, f"종료 코드 불일치 — 기대 {case.get('expect_rc', 0)} / 실제 {rc}"
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+        if missing:
+            return False, "생성 출력 키워드 누락: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "생성 출력에 있으면 안 되는 문구: " + ", ".join(present)
+        return True, "생성 대조 + 파일 미변경 확인: " + ", ".join(case.get("expect_keywords", []))
+
+    if case.get("backup_cleanup"):
+        tmp, dest, names = prepare_backup_cleanup_vault(vault)
+        root = os.path.join(dest, "90_archive", "backup")
+        before = sorted(os.listdir(root))
+        out0, rc0, err0 = run_lint(dest)                 # 무플래그 = read-only
+        after_ro = sorted(os.listdir(root))
+        out1, rc1, err1 = run_lint(dest, ["--fix"])
+        kept = sorted(os.listdir(root))
+        shutil.rmtree(tmp, ignore_errors=True)
+        if "== llm-wiki Lint:" not in out0 or "== llm-wiki Lint:" not in out1:
+            tail = (err0 or err1).strip().splitlines()[-1] if (err0 or err1).strip() else "(stderr 없음)"
+            return False, f"lint.py 비정상 종료(무플래그={rc0}/fix={rc1}): {tail}"
+        if after_ro != before:
+            return False, "무플래그 실행이 백업 폴더를 바꿨다(read-only 계약 위반)"
+        expected = sorted(names[tok] for tok in case["expect_backup_kept"])
+        if kept != expected:
+            return False, f"잔존 폴더 불일치 — 기대 {expected} / 실제 {kept}"
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out1]
+        if missing:
+            return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
+        return True, f"백업 정리 확인: {len(before)}개 → {len(kept)}개 (제거 {len(before) - len(kept)})"
+
     if case.get("fix_mode"):
         tmp = tempfile.mkdtemp(prefix="lint-eval-fix-")
         dest = os.path.join(tmp, os.path.basename(vault))
