@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · Deferred 집계.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
 무엇을: 이 repo는 마크다운이 곧 실행 규칙이라, 문서가 서로 어긋나면 그것이 곧 동작 결함이다.
-아래 여섯 축은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다:
+아래 일곱 축은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다:
 
   ① 문서 로드 예산  — 스킬·리뷰어 파일의 바이트가 `docs/harness-conventions.md` 「문서 로드 예산
      기준선」 표와 일치하는가. 그 표는 조건부 절차를 references로 밀어낸 절감이 유지되는지를
@@ -20,6 +20,10 @@
   ④ 마커 목록 동기  — 정당 정지 마커의 전수 목록(정본)과 `implement-task/SKILL.md`의 대표 예시가
      어긋나지 않는가. v1.154.0 이전에 정본 6곳 ↔ 사본 8곳으로 역전돼 있었고, 그 차이가 곧
      오차단 경로였다.
+  ⑫ 개념 정본      — 한 개념의 정의성 서술이 정본 1곳 밖에 흩어져 있지 않은가. 흩어지면 한쪽을 고칠 때
+     나머지가 조용히 낡는다(실측: `동기 호출`이 7파일 22회, `incomplete`가 11파일 22회). 개념·앵커·스코프·
+     어휘·면제는 전부 `docs/harness-conventions.md` 「개념 정본 유일성」 표에서 온다. 상세 리포트는
+     `--concept-report`(정본/화이트리스트/위반/차집합/면제 잔여 5구획).
   ⑤ Deferred 집계   — 대장의 「현행 잔량」 앵커가 실제 항목 수와 일치하는가. "정리 직후 수치만
      적고 등재분을 반영하지 않는" 실수가 이 대장의 반복 패턴이다. 앵커는 4필드이며 누계 2종은
      실측 불가(삭제분은 파일에 없다)라 **불변식** `대기 + 종결 + 삭제누계 == 총등재누계`로 검사한다
@@ -503,8 +507,9 @@ def main():
     except (AttributeError, OSError):
         pass  # 재설정 불가 환경(파이프 등)에서는 그대로 진행
 
-    # 축 ⑫는 T3 시점에 리포트 전용이다 — `main()` 편입은 T11(축 ⑪의 전례: 소진이 끝나기
-    # 전에 편입하면 그 사이 모든 task의 검증이 FAIL한다).
+    # 축 ⑫는 v1.179.0 T11에서 `main()`에 편입됐다(그전까지는 리포트 전용 — 소진이 끝나기 전에
+    # 편입하면 그 사이 모든 task의 검증이 FAIL하기 때문. 축 ⑪의 전례를 그대로 따랐다).
+    # `--concept-report`는 승격 후에도 상세 목록을 보기 위해 남긴다.
     if "--concept-report" in sys.argv:
         conv = read(CONV_MD)
         issues, n = check_concept_locality(conv, report=True)
@@ -524,12 +529,13 @@ def main():
         ("실행 예산 수치", check_reviewer_budget()),
         ("포인터 도달성", check_pointer_reachability()),
         ("마커 동기", check_marker_sync(conv, impl)),
+        ("개념 정본", check_concept_locality(conv)),
         ("Deferred 집계", check_deferred_stats(ledger)),
     ]:
         all_issues.extend(issues)
         parts.append("%s %d항목" % (label, n))
 
-    print("== 하니스 정합 셀프체크 (문서 예산 · 리뷰어 각주 · 실행 예산 · 포인터 · 마커 · Deferred) ==")
+    print("== 하니스 정합 셀프체크 (문서 예산 · 리뷰어 각주 · 실행 예산 · 포인터 · 마커 · 개념 정본 · Deferred) ==")
     if all_issues:
         for m in all_issues:
             print("[MISMATCH] %s" % m)
