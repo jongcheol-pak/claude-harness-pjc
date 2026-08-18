@@ -29,7 +29,7 @@ git reset --hard <checkpoint hash>
 
 각 task의 Phase I 시작 시 `git commit --allow-empty -m "checkpoint: T<N> start"`(빈 커밋) 생성.
 구현 완료 후 Phase V 진입 직전 `git commit -m "checkpoint: T<N> pre-review"`(실변경 — 리뷰 대상 diff 고정, SKILL Phase V 서두) 생성.
-pre-review 이후의 수정분(리뷰 지적·V-1~V-3 실패 수정)은 `git commit -m "checkpoint: T<N> review-fix"`로 이어 커밋(재리뷰 HEAD 갱신 — SKILL Phase V 서두·Phase D ① 판정 신호).
+pre-review 이후의 수정분(리뷰 지적·V-1~V-3 실패 수정)은 `git commit -m "checkpoint: T<N> review-fix"`로 이어 커밋(재리뷰 HEAD 갱신 — SKILL Phase V 서두·Phase D 「판정」 판정 신호).
 중간에 큰 변경 후 추가 checkpoint 가능:
 
 ```bash
