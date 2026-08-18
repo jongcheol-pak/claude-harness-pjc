@@ -17,7 +17,7 @@ disallowed-tools: AskUserQuestion
 >
 > 멈춤은 **Halt Condition**에서만 발생. 사소한 결정은 plan.md follow-up으로 기록 후 계속.
 
-> **질문 도구 제거(`disallowed-tools`)는 보조 장치일 뿐 — 1차 방어선은 이 문서의 규칙이다**(실동작·해제 시점·영향 범위는 `references/authoring-detail.md` 「질문 도구 제거의 실동작」).
+> **질문 도구 제거(`disallowed-tools`)는 보조 장치일 뿐 — 1차 방어선은 이 문서의 규칙이다**(실동작·해제 시점·영향 범위는 `references/authoring-detail.md` 「질문 도구 제거의 실동작」 · 두 스킬의 자율성 대비표도 같은 파일).
 
 ## 절대 규칙 (Hard Rules)
 
