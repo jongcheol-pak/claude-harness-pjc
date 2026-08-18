@@ -119,10 +119,10 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
 | `plugins/pjc/skills/implement-task/SKILL.md` | 97,900 | 618 | 67 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 84,065 | 493 | 83 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 84,937 | 497 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 66,423 | 257 | 81 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,713 | 354 | 135 |
-| `plugins/pjc/agents/plan-reviewer.md` | 50,045 | 412 | 78 |
+| `plugins/pjc/agents/plan-reviewer.md` | 50,567 | 413 | 78 |
 | `plugins/pjc/agents/spec-compliance-reviewer.md` | 30,796 | 308 | 104 |
 | `plugins/pjc/agents/code-quality-reviewer.md` | 33,399 | 283 | 79 |
 | `plugins/pjc/agents/plan-completion-reviewer.md` | 29,238 | 322 | 86 |
