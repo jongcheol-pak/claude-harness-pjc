@@ -495,6 +495,116 @@ def check_deferred_stats(ledger):
     return issues, wait + done
 
 
+# ─────────────────────────────────────────────────────────────
+# ⑧ 볼드 마커 짝 · ⑨ 한 줄 안 문장 중복 (문서 표기 결함)
+#
+# 두 축이 공유하는 것: 스캔 제외 정책과 「펜스·코드 스팬을 걷어낸 문단」 분리.
+# 왜 필요한가 — 어느 검증 명령도 이 둘을 잡지 못했다. 볼드가 어긋나면 렌더가 깨지고,
+#  같은 문장이 한 줄 안에 반복 삽입되면 **정본이 둘이 된다**(v1.180.0 F-7 M1이 실제로
+#  잡은 형태 — 사람 눈은 두 번 통과했다. 줄 수로 세면 같은 줄 안의 반복이 보이지 않는다).
+# ─────────────────────────────────────────────────────────────
+# 제외 정책 — ⓐ 픽스처는 **의도적으로 깨뜨린** 파일이라 검사 대상이 되면 축이 상시 실패한다
+#  ⓑ `docs/plans/YYYY-MM-DD-*.md`는 과거 회차의 이력 자산이고 그 시점의 사실이라 고치지 않는다
+#  (`deferred.md`는 살아 있는 자산이라 **제외하지 않는다** — 가장 활발히 편집되는 문서다)
+#  ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
+_ARCHIVED_PLAN_RX = re.compile(r"^docs/plans/\d{4}-\d{2}-\d{2}-")
+_LOCAL_ONLY = {"plan.md", "notes.md"}
+_INLINE_CODE_RX = re.compile(r"`[^`\n]*`")
+
+
+def _scan_scope():
+    """문서 표기 축의 대상을 `(경로, 레포 상대경로)`로 낸다 (위 제외 정책 적용)."""
+    for path in _md_files():
+        rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+        if "/fixtures/" in rel or _ARCHIVED_PLAN_RX.match(rel) or rel in _LOCAL_ONLY:
+            continue
+        yield path, rel
+
+
+def _blocks(text):
+    """펜스를 걷어내고 빈 줄로 끊은 **문단** 리스트. 각 원소는 `[(줄번호, 판정용 줄, 원문)]`.
+
+    판정용 줄은 **인라인 코드 스팬을 지운 것**이다 — 두 축 모두 코드 스팬 안의 문자를
+    세면 안 된다(볼드 축은 `` `**` `` 같은 리터럴 설명을 위반으로 잡고, 중복 축은 경로의
+    `.`을 문장 끝으로 오인한다. 둘 다 실측된 오탐이다).
+    문단 단위로 끊는 이유는 볼드 축에 있다 — 여러 줄에 걸친 정당한 볼드가 줄 단위 판정에서는
+    전부 오탐이 된다(실측: 줄 15건 → 문단 8건, 걸러진 10건이 전부 정당한 여러 줄 볼드).
+    펜스 판정은 `skills/llm-wiki/scripts/lint.py`의 상태 머신과 같은 방식이다."""
+    out, cur, fence = [], [], False
+    for i, ln in enumerate(text.split("\n"), 1):
+        if ln.lstrip().startswith("```"):
+            fence = not fence
+            if cur:
+                out.append(cur)
+                cur = []
+            continue
+        if fence:
+            continue
+        if not ln.strip():
+            if cur:
+                out.append(cur)
+                cur = []
+            continue
+        cur.append((i, _INLINE_CODE_RX.sub("", ln), ln))
+    if cur:
+        out.append(cur)
+    return out
+
+
+def check_bold_pairing():
+    """⑧ 문단 누적 `**` 개수가 홀수면 볼드 구간이 어긋난 것이다 (렌더가 깨진다)."""
+    issues, checked = [], 0
+    for path, rel in _scan_scope():
+        for block in _blocks(read(path)):
+            checked += 1
+            if sum(judged.count("**") for _, judged, _ in block) % 2:
+                # 라인 번호로 지목하지 않는다 — 편집 한 번에 낡는다(이 repo가 세 번 겪었다).
+                head = block[0][2].strip()[:60]
+                issues.append("볼드 마커 홀수 — %s 문단 시작 %r" % (rel, head))
+    return issues, checked
+
+
+# 문장 분리 — **종결부 뒤에서 자른다**. `[^.!?]{20,}?…` 형태로 뽑으면 최소 길이 요구가
+#  앞 문장을 삼켜 *"A. A."* 같은 실제 삽입 사고에서 두 조각이 서로 달라져 **미검출**된다
+#  (v1.180.0 F-7 M1이 잡은 바로 그 형태를 초안이 놓쳤다 — 재현으로 확인).
+_SENT_SPLIT_RX = re.compile(r"(?<=[.!?])")
+# 최소 길이 — 짧은 토막을 세면 표·열거의 정상 반복이 전부 걸린다.
+_SENT_MIN_LEN = 20
+
+
+def _sentences(line):
+    """한 줄을 문장 단위로 자른다(종결부 기준). 최소 길이 미만 조각은 버린다."""
+    return [s for s in (p.strip() for p in _SENT_SPLIT_RX.split(line))
+            if len(s) >= _SENT_MIN_LEN and s[-1] in ".!?"]
+
+
+def check_line_dup():
+    """⑨ 한 줄 안에 같은 문장이 2회 이상 나오면 삽입 사고다.
+
+    **문서 내 3회 이상** 축은 채택하지 않았다 — 실측에서 오탐 10건이 나왔고 그중 8건이
+    리뷰어 4종의 **의도된 공통 규약 블록**이었다. 그것을 예외로 빼면 축이 잡아야 할
+    「같은 문장이 여러 곳에 있음」과 형태가 같아져 예외가 곧 축의 무력화가 된다.
+
+    **무엇을 못 잡는가 (검출 범위의 대가)**: ⓐ **다른 줄에 걸친 반복** — 줄 단위 판정이라
+    한 문장이 여러 줄로 접혀 반복되면 안 잡힌다 ⓑ **문장이 아닌 반복**(제목·표 셀·짧은 구)
+    — `_SENT_MIN_LEN`과 종결부 요구 밖이다 ⓒ **문면이 조금 다른 반복** — 완전 일치만 센다.
+    ⓐ~ⓒ를 잡으려면 유사도 판정이 필요한데 그 대가가 오탐이고, 이 축이 겨냥한 실제 사고는
+    **한 줄 안 완전 복제**였다(v1.180.0 F-7 M1).
+    """
+    issues, checked = [], 0
+    for path, rel in _scan_scope():
+        for block in _blocks(read(path)):
+            for no, judged, _raw in block:
+                checked += 1
+                seen = {}
+                for s in _sentences(judged):
+                    seen[s] = seen.get(s, 0) + 1
+                for s, n in seen.items():
+                    if n >= 2:
+                        issues.append("한 줄 안 문장 %d회 반복 — %s:%d %r" % (n, rel, no, s[:50]))
+    return issues, checked
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -531,6 +641,8 @@ def main():
         ("마커 동기", check_marker_sync(conv, impl)),
         ("개념 정본", check_concept_locality(conv)),
         ("Deferred 집계", check_deferred_stats(ledger)),
+        ("볼드 마커 짝", check_bold_pairing()),
+        ("한 줄 문장 중복", check_line_dup()),
     ]:
         all_issues.extend(issues)
         parts.append("%s %d항목" % (label, n))
