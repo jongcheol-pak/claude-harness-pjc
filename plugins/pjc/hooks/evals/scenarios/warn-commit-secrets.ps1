@@ -292,6 +292,10 @@ if ($gitOk) {
         #   줄 연속 정규화가 없으면 각각 오탐·미탐이 된다.
         @{ n = "메시지 속 세미콜론이 -a 오탐을 만들지 않음 (T5 M2)";  c = 'git commit -m "fix -a bug; deploy"'; e = 0 }
         @{ n = "백슬래시 줄 연속 'commit -am' 미탐 없음 (T5 M1)";     c = ("git commit " + [char]92 + "`n  -am " + [char]34 + 'msg' + [char]34); e = 1 }
+        # 메시지 제거 정규식의 나머지 두 대안(작은따옴표·--message=) — 구조상 커버되지만 골든에
+        #   없으면 회귀 시 조용히 깨진다(2R 리뷰 m1).
+        @{ n = "작은따옴표 메시지 속 -a 오탐 없음 (T5 2R m1)";       c = ("git commit -m " + [char]39 + 'fix -a bug' + [char]39); e = 0 }
+        @{ n = "--message= 형태 메시지 속 -a 오탐 없음 (T5 2R m1)";  c = ('git commit --message=' + [char]34 + 'fix -a bug' + [char]34); e = 0 }
     )
     foreach ($t5 in $t5Cases) {
         $t5Out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $t5Probe -Cwd $wcsF -Cmd $t5.c 2>&1
