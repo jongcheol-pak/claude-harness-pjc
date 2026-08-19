@@ -252,11 +252,20 @@ function Invoke-WarnCommitSecrets {
         #   의미는 "`git commit -a`가 추적 파일을 자동 스테이징한다"이므로 `add`의 플래그가 여기
         #   걸리는 것은 판정 자체의 오류이고, 그 탓에 `git add -A && git commit`이 보완 스캔을
         #   두 번 돌았다. 세그먼트 분리는 warn-external-ops와 같은 형태를 쓴다.
-        $commitSeg = @($cmd -split '(\|\||&&|[;|]|\r?\n)' | Where-Object { $_ -match 'git\s+((-c|-C)\s+\S+\s+)*commit\b' })
-        # 먼저 메시지(-m) 값을 제거해 메시지 속 '-a'를 자동 스테이징으로 오인하지 않게 하되,
+        # 메시지(-m) 값 제거는 **세그먼트 분리보다 먼저** 한다 — 순서를 뒤집으면 메시지 안의
+        #   `;`·`&&`·개행에서 따옴표가 끊긴 채 쪼개져 값이 남고, 그 안의 `-a`가 플래그로 오인된다.
         #   플래그 토큰(-am의 a)은 보존한다.
-        $cmdFlags = ($commitSeg -join ' ') -replace '(?i)(^|\s)(-[a-zA-Z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', '$1$2'
-        $autoStage = ($cmdFlags -match '(^|\s)-[a-zA-Z]*a[a-zA-Z]*(\s|$)') -or ($cmdFlags -match '(^|\s)--all(\s|$)')
+        $cmdFlags = $cmd -replace '(?i)(^|\s)(-[a-zA-Z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', '$1$2'
+        # 셸 줄 연속(`\` + 개행)은 한 줄로 되돌린 뒤 나눈다 — 되돌리지 않으면 `git commit \`와
+        #   `  -am …`이 다른 세그먼트가 되고 뒤쪽은 `git`으로 시작하지 않아 통째로 버려져
+        #   자동 스테이징이 **미탐**된다(미탐은 오탐보다 위험하다 — 보완 스캔이 조용히 사라진다).
+        $commitSeg = @(($cmdFlags -replace '\\\r?\n\s*', ' ') -split '(\|\||&&|[;|]|\r?\n)' |
+            Where-Object { $_ -match 'git\s+((-c|-C)\s+\S+\s+)*commit\b' })
+        # 분리 결과가 비면 전체 명령으로 되돌아간다 — 정규화가 못 잡은 표기에서 판정 대상을
+        #   잃느니 종전처럼 넓게 보는 편이 안전하다(스캔이 한 번 더 도는 대가로 미탐을 막는다).
+        if (-not $commitSeg.Count) { $commitSeg = @($cmdFlags) }
+        $commitFlags = $commitSeg -join ' '
+        $autoStage = ($commitFlags -match '(^|\s)-[a-zA-Z]*a[a-zA-Z]*(\s|$)') -or ($commitFlags -match '(^|\s)--all(\s|$)')
         if ($autoStage) {
             $addedLines += Get-DiffHeadAdded
         }

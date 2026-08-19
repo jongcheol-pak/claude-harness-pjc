@@ -288,6 +288,10 @@ if ($gitOk) {
         @{ n = "'commit -am' 자동 스테이징 분기 유지 (T5)";            c = 'git commit -am x';             e = 1 }
         @{ n = "'commit -m'만이면 보완 스캔 0회 (T5)";                 c = 'git commit -m x';              e = 0 }
         @{ n = "'add -A && commit -am' 두 분기 각각 정당 발화 (T5)";   c = 'git add -A && git commit -am x'; e = 2 }
+        # 세그먼트 한정이 만든 두 회귀 경로 — 리뷰가 재현으로 잡았다. 순서(메시지 제거 → 분리)와
+        #   줄 연속 정규화가 없으면 각각 오탐·미탐이 된다.
+        @{ n = "메시지 속 세미콜론이 -a 오탐을 만들지 않음 (T5 M2)";  c = 'git commit -m "fix -a bug; deploy"'; e = 0 }
+        @{ n = "백슬래시 줄 연속 'commit -am' 미탐 없음 (T5 M1)";     c = ("git commit " + [char]92 + "`n  -am " + [char]34 + 'msg' + [char]34); e = 1 }
     )
     foreach ($t5 in $t5Cases) {
         $t5Out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $t5Probe -Cwd $wcsF -Cmd $t5.c 2>&1
