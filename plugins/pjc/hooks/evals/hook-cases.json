@@ -1129,6 +1129,14 @@
       "expect_exit": 0,
       "expect_contains": "PR 생성",
       "expect_not_contains": "원격 반영"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "gh release --notes 값 속 git tag 텍스트는 오탐 아님",
+      "command": "gh release create v1.181.0 --notes \"이 회차는 git tag v1.181.0 으로 표시했다\"",
+      "expect_exit": 0,
+      "expect_contains": "릴리즈",
+      "expect_not_contains": "태그 생성"
     }
   ]
 }

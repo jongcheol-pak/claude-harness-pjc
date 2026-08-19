@@ -254,7 +254,11 @@ function Invoke-WarnCommitSecrets {
             $addTargets = @()
             # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만
             #   걸려 있어, 경로를 대량 나열하면 파일당 git 서브프로세스 2회가 무제한으로 돌았다.
+            # 캡에 걸리면 **그 사실을 stderr로 알린다** — 초과분은 스캔에서 빠지므로(미탐)
+            #   조용히 줄어들면 "검사했는데 없다"와 "검사하지 않았다"가 구분되지 않는다.
+            #   `$capNotified`는 두 루프가 각각 한 번씩 알리지 않도록 공유한다.
             $scanned = 0
+            $capNotified = $false
             if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
                 # 전체 스테이징: untracked + 추적 파일 수정분
                 $addTargets = @(& git ls-files --others --exclude-standard 2>$null)
@@ -267,7 +271,13 @@ function Invoke-WarnCommitSecrets {
                 $rawTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
                     ForEach-Object { $_.Trim('"', "'") })
                 foreach ($rt in $rawTargets) {
-                    if ($scanned -ge 50) { break }
+                    if ($scanned -ge 50) {
+                        if (-not $capNotified) {
+                            [Console]::Error.WriteLine('[warn-commit-secrets] 스캔 대상 50개 상한 도달 — 초과분은 검사하지 않았다(--cached/diff HEAD 경로는 그대로 작동).')
+                            $capNotified = $true
+                        }
+                        break
+                    }
                     if (Test-Path -LiteralPath $rt -PathType Leaf) {
                         # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용(시크릿 픽스처·
                         #   탐지 규칙 정의)의 재신고는 보호 효과 0에 차단 비용만 낳는다. 전체 스캔 특례는
@@ -291,7 +301,13 @@ function Invoke-WarnCommitSecrets {
             #   상한 초과분은 스캔하지 않으므로 미탐이 될 수 있으나, 커밋 직전 신규 파일이 50개를
             #   넘는 경우는 드물고 그때도 --cached/diff HEAD 경로는 그대로 작동한다.
             foreach ($t in $addTargets) {
-                if ($scanned -ge 50) { break }
+                if ($scanned -ge 50) {
+                    if (-not $capNotified) {
+                        [Console]::Error.WriteLine('[warn-commit-secrets] 스캔 대상 50개 상한 도달 — 초과분은 검사하지 않았다(--cached/diff HEAD 경로는 그대로 작동).')
+                        $capNotified = $true
+                    }
+                    break
+                }
                 if ([string]::IsNullOrWhiteSpace($t)) { continue }
                 try {
                     $tf = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path (Get-Location).Path $t }
