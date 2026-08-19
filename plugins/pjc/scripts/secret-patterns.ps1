@@ -28,7 +28,7 @@ function Get-HighConfidenceSecretLabels {
     return $script:HighConfidenceSecretLabels
 }
 
-# 자격증명 쌍의 토큰 검증 (v1.119.0) — 인용형·비인용형 두 패턴이 공유한다.
+# 자격증명 쌍의 토큰 검증 (v1.119.0) — 인용형·줄 분리형·비인용형 **세** 패턴이 공유한다.
 #   두 패턴이 서로 다른 기준을 쓰면 그 차이가 곧 오탐/미탐 구멍이므로 판정을 한 곳에 둔다
 #   (모듈 헤더의 '패턴이 갈라지면 보안 구멍' 논리와 동일).
 function Test-CredentialPairToken {
@@ -66,9 +66,14 @@ function Test-CredentialPairToken {
     #   commit"*이라 안내한다). 같은 제외가 한 줄 `password 값` 패턴에는 lookahead로 있었는데
     #   **차단 등급인 쌍 판정에는 없어, 안내를 따른 문서가 도리어 커밋 차단됐다**(F-7 2R).
     #   판정을 여기 두는 근거는 이 함수 머리말과 같다 — 쌍 패턴이 셋으로 늘었고 기준이 갈리면 구멍이 된다.
-    # 트레이드오프: `$`로 시작하는 실제 비밀번호는 함께 미탐된다. 구조로는 `$uper5ecret`과
-    #   `$DB_PASSWORD`를 가를 수 없고, 차단 등급에서는 오탐 비용이 미탐 비용보다 크다
-    #   (미탐은 경고 계층이 덮는다 — 위 파일명 배제와 같은 판단).
+    # 트레이드오프 둘 — **구조로 가를 수 없어 실값까지 함께 놓는 자리다**(둘 다 의도).
+    #   ① `$`로 시작하는 실제 비밀번호(`$uper5ecret`)는 `$DB_PASSWORD`와 구조가 같아 함께 미탐된다.
+    #   ② 특수문자 없이 콜론으로 이어진 실제 비밀번호(`Secret1:King2`)는 설정 키 경로
+    #      (`appsettings:Db:Pwd1`)와 구조가 같아 함께 미탐된다. 세그먼트 수로도 가를 수 없다 —
+    #      2세그먼트 설정 키(`Db:Pwd1`)가 실재하므로 3개 이상을 요구하면 그쪽이 오탐이 된다.
+    #   둘 다 **차단 등급에서는 오탐 비용이 미탐 비용보다 크다**는 같은 판단이다(미탐은 경고 계층이
+    #   덮는다 — 위 파일명 배제와 같다). 골든은 이 희생을 **음성 케이스로 명시**해 둔다 — 우연히
+    #   비껴가는 가드는 검증되지 않은 방어선을 검증된 것처럼 보이게 한다(T9 quality 리뷰 지적).
     if ($pw -match '^\$' -or $pw -match '^%[\w.]+%$') { return $false }              # $env:X · ${X} · $X · %X%
     if ($pw -match '(?i)^(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\()') { return $false }
     if ($pw -match '^[A-Za-z][\w-]*(:[A-Za-z][\w-]*)+$') { return $false }           # 설정 키 경로(appsettings:Db:Pwd)
