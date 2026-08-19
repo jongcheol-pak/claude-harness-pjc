@@ -61,6 +61,19 @@ function Test-CredentialPairToken {
     if ($pw.Length -lt 6) { return $false }
     if ($pw -notmatch '[\d#$%!@^&*+=?~]') { return $false }
 
+    # 값이 아니라 **참조**면 자격증명이 아니다 (v1.182.0) — 환경변수 표기·설정 키 경로·코드 조회는
+    #   이 hook이 **스스로 권장하는 형태**다(차단 메시지가 *"값을 지우고 환경변수 이름만 남긴 뒤 다시
+    #   commit"*이라 안내한다). 같은 제외가 한 줄 `password 값` 패턴에는 lookahead로 있었는데
+    #   **차단 등급인 쌍 판정에는 없어, 안내를 따른 문서가 도리어 커밋 차단됐다**(F-7 2R).
+    #   판정을 여기 두는 근거는 이 함수 머리말과 같다 — 쌍 패턴이 셋으로 늘었고 기준이 갈리면 구멍이 된다.
+    # 트레이드오프: `$`로 시작하는 실제 비밀번호는 함께 미탐된다. 구조로는 `$uper5ecret`과
+    #   `$DB_PASSWORD`를 가를 수 없고, 차단 등급에서는 오탐 비용이 미탐 비용보다 크다
+    #   (미탐은 경고 계층이 덮는다 — 위 파일명 배제와 같은 판단).
+    if ($pw -match '^\$' -or $pw -match '^%[\w.]+%$') { return $false }              # $env:X · ${X} · $X · %X%
+    if ($pw -match '(?i)^(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\()') { return $false }
+    if ($pw -match '^[A-Za-z][\w-]*(:[A-Za-z][\w-]*)+$') { return $false }           # 설정 키 경로(appsettings:Db:Pwd)
+    if ($pw -match '(?i)^(환경변수|없음|미설정|\.env)') { return $false }            # 값 대신 안내를 적은 자리
+
     # 상태·에러코드 열거는 자격증명이 아니다 (v1.182.0) — 숫자가 붙은 열거 값이 바로 위 pw 요건
     #   (6자 이상 + 숫자)을 우연히 충족해 쌍 라벨로 오탐됐다.
     # 접미 숫자만으로 배제하면 실제 비밀번호까지 놓치므로, 값이 **순수 숫자**이거나

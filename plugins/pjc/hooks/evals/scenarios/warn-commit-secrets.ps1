@@ -18,6 +18,7 @@ if (Test-HookSelected @('warn-commit-secrets', 'pre-bash-dispatch')) {
 $spId = 'ad' + 'min'
 $spPw = 'Zq7' + '#mK21'
 $spBt = [char]96
+$spQ  = [char]39
 $spCases = @(
     @{ n = '인용 쌍 → 자격증명 쌍(고신뢰)';   t = "관리자 계정: $spBt$spId$spBt / $spBt$spPw$spBt";                  e = '자격증명 쌍' }
     @{ n = '비인용 쌍 → 경고 라벨';           t = "계정: $spId / $spPw";                                             e = '자격증명 쌍(비인용)' }
@@ -64,6 +65,25 @@ $spCases = @(
        t = "계정 목록: $spBt$spId$spBt`n비고: 정책 참고`n비밀번호 최소 길이: $spBt" + '12자리이상#' + "$spBt"; e = '' }
     @{ n = 'T8 음성: 맞붙었지만 라벨이 다르다(비밀번호 파일)';
        t = "| 계정 | $spBt$spId$spBt |`n| 비밀번호 파일 | $spBt" + 'secrets.yml2' + "$spBt |"; e = '' }
+    # [v1.182.0 T9] **값 축** 델타 음성 — 값이 아니라 **참조**를 적은 자리다. 이 형태는 hook 자신이
+    #   차단 메시지에서 권장하는 것("환경변수 이름만 남긴 뒤 다시 commit")이라, 차단하면 안내를 따른
+    #   문서가 도리어 막힌다. 경고 라벨(`password 값`)까지 없애는 것이 아니라 **차단 등급만** 뺀다.
+    @{ n = 'T9 음성: $env: 참조';        t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + '$env:DB_PASSWORD' + $spQ; e = '' }
+    @{ n = 'T9 음성: %VAR% 참조(표)';    t = "| 계정 | $spQ" + 'svcuser' + "$spQ |`n| 비밀번호 | $spQ" + '%DB_PASS%' + "$spQ |"; e = '' }
+    @{ n = 'T9 음성: ${VAR} 참조';       t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + '${DB_PASSWORD}' + $spQ; e = '' }
+    @{ n = 'T9 음성: process.env 조회';  t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + 'process.env.DB_PASS1' + $spQ; e = '' }
+    @{ n = 'T9 음성: 설정 키 경로';      t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + 'appsettings:Db:Pwd1' + $spQ; e = 'password 값' }
+    # 한 줄 슬래시형은 **v1.119.0부터** 같은 오차단을 갖고 있었다(BASE 실측 확인). 공유 판정에 제외를
+    #   넣어 함께 닫혔으므로 그 경로도 고정한다.
+    @{ n = 'T9 음성: 한 줄 슬래시 + $env: (기존 결함)';
+       t = "계정: $spQ$spId$spQ / $spQ" + '$env:DB_PASSWORD' + $spQ; e = '' }
+    # 제외가 과하지 않은지 — 실제 비밀번호가 `%`로 끝나거나 콜론을 품어도 그대로 검출돼야 한다.
+    @{ n = 'T9 양성 가드: % 로 끝나는 실값'; t = "관리자 계정: $spBt$spId$spBt / ${spBt}Secret99%$spBt";  e = '자격증명 쌍' }
+    @{ n = 'T9 양성 가드: 콜론 포함 실값';   t = "관리자 계정: $spBt$spId$spBt / ${spBt}Pa55:word!$spBt"; e = '자격증명 쌍' }
+    # [F-7 2R m3] **인접 요구를 단독으로 검증**한다 — 라벨은 정확하고 사이 줄만 있다. 차단 등급은
+    #   빠지고 경고(`password 값`)는 남는다. 이 케이스가 없으면 인접 요구를 되돌려도 골든이 green이다.
+    @{ n = 'T9 음성: 라벨은 정확하나 사이 줄이 있다(인접 요구 단독)';
+       t = "계정: $spBt$spId$spBt`n비고: 정책 참고`n비밀번호: $spBt$spPw$spBt"; e = 'password 값' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')
