@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
 무엇을: 이 repo는 마크다운이 곧 실행 규칙이라, 문서가 서로 어긋나면 그것이 곧 동작 결함이다.
-아래 일곱 축은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다:
+아래 축들은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다(축 수를 여기 적지 않는
+이유는 그 숫자가 축을 늘릴 때마다 낡기 때문이다 — 실행 배너는 축 라벨에서 파생한다):
 
   ① 문서 로드 예산  — 스킬·리뷰어 파일의 바이트가 `docs/harness-conventions.md` 「문서 로드 예산
      기준선」 표와 일치하는가. 그 표는 조건부 절차를 references로 밀어낸 절감이 유지되는지를
@@ -28,6 +29,11 @@
      적고 등재분을 반영하지 않는" 실수가 이 대장의 반복 패턴이다. 앵커는 4필드이며 누계 2종은
      실측 불가(삭제분은 파일에 없다)라 **불변식** `대기 + 종결 + 삭제누계 == 총등재누계`로 검사한다
      — 종전에 사람이 batch 전후로 대조하던 「무손실 대조」를 기계화한 것이다.
+  ⑥ 볼드 마커 짝    — 문단 누적 `**` 개수가 홀수면 볼드 구간이 어긋난 것이다(렌더가 깨진다).
+  ⑦ 한 줄 문장 중복 — 한 줄 안에 같은 문장이 2회 이상 나오면 삽입 사고다. 정본이 둘이 된다.
+     ⑥⑦은 앞의 축들과 성격이 다르다 — **문서 기록값 ↔ 실측**이 아니라 **레포 md 전수의 표기
+     결함**을 본다. 판정 단위·제외 정책·못 잡는 것은 각 함수의 주석과
+     `docs/harness-conventions.md` 「문서 표기 축」이 정본이다.
 
 왜 하드코딩하지 않는가: 검사 대상 목록·기대값을 코드에 박으면 문서가 바뀌어도 검사가 낡는다.
 모든 기대값은 문서에서 파싱하며, 앵커를 못 찾으면 통과가 아니라 `[ANCHOR FAIL]`(exit 2)이다 —
@@ -405,8 +411,10 @@ def check_pointer_reachability():
 
     for src in _md_files():
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
-        # 과거 plan·로컬 노트는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례)
-        if rel_src.startswith("docs/plans/2026-") or rel_src in ("plan.md", "notes.md"):
+        # 과거 plan·로컬 노트는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
+        # 판정을 `_ARCHIVED_PLAN_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
+        # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
+        if _ARCHIVED_PLAN_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
             continue
         text = open(src, encoding="utf-8").read()
         for ref_path, sec_name in pat.findall(text):
@@ -568,7 +576,10 @@ def check_bold_pairing():
 #  앞 문장을 삼켜 *"A. A."* 같은 실제 삽입 사고에서 두 조각이 서로 달라져 **미검출**된다
 #  (v1.180.0 F-7 M1이 잡은 바로 그 형태를 초안이 놓쳤다 — 재현으로 확인).
 _SENT_SPLIT_RX = re.compile(r"(?<=[.!?])")
-# 최소 길이 — 짧은 토막을 세면 표·열거의 정상 반복이 전부 걸린다.
+# 최소 길이 — 짧은 토막을 세면 표·열거의 정상 반복이 전부 걸린다. 값의 근거는 실측이다:
+#  임계 0이면 레포 전수에서 **124건**이 걸리는데 임계 10 이상이면 **0건**이다(2026-08-19 실측).
+#  즉 오탐은 전부 아주 짧은 조각(표 셀·번호 항목)이고, 실제 삽입 사고는 문장 길이다.
+#  10~25 어디를 잡아도 현행 검출은 같아 여유를 두고 20으로 뒀다.
 _SENT_MIN_LEN = 20
 
 
@@ -632,8 +643,9 @@ def main():
     ledger = read(LEDGER_MD)
     impl = read(IMPL_MD)
 
-    all_issues, parts = [], []
-    for label, (issues, n) in [
+    # 라벨 목록을 한 곳에 두고 **배너와 결과 문구가 둘 다 여기서 파생**되게 한다 —
+    #  종전에는 배너가 별도 리터럴이라 축을 늘려도 그대로 남았다(이 회차가 실제로 겪었다).
+    axes = [
         ("예산 기준선", check_doc_budget(conv)),
         ("리뷰어 각주", check_reviewer_footnote(conv)),
         ("실행 예산 수치", check_reviewer_budget()),
@@ -643,11 +655,13 @@ def main():
         ("Deferred 집계", check_deferred_stats(ledger)),
         ("볼드 마커 짝", check_bold_pairing()),
         ("한 줄 문장 중복", check_line_dup()),
-    ]:
+    ]
+    all_issues, parts = [], []
+    for label, (issues, n) in axes:
         all_issues.extend(issues)
         parts.append("%s %d항목" % (label, n))
 
-    print("== 하니스 정합 셀프체크 (문서 예산 · 리뷰어 각주 · 실행 예산 · 포인터 · 마커 · 개념 정본 · Deferred) ==")
+    print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
     if all_issues:
         for m in all_issues:
             print("[MISMATCH] %s" % m)
