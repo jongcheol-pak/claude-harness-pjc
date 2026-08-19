@@ -204,8 +204,14 @@ function Get-DiffHeadAdded {
         # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **stdout(fd 1)** 에
         #   쓰므로, hook이 stdout으로 내보내는 JSON(`additionalContext`)에 끼어들어 파싱을 깨뜨린다
         #   (실측 확인). 이 repo의 hook 출력 규약도 경고는 stderr다(AGENTS.md 「hook 출력 규약」).
-        [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
-                                   'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
+        # 한 호출에서 **1회만** 낸다 — `git add -A`는 `$autoStage` 분기와 `-A` 분기가 둘 다 이 함수를
+        #   부르므로(구조는 이 회차 이전부터 그렇다) 억제가 없으면 같은 실패가 두 번 보여 사용자가
+        #   두 번 실패한 것으로 읽는다. 아래 스캔 캡 경고의 `$capNotified`와 같은 처방이다.
+        if (-not $script:diffHeadFailNotified) {
+            [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
+                                       'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
+            $script:diffHeadFailNotified = $true
+        }
         return @()
     }
     return @($out | Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
@@ -213,6 +219,10 @@ function Get-DiffHeadAdded {
 
 function Invoke-WarnCommitSecrets {
     param($data)
+    # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — hook 프로세스는 도구 호출당 새로 뜨지만
+    #   골든 러너는 한 프로세스에서 이 함수를 여러 번 부르므로, 리셋이 없으면 두 번째 케이스부터
+    #   경고가 사라져 그 케이스가 검증하려던 신호가 조용히 없어진다.
+    $script:diffHeadFailNotified = $false
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
