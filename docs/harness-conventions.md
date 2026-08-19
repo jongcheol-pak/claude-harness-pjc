@@ -101,7 +101,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」·「리뷰어 4종 공통 규약」 절** · `plugins/pjc/agents/*.md` · `docs/plans/deferred.md` | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
-| 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) — 기본값 |
+| 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — 기본값. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 |
 | `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·Phase F-2에 포함하지 않는다**(실제 모델 호출이라 비용이 크다) |
 
 ## 문서 로드 예산 기준선
@@ -132,7 +132,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
 | `plugins/pjc/skills/implement-task/SKILL.md` | 97,535 | 619 | 67 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 88,134 | 509 | 83 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 88,623 | 511 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 54,237 | 182 | 80 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,873 | 354 | 135 |
 | `plugins/pjc/agents/plan-reviewer.md` | 51,274 | 416 | 78 |
@@ -341,3 +341,13 @@ Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File
 ### 우회
 
 **전용 변수 `CLAUDE_HARNESS_ALLOW_SECRET=1`**(사용자만, Claude Code 시작 전 터미널)이다. `CLAUDE_HARNESS_QUICK`으로는 꺼지지 않는다 — QUICK은 일상 변수라 재사용하면 자격증명 차단이 함께 꺼진다.
+
+## 문서 표기 축 (볼드 마커 짝 · 한 줄 문장 중복)
+
+`check-harness-consistency.py`의 여덟째·아홉째 축이다. 앞의 일곱 축이 **문서 기록값 ↔ 실측**을 대조하는 것과 달리 이 둘은 **레포 md 전수의 표기 결함**을 본다 — 기준선 표가 없고 판정 규칙이 곧 정본이라, 그 규칙과 근거는 코드 주석에 둔다. 여기서는 **왜 이 축이 있고 무엇을 못 잡는지**만 적는다.
+
+- **왜**: 어느 검증 명령도 이 둘을 잡지 못했다. 볼드가 어긋나면 렌더가 깨지고, 같은 문장이 한 줄 안에 반복 삽입되면 **정본이 둘이 된다**. 후자는 v1.180.0 F-7이 실제로 잡은 형태이며 **사람 눈은 두 번 통과했다**(줄 수로 세면 같은 줄 안의 반복이 보이지 않는다).
+- **판정 단위**: 두 축 모두 **펜스와 인라인 코드 스팬을 걷어낸 뒤** 판정한다. 볼드는 **문단** 누적 `**` 개수, 중복은 **줄** 단위다. 줄 단위 볼드 판정은 여러 줄에 걸친 정당한 볼드를 오탐하고(실측 15건 중 10건), 코드 스팬을 남기면 `` `**` `` 같은 리터럴 설명과 경로의 `.`이 걸린다.
+- **스캔 제외 3종**: 픽스처(`**/fixtures/**` — 의도적으로 깨뜨린 파일) · 날짜 접두 아카이브 plan(`docs/plans/YYYY-MM-DD-*.md` — 그 시점의 사실이라 고치지 않는다) · gitignore 로컬 파일(`plan.md`·`notes.md`). **`deferred.md`는 제외하지 않는다** — 살아 있는 자산이고 가장 활발히 편집된다.
+- **채택하지 않은 것**: 「문서 내 동일 문장 3회 이상」 축. 실측 오탐 10건 중 8건이 리뷰어 4종의 **의도된 공통 규약 블록**이라, 그것을 예외로 빼면 축이 잡아야 할 「같은 문장이 여러 곳에 있음」과 형태가 같아져 **예외가 곧 축의 무력화**가 된다.
+- **무엇을 못 잡는가**: 중복 축은 ⓐ 여러 줄에 걸친 반복 ⓑ 문장이 아닌 반복(제목·표 셀) ⓒ 문면이 조금 다른 반복을 놓친다. 잡으려면 유사도 판정이 필요한데 그 대가가 오탐이다.

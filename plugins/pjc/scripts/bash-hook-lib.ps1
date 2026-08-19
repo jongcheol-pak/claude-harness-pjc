@@ -27,10 +27,16 @@ function Invoke-WarnExternalOps {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # 커밋 메시지(-m 값) 스트립 — 메시지 속 push/merge 텍스트가 실제 경고를 삼키지 않게(값만 제거, 플래그 토큰 보존).
+    # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게(값만 제거, 플래그 토큰 보존).
+    #   `gh`도 대상인 이유: 릴리즈 노트에 회차 서사를 적으면 `--notes "…git merge…"`가 통째로
+    #   경고를 유발한다(v1.113.1 릴리즈 발행 때 실관찰). `-m`은 종전대로 `git`에만 건다 —
+    #   `gh`의 짧은 플래그는 의미가 명령마다 달라 일괄 스트립하면 판정 대상까지 지운다.
     $scanCmd = $cmd
     if ($scanCmd -match '(?i)(^|\s)git(\s|$)') {
         $scanCmd = $scanCmd -replace '(?i)(^|\s)(-[a-z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
+    }
+    if ($scanCmd -match '(?i)(^|\s)gh(\s|$)') {
+        $scanCmd = $scanCmd -replace '(?i)(^|\s)(--notes|--body)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
     }
 
     $externalOps = @(
@@ -184,8 +190,39 @@ function Find-SinglePlanUpwards {
 }
 
 # ---- warn-commit-secrets: git commit 직전 스테이징될 변경에서 시크릿 패턴 경고(비차단) ----
+# `git diff HEAD` 보완 스캔 — 실패를 **조용한 빈 배열로 두지 않는다**.
+#   HEAD가 없는(초기 커밋 전) 저장소에서는 이 호출이 실패하는데, 종전에는 `2>$null`로
+#   삼켜 그 경로의 스캔분이 통째로 사라져도 아무 신호가 없었다. 기본 경로(`--cached`)는
+#   빈 트리와 비교해 정상 동작하므로 차단 자체가 사라지는 것은 아니지만, **보완 스캔이
+#   빠졌다는 사실은 드러나야 한다**(이 repo가 반복 등재한 "조용한 fail-open" 계열).
+function Get-DiffHeadAdded {
+    param([string[]]$PathArgs = @())
+    $out = if ($PathArgs.Count) { @(& git diff HEAD --unified=0 -- $PathArgs 2>$null) }
+           else { @(& git diff HEAD --unified=0 2>$null) }
+    if ($LASTEXITCODE -ne 0) {
+        $scope = if ($PathArgs.Count) { ($PathArgs -join ' ') } else { '전체' }
+        # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **stdout(fd 1)** 에
+        #   쓰므로, hook이 stdout으로 내보내는 JSON(`additionalContext`)에 끼어들어 파싱을 깨뜨린다
+        #   (실측 확인). 이 repo의 hook 출력 규약도 경고는 stderr다(AGENTS.md 「hook 출력 규약」).
+        # 한 호출에서 **1회만** 낸다 — `git add -A`는 `$autoStage` 분기와 `-A` 분기가 둘 다 이 함수를
+        #   부르므로(구조는 이 회차 이전부터 그렇다) 억제가 없으면 같은 실패가 두 번 보여 사용자가
+        #   두 번 실패한 것으로 읽는다. 아래 스캔 캡 경고의 `$capNotified`와 같은 처방이다.
+        if (-not $script:diffHeadFailNotified) {
+            [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
+                                       'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
+            $script:diffHeadFailNotified = $true
+        }
+        return @()
+    }
+    return @($out | Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+}
+
 function Invoke-WarnCommitSecrets {
     param($data)
+    # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — hook 프로세스는 도구 호출당 새로 뜨지만
+    #   골든 러너는 한 프로세스에서 이 함수를 여러 번 부르므로, 리셋이 없으면 두 번째 케이스부터
+    #   경고가 사라져 그 케이스가 검증하려던 신호가 조용히 없어진다.
+    $script:diffHeadFailNotified = $false
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
@@ -212,8 +249,7 @@ function Invoke-WarnCommitSecrets {
         $cmdFlags = $cmd -replace '(?i)(^|\s)(-[a-zA-Z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', '$1$2'
         $autoStage = ($cmdFlags -match '(^|\s)-[a-zA-Z]*a[a-zA-Z]*(\s|$)') -or ($cmdFlags -match '(^|\s)--all(\s|$)')
         if ($autoStage) {
-            $addedLines += @(@(& git diff HEAD --unified=0 2>$null) |
-                Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+            $addedLines += Get-DiffHeadAdded
         }
 
         # 선행 스테이징 인지 (v1.119.0 — F-7 B1): PreToolUse는 명령 '실행 전'에 돈다.
@@ -226,11 +262,17 @@ function Invoke-WarnCommitSecrets {
         if ($addMatch.Success) {
             $addArgs = $addMatch.Groups[3].Value.Trim()
             $addTargets = @()
+            # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만
+            #   걸려 있어, 경로를 대량 나열하면 파일당 git 서브프로세스 2회가 무제한으로 돌았다.
+            # 캡에 걸리면 **그 사실을 stderr로 알린다** — 초과분은 스캔에서 빠지므로(미탐)
+            #   조용히 줄어들면 "검사했는데 없다"와 "검사하지 않았다"가 구분되지 않는다.
+            #   `$capNotified`는 두 루프가 각각 한 번씩 알리지 않도록 공유한다.
+            $scanned = 0
+            $capNotified = $false
             if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
                 # 전체 스테이징: untracked + 추적 파일 수정분
                 $addTargets = @(& git ls-files --others --exclude-standard 2>$null)
-                $addedLines += @(@(& git diff HEAD --unified=0 2>$null) |
-                    Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+                $addedLines += Get-DiffHeadAdded
             } else {
                 # 경로 나열: 플래그를 뺀 인자만 대상으로 본다.
                 #   인자가 디렉터리(`git add docs/`)거나 글롭(`git add *.md`)이면 파일이 아니라서
@@ -239,13 +281,20 @@ function Invoke-WarnCommitSecrets {
                 $rawTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
                     ForEach-Object { $_.Trim('"', "'") })
                 foreach ($rt in $rawTargets) {
+                    if ($scanned -ge 50) {
+                        if (-not $capNotified) {
+                            [Console]::Error.WriteLine('[warn-commit-secrets] 스캔 대상 50개 상한 도달 — 초과분은 검사하지 않았다(--cached/diff HEAD 경로는 그대로 작동).')
+                            $capNotified = $true
+                        }
+                        break
+                    }
                     if (Test-Path -LiteralPath $rt -PathType Leaf) {
                         # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용(시크릿 픽스처·
                         #   탐지 규칙 정의)의 재신고는 보호 효과 0에 차단 비용만 낳는다. 전체 스캔 특례는
                         #   untracked(ignored 강제 add 포함) 전용으로 유지 — v1.119.0 신규 파일 사고 경로.
                         if (@(& git ls-files -- $rt 2>$null).Count -gt 0) {
-                            $addedLines += @(@(& git diff HEAD --unified=0 -- $rt 2>$null) |
-                                Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+                            $addedLines += Get-DiffHeadAdded -PathArgs @($rt)
+                            $scanned++
                         } else {
                             $addTargets += $rt
                         }
@@ -253,17 +302,22 @@ function Invoke-WarnCommitSecrets {
                     }
                     # 디렉터리·글롭·미존재 경로 → git이 해석하게 맡긴다
                     $addTargets += @(& git ls-files --others --exclude-standard -- $rt 2>$null)
-                    $addedLines += @(@(& git diff HEAD --unified=0 -- $rt 2>$null) |
-                        Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+                    $addedLines += Get-DiffHeadAdded -PathArgs @($rt)
+                    $scanned++
                 }
             }
 
             # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다.
             #   상한 초과분은 스캔하지 않으므로 미탐이 될 수 있으나, 커밋 직전 신규 파일이 50개를
             #   넘는 경우는 드물고 그때도 --cached/diff HEAD 경로는 그대로 작동한다.
-            $scanned = 0
             foreach ($t in $addTargets) {
-                if ($scanned -ge 50) { break }
+                if ($scanned -ge 50) {
+                    if (-not $capNotified) {
+                        [Console]::Error.WriteLine('[warn-commit-secrets] 스캔 대상 50개 상한 도달 — 초과분은 검사하지 않았다(--cached/diff HEAD 경로는 그대로 작동).')
+                        $capNotified = $true
+                    }
+                    break
+                }
                 if ([string]::IsNullOrWhiteSpace($t)) { continue }
                 try {
                     $tf = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path (Get-Location).Path $t }

@@ -9,7 +9,7 @@
 
 무엇을: llm-wiki의 공유 상수(파일 예산·통제 어휘)는 네 곳에 존재한다 —
   ① lint.py 상수(BUDGET·GUIDE_BUDGET·SPECIAL_BUDGET·INDEX_*·*_VOCAB)
-  ② SKILL.md '## 파일 예산' 표
+  ② references/wiki-ops-rules.md '## 파일 예산' 표 (v1.180.0 T8이 SKILL.md에서 분리)
   ③ wiki-schema.md 타입별 '- **예산**: ~N줄' 줄 (§2.x)
   ④ wiki-schema.md §4 예산 표 (schema 내 이중 표현 — ③과 ④가 서로 어긋나는 것도 잡는다)
 번들 규약 H-2(references/procedures-ops.md 하단 '(참고)' 블록)는 이들의 수동 동기화를
@@ -62,6 +62,7 @@ schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.
 lint.py 상수는 재파싱하지 않고 importlib로 모듈을 로드해 직접 읽는다(정의가 곧 정본).
 표준 라이브러리만 사용(AGENTS.md 정합).
 """
+import glob
 import importlib.util
 import os
 import re
@@ -714,22 +715,52 @@ TRIGGER_BROAD_RX = re.compile(r"임박|초과|넘|예산|한도|여유")
 # 스캔 스코프 — 규정을 **서술**하는 자리만 본다. `lint.py`의 출력 f-string(`예산 임박: …`)과
 #  `lint-cases.json`의 expect 문자열은 규정 서술이 아니라 **신호 그 자체**라, 금지하면
 #  정본 출력을 없애라는 뜻이 된다.
-TRIGGER_SCAN_SCOPE = [
-    (SKILL_MD, "md"),
-    (OPS_RULES_MD, "md"),
-    (SCHEMA_MD, "md"),
-    (CONTENT_MD, "md"),
-    (OPS_MD, "md"),
-    (TEMPLATES_MD, "md"),
-    (LINT_PY, "py"),          # `#` 주석 + docstring만
-    (LINT_CASES_JSON, "json"),  # "rationale" 값만
-]
+#
+# 목록을 손으로 적지 않고 `references/*.md`를 글롭으로 훑는 이유: 손 열거는 **신규 reference
+#  파일이 조용히 스캔 밖에 남는다**(축 ⑪의 전제가 "대상 열거를 기계가 한다"인데 파일 단위에서만
+#  사람 손이었다). 명시 제외 목록을 미리 두지 않는 것도 같은 이유다 — 제외 자리가 곧 그 사각을
+#  재생산한다. 빼야 할 파일이 실제로 생기면 그때 사유와 함께 추가한다.
+TRIGGER_SCAN_EXCLUDE = set()  # 파일명(basename) 집합. 현재 비어 있다 — 위 주석 참조.
+
+
+def _trigger_scan_scope():
+    """축 ⑪의 스캔 대상을 `(경로, kind)` 정렬 리스트로 산출한다.
+
+    kind는 확장자에서 도출한다(`.md`→md / `.py`→py / `.json`→json) — 손으로 붙이면
+    파일이 늘 때마다 그 자리도 손대야 한다."""
+    paths = [SKILL_MD, LINT_PY, LINT_CASES_JSON]
+    paths += sorted(glob.glob(os.path.join(SKILL_DIR, "references", "*.md")))
+    out = []
+    for p in paths:
+        if os.path.basename(p) in TRIGGER_SCAN_EXCLUDE:
+            continue
+        ext = os.path.splitext(p)[1]
+        kind = {".md": "md", ".py": "py", ".json": "json"}.get(ext)
+        if kind is None:
+            die(f"축 ⑪ 스캔 스코프에 처리할 수 없는 확장자: {p}")
+        out.append((p, kind))
+    return out
 
 # 정본 앵커 — 구간이다(줄이 아니다). §7-2는 착수 시점에 한 줄이지만 소불릿으로 나뉘면
 #  여러 줄이 되므로, 줄로 잡으면 정본을 정리하는 순간 그 정리가 위반으로 잡힌다.
 TRIGGER_ANCHORS = {
     SCHEMA_MD: (r"^2\. \*\*예산 준수\*\*", r"^3\. \*\*"),
     OPS_RULES_MD: (r"^## 예산 단계 신호", r"^## "),
+}
+
+# 예산 축 ①의 부분 소스 허용 — 「구조상 네 소스 전부에는 존재할 수 없는 키」만 넣는다.
+#  목적은 아래 `TRIGGER_ALLOWLIST`와 같다(면제 항목마다 사유를 남긴다 — 자료 구조는 다르다:
+#  이쪽은 `{키: 사유}` dict, 저쪽은 `(파일, 앵커, 사유[, 기대 수])` 튜플 리스트다).
+#
+# ⚠ 이 목록이 **비어 있지 않은 것이 정상**이다 — 아래 셋은 §2가 「타입별 페이지」를 서술하는
+#  절이라 페이지 타입이 아닌 키(index의 줄/행 상한, log.md)를 담을 자리가 구조상 없다.
+#  종전 게이트가 `len(vals) < 2`(0·1소스)만 잡아 **2·3소스에만 등재된 키는 값만 맞으면
+#  통과**했고, 그것이 원 결함이 지목한 fail-open이다(새 타입을 두 곳에만 적어도 exit 0).
+#  이제 「네 소스 전수 등재」를 요구하고 예외는 여기에만 둔다.
+BUDGET_PARTIAL_SOURCE_OK = {
+    "index:body-lines": "§2에 없음 — index는 문자 예산이 아니라 본문 줄 수가 임계라 타입별 예산 줄에 자리가 없다(§7-14 축)",
+    "index:feat-rows": "§2에 없음 — 위와 같은 이유(기능별 인덱스 행 수 임계)",
+    "log.md": "§2에 없음 — log는 페이지 타입이 아니라 단일 파일이라 타입별 예산 서술 대상이 아니다",
 }
 
 # 면제 열거 — 「파일, 줄 내용 앵커, 사유[, 기대 매치 수]」. 줄 번호가 아니라 **줄 내용**으로
@@ -839,12 +870,15 @@ TRIGGER_DIFFSET_NOTES = [
 
 
 def _scan_lines(path, kind):
-    """파일에서 '규정을 서술하는 줄'만 [(줄번호, 원문)]로 뽑는다 (스코프 한정 — D5)."""
+    """파일에서 '규정을 서술하는 줄'만 뽑아 `(스캔 줄, 원본 줄 전량)`으로 반환한다 (스코프 한정 — D5).
+
+    원본 줄을 함께 돌려주는 이유: 호출부의 차집합 계산이 **스캔 대상 밖 줄**을 필요로 해
+    같은 파일을 한 번 더 읽고 있었다. 여기서 한 번만 읽어 넘긴다."""
     lines = read(path).split("\n")
     if kind == "md":
-        return [(i + 1, ln) for i, ln in enumerate(lines)]
+        return [(i + 1, ln) for i, ln in enumerate(lines)], lines
     if kind == "json":
-        return [(i + 1, ln) for i, ln in enumerate(lines) if '"rationale"' in ln]
+        return [(i + 1, ln) for i, ln in enumerate(lines) if '"rationale"' in ln], lines
     if kind == "py":
         out = []
         in_doc = False
@@ -862,7 +896,7 @@ def _scan_lines(path, kind):
                 is_scannable = True
             if is_scannable:
                 out.append((i + 1, ln))
-        return out
+        return out, lines
     die(f"⑪ 알 수 없는 스캔 스코프 종류: {kind}")
 
 
@@ -933,9 +967,9 @@ def check_trigger_locality():
     diffset = []
     residual = []
 
-    for path, kind in TRIGGER_SCAN_SCOPE:
+    for path, kind in _trigger_scan_scope():
         name = os.path.basename(path)
-        scan = _scan_lines(path, kind)
+        scan, raw_lines = _scan_lines(path, kind)
         scan_by_no = dict(scan)
         scan_nos = set(scan_by_no)
         anchor_nos, anchor_issues = _anchor_span(path, scan)
@@ -979,7 +1013,7 @@ def check_trigger_locality():
 
         # 차집합 — 광의에는 걸리는데 스캔 대상이 아닌 줄
         notes = [(nd, r) for p, nd, r in TRIGGER_DIFFSET_NOTES if p == path]
-        for i, ln in enumerate(read(path).split("\n")):
+        for i, ln in enumerate(raw_lines):
             no = i + 1
             if no in scan_nos or not TRIGGER_BROAD_RX.search(ln):
                 continue
@@ -1066,16 +1100,34 @@ def main():
         "schema §4 표": parse_schema_table_budget(schema_text),
     }
     mismatches = []
+    # 축별 `(라벨, 값, 단위)`. 출력 문구를 여기서 조립하므로 축을 추가할 때
+    #  손댈 자리가 이 리스트 하나다(종전에는 f-string 끝의 열거를 함께 고쳐야 했다).
+    axes = []
     all_keys = sorted(set().union(*[set(v) for v in budget_sources.values()]))
     checked = 0
     for key in all_keys:
         vals = {src: rows[key] for src, rows in budget_sources.items() if key in rows}
-        if len(vals) < 2:
-            continue  # 한 소스에만 있으면 대조 불가(구조상 §2에 없는 log/index 등) — 대상 아님
+        if len(vals) < len(budget_sources):
+            # 종전 게이트는 `len(vals) < 2`(0·1소스)라, **새 타입이 두 소스에만 등재되고
+            #  나머지 두 곳에서 빠져도 값만 맞으면 조용히 exit 0**이었다(v1.164.0이 plan
+            #  acceptance로 우회했던 그 구멍 — 우회는 그 plan에만 있고 검사기에는 남지 않았다).
+            #  이제 **네 소스 전수 등재**를 요구하고, 건너뛰는 것은 위 허용 목록에 있는 키뿐이다.
+            reason = BUDGET_PARTIAL_SOURCE_OK.get(key)
+            if reason is None:
+                missing = ", ".join(sorted(set(budget_sources) - set(vals)))
+                mismatches.append(
+                    f"예산 '{key}'가 일부 소스에만 있다 — 빠진 곳: {missing}. "
+                    f"네 소스 전부에 등재하거나, 구조상 그곳에 둘 수 없는 키면 "
+                    f"BUDGET_PARTIAL_SOURCE_OK에 사유와 함께 넣어라")
+                continue
+            # 허용된 키도 **있는 소스끼리는** 값이 맞아야 한다 — 면제는 「자리가 없다」는
+            #  사실에 대한 것이지 값 드리프트까지 봐주는 것이 아니다.
         checked += 1
         if len(set(vals.values())) > 1:
             detail = " / ".join(f"{src}={v}" for src, v in vals.items())
             mismatches.append(f"예산 '{key}' 불일치: {detail}")
+
+    axes.append(("예산", len(all_keys), "키"))
 
     schema_vocab = parse_schema_vocab(schema_text)
     for key, (_rx, attr) in VOCAB_LINES.items():
@@ -1088,33 +1140,42 @@ def main():
             mismatches.append(
                 f"통제 어휘 '{key}' 불일치: lint에만 {only_lint} / schema에만 {only_sch}")
 
+    axes.append(("통제 어휘", len(VOCAB_LINES), "종"))
+
     placement_issues, placement_checked = check_procedure_placement(skill_text)
     checked += placement_checked
     mismatches.extend(placement_issues)
+    axes.append(("절차 배치", placement_checked, "항목"))
 
     toc_issues, toc_checked = check_schema_toc(schema_text)
     checked += toc_checked
     mismatches.extend(toc_issues)
+    axes.append(("schema 목차", toc_checked, "§"))
 
     f1_issues, f1_checked = check_f1_schema7(read(OPS_MD), schema_text)
     checked += f1_checked
     mismatches.extend(f1_issues)
+    axes.append(("F-1↔§7", f1_checked, "항목"))
 
     pointer_issues, pointer_checked = check_prose_pointers(skill_text, schema_text)
     checked += pointer_checked
     mismatches.extend(pointer_issues)
+    axes.append(("산문 포인터", pointer_checked, "건"))
 
     tmpl_issues, tmpl_checked = check_templates_types(schema_text)
     checked += tmpl_checked
     mismatches.extend(tmpl_issues)
+    axes.append(("templates 타입", tmpl_checked, "종"))
 
     enum_issues, enum_checked = check_type_enumerations(schema_text, lint)
     checked += enum_checked
     mismatches.extend(enum_issues)
+    axes.append(("타입 열거", enum_checked, "항목"))
 
     stage_issues, stage_checked = check_budget_stages(ops_rules_text, lint)
     checked += stage_checked
     mismatches.extend(stage_issues)
+    axes.append(("예산 단계", stage_checked, "항목"))
 
     # ⑪ 트리거 유일성 — 4-튜플의 앞 두 값만 접어 쓴다. 차집합·면제 잔여는 사람이
     #  판정할 리포트라 `--trigger-report`에만 나오고, 여기서는 **위반 유무**만 본다.
@@ -1122,6 +1183,7 @@ def main():
     trigger_checked = len(trigger_allow) + len(TRIGGER_ANCHORS)
     checked += trigger_checked
     mismatches.extend(trigger_issues)
+    axes.append(("트리거 유일성", trigger_checked, "항목"))
 
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
@@ -1130,12 +1192,8 @@ def main():
         print(f"\n결과: 불일치 {len(mismatches)}건 / 대조 {checked}항목 — "
               f"H-2 규약(references/procedures-ops.md 하단 '(참고)' 블록)대로 관련 파일을 함께 갱신하세요.")
         sys.exit(1)
-    print(f"결과: 대조 {checked}항목 전부 일치 (예산 {len(all_keys)}키 + 통제 어휘 5종 + "
-          f"절차 배치 {placement_checked}항목 + schema 목차 {toc_checked}§ + "
-          f"F-1↔§7 {f1_checked}항목 + 산문 포인터 {pointer_checked}건 + templates 타입 "
-          f"{tmpl_checked}종 + 타입 열거 {enum_checked}항목 + 예산 단계 {stage_checked}항목 + "
-          f"트리거 유일성 {trigger_checked}항목 "
-          f"— 항목당 소스 2~4곳 대조)")
+    breakdown = " + ".join(f"{label} {n}{unit}" for label, n, unit in axes)
+    print(f"결과: 대조 {checked}항목 전부 일치 ({breakdown} — 항목당 소스 2~4곳 대조)")
     sys.exit(0)
 
 
