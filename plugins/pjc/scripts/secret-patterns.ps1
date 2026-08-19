@@ -28,7 +28,7 @@ function Get-HighConfidenceSecretLabels {
     return $script:HighConfidenceSecretLabels
 }
 
-# 자격증명 쌍의 토큰 검증 (v1.119.0) — 인용형·비인용형 두 패턴이 공유한다.
+# 자격증명 쌍의 토큰 검증 (v1.119.0) — 인용형·줄 분리형·비인용형 **세** 패턴이 공유한다.
 #   두 패턴이 서로 다른 기준을 쓰면 그 차이가 곧 오탐/미탐 구멍이므로 판정을 한 곳에 둔다
 #   (모듈 헤더의 '패턴이 갈라지면 보안 구멍' 논리와 동일).
 function Test-CredentialPairToken {
@@ -61,6 +61,36 @@ function Test-CredentialPairToken {
     if ($pw.Length -lt 6) { return $false }
     if ($pw -notmatch '[\d#$%!@^&*+=?~]') { return $false }
 
+    # 값이 아니라 **참조**면 자격증명이 아니다 (v1.182.0) — 환경변수 표기·설정 키 경로·코드 조회는
+    #   이 hook이 **스스로 권장하는 형태**다(차단 메시지가 *"값을 지우고 환경변수 이름만 남긴 뒤 다시
+    #   commit"*이라 안내한다). 같은 제외가 한 줄 `password 값` 패턴에는 lookahead로 있었는데
+    #   **차단 등급인 쌍 판정에는 없어, 안내를 따른 문서가 도리어 커밋 차단됐다**(F-7 2R).
+    #   판정을 여기 두는 근거는 이 함수 머리말과 같다 — 쌍 패턴이 셋으로 늘었고 기준이 갈리면 구멍이 된다.
+    # 트레이드오프 둘 — **구조로 가를 수 없어 실값까지 함께 놓는 자리다**(둘 다 의도).
+    #   ① `$`로 시작하는 실제 비밀번호(`$uper5ecret`)는 `$DB_PASSWORD`와 구조가 같아 함께 미탐된다.
+    #   ② 특수문자 없이 콜론으로 이어진 실제 비밀번호(`Secret1:King2`)는 설정 키 경로
+    #      (`appsettings:Db:Pwd1`)와 구조가 같아 함께 미탐된다. 세그먼트 수로도 가를 수 없다 —
+    #      2세그먼트 설정 키(`Db:Pwd1`)가 실재하므로 3개 이상을 요구하면 그쪽이 오탐이 된다.
+    #   둘 다 **차단 등급에서는 오탐 비용이 미탐 비용보다 크다**는 같은 판단이다.
+    # ⚠ **「미탐은 경고 계층이 덮는다」가 항상 성립하지는 않는다**(F-7 3R 실측으로 정정). 이 함수의
+    #   배제는 **차단 라벨과 경고 라벨(비인용)을 함께** 끄고, 다른 계층(`password 값`)이 덮어 주는지는
+    #   그 패턴의 값 클래스에 달렸다 — `$`로 시작하는 실값은 그 클래스가 `$`를 배제해 **아무 신호도
+    #   남지 않고**, 슬래시형에 상태 어휘+숫자 실값이 오는 경우도 password 키워드가 없어 마찬가지다.
+    #   반면 설정 키 경로·순수 상수명은 경고가 그대로 난다. (형태만 적는다 — 결정 B)
+    #   **완전히 사라지는 형태를 골든 음성으로 박아** 이 희생이 보이게 둔다 — 우연히 비껴가는 가드는
+    #   검증되지 않은 방어선을 검증된 것처럼 보이게 한다(T9 quality 리뷰 지적).
+    if ($pw -match '^\$' -or $pw -match '^%[\w.]+%$') { return $false }              # $env:X · ${X} · $X · %X%
+    if ($pw -match '(?i)^(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\()') { return $false }
+    if ($pw -match '^[A-Za-z][\w-]*(:[A-Za-z][\w-]*)+$') { return $false }           # 설정 키 경로(appsettings:Db:Pwd)
+    if ($pw -match '(?i)^(환경변수|없음|미설정|\.env)') { return $false }            # 값 대신 안내를 적은 자리
+
+    # 상태·에러코드 열거는 자격증명이 아니다 (v1.182.0) — 숫자가 붙은 열거 값이 바로 위 pw 요건
+    #   (6자 이상 + 숫자)을 우연히 충족해 쌍 라벨로 오탐됐다.
+    # 접미 숫자만으로 배제하면 실제 비밀번호까지 놓치므로, 값이 **순수 숫자**이거나
+    #   **상태·코드 어휘 + 숫자 접미**인 경우로 좁힌다.
+    if ($pw -match '^[\d._-]+$') { return $false }
+    if ($pw -match '(?i)^(err(or)?|code|status|state|stat|ret|rc|exit|level|step|phase|type|kind|mode|grade|rank|tier|http|active|inactive|pending|enabled?|disabled?|success|fail(ed|ure)?|warn(ing)?|timeout|unknown)[._-]?\d+$') { return $false }
+
     return $true
 }
 
@@ -82,7 +112,14 @@ function Get-SecretMatches {
         #   환경변수 이름만 적으라는 이 hook의 권고를 따른 문장("비밀번호: 환경변수 X로 지정")은 제외한다.
         @{ rx = '(?i)(비밀번호|패스워드|암호)\s*[:=]\s*["''`]?(?!(환경변수|없음|미설정|변경|설정|\$env|os\.|process\.env|Environment\.|<))[^\s"''`<>{}$]{3,}'; label = 'password 값' },
         @{ rx = '(?i)(api[_-]?key|apikey|access[_-]?token|secret[_-]?key|auth[_-]?token|client[_-]?secret)\s*[:=]\s*["'']?[A-Za-z0-9_\-]{8,}'; label = 'API key/token 값' },
-        @{ rx = '(?i)(Server|Data Source)=[^;]+;\s*(User|Uid|Password|Pwd)='; label = 'DB 연결 문자열' },
+        # 중간 키·`User Id` 공백 표기 수용 (v1.182.0) — 종전 `[^;]+;\s*(User|…)=`는 자격증명 키가
+        #   첫 세그먼트 바로 뒤에 오는 형태만 잡아, 실제로 흔한 「중간에 다른 키가 낀 연결 문자열」을
+        #   통째로 미탐했다. 이 라벨이 커밋 차단 등급이라 미탐이 곧 게이트 실효성 상실이다.
+        # 세그먼트를 줄 안으로 한정한다(`[^;\r\n]`·`[ \t]*`) — 넓힌 만큼 오탐을 막는 대가이고,
+        #   연결 문자열은 한 줄이라 손실이 없다. 줄을 넘게 두면 앵커 줄과 멀리 떨어진 다른 줄의
+        #   자격증명 키가 함께 묶여 무관한 문서가 차단된다.
+        # `User Id`는 대입 기호까지 요구한다 — `User Interface=…` 같은 무관 키를 잡지 않기 위함.
+        @{ rx = '(?i)(Server|Data Source)[ \t]*=[^;\r\n]+;(?:[^;\r\n]*;)*[ \t]*(User[ \t]*Id|User|Uid|Password|Pwd)[ \t]*='; label = 'DB 연결 문자열' },
         @{ rx = '(?i)(mongodb(\+srv)?|postgres|postgresql|mysql|redis|amqp)://[^\s]+:[^\s]+@'; label = 'DB/서비스 URI 인증정보' },
         @{ rx = '-----BEGIN [A-Z ]*PRIVATE KEY-----'; label = '개인키' },
         @{ rx = '(?i)Bearer\s+[A-Za-z0-9_\-\.]{16,}'; label = 'Bearer 토큰' },
@@ -123,16 +160,41 @@ function Get-SecretMatches {
     #   영문만 \b로 단어 경계를 건다 — 한글은 \b가 어절 경계와 어긋나 '관리자계정:'(무공백)이
     #   미탐된다(F-7 m1 실측). 한글 키워드는 경계 없이 부분일치를 허용한다.
     # (내부는 non-capturing — 그룹 번호가 밀리면 아래 역참조 \2·\4와 Groups[] 인덱스가 깨진다)
-    $pairKeyword = '((?:\b(?:admin|account|credentials?|login|username|ID/PW)\b)|계정|아이디|로그인|사용자명)[^\r\n:]{0,40}:\s*'
+    $pairKwCore  = '(?:(?:\b(?:admin|account|credentials?|login|username|ID/PW)\b)|계정|아이디|로그인|사용자명)'
+    $pairKeyword = "($pairKwCore)[^\r\n:]{0,40}:\s*"
     $pairQuoted   = $pairKeyword + '(["''`])([A-Za-z0-9._-]{3,32})\2\s*/\s*(["''`])([^\s"''`]{6,64})\4'
     $pairUnquoted = $pairKeyword + '([A-Za-z0-9._-]{3,32})\s*/\s*([A-Za-z0-9._\-#$%!@^&*+=?~]{6,64})'
 
-    # 인용형을 먼저 판정하고, 매치되면 비인용형은 보지 않는다 (두 라벨은 상호 배타 —
+    # 줄 분리형·마크다운 표 (v1.182.0) — id와 pw가 **서로 다른 줄**에 라벨-값으로 적힌 형태다
+    #   (콜론 두 줄 / 표의 라벨-값 행 두 개). 위 두 패턴은 한 줄 안의 슬래시 구분만 보므로
+    #   이 형태를 통째로 놓쳤는데, 실제 README·설정 문서에서 더 흔한 표기다.
+    # 인용부호를 요구한다 — 인용형과 같은 근거이며 라벨-값 표는 코드 심볼·설명 문구가 흔해
+    #   비인용까지 열면 차단 등급 오탐이 급증한다.
+    # ⚠ **두 자리를 좁게 잡는 것이 이 패턴의 안전선이다**(초안은 넓게 잡았다가 오차단을 만들었다):
+    #   ① 키워드와 구분자 사이는 **공백·마크다운 강조만** 허용한다. 넓히면 「계정 **유형**」·
+    #      「비밀번호 **규칙**」처럼 뜻이 다른 라벨이 자격증명 라벨로 읽혀 무관한 두 행이 묶인다.
+    #   ② 두 줄은 **맞붙어야** 한다. 사이 줄을 허용하면 표의 임의의 두 행이 짝이 된다.
+    #   이 라벨은 커밋 차단(exit 2) 기준이라 오탐 하나가 자율 루프를 세운다 — 미탐 쪽은
+    #   경고 계층(비인용 라벨)이 덮는다.
+    # ⚠ pw 라벨에 `암호`를 넣지 않는다 — 그 단어는 「비밀번호」와 「암호(화)」 둘로 읽히고, 뒤쪽이면
+    #   값 자리에 알고리즘 이름이 온다(`| 로그인 | oauth2 | / | 암호 | argon2id |`). T8이 라벨 슬랙을
+    #   좁혀 `암호 알고리즘`·`암호화` 같은 변형은 이미 빠졌지만 **홑 `암호`는 남아** 차단 등급이 됐다.
+    #   경고 계층(`password 값`)은 `암호`를 그대로 보므로 그 형태가 신호 없이 사라지지는 않는다.
+    $pairPwKw  = '(?:\b(?:password|passwd|pwd)\b|비밀번호|패스워드)'
+    $pairSplit = $pairKwCore + '[ \t*`]{0,4}[:|][ \t]*(["''`])([A-Za-z0-9._-]{3,32})\1[^\r\n]*\r?\n[ \t|>*`-]{0,6}' + $pairPwKw + '[ \t*`]{0,4}[:|][ \t]*(["''`])([^\s"''`]{6,64})\3'
+
+    # 인용형·줄 분리형을 먼저 판정하고, 매치되면 비인용형은 보지 않는다 (두 라벨은 상호 배타 —
     #   한 문자열이 두 라벨을 함께 반환하면 caller의 차단 판정이 흐려진다).
     $quotedHit = $false
     foreach ($m in [regex]::Matches($content, "(?i)$pairQuoted")) {
         # 그룹: 1=키워드 2=id 인용부호 3=id 4=pw 인용부호 5=pw (닫는 쪽은 \2·\4 역참조 — 새 그룹 아님)
         if (Test-CredentialPairToken $m.Groups[3].Value $m.Groups[5].Value) { $quotedHit = $true; break }
+    }
+    if (-not $quotedHit) {
+        foreach ($m in [regex]::Matches($content, "(?i)$pairSplit")) {
+            # 그룹: 1=id 인용부호 2=id 3=pw 인용부호 4=pw (키워드는 non-capturing — 번호가 밀리지 않는다)
+            if (Test-CredentialPairToken $m.Groups[2].Value $m.Groups[4].Value) { $quotedHit = $true; break }
+        }
     }
     if ($quotedHit) {
         $found.Add('자격증명 쌍')

@@ -228,5 +228,24 @@ $preBody = @('#region Helpers', '#if DEBUG', '#pragma warning disable', '// one'
 [System.IO.File]::WriteAllText($prePath, $preBody, [System.Text.UTF8Encoding]::new($false))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; session_id = 'pre-sess'; tool_input = @{ file_path = $prePath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: C# 전처리 지시문 영문주석 오집계 제외 (P1T4 — //3줄뿐이라 >5 미달로 무경고)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# ---- [v1.182.0 T3] .state 디듑 마커 30일 TTL 청소 ----
+# 마커는 세션×파일×경고 종류당 1개라 청소가 없으면 무한 축적된다. 검증 축은 「초과분만 지워지는가」다 —
+#   전부 지우면 같은 세션의 디듑이 깨지고, 아무것도 안 지우면 축적이 그대로다.
+# hook은 격리 홈($iso)의 .claude/.state를 보므로 그 아래에 직접 마커를 심어 판정한다.
+$pwMarkerDir = Join-Path $iso '.claude/.state/post-write-warn'
+New-Item -ItemType Directory $pwMarkerDir -Force | Out-Null
+$pwOldMk = Join-Path $pwMarkerDir 'ttl-old-marker'
+$pwNewMk = Join-Path $pwMarkerDir 'ttl-new-marker'
+Set-Content -LiteralPath $pwOldMk -Value '' ; (Get-Item $pwOldMk).LastWriteTime = (Get-Date).AddDays(-31)
+Set-Content -LiteralPath $pwNewMk -Value '' ; (Get-Item $pwNewMk).LastWriteTime = (Get-Date).AddDays(-3)
+$ttlPath = Join-Path $pw 'ttl-probe.md'
+[System.IO.File]::WriteAllText($ttlPath, '평범한 본문.', [System.Text.UTF8Encoding]::new($false))
+$null = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; session_id = 'ttl-sess'; tool_input = @{ file_path = $ttlPath } } | ConvertTo-Json -Compress)
+if ((-not (Test-Path -LiteralPath $pwOldMk)) -and (Test-Path -LiteralPath $pwNewMk)) {
+    $script:results.Add(@{ ok = $true; line = '[PASS] post-write: .state 마커 30일 초과분만 청소 (T3)' })
+} else {
+    $script:results.Add(@{ ok = $false; line = "[FAIL] post-write: .state TTL 청소 — 31일 마커 잔존=$(Test-Path -LiteralPath $pwOldMk) / 3일 마커 소실=$(-not (Test-Path -LiteralPath $pwNewMk))" })
+}
 }   # ---- §6·§7·Pre.cs 게이트 끝 (post-write-checks) ----
 

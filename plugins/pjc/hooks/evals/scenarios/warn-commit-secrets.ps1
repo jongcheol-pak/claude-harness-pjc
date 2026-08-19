@@ -18,6 +18,7 @@ if (Test-HookSelected @('warn-commit-secrets', 'pre-bash-dispatch')) {
 $spId = 'ad' + 'min'
 $spPw = 'Zq7' + '#mK21'
 $spBt = [char]96
+$spQ  = [char]39
 $spCases = @(
     @{ n = '인용 쌍 → 자격증명 쌍(고신뢰)';   t = "관리자 계정: $spBt$spId$spBt / $spBt$spPw$spBt";                  e = '자격증명 쌍' }
     @{ n = '비인용 쌍 → 경고 라벨';           t = "계정: $spId / $spPw";                                             e = '자격증명 쌍(비인용)' }
@@ -43,6 +44,62 @@ $spCases = @(
     @{ n = '음성: 영문 설정값(login: true)';  t = 'login: true / false';                                              e = '' }
     @{ n = '음성: 영문 라우트(account API)';  t = 'account API: GET /api/v1/accounts';                                e = '' }
     @{ n = '음성: 영문 예시 플레이스홀더';    t = "Login: ${spBt}example$spBt / ${spBt}your-password$spBt";           e = '' }
+    # [v1.182.0 T1] 대장 「secret-patterns 탐지 정밀도」 병합 4형태 중 ⓐⓒⓓ (ⓑ 도메인형 pw는 의도라 제외).
+    #   연결 문자열 픽스처는 키와 '='를 반드시 분리 조립한다 — 붙여 두면 이 러너 파일 자신이
+    #   확대된 DB 패턴에 걸려 커밋 게이트에 차단된다(아래 (d2) 주석과 같은 이유).
+    @{ n = 'ⓐ 중간 키 + User Id 표기';        t = 'Server' + '=' + 'sqlhost' + ';' + 'Database' + '=' + 'appdb' + ';' + 'User Id' + '=' + 'sa' + ';'; e = 'DB 연결 문자열' }
+    @{ n = 'ⓒ 줄 분리형 쌍';                  t = "관리자 계정: $spBt$spId$spBt`n비밀번호: $spBt$spPw$spBt";           e = 'password 값,자격증명 쌍' }
+    @{ n = 'ⓒ 마크다운 표 쌍';                t = "| 계정 | $spBt$spId$spBt |`n| 비밀번호 | $spBt$spPw$spBt |";        e = '자격증명 쌍' }
+    @{ n = 'ⓓ 음성: 상태·에러코드 열거';      t = '계정 상태: ' + 'ERR_401' + ' / ' + 'ERR_402';                       e = '' }
+    # 델타 음성 3종 — 확대분(중간 키 허용)이 **실제로 평가되는** 형태만 고른다. 앵커(`Server=`·
+    #   `Data Source=`)를 못 넘는 문자열은 확대분에 닿지도 못해 무회귀 케이스에 불과하다.
+    @{ n = '음성 델타: 무관 키만 나열';        t = 'Server' + '=' + 'sqlhost' + ';' + 'Timeout' + '=' + '30' + ';';     e = '' }
+    @{ n = '음성 델타: User Interface 키';     t = 'Server' + '=' + 'sqlhost' + ';' + 'User Interface' + '=' + 'dark' + ';'; e = '' }
+    @{ n = '음성 델타: Data Source + Encrypt'; t = 'Data Source' + '=' + 'sqlhost' + ';' + 'Encrypt' + '=' + 'true' + ';'; e = '' }
+    # [v1.182.0 T8] 줄 분리형 경계의 델타 음성 — **이 자리가 비어 있던 것이 F-7 BLOCKER의 실질**이다.
+    #   확대 초안은 라벨 슬랙 40자 + 사이 줄 2줄을 허용해 아래 셋을 전부 차단 등급으로 잡았다.
+    #   셋 다 평범한 문서 표기이고, 이 라벨은 exit 2라 오탐 하나가 자율 루프를 세운다.
+    @{ n = 'T8 음성: 표의 무관한 두 라벨(계정 유형/비밀번호 규칙)';
+       t = "| 계정 유형 | $spBt$spId$spBt |`n| 설명 | 관리자 계정 |`n| 비밀번호 규칙 | $spBt" + '8자이상#특수' + "$spBt |"; e = '' }
+    @{ n = 'T8 음성: 콜론형 무관 라벨(계정 목록/최소 길이)';
+       t = "계정 목록: $spBt$spId$spBt`n비고: 정책 참고`n비밀번호 최소 길이: $spBt" + '12자리이상#' + "$spBt"; e = '' }
+    @{ n = 'T8 음성: 맞붙었지만 라벨이 다르다(비밀번호 파일)';
+       t = "| 계정 | $spBt$spId$spBt |`n| 비밀번호 파일 | $spBt" + 'secrets.yml2' + "$spBt |"; e = '' }
+    # [v1.182.0 T9] **값 축** 델타 음성 — 값이 아니라 **참조**를 적은 자리다. 이 형태는 hook 자신이
+    #   차단 메시지에서 권장하는 것("환경변수 이름만 남긴 뒤 다시 commit")이라, 차단하면 안내를 따른
+    #   문서가 도리어 막힌다. 경고 라벨(`password 값`)까지 없애는 것이 아니라 **차단 등급만** 뺀다.
+    @{ n = 'T9 음성: $env: 참조';        t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + '$env:DB_PASSWORD' + $spQ; e = '' }
+    @{ n = 'T9 음성: %VAR% 참조(표)';    t = "| 계정 | $spQ" + 'svcuser' + "$spQ |`n| 비밀번호 | $spQ" + '%DB_PASS%' + "$spQ |"; e = '' }
+    @{ n = 'T9 음성: ${VAR} 참조';       t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + '${DB_PASSWORD}' + $spQ; e = '' }
+    @{ n = 'T9 음성: process.env 조회';  t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + 'process.env.DB_PASS1' + $spQ; e = '' }
+    @{ n = 'T9 음성: os.environ 조회';   t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + 'os.environ[DB_PASS1]' + $spQ; e = '' }
+    @{ n = 'T9 음성: 설정 키 경로';      t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + 'appsettings:Db:Pwd1' + $spQ; e = 'password 값' }
+    # 한 줄 슬래시형은 **v1.119.0부터** 같은 오차단을 갖고 있었다(BASE 실측 확인). 공유 판정에 제외를
+    #   넣어 함께 닫혔으므로 그 경로도 고정한다.
+    @{ n = 'T9 음성: 한 줄 슬래시 + $env: (기존 결함)';
+       t = "계정: $spQ$spId$spQ / $spQ" + '$env:DB_PASSWORD' + $spQ; e = '' }
+    # 제외가 과하지 않은지 — 실제 비밀번호가 `%`로 끝나거나 콜론을 품어도 그대로 검출돼야 한다.
+    @{ n = 'T9 양성 가드: % 로 끝나는 실값'; t = "관리자 계정: $spBt$spId$spBt / ${spBt}Secret99%$spBt";  e = '자격증명 쌍' }
+    @{ n = 'T9 양성 가드: 콜론 + 특수문자 실값'; t = "관리자 계정: $spBt$spId$spBt / ${spBt}Pa55:word!$spBt"; e = '자격증명 쌍' }
+    # ⚠ **의도된 희생을 음성으로 명시한다** — 특수문자 없이 콜론으로 이어진 실값은 설정 키 경로와
+    #   구조가 같아 함께 미탐된다. 위 양성 가드는 `!` 때문에 이 규칙을 **비껴가므로** 이 방어선을
+    #   검증하지 못한다(그 사각을 T9 quality 리뷰가 지적했다). 경고 계층은 그대로 발화한다.
+    @{ n = 'T9 음성(의도된 희생): 특수문자 없는 콜론 실값';
+       t = "관리자 계정: $spBt$spId$spBt / ${spBt}Secret1:King2$spBt"; e = '' }
+    # [F-7 3R M2] **경고 계층조차 남지 않는 두 형태**를 명시한다 — 「미탐은 경고가 덮는다」가 여기서는
+    #   성립하지 않는다. 배제를 되돌리려는 다음 회차가 이 대가를 보고 판단하게 한다.
+    @{ n = 'T9 음성(완전 미탐): $ 로 시작하는 실값';
+       t = "관리자 계정: $spBt$spId$spBt / ${spBt}" + '$uper5ecret' + $spBt; e = '' }
+    @{ n = 'T9 음성(완전 미탐): 상태 어휘 + 숫자 실값';
+       t = "관리자 계정: $spBt$spId$spBt / ${spBt}" + 'Level42' + $spBt; e = '' }
+    # [F-7 3R m1] `암호`는 「비밀번호」와 「암호(화)」 둘로 읽혀 값 자리에 알고리즘 이름이 온다.
+    #   줄 분리형 pw 라벨에서 뺐으므로 차단되지 않는다(경고 계층은 그대로 본다).
+    @{ n = 'T9 음성: 암호 라벨 + 알고리즘 이름';
+       t = "| 로그인 | $spBt" + 'oauth2' + "$spBt |`n| 암호 | $spBt" + 'argon2id' + "$spBt |"; e = '' }
+    # [F-7 2R m3] **인접 요구를 단독으로 검증**한다 — 라벨은 정확하고 사이 줄만 있다. 차단 등급은
+    #   빠지고 경고(`password 값`)는 남는다. 이 케이스가 없으면 인접 요구를 되돌려도 골든이 green이다.
+    @{ n = 'T9 음성: 라벨은 정확하나 사이 줄이 있다(인접 요구 단독)';
+       t = "계정: $spBt$spId$spBt`n비고: 정책 참고`n비밀번호: $spBt$spPw$spBt"; e = 'password 값' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')
@@ -151,9 +208,9 @@ if ($gitOk) {
     #      버그를 함수 단위 테스트로는 못 잡는다.
     Push-Location $wcsB
     git rm -q --cached key.pem; Remove-Item key.pem -Force
-    # 기존 DB 패턴은 'Server=<v>;' 바로 뒤 User/Pwd/Password 키를 요구한다(secret-patterns.ps1:29).
-    #   'User Id='(공백)·중간 키(Database=…)가 끼면 미탐 — 기존 결함이라 plan Deferred에 등록했고,
-    #   여기서는 패턴이 실제로 잡는 유효 형태로 차단 경로를 실증한다.
+    # 중간 키·공백 표기 수용은 v1.182.0 T1에서 닫혔고 위 $spCases가 함수 단위로 검증한다.
+    #   여기서 보는 것은 그 라벨이 **hook 레벨에서 실제로 차단(exit 2)까지 가는가**이므로,
+    #   패턴 형태는 가장 단순한 것을 쓴다(라벨 판정 자체는 위에서 이미 전수 대조된다).
     # 키 이름과 '='를 반드시 분리해 조립한다 — 한 리터럴에 붙여 두면 이 러너 파일(과 그 주석!)
     #   자체가 자사 커밋 게이트에 차단된다(실측으로 두 번 걸렸다).
     $dbConn = 'Server' + '=' + 'prod-sql' + ';' + 'Pwd' + '=' + 'Zq7#mK21' + ';'
@@ -252,6 +309,49 @@ if ($gitOk) {
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add -f ignored.txt && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: ignored 강제 add 자격증명 차단(n3, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
+    # ---- [v1.182.0 T5] $autoStage 오판정 — `git add -A`가 보완 스캔을 두 번 돌리던 문제 ----
+    # 판정 대상이 **호출 횟수**라 hook 출력으로는 볼 수 없다. 자식 프로세스에서 lib를 dot-source하고
+    #   `Get-DiffHeadAdded`를 세는 함수로 덮어써 실제 호출 수를 읽는다 — 러너 프로세스에서 덮어쓰면
+    #   같은 세션의 다른 케이스가 그 가짜 함수를 쓰게 되므로 반드시 분리한다.
+    $wcsF = Join-Path $work 'wcsautostage'; New-Item -ItemType Directory $wcsF -Force | Out-Null
+    Push-Location $wcsF
+    git init -q; git config user.email t@t; git config user.name t
+    'v=1' | Set-Content app.js; git add .; git commit -qm init
+    Add-Content app.js 'v=2'
+    Pop-Location
+    $t5Probe = Join-Path $work 't5-autostage-probe.ps1'
+    @(
+        'param([string]$Cwd, [string]$Cmd)',
+        ('. ' + [char]39 + (Join-Path $scriptsDir 'bash-hook-lib.ps1') + [char]39),
+        '$script:ghCalls = 0',
+        'function Get-DiffHeadAdded { param([string[]]$PathArgs = @()) $script:ghCalls++; return @() }',
+        '$null = Invoke-WarnCommitSecrets @{ cwd = $Cwd; tool_input = @{ command = $Cmd } }',
+        '"CALLS=$script:ghCalls"'
+    ) | Set-Content -LiteralPath $t5Probe -Encoding utf8
+    $t5Cases = @(
+        @{ n = "'add -A && commit -m' 보완 스캔 1회 (T5 — 종전 2회)"; c = 'git add -A && git commit -m x'; e = 1 }
+        @{ n = "'commit -am' 자동 스테이징 분기 유지 (T5)";            c = 'git commit -am x';             e = 1 }
+        @{ n = "'commit -m'만이면 보완 스캔 0회 (T5)";                 c = 'git commit -m x';              e = 0 }
+        @{ n = "'add -A && commit -am' 두 분기 각각 정당 발화 (T5)";   c = 'git add -A && git commit -am x'; e = 2 }
+        # 세그먼트 한정이 만든 두 회귀 경로 — 리뷰가 재현으로 잡았다. 순서(메시지 제거 → 분리)와
+        #   줄 연속 정규화가 없으면 각각 오탐·미탐이 된다.
+        @{ n = "메시지 속 세미콜론이 -a 오탐을 만들지 않음 (T5 M2)";  c = 'git commit -m "fix -a bug; deploy"'; e = 0 }
+        @{ n = "백슬래시 줄 연속 'commit -am' 미탐 없음 (T5 M1)";     c = ("git commit " + [char]92 + "`n  -am " + [char]34 + 'msg' + [char]34); e = 1 }
+        # 메시지 제거 정규식의 나머지 두 대안(작은따옴표·--message=) — 구조상 커버되지만 골든에
+        #   없으면 회귀 시 조용히 깨진다(2R 리뷰 m1).
+        @{ n = "작은따옴표 메시지 속 -a 오탐 없음 (T5 2R m1)";       c = ("git commit -m " + [char]39 + 'fix -a bug' + [char]39); e = 0 }
+        @{ n = "--message= 형태 메시지 속 -a 오탐 없음 (T5 2R m1)";  c = ('git commit --message=' + [char]34 + 'fix -a bug' + [char]34); e = 0 }
+    )
+    foreach ($t5 in $t5Cases) {
+        $t5Out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $t5Probe -Cwd $wcsF -Cmd $t5.c 2>&1
+        $t5Got = ([regex]::Match(($t5Out -join "`n"), 'CALLS=(\d+)')).Groups[1].Value
+        if ($t5Got -eq [string]$t5.e) {
+            $script:results.Add(@{ ok = $true; line = "[PASS] commit-secrets: $($t5.n)" })
+        } else {
+            $script:results.Add(@{ ok = $false; line = "[FAIL] commit-secrets: $($t5.n) — 기대 $($t5.e), 실제 '$t5Got'" })
+        }
+    }
+
     # ---- [v1.181.0 T6] HEAD 없는 저장소 — `git diff HEAD` 실패 폴백 ----
     # `Get-DiffHeadAdded`가 exit≠0을 삼키지 않고 빈 배열 + stderr 경고로 처리한다. 이 경로가
     #   골든에 없으면 「보완 스캔이 조용히 사라져도 아무도 모른다」는 원 결함이 그대로 남는다.
@@ -268,11 +368,50 @@ if ($gitOk) {
     # (h1) HEAD 없는 저장소에서도 신규 파일의 자격증명은 차단된다
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add -A && git commit -m init' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: HEAD 없는 저장소에서도 자격증명 차단(h1, diff HEAD 실패 폴백)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    # [v1.182.0 T6 ⓐ] stderr 한글 경고가 **깨지지 않고** 판정 대상에 담기는지 — 디코딩의 회귀 가드.
+    #   종전에는 콘솔 코드페이지 탓에 이 문자열이 깨져 영문 앵커만 걸 수 있었다.
+    Assert-Case -Name "commit-secrets: diff HEAD 실패 경고의 한글이 온전하다(h1, T6 디코딩 가드)" -R $r -ExpectExit 2 -ExpectContains '보완 스캔 미수행'
 
     # (h2) 같은 상태에서 무해한 내용이면 차단되지 않는다 — 폴백이 오차단을 만들지 않는다
     Push-Location $wcsE; Set-Content README.md @('# 프로젝트 소개', '설치 방법은 아래를 보세요.'); Pop-Location
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add -A && git commit -m init' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: HEAD 없는 저장소 무해 내용 무차단(h2, 폴백 오차단 0)" -R $r -ExpectExit 0
+
+    # ---- [v1.182.0 T6 ⓑ] 폴백 경고의 1회 억제·리셋 ----
+    # h1/h2로는 **구조상 검증할 수 없다** — 케이스마다 별도 pwsh 프로세스라 `$script:diffHeadFailNotified`가
+    #   매번 새로 초기화되고, 그래서 리셋을 지워도 두 케이스 다 green이 된다(가드가 아니었다).
+    # 한 프로세스에서 `Invoke-WarnCommitSecrets`를 2회 부르고 stderr를 StringWriter로 가로채 센다 —
+    #   프로세스 밖으로 내보내지 않으므로 콘솔 인코딩이 판정에 끼어들지 않는다.
+    # 명령은 `add -A && commit -am`이다: 한 호출 안에서 실패 경로가 둘(자동 스테이징·add 전체 스캔)이라
+    #   억제가 없으면 1회 호출만으로 2회 나온다.
+    $t6Probe = Join-Path $work 't6-notify-probe.ps1'
+    @(
+        'param([string]$Cwd, [int]$Calls = 1)',
+        ('. ' + [char]39 + (Join-Path $scriptsDir 'bash-hook-lib.ps1') + [char]39),
+        '$sw = New-Object System.IO.StringWriter',
+        '$prevErr = [Console]::Error',
+        '[Console]::SetError($sw)',
+        'try {',
+        '    for ($i = 0; $i -lt $Calls; $i++) {',
+        # ⚠ 연결식은 반드시 괄호로 묶는다 — 배열 리터럴 안에서는 쉼표가 `+`보다 먼저 묶여
+        #   `'a' + $c + 'b', 'd'`가 `'a' + $c + ('b','d')`로 읽히고, 그러면 한 줄이 여러 줄로 쪼개진다.
+        ('        $null = Invoke-WarnCommitSecrets @{ cwd = $Cwd; tool_input = @{ command = ' + [char]39 + 'git add -A && git commit -am x' + [char]39 + ' } }'),
+        '    }',
+        '} finally { [Console]::SetError($prevErr) }',
+        ('"COUNT=" + ([regex]::Matches($sw.ToString(), ' + [char]39 + 'git diff HEAD' + [char]39 + ')).Count')
+    ) | Set-Content -LiteralPath $t6Probe -Encoding utf8
+    foreach ($t6 in @(
+        @{ n = '한 호출 안에서 폴백 경고는 1회만 (T6 ⓑ-2 억제)'; k = 1; e = 1 }
+        @{ n = '두 번째 호출에서 경고가 다시 난다 (T6 ⓑ-1 리셋)'; k = 2; e = 2 }
+    )) {
+        $t6Out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $t6Probe -Cwd $wcsE -Calls $t6.k 2>&1
+        $t6Got = ([regex]::Match(($t6Out -join "`n"), 'COUNT=(\d+)')).Groups[1].Value
+        if ($t6Got -eq [string]$t6.e) {
+            $script:results.Add(@{ ok = $true; line = "[PASS] commit-secrets: $($t6.n)" })
+        } else {
+            $script:results.Add(@{ ok = $false; line = "[FAIL] commit-secrets: $($t6.n) — 기대 $($t6.e), 실제 '$t6Got'" })
+        }
+    }
 
     # (g) 디스패처 경유도 동일 차단 — lib 함수 공유라 두 경로가 갈리면 안 된다(D3).
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location

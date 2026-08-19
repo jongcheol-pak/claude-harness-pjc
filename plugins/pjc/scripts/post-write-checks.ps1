@@ -38,6 +38,15 @@ $allMsgs = New-Object System.Collections.Generic.List[string]
 #   강제한다(키가 길어질 수 있어 MD5 해시로 파일명화 — 보안 아닌 디듑 용도).
 $pwStateDir = Join-Path $env:USERPROFILE '.claude/.state/post-write-warn'
 try { New-Item -Force -ItemType Directory -Path $pwStateDir | Out-Null } catch {}
+# 30일 지난 마커 자동 정리 — 마커는 세션×파일×경고 종류당 1개라 방치하면 무한 축적된다(하우스키핑).
+# 파일명에 세션 ID가 들어가 세션이 끝나면 그 마커는 다시 매치되지 않으므로 삭제해도 잃는 것이 없다.
+# 별도 스케줄러 없이 다음 실행 시작 시에만 돈다. TTL 값은 suggest-agents-record와 같은 30일로 맞춘다 —
+#   hook마다 값이 갈리면 다음 사람이 "왜 여기만 다른가"를 다시 판정해야 한다.
+try {
+    Get-ChildItem -LiteralPath $pwStateDir -File -ErrorAction Stop |
+        Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+} catch {}
 $pwSid = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
 function Test-WarnOnce {
     param([string]$Key)
