@@ -201,8 +201,11 @@ function Get-DiffHeadAdded {
            else { @(& git diff HEAD --unified=0 2>$null) }
     if ($LASTEXITCODE -ne 0) {
         $scope = if ($PathArgs.Count) { ($PathArgs -join ' ') } else { '전체' }
-        Write-Warning ("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
-                       'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
+        # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **stdout(fd 1)** 에
+        #   쓰므로, hook이 stdout으로 내보내는 JSON(`additionalContext`)에 끼어들어 파싱을 깨뜨린다
+        #   (실측 확인). 이 repo의 hook 출력 규약도 경고는 stderr다(AGENTS.md 「hook 출력 규약」).
+        [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
+                                   'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
         return @()
     }
     return @($out | Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })

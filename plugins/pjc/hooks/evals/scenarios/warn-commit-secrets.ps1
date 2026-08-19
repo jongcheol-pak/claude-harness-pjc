@@ -252,6 +252,26 @@ if ($gitOk) {
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add -f ignored.txt && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: ignored 강제 add 자격증명 차단(n3, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
+    # ---- [v1.181.0 T6] HEAD 없는 저장소 — `git diff HEAD` 실패 폴백 ----
+    # `Get-DiffHeadAdded`가 exit≠0을 삼키지 않고 빈 배열 + stderr 경고로 처리한다. 이 경로가
+    #   골든에 없으면 「보완 스캔이 조용히 사라져도 아무도 모른다」는 원 결함이 그대로 남는다.
+    #   ⚠ 핵심은 **차단이 사라지지 않는 것**이다 — HEAD가 없어도 `--cached`·untracked 전체 스캔이
+    #   그대로 돌아야 하고, 실패 경고가 stdout(JSON)을 오염시켜서도 안 된다.
+    $wcsE = Join-Path $work 'wcsnohead'; New-Item -ItemType Directory $wcsE -Force | Out-Null
+    Push-Location $wcsE
+    git init -q; git config user.email t@t; git config user.name t   # 커밋 없음 — HEAD 부재
+    Set-Content README.md $credLine
+    Pop-Location
+
+    # (h1) HEAD 없는 저장소에서도 신규 파일의 자격증명은 차단된다
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add README.md && git commit -m init' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: HEAD 없는 저장소에서도 자격증명 차단(h1, diff HEAD 실패 폴백)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+    # (h2) 같은 상태에서 무해한 내용이면 차단되지 않는다 — 폴백이 오차단을 만들지 않는다
+    Push-Location $wcsE; Set-Content README.md @('# 프로젝트 소개', '설치 방법은 아래를 보세요.'); Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add README.md && git commit -m init' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: HEAD 없는 저장소 무해 내용 무차단(h2, 폴백 오차단 0)" -R $r -ExpectExit 0
+
     # (g) 디스패처 경유도 동일 차단 — lib 함수 공유라 두 경로가 갈리면 안 된다(D3).
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
     $r = Invoke-Hook 'pre-bash-dispatch.ps1' $wcsBJson
