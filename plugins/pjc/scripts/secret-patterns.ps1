@@ -61,6 +61,13 @@ function Test-CredentialPairToken {
     if ($pw.Length -lt 6) { return $false }
     if ($pw -notmatch '[\d#$%!@^&*+=?~]') { return $false }
 
+    # 상태·에러코드 열거는 자격증명이 아니다 (v1.182.0) — 숫자가 붙은 열거 값이 바로 위 pw 요건
+    #   (6자 이상 + 숫자)을 우연히 충족해 쌍 라벨로 오탐됐다.
+    # 접미 숫자만으로 배제하면 실제 비밀번호까지 놓치므로, 값이 **순수 숫자**이거나
+    #   **상태·코드 어휘 + 숫자 접미**인 경우로 좁힌다.
+    if ($pw -match '^[\d._-]+$') { return $false }
+    if ($pw -match '(?i)^(err(or)?|code|status|state|stat|ret|rc|exit|level|step|phase|type|kind|mode|grade|rank|tier|http|active|inactive|pending|enabled?|disabled?|success|fail(ed|ure)?|warn(ing)?|timeout|unknown)[._-]?\d+$') { return $false }
+
     return $true
 }
 
@@ -82,7 +89,14 @@ function Get-SecretMatches {
         #   환경변수 이름만 적으라는 이 hook의 권고를 따른 문장("비밀번호: 환경변수 X로 지정")은 제외한다.
         @{ rx = '(?i)(비밀번호|패스워드|암호)\s*[:=]\s*["''`]?(?!(환경변수|없음|미설정|변경|설정|\$env|os\.|process\.env|Environment\.|<))[^\s"''`<>{}$]{3,}'; label = 'password 값' },
         @{ rx = '(?i)(api[_-]?key|apikey|access[_-]?token|secret[_-]?key|auth[_-]?token|client[_-]?secret)\s*[:=]\s*["'']?[A-Za-z0-9_\-]{8,}'; label = 'API key/token 값' },
-        @{ rx = '(?i)(Server|Data Source)=[^;]+;\s*(User|Uid|Password|Pwd)='; label = 'DB 연결 문자열' },
+        # 중간 키·`User Id` 공백 표기 수용 (v1.182.0) — 종전 `[^;]+;\s*(User|…)=`는 자격증명 키가
+        #   첫 세그먼트 바로 뒤에 오는 형태만 잡아, 실제로 흔한 「중간에 다른 키가 낀 연결 문자열」을
+        #   통째로 미탐했다. 이 라벨이 커밋 차단 등급이라 미탐이 곧 게이트 실효성 상실이다.
+        # 세그먼트를 줄 안으로 한정한다(`[^;\r\n]`·`[ \t]*`) — 넓힌 만큼 오탐을 막는 대가이고,
+        #   연결 문자열은 한 줄이라 손실이 없다. 줄을 넘게 두면 앵커 줄과 멀리 떨어진 다른 줄의
+        #   자격증명 키가 함께 묶여 무관한 문서가 차단된다.
+        # `User Id`는 대입 기호까지 요구한다 — `User Interface=…` 같은 무관 키를 잡지 않기 위함.
+        @{ rx = '(?i)(Server|Data Source)[ \t]*=[^;\r\n]+;(?:[^;\r\n]*;)*[ \t]*(User[ \t]*Id|User|Uid|Password|Pwd)[ \t]*='; label = 'DB 연결 문자열' },
         @{ rx = '(?i)(mongodb(\+srv)?|postgres|postgresql|mysql|redis|amqp)://[^\s]+:[^\s]+@'; label = 'DB/서비스 URI 인증정보' },
         @{ rx = '-----BEGIN [A-Z ]*PRIVATE KEY-----'; label = '개인키' },
         @{ rx = '(?i)Bearer\s+[A-Za-z0-9_\-\.]{16,}'; label = 'Bearer 토큰' },
@@ -123,16 +137,31 @@ function Get-SecretMatches {
     #   영문만 \b로 단어 경계를 건다 — 한글은 \b가 어절 경계와 어긋나 '관리자계정:'(무공백)이
     #   미탐된다(F-7 m1 실측). 한글 키워드는 경계 없이 부분일치를 허용한다.
     # (내부는 non-capturing — 그룹 번호가 밀리면 아래 역참조 \2·\4와 Groups[] 인덱스가 깨진다)
-    $pairKeyword = '((?:\b(?:admin|account|credentials?|login|username|ID/PW)\b)|계정|아이디|로그인|사용자명)[^\r\n:]{0,40}:\s*'
+    $pairKwCore  = '(?:(?:\b(?:admin|account|credentials?|login|username|ID/PW)\b)|계정|아이디|로그인|사용자명)'
+    $pairKeyword = "($pairKwCore)[^\r\n:]{0,40}:\s*"
     $pairQuoted   = $pairKeyword + '(["''`])([A-Za-z0-9._-]{3,32})\2\s*/\s*(["''`])([^\s"''`]{6,64})\4'
     $pairUnquoted = $pairKeyword + '([A-Za-z0-9._-]{3,32})\s*/\s*([A-Za-z0-9._\-#$%!@^&*+=?~]{6,64})'
 
-    # 인용형을 먼저 판정하고, 매치되면 비인용형은 보지 않는다 (두 라벨은 상호 배타 —
+    # 줄 분리형·마크다운 표 (v1.182.0) — id와 pw가 **서로 다른 줄**에 라벨-값으로 적힌 형태다
+    #   (콜론 두 줄 / 표의 라벨-값 행 두 개). 위 두 패턴은 한 줄 안의 슬래시 구분만 보므로
+    #   이 형태를 통째로 놓쳤는데, 실제 README·설정 문서에서 더 흔한 표기다.
+    # 인용부호를 요구한다 — 인용형과 같은 근거이며 라벨-값 표는 코드 심볼·설명 문구가 흔해
+    #   비인용까지 열면 차단 등급 오탐이 급증한다. 사이에 낀 줄은 2줄까지만 허용한다(표 구분행 등).
+    $pairPwKw  = '(?:\b(?:password|passwd|pwd)\b|비밀번호|패스워드|암호)'
+    $pairSplit = $pairKwCore + '[^\r\n]{0,40}?[:|][ \t]*(["''`])([A-Za-z0-9._-]{3,32})\1[^\r\n]*\r?\n(?:[^\r\n]*\r?\n){0,2}?[^\r\n]*?' + $pairPwKw + '[^\r\n]{0,40}?[:|][ \t]*(["''`])([^\s"''`]{6,64})\3'
+
+    # 인용형·줄 분리형을 먼저 판정하고, 매치되면 비인용형은 보지 않는다 (두 라벨은 상호 배타 —
     #   한 문자열이 두 라벨을 함께 반환하면 caller의 차단 판정이 흐려진다).
     $quotedHit = $false
     foreach ($m in [regex]::Matches($content, "(?i)$pairQuoted")) {
         # 그룹: 1=키워드 2=id 인용부호 3=id 4=pw 인용부호 5=pw (닫는 쪽은 \2·\4 역참조 — 새 그룹 아님)
         if (Test-CredentialPairToken $m.Groups[3].Value $m.Groups[5].Value) { $quotedHit = $true; break }
+    }
+    if (-not $quotedHit) {
+        foreach ($m in [regex]::Matches($content, "(?i)$pairSplit")) {
+            # 그룹: 1=id 인용부호 2=id 3=pw 인용부호 4=pw (키워드는 non-capturing — 번호가 밀리지 않는다)
+            if (Test-CredentialPairToken $m.Groups[2].Value $m.Groups[4].Value) { $quotedHit = $true; break }
+        }
     }
     if ($quotedHit) {
         $found.Add('자격증명 쌍')

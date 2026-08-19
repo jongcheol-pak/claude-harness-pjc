@@ -43,6 +43,18 @@ $spCases = @(
     @{ n = '음성: 영문 설정값(login: true)';  t = 'login: true / false';                                              e = '' }
     @{ n = '음성: 영문 라우트(account API)';  t = 'account API: GET /api/v1/accounts';                                e = '' }
     @{ n = '음성: 영문 예시 플레이스홀더';    t = "Login: ${spBt}example$spBt / ${spBt}your-password$spBt";           e = '' }
+    # [v1.182.0 T1] 대장 「secret-patterns 탐지 정밀도」 병합 4형태 중 ⓐⓒⓓ (ⓑ 도메인형 pw는 의도라 제외).
+    #   연결 문자열 픽스처는 키와 '='를 반드시 분리 조립한다 — 붙여 두면 이 러너 파일 자신이
+    #   확대된 DB 패턴에 걸려 커밋 게이트에 차단된다(아래 (d2) 주석과 같은 이유).
+    @{ n = 'ⓐ 중간 키 + User Id 표기';        t = 'Server' + '=' + 'sqlhost' + ';' + 'Database' + '=' + 'appdb' + ';' + 'User Id' + '=' + 'sa' + ';'; e = 'DB 연결 문자열' }
+    @{ n = 'ⓒ 줄 분리형 쌍';                  t = "관리자 계정: $spBt$spId$spBt`n비밀번호: $spBt$spPw$spBt";           e = 'password 값,자격증명 쌍' }
+    @{ n = 'ⓒ 마크다운 표 쌍';                t = "| 계정 | $spBt$spId$spBt |`n| 비밀번호 | $spBt$spPw$spBt |";        e = '자격증명 쌍' }
+    @{ n = 'ⓓ 음성: 상태·에러코드 열거';      t = '계정 상태: ' + 'ERR_401' + ' / ' + 'ERR_402';                       e = '' }
+    # 델타 음성 3종 — 확대분(중간 키 허용)이 **실제로 평가되는** 형태만 고른다. 앵커(`Server=`·
+    #   `Data Source=`)를 못 넘는 문자열은 확대분에 닿지도 못해 무회귀 케이스에 불과하다.
+    @{ n = '음성 델타: 무관 키만 나열';        t = 'Server' + '=' + 'sqlhost' + ';' + 'Timeout' + '=' + '30' + ';';     e = '' }
+    @{ n = '음성 델타: User Interface 키';     t = 'Server' + '=' + 'sqlhost' + ';' + 'User Interface' + '=' + 'dark' + ';'; e = '' }
+    @{ n = '음성 델타: Data Source + Encrypt'; t = 'Data Source' + '=' + 'sqlhost' + ';' + 'Encrypt' + '=' + 'true' + ';'; e = '' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')
@@ -151,9 +163,9 @@ if ($gitOk) {
     #      버그를 함수 단위 테스트로는 못 잡는다.
     Push-Location $wcsB
     git rm -q --cached key.pem; Remove-Item key.pem -Force
-    # 기존 DB 패턴은 'Server=<v>;' 바로 뒤 User/Pwd/Password 키를 요구한다(secret-patterns.ps1:29).
-    #   'User Id='(공백)·중간 키(Database=…)가 끼면 미탐 — 기존 결함이라 plan Deferred에 등록했고,
-    #   여기서는 패턴이 실제로 잡는 유효 형태로 차단 경로를 실증한다.
+    # 중간 키·공백 표기 수용은 v1.182.0 T1에서 닫혔고 위 $spCases가 함수 단위로 검증한다.
+    #   여기서 보는 것은 그 라벨이 **hook 레벨에서 실제로 차단(exit 2)까지 가는가**이므로,
+    #   패턴 형태는 가장 단순한 것을 쓴다(라벨 판정 자체는 위에서 이미 전수 대조된다).
     # 키 이름과 '='를 반드시 분리해 조립한다 — 한 리터럴에 붙여 두면 이 러너 파일(과 그 주석!)
     #   자체가 자사 커밋 게이트에 차단된다(실측으로 두 번 걸렸다).
     $dbConn = 'Server' + '=' + 'prod-sql' + ';' + 'Pwd' + '=' + 'Zq7#mK21' + ';'
