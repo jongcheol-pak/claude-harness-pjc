@@ -116,13 +116,20 @@ if ($data.tool_name -eq 'Write' -and
 #   (게이트는 통과하는데 plan 판정은 켜지는 파일이 생긴다). `-`·`*`·`+` 불릿과 ordered list(`1.`/`1)`),
 #   `[x]`/`[X]`/`[/]`를 모두 인정한다: 좁게 잡으면 표기를 바꾼 급조 plan이 게이트를 빠져나가고,
 #   동시에 정상 plan이 "plan 아님"으로 판정돼 그 프로젝트의 코드 Write가 전면 차단된다(오차단).
+# `-`(취소)·`~`도 인정한다 — 그 표기만 쓰는 외부 레포는 종전에 `docs/plans/`가 있어도 plan 판정이
+#   꺼져 **코드 Write가 전면 차단**됐다(v1.118.0 F-7 m3). 확장 대상을 이 둘로 한정하는 이유는
+#   임의 문자(`[^\]]`)를 허용하면 체크박스가 아닌 문서를 plan으로 오판해 게이트가 잘못 켜지기 때문이다.
+# ⚠ 이 확장은 방향이 둘이다 — plan **존재** 판정에서는 차단 완화지만, plan 파일 Write·체크박스 도입
+#   Edit을 막는 **작성 게이트에서는 차단이 넓어진다**(그 표기를 쓰던 문서가 새로 게이트 대상이 된다).
 # 이 줄은 .md 무조건 허용($alwaysAllowedExts)보다 반드시 앞에 있어야 한다 — 뒤면 plan.md가 먼저 통과한다.
-$planTaskRx = '(?m)^\s*([-*+]|\d+[.)])\s*\[[ /xX]\]'
+$planTaskRx = '(?m)^\s*([-*+]|\d+[.)])\s*\[[ /xX~-]\]'
 
 if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     $planFileName = [System.IO.Path]::GetFileName($targetPath)
     $isPlanFileName = ($planFileName -ieq 'plan.md')            # plan.md/PLAN.md — 경로 무관, 내용 무관
-    $isInPlansDir = ($targetPath -match '(?i)[\\/]docs[\\/]plans[\\/][^\\/]+\.md$')
+    # 선행 구분자를 **선택**으로 둔다 — 상대 경로(`docs/plans/x.md`)가 무매치라 게이트와 판정이
+    #   비대칭이었다(게이트는 통과하는데 plan 판정은 안 켜지는 자리 = 곧 구멍).
+    $isInPlansDir = ($targetPath -match '(?i)(^|[\\/])docs[\\/]plans[\\/][^\\/]+\.md$')
 
     $planGateTarget = $false
     if ($isPlanFileName) {

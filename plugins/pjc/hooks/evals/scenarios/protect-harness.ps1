@@ -57,5 +57,18 @@ $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstal
 Assert-Case -Name "protect-harness: 설치본 pre-bash-dispatch Write 차단 (v1.99.0 T6 집합 합류)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/bash-hook-lib.ps1'))
 Assert-Case -Name "protect-harness: 설치본 bash-hook-lib 헬퍼 Write 차단 (v1.99.0 T6 등가 우회 봉쇄)" -R $r -ExpectExit 2
+
+# ---- [v1.181.0 T7] 한글 경로 실증 ----
+# v1.129.0 T2의 stdin UTF-8 수정으로 이 hook도 한글이 든 보호 경로를 비로소 정확히 매치하게 됐는데,
+#   골든 케이스가 0건이라 그 수정이 **실증되지 않은 채** 남아 있었다(성격상 미탐 보완이고,
+#   AGENTS.md `## DO NOT`의 block-destructive 조항이 미탐 보완에 실증을 요구한다).
+# ⚠ 양성만으로는 부족하다 — 인코딩이 깨지면 「아무것도 매치하지 않아」 통과하므로, 같은 한글 경로의
+#   **캐시 밖 개발 소스가 통과하는지**(음성)까지 봐야 경로 문자열이 실제로 온전히 전달됐음이 드러난다.
+$phKo = Join-Path $work '한글경로 테스트'; New-Item -ItemType Directory $phKo -Force | Out-Null
+$fakeInstallKo = Join-Path $phKo '.claude/plugins/cache/pjc-harness/pjc/1.181.0'
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $phKo (Join-Path $fakeInstallKo 'scripts/block-destructive.ps1'))
+Assert-Case -Name "protect-harness: 한글 경로 설치본 hook Write 차단 (v1.181.0 T7 — 미탐 보완 실증)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $phKo (Join-Path $phKo '플러그인/scripts/block-destructive.ps1'))
+Assert-Case -Name "protect-harness: 한글 경로 개발 소스(캐시 밖) 통과 (v1.181.0 T7 — 오차단 0 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 }   # ---- §2b 게이트 끝 (protect-harness) ----
 
