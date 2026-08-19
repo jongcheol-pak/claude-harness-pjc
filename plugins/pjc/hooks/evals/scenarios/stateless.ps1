@@ -27,6 +27,7 @@ foreach ($c in $cases) {
             -ExpectExit ([int]($c.expect_exit ?? 0)) `
             -ExpectContains ([string]($c.expect_contains ?? '')) `
             -ExpectSilent ([bool]($c.expect_silent ?? $false)) `
+            -ExpectNotContains ([string]($c.expect_not_contains ?? '')) `
             -PendingFix ([bool]($c.pending_fix ?? $false))
     }
 
@@ -39,6 +40,8 @@ foreach ($c in $cases) {
     #   같은 명령이 다른 hook(예: 'git merge'가 warn-external)을 건드리면 디스패처 출력이 생기므로
     #   silent를 강제하지 않고 exit 0만 확인한다(그게 올바른 합산 동등성).
     #   pending_fix 케이스는 개별 hook 쪽에서만 판정(수정 전 red 실증용 — 디스패처 중복 불필요).
+    #   `expect_not_contains`도 개별 전용이다 — 디스패처는 3 hook 합산이라 같은 문자열이
+    #   다른 hook의 출력에서 정당하게 나올 수 있어, 상위집합에 「없어야 한다」를 걸면 오판한다.
     if ($runDispatchEcho) {
         $rd = Invoke-Hook 'pre-bash-dispatch.ps1' $json
         Assert-Case -Name "dispatch=$($c.hook): $($c.name)" -R $rd `

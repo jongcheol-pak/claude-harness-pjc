@@ -1113,6 +1113,22 @@
       "command": "git merge-tree main feature",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "gh release --notes 값 속 git merge 텍스트는 오탐 아님",
+      "command": "gh release create v1.181.0 --notes \"병합: 위키 인덱스를 파생물로 — git merge 로 합쳤다\"",
+      "expect_exit": 0,
+      "expect_contains": "릴리즈",
+      "expect_not_contains": "브랜치 병합"
+    },
+    {
+      "hook": "warn-external-ops.ps1",
+      "name": "gh pr --body 값 속 push 텍스트는 오탐 아님",
+      "command": "gh pr create --body \"이 PR은 git push 절차를 설명한다\"",
+      "expect_exit": 0,
+      "expect_contains": "PR 생성",
+      "expect_not_contains": "원격 반영"
     }
   ]
 }
