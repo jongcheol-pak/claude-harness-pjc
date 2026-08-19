@@ -510,6 +510,19 @@ TYPE_ENUM_SITES_COVER = {
 TAG_ALIAS = {"source-stub": "source"}
 TAG_EXTRA = {"recipe"}
 
+# ⑩-ⓑ 삭제 이력 — 「타입을 지웠는데 산문에 이름이 남는」 사각을 잡는 유일한 경로.
+#  아래 check_type_enumerations docstring이 적듯 축 ⑩의 토큰 추출은 어휘를 **실재 타입으로
+#  한정**해 오탐을 막으므로, 삭제된 이름은 애초에 추출되지 않아 조용히 통과한다. 어휘를 넓히면
+#  산문 단어 오탐이 들어와 그 1급 요건을 깨므로, 넓히는 대신 **삭제한 이름만 따로 아는 목록**을 준다.
+# ⚠ **비어 있는 것이 현재의 정상 상태다** — 2026-08-19 실측(`lint.py` 73커밋 추적)에서 현행
+#  8타입 대비 과거에만 있던 타입이 0건이었다. 이 축이 겨냥한 결함은 아직 한 번도 실현된 적이
+#  없고, 여기 있는 것은 **다음 삭제 때 작동할 자리**다. 빈 dict 자체가 「삭제 이력 0건」의 기록이다.
+# ⚠ **사람이 갱신해야 동작한다** — 타입을 삭제하면 `{이름: 사유·삭제 회차}`를 여기 추가한다.
+#  같은 규약을 wiki-schema.md §2 서두에도 적어 두 곳에서 보이게 했다(한쪽만 보고 지나치지 않게).
+# 이름이 **다른 의미의 일반어로 재사용**되면(예: 타입명이 아닌 문맥의 같은 단어) 오탐이 나므로,
+#  그때는 사유란에 문맥 한정을 적거나 그 이름을 목록에서 뺀다.
+RETIRED_TYPES = {}
+
 
 def extract_type_tokens(text, vocab):
     """구간 text에서 어휘 vocab에 속하는 타입 토큰만 뽑아 집합으로 반환.
@@ -630,6 +643,18 @@ def check_type_enumerations(schema_text, lint):
                       f"{sorted(types - (rec | exd))} / §2에 없는 표기 {sorted((rec | exd) - types)}")
     if rec & exd:
         issues.append(f"타입 열거 'B4-description' 중복: {sorted(rec & exd)}가 권장·비대상 양쪽에 있음")
+
+    # ⓑ B5 — 삭제된 타입의 유령 이름(RETIRED_TYPES). 위 docstring이 「검출 방향은 누락 한쪽뿐」
+    #  이라 적은 그 반대 방향이다. 목록에 있는 이름만 보므로 오탐 경로가 새로 열리지 않는다 —
+    #  어휘 확대 없이 닫는 것이 이 설계의 요지다. 경계 클래스는 extract_type_tokens와 같게 맞춘다
+    #  (하이픈 복합 타입명이 잘리거나 '20_projects'의 project가 물리는 것을 함께 막는다).
+    checked += 1
+    for name, reason in sorted(RETIRED_TYPES.items()):
+        ghosts = [label for label, text in (("wiki-schema.md", schema_text), ("templates.md", tmpl_text))
+                  if re.search(r"(?<![a-z-])" + re.escape(name) + r"(?![a-z-])", text)]
+        if ghosts:
+            issues.append(f"타입 열거 'B5-retired' 유령 이름: 삭제된 타입 '{name}'이 "
+                          f"{'·'.join(ghosts)}에 남아 있다 ({reason})")
 
     return issues, checked
 
