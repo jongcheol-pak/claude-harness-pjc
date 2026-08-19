@@ -754,6 +754,12 @@ TRIGGER_ANCHORS = {
 #  적으면 문면이 바뀌어 면제가 허공을 가리키는 것이고, 많으면 면제가 의도하지 않은 줄까지
 #  덮는 것이다. 기대 수를 2 이상으로 적는 자리는 **같은 문면이 여러 벌 복제된 곳**뿐이며,
 #  그 벌 수를 열거에 적어 두면 벌 수가 달라지는 것 자체가 신호가 된다.
+# 예산 축 ①의 단일 소스 허용 — 「구조상 한 소스에만 존재하는 것이 정상인 키」만 넣는다.
+#  형태는 아래 `TRIGGER_ALLOWLIST`와 같다(키 + 사유). **초기값은 빈 dict다** — 착수 시점
+#  실측에서 `all_keys` 14키가 전부 2소스 이상에서 대조되고 있어(1소스 키 0건) 넣을 것이 없었다.
+#  비어 있다는 것 자체가 "현재 모든 예산 키는 네 소스 동기화 대상"이라는 사실의 기록이다.
+BUDGET_SINGLE_SOURCE_OK = {}
+
 TRIGGER_ALLOWLIST = [
     # ── index 줄/행 축(§7-14) — 문자 예산이 아니라 본문 400줄·기능별 인덱스 200행이 트리거다
     (SCHEMA_MD, "| index.md | 제한 없음", "§7-14 index 트리거 — 줄/행 기준이라 문자 예산 무관"),
@@ -1093,7 +1099,17 @@ def main():
     for key in all_keys:
         vals = {src: rows[key] for src, rows in budget_sources.items() if key in rows}
         if len(vals) < 2:
-            continue  # 한 소스에만 있으면 대조 불가(구조상 §2에 없는 log/index 등) — 대상 아님
+            # 종전에는 여기서 무조건 건너뛰어, **새 타입이 두 소스에만 등재되고 나머지
+            #  두 곳에서 빠져도 조용히 exit 0**이 됐다(v1.164.0이 plan acceptance로
+            #  우회했던 그 구멍 — 우회는 그 plan에만 있고 검사기에는 남지 않았다).
+            #  이제 건너뛰는 것은 **명시 허용 목록에 있는 키뿐**이고 나머지는 issue다.
+            reason = BUDGET_SINGLE_SOURCE_OK.get(key)
+            if reason is None:
+                only = ", ".join(sorted(vals))
+                mismatches.append(
+                    f"예산 '{key}'가 한 소스({only})에만 있다 — 네 소스 전부에 등재하거나, "
+                    f"구조상 한 곳에만 존재하는 키면 BUDGET_SINGLE_SOURCE_OK에 사유와 함께 넣어라")
+            continue
         checked += 1
         if len(set(vals.values())) > 1:
             detail = " / ".join(f"{src}={v}" for src, v in vals.items())
