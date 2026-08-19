@@ -748,13 +748,20 @@ TRIGGER_ANCHORS = {
     OPS_RULES_MD: (r"^## 예산 단계 신호", r"^## "),
 }
 
-# 예산 축 ①의 단일 소스 허용 — 「구조상 한 소스에만 존재하는 것이 정상인 키」만 넣는다.
+# 예산 축 ①의 부분 소스 허용 — 「구조상 네 소스 전부에는 존재할 수 없는 키」만 넣는다.
 #  목적은 아래 `TRIGGER_ALLOWLIST`와 같다(면제 항목마다 사유를 남긴다 — 자료 구조는 다르다:
 #  이쪽은 `{키: 사유}` dict, 저쪽은 `(파일, 앵커, 사유[, 기대 수])` 튜플 리스트다).
-#  **초기값은 빈 dict다** — 착수 시점 실측에서 `all_keys` 14키가 전부 2소스 이상에서
-#  대조되고 있어(1소스 키 0건) 넣을 것이 없었다. 비어 있다는 것 자체가 "현재 모든 예산
-#  키는 네 소스 동기화 대상"이라는 사실의 기록이다.
-BUDGET_SINGLE_SOURCE_OK = {}
+#
+# ⚠ 이 목록이 **비어 있지 않은 것이 정상**이다 — 아래 셋은 §2가 「타입별 페이지」를 서술하는
+#  절이라 페이지 타입이 아닌 키(index의 줄/행 상한, log.md)를 담을 자리가 구조상 없다.
+#  종전 게이트가 `len(vals) < 2`(0·1소스)만 잡아 **2·3소스에만 등재된 키는 값만 맞으면
+#  통과**했고, 그것이 원 결함이 지목한 fail-open이다(새 타입을 두 곳에만 적어도 exit 0).
+#  이제 「네 소스 전수 등재」를 요구하고 예외는 여기에만 둔다.
+BUDGET_PARTIAL_SOURCE_OK = {
+    "index:body-lines": "§2에 없음 — index는 문자 예산이 아니라 본문 줄 수가 임계라 타입별 예산 줄에 자리가 없다(§7-14 축)",
+    "index:feat-rows": "§2에 없음 — 위와 같은 이유(기능별 인덱스 행 수 임계)",
+    "log.md": "§2에 없음 — log는 페이지 타입이 아니라 단일 파일이라 타입별 예산 서술 대상이 아니다",
+}
 
 # 면제 열거 — 「파일, 줄 내용 앵커, 사유[, 기대 매치 수]」. 줄 번호가 아니라 **줄 내용**으로
 #  잡는 이유는 후속 task의 편집으로 번호가 밀리기 때문이다. 앵커는 대상 파일의 스캔 대상
@@ -1100,18 +1107,21 @@ def main():
     checked = 0
     for key in all_keys:
         vals = {src: rows[key] for src, rows in budget_sources.items() if key in rows}
-        if len(vals) < 2:
-            # 종전에는 여기서 무조건 건너뛰어, **새 타입이 두 소스에만 등재되고 나머지
-            #  두 곳에서 빠져도 조용히 exit 0**이 됐다(v1.164.0이 plan acceptance로
-            #  우회했던 그 구멍 — 우회는 그 plan에만 있고 검사기에는 남지 않았다).
-            #  이제 건너뛰는 것은 **명시 허용 목록에 있는 키뿐**이고 나머지는 issue다.
-            reason = BUDGET_SINGLE_SOURCE_OK.get(key)
+        if len(vals) < len(budget_sources):
+            # 종전 게이트는 `len(vals) < 2`(0·1소스)라, **새 타입이 두 소스에만 등재되고
+            #  나머지 두 곳에서 빠져도 값만 맞으면 조용히 exit 0**이었다(v1.164.0이 plan
+            #  acceptance로 우회했던 그 구멍 — 우회는 그 plan에만 있고 검사기에는 남지 않았다).
+            #  이제 **네 소스 전수 등재**를 요구하고, 건너뛰는 것은 위 허용 목록에 있는 키뿐이다.
+            reason = BUDGET_PARTIAL_SOURCE_OK.get(key)
             if reason is None:
-                only = ", ".join(sorted(vals))
+                missing = ", ".join(sorted(set(budget_sources) - set(vals)))
                 mismatches.append(
-                    f"예산 '{key}'가 한 소스({only})에만 있다 — 네 소스 전부에 등재하거나, "
-                    f"구조상 한 곳에만 존재하는 키면 BUDGET_SINGLE_SOURCE_OK에 사유와 함께 넣어라")
-            continue
+                    f"예산 '{key}'가 일부 소스에만 있다 — 빠진 곳: {missing}. "
+                    f"네 소스 전부에 등재하거나, 구조상 그곳에 둘 수 없는 키면 "
+                    f"BUDGET_PARTIAL_SOURCE_OK에 사유와 함께 넣어라")
+                continue
+            # 허용된 키도 **있는 소스끼리는** 값이 맞아야 한다 — 면제는 「자리가 없다」는
+            #  사실에 대한 것이지 값 드리프트까지 봐주는 것이 아니다.
         checked += 1
         if len(set(vals.values())) > 1:
             detail = " / ".join(f"{src}={v}" for src, v in vals.items())
