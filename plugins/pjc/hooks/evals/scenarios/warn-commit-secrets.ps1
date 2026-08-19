@@ -72,6 +72,7 @@ $spCases = @(
     @{ n = 'T9 음성: %VAR% 참조(표)';    t = "| 계정 | $spQ" + 'svcuser' + "$spQ |`n| 비밀번호 | $spQ" + '%DB_PASS%' + "$spQ |"; e = '' }
     @{ n = 'T9 음성: ${VAR} 참조';       t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + '${DB_PASSWORD}' + $spQ; e = '' }
     @{ n = 'T9 음성: process.env 조회';  t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + 'process.env.DB_PASS1' + $spQ; e = '' }
+    @{ n = 'T9 음성: os.environ 조회';   t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + 'os.environ[DB_PASS1]' + $spQ; e = '' }
     @{ n = 'T9 음성: 설정 키 경로';      t = "계정: $spQ$spId$spQ`n비밀번호: $spQ" + 'appsettings:Db:Pwd1' + $spQ; e = 'password 값' }
     # 한 줄 슬래시형은 **v1.119.0부터** 같은 오차단을 갖고 있었다(BASE 실측 확인). 공유 판정에 제외를
     #   넣어 함께 닫혔으므로 그 경로도 고정한다.
