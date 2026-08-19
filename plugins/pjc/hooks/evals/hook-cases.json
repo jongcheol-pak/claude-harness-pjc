@@ -55,6 +55,18 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "델타 음성: /.* 를 데이터 인자로 쓰는 검색 통과 (v1.182.0)",
+      "command": "grep -rn \"/.*\" src/",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "델타 음성: 상대 dotfile 정리 ./.cache 통과 (/.* 성분과 구분, v1.182.0)",
+      "command": "rm -rf ./.cache",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "Remove-Item C:\\ 재귀강제 차단",
       "command": "Remove-Item C:\\ -Recurse -Force",
       "expect_exit": 2,

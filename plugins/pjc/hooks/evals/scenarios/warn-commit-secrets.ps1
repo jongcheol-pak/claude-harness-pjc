@@ -55,6 +55,15 @@ $spCases = @(
     @{ n = '음성 델타: 무관 키만 나열';        t = 'Server' + '=' + 'sqlhost' + ';' + 'Timeout' + '=' + '30' + ';';     e = '' }
     @{ n = '음성 델타: User Interface 키';     t = 'Server' + '=' + 'sqlhost' + ';' + 'User Interface' + '=' + 'dark' + ';'; e = '' }
     @{ n = '음성 델타: Data Source + Encrypt'; t = 'Data Source' + '=' + 'sqlhost' + ';' + 'Encrypt' + '=' + 'true' + ';'; e = '' }
+    # [v1.182.0 T8] 줄 분리형 경계의 델타 음성 — **이 자리가 비어 있던 것이 F-7 BLOCKER의 실질**이다.
+    #   확대 초안은 라벨 슬랙 40자 + 사이 줄 2줄을 허용해 아래 셋을 전부 차단 등급으로 잡았다.
+    #   셋 다 평범한 문서 표기이고, 이 라벨은 exit 2라 오탐 하나가 자율 루프를 세운다.
+    @{ n = 'T8 음성: 표의 무관한 두 라벨(계정 유형/비밀번호 규칙)';
+       t = "| 계정 유형 | $spBt$spId$spBt |`n| 설명 | 관리자 계정 |`n| 비밀번호 규칙 | $spBt" + '8자이상#특수' + "$spBt |"; e = '' }
+    @{ n = 'T8 음성: 콜론형 무관 라벨(계정 목록/최소 길이)';
+       t = "계정 목록: $spBt$spId$spBt`n비고: 정책 참고`n비밀번호 최소 길이: $spBt" + '12자리이상#' + "$spBt"; e = '' }
+    @{ n = 'T8 음성: 맞붙었지만 라벨이 다르다(비밀번호 파일)';
+       t = "| 계정 | $spBt$spId$spBt |`n| 비밀번호 파일 | $spBt" + 'secrets.yml2' + "$spBt |"; e = '' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')
