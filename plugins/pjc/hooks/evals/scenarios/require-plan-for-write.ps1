@@ -103,6 +103,22 @@ Assert-Case -Name "require-plan: G4 완료 plan 경고 2회차 무출력 (P1T3 �
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $emptyplan (Join-Path $emptyplan 'B.cs'))
 Assert-Case -Name "require-plan: H3 빈 plan 경고 2회차 무출력 (P1T3 디듑)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+# ---- [v1.182.0 T3] .state 디듑 마커 30일 TTL 청소 ----
+# 검증 축은 「초과분만 지워지는가」다 — 전부 지우면 위 디듑이 깨지고, 아무것도 안 지우면 축적이 그대로다.
+# 청소는 plan 파일을 찾은 분기 안에 있으므로 $doneplan(= G4 경로)으로 hook을 한 번 더 태워 발동시킨다.
+$rpMarkerDir = Join-Path $iso '.claude/.state/require-plan-warn'
+New-Item -ItemType Directory $rpMarkerDir -Force | Out-Null
+$rpOldMk = Join-Path $rpMarkerDir 'ttl-old-marker'
+$rpNewMk = Join-Path $rpMarkerDir 'ttl-new-marker'
+Set-Content -LiteralPath $rpOldMk -Value '' ; (Get-Item $rpOldMk).LastWriteTime = (Get-Date).AddDays(-31)
+Set-Content -LiteralPath $rpNewMk -Value '' ; (Get-Item $rpNewMk).LastWriteTime = (Get-Date).AddDays(-3)
+$null = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $doneplan (Join-Path $doneplan 'C.cs'))
+if ((-not (Test-Path -LiteralPath $rpOldMk)) -and (Test-Path -LiteralPath $rpNewMk)) {
+    $script:results.Add(@{ ok = $true; line = '[PASS] require-plan: .state 마커 30일 초과분만 청소 (T3)' })
+} else {
+    $script:results.Add(@{ ok = $false; line = "[FAIL] require-plan: .state TTL 청소 — 31일 마커 잔존=$(Test-Path -LiteralPath $rpOldMk) / 3일 마커 소실=$(-not (Test-Path -LiteralPath $rpNewMk))" })
+}
+
 # ---- [v1.111.0] AGENTS.md bootstrap 게이트 (신규 생성 + 스킬 미발동 차단, fail-open) ----
 $agentsProj = Join-Path $work 'proj-agents';  New-Item -ItemType Directory $agentsProj -Force | Out-Null
 # fixture transcript 3종 — 흔적 없음(산문 언급만: 언급만으로 통과되지 않음을 동시 실증) / Skill input 흔적 / tool result 흔적

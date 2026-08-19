@@ -513,6 +513,15 @@ if ($foundIn) {
             #   "plan을 갱신하라"는 문구의 반복 노출이 불필요한 plan 재작성으로 오도할 수 있다.
             $warnStateDir = Join-Path $env:USERPROFILE '.claude/.state/require-plan-warn'
             try { New-Item -Force -ItemType Directory -Path $warnStateDir | Out-Null } catch {}
+            # 30일 지난 마커 자동 정리 — 마커는 세션×plan×경고 종류당 1개라 방치하면 무한 축적된다(하우스키핑).
+            # 파일명에 세션 ID가 들어가 세션이 끝나면 그 마커는 다시 매치되지 않으므로 삭제해도 잃는 것이 없다.
+            # 별도 스케줄러 없이 다음 실행 시작 시에만 돈다. TTL 값은 suggest-agents-record와 같은 30일로 맞춘다 —
+            #   hook마다 값이 갈리면 다음 사람이 "왜 여기만 다른가"를 다시 판정해야 한다.
+            try {
+                Get-ChildItem -LiteralPath $warnStateDir -File -ErrorAction Stop |
+                    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+                    Remove-Item -Force -ErrorAction SilentlyContinue
+            } catch {}
             $sidW = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
             $planKey = ($planFile -replace '[^\w.-]', '_')
             function Test-WarnOnce {
