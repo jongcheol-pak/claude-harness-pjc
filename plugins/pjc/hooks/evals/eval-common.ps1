@@ -119,6 +119,19 @@ function New-TranscriptLine {
 
 function Invoke-Hook {
     param([string]$ScriptName, [string]$InputJson)
+    # 자식 프로세스 출력을 **UTF-8로 디코딩**한다(v1.182.0). `2>&1`이 stderr를 이미 $R.out에
+    #   합치지만, 콘솔 코드페이지가 UTF-8이 아닌 기동 경로(러너는 Start-Process로 새 콘솔에서
+    #   뜬다 — 실측 ks_c_5601-1987)에서는 hook의 한글 경고가 `?패`처럼 깨져 들어와
+    #   `expect_contains`로 assert할 수 없었다. 영문 앵커만 걸 수 있던 것이 그 때문이다.
+    #   실측: 같은 경로에서 한글 앵커 매칭 False → 이 설정 후 True(영문 앵커는 양쪽 다 True).
+    # 진입부가 아니라 **이 함수**에 두는 이유는 자식을 띄우는 유일한 자리이고, 러너가 시나리오를
+    #   병렬 자식 프로세스로 나눠 돌아 진입부 설정의 상속이 환경 의존이기 때문이다.
+    #   프로세스당 1회만 설정한다 — 이 setter는 스트림을 다시 여는 비용이 있어 호출마다 켰다
+    #   껐다 하면 케이스 수만큼 그 비용이 붙는다. 실패해도 종전 동작을 유지하도록 감싼다.
+    if (-not $script:hookOutEncFixed) {
+        try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
+        $script:hookOutEncFixed = $true
+    }
     $path = Join-Path $scriptsDir $ScriptName
     $out = $InputJson | pwsh -NoProfile -ExecutionPolicy Bypass -File $path 2>&1
     return @{ code = $LASTEXITCODE; out = (($out | Out-String)).Trim() }

@@ -323,11 +323,50 @@ if ($gitOk) {
     # (h1) HEAD 없는 저장소에서도 신규 파일의 자격증명은 차단된다
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add -A && git commit -m init' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: HEAD 없는 저장소에서도 자격증명 차단(h1, diff HEAD 실패 폴백)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    # [v1.182.0 T6 ⓐ] stderr 한글 경고가 **깨지지 않고** 판정 대상에 담기는지 — 디코딩의 회귀 가드.
+    #   종전에는 콘솔 코드페이지 탓에 이 문자열이 깨져 영문 앵커만 걸 수 있었다.
+    Assert-Case -Name "commit-secrets: diff HEAD 실패 경고의 한글이 온전하다(h1, T6 디코딩 가드)" -R $r -ExpectExit 2 -ExpectContains '보완 스캔 미수행'
 
     # (h2) 같은 상태에서 무해한 내용이면 차단되지 않는다 — 폴백이 오차단을 만들지 않는다
     Push-Location $wcsE; Set-Content README.md @('# 프로젝트 소개', '설치 방법은 아래를 보세요.'); Pop-Location
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add -A && git commit -m init' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: HEAD 없는 저장소 무해 내용 무차단(h2, 폴백 오차단 0)" -R $r -ExpectExit 0
+
+    # ---- [v1.182.0 T6 ⓑ] 폴백 경고의 1회 억제·리셋 ----
+    # h1/h2로는 **구조상 검증할 수 없다** — 케이스마다 별도 pwsh 프로세스라 `$script:diffHeadFailNotified`가
+    #   매번 새로 초기화되고, 그래서 리셋을 지워도 두 케이스 다 green이 된다(가드가 아니었다).
+    # 한 프로세스에서 `Invoke-WarnCommitSecrets`를 2회 부르고 stderr를 StringWriter로 가로채 센다 —
+    #   프로세스 밖으로 내보내지 않으므로 콘솔 인코딩이 판정에 끼어들지 않는다.
+    # 명령은 `add -A && commit -am`이다: 한 호출 안에서 실패 경로가 둘(자동 스테이징·add 전체 스캔)이라
+    #   억제가 없으면 1회 호출만으로 2회 나온다.
+    $t6Probe = Join-Path $work 't6-notify-probe.ps1'
+    @(
+        'param([string]$Cwd, [int]$Calls = 1)',
+        ('. ' + [char]39 + (Join-Path $scriptsDir 'bash-hook-lib.ps1') + [char]39),
+        '$sw = New-Object System.IO.StringWriter',
+        '$prevErr = [Console]::Error',
+        '[Console]::SetError($sw)',
+        'try {',
+        '    for ($i = 0; $i -lt $Calls; $i++) {',
+        # ⚠ 연결식은 반드시 괄호로 묶는다 — 배열 리터럴 안에서는 쉼표가 `+`보다 먼저 묶여
+        #   `'a' + $c + 'b', 'd'`가 `'a' + $c + ('b','d')`로 읽히고, 그러면 한 줄이 여러 줄로 쪼개진다.
+        ('        $null = Invoke-WarnCommitSecrets @{ cwd = $Cwd; tool_input = @{ command = ' + [char]39 + 'git add -A && git commit -am x' + [char]39 + ' } }'),
+        '    }',
+        '} finally { [Console]::SetError($prevErr) }',
+        ('"COUNT=" + ([regex]::Matches($sw.ToString(), ' + [char]39 + 'git diff HEAD' + [char]39 + ')).Count')
+    ) | Set-Content -LiteralPath $t6Probe -Encoding utf8
+    foreach ($t6 in @(
+        @{ n = '한 호출 안에서 폴백 경고는 1회만 (T6 ⓑ-2 억제)'; k = 1; e = 1 }
+        @{ n = '두 번째 호출에서 경고가 다시 난다 (T6 ⓑ-1 리셋)'; k = 2; e = 2 }
+    )) {
+        $t6Out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $t6Probe -Cwd $wcsE -Calls $t6.k 2>&1
+        $t6Got = ([regex]::Match(($t6Out -join "`n"), 'COUNT=(\d+)')).Groups[1].Value
+        if ($t6Got -eq [string]$t6.e) {
+            $script:results.Add(@{ ok = $true; line = "[PASS] commit-secrets: $($t6.n)" })
+        } else {
+            $script:results.Add(@{ ok = $false; line = "[FAIL] commit-secrets: $($t6.n) — 기대 $($t6.e), 실제 '$t6Got'" })
+        }
+    }
 
     # (g) 디스패처 경유도 동일 차단 — lib 함수 공유라 두 경로가 갈리면 안 된다(D3).
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
