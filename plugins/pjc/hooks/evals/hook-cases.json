@@ -17,6 +17,38 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "rm -rf /.* 차단 (루트 dotfile 글롭, v1.182.0)",
+      "command": "rm -rf \"/.*\"",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "상위 탈출 .. 연쇄 차단 (드라이브 루트 상승, v1.182.0)",
+      "command": "Remove-Item -Recurse -Force \"$env:APPDATA\\..\\..\\..\"",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "델타 음성: 상대 경로 정리 rm ../build 통과 (v1.182.0)",
+      "command": "rm -rf ../build",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "델타 음성: 상대 경로 정리 Remove-Item ../dist 통과 (v1.182.0)",
+      "command": "Remove-Item -Recurse ../dist",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "델타 음성: chmod +x ../build/x.sh 통과 (같은 $dangerTarget 재사용 경로, v1.182.0)",
+      "command": "chmod +x ../build/x.sh",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "Remove-Item C:\\ 재귀강제 차단",
       "command": "Remove-Item C:\\ -Recurse -Force",
       "expect_exit": 2,
