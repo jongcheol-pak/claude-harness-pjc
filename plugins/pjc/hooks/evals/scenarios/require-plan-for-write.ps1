@@ -194,14 +194,6 @@ $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# �
 Assert-Case -Name "plan게이트: 체크박스 도입 Edit 차단 — 2단계 우회 (PE1)" -R $r -ExpectExit 2 -ExpectContains 'plan-feature'
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# plan`n- [ ] T1: x" $trImplRes)
 Assert-Case -Name "plan게이트: 체크박스 도입 Edit + implement-task 흔적 통과 (PE2)" -R $r -ExpectExit 0
-# PE4/PE5 [v1.181.0 T7] — `$planTaskRx` 확장(`-`·`~`)의 **델타 음성**.
-#   그 확장은 방향이 둘이다: plan 존재 판정에서는 완화지만 **이 작성 게이트에서는 차단이 넓어진다**.
-#   확장 전 무매치였던 표기가 이제 새로 차단되는지(의도된 확대)와, 체크박스가 아닌 정상 문서가
-#   여전히 통과하는지(오차단 0)를 함께 건다 — 양성만 보면 경계가 어디까지 넓어졌는지 알 수 없다.
-$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# plan`n- [-] T1: 취소됨" $trPlanNo)
-Assert-Case -Name "plan게이트: 취소 체크박스 [-] 도입 Edit 차단 (PE4, v1.181.0 확장 델타)" -R $r -ExpectExit 2 -ExpectContains 'plan-feature'
-$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# 메모`n- 항목 하나`n- [단순 대괄호] 링크 아님" $trPlanNo)
-Assert-Case -Name "plan게이트: 체크박스 아닌 대괄호 문서는 통과 (PE5, 오차단 0)" -R $r -ExpectExit 0
 # PE3: MultiEdit 순차 적용 우회 — edit#1이 도입, edit#2가 그 체크박스를 old로 참조.
 #   합산 판정이면 old에 체크박스가 섞여 통과했을 것(false-negative). edit 단위 판정이라 차단된다.
 $peMulti = @{ tool_name = 'MultiEdit'; cwd = $pg; transcript_path = $trPlanNo; tool_input = @{
@@ -213,6 +205,14 @@ $peMulti = @{ tool_name = 'MultiEdit'; cwd = $pg; transcript_path = $trPlanNo; t
 } } | ConvertTo-Json -Compress -Depth 5
 $r = Invoke-Hook 'require-plan-for-write.ps1' $peMulti
 Assert-Case -Name "plan게이트: MultiEdit 순차 적용 우회 차단 — edit 단위 판정 (PE3)" -R $r -ExpectExit 2
+# PE4/PE5 [v1.181.0 T7] — `$planTaskRx` 확장(`-`·`~`)의 **델타 음성**.
+#   그 확장은 방향이 둘이다: plan 존재 판정에서는 완화지만 **이 작성 게이트에서는 차단이 넓어진다**.
+#   확장 전 무매치였던 표기가 이제 새로 차단되는지(의도된 확대)와, 체크박스가 아닌 정상 문서가
+#   여전히 통과하는지(오차단 0)를 함께 건다 — 양성만 보면 경계가 어디까지 넓어졌는지 알 수 없다.
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# plan`n- [-] T1: 취소됨" $trPlanNo)
+Assert-Case -Name "plan게이트: 취소 체크박스 [-] 도입 Edit 차단 (PE4, v1.181.0 확장 델타)" -R $r -ExpectExit 2 -ExpectContains 'plan-feature'
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# 메모`n- 항목 하나`n- [단순 대괄호] 링크 아님" $trPlanNo)
+Assert-Case -Name "plan게이트: 체크박스 아닌 대괄호 문서는 통과 (PE5, 오차단 0)" -R $r -ExpectExit 0
 
 # --- PD: plan 존재 판정 (docs/plans 디렉터리) ---
 # PD1: 체크박스 없는 .md만 있는 docs/plans → plan 판정 OFF → 코드 Write 차단 + 진단 문구
