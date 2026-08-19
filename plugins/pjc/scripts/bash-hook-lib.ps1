@@ -204,9 +204,11 @@ function Get-DiffHeadAdded {
         # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **stdout(fd 1)** 에
         #   쓰므로, hook이 stdout으로 내보내는 JSON(`additionalContext`)에 끼어들어 파싱을 깨뜨린다
         #   (실측 확인). 이 repo의 hook 출력 규약도 경고는 stderr다(AGENTS.md 「hook 출력 규약」).
-        # 한 호출에서 **1회만** 낸다 — `git add -A`는 `$autoStage` 분기와 `-A` 분기가 둘 다 이 함수를
-        #   부르므로(구조는 이 회차 이전부터 그렇다) 억제가 없으면 같은 실패가 두 번 보여 사용자가
-        #   두 번 실패한 것으로 읽는다. 아래 스캔 캡 경고의 `$capNotified`와 같은 처방이다.
+        # 한 호출에서 **1회만** 낸다 — 같은 실패가 두 번 보이면 사용자가 두 번 실패한 것으로 읽는다.
+        #   `git add -A`가 두 분기를 함께 태우던 오판정은 v1.182.0에서 없앴지만, 이 함수를 부르는
+        #   경로는 여전히 둘이고(`$autoStage` 분기 · `git add` 대상 스캔) `git commit -am` + `git add`
+        #   조합처럼 **둘 다 정당하게 발화하는** 명령이 있으므로 억제는 남긴다.
+        #   아래 스캔 캡 경고의 `$capNotified`와 같은 처방이다.
         if (-not $script:diffHeadFailNotified) {
             [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
                                        'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
@@ -244,9 +246,16 @@ function Invoke-WarnCommitSecrets {
         $addedLines = @(@(& git diff --cached --unified=0 2>$null) |
             Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
 
-        # -a/-am/--all이면 추적 파일 자동 스테이징분(git diff HEAD)도 스캔. 먼저 메시지(-m) 값을 제거해
-        #   메시지 속 '-a'를 자동 스테이징으로 오인하지 않게 하되, 플래그 토큰(-am의 a)은 보존.
-        $cmdFlags = $cmd -replace '(?i)(^|\s)(-[a-zA-Z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', '$1$2'
+        # -a/-am/--all이면 추적 파일 자동 스테이징분(git diff HEAD)도 스캔.
+        # ⚠ 판정 대상은 **`git commit` 세그먼트뿐이다**(v1.182.0) — 종전에는 명령 전체를 봐서
+        #   `git add -A`의 `-A`가 아래 정규식에 걸렸다(`-match`는 대소문자 무관). `$autoStage`의
+        #   의미는 "`git commit -a`가 추적 파일을 자동 스테이징한다"이므로 `add`의 플래그가 여기
+        #   걸리는 것은 판정 자체의 오류이고, 그 탓에 `git add -A && git commit`이 보완 스캔을
+        #   두 번 돌았다. 세그먼트 분리는 warn-external-ops와 같은 형태를 쓴다.
+        $commitSeg = @($cmd -split '(\|\||&&|[;|]|\r?\n)' | Where-Object { $_ -match 'git\s+((-c|-C)\s+\S+\s+)*commit\b' })
+        # 먼저 메시지(-m) 값을 제거해 메시지 속 '-a'를 자동 스테이징으로 오인하지 않게 하되,
+        #   플래그 토큰(-am의 a)은 보존한다.
+        $cmdFlags = ($commitSeg -join ' ') -replace '(?i)(^|\s)(-[a-zA-Z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', '$1$2'
         $autoStage = ($cmdFlags -match '(^|\s)-[a-zA-Z]*a[a-zA-Z]*(\s|$)') -or ($cmdFlags -match '(^|\s)--all(\s|$)')
         if ($autoStage) {
             $addedLines += Get-DiffHeadAdded

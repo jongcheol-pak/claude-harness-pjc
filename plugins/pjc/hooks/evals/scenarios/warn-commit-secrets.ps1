@@ -264,6 +264,41 @@ if ($gitOk) {
     $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add -f ignored.txt && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: ignored 강제 add 자격증명 차단(n3, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
+    # ---- [v1.182.0 T5] $autoStage 오판정 — `git add -A`가 보완 스캔을 두 번 돌리던 문제 ----
+    # 판정 대상이 **호출 횟수**라 hook 출력으로는 볼 수 없다. 자식 프로세스에서 lib를 dot-source하고
+    #   `Get-DiffHeadAdded`를 세는 함수로 덮어써 실제 호출 수를 읽는다 — 러너 프로세스에서 덮어쓰면
+    #   같은 세션의 다른 케이스가 그 가짜 함수를 쓰게 되므로 반드시 분리한다.
+    $wcsF = Join-Path $work 'wcsautostage'; New-Item -ItemType Directory $wcsF -Force | Out-Null
+    Push-Location $wcsF
+    git init -q; git config user.email t@t; git config user.name t
+    'v=1' | Set-Content app.js; git add .; git commit -qm init
+    Add-Content app.js 'v=2'
+    Pop-Location
+    $t5Probe = Join-Path $work 't5-autostage-probe.ps1'
+    @(
+        'param([string]$Cwd, [string]$Cmd)',
+        ('. ' + [char]39 + (Join-Path $scriptsDir 'bash-hook-lib.ps1') + [char]39),
+        '$script:ghCalls = 0',
+        'function Get-DiffHeadAdded { param([string[]]$PathArgs = @()) $script:ghCalls++; return @() }',
+        '$null = Invoke-WarnCommitSecrets @{ cwd = $Cwd; tool_input = @{ command = $Cmd } }',
+        '"CALLS=$script:ghCalls"'
+    ) | Set-Content -LiteralPath $t5Probe -Encoding utf8
+    $t5Cases = @(
+        @{ n = "'add -A && commit -m' 보완 스캔 1회 (T5 — 종전 2회)"; c = 'git add -A && git commit -m x'; e = 1 }
+        @{ n = "'commit -am' 자동 스테이징 분기 유지 (T5)";            c = 'git commit -am x';             e = 1 }
+        @{ n = "'commit -m'만이면 보완 스캔 0회 (T5)";                 c = 'git commit -m x';              e = 0 }
+        @{ n = "'add -A && commit -am' 두 분기 각각 정당 발화 (T5)";   c = 'git add -A && git commit -am x'; e = 2 }
+    )
+    foreach ($t5 in $t5Cases) {
+        $t5Out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $t5Probe -Cwd $wcsF -Cmd $t5.c 2>&1
+        $t5Got = ([regex]::Match(($t5Out -join "`n"), 'CALLS=(\d+)')).Groups[1].Value
+        if ($t5Got -eq [string]$t5.e) {
+            $script:results.Add(@{ ok = $true; line = "[PASS] commit-secrets: $($t5.n)" })
+        } else {
+            $script:results.Add(@{ ok = $false; line = "[FAIL] commit-secrets: $($t5.n) — 기대 $($t5.e), 실제 '$t5Got'" })
+        }
+    }
+
     # ---- [v1.181.0 T6] HEAD 없는 저장소 — `git diff HEAD` 실패 폴백 ----
     # `Get-DiffHeadAdded`가 exit≠0을 삼키지 않고 빈 배열 + stderr 경고로 처리한다. 이 경로가
     #   골든에 없으면 「보완 스캔이 조용히 사라져도 아무도 모른다」는 원 결함이 그대로 남는다.
