@@ -95,6 +95,19 @@
         ]
       }
     ],
+    "SessionEnd": [
+      {
+        "matcher": "clear|resume|logout|prompt_input_exit|other",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/session-end-cleanup.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
