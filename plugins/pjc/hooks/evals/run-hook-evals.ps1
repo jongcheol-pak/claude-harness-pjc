@@ -96,6 +96,9 @@ Write-Host "== pjc hook 골든 회귀 =="
 # `eval-common`을 dot-source하지 않으므로(자식이 각자 로드한다) 여기서 따로 읽어야
 # `$StateDir` 기본값이 자식이 쓰는 부모 폴더와 같은 자리를 가리킨다.
 . (Join-Path $evalsDirTop 'eval-paths.ps1')
+# 이 파일이 쓰는 임시 쪽 부모(`<temp>\pjc-hook-evals`) — 아래 세 지점(순차 scratch 정리 ·
+# `$StateDir` 기본값 · 병렬 scratch 정리)이 같은 자리를 가리켜야 한다.
+$evalTempParent = Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName
 
 $script:NormalizedFilter = Get-NormalizedFilter -Filter $Filter
 if ($script:NormalizedFilter) {
@@ -121,7 +124,7 @@ if ($Sequential) {
         Set-Location $env:TEMP
         Remove-Item -Recurse -Force $EvalIso -ErrorAction SilentlyContinue
         Remove-Item -Recurse -Force $EvalWork -ErrorAction SilentlyContinue
-        Remove-Item -Recurse -Force (Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'scratch') -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force (Join-Path $evalTempParent 'scratch') -ErrorAction SilentlyContinue
     }
     $failCount = 0
     foreach ($res in $results) {
@@ -148,7 +151,7 @@ if ($Sequential) {
 if (-not $StateDir) {
     # 부모 폴더 아래 `state` — run 폴더와 나란히 두되 **sweep 대상은 아니다**(`-Resume` 입력이라
     # 실행 간 재사용되어 수명이 다르다. `eval-paths.ps1`의 대상 규칙이 `run\`만 훑는다).
-    $StateDir = Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'state'
+    $StateDir = Join-Path $evalTempParent 'state'
 }
 
 # ---- -Resume 상태의 유효 범위 각인 (거짓 green 차단) ----
@@ -309,7 +312,7 @@ foreach ($g in $scenarioGroups) {
 # 자식의 $EvalWork 하위로 옮길 수 없고, 자식은 자기 격리 폴더만 지우므로 **어느 쪽 책임에도
 # 걸리지 않는다** — 순차 경로에만 정리가 있어 병렬(기본값)에서 매 실행마다 남던 회귀를 여기서
 # 닫는다. 자식이 모두 끝난 뒤 코디네이터가 지운다. sweep은 이 폴더를 훑지 않는다(수명이 다르다).
-Remove-Item -Recurse -Force (Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'scratch') -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force (Join-Path $evalTempParent 'scratch') -ErrorAction SilentlyContinue
 
 $failCount = 0
 foreach ($res in $allResults) {
