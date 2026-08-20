@@ -44,7 +44,7 @@ function Get-UnkillableMarkers {
     param([string]$BootStamp)
     $set = @{}
     $dir = Get-OrphanMarkerDir
-    if (-not $dir -or -not (Test-Path -LiteralPath $dir)) { return $set }
+    if (-not $dir -or -not (Test-Path -LiteralPath $dir -ErrorAction SilentlyContinue)) { return $set }
     try {
         $cutoff = (Get-Date).AddDays(-30)
         foreach ($f in @(Get-ChildItem -LiteralPath $dir -File -ErrorAction Stop)) {
@@ -68,8 +68,10 @@ function Add-UnkillableMarker {
     $dir = Get-OrphanMarkerDir
     if (-not $dir) { return }
     try {
-        if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        New-Item -ItemType File -Path (Join-Path $dir ("$ProcessId" + '_' + $BootStamp)) -Force | Out-Null
+        if (-not (Test-Path -LiteralPath $dir -ErrorAction SilentlyContinue)) {
+            New-Item -ItemType Directory -Path $dir -Force -ErrorAction SilentlyContinue | Out-Null
+        }
+        New-Item -ItemType File -Path (Join-Path $dir ("$ProcessId" + '_' + $BootStamp)) -Force -ErrorAction SilentlyContinue | Out-Null
     } catch {}
 }
 
@@ -159,6 +161,11 @@ function Invoke-OrphanProcessCleanup {
     )
     $result = @{ Suppressed = $false; Scanned = 0; CimQueried = $false; Killed = 0; Unkillable = 0; CpuSec = 0 }
     try {
+        # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 비종결 오류는 try/catch에 잡히지 않고 곧장
+        # 오류 스트림으로 나가므로, 호출측이 SilentlyContinue를 세워 뒀을 것이라는 암묵 전제에 기대면
+        # 새 호출자가 생기는 순간 session-context의 무출력 규약이 조용히 깨진다.
+        # 함수 스코프 지역 설정이라 호출측 값은 복원 없이 그대로 유지된다.
+        $ErrorActionPreference = 'SilentlyContinue'
         $injected = $PSBoundParameters.ContainsKey('Records')
 
         # 억제는 부작용이 있는 실기계 수집 경로에만 건다. 주입은 명시적 테스트 호출이라 대상이 아니다.
