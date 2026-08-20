@@ -8,7 +8,7 @@
 # 무엇을: scripts/*.ps1 hook을 격리 USERPROFILE·중립 cwd에서 stdin JSON으로 실행해
 #   exit code·출력 키워드를 대조한다. 케이스 정본은 두 곳 —
 #   ① hook-cases.json: 무상태(command 기반) 케이스 (block-destructive·warn-external-ops)
-#   ② scenarios/*.ps1 13개: 상태 필요(plan 폴더·git repo·AGENTS.md 마커·post-write 파일)
+#   ② scenarios/*.ps1 14개: 상태 필요(plan 폴더·git repo·AGENTS.md 마커·post-write 파일)
 #   공용 헬퍼·격리 구성은 eval-common.ps1이며, 이 파일과 run-scenario.ps1이 함께 dot-source한다.
 #
 # 실행 구조(v1.159.0): 기본은 **시나리오 그룹 단위 병렬**이다 — 그룹마다 자식 pwsh를 띄워
@@ -17,7 +17,7 @@
 #   시나리오를 동시에 돌리면 wall-clock이 최대 그룹 하나의 시간으로 수렴한다.
 #   케이스 단위로 쪼개지 않는 이유는 시나리오 내부의 픽스처 생성 순서가 깨지기 때문이다.
 #
-# -Sequential 계약: 병렬 디스패치를 끄고 **한 프로세스에서 13 시나리오를 종전대로 dot-source**한다.
+# -Sequential 계약: 병렬 디스패치를 끄고 **한 프로세스에서 14 시나리오를 종전대로 dot-source**한다.
 #   ① 병렬 결과와의 등가 대조 기준(같은 세션에서 두 모드를 연속 측정해야 한다 — 같은 스위트가
 #      19분 6초 ↔ 27분 14초로 실측된 만큼 wall-clock 편차가 커서 교차 세션 비교는 근거가 못 된다)
 #   ② 병렬 경로에 문제가 생겼을 때의 폴백. 판정 정본으로서의 자격은 두 모드가 동일하다.
@@ -46,7 +46,7 @@ param(
     [switch]$Sequential,
     # 이전 실행의 완료된 그룹을 건너뛰고 남은 그룹만 실행
     [switch]$Resume,
-    # 동시에 띄울 자식 프로세스 상한. 기본 6 — 12 그룹을 한꺼번에 띄우면 CPU·디스크 경합으로
+    # 동시에 띄울 자식 프로세스 상한. 기본 6 — 13 그룹을 한꺼번에 띄우면 CPU·디스크 경합으로
     # 케이스당 시간이 늘어 총 시간이 오히려 나빠질 수 있어 상한을 둔다.
     [int]$MaxParallel = 6,
     # 그룹별 판정 JSON을 둘 디렉터리. 기본은 임시 폴더 하위(실행 간 재사용 = -Resume의 입력).
@@ -65,6 +65,7 @@ $evalsDirTop = $PSScriptRoot
 #   protect-harness-installed + hook-event-log — $vdCache 공유 + 후자가 홈의 이벤트 로그 적재를 관찰
 $scenarioGroups = @(
     @('stateless'),
+    @('orphan-process-cleanup'),
     @('require-plan-for-write'),
     @('protect-harness'),
     @('pre-bash-dispatch'),
@@ -98,7 +99,7 @@ if ($script:NormalizedFilter) {
 }
 
 # =====================================================================
-# 순차 경로 — 종전 구조 그대로 (한 프로세스에서 13 시나리오 dot-source)
+# 순차 경로 — 종전 구조 그대로 (한 프로세스에서 14 시나리오 dot-source)
 # =====================================================================
 if ($Sequential) {
     $EvalFilter = $Filter
@@ -226,7 +227,7 @@ foreach ($g in $scenarioGroups) {
 
     # 동시 실행 상한 — 슬롯이 빌 때까지 기다린다.
     # 폴링 400ms: 그룹 하나가 최소 수십 초라 이 간격이 총 시간에 미치는 영향은 무시할 수 있고,
-    # 더 짧게 잡으면 12그룹 대기 동안 폴링 자체가 CPU를 잠식해 자식과 경합한다.
+    # 더 짧게 잡으면 13그룹 대기 동안 폴링 자체가 CPU를 잠식해 자식과 경합한다.
     while (@($jobs | Where-Object { -not $_.Proc.HasExited }).Count -ge $MaxParallel) {
         Start-Sleep -Milliseconds 400
     }
