@@ -40,7 +40,7 @@ $r = Invoke-Hook 'require-plan-for-write.ps1' $newsym
 Assert-Case -Name "require-plan: 새 클래스 정의 Edit 차단" -R $r -ExpectExit 2
 
 # [H3] 시스템 임시 폴더의 검증 스크립트 — plan 없이도 통과가 기대(회귀 가드)
-$tempFile = Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-eval-scratch/check.py'
+$tempFile = Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'scratch/check.py'
 New-Item -ItemType Directory (Split-Path $tempFile) -Force | Out-Null
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson (Split-Path $tempFile) $tempFile)
 Assert-Case -Name "require-plan: 시스템 임시폴더 .py 통과 (H3)" -R $r -ExpectExit 0

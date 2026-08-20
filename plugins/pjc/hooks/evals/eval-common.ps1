@@ -41,11 +41,19 @@ $env:CLAUDE_HARNESS_NO_PROC_CLEANUP = '1'
 # ---- 격리 환경 구성 ----
 # 홈 격리($EvalIso)는 임시 폴더에 둬도 되지만, 시나리오 프로젝트($EvalWork)는 반드시 임시 폴더 '밖'이어야
 # 한다 — require-plan-for-write가 시스템 임시 폴더 하위를 무조건 통과시키므로(H3 의도된 완화),
-# 픽스처가 temp 안에 있으면 차단 시나리오 전체가 우회로 무력화된다.
+# 픽스처가 temp 안에 있으면 차단 시나리오 전체가 우회로 무력화된다. temp 판정은 prefix 비교라
+# 부모 폴더로 한 단계 감싸도 그 성질은 그대로다(`require-plan-for-write.ps1`의 tempRoot StartsWith).
+#
+# 실행마다 만드는 폴더는 `<베이스>\pjc-hook-evals\run\<접미>` 아래로 모은다 — 최상위에 평면으로
+# 흩어지면 중단된 실행의 잔여물이 사용자 눈에 그대로 쌓인다(2026-08-20 실측 80개·9.7MB).
+# 경로 계산·정리 규칙의 정본은 `eval-paths.ps1`이며 코디네이터도 같은 파일을 읽는다.
+. (Join-Path $evalsDir 'eval-paths.ps1')
+$EvalRunTemp = Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'run'
+$EvalRunWork = Join-Path (Join-Path (Get-EvalRoot -Base 'Work') $script:EvalParentName) 'run'
+
 $suffix = if ($EvalHomeSuffix) { $EvalHomeSuffix } else { [guid]::NewGuid().ToString('N').Substring(0, 8) }
-$EvalIso = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-" + $suffix)
-$workBase = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $realHome }   # 비Windows 폴백
-$EvalWork = Join-Path $workBase ("pjc-hook-evals-" + $suffix)
+$EvalIso = Join-Path $EvalRunTemp ("pjc-hook-evals-" + $suffix)
+$EvalWork = Join-Path $EvalRunWork ("pjc-hook-evals-" + $suffix)
 New-Item -ItemType Directory -Path $EvalIso -Force | Out-Null
 New-Item -ItemType Directory -Path $EvalWork -Force | Out-Null
 $env:USERPROFILE = $EvalIso        # 자식 hook 프로세스가 이 격리 홈의 .claude를 보게 함(.state 마커 등)

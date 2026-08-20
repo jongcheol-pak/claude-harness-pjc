@@ -92,6 +92,11 @@ Write-Host "== pjc hook 골든 회귀 =="
 # 정규화가 갈릴 때 서로 다른 실제 필터가 같은 `-Resume` 스코프로 매핑돼 그 가드가 무력화된다.
 . (Join-Path $evalsDirTop 'filter-spec.ps1')
 
+# 격리 폴더 경로의 정본. `eval-common`도 같은 파일을 읽는다 — 병렬 경로의 코디네이터는
+# `eval-common`을 dot-source하지 않으므로(자식이 각자 로드한다) 여기서 따로 읽어야
+# `$StateDir` 기본값이 자식이 쓰는 부모 폴더와 같은 자리를 가리킨다.
+. (Join-Path $evalsDirTop 'eval-paths.ps1')
+
 $script:NormalizedFilter = Get-NormalizedFilter -Filter $Filter
 if ($script:NormalizedFilter) {
     Write-UnknownFilterWarning -NormalizedFilter $script:NormalizedFilter
@@ -116,7 +121,7 @@ if ($Sequential) {
         Set-Location $env:TEMP
         Remove-Item -Recurse -Force $EvalIso -ErrorAction SilentlyContinue
         Remove-Item -Recurse -Force $EvalWork -ErrorAction SilentlyContinue
-        Remove-Item -Recurse -Force (Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-eval-scratch') -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force (Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'scratch') -ErrorAction SilentlyContinue
     }
     $failCount = 0
     foreach ($res in $results) {
@@ -141,7 +146,9 @@ if ($Sequential) {
 # 병렬 경로 — 그룹마다 자식 pwsh, 판정 JSON 취합
 # =====================================================================
 if (-not $StateDir) {
-    $StateDir = Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-evals-state'
+    # 부모 폴더 아래 `state` — run 폴더와 나란히 두되 **sweep 대상은 아니다**(`-Resume` 입력이라
+    # 실행 간 재사용되어 수명이 다르다. `eval-paths.ps1`의 대상 규칙이 `run\`만 훑는다).
+    $StateDir = Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'state'
 }
 
 # ---- -Resume 상태의 유효 범위 각인 (거짓 green 차단) ----
@@ -296,12 +303,13 @@ foreach ($g in $scenarioGroups) {
 }
 
 # ---- 그룹 공유 임시 픽스처 정리 ----
-# `scenarios/require-plan-for-write.ps1`이 만드는 `%TEMP%\pjc-hook-eval-scratch`는 **의도적으로
+# `scenarios/require-plan-for-write.ps1`이 만드는 `<temp>\pjc-hook-evals\scratch`는 **의도적으로
 # 시스템 임시 폴더 하위**에 있다(require-plan-for-write가 temp 하위를 무조건 통과시키는 완화 경로를
-# 그 위치에서만 재현할 수 있다). 그래서 자식의 $EvalWork 하위로 옮길 수 없고, 자식은 자기 격리
-# 폴더만 지우므로 **어느 쪽 책임에도 걸리지 않는다** — 순차 경로에만 정리가 있어 병렬(기본값)에서
-# 매 실행마다 남던 회귀를 여기서 닫는다. 자식이 모두 끝난 뒤 코디네이터가 지운다.
-Remove-Item -Recurse -Force (Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-eval-scratch') -ErrorAction SilentlyContinue
+# 그 위치에서만 재현할 수 있다 — 부모 폴더로 감싸도 prefix 판정이라 그 성질은 유지된다). 그래서
+# 자식의 $EvalWork 하위로 옮길 수 없고, 자식은 자기 격리 폴더만 지우므로 **어느 쪽 책임에도
+# 걸리지 않는다** — 순차 경로에만 정리가 있어 병렬(기본값)에서 매 실행마다 남던 회귀를 여기서
+# 닫는다. 자식이 모두 끝난 뒤 코디네이터가 지운다. sweep은 이 폴더를 훑지 않는다(수명이 다르다).
+Remove-Item -Recurse -Force (Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'scratch') -ErrorAction SilentlyContinue
 
 $failCount = 0
 foreach ($res in $allResults) {
