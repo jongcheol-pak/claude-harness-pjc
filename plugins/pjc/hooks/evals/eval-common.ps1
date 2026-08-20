@@ -9,6 +9,8 @@
 #   $EvalFilter      [string[]] 부분 실행 필터(hook 기본명). 미설정이면 전체 실행.
 #   $EvalOutJson     [string]   케이스 판정을 JSON 라인으로 append할 경로. 설정 시 증분 기록이 켜진다.
 #   $EvalHomeSuffix  [string]   격리 홈·작업 폴더 이름의 접미. 병렬 자식이 서로 다른 값을 줘야 한다.
+#   $EvalSkipFilterWarning [bool] 호출자가 필터 이름 경고를 이미 냈으면 $true. 순차 경로처럼
+#                                코디네이터와 이 파일이 한 프로세스일 때 중복 출력을 막는다.
 #
 # 판정 출력은 이 파일이 하지 않는다 — 호출자가 $results를 받아 출력한다(종전 동작 보존).
 #
@@ -74,7 +76,10 @@ $results = New-Object System.Collections.Generic.List[object]
 . (Join-Path $evalsDir 'filter-spec.ps1')
 
 $script:FilterSet = Get-NormalizedFilter -Filter $EvalFilter
-if ($script:FilterSet) { Write-UnknownFilterWarning -NormalizedFilter $script:FilterSet }
+# 호출자가 이미 같은 경고를 냈으면($EvalSkipFilterWarning) 건너뛴다 — 순차 경로는 코디네이터와
+# 이 파일이 한 프로세스에 있어 그러지 않으면 경고가 2회 나온다. 신호가 없으면 종전대로 낸다
+# (`run-scenario.ps1` 단독 실행처럼 코디네이터를 거치지 않는 경로에서는 이것이 유일한 안내다).
+if ($script:FilterSet -and -not $EvalSkipFilterWarning) { Write-UnknownFilterWarning -NormalizedFilter $script:FilterSet }
 
 function Test-HookSelected {
     # $Hooks: 이 케이스/섹션이 실행하는 hook 기본명 목록. 필터 미지정이면 항상 실행.

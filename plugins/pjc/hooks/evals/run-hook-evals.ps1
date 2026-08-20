@@ -130,6 +130,11 @@ try {
 # =====================================================================
 if ($Sequential) {
     $EvalFilter = $Filter
+    # 필터 이름 경고는 위에서 이미 냈다 — 순차 경로는 `eval-common`을 **같은 프로세스**에서
+    # dot-source하므로 그쪽이 또 부르면 같은 경고가 2회 나온다(병렬은 자식이 별 프로세스라
+    # 겹치지 않는다). `eval-common` 쪽 호출을 지우지 않는 이유는 `run-scenario.ps1`을 사람이
+    # 직접 돌리는 경로에서 그 경고가 유일한 안내이기 때문이다.
+    $EvalSkipFilterWarning = $true
     . (Join-Path $evalsDirTop 'eval-common.ps1')
     try {
         foreach ($g in $scenarioGroups) {
@@ -212,6 +217,12 @@ try {
     ).Replace('-', '').Substring(0, 10).ToLowerInvariant()
 } catch { }
 $scopeKey = "filter=$scopeFilter|head=$scopeHead|assets=$assetHash"
+# 각인이 불완전하면 알린다 — 위 두 `catch { }`는 실패해도 `nogit`·`none`으로 조용히 강등되는데,
+# 그 상태의 `-Resume`은 **코드 변경을 구분하지 못한다**(낡은 판정을 재사용한다). `[MODE]` 줄은
+# 해시 디렉터리만 찍어 `scope.txt`를 열지 않으면 강등 사실이 보이지 않는다.
+if ($scopeHead -eq 'nogit' -or $assetHash -eq 'none') {
+    Write-Host "[WARN] 스코프 각인 불완전 — -Resume이 코드 변경을 구분하지 못한다 (head=$scopeHead assets=$assetHash)"
+}
 # 디렉터리 이름은 짧게 유지하되 사람이 스코프를 확인할 수 있어야 하므로 해시 + scope.txt를 함께 둔다.
 $scopeHash = [System.BitConverter]::ToString(
     [System.Security.Cryptography.MD5]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($scopeKey))
