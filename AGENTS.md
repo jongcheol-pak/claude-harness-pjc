@@ -26,7 +26,7 @@
   ```
   **⚠ 이대로 실행하면 완주하지 않는다** — 스위트가 **도구 시간 캡(10분)을 넘는다**(635케이스 — 2026-08-20 실측. 소요 편차가 커 시간으로 완료를 판정하지 않는다)인데 Bash 도구의 시간 캡은 **전경·`run_in_background` 모두 10분**이라 어느 쪽으로 띄워도 killed되고, `Start-Process`의 리다이렉트 파라미터는 0바이트 파일을 남긴다. **분리 프로세스 + 래퍼 스크립트 + `Monitor` 폴링**이 정본 절차이며 **실행·대기·판정·모드(`-Sequential`·`-Resume`·`-Filter`) 상세는 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」이 정본**이다. 그 절을 읽지 않고 돌리면 과거처럼 "환경상 실행 불가"로 F-2를 갈음하게 된다.
 
-  격리 USERPROFILE에서 hook 11종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
+  격리 USERPROFILE에서 hook 12종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context·session-end-cleanup)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
   부분 실행 `-Filter <hook명>`(쉼표 복수, `.ps1` 생략 가능)은 **구현 중 반복 확인 전용**이고, task 검증과 Phase F-2는 무인자 **전체 실행**이 정본이다 — **부분 실행 결과로 검증 판정 금지**(골든 케이스가 hook 간 얽혀 있어 커버리지가 좁다).
   **케이스를 추가할 때는 `docs/harness-conventions.md` 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다.
 - **llm-wiki 상수·배치 정합 셀프체크 (SKILL.md 예산표·「예산 단계 신호」 표·라우팅 표·references/procedures-*.md·wiki-schema §2/§3/§4/§7/§8/§11/§12·목차·templates.md·lint.py 상수 수정 시 필수)**:

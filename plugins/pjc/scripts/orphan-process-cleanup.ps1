@@ -13,7 +13,15 @@
 #   ③ 5.1 호환 유지 — pwsh 7의 Process.Parent 속성을 쓰지 않고 CIM으로 부모를 조회한다.
 
 # 회수 대상. 실측된 고아가 이 둘뿐이라 목록을 넓히지 않는다(오차단 위험만 늘고, 고아 조건이 이미 강한 가드다).
-$script:OrphanTargetNames = @('more.com', 'find.exe')
+#
+# ⚠ 이름이 두 벌인 이유 — **이름공간이 둘이고 규칙이 서로 다르다.**
+#   · CIM(`Win32_Process.Name`)은 확장자를 그대로 준다      → 'more.com', 'find.exe'
+#   · .NET(`Get-Process -Name` / `ProcessName`)은 **.exe만 벗긴다** → 'more.com', 'find'
+#   실측: notepad은 ProcessName='Notepad'라 `-Name 'notepad.exe'`가 0건이고, more.com은 .com이
+#   안 벗겨져 그대로 'more.com'이다. 한 배열을 양쪽에 쓰면 `find.exe`가 선검사에서 영원히 안 잡혀
+#   **고아 find만 있을 때 조기 반환으로 회수가 통째로 죽는다**(F-7 BLOCKER 실측 — 어제 관측된 바로 그 상태).
+$script:OrphanTargetNames  = @('more.com', 'find.exe')   # CIM 조회용
+$script:OrphanPreScanNames = @('more.com', 'find')       # Get-Process 선검사용(.exe 벗겨짐)
 
 # 골든 스위트는 hook을 실기계에서 돌리는데 프로세스는 격리 대상이 아니다.
 # 이 변수가 서면 '실기계 수집' 경로만 즉시 반환한다 — 목 레코드 주입(-Records)은 억제하지 않는다.
@@ -115,7 +123,7 @@ function Get-OrphanProcessCandidates {
     #>
     $empty = @{ Records = @(); CimQueried = $false }
     try {
-        $pre = @(Get-Process -Name $script:OrphanTargetNames -ErrorAction SilentlyContinue)
+        $pre = @(Get-Process -Name $script:OrphanPreScanNames -ErrorAction SilentlyContinue)
         if ($pre.Count -eq 0) { return $empty }
     } catch { return $empty }
 
