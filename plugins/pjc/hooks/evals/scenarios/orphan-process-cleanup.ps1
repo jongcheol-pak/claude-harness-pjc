@@ -8,8 +8,9 @@
 #   SessionEnd hook만 stdin 주입으로 검증한다(그쪽은 hook 계약 확인이라 Invoke-Hook이 맞다).
 if (Test-HookSelected @('orphan-process-cleanup', 'session-end-cleanup')) {
 
-$opcRoot = Join-Path $PSScriptRoot '..\..\..\scripts'
-. (Join-Path $opcRoot 'orphan-process-cleanup.ps1')
+# 경로는 eval-common이 계산해 둔 공유 변수를 쓴다 — 여기서 상대 순회로 재계산하면
+# 디렉터리 구조가 바뀔 때 이 시나리오만 조용히 깨진다(다른 시나리오도 $scriptsDir를 쓴다).
+. (Join-Path $scriptsDir 'orphan-process-cleanup.ps1')
 
 $opcNow = Get-Date
 $opcSid = (Get-Process -Id $PID).SessionId
