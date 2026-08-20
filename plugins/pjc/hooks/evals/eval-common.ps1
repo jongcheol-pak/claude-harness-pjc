@@ -32,6 +32,12 @@ $realHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env
 # 상속하므로 병렬화로 상속 경로가 넓어졌다 — 여기서 한 번 지워 모든 경로를 닫는다.
 $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
 
+# 고아 프로세스 회수의 **실기계 수집 경로**를 끈다(D11). 골든은 hook .ps1을 실기계에서 돌리는데
+# 프로세스는 격리 대상이 아니라(위 홈 격리는 USERPROFILE만 바꾼다) 억제가 없으면 스위트가 실제
+# 프로세스를 죽이고 그 상태 변화가 판정에 섞인다. 목 레코드 주입(-Records)은 억제 대상이 아니므로
+# 회수 로직 자체는 그대로 검증된다.
+$env:CLAUDE_HARNESS_NO_PROC_CLEANUP = '1'
+
 # ---- 격리 환경 구성 ----
 # 홈 격리($EvalIso)는 임시 폴더에 둬도 되지만, 시나리오 프로젝트($EvalWork)는 반드시 임시 폴더 '밖'이어야
 # 한다 — require-plan-for-write가 시스템 임시 폴더 하위를 무조건 통과시키므로(H3 의도된 완화),
@@ -46,7 +52,7 @@ $env:USERPROFILE = $EvalIso        # 자식 hook 프로세스가 이 격리 홈�
 $env:CLAUDE_PROJECT_DIR = $null
 Set-Location $EvalWork             # 중립 cwd — hook의 (Get-Location) 폴백이 레포 plan.md를 줍지 않게
 
-# 시나리오가 직접 참조하는 이름(추출 전과 동일하게 유지 — 시나리오 13개를 수정하지 않기 위함)
+# 시나리오가 직접 참조하는 이름(추출 전과 동일하게 유지 — 시나리오 14개를 수정하지 않기 위함)
 $iso  = $EvalIso
 $work = $EvalWork
 

@@ -21,6 +21,60 @@ function New-HookResult {
     return @{ Block = $Block; Stderr = $Stderr; Context = $Context }
 }
 
+# ---- warn-global-find: 루트 전역 탐색 경고 (회수 불가능한 고아를 애초에 막는다) ----
+# 왜 차단이 아니라 경고인가: 루트부터 훑어야 하는 정당한 경우를 배제할 수 없다. 다만 그 명령은
+#   Bash 도구의 10분 캡 안에 끝나지 않아 **셸만 죽고 자식 find가 고아로 남는다** — 2026-08-20에
+#   `find / …` 12건이 15~20시간을 돌며 코어 3개를 먹고 있었고, 그중 다수는 커널에 갇혀
+#   `Stop-Process`·`taskkill`이 모두 무효였다(회수로 닫히지 않는다). 그래서 예방이 본류다.
+# 범위: `find`의 시작점만 본다 — "느린 명령 일반"을 다루는 틀을 만들지 않는다(무엇이 느린지는
+#   인자·대상에 달려 있어 일반화하면 오탐이 폭증한다. 실측된 고아는 전부 find였다).
+# 판정: 세그먼트별 첫 실효 토큰이 find일 때만, 그 뒤 첫 비플래그 인자를 탐색 시작점으로 본다.
+#   `xargs find /`는 첫 토큰이 xargs라 대상이 아니다(의도된 미탐 — 인자 조합이 무한해 안전하게
+#   판정할 수 없고, 실측 12건이 전부 직접 호출이었다). 인용부호 안의 find도 첫 토큰이 아니라 제외된다.
+function Invoke-WarnGlobalFind {
+    param($data)
+    $cmd = $data.tool_input.command
+    if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
+
+    $hits = New-Object System.Collections.Generic.List[string]
+    # 연결·파이프로 나눈다 — `cd /tmp && find / …`처럼 뒤 세그먼트에 있는 것도 잡아야 한다.
+    foreach ($seg in [regex]::Split($cmd, '(?:&&|\|\||;|\|)')) {
+        $t = $seg.Trim()
+        if ([string]::IsNullOrWhiteSpace($t)) { continue }
+        $tokens = @(($t -split '\s+') | Where-Object { $_ })
+        if ($tokens.Count -eq 0) { continue }
+
+        # 접두어를 벗긴다(sudo·time·nohup·env·VAR=값) — 그 뒤가 진짜 명령이다.
+        $i = 0
+        while ($i -lt $tokens.Count -and
+               ($tokens[$i] -match '^(?i)(sudo|time|nohup|env)$' -or $tokens[$i] -match '^[A-Za-z_][A-Za-z0-9_]*=')) { $i++ }
+        if ($i -ge $tokens.Count) { continue }
+
+        # 첫 실효 토큰이 find여야 한다(경로 붙은 형태와 .exe도 인정).
+        if ($tokens[$i] -notmatch '(?i)^(.*[\/])?find(\.exe)?$') { continue }
+
+        # 그 뒤 첫 비플래그 인자가 탐색 시작점이다(`find -L / -name x`처럼 플래그가 앞설 수 있다).
+        $start = $null
+        for ($j = $i + 1; $j -lt $tokens.Count; $j++) {
+            if ($tokens[$j].StartsWith('-')) { continue }
+            $start = $tokens[$j].Trim('"', "'")
+            break
+        }
+        if ([string]::IsNullOrWhiteSpace($start)) { continue }
+
+        # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 범위가 한정돼 통과한다.
+        # 트레일링 슬래시를 허용한다 — git-bash에서 `~/`·`/c/`가 일상 표기이고, 슬래시 하나 차이로
+        #   경고가 통째로 빠지면 이 검사의 존재 이유가 무너진다(실측: 종전 패턴이 `~/`·`/c/`를 놓쳤다).
+        if ($start -match '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\/]?)$') { $hits.Add($start) }
+    }
+
+    if ($hits.Count -eq 0) { return New-HookResult }
+    $where = (($hits | Select-Object -Unique) -join ', ')
+    $msg = "[GLOBAL FIND WARNING] 루트 전역 탐색 감지 (시작점: $where) — Bash 도구는 10분 캡이 있어 이 명령은 끝나지 않고, 캡에 걸리면 셸만 죽고 find가 고아로 남아 CPU를 계속 먹습니다(회수해도 커널에 갇히면 재부팅 전까지 안 죽습니다)."
+    $ctx = "루트 전역 탐색($where)은 Bash 10분 캡 안에 끝나지 않아 회수 불가능한 고아 프로세스를 남깁니다. 탐색 시작점을 좁히거나(예: ~/.cargo/registry), 프로젝트 안을 찾는 것이라면 Glob 도구를 쓰세요."
+    return New-HookResult -Stderr @($msg) -Context $ctx
+}
+
 # ---- warn-external-ops: 외부·비가역 작업(push·merge·tag·gh release/pr·배포)·로컬 비가역(reset --hard 등) 경고 ----
 function Invoke-WarnExternalOps {
     param($data)

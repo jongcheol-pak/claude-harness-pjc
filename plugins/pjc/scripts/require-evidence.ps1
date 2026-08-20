@@ -67,6 +67,10 @@ if ($env:CLAUDE_PROJECT_DIR -and (Test-Path -LiteralPath $env:CLAUDE_PROJECT_DIR
 
 # [이벤트 로깅] STOP WARNING 방출을 오탐 리뷰 데이터로 적재 — 경고 판정 무변경, 실패 전면 격리.
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
+# [고아 프로세스 회수] 작업 종료 시점에 부모가 죽은 more.com·find.exe를 걷는다 — 판정·출력에 영향 0.
+#   $ErrorActionPreference 설정 뒤에 두는 이유: 회수 경로의 비종결 오류가 stderr로 새면 이 hook의
+#   출력 계약이 깨진다(헬퍼도 자기완결적으로 막지만 삽입 위치로 한 겹 더 막는다).
+try { . (Join-Path $PSScriptRoot 'orphan-process-cleanup.ps1'); $null = Invoke-OrphanProcessCleanup -Hook 'require-evidence' } catch {}
 function Write-ReEvent {
     param([string]$Rule)
     try {

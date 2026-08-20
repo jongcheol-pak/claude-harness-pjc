@@ -1187,6 +1187,174 @@
       "expect_exit": 0,
       "expect_contains": "릴리즈",
       "expect_not_contains": "태그 생성"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: find / 경고",
+      "command": "find / -iname conpty.rs",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: find ~ 경고",
+      "command": "find ~ -name \"*.rs\"",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: 드라이브 루트 /c 경고",
+      "command": "find /c -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: sudo 접두어 경고",
+      "command": "sudo find / -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: time 접두어 경고",
+      "command": "time find ~ -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: && 뒤 세그먼트 경고",
+      "command": "cd /tmp && find / -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: 플래그 선행(find -L /) 경고",
+      "command": "find -L / -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: 따옴표 경로 경고",
+      "command": "find \"/\" -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: 현재 디렉터리",
+      "command": "find . -name \"*.ps1\"",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: 하위 경로",
+      "command": "find ./src -type f",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: 범위 한정 홈 하위",
+      "command": "find ~/.cargo/registry -name x",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: xargs 경유(의도된 미탐)",
+      "command": "xargs find /",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: 문자열 안 find",
+      "command": "echo \"find / -name x\"",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: grep 인자 find",
+      "command": "grep find file.txt",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: cd / 뒤 상대 탐색",
+      "command": "cd / && find . -name x",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: git log --grep find",
+      "command": "git log --grep find",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: 인자 없는 find",
+      "command": "find",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: /usr 하위(루트 아님)",
+      "command": "find /usr -name x",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: 홈 트레일링 슬래시(~/) 경고",
+      "command": "find ~/ -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: 드라이브 루트 트레일링(/c/) 경고",
+      "command": "find /c/ -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: HOME 변수 트레일링 경고",
+      "command": "find $HOME/ -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색: env 접두어 경고",
+      "command": "env FOO=1 find / -name x",
+      "expect_exit": 0,
+      "expect_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: /usr/ 트레일링(루트 아님)",
+      "command": "find /usr/ -name x",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "전역 탐색 음성: 드라이브 하위 경로",
+      "command": "find C:\\Users -name x",
+      "expect_exit": 0,
+      "expect_not_contains": "루트 전역 탐색 감지"
     }
   ]
 }

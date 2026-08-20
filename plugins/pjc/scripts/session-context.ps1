@@ -24,6 +24,12 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 #   읽으면 한글 경로가 깨져 plan 탐색이 어긋난다. 실패해도 종전 동작 유지.
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
+# [고아 프로세스 회수] 세션 시작 시점에 이전 세션이 남긴(부모가 죽은) more.com·find.exe를 걷는다 —
+#   판정·출력에 영향 0. 이 경로가 백스톱인 이유: SessionEnd는 크래시·강제 종료 시 발화가 보장되지 않는다.
+#   $ErrorActionPreference 설정 뒤에 두는 이유: 회수 경로의 비종결 오류가 stderr로 새면 이 hook의
+#   출력 계약이 깨진다(헬퍼도 자기완결적으로 막지만 삽입 위치로 한 겹 더 막는다).
+try { . (Join-Path $PSScriptRoot 'orphan-process-cleanup.ps1'); $null = Invoke-OrphanProcessCleanup -Hook 'session-context' } catch {}
+
 try {
     # ---- 입력 파싱 (cwd·source) ----
     $raw = [Console]::In.ReadToEnd()

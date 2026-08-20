@@ -72,7 +72,7 @@ if (Test-HookSelected @('hook-event-log')) {
     $outRep = & pwsh -NoProfile -ExecutionPolicy Bypass -File $repScript 2>&1
     $rRep = @{ code = $LASTEXITCODE; out = (($outRep | Out-String)).Trim() }
     $env:USERPROFILE = $iso
-    Assert-Case -Name "report-hook-events: fixture 3건 총계 집계" -R $rRep -ExpectExit 0 -ExpectContains '총 이벤트: 3건 (차단 1 · 경고 2)'
+    Assert-Case -Name "report-hook-events: fixture 3건 총계 집계" -R $rRep -ExpectExit 0 -ExpectContains '총 이벤트: 3건 (차단 1 · 경고 2 · 회수 0)'
     Assert-Case -Name "report-hook-events: hook×판정·규칙 집계 표기" -R $rRep -ExpectExit 0 -ExpectContains 'warn-external-ops'
     Remove-Item -Recurse -Force $isoR -ErrorAction SilentlyContinue
 

@@ -15,7 +15,8 @@
 $script:GoldenFilterNames = @(
     'block-destructive', 'protect-harness', 'require-plan-for-write', 'require-task-checkbox',
     'post-write-checks', 'require-evidence', 'warn-external-ops', 'suggest-agents-record',
-    'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'session-context', 'hook-event-log'
+    'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'session-context', 'hook-event-log',
+    'orphan-process-cleanup', 'session-end-cleanup'
 )
 
 function Get-NormalizedFilter {
