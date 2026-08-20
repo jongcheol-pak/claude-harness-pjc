@@ -70,5 +70,28 @@ $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $phKo (Join-Path $fakeInst
 Assert-Case -Name "protect-harness: 한글 경로 설치본 hook Write 차단 (v1.181.0 T7 — 미탐 보완 실증)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $phKo (Join-Path $phKo '플러그인/scripts/block-destructive.ps1'))
 Assert-Case -Name "protect-harness: 한글 경로 개발 소스(캐시 밖) 통과 (v1.181.0 T7 — 오차단 0 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# ---- [T2] 고아 프로세스 회수 계열 이름 집합 합류 ----
+# session-end-cleanup(hook)과 orphan-process-cleanup(회수 함수 모듈)이 집합에서 빠져 있어 설치본
+#   개조가 차단되지 않았다 — 목록 주석이 경고하던 "hook 신설 시 함께 추가" 누락의 재발이다.
+# ⚠ 차단 범위 확대이므로 AGENTS.md `## DO NOT` ②가 **델타 음성으로 오차단 0 실증**을 요구한다.
+#   그래서 양성 3(리터럴 2 + 8.3 마스킹 1) 아래에 음성 3(개발 repo · 유사 이름 · 캐시 밖 8.3)을 둔다 —
+#   새 이름이 발화하는 자리가 셋이므로(리터럴 `.claude` 분기 · 8.3 분기 · 그 둘의 경계) 각각을 친다.
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/orphan-process-cleanup.ps1'))
+Assert-Case -Name "protect-harness: 설치본 orphan-process-cleanup 헬퍼 Write 차단 (T2 집합 합류)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/session-end-cleanup.ps1'))
+Assert-Case -Name "protect-harness: 설치본 session-end-cleanup Write 차단 (T2 집합 합류)" -R $r -ExpectExit 2
+# 새 이름은 $suspect83 분기에도 들어가므로 그 확대까지 양성으로 고정한다(캐시 컨텍스트가 게이트).
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.187.0/scripts/session-end-cleanup.ps1")
+Assert-Case -Name "protect-harness: 8.3 마스킹 설치본 session-end-cleanup 차단 (T2 — 8.3 분기 확대 실증)" -R $r -ExpectExit 2 -ExpectContains '8.3'
+# 델타 음성 ⓐ 개발 repo 소스(.claude 세그먼트 없음) — 이번 회차 자신이 편집한 경로와 같은 형태다.
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/pjc/scripts/orphan-process-cleanup.ps1'))
+Assert-Case -Name "protect-harness: 개발 repo orphan-process-cleanup 통과 (T2 — 오차단 0 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+# 델타 음성 ⓑ 유사 이름 — 알터네이션 그룹 앞의 리터럴 '/'가 부분 매치를 막는지 실증한다.
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/my-session-end-cleanup.ps1'))
+Assert-Case -Name "protect-harness: 유사 이름(my-session-end-cleanup) 미매치 통과 (T2 — 그룹 경계 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+# 델타 음성 ⓒ 캐시 밖 CLAUDE~1 — 이 repo 자신의 8.3명이라 오차단되면 하니스 자기 개발이 막힌다.
+$r = Invoke-Hook 'protect-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/pjc/scripts/session-end-cleanup.ps1")
+Assert-Case -Name "protect-harness: 8.3 CLAUDE~1 개발 소스(캐시 밖) session-end-cleanup 통과 (T2 — 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 }   # ---- §2b 게이트 끝 (protect-harness) ----
 

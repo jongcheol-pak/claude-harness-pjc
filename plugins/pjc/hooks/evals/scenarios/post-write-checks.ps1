@@ -103,6 +103,18 @@ New-Item -ItemType Directory (Split-Path $hookPath) -Force | Out-Null
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $hookPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 하니스 hook 스크립트 변경 감지 (H2)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
 
+# ---- [T2] H2 이름 집합에 고아 프로세스 회수 계열 합류 (차단 쪽 protect-harness와 대칭) ----
+# 탐지·차단이 같은 술어를 공유하는 것이 규약이라 한쪽만 넓히면 대칭이 깨진다 — 두 이름을 각각 고정한다.
+# Test-WarnOnce가 세션·파일당 1회 억제라 두 케이스는 **서로 다른 파일 경로**를 써야 둘 다 발화한다.
+$orphanPath = Join-Path $pw 'plugins/pjc/scripts/orphan-process-cleanup.ps1'
+[System.IO.File]::WriteAllText($orphanPath, '# test', [System.Text.UTF8Encoding]::new($true))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $orphanPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: orphan-process-cleanup 변경 감지 (T2 H2 집합 합류)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
+$secPath = Join-Path $pw 'plugins/pjc/scripts/session-end-cleanup.ps1'
+[System.IO.File]::WriteAllText($secPath, '# test', [System.Text.UTF8Encoding]::new($true))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $secPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: session-end-cleanup 변경 감지 (T2 H2 집합 합류)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
+
 # ---- [v1.90.2 M2] .claude/settings.json 변경 감지 (enabledPlugins 하니스 전체 무력화면 — 비차단 경고) ----
 $setPath = Join-Path $pw '.claude/settings.json'
 New-Item -ItemType Directory (Split-Path $setPath) -Force | Out-Null
