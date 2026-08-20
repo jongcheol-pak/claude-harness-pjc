@@ -24,7 +24,7 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  **⚠ 이대로 실행하면 완주하지 않는다** — 스위트가 **도구 시간 캡(10분)을 넘는다**(635케이스 — 2026-08-20 실측. 소요 편차가 커 시간으로 완료를 판정하지 않는다)인데 Bash 도구의 시간 캡은 **전경·`run_in_background` 모두 10분**이라 어느 쪽으로 띄워도 killed되고, `Start-Process`의 리다이렉트 파라미터는 0바이트 파일을 남긴다. **분리 프로세스 + 래퍼 스크립트 + `Monitor` 폴링**이 정본 절차이며 **실행·대기·판정·모드(`-Sequential`·`-Resume`·`-Filter`) 상세는 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」이 정본**이다. 그 절을 읽지 않고 돌리면 과거처럼 "환경상 실행 불가"로 F-2를 갈음하게 된다.
+  **⚠ 이대로 실행하면 완주하지 않는다** — 스위트가 **도구 시간 캡(10분)을 넘는다**(643케이스 — 2026-08-21 실측. 소요 편차가 커 시간으로 완료를 판정하지 않는다)인데 Bash 도구의 시간 캡은 **전경·`run_in_background` 모두 10분**이라 어느 쪽으로 띄워도 killed되고, `Start-Process`의 리다이렉트 파라미터는 0바이트 파일을 남긴다. **분리 프로세스 + 래퍼 스크립트 + `Monitor` 폴링**이 정본 절차이며 **실행·대기·판정·모드(`-Sequential`·`-Resume`·`-Filter`) 상세는 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」이 정본**이다. 그 절을 읽지 않고 돌리면 과거처럼 "환경상 실행 불가"로 F-2를 갈음하게 된다.
 
   격리 USERPROFILE에서 hook 12종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context·session-end-cleanup)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
   부분 실행 `-Filter <hook명>`(쉼표 복수, `.ps1` 생략 가능)은 **구현 중 반복 확인 전용**이고, task 검증과 Phase F-2는 무인자 **전체 실행**이 정본이다 — **부분 실행 결과로 검증 판정 금지**(골든 케이스가 hook 간 얽혀 있어 커버리지가 좁다).
@@ -69,6 +69,7 @@
 
 ## Conventions
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
+- **줄바꿈**: 워킹트리는 **CRLF**이고 `core.autocrlf=true`다 — `sed -i`로 md를 고치면 파일 전체가 LF로 바뀌는데 **blob이 LF로 정규화돼 `git diff`에 안 나타난다**(v1.186.0 T1에서 `harness-conventions.md` 360줄이 이 회귀를 겪었다). **md 수정은 Edit 도구를 쓴다.**
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **파일 크기**: 분할은 줄 수가 아니라 책임·읽기 부담으로 판정한다(`implement-task` 규칙 8의 네 질문이 정본).
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단 형태는 **둘**이다 — ① **`exit 2`**: `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox` + **`warn-commit-secrets`(조건부)** ② **`stdout JSON`(`{"decision":"block","reason":…}`) + `exit 0`**: **`require-evidence`(조건부)**. ②는 Stop hook 전용으로 종료를 막고 `reason`을 모델에 전달해 루프를 잇는다(도구 호출이 아니라 *종료를 되돌린다*). **두 조건부의 세부 조건·스캔 범위·라벨 매치 형태는 `docs/harness-conventions.md`가 정본이다** — hook을 수정하거나 문서에 차단 범위를 적기 전에 반드시 읽을 것(차단 범위를 실제보다 넓게 쓰면 "차단한다고 썼는데 안 잡는" 상태가 된다). **우회 변수는 둘이며 서로 대체되지 않는다** — `require-evidence`는 `CLAUDE_HARNESS_QUICK=1`, `warn-commit-secrets`는 전용 변수 `CLAUDE_HARNESS_ALLOW_SECRET=1`(QUICK으로는 꺼지지 않는다).
