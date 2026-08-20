@@ -80,8 +80,10 @@ if (-not $events.Count) {
 
 $blockCount = @($events | Where-Object { $_.decision -eq 'block' }).Count
 $warnCount = @($events | Where-Object { $_.decision -eq 'warn' }).Count
+# 회수(cleanup)는 차단·경고와 다른 축이다 — 고아 콘솔 프로세스를 걷어낸 위생 기록.
+$cleanupCount = @($events | Where-Object { $_.decision -eq 'cleanup' }).Count
 $failNote = if ($parseFail) { " | 파싱 실패 $parseFail`건(집계 제외)" } else { '' }
-Write-Host "총 이벤트: $($events.Count)건 (차단 $blockCount · 경고 $warnCount)$failNote"
+Write-Host "총 이벤트: $($events.Count)건 (차단 $blockCount · 경고 $warnCount · 회수 $cleanupCount)$failNote"
 
 # ---- hook × 판정 집계 ----
 Write-Host ''
@@ -90,7 +92,8 @@ $byHook = $events | Group-Object hook | Sort-Object Count -Descending
 foreach ($g in $byHook) {
     $b = @($g.Group | Where-Object { $_.decision -eq 'block' }).Count
     $w = @($g.Group | Where-Object { $_.decision -eq 'warn' }).Count
-    Write-Host ("  {0,-24} 차단 {1,4}  경고 {2,4}  계 {3,4}" -f $g.Name, $b, $w, $g.Count)
+    $c = @($g.Group | Where-Object { $_.decision -eq 'cleanup' }).Count
+    Write-Host ("  {0,-24} 차단 {1,4}  경고 {2,4}  회수 {3,4}  계 {4,4}" -f $g.Name, $b, $w, $c, $g.Count)
 }
 
 # ---- hook별 발동 규칙 상위 N ----
