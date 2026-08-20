@@ -12,7 +12,7 @@ if (Test-HookSelected @('hook-event-log', 'block-destructive', 'pre-bash-dispatc
 
 # (a) 쓰기 불가 격리 — 로그 경로가 막혀도 차단 동작은 정상 (별도 격리 홈에서 hook-events 자리를 파일로 선점).
 #     ※ (b)보다 먼저: $iso에는 앞 섹션들의 경고 로깅으로 이미 디렉터리가 생겨 있을 수 있어 새 홈을 쓴다.
-$iso2 = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-lockedlog-" + $suffix)
+$iso2 = Join-Path $EvalRunTemp ("pjc-hook-evals-lockedlog-" + $suffix)
 New-Item -ItemType Directory -Path (Join-Path $iso2 '.claude/.state') -Force | Out-Null
 'lock' | Set-Content (Join-Path $iso2 '.claude/.state/hook-events')   # 디렉터리 자리에 파일 — 로깅만 실패 유도
 $env:USERPROFILE = $iso2
@@ -60,7 +60,7 @@ if (Test-HookSelected @('hook-event-log')) {
     $repScript = Join-Path $scriptsDir 'report-hook-events.ps1'
 
     # (a) fixture 3건(block 1 + warn 2) → 집계 키워드·건수 확인
-    $isoR = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-report-" + $suffix)
+    $isoR = Join-Path $EvalRunTemp ("pjc-hook-evals-report-" + $suffix)
     $repDir = Join-Path $isoR '.claude/.state/hook-events'
     New-Item -ItemType Directory -Path $repDir -Force | Out-Null
     @(
@@ -77,7 +77,7 @@ if (Test-HookSelected @('hook-event-log')) {
     Remove-Item -Recurse -Force $isoR -ErrorAction SilentlyContinue
 
     # (b) 로그 없는 빈 홈 → 안내 + exit 0 (오류로 죽지 않음)
-    $isoR2 = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-report-empty-" + $suffix)
+    $isoR2 = Join-Path $EvalRunTemp ("pjc-hook-evals-report-empty-" + $suffix)
     New-Item -ItemType Directory -Path $isoR2 -Force | Out-Null
     $env:USERPROFILE = $isoR2
     $outRep2 = & pwsh -NoProfile -ExecutionPolicy Bypass -File $repScript 2>&1

@@ -9,6 +9,8 @@
 #   $EvalFilter      [string[]] 부분 실행 필터(hook 기본명). 미설정이면 전체 실행.
 #   $EvalOutJson     [string]   케이스 판정을 JSON 라인으로 append할 경로. 설정 시 증분 기록이 켜진다.
 #   $EvalHomeSuffix  [string]   격리 홈·작업 폴더 이름의 접미. 병렬 자식이 서로 다른 값을 줘야 한다.
+#   $EvalSkipFilterWarning [bool] 호출자가 필터 이름 경고를 이미 냈으면 $true. 순차 경로처럼
+#                                코디네이터와 이 파일이 한 프로세스일 때 중복 출력을 막는다.
 #
 # 판정 출력은 이 파일이 하지 않는다 — 호출자가 $results를 받아 출력한다(종전 동작 보존).
 #
@@ -41,11 +43,19 @@ $env:CLAUDE_HARNESS_NO_PROC_CLEANUP = '1'
 # ---- 격리 환경 구성 ----
 # 홈 격리($EvalIso)는 임시 폴더에 둬도 되지만, 시나리오 프로젝트($EvalWork)는 반드시 임시 폴더 '밖'이어야
 # 한다 — require-plan-for-write가 시스템 임시 폴더 하위를 무조건 통과시키므로(H3 의도된 완화),
-# 픽스처가 temp 안에 있으면 차단 시나리오 전체가 우회로 무력화된다.
+# 픽스처가 temp 안에 있으면 차단 시나리오 전체가 우회로 무력화된다. temp 판정은 prefix 비교라
+# 부모 폴더로 한 단계 감싸도 그 성질은 그대로다(`require-plan-for-write.ps1`의 tempRoot StartsWith).
+#
+# 실행마다 만드는 폴더는 `<베이스>\pjc-hook-evals\run\<접미>` 아래로 모은다 — 최상위에 평면으로
+# 흩어지면 중단된 실행의 잔여물이 사용자 눈에 그대로 쌓인다(2026-08-20 실측 80개·9.7MB).
+# 경로 계산·정리 규칙의 정본은 `eval-paths.ps1`이며 코디네이터도 같은 파일을 읽는다.
+. (Join-Path $evalsDir 'eval-paths.ps1')
+$EvalRunTemp = Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'run'
+$EvalRunWork = Join-Path (Join-Path (Get-EvalRoot -Base 'Work') $script:EvalParentName) 'run'
+
 $suffix = if ($EvalHomeSuffix) { $EvalHomeSuffix } else { [guid]::NewGuid().ToString('N').Substring(0, 8) }
-$EvalIso = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-" + $suffix)
-$workBase = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $realHome }   # 비Windows 폴백
-$EvalWork = Join-Path $workBase ("pjc-hook-evals-" + $suffix)
+$EvalIso = Join-Path $EvalRunTemp ("pjc-hook-evals-" + $suffix)
+$EvalWork = Join-Path $EvalRunWork ("pjc-hook-evals-" + $suffix)
 New-Item -ItemType Directory -Path $EvalIso -Force | Out-Null
 New-Item -ItemType Directory -Path $EvalWork -Force | Out-Null
 $env:USERPROFILE = $EvalIso        # 자식 hook 프로세스가 이 격리 홈의 .claude를 보게 함(.state 마커 등)
@@ -66,7 +76,10 @@ $results = New-Object System.Collections.Generic.List[object]
 . (Join-Path $evalsDir 'filter-spec.ps1')
 
 $script:FilterSet = Get-NormalizedFilter -Filter $EvalFilter
-if ($script:FilterSet) { Write-UnknownFilterWarning -NormalizedFilter $script:FilterSet }
+# 호출자가 이미 같은 경고를 냈으면($EvalSkipFilterWarning) 건너뛴다 — 순차 경로는 코디네이터와
+# 이 파일이 한 프로세스에 있어 그러지 않으면 경고가 2회 나온다. 신호가 없으면 종전대로 낸다
+# (`run-scenario.ps1` 단독 실행처럼 코디네이터를 거치지 않는 경로에서는 이것이 유일한 안내다).
+if ($script:FilterSet -and -not $EvalSkipFilterWarning) { Write-UnknownFilterWarning -NormalizedFilter $script:FilterSet }
 
 function Test-HookSelected {
     # $Hooks: 이 케이스/섹션이 실행하는 hook 기본명 목록. 필터 미지정이면 항상 실행.

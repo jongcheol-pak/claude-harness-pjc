@@ -128,7 +128,7 @@ if (Test-HookSelected @('session-context')) {
     #   전용 격리 홈에 llm-wiki-config.json을 심는다($iso에는 config가 없어 미설정 상태이며 SC20이 그것을 쓴다).
     #   무회귀 1건(SC20) + 델타 3건(SC21 과다 주입·SC22 과억제·SC23 리마인더 오신호) 구성 —
     #   통과만 확인하는 케이스는 게이팅을 고정하지 못한다.
-    $isoV = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-vault-" + $suffix)
+    $isoV = Join-Path $EvalRunTemp ("pjc-hook-evals-vault-" + $suffix)
     $isoVault = Join-Path $isoV 'my-wiki'
     New-Item -ItemType Directory -Path (Join-Path $isoV '.claude') -Force | Out-Null
     New-Item -ItemType Directory -Path $isoVault -Force | Out-Null
@@ -175,7 +175,7 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: fork도 AGENTS 전문 주입 (SC22c)" -R $r -ExpectExit 0 -ExpectContains 'SC_VAULT_ORDER_MARKER'
 
     # SC19: 설정됐으나 폴더 부재(이동·삭제) → 부재 문구 주입 (경로 재확인 신호)
-    $isoV2 = Join-Path ([System.IO.Path]::GetTempPath()) ("pjc-hook-evals-vault-gone-" + $suffix)
+    $isoV2 = Join-Path $EvalRunTemp ("pjc-hook-evals-vault-gone-" + $suffix)
     New-Item -ItemType Directory -Path (Join-Path $isoV2 '.claude') -Force | Out-Null
     (@{ vault_path = ((Join-Path $isoV2 'moved-away') -replace '\\', '/') } | ConvertTo-Json) | Set-Content -Encoding UTF8 (Join-Path $isoV2 '.claude/llm-wiki-config.json')
     $env:USERPROFILE = $isoV2

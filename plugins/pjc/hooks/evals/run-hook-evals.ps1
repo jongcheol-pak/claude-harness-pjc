@@ -92,10 +92,37 @@ Write-Host "== pjc hook 골든 회귀 =="
 # 정규화가 갈릴 때 서로 다른 실제 필터가 같은 `-Resume` 스코프로 매핑돼 그 가드가 무력화된다.
 . (Join-Path $evalsDirTop 'filter-spec.ps1')
 
+# 격리 폴더 경로의 정본. `eval-common`도 같은 파일을 읽는다 — 병렬 경로의 코디네이터는
+# `eval-common`을 dot-source하지 않으므로(자식이 각자 로드한다) 여기서 따로 읽어야
+# `$StateDir` 기본값이 자식이 쓰는 부모 폴더와 같은 자리를 가리킨다.
+. (Join-Path $evalsDirTop 'eval-paths.ps1')
+# 이 파일이 쓰는 임시 쪽 부모(`<temp>\pjc-hook-evals`) — 아래 세 지점(순차 scratch 정리 ·
+# `$StateDir` 기본값 · 병렬 scratch 정리)이 같은 자리를 가리켜야 한다.
+$evalTempParent = Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName
+
 $script:NormalizedFilter = Get-NormalizedFilter -Filter $Filter
 if ($script:NormalizedFilter) {
     Write-UnknownFilterWarning -NormalizedFilter $script:NormalizedFilter
     Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:NormalizedFilter -join ', ')) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
+}
+
+# ---- 중단된 실행이 남긴 격리 폴더 정리 ----
+# 정상 종료 경로는 자기 폴더를 지우지만(순차·자식의 `finally`) kill·타임아웃으로 그 자리에
+# 닿지 못한 실행분은 그대로 남는다 — 걷는 코드가 없어 2026-08-20 시점에 **평면 폴더 80개**가
+# 쌓였고(구 state 루트는 별건) 그중 3일 기준을 넘긴 59개가 이 장치의 첫 실행에서 정리됐다
+# (최고령 2026-07-08). 나머지는 아직 사흘이 안 지난 것들이라 다음 실행들이 순차로 걷는다.
+# **자식은 이 일을 하지 않는다** — 13개 자식이 같은 폴더를 동시에 훑으면 서로의 진행 중 폴더를
+# 건드릴 여지가 생긴다(위키 feat-hook-evals가 기록한 "한쪽 정리가 다른 쪽 픽스처를 지운다" 유형).
+# 삭제 건수를 화면에 내는 이유는 조용히 지우면 "왜 없어졌는지"를 나중에 재구성할 수 없어서다.
+# 보존 기간을 `-Days` 같은 CLI 스위치로 빼지 않은 것은 의도다 — 조작할 이유가 아직 없고,
+# 스위치를 두면 그 값을 잘못 준 실행이 살아 있는 폴더를 지울 수 있다(기본 3일은 eval-paths.ps1 근거).
+try {
+    $sweep = Invoke-EvalSweep
+    if ($sweep.Count -gt 0) {
+        Write-Host ("[SWEEP] 3일 경과 잔여 격리 폴더 {0}개 정리" -f $sweep.Count)
+    }
+} catch {
+    # fail-open — 정리 실패가 스위트를 멈추면 안 된다(다음 실행이 재시도한다).
 }
 
 # =====================================================================
@@ -103,6 +130,11 @@ if ($script:NormalizedFilter) {
 # =====================================================================
 if ($Sequential) {
     $EvalFilter = $Filter
+    # 필터 이름 경고는 위에서 이미 냈다 — 순차 경로는 `eval-common`을 **같은 프로세스**에서
+    # dot-source하므로 그쪽이 또 부르면 같은 경고가 2회 나온다(병렬은 자식이 별 프로세스라
+    # 겹치지 않는다). `eval-common` 쪽 호출을 지우지 않는 이유는 `run-scenario.ps1`을 사람이
+    # 직접 돌리는 경로에서 그 경고가 유일한 안내이기 때문이다.
+    $EvalSkipFilterWarning = $true
     . (Join-Path $evalsDirTop 'eval-common.ps1')
     try {
         foreach ($g in $scenarioGroups) {
@@ -116,7 +148,7 @@ if ($Sequential) {
         Set-Location $env:TEMP
         Remove-Item -Recurse -Force $EvalIso -ErrorAction SilentlyContinue
         Remove-Item -Recurse -Force $EvalWork -ErrorAction SilentlyContinue
-        Remove-Item -Recurse -Force (Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-eval-scratch') -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force (Join-Path $evalTempParent 'scratch') -ErrorAction SilentlyContinue
     }
     $failCount = 0
     foreach ($res in $results) {
@@ -141,7 +173,9 @@ if ($Sequential) {
 # 병렬 경로 — 그룹마다 자식 pwsh, 판정 JSON 취합
 # =====================================================================
 if (-not $StateDir) {
-    $StateDir = Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-evals-state'
+    # 부모 폴더 아래 `state` — run 폴더와 나란히 두되 **sweep 대상은 아니다**(`-Resume` 입력이라
+    # 실행 간 재사용되어 수명이 다르다. `eval-paths.ps1`의 대상 규칙이 `run\`만 훑는다).
+    $StateDir = Join-Path $evalTempParent 'state'
 }
 
 # ---- -Resume 상태의 유효 범위 각인 (거짓 green 차단) ----
@@ -183,6 +217,12 @@ try {
     ).Replace('-', '').Substring(0, 10).ToLowerInvariant()
 } catch { }
 $scopeKey = "filter=$scopeFilter|head=$scopeHead|assets=$assetHash"
+# 각인이 불완전하면 알린다 — 위 두 `catch { }`는 실패해도 `nogit`·`none`으로 조용히 강등되는데,
+# 그 상태의 `-Resume`은 **코드 변경을 구분하지 못한다**(낡은 판정을 재사용한다). `[MODE]` 줄은
+# 해시 디렉터리만 찍어 `scope.txt`를 열지 않으면 강등 사실이 보이지 않는다.
+if ($scopeHead -eq 'nogit' -or $assetHash -eq 'none') {
+    Write-Host "[WARN] 스코프 각인 불완전 — -Resume이 코드 변경을 구분하지 못한다 (head=$scopeHead assets=$assetHash)"
+}
 # 디렉터리 이름은 짧게 유지하되 사람이 스코프를 확인할 수 있어야 하므로 해시 + scope.txt를 함께 둔다.
 $scopeHash = [System.BitConverter]::ToString(
     [System.Security.Cryptography.MD5]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($scopeKey))
@@ -296,12 +336,13 @@ foreach ($g in $scenarioGroups) {
 }
 
 # ---- 그룹 공유 임시 픽스처 정리 ----
-# `scenarios/require-plan-for-write.ps1`이 만드는 `%TEMP%\pjc-hook-eval-scratch`는 **의도적으로
+# `scenarios/require-plan-for-write.ps1`이 만드는 `<temp>\pjc-hook-evals\scratch`는 **의도적으로
 # 시스템 임시 폴더 하위**에 있다(require-plan-for-write가 temp 하위를 무조건 통과시키는 완화 경로를
-# 그 위치에서만 재현할 수 있다). 그래서 자식의 $EvalWork 하위로 옮길 수 없고, 자식은 자기 격리
-# 폴더만 지우므로 **어느 쪽 책임에도 걸리지 않는다** — 순차 경로에만 정리가 있어 병렬(기본값)에서
-# 매 실행마다 남던 회귀를 여기서 닫는다. 자식이 모두 끝난 뒤 코디네이터가 지운다.
-Remove-Item -Recurse -Force (Join-Path ([System.IO.Path]::GetTempPath()) 'pjc-hook-eval-scratch') -ErrorAction SilentlyContinue
+# 그 위치에서만 재현할 수 있다 — 부모 폴더로 감싸도 prefix 판정이라 그 성질은 유지된다). 그래서
+# 자식의 $EvalWork 하위로 옮길 수 없고, 자식은 자기 격리 폴더만 지우므로 **어느 쪽 책임에도
+# 걸리지 않는다** — 순차 경로에만 정리가 있어 병렬(기본값)에서 매 실행마다 남던 회귀를 여기서
+# 닫는다. 자식이 모두 끝난 뒤 코디네이터가 지운다. sweep은 이 폴더를 훑지 않는다(수명이 다르다).
+Remove-Item -Recurse -Force (Join-Path $evalTempParent 'scratch') -ErrorAction SilentlyContinue
 
 $failCount = 0
 foreach ($res in $allResults) {

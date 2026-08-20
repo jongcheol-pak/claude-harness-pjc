@@ -14,7 +14,7 @@ foreach ($c in $cases) {
     # 무상태 케이스는 케이스 단위 필터: 개별 hook 선택 시 그 케이스, dispatch 에코는
     # "그 hook 선택 또는 pre-bash-dispatch 선택" 시 실행(D10 — 에코만 따로 돌릴 수 있게).
     $hookBase = ($c.hook -replace '\.ps1$', '').ToLowerInvariant()
-    $isDispatchEchoTarget = (-not [bool]($c.pending_fix ?? $false)) -and
+    $isDispatchEchoTarget = (-not [bool]$c.pending_fix) -and
         ($c.hook -in @('warn-external-ops.ps1', 'require-task-checkbox.ps1', 'warn-commit-secrets.ps1'))
     $runIndividual = Test-HookSelected @($hookBase)
     $runDispatchEcho = $isDispatchEchoTarget -and (Test-HookSelected @($hookBase, 'pre-bash-dispatch'))
@@ -24,11 +24,11 @@ foreach ($c in $cases) {
     if ($runIndividual) {
         $r = Invoke-Hook $c.hook $json
         Assert-Case -Name "$($c.hook): $($c.name)" -R $r `
-            -ExpectExit ([int]($c.expect_exit ?? 0)) `
-            -ExpectContains ([string]($c.expect_contains ?? '')) `
-            -ExpectSilent ([bool]($c.expect_silent ?? $false)) `
-            -ExpectNotContains ([string]($c.expect_not_contains ?? '')) `
-            -PendingFix ([bool]($c.pending_fix ?? $false))
+            -ExpectExit ([int]$c.expect_exit) `
+            -ExpectContains ([string]$c.expect_contains) `
+            -ExpectSilent ([bool]$c.expect_silent) `
+            -ExpectNotContains ([string]$c.expect_not_contains) `
+            -PendingFix ([bool]$c.pending_fix)
     }
 
     # [v1.99.0 T6] 디스패처 전수 동등성 — 3 hook의 stateless 케이스를 pre-bash-dispatch.ps1에도
@@ -45,8 +45,8 @@ foreach ($c in $cases) {
     if ($runDispatchEcho) {
         $rd = Invoke-Hook 'pre-bash-dispatch.ps1' $json
         Assert-Case -Name "dispatch=$($c.hook): $($c.name)" -R $rd `
-            -ExpectExit ([int]($c.expect_exit ?? 0)) `
-            -ExpectContains ([string]($c.expect_contains ?? ''))
+            -ExpectExit ([int]$c.expect_exit) `
+            -ExpectContains ([string]$c.expect_contains)
     }
 }
 

@@ -35,7 +35,8 @@ $Names = @($Names | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim(
 $EvalFilter = $Filter
 $EvalOutJson = $OutJson
 # 격리 이름 접미: 그룹 이름 + 짧은 GUID. 그룹 이름을 넣는 이유는 중단 후 남은 폴더를 보고
-# 어느 그룹이 죽었는지 알 수 있게 하기 위함이다.
+# 어느 그룹이 죽었는지 알 수 있게 하기 위함이다. **그 진단 창은 3일이다** — 코디네이터 기동 시
+# sweep이 그보다 오래된 잔여를 걷는다(`eval-paths.ps1`). 더 오래 보려면 그 전에 복사해 둘 것.
 $EvalHomeSuffix = (($Names -join '+') -replace '[^\w+-]', '') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 6)
 
 . (Join-Path $PSScriptRoot 'eval-common.ps1')
