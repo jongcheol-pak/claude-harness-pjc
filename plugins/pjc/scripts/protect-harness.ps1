@@ -70,7 +70,10 @@ $norm = '/' + ($segs -join '/')
 # hook 신설 시 여기에 함께 추가할 것(v1.96.0 warn-commit-secrets 누락이 v1.97.2에서 뒤늦게 합류한 전례).
 # secret-patterns는 hook이 아닌 dot-source 헬퍼지만, 설치본 개조 시 시크릿 경고 계층(post-write·
 # warn-commit-secrets)이 동일하게 무력화되는 등가 우회라 보호 대상에 포함한다.
-$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib|warn-version-drift|session-context|hook-event-log'
+# orphan-process-cleanup도 같은 이유로 헬퍼이면서 보호 대상이다 — 회수 함수 모듈 하나를 개조하면
+# 그것을 dot-source하는 세 hook(require-evidence·session-context·session-end-cleanup)의 고아 프로세스
+# 회수가 한꺼번에 무력화된다(secret-patterns와 동형의 등가 우회).
+$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib|warn-version-drift|session-context|hook-event-log|orphan-process-cleanup|session-end-cleanup'
 
 # (1) .claude/ 하위 설치본 hook 스크립트·hooks.json 개조
 $isHookScript = ($norm -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$')) -or
