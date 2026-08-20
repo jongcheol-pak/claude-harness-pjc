@@ -55,11 +55,13 @@ function Write-DispatchEvent {
     } catch {}
 }
 
-# 순서: 원 hooks.json 순서에서 block-destructive(독립)만 앞으로 뺀 나머지 3종.
+# 순서: 원 hooks.json 순서에서 block-destructive(독립)만 앞으로 뺀 나머지 3종 + warn-global-find(v1.183.0 신설 —
+#   대응하는 독립 hook 스크립트가 없고 이 디스패처가 유일한 실행 경로다).
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
     @{ fn = 'Invoke-RequireTaskCheckbox'; name = 'require-task-checkbox' },
-    @{ fn = 'Invoke-WarnCommitSecrets';   name = 'warn-commit-secrets' }
+    @{ fn = 'Invoke-WarnCommitSecrets';   name = 'warn-commit-secrets' },
+    @{ fn = 'Invoke-WarnGlobalFind';      name = 'warn-global-find' }
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {
