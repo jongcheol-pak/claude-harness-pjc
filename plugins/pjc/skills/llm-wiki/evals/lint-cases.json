@@ -783,6 +783,17 @@
         "롤오버 — 20_projects/personal/demo/decisions.md"
       ],
       "rationale": "예산 여유가 있는 decision-log는 건드리지 않는다(무회귀 음성). 결정 이력은 조회가 목적이라 이유 없이 아카이브로 밀면 계획 세션이 과거 결정을 못 본다."
+    },
+    {
+      "fixture": "dec-oldptr",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo/decisions.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "포인터가 §2.8 규정 문면과 다른 옛 형식(날짜·건수 표기 없음)일 때도 그 줄 끝에 `(최古~最新, 누적 N건)`이 덧붙는지 본다. 초기 구현은 정규식 치환이 실패하면 사실상 아무것도 하지 않아 포인터가 실제 아카이브 상태와 어긋난 채 남았다 — 조회 세션이 「어디까지 옮겨졌는지」를 알 수 없게 되는 자리다. 실 vault도 규정과 다른 wikilink 형식을 쓰므로 이 경로가 실사용 경로다."
     }
   ]
 }

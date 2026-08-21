@@ -1427,8 +1427,16 @@ def rollover_decisions(ses):
         if sec and DEC_PTR_RX.search(sec):
             new_sec = re.sub(r"\(\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}, 누적 \d+건\)",
                              "(%s)" % span, sec)
-            if new_sec == sec:      # 옛 포인터에 날짜·건수 표기가 없으면 뒤에 덧붙인다
-                new_sec = sec.rstrip("\n") + "\n"
+            if new_sec == sec:
+                # 옛 포인터에 날짜·건수 표기가 없으면 **그 줄 끝에 덧붙인다**. 그냥 두면
+                #  포인터가 실제 아카이브 상태와 어긋난 채 남아, 조회 세션이 「어디까지
+                #  옮겨졌는지」를 알 수 없다(§2.8이 그 표기를 요구하는 이유다).
+                lines_ = new_sec.split("\n")
+                for k, ln in enumerate(lines_):
+                    if DEC_PTR_RX.search(ln):
+                        lines_[k] = ln.rstrip() + " (%s)" % span
+                        break
+                new_sec = "\n".join(lines_)
             new_text = new_text.replace(sec, new_sec, 1)
         else:
             new_text = new_text.rstrip("\n") + (
