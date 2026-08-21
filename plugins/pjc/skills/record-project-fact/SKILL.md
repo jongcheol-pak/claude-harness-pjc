@@ -1,6 +1,6 @@
 ---
 name: record-project-fact
-description: This skill should be used when recording a CONFIRMED project fact (build/run command, DB access method, file/artifact location, test/verify command, intentionally untested layers) into an EXISTING AGENTS.md — either right after the suggest-agents-record hook emits "[AGENTS 기록 제안]" and the user accepts, or when the user explicitly asks to record such a fact. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "테스트 비대상 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘", or accepting the hook's suggestion. The fact may be added, updated, or removed. Also triggers when AGENTS.md has grown near or past the SessionStart injection limit — on "AGENTS.md가 너무 커졌어", "주입 상한 넘었어", "AGENTS.md 정리해줘", or on receiving the session-context hook's "주입 상한 임박" warning — in which case Step 5 moves whole oversized sections out to a separate document and leaves a pointer in place. Do NOT trigger for — creating a new AGENTS.md from scratch (use bootstrap-agents-md), planning or writing code (plan-feature/implement-task). Records into AGENTS.md ONLY — never the global/project CLAUDE.md — and ONLY after showing the exact change and getting user approval (no silent writes); the single exception is Step 5's budget relocation, which moves content verbatim and leaves a pointer, so it runs without approval and reports afterward. Real secrets/connection strings/credentials are forbidden — environment variable names only.
+description: Records a CONFIRMED project fact (build/run command, DB access, file/artifact location, test/verify command, intentionally untested layers) into an EXISTING AGENTS.md — after the suggest-agents-record hook's "[AGENTS 기록 제안]" is accepted, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "테스트 비대상 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘". Also when AGENTS.md nears or passes the SessionStart injection limit — "AGENTS.md가 너무 커졌어", "주입 상한 넘었어", "AGENTS.md 정리해줘", or the hook's "주입 상한 임박" warning — where Step 5 moves oversized sections out and leaves a pointer. Do NOT trigger for — creating a new AGENTS.md (use bootstrap-agents-md), or code work (plan-feature/implement-task). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's relocation, which moves content verbatim and reports afterward. Real secrets are forbidden — env var names only.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
@@ -82,14 +82,15 @@ bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)�
 
 **ⓐ 발동 조건.** Step 4를 마친 뒤 `AGENTS.md`의 파일 바이트를 재고, **상한의 95% 이상이거나 여유가 500B 미만**이면 이관한다(상한은 `session-context.ps1`의 `$agentsMaxBytes` — 현재 16,384B. 값을 여기 박지 말고 그 hook에서 읽는다). 세션 시작 시 `[pjc 세션 컨텍스트] … ⚠ 주입 상한 임박` 경고를 받았다면 그것이 같은 신호다. **미달이면 이 단계를 조용히 통과한다.**
 
-**ⓑ 잔류 절 (이관 금지).** 다음은 옮기지 않는다 — 세션이 이것을 잃으면 빌드도 못 하고 금지선도 모른다:
-`## Stack` · `## Build & Test`의 **명령 줄**(설명 산문은 이관 가능) · `## DO NOT` · `## Plan Location`.
+**ⓑ 잔류 절 (이관 금지).** 다음 네 절은 **절 단위로 통째** 남긴다 — 세션이 이것을 잃으면 빌드도 못 하고 금지선도 모른다:
+`## Stack` · `## Build & Test` · `## DO NOT` · `## Plan Location`.
+**줄 단위로 가르지 않는다** — 명령만 남기고 "언제 어떤 조건에서 쓰는지"를 설명하는 산문을 떼면, 남은 명령은 그대로 오용된다(이 레포의 골든 러너 항목이 그렇다: 명령 한 줄만 보고 돌리면 완주하지 않는다). 잔류 절이 커서 이관으로 해소되지 않으면 그것은 부분 이관 대상이 아니라 **ⓘ(이관 불가) 보고 대상**이다.
 해당 절이 없는 프로젝트에서는 그 항목을 건너뛴다(이 열거는 pjc bootstrap 템플릿 기준이다).
 
 **ⓒ 이관 대상 선정.** 잔류 대상 밖의 `## ` 절을 **바이트 크기 순**으로 세어 큰 것부터 옮긴다. 크기는 `## ` 헤딩 줄부터 **다음 `## ` 직전까지**의 파일 바이트(CRLF 포함 — `$agentsMaxBytes` 판정과 같은 단위)다. **한 절을 옮길 때마다 다시 재고, 상한의 90% 아래로 내려오면 멈춘다**(임박 임계 바로 아래에서 멈추면 다음 기록에 곧 재발동한다).
 
 **ⓓ 이관처 (결정적 2분기 — 판단 금지).**
-1. **AGENTS.md가 이미 포인터로 가리키고 있는 문서가 있으면 그 문서**(예: 본문에 `정본은 docs/harness-conventions.md의 …`처럼 등장하는 경로). 여럿이면 **가장 많이 가리켜진 것** 하나.
+1. **AGENTS.md가 이미 포인터로 가리키고 있는 문서가 있으면 그 문서.** 판정은 기계적으로 한다 — AGENTS.md 본문에서 **백틱 또는 마크다운 링크로 등장하는 `.md` 경로**를 전부 세고(`docs/…`처럼 레포 상대경로), **등장 횟수가 가장 많은 것** 하나를 고른다. 동수면 **파일에서 먼저 나온 것**. (이 레포에서는 `docs/harness-conventions.md`가 그렇게 잡힌다.)
 2. 없으면 `docs/agents-detail.md`를 신설한다(`docs/`가 없으면 만든다).
 
 *"규약 문서처럼 보이는 것을 고른다"* 같은 판단 여지를 두지 않는다 — 회차마다 다른 곳으로 흩어지면 그것이 곧 유실이다.
