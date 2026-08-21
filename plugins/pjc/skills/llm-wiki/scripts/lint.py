@@ -339,7 +339,13 @@ def is_feat_recipe_row(line):
     ① `|`로 시작 ② 첫 컬럼이 비어 있지 않은 평문(wikilink 미포함 — 프로젝트/기술/가이드 표처럼
     첫 컬럼이 링크인 행은 제외, `\\|` 이스케이프로 split이 경로만 잡는 오탐 차단) ③ 행 내 wikilink
     대상(정규화: 이스케이프 `\\`·`#`앵커 제거 — wikilink_targets와 동일 규칙)의 basename이
-    `feat-` 시작(단축 링크 포함)이거나 대상에 `40_guides/recipes/` 포함."""
+    `feat-` 시작(단축 링크 포함)이거나 대상에 `40_guides/` 포함.
+
+    ③의 대상을 `40_guides/recipes/`가 아니라 `40_guides/` 전체로 두는 이유: 가이드·레시피가
+    통합 표 하나로 합쳐지면서(`_rows_guides`) platform-bootstrap·ui-ux 행도 첫 컬럼이 평문이 됐다.
+    좁은 조건을 두면 그 행들은 **형상은 맞는데 대상 조건에서 탈락**해 §7-16 병기 검사를 통째로
+    비껴간다 -- 종전에 그 사각을 메우던 §7-27은 `## 가이드 / 레시피` 섹션을 찾는데 그 섹션
+    자체가 없어졌으므로 대체가 아니라 폐지 대상이다."""
     s = line.lstrip()
     if not s.startswith("|"):
         return False
@@ -349,7 +355,7 @@ def is_feat_recipe_row(line):
         return False
     for m in re.findall(r"\[\[([^\]|]+)", s):
         t = m.replace("\\", "").split("#")[0].strip()
-        if t.split("/")[-1].startswith("feat-") or "40_guides/recipes/" in t:
+        if t.split("/")[-1].startswith("feat-") or "40_guides/" in t:
             return True
     return False
 
@@ -511,27 +517,21 @@ def _rows_projects(pages, category):
 
 
 def _rows_features(pages, category):
-    """category에 속한 feature 행. category가 None이면 recipe(가이드 레시피) 행만."""
+    """category(personal|work)에 속한 project feature 행.
+
+    종전에는 `category=None`으로 recipe 행도 냈으나, 가이드·레시피가 통합 표로 옮겨가면서
+    (`_rows_guides`) 그 호출부가 사라져 feature 전용이 됐다."""
     rows, pend = [], []
     for r in sorted(pages):
         fm, text = pages[r]
-        if category is None:
-            if fm.get("type") != "guide" or fm.get("guide_kind") != "recipe":
-                continue
-            lbl, todo = display_label(fm, text, None)
-            proj = "(레시피)"
-        else:
-            if fm.get("type") != "feature" or fm.get("category") != category:
-                continue
-            lbl, todo = display_label(fm, text, "feature_name")
-            proj = fm.get("project", "-")
+        if fm.get("type") != "feature" or fm.get("category") != category:
+            continue
+        lbl, todo = display_label(fm, text, "feature_name")
         if todo:
             pend.append(r)
-        kind = "recipe" if category is None else "feature"
-        rows.append("| %s | %s | %s | [[%s\\|%s]] |"
-                    % (lbl, fm.get("platform", "-"), proj, r[:-3], kind))
+        rows.append("| %s | %s | %s | [[%s\\|feature]] |"
+                    % (lbl, fm.get("platform", "-"), fm.get("project", "-"), r[:-3]))
     return rows, pend
-
 
 def _rows_guides(pages):
     """guide 전 종류(recipe·platform-bootstrap·ui-ux)를 담는 **통합 표** 행.
@@ -540,7 +540,9 @@ def _rows_guides(pages):
     `## 가이드 / 레시피`(첫 컬럼 wikilink). 실 vault에서 그 중복이 106행이었고, 두 표의 형상이
     달라 병기 검사도 §7-16(평문)과 §7-27(wikilink)로 갈려 있었다. 통합 표는 **첫 컬럼을 평문
     라벨로 두고 마지막을 wikilink로** 잡아 한 표에 합친다 -- 행이 사라지지 않으면서(합집합
-    흡수) §7-16 하나가 전 행의 병기를 본다(§7-27이 폐지된 근거).
+    흡수) §7-16 하나가 전 행의 병기를 본다 -- 단 그것이 성립하려면 `is_feat_recipe_row`의
+    대상 조건이 `40_guides/` 전체를 포괄해야 한다(그 함수 docstring 참조). 두 변경은 한 벌이며,
+    조건을 넓히지 않은 채 표만 합치면 platform-bootstrap·ui-ux 행이 어느 검사에도 안 걸린다.
 
     컬럼: `| 이름(평문 한/영) | 종류(guide_kind) | 플랫폼 | 상세(wikilink) |`
       종전 기능별 인덱스의 `프로젝트` 컬럼은 recipe에서 항상 `(레시피)` 고정값이라 정보가 없었다 --

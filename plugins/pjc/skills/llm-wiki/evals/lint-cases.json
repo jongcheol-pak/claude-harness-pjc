@@ -505,6 +505,7 @@
         "---- index-guides.md ----",
         "| 데모 레시피 (demo recipe) | recipe | cross | [[40_guides/recipes/demo-recipe\\|recipe]] |",
         "| 데모 부트스트랩 (demo bootstrap) | platform-bootstrap | cli | [[40_guides/platforms/demo-bootstrap\\|platform-bootstrap]] |",
+        "| 데모 UI 가이드 (demo ui guide) | ui-ux | windows-desktop | [[40_guides/ui-ux/demo-uiux\\|ui-ux]] |",
         "기능별 인덱스 행은 전부 sub-index에 있다"
       ],
       "expect_absent": [
