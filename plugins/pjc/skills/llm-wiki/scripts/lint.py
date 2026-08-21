@@ -1838,8 +1838,8 @@ def main():
             if s_lines > INDEX_BODY_LINES or s_rows > INDEX_FEAT_ROWS:
                 infos.append(
                     f"{os.path.basename(sp)} 순번 파일 자동 분할 대상: 본문 {s_lines}줄(임계 {INDEX_BODY_LINES}), "
-                    f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — B/F 세션이 순번 파일"
-                    f"(index-{{cat}}-{{n}}.md)로 자동 분할(승인 불요, wiki-schema §4 3단계)")
+                    f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — `--build-index`를 한 번 "
+                    f"실행하면 순번 파일(index-{{cat}}-{{n}}.md)로 나뉜다(wiki-schema §4 3단계)")
 
         # sub-index 목록 정합: 실재하는 index-*.md가 index.md에 언급(등록)됐는지.
         #  A(실재 파일) − B(index.md 언급) = 미등록 → WARN. 역방향(언급은 있으나 파일 없음)은
