@@ -1171,7 +1171,12 @@ def _append_log_entries(vault, lines):
     sec = section(text, "최근 변경")
     if not sec:
         return 0
-    new_sec = sec.rstrip("\n") + "\n" + "\n".join(lines) + "\n\n"
+    # **맨 위에 넣는다** — log.md는 최신이 위(내림차순)가 관례다(실측). 아래에 붙이면 방금 쓴
+    #  기록이 가장 오래된 자리에 놓여, 롤오버가 「같은 날짜면 아래쪽이 더 오래된 것」으로 tie를
+    #  가를 때 그 기록부터 아카이브로 보내게 된다(자기가 남긴 기록을 자기가 치우는 꼴).
+    head, items = _split_items(sec)
+    body = "".join(b for _d, b in items)
+    new_sec = head + "\n".join(lines) + "\n" + body
     if not _atomic_write(path, text.replace(sec, new_sec, 1), bom, nl):
         return 0
     return len(lines)
