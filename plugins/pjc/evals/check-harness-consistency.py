@@ -107,6 +107,16 @@ def measure(path):
 # ① 문서 로드 예산
 # ─────────────────────────────────────────────────────────────
 def check_doc_budget(conv):
+    """예산 표의 파일들이 표 기록값과 일치하는가. `AGENTS.md`만 상한 대비도 함께 잰다.
+
+    표 대조(기록값 == 실측)와 상한 대조(실측 <= 상한)는 **다른 축**이다 — 전자는
+    "표가 낡았나"를, 후자는 "그 파일이 SessionStart 주입 상한을 넘겼나"를 본다.
+    AGENTS.md가 상한을 넘으면 전문 주입이 **목차 폴백**으로 바뀌어 모든 세션이 보는
+    내용이 통째로 달라지는데, 그것을 알려주는 장치가 없었다(대장 [2026-08-19]).
+
+    **상한 값은 코드에 박지 않고 hook에서 파싱한다** — 정본이 `session-context.ps1`의
+    `$agentsMaxBytes`이므로, 그쪽을 고치면 이 검사도 함께 따라가야 갈리지 않는다.
+    """
     sec = section(conv, r"^## 문서 로드 예산 기준선", label="문서 로드 예산 기준선")
     rows = re.findall(r"^\| `([^`]+)` \| ([\d,]+) \| (\d+) \| (\d+) \|$", sec, re.M)
     if not rows:
@@ -122,7 +132,22 @@ def check_doc_budget(conv):
         if real != want:
             issues.append("예산 기준선 %s — 표 %s / 실측 %s (바이트·행·경계행)"
                           % (path, want, real))
+        if path == "AGENTS.md":
+            limit = _agents_inject_limit()
+            if real[0] > limit:
+                issues.append("주입 상한 초과 %s — 실측 %d B / 상한 %d B (초과 %d B) "
+                              "— SessionStart가 전문 대신 목차 폴백을 주입한다"
+                              % (path, real[0], limit, real[0] - limit))
     return issues, len(rows)
+
+
+def _agents_inject_limit():
+    """`session-context.ps1`에서 AGENTS.md 전문 주입 상한을 읽는다(정본 단일화)."""
+    hook = os.path.join(ROOT, "plugins", "pjc", "scripts", "session-context.ps1")
+    m = re.search(r"\$agentsMaxBytes\s*=\s*(\d+)", read(hook))
+    if not m:
+        die("주입 상한: `session-context.ps1`에서 $agentsMaxBytes 정의를 찾지 못함")
+    return int(m.group(1))
 
 
 # ─────────────────────────────────────────────────────────────
