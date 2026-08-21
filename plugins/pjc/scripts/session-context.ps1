@@ -181,6 +181,15 @@ try {
         #   위협해 이미 모은 plan 라인까지 통째로 유실시킨다.
         $agentsMaxBytes = 16384      # 전문 주입 상한 — 하니스 생성 템플릿·이 repo가 모두 전문 주입 범위에 들어가는 값 (v1.135.0 기준 실측 최대 약 12KB)
         $agentsTocMaxBytes = 1048576 # 목차 폴백 상한(1MB) — 초과 시 읽기·목차 스캔 자체를 생략 (비정상 대형 파일 방어)
+        # 임박 신호 2축(비율 OR 잔여) — 값·판정 축은 llm-wiki 예산 신호에서 그대로 가져왔다
+        #   (BUDGET_CRITICAL_RATIO=0.95 / BUDGET_CRITICAL_SLACK=500). 하니스 안에서 "임박"의 뜻이
+        #   갈리면 판정 전에 어느 축인지부터 가려야 하므로 같은 값을 쓴다.
+        # 왜 초과가 아니라 임박에서 알리는가: 초과한 뒤에는 이미 전문이 안 들어온 세션이라, 그 세션은
+        #   가이드를 잃은 채로 돈다. 실제로 402B 초과인 채 목차만 주입되던 구간이 있었다(대장 2026-08-19).
+        # llm-wiki의 80% 선행 게이트는 두지 않는다 — 그 게이트는 예산이 작은 타입(source-stub 1800자)에서
+        #   잔여 조건이 저비율을 잡는 것을 막으려는 것인데, 여기는 단일 예산 16KB라 잔여 500B가 곧 96.9%다.
+        $agentsNearRatio = 0.95
+        $agentsNearSlack = 500
         $agentsPath = Join-Path $cwd 'AGENTS.md'
         $agentsInfo = Get-Item -LiteralPath $agentsPath -ErrorAction SilentlyContinue
         # 빈 파일(0B)은 조용히 스킵 (내용 없는 --- 블록 방지)
@@ -198,7 +207,12 @@ try {
                         #   주입하면 오히려 원문 Read를 막으므로, 주입 대신 직접 Read를 안내한다
                         $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 존재 — UTF-8 디코딩 실패(다른 인코딩으로 보임)로 전문 미주입. 참조 시 파일을 직접 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요.")
                     } elseif ($agentsBytes -le $agentsMaxBytes) {
-                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) 전문 — 이 repo 프로젝트 가이드의 정본입니다(재Read 불필요). AGENTS.md에 관한 판단은 아래 전문을 근거로 하세요 — '관련 내용이 없다'고 말하려면 아래 전문 전체를 근거로만 단정하고, 앞부분만 보고 단정하지 마세요.`n---`n${agentsText}`n---")
+                        # 임박이면 전문 주입은 그대로 하고 꼬리에 경고만 덧붙인다 — 아직 상한 안이라
+                        #   가이드를 빼앗을 이유가 없고, 알리는 것만이 목적이다.
+                        $agentsSlack = $agentsMaxBytes - $agentsBytes
+                        $agentsNear = ($agentsBytes -ge ($agentsMaxBytes * $agentsNearRatio)) -or ($agentsSlack -lt $agentsNearSlack)
+                        $agentsNearMsg = if ($agentsNear) { " ⚠ 주입 상한 임박(${agentsBytes}/${agentsMaxBytes}B · 여유 ${agentsSlack}B) — 넘으면 이 전문이 목차로 대체됩니다. `pjc:record-project-fact`의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기세요." } else { "" }
+                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) 전문 — 이 repo 프로젝트 가이드의 정본입니다(재Read 불필요). AGENTS.md에 관한 판단은 아래 전문을 근거로 하세요 — '관련 내용이 없다'고 말하려면 아래 전문 전체를 근거로만 단정하고, 앞부분만 보고 단정하지 마세요.${agentsNearMsg}`n---`n${agentsText}`n---")
                     } else {
                         # 폴백: 전문 대신 헤딩 목차(§1~3단계) + Read 지시. 폴백 전환 사실을 명시(무신호 폴백 방지)
                         # 0열 코드 펜스(```) 블록을 먼저 제거해 펜스 안의 '# 주석' 줄이 섹션으로 오인되지 않게 한다
@@ -206,7 +220,7 @@ try {
                         $tocSource = [regex]::Replace($agentsText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
                         $agentsHeadings = @([regex]::Matches($tocSource, '(?m)^#{1,3} .+') | ForEach-Object { ($_.Value -replace '^#{1,3}\s*', '').Trim() })
                         $agentsToc = if ($agentsHeadings.Count -gt 0) { "섹션: " + ($agentsHeadings -join ' · ') + " " } else { "" }
-                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(16KB) 초과로 전문 미주입(자동 로드되지 않습니다). ${agentsToc}참조 시 offset/limit 없이 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요.")
+                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(${agentsMaxBytes}B) 초과로 전문 미주입(자동 로드되지 않습니다). ${agentsToc}참조 시 offset/limit 없이 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요. 해소하려면 `pjc:record-project-fact`의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기고 포인터만 남기세요.")
                     }
                 }
             }

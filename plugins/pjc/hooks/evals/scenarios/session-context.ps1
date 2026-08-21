@@ -75,6 +75,26 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scBig } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 16KB 초과 AGENTS.md 목차 폴백 (SC9)" -R $r -ExpectExit 0 -ExpectContains '섹션:'
 
+    # SC9a~SC9c: 주입 상한 임박 경고 (v1.190.0) — 초과한 뒤에 알리면 그 세션은 이미 가이드를 잃은 채 돈다.
+    #   임계는 llm-wiki 예산 신호와 같은 2축(95% OR 여유 500B)이라 세 케이스로 각 축과 음성을 고정한다.
+    # SC9a (양성·비율축): 상한의 95% 이상 — 전문은 그대로 주입되고 꼬리에 임박 경고가 붙는다.
+    $scNear = Join-Path $work 'sc-agents-near'; New-Item -ItemType Directory $scNear -Force | Out-Null
+    # '가나다라마 반복 채우기 줄'은 UTF-8 36B + CRLF 2B = 38B/줄. 헤더 2줄 30B + 410줄 = 15,610B(실측)
+    #   → 95.3%로 비율축만 걸리고 잔여축(여유 774B > 500B)은 안 걸린다. 두 축이 한 케이스에 겹치면
+    #   한 축을 지워도 통과해 임계 판정이 무력화되므로 일부러 갈라 둔다.
+    (@('# Near Guide', '## Section One') + (1..410 | ForEach-Object { '가나다라마 반복 채우기 줄' })) | Set-Content -Encoding UTF8 (Join-Path $scNear 'AGENTS.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scNear } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: AGENTS.md 주입 상한 임박 경고 — 비율축 (SC9a)" -R $r -ExpectExit 0 -ExpectContains '주입 상한 임박'
+    Assert-Case -Name "session-context: 임박이어도 전문은 그대로 주입 (SC9b)" -R $r -ExpectExit 0 -ExpectContains 'Near Guide' -ExpectNotContains '섹션:'
+
+    # SC9c (음성·델타): 상한의 80%대 — 어느 축도 안 걸려 경고가 없어야 한다.
+    #   이 케이스가 없으면 "항상 경고"로 바꿔도 SC9a가 통과해 임계 판정이 무력화된다.
+    $scFar = Join-Path $work 'sc-agents-far'; New-Item -ItemType Directory $scFar -Force | Out-Null
+    # 헤더 2줄 + 341줄 = 12,988B(실측, 79.3%) — 여유 3,396B로 두 축 모두 미달
+    (@('# Far Guide', '## Section One') + (1..341 | ForEach-Object { '가나다라마 반복 채우기 줄' })) | Set-Content -Encoding UTF8 (Join-Path $scFar 'AGENTS.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scFar } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 임박 미달이면 경고 없음 (SC9c)" -R $r -ExpectExit 0 -ExpectContains 'Far Guide' -ExpectNotContains '주입 상한 임박'
+
     # SC10: AGENTS.md 없는 기존 픽스처($scProj: plan만)는 AGENTS 문자열 무오염 — T1 acceptance ⓑ의 영구 그물.
     #   SC3(완전 빈 폴더)은 plan은 있고 AGENTS만 없는 이 경로를 고정 못 하므로 별도 케이스로 둔다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
