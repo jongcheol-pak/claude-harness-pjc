@@ -74,14 +74,16 @@ if (Test-HookSelected @('session-context')) {
     (@('---', 'type: x', '---', '# Big Guide', '## Section One') + (1..2500 | ForEach-Object { '가나다라마 반복 채우기 줄' }) + @('### Sub Section', '끝')) | Set-Content -Encoding UTF8 (Join-Path $scBig 'AGENTS.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scBig } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 16KB 초과 AGENTS.md 목차 폴백 (SC9)" -R $r -ExpectExit 0 -ExpectContains '섹션:'
+    # 초과 폴백은 "왜 안 들어왔는지"만 알리고 해소 경로를 안 줬다 — 그 상태로는 다음 세션도 같은 폴백을 받는다.
+    Assert-Case -Name "session-context: 초과 폴백에 이관 절차 안내 (SC9d)" -R $r -ExpectExit 0 -ExpectContains 'record-project-fact'
 
     # SC9a~SC9c: 주입 상한 임박 경고 (v1.190.0) — 초과한 뒤에 알리면 그 세션은 이미 가이드를 잃은 채 돈다.
-    #   임계는 llm-wiki 예산 신호와 같은 2축(95% OR 여유 500B)이라 세 케이스로 각 축과 음성을 고정한다.
-    # SC9a (양성·비율축): 상한의 95% 이상 — 전문은 그대로 주입되고 꼬리에 임박 경고가 붙는다.
+    #   임계는 llm-wiki 예산 신호와 같은 2축(95% OR 여유 500B)이지만, 16KB 예산에서는 **잔여축이 비율축에
+    #   항상 포함된다**(여유 500B 미만 = 15,885B 이상 = 이미 96.9%). 그래서 양성 케이스는 비율축 하나만
+    #   고정하고, 임계 자체가 살아 있는지는 아래 음성 케이스(SC9c)가 지킨다.
+    # SC9a (양성): 상한의 95% 이상 — 전문은 그대로 주입되고 꼬리에 임박 경고가 붙는다.
     $scNear = Join-Path $work 'sc-agents-near'; New-Item -ItemType Directory $scNear -Force | Out-Null
-    # '가나다라마 반복 채우기 줄'은 UTF-8 36B + CRLF 2B = 38B/줄. 헤더 2줄 30B + 410줄 = 15,610B(실측)
-    #   → 95.3%로 비율축만 걸리고 잔여축(여유 774B > 500B)은 안 걸린다. 두 축이 한 케이스에 겹치면
-    #   한 축을 지워도 통과해 임계 판정이 무력화되므로 일부러 갈라 둔다.
+    # '가나다라마 반복 채우기 줄'은 UTF-8 36B + CRLF 2B = 38B/줄. 헤더 2줄 30B + 410줄 = 15,610B(실측, 95.3%)
     (@('# Near Guide', '## Section One') + (1..410 | ForEach-Object { '가나다라마 반복 채우기 줄' })) | Set-Content -Encoding UTF8 (Join-Path $scNear 'AGENTS.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scNear } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: AGENTS.md 주입 상한 임박 경고 — 비율축 (SC9a)" -R $r -ExpectExit 0 -ExpectContains '주입 상한 임박'

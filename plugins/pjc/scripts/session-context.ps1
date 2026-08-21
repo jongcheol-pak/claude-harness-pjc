@@ -188,6 +188,9 @@ try {
         #   가이드를 잃은 채로 돈다. 실제로 402B 초과인 채 목차만 주입되던 구간이 있었다(대장 2026-08-19).
         # llm-wiki의 80% 선행 게이트는 두지 않는다 — 그 게이트는 예산이 작은 타입(source-stub 1800자)에서
         #   잔여 조건이 저비율을 잡는 것을 막으려는 것인데, 여기는 단일 예산 16KB라 잔여 500B가 곧 96.9%다.
+        # 잔여축은 이 예산에서 독립 발화하지 않는다 — 여유 500B 미만이면 15,885B 이상이라 비율축(15,565B)이
+        #   이미 참이다. 그래도 남기는 이유는 두 축이 llm-wiki 예산 신호의 한 벌이기 때문이다: 상한이 낮아지면
+        #   (예: 8KB로 조정) 잔여축이 먼저 걸리는 구간이 생기고, 그때 한쪽만 있으면 두 곳의 "임박"이 갈린다.
         $agentsNearRatio = 0.95
         $agentsNearSlack = 500
         $agentsPath = Join-Path $cwd 'AGENTS.md'
@@ -211,7 +214,9 @@ try {
                         #   가이드를 빼앗을 이유가 없고, 알리는 것만이 목적이다.
                         $agentsSlack = $agentsMaxBytes - $agentsBytes
                         $agentsNear = ($agentsBytes -ge ($agentsMaxBytes * $agentsNearRatio)) -or ($agentsSlack -lt $agentsNearSlack)
-                        $agentsNearMsg = if ($agentsNear) { " ⚠ 주입 상한 임박(${agentsBytes}/${agentsMaxBytes}B · 여유 ${agentsSlack}B) — 넘으면 이 전문이 목차로 대체됩니다. `pjc:record-project-fact`의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기세요." } else { "" }
+                        # 스킬 이름을 백틱으로 감싸지 않는다 — 이중 인용 문자열에서 백틱은 이스케이프 문자라
+                        #   출력에서 그대로 사라진다(`n·`t 등으로 오해석될 여지도 있다). 작은따옴표로 표기한다.
+                        $agentsNearMsg = if ($agentsNear) { " ⚠ 주입 상한 임박(${agentsBytes}/${agentsMaxBytes}B · 여유 ${agentsSlack}B) — 넘으면 이 전문이 목차로 대체됩니다. 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기세요." } else { "" }
                         $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) 전문 — 이 repo 프로젝트 가이드의 정본입니다(재Read 불필요). AGENTS.md에 관한 판단은 아래 전문을 근거로 하세요 — '관련 내용이 없다'고 말하려면 아래 전문 전체를 근거로만 단정하고, 앞부분만 보고 단정하지 마세요.${agentsNearMsg}`n---`n${agentsText}`n---")
                     } else {
                         # 폴백: 전문 대신 헤딩 목차(§1~3단계) + Read 지시. 폴백 전환 사실을 명시(무신호 폴백 방지)
@@ -220,7 +225,7 @@ try {
                         $tocSource = [regex]::Replace($agentsText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
                         $agentsHeadings = @([regex]::Matches($tocSource, '(?m)^#{1,3} .+') | ForEach-Object { ($_.Value -replace '^#{1,3}\s*', '').Trim() })
                         $agentsToc = if ($agentsHeadings.Count -gt 0) { "섹션: " + ($agentsHeadings -join ' · ') + " " } else { "" }
-                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(${agentsMaxBytes}B) 초과로 전문 미주입(자동 로드되지 않습니다). ${agentsToc}참조 시 offset/limit 없이 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요. 해소하려면 `pjc:record-project-fact`의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기고 포인터만 남기세요.")
+                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(${agentsMaxBytes}B) 초과로 전문 미주입(자동 로드되지 않습니다). ${agentsToc}참조 시 offset/limit 없이 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요. 해소하려면 pjc:record-project-fact의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기고 포인터만 남기세요.")
                     }
                 }
             }
