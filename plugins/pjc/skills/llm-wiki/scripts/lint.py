@@ -897,6 +897,7 @@ class SplitSession:
             datetime.date.today().isoformat() + "-presplit")
         self.backed_up = set()
         self.claimed = set()   # 이번 실행에서 어느 처방이 이미 맡은 파일 — claim() 참조
+        self.current_claims = set()   # **지금 도는 처방이** 맡은 것 — 격리·계약 강제의 단위
         self.actions = []      # (종류, 대상, 신설 파일 목록) — §4 7번 log 기록·사후 보고 공용
         self.notes = []        # 건너뛴 사유 등 보고용 1줄들
         self.failed = False
@@ -905,6 +906,15 @@ class SplitSession:
         """착수 직전 사본(§4 절차 1번·§8 `-presplit`). 실패하면 처방을 시작하지 않는다 —
         사본 없는 분할은 원복 수단이 없다. 같은 세션 2회째는 재복사하지 않는다(§8: 그 세션
         최초 상태 1부만 보존 — 재복사하면 이미 분할한 중간 상태가 원본 자리를 덮는다)."""
+        # 계약 강제: 백업하려는 파일은 이 처방이 맡은 것이어야 한다. 처방이 claim을 잊고
+        #  바로 쓰기로 들어가면 겹침 방지·원복 범위 보장이 조용히 무너지므로, 여기서 대신
+        #  claim해 보고 **다른 처방이 이미 맡았으면 예외**로 즉시 드러낸다(격리 루프가 잡아
+        #  `[SPLIT-FAIL]`로 보고한다). docstring 규율만으로는 위반이 침묵한다.
+        unclaimed = [p for p in paths if p not in self.current_claims]
+        if unclaimed and not self.claim(*unclaimed):
+            raise RuntimeError(
+                "claim 없이 백업 시도 — 다른 처방이 맡은 파일: "
+                + ", ".join(sorted(os.path.relpath(p, self.vault) for p in unclaimed)))
         if self.dry_run:
             return True
         for p in paths:
@@ -940,6 +950,7 @@ class SplitSession:
         if want & self.claimed:
             return False
         self.claimed |= want
+        self.current_claims |= want
         return True
 
     def restore(self, only=None):
@@ -1058,11 +1069,11 @@ def _run_prescriptions(ses):
     그 공유를 막으므로 두 오류 방향이 함께 닫힌다 -- claim()·restore(only=) 참조)."""
     for prescribe in PRESCRIPTIONS:
         before_actions = len(ses.actions)
-        before_claimed = set(ses.claimed)
+        ses.current_claims = set()      # 처방 단위 리셋 — 격리·계약 강제가 이 집합을 단위로 본다
         try:
             prescribe(ses)
         except Exception as e:      # 처방 구현의 어떤 실패든 나머지를 막지 않게(광의 포획 의도)
-            restored = ses.restore(only=ses.claimed - before_claimed)
+            restored = ses.restore(only=set(ses.current_claims))
             del ses.actions[before_actions:]
             ses.notes.append(
                 f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
