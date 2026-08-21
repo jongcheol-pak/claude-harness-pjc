@@ -339,31 +339,61 @@ def budget_split_suppressed(fm, chars):
     return judged > 0 and chars <= judged * (1 + BUDGET_REJUDGE_MARGIN)
 
 
-def is_feat_recipe_row(line):
-    """기능별 인덱스 유형의 feature/recipe 표 행 판정(§7-14 행수·§7-16 병기 공용 — 이중 구현 방지).
+def feat_row_name(line):
+    """기능별 인덱스 유형 행이면 **첫 컬럼의 표시 이름**을, 아니면 None을 돌려준다
+    (§7-14 행수·§7-16 병기 공용 — 이중 구현 방지. 판정과 이름 추출을 한 함수에 두는 이유는
+    §7-16이 따로 `split("|")[1]`을 쓰면 아래 옛 형상의 `\\|` 이스케이프에서 이름이 잘리기 때문).
     형상+대상 기반이라 상세 컬럼 alias 표기(`\\|feature]]` 권장 관례, schema §3)에 의존하지 않는다:
-    ① `|`로 시작 ② 첫 컬럼이 비어 있지 않은 평문(wikilink 미포함 — 프로젝트/기술 표처럼
-    첫 컬럼이 링크인 행은 제외(가이드·레시피는 통합 표에서 평문이라 포함), `\\|` 이스케이프로 split이 경로만 잡는 오탐 차단) ③ 행 내 wikilink
-    대상(정규화: 이스케이프 `\\`·`#`앵커 제거 — wikilink_targets와 동일 규칙)의 basename이
-    `feat-` 시작(단축 링크 포함)이거나 대상에 `40_guides/` 포함.
+    ① `|`로 시작 ② 첫 컬럼이 비어 있지 않은 **평문**(통합 표 — 현행) **또는 `40_guides/` wikilink**
+    (옛 `## 가이드 / 레시피` 섹션 형상). 프로젝트/기술 표처럼 첫 컬럼이 `20_projects/`·`30_knowledge/`
+    링크인 행은 종전대로 제외된다. `\\|` 이스케이프로 split이 경로만 잡는 오탐은 아래 재추출로 차단.
+    ③ 행 내 wikilink 대상(정규화: 이스케이프 `\\`·`#`앵커 제거 — wikilink_targets와 동일 규칙)의
+    basename이 `feat-` 시작(단축 링크 포함)이거나 대상에 `40_guides/` 포함.
 
     ③의 대상을 `40_guides/recipes/`가 아니라 `40_guides/` 전체로 두는 이유: 가이드·레시피가
     통합 표 하나로 합쳐지면서(`_rows_guides`) platform-bootstrap·ui-ux 행도 첫 컬럼이 평문이 됐다.
     좁은 조건을 두면 그 행들은 **형상은 맞는데 대상 조건에서 탈락**해 §7-16 병기 검사를 통째로
-    비껴간다 -- 종전에 그 사각을 메우던 「가이드 섹션 전용 병기 검사」는 `## 가이드 / 레시피`
-    섹션을 찾는데 그 섹션 자체가 없어졌으므로 폐지하고 이 검사에 흡수했다."""
+    비껴간다 -- 종전에 그 사각을 메우던 「가이드 섹션 전용 병기 검사」는 통합 표로 대체돼
+    폐지하고 이 검사에 흡수했다.
+
+    ②가 wikilink 첫 컬럼을 함께 받는 이유: **생성 마커가 없는 vault는 `## 가이드 / 레시피` 섹션을
+    그대로 유지**하고(wiki-schema §4의 마커 없는 vault 분기) 그 행은 첫 컬럼이 wikilink다. 평문만
+    받으면 그 vault의 guide 행은 폐지된 전용 검사에도 이 검사에도 걸리지 않아 **병기 무신호 구간**이
+    생긴다 -- 폐지가 만든 공백이라 하위호환 형상을 여기서 함께 받는다."""
     s = line.lstrip()
     if not s.startswith("|"):
-        return False
+        return None
     parts = s.split("|")
-    first = parts[1].strip() if len(parts) > 1 else ""
-    if not first or "[[" in first:
-        return False
+    if len(parts) < 2:
+        return None
+    first = parts[1].strip()
+    if "[[" in first:
+        # 옛 형상: 첫 컬럼이 통째로 wikilink라 `\|` 이스케이프에서 split이 잘린다 -- 원문에서 재추출.
+        m = re.match(r"\|\s*\[\[([^\]]+)\]\]", s)
+        if not m:
+            return None
+        inner = m.group(1)
+        target, _, alias = inner.partition("\\|")
+        if not alias:
+            target, _, alias = inner.partition("|")
+        target = target.replace("\\", "").split("#")[0].strip()
+        if "40_guides/" not in target:
+            return None
+        name = alias.strip() or target.split("/")[-1]
+    else:
+        if not first:
+            return None
+        name = first
     for m in re.findall(r"\[\[([^\]|]+)", s):
         t = m.replace("\\", "").split("#")[0].strip()
         if t.split("/")[-1].startswith("feat-") or "40_guides/" in t:
-            return True
-    return False
+            return name
+    return None
+
+
+def is_feat_recipe_row(line):
+    """기능별 인덱스 유형 행 여부(판정 본체는 feat_row_name — 이중 구현 방지)."""
+    return feat_row_name(line) is not None
 
 
 def feature_index_rows(text):
@@ -623,7 +653,7 @@ def _sub_index_text(name, rows):
 
 
 def build_index(vault, dry_run):
-    """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 7섹션으로 채우고, category별
+    """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 6섹션으로 채우고, category별
     sub-index를 함께 생성한다. 마커 밖은 한 글자도 바꾸지 않는다.
     반환: 종료 코드(0 정상 / 1 마커 없음·읽기·쓰기 실패)."""
     pages = scan_index_pages(vault)
@@ -1444,22 +1474,24 @@ def main():
         # 한/영 양방향 병기: 기능별 인덱스 유형 행(is_feat_recipe_row — 형상+대상 기반, alias 무관)의
         #  첫 컬럼(기능명)에 한글·영문 중 한쪽만 있으면 WARN. 한글 등록이든 영문 등록이든 양방향
         #  검색이 되게(wiki-schema §3·§7-16). 스캔은 sub-index까지 합친 itext 전체 — `## ` 소분할
-        #  뒤의 행도 누락하지 않는다(§4 보증). 첫 컬럼은 평문 행만 판정에 들어오므로(헬퍼 조건 ②)
-        #  split("|")[1] 추출이 이후 컬럼 wikilink의 \| 이스케이프에 영향받지 않는다.
+        #  뒤의 행도 누락하지 않는다(§4 보증). 이름 추출은 feat_row_name이 형상별로 처리한다 --
+        #  통합 표는 첫 컬럼 평문, 옛 `## 가이드 / 레시피` 섹션은 첫 컬럼 wikilink의 alias.
         han, lat = re.compile(r"[가-힣]"), re.compile(r"[A-Za-z]")
         for line in itext_feat.splitlines():   # 증상별 인덱스 섹션 제외본(위 §7-6) — 증상 관찰 표현 오탐 차단
-            if not is_feat_recipe_row(line):
+            name = feat_row_name(line)
+            if name is None:
                 continue
-            name = line.lstrip().split("|")[1].strip()
             has_h, has_l = bool(han.search(name)), bool(lat.search(name))
             if has_h != has_l:
                 warn(f"한/영 병기 누락: '{name}' ({'한글만' if has_h else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
 
         # 「가이드/레시피 섹션 가이드 행 병기」 검사는 **폐지**됐다 -- 위 병기 검사에 흡수.
         #  그 검사가 있던 이유는 `## 가이드 / 레시피` 섹션 행의 첫 컬럼이 wikilink라
-        #  is_feat_recipe_row(첫 컬럼 평문)가 형상 자체로 놓친다는 것이었는데, 그 섹션이
-        #  통합 표(index-guides.md, 첫 컬럼 평문)로 대체되고 대상 조건이 `40_guides/` 전체로
-        #  넓어져 **위 검사 하나가 전 행을 본다**. 폐지 이력은 wiki-schema §7 목록에 남긴다.
+        #  종전 판정(첫 컬럼 평문)이 형상 자체로 놓친다는 것이었는데, 그 섹션이 통합 표
+        #  (index-guides.md, 첫 컬럼 평문)로 대체되고 대상 조건이 `40_guides/` 전체로 넓어졌으며,
+        #  **옛 섹션 형상도 feat_row_name 조건 ②가 함께 받으므로** 위 검사 하나가 신·구 양쪽
+        #  전 행을 본다 — 마커 없는 vault가 옛 섹션을 유지해도 무신호 구간이 생기지 않는다.
+        #  폐지 이력은 wiki-schema §7 목록에 남긴다.
 
     elif "index.md" in unreadable:
         # 파일은 실재하는데 못 읽은 경우 — 처방이 부재와 정반대라(골격 생성 ✗ / 인코딩 복구 ✓)
@@ -1667,9 +1699,15 @@ def main():
     #  같은 폴더·같은 guide_kind만으로 하위를 특정하면 서로 무관한 독립 가이드끼리 하위로 잡힌다
     #  (실측: `40_guides/ui-ux/`에 분할 하위 2개와 무관한 가이드 1개가 함께 있다).
     #  그래서 **하위→허브 역링크**를 신호로 쓴다 — §2.6이 "하위 문서는 상단에 허브 복귀 링크"를
-    #  규정하므로, 그 링크를 가진 같은 폴더 guide만 하위 후보다. 독립 가이드는 그 링크가 없어
-    #  후보에 들지 않는다(오탐 0). 허브는 `## 하위 문서` 섹션 보유로 식별한다(파일명 고정이
-    #  아니므로 섹션 존재가 유일한 구조 신호다).
+    #  규정하므로, 그 링크를 가진 같은 폴더 guide만 하위 후보다. 독립 가이드는 대개 그 링크가
+    #  없어 후보에 들지 않는다(실 vault 399파일에서 신규 WARN 0).
+    #  **판정은 링크의 위치를 가리지 않는다** — 본문 어디서든 허브를 가리키면 후보다. §2.6은
+    #  "상단"을 규정하지만 상단의 경계(첫 `## ` 이전? N줄?)를 정의하지 않아, 그 선을 여기서
+    #  지어내면 규정에 없는 기준으로 미탐이 생긴다. 대가는 **같은 폴더의 독립 가이드가 허브를
+    #  단순 참조하면 후보로 잡히는 것**이고, 그때 나오는 WARN의 처방(목록에 올리거나 참조를
+    #  떼거나)은 어느 쪽도 파괴적이지 않다 — 미탐(하위가 목록 밖에 남는 것)이 더 비싸다.
+    #  허브는 `## 하위 문서` 섹션 보유로 식별한다(파일명 고정이 아니므로 섹션 존재가 유일한
+    #  구조 신호다).
     #  폴더별 guide 인덱스를 미리 만든다 — 허브마다 전체 pages(실측 399개)를 훑으면
     #  O(허브 x 전체 페이지)가 되는데, 후보는 애초에 같은 폴더 guide뿐이다.
     guides_by_folder = {}
@@ -1694,7 +1732,8 @@ def main():
             back = {x[:-3] if x.endswith(".md") else x for x in wikilink_targets(pages[other][2])}
             if hub_stem in back and other[:-3] not in listed:
                 warn(f"가이드 하위 문서 목록 누락: {hub}의 '## 하위 문서'에 {other} 미등재 "
-                     f"— 허브 복귀 링크는 있는데 목록에 없어 조회 홉 1이 깨진다 (wiki-schema §2.6)", hub)
+                     f"— 이 허브를 가리키는 링크는 있는데 목록에 없어 조회 홉 1이 깨진다 "
+                     f"(하위가 아니라 단순 참조면 그 링크를 떼거나 목록에 올린다, wiki-schema §2.6)", hub)
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
