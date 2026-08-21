@@ -47,7 +47,7 @@
 24. `[기계]` decision-log 정합
 25. `[기계]` 큐 잔량 집계 (INFO) + 형식 위반 (WARN) — **두 파일**(`pending.md`·`skill-feedback.md`)
 26. `[기계]` 위키 뒤처짐 — 허브 `synced_commit` ↔ 레포 HEAD 커밋 수 (INFO, fail-open)
-27. `[기계]` 가이드/레시피 섹션 가이드 행 한/영 병기 (§7-27 — recipe 제외, platform/ui-ux 가이드 alias)
+27. `[기계]` ~~가이드/레시피 섹션 가이드 행 한/영 병기~~ — **폐지**(§7-16에 흡수, wiki-schema §7-27). 실행하지 않는다 — 번호는 §7 목록과의 1:1 대조를 위해 자리만 유지한다(재사용 금지).
 28. `[기계]` 본문 릴리즈 마커 (§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
 29. `[기계]` 장식 이모지 검출 (§7-29 — 20_/30_/40_ 산문의 Emoji_Presentation 이모지, 코드펜스·lint-*·decision-log 제외)
 30. `[기계]` 이동·분리 도달 경로 정합 (§7-30 — ⓐ 허브 `## 아카이브` 포인터 ↔ `changes.md` 양방향 ⓑ `conventions.md` `## 하위 문서` 목록 ↔ 하위 파일 양방향. `--fix` 비대상)
