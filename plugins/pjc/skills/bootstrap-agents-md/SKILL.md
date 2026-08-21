@@ -36,8 +36,8 @@ Test-Path AGENTS.md
 True면 → 즉시 종료, plan-feature로 복귀(절대 규칙 2 — 덮어쓰기 금지).
 
 **`CLAUDE.md` 존재는 종료 조건이 아니다.** 두 파일은 역할이 다르다 — `CLAUDE.md`는 Claude 전용이고
-**대개 전역 `.gitignore`에 걸려 커밋되지 않는 로컬 파일**인 반면, `AGENTS.md`는 커밋되어 팀·다른 PC·
-다른 에이전트(Codex·Gemini 등)에게 전파되는 공용 가이드다. 종전처럼 `CLAUDE.md`가 있다고 종료하면
+`AGENTS.md`는 다른 에이전트(Codex·Gemini 등)도 읽는 공용 가이드다(환경에 따라 `CLAUDE.md`가 전역
+`.gitignore` 대상이라 커밋조차 안 되는 경우가 있다 — 실측 1건). 종전처럼 `CLAUDE.md`가 있다고 종료하면
 **그 프로젝트는 AGENTS.md를 영영 만들 수 없고**(hook이 직접 Write를 막고 이 스킬이 유일 경로이므로),
 가이드가 한 PC에만 남는다. 실제로 LLM WIKI vault에서 이 봉쇄가 관측됐다(v1.190.0).
 - 다만 `CLAUDE.md`가 있으면 **그 내용을 먼저 읽고** 중복 서술을 피한다 — 같은 사실을 두 파일에 적으면
