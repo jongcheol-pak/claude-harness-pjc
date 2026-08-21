@@ -1250,7 +1250,7 @@ def rollover_log(ses):
     st = budget_state("log.md", frontmatter(text), text)
     # **발동은 §7-2 조건이고, 목표치는 「얼마나 옮길지」다.** 둘을 섞어 목표치로 발동을
     #  판정하면 예산에 여유가 있는 파일까지 매번 롤오버한다(실측: 90.8%인 실 vault log.md가
-    #  임박 전인데 발동했다 — 목표 3,000자 기준으로는 언제나 「미해소」이기 때문).
+    #  아직 신호 대상이 아닌데 발동했다 — 목표 3,000자로 재면 언제나 「미해소」이기 때문).
     if not st or not (st.critical or st.over) or st.suppressed:
         return
     sec = section(text, "최근 변경")
