@@ -811,6 +811,9 @@ AUX_INDEX_GROUPS = [
     ("patterns", "index-patterns", "범용 패턴"),
     ("questions", "index-questions", "미해결 질문"),
 ]
+# 키 → (파일명, 제목) 조회용. 위 목록이 순서를 정하고 이 dict는 조회만 맡는다(같은 4항목을
+#  조회할 때마다 다시 순회하지 않게).
+AUX_INDEX_META = {k: (n, t) for k, n, t in AUX_INDEX_GROUPS}
 
 
 def build_index(vault, dry_run):
@@ -933,8 +936,7 @@ def build_index(vault, dry_run):
     #  발동하지 않는 vault에서도 프로젝트 테이블이 그 뒤로 밀린다(무회귀 위반).
     def _place(key):
         if key in moved:
-            title = dict((k, t) for k, _n, t in AUX_INDEX_GROUPS)[key]
-            name = dict((k, n) for k, n, _t in AUX_INDEX_GROUPS)[key]
+            name, title = AUX_INDEX_META[key]
             return ["> **덜어낸 구역**: %s는 [[%s|%s]]에 있다(본체 %d줄 임계)."
                     % (title, name, title, INDEX_BODY_LINES), ""]
         return groups[key]
