@@ -534,19 +534,28 @@ def _rows_features(pages, category):
 
 
 def _rows_guides(pages):
+    """guide 전 종류(recipe·platform-bootstrap·ui-ux)를 담는 **통합 표** 행.
+
+    종전에는 recipe가 두 곳에 실렸다 -- 본체 `## 기능별 인덱스`(첫 컬럼 평문 라벨)와
+    `## 가이드 / 레시피`(첫 컬럼 wikilink). 실 vault에서 그 중복이 106행이었고, 두 표의 형상이
+    달라 병기 검사도 §7-16(평문)과 §7-27(wikilink)로 갈려 있었다. 통합 표는 **첫 컬럼을 평문
+    라벨로 두고 마지막을 wikilink로** 잡아 한 표에 합친다 -- 행이 사라지지 않으면서(합집합
+    흡수) §7-16 하나가 전 행의 병기를 본다(§7-27이 폐지된 근거).
+
+    컬럼: `| 이름(평문 한/영) | 종류(guide_kind) | 플랫폼 | 상세(wikilink) |`
+      종전 기능별 인덱스의 `프로젝트` 컬럼은 recipe에서 항상 `(레시피)` 고정값이라 정보가 없었다 --
+      그 자리를 `guide_kind`가 대신해 종류 구분이 살아난다."""
     rows, pend = [], []
     for r in sorted(pages):
         fm, text = pages[r]
-        # recipe도 이 섹션에 남긴다 -- wiki-schema §4가 "recipe는 본체 기능별 인덱스·`## 가이드 /
-        #  레시피` 섹션에서 관리한다"로 **양쪽 등재**를 규정하고, §3(§7-27)도 이 섹션에 recipe 행이
-        #  있음을 전제한다(그 행만 병기 검사에서 빼는 규칙이 있다). 빼면 규약 위반이자 100행 소실이다.
         if fm.get("type") != "guide":
             continue
         lbl, todo = display_label(fm, text, None)
         if todo:
             pend.append(r)
-        rows.append("| [[%s\\|%s]] | %s | %s |"
-                    % (r[:-3], lbl, fm.get("guide_kind", "-"), fm.get("platform", "-")))
+        rows.append("| %s | %s | %s | [[%s\\|%s]] |"
+                    % (lbl, fm.get("guide_kind", "-"), fm.get("platform", "-"),
+                       r[:-3], fm.get("guide_kind", "guide")))
     return rows, pend
 
 
@@ -586,14 +595,23 @@ def _table(header, sep, rows, empty_note):
 
 
 def _sub_index_text(name, rows):
-    """category sub-index 파일 본문. 생성물이므로 머리말에 그 사실을 적는다 --
-    수기로 고쳐도 다음 `--build-index`가 덮어쓴다는 것을 파일 자신이 알려야 한다."""
-    title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
+    """sub-index 파일 본문. 생성물이므로 머리말에 그 사실을 적는다 --
+    수기로 고쳐도 다음 `--build-index`가 덮어쓴다는 것을 파일 자신이 알려야 한다.
+
+    헤딩은 세 파일 모두 `## 기능별 인덱스`로 통일한다 -- §7-14의 행수 측정
+    (`feature_index_rows`)과 §7-16의 병기 검사가 그 헤딩을 기준으로 스코프를 잡으므로,
+    guides만 다른 헤딩을 쓰면 그 파일의 행이 두 검사에서 통째로 빠진다."""
+    if name == "index-guides":
+        title = "가이드 / 레시피 인덱스"
+        lead = ("[[index|위키 인덱스]]에서 분할된 가이드·레시피 인덱스"
+                " (recipe·platform-bootstrap·ui-ux 전 종류를 한 표에 담는다)")
+    else:
+        title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
+        lead = "[[index|위키 인덱스]]에서 분할된 기능별 인덱스 (wiki-schema §4 2단계)"
     return ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
-            "# %s\n\n> [[index|위키 인덱스]]에서 분할된 기능별 인덱스"
-            " (wiki-schema §4 2단계). **이 파일은 `--build-index`가 생성한다 --"
+            "# %s\n\n> %s. **이 파일은 `--build-index`가 생성한다 --"
             " 수기 편집은 다음 생성에서 사라진다.**\n\n"
-            "## 기능별 인덱스\n\n%s\n") % (name, title, "\n".join(rows))
+            "## 기능별 인덱스\n\n%s\n") % (name, title, lead, "\n".join(rows))
 
 
 def build_index(vault, dry_run):
@@ -614,8 +632,9 @@ def build_index(vault, dry_run):
                        "아직 없음 -- %s project 페이지 0개" % cat)
         body.append("")
 
-    # 기능별 인덱스: 본체에는 recipe 행만 두고 프로젝트 feature는 category별 sub-index로 낸다
-    #  (§4 2단계 분할 -- 본체를 얇게 유지하면서 category 단위로 grep이 좁혀진다)
+    # 기능별 인덱스: 본체에는 sub-index 목록만 두고 실제 행은 전부 sub-index로 낸다.
+    #  project feature는 category별(§4 2단계)로, guide 전 종류는 index-guides로 간다 --
+    #  본체가 얇아야 절차 K가 매 코드 세션에서 이 파일을 여는 비용이 낮다(실측 39,747자였다).
     sub_links = []
     for cat, title in (("personal", "개인"), ("work", "업무")):
         rows, pend = _rows_features(pages, cat)
@@ -626,23 +645,24 @@ def build_index(vault, dry_run):
         sub_links.append("[[%s|%s 프로젝트 기능별 인덱스]]" % (name, title))
         sub_files[name] = _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
                                  "|------|--------|----------|------|", rows, "없음")
-    rows, pend = _rows_features(pages, None)
+    # 가이드·레시피 통합 표 -- 종전의 본체 recipe 행 + `## 가이드 / 레시피` 섹션을 한 표로 합친 것.
+    #  두 섹션이 같은 recipe를 각각 실어 실 vault에서 106행이 중복이었다(_rows_guides docstring).
+    guide_rows, pend = _rows_guides(pages)
     pending += pend
+    if guide_rows:
+        sub_links.append("[[index-guides|가이드 / 레시피 인덱스]]")
+        sub_files["index-guides"] = _table(
+            "| 이름 | 종류 | 플랫폼 | 상세 |", "|------|------|--------|------|",
+            guide_rows, "가이드 없음")
     body.append("## 기능별 인덱스")
     body.append("")
     if sub_links:
-        body.append("> **분할 인덱스**: 프로젝트 feature의 기능별 인덱스는 category별로 분할돼 "
-                    "있다 -- " + " · ".join(sub_links) + ". 아래에는 레시피(cross-stack) 행만 남는다.")
-        body.append("")
-    body += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
-                   "|------|--------|----------|------|", rows, "레시피 없음")
-    body.append("")
-
-    rows, pend = _rows_guides(pages)
-    pending += pend
-    body.append("## 가이드 / 레시피")
-    body.append("")
-    body += _table("| 가이드 | 종류 | 플랫폼 |", "|--------|------|--------|", rows, "가이드 없음")
+        body.append("> **분할 인덱스**: 기능별 인덱스 행은 전부 sub-index에 있다 -- "
+                    + " · ".join(sub_links) + ". 한/영 어느 쪽으로 grep해도 해당 sub-index "
+                    "한 줄에서 잡히므로, 본체를 통째로 읽지 말고 관련 sub-index만 연다.")
+    else:
+        body += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                       "|------|--------|----------|------|", [], "등재된 기능·가이드 없음")
     body.append("")
 
     rows, pend = _rows_knowledge(pages, "entity", "entity_name", "used_by")
