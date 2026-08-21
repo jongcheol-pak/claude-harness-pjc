@@ -239,6 +239,10 @@ task 1개가 통과하는 검증·리뷰 지점은 **19곳**이다 — Phase V�
 
 > `AGENTS.md` 「Hook 골든 회귀」가 지목하는 정본이다. **이 절을 읽지 않고 돌리면 완주하지 않는다** — 과거 "환경상 실행 불가"로 Phase F-2를 갈음한 사례들이 전부 이 절차를 쓰지 않은 것이다.
 
+### 검사 대상
+
+격리 USERPROFILE에서 hook 12종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context·session-end-cleanup)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
+
 ### 실행 모드 4종
 
 | 모드 | 명령 | 소요(실측 — 값마다 케이스 수 병기) | 용도 |
@@ -368,3 +372,15 @@ Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File
 - **판정 단위**: 수치는 값만 뽑아 비교한다(주어 문면이 파일마다 달라 값 앞 토큰까지 묶으면 정당한 차이에 ANCHOR FAIL이 난다). 판정일 도출 문장은 **완전 일치**(마크업·공백 포함)이고, 그 **문장 밖의 근거절은 대조하지 않는다** — 파일별로 다른 것이 정상이라 경계를 문장으로 고정해야 한다.
 - **무엇을 못 잡는가**: **두 파일이 같은 방향으로 함께 틀리는 경우**. 이 축은 정본을 기준으로 삼는 것이 아니라 둘의 일치만 보므로, 규칙 자체가 잘못돼도 양쪽이 같으면 통과한다(그것은 사람·리뷰어의 몫이다).
 - **축 순서**: `main()`의 axes 목록 **맨 뒤**에 둔다 — 위 「문서 표기 축」이 볼드·중복 축을 **서수**(*"여덟째·아홉째"*)로 가리키므로 중간에 끼우면 그 서술이 어긋난다.
+
+## llm-wiki 정합 셀프체크가 대조하는 것
+
+> `AGENTS.md` 「Build & Test」의 llm-wiki 셀프체크 항목이 지목하는 정본이다. 명령은 그쪽에 있고, **무엇을 대조하는지**가 여기다 — 세션마다 필요한 것은 *"언제 돌리는가"* 이고 이 목록은 **그 검사를 고칠 때** 필요하다.
+
+다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합 / **예산 단계 임계·판정 어휘**(SKILL 「예산 단계 신호」 표 ↔ lint 상수 4값+어휘 — 임계는 이 축 말고는 어디서도 대조되지 않는다) / **타입 열거 정합 11자리·12항목**(새 타입이 산문 열거에서 조용히 빠지는 사각 — ⓐ `lint.py` 타입 집합 상수 ↔ 문서 산문 8항목(§3 origin·confidence·§7-3·§7-9·§7-28·§7-29·§8 아카이브 예외·§11) ⓑ §2 타입 전 커버 4항목(목차 §2 행·계층 태그·templates 목차·§12 권장/비대상 분할 커버)) / **트리거 유일성**(예산 처방의 발동·종료·재발동·승급 조건이 wiki-schema §7-2와 SKILL 「예산 단계 신호」 표 밖에 서술되지 않는가 — 면제는 열거로만 두고 앵커별 매치 수를 함께 검증한다. 상세 리포트는 `--trigger-report`). 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
+
+## 검증 배치의 `Remove-Item` 오차단
+
+> `AGENTS.md` 「Build & Test」가 지목하는 정본이다. 검증 배치를 짜는 순간에만 필요한 함정이라 여기 둔다.
+
+- **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것**: Claude Code **PowerShell 도구의 내장 경로 보호**가 삭제 대상을 추출할 때 실제 대상이 아니라 **같은 명령 문자열 안 다른 위치의 따옴표 경로**를 집어 오차단한다(`Remove-Item on system path ''D:\Personal' is blocked.`). **하니스 hook과 무관하다** — `block-destructive`에 변형 11종을 stdin 주입한 결과 **11/11 exit 0**(차단 0건)이다. `Remove-Item` 토큰과 공백 포함 경로가 **한 명령 문자열에 함께 있을 때만** 발화하는 조합 의존이라 "가끔 막힌다"로 보인다. **회피**: 검증 배치를 **스크립트 파일로 분리**(가장 확실) · **Bash 도구** 사용 · 환경변수 제거는 `$env:NAME = ''` 대입.
