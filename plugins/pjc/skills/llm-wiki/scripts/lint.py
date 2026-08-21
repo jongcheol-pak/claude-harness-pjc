@@ -138,6 +138,10 @@ SPECIAL_BUDGET = {"log.md": 6000}
 #  "타입이 더 낮은 목표치를 따로 정하면 그쪽이 우선한다"). log.md만 §8이 3000자를 명시한다.
 #  나머지 타입은 목표치가 따로 없어 §7-2 종료 조건(발동이 풀릴 때까지)이 그대로 적용된다.
 BUDGET_ROLLOVER_TARGET = {"log.md": 3000}
+# log 롤오버가 목표보다 더 내려가는 여유 — §4 7번 기록 1줄이 처방 직후 append되므로,
+#  목표에 딱 맞춰 멈추면 그 줄 때문에 다음 실행이 또 롤오버한다(실측 3,081/3,000).
+#  기록 한 줄은 길어야 300자 남짓이라 그만큼을 미리 비워 수렴시킨다.
+LOG_ROLLOVER_SLACK = 300
 # project 허브 `## 최근 주요 변경` 유지 개수(§2.2·§8 — 3~5개 유지, 6번째가 생기면 롤오버).
 #  **문자 예산과 무관한 별개 트리거**다(§7-2 「별개 트리거」ⓑ) — budget_state를 타지 않는다.
 HUB_CHANGES_KEEP = 5
@@ -1204,6 +1208,125 @@ def _run_prescriptions(ses):
                 f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
                 f"{type(e).__name__} — 사본에서 {restored}개 파일 원복 후 다음 처방 계속")
             ses.failed = True
+
+
+def _split_items(section_text):
+    """`- [YYYY-MM-DD] …` 항목 목록을 **블록 단위**로 자른다(§2.8·§8 「항목 단위로만 자른다」).
+
+    다음 `- [` 직전까지가 한 블록이라 하위 불릿이 딸려 있어도 통째로 따라온다 — 규정이
+    말하는 「하위 불릿 포함 블록이 한 항목」이 이 split만으로 성립한다.
+    반환: (헤딩부, [(날짜, 블록 텍스트), ...]). 날짜가 없는 블록은 날짜 None으로 돌려준다."""
+    m = re.search(r"(?m)^(- \[\d{4}-\d{2}-\d{2})", section_text)
+    if not m:
+        return section_text, []
+    head, rest = section_text[:m.start()], section_text[m.start():]
+    out = []
+    for blk in re.split(r"(?m)^(?=- \[)", rest):
+        if not blk.strip():
+            continue
+        dm = re.match(r"- \[(\d{4}-\d{2}-\d{2})\]", blk)
+        out.append((parse_date(dm.group(1)) if dm else None, blk))
+    return head, out
+
+
+def _replace_section(text, heading, new_section):
+    """`## {heading}` 섹션을 통째로 교체한 사본. 섹션이 없으면 원본 그대로."""
+    sec = section(text, heading)
+    return text.replace(sec, new_section, 1) if sec else text
+
+
+def rollover_log(ses):
+    """log.md 월별 롤오버(§8) — 가장 오래된 항목부터 `90_archive/log/{YYYY-MM}.md`로 옮긴다.
+
+    목표치는 §8이 정한 3000자이며 §7-2 종료 조건보다 **낮은 쪽이 우선**한다(budget_state.target).
+    **항목을 쪼개지 않는다** — 한 항목이 커서 목표에 못 미치면 그것까지만 옮기고 멈춘다
+    (§7-2 정지 가드: 쪼개느니 약간 큰 게 낫다. 그 경우 검증을 실패로 보지 않는다)."""
+    path = os.path.join(ses.vault, "log.md")
+    if not os.path.exists(path):
+        return
+    text, bom, nl = _read_page(path)
+    if text is None:
+        return
+    st = budget_state("log.md", frontmatter(text), text)
+    # **발동은 §7-2 조건이고, 목표치는 「얼마나 옮길지」다.** 둘을 섞어 목표치로 발동을
+    #  판정하면 예산에 여유가 있는 파일까지 매번 롤오버한다(실측: 90.8%인 실 vault log.md가
+    #  임박 전인데 발동했다 — 목표 3,000자 기준으로는 언제나 「미해소」이기 때문).
+    if not st or not (st.critical or st.over) or st.suppressed:
+        return
+    sec = section(text, "최근 변경")
+    if not sec:
+        ses.notes.append("log.md에 `## 최근 변경` 섹션이 없어 롤오버 대상을 찾지 못했다")
+        return
+
+    head, items = _split_items(sec)
+    if not items:
+        return
+    # 오래된 것부터 옮긴다. 목표에 닿으면 멈추되, 마지막 한 항목은 남긴다 --
+    #  전부 옮기면 `## 최근 변경`이 비어 "최근"을 볼 수 없다(§8은 이동이지 비우기가 아니다).
+    #
+    # **목표보다 LOG_ROLLOVER_SLACK만큼 더 내려간다**: 이 처방이 끝나면 §4 7번 기록 1줄이
+    #  log.md에 append되는데, 목표에 딱 맞춰 멈추면 그 한 줄 때문에 **다음 실행이 또
+    #  롤오버한다**(실측 3,081/3,000). 매 실행 조금씩 도는 것을 막으려면 기록 몫을 미리 비운다.
+    goal = max(0, st.target - LOG_ROLLOVER_SLACK)
+    moving, kept = [], list(items)
+    while len(kept) > 1:
+        trial = head + "".join(b for _d, b in kept[1:])
+        if len(text) - len(sec) + len(trial) <= goal:
+            break
+        moving.append(kept.pop(0))
+    if not moving:
+        return
+
+    targets = {}
+    undated = 0
+    for d, blk in moving:
+        if d is None:
+            undated += 1
+            continue      # 날짜 없는 항목은 어느 월로 갈지 정할 수 없다 -- 남긴다
+        targets.setdefault("%04d-%02d" % (d.year, d.month), []).append(blk)
+    if undated:
+        ses.notes.append(f"log.md 날짜 없는 항목 {undated}건은 월을 정할 수 없어 남겼다")
+
+    arch_dir = os.path.join(ses.vault, "90_archive", "log")
+    paths = [path] + [os.path.join(arch_dir, "%s.md" % m) for m in sorted(targets)]
+    if not ses.claim(*paths) or not ses.backup(path, *paths[1:]):
+        ses.notes.append("log.md 롤오버 건너뜀 — 대상 파일을 다른 처방이 맡았거나 사본 실패")
+        return
+
+    # kept는 pop으로 이미 moving과 배타적이다 — 다시 걸러내면 같은 날짜·같은 본문 블록이
+    #  둘 있을 때 남길 것을 잘못 지운다(중복 항목은 실제로 있을 수 있다).
+    new_sec = head + "".join(b for _d, b in kept)
+    new_text = _replace_section(text, "최근 변경", new_sec)
+    # 아카이브 인덱스(검색 진입점, §8). **키워드 요약은 판단이라 자동 경로가 쓸 수 없다** --
+    #  건수·기간이라는 결정론 형식으로 대신한다(진입점이 아예 없는 것보다 검색에 쓰인다).
+    for mon in sorted(targets):
+        blocks = targets[mon]
+        af = os.path.join(arch_dir, "%s.md" % mon)
+        if os.path.exists(af):
+            prev, abom, anl = _read_page(af)
+            body = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+        else:
+            abom, anl = False, nl
+            body = "# %s log\n\n" % mon + "".join(blocks)
+        if not ses.dry_run:
+            os.makedirs(arch_dir, exist_ok=True)
+            _atomic_write(af, body, abom, anl)
+        dates = sorted(d for d, _b in moving if d and "%04d-%02d" % (d.year, d.month) == mon)
+        line = "- %s.md: %d건 (%s~%s)" % (mon, len(blocks), dates[0], dates[-1])
+        idx_sec = section(new_text, "아카이브 인덱스")
+        if idx_sec:
+            rx = re.compile(r"(?m)^- %s\.md:.*$" % re.escape(mon))
+            new_idx = rx.sub(line, idx_sec) if rx.search(idx_sec) else idx_sec.rstrip("\n") + "\n" + line + "\n\n"
+            new_text = _replace_section(new_text, "아카이브 인덱스", new_idx)
+        else:
+            new_text = new_text.rstrip("\n") + "\n\n## 아카이브 인덱스\n\n" + line + "\n"
+    if not ses.dry_run:
+        _atomic_write(path, new_text, bom, nl)
+    ses.record("롤오버", "log.md",
+               ["90_archive/log/%s.md" % m for m in sorted(targets)])
+
+
+PRESCRIPTIONS.append(rollover_log)
 
 
 def auto_split(vault, dry_run):

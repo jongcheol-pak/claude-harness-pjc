@@ -824,6 +824,7 @@ TRIGGER_ALLOWLIST = [
     #  budget_state/budget_resolved가 §7-2 네 조건의 유일 구현이므로 그 docstring은 조건의
     #  형태를 말하지 않으면 근거가 성립하지 않는다(임계 상수 근거 주석과 같은 예외 축).
     (LINT_PY, "없으면 None(그 경우 종료 기준은", "budget_state target 필드 설명 — §7-2 종료 조건 구현"),
+    (LINT_PY, "**발동은 §7-2 조건이고, 목표치는", "rollover_log 발동 판정 — §7-2 조건을 정의하지 않고 인용"),
     (LINT_PY, "**「예산 이내」가 종료 기준이 아니다**", "budget_resolved docstring — §7-2 종료 조건 정본 인용"),
 
     # ── §2.2 항목 개수 축 — `## 최근 주요 변경`은 6번째 항목이 트리거이고 문자 예산과 무관하다
