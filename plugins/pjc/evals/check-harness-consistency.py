@@ -230,6 +230,9 @@ def check_batch_trigger_sync():
     ⓑ를 넣은 이유는 v1.188.0이 고친 결함이 **수치가 아니라 판정 기준 문장**에 있었기
     때문이다(부기 형식 미인식). 수치만 대조하면 그 문장이 한쪽에서만 지워져도 통과한다.
     """
+    # `section()`을 쓰지 않는다 — 그 헬퍼는 `#` 헤딩으로 절을 자르는데, 대조 대상인 ⓪과
+    # Step 1 ③은 **리스트 불릿**이라 헤딩 경계가 없다. 파일 전체에서 정규식으로 찾는 편이
+    # 정확하고(각 패턴이 파일당 1회만 출현함을 확인했다) 절 제목 변경에도 견딘다.
     canon_p = os.path.join(ROOT, "plugins", "pjc", "skills", "implement-task",
                            "references", "phase-f-detail.md")
     copy_p = os.path.join(ROOT, "plugins", "pjc", "skills", "plan-feature", "SKILL.md")
@@ -237,10 +240,10 @@ def check_batch_trigger_sync():
 
     # 판정 기준 문장 — 두 파일에서 같은 정규식으로 떼어 낸다.
     rule_rx = re.compile(r"그 날짜는 \*\*그 항목이 마지막으로 판정된 날\*\*이다 —.*?둘 다 없으면 등록일이다\.")
-    # 착수 조건 수치 — 문면 표현이 파일마다 달라(«100건을 넘고» / «100건을 넘고») 값만 뽑는다.
+    # 착수 조건 수치 — 값 앞 주어가 파일마다 다르므로(정본 «`## 대기`가» / 복제
+    # «`▶ 현행 잔량` 앵커가») 그 토큰까지 묶지 않고 값만 뽑는다. 묶으면 정당한
+    # 문면 차이에 ANCHOR FAIL이 난다.
     num_rxs = (
-        # 주어가 파일마다 다르다(정본 «`## 대기`가» / 복제 «`▶ 현행 잔량` 앵커가») —
-        # 값 앞 토큰까지 묶으면 정당한 문면 차이에 ANCHOR FAIL이 난다.
         ("잔량 임계", r"\*\*(\d+)건을 넘고"),
         ("신규 등재분", r"신규 등재분」이 (\d+)건 이상"),
         ("날짜", r"최솟값이 (\d+)일을 넘거나"),
@@ -251,8 +254,10 @@ def check_batch_trigger_sync():
     for label, rx in num_rxs:
         a, b = re.search(rx, canon), re.search(rx, copy)
         if not a or not b:
+            # 양쪽 다 결측일 수 있다 — 한쪽만 지목하면 나머지가 함께 바뀐 것을 놓친다.
+            missing = ", ".join(n for n, v in (("정본", a), ("복제", b)) if not v)
             die("착수 조건 동기 — %s 문면을 %s에서 찾지 못함(절 표기가 바뀌었는지 확인)"
-                % (label, "정본" if not a else "복제"))
+                % (label, missing))
         if a.group(1) != b.group(1):
             issues.append("착수 조건 동기 %s — 정본 %s / 복제 %s (phase-f-detail ⓪ ↔ plan-feature Step 1 ③)"
                           % (label, a.group(1), b.group(1)))
@@ -260,8 +265,9 @@ def check_batch_trigger_sync():
 
     ra, rb = rule_rx.search(canon), rule_rx.search(copy)
     if not ra or not rb:
+        missing = ", ".join(n for n, v in (("정본", ra), ("복제", rb)) if not v)
         die("착수 조건 동기 — 판정일 도출 문장을 %s에서 찾지 못함(문면이 바뀌었는지 확인)"
-            % ("정본" if not ra else "복제"))
+            % missing)
     if ra.group(0) != rb.group(0):
         issues.append("착수 조건 동기 판정일 도출 문장 — 두 파일의 문면이 다르다"
                       "(공통 리터럴은 완전 일치여야 한다 — 근거절은 대조 대상이 아니다)")
