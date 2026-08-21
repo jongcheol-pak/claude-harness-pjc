@@ -922,13 +922,20 @@ class SplitSession:
                 return False
         return True
 
-    def restore(self):
-        """이 세션이 만든 `-presplit` 사본으로 되돌린다(§4 절차 5번 원복).
+    def restore(self, only=None):
+        """`-presplit` 사본으로 되돌린다(§4 절차 5번 원복).
+
+        **`only`로 범위를 좁힌다 — 기본값(None)은 세션 전체다.** 처방 단위 격리에서는
+        **그 처방이 새로 백업한 파일만** 전달한다: `backed_up`은 세션 내내 누적되므로
+        전체를 되돌리면 **이미 성공한 앞 처방의 파일까지 원본으로 돌아가는데**, `actions`는
+        그 처방분을 그대로 들고 있어 log 기록·최종 보고가 "수행했다"고 말한다(파일 상태와
+        보고가 어긋난다).
+
         **사본이 있는 파일만** 되돌린다 — 신설된 하위 파일은 사본이 없으므로 그대로 남는데,
         그것은 다음 실행이 같은 이름으로 덮어쓰거나 사람이 지울 수 있는 상태다(원본이
         온전하면 유실이 아니다). 반환: 되돌린 파일 수."""
         n = 0
-        for p in sorted(self.backed_up):
+        for p in sorted(self.backed_up if only is None else only):
             src = os.path.join(self.backup_dir, os.path.relpath(p, self.vault))
             if not os.path.exists(src):
                 continue
@@ -1012,8 +1019,34 @@ def _append_log_entries(vault, lines):
 
 
 # 처방 목록 — 각 처방이 자기 함수를 정의하고 여기 등록한다(auto_split의 순차 호출 대상).
-#  등록 순서가 곧 수행 순서다. 비어 있으면 `--auto-split`은 "수행 대상 없음"으로 끝난다.
+#  등록 순서가 곧 수행 순서이며 「롤오버 먼저, 산문 분리 나중」이다: 롤오버가 먼저 줄여 두면
+#  산문 분리가 손댈 페이지가 줄어든다(project 허브가 그렇다). 플러그인·전략 클래스로
+#  추상화하지 않는다 -- 이 목록이 곧 처방 목록이고, 새 처방은 여기 한 줄이 는다.
+#  비어 있으면 `--auto-split`은 "수행 대상 없음"으로 끝난다.
 PRESCRIPTIONS = []
+
+
+def _run_prescriptions(ses):
+    """처방 목록을 **격리해서** 순차 실행한다(본 실행·재점검 공용).
+
+    두 호출 지점이 같은 안전 계약을 쓰게 하려고 함수로 묶었다 -- 한쪽에만 try/except를
+    두면 재점검 경로에서 처방 하나가 죽을 때 그때까지의 수행분이 보고 없이 사라진다.
+
+    격리는 「계속 진행」이 아니라 **「되돌리고 계속」**이다: 중간에 죽은 처방은 파일을 절반만
+    고쳤을 수 있어, **그 처방이 이번에 새로 백업한 파일만** 원복한 뒤 다음 처방으로 간다
+    (앞선 성공분까지 되돌리면 actions·보고와 파일 상태가 어긋난다 -- restore(only=) 참조)."""
+    for prescribe in PRESCRIPTIONS:
+        before_actions = len(ses.actions)
+        before_backed = set(ses.backed_up)
+        try:
+            prescribe(ses)
+        except Exception as e:      # 처방 구현의 어떤 실패든 나머지를 막지 않게(광의 포획 의도)
+            restored = ses.restore(only=ses.backed_up - before_backed)
+            del ses.actions[before_actions:]
+            ses.notes.append(
+                f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
+                f"{type(e).__name__} — 사본에서 {restored}개 파일 원복 후 다음 처방 계속")
+            ses.failed = True
 
 
 def auto_split(vault, dry_run):
@@ -1039,25 +1072,7 @@ def auto_split(vault, dry_run):
         for f in cleanup_failed:
             print(f"  [정리 실패] {f}")
 
-    # 처방 목록. 플러그인·전략 클래스로 추상화하지 않는다 -- 이 순차 호출 목록이 곧 처방
-    #  목록이고, 새 처방은 여기 한 줄이 는다. 순서는 「롤오버 먼저, 산문 분리 나중」이다:
-    #  롤오버가 먼저 줄여 두면 산문 분리가 손댈 페이지가 줄어든다(project 허브가 그렇다).
-    #
-    # **처방 단위 격리**: 한 처방의 예외가 나머지를 죽이지 않게 한다(`apply_fixes`의
-    #  `[FIX-FAIL]` 선례). 다만 격리는 「계속 진행」이 아니라 「되돌리고 계속」이다 --
-    #  중간에 죽은 처방은 파일을 절반만 고쳤을 수 있어, 그 세션 사본으로 원복한 뒤에야
-    #  다음 처방이 온전한 상태에서 시작한다.
-    for prescribe in PRESCRIPTIONS:
-        before = len(ses.actions)
-        try:
-            prescribe(ses)
-        except Exception as e:      # 처방 구현의 어떤 실패든 나머지를 막지 않게(광의 포획 의도)
-            restored = ses.restore()
-            del ses.actions[before:]
-            ses.notes.append(
-                f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
-                f"{type(e).__name__} — 사본에서 {restored}개 파일 원복 후 다음 처방 계속")
-            ses.failed = True
+    _run_prescriptions(ses)
 
     if not ses.actions:
         print("== --auto-split: 수행 대상 없음 ==")
@@ -1081,9 +1096,9 @@ def auto_split(vault, dry_run):
         # 재점검은 처방 **목록 전체**를 다시 돌린다 -- 특정 처방을 이름으로 부르지 않는 이유는
         #  그 이름이 이 골격에 없는 심볼에 대한 계약이 되어(정의 위치가 후속 task) 목록과
         #  이름 참조 두 곳이 갈리기 때문이다. 이미 해소된 처방은 발동 조건이 거짓이라 no-op다.
+        #  본 실행과 **같은 격리 계약**을 쓴다(_run_prescriptions 공용).
         recheck = SplitSession(vault, dry_run)
-        for prescribe in PRESCRIPTIONS:
-            prescribe(recheck)
+        _run_prescriptions(recheck)
         if recheck.actions:
             ses.notes.append(
                 f"log 기록 후 재점검에서 {len(recheck.actions)}건 추가 수행(§4 7번 기록 미생성 — 연쇄 차단)")
