@@ -896,6 +896,7 @@ class SplitSession:
             vault, "90_archive", "backup",
             datetime.date.today().isoformat() + "-presplit")
         self.backed_up = set()
+        self.claimed = set()   # 이번 실행에서 어느 처방이 이미 맡은 파일 — claim() 참조
         self.actions = []      # (종류, 대상, 신설 파일 목록) — §4 7번 log 기록·사후 보고 공용
         self.notes = []        # 건너뛴 사유 등 보고용 1줄들
         self.failed = False
@@ -922,20 +923,38 @@ class SplitSession:
                 return False
         return True
 
+    def claim(self, *paths):
+        """이번 실행에서 이 파일들을 **이 처방이 맡는다**고 선언한다. 이미 다른 처방이 맡은
+        파일이 하나라도 있으면 False — 그 처방은 이번 실행에서 그 대상을 건너뛴다.
+
+        **한 실행에서 한 파일은 한 처방만 손댄다**는 규칙이 필요한 이유: 사본은 §8상
+        「그 세션 최초 상태 1부」뿐이라 **중간 상태로 되돌릴 방법이 없다.** 두 처방이 같은
+        파일을 순차로 고치면(등록 순서 주석이 예고하는 project 허브가 그렇다) 뒤 처방이
+        실패할 때 되돌릴 수 있는 것은 「첫 처방 이전」뿐이고, 그러면 이미 보고된 앞 처방의
+        결과가 조용히 사라진다. 겹침을 애초에 막으면 원복 범위가 언제나 명확하다.
+
+        건너뛴 대상은 **다음 실행이 처리한다** — 처방은 멱등이고 `--auto-split`은 반복
+        실행이 전제이므로(수렴하면 「수행 대상 없음」), 한 실행에서 다 끝내려다 원복 불가
+        상태를 만드는 것보다 낫다."""
+        want = set(paths)
+        if want & self.claimed:
+            return False
+        self.claimed |= want
+        return True
+
     def restore(self, only=None):
         """`-presplit` 사본으로 되돌린다(§4 절차 5번 원복).
 
         **`only`로 범위를 좁힌다 — 기본값(None)은 세션 전체다.** 처방 단위 격리에서는
-        **그 처방이 새로 백업한 파일만** 전달한다: `backed_up`은 세션 내내 누적되므로
-        전체를 되돌리면 **이미 성공한 앞 처방의 파일까지 원본으로 돌아가는데**, `actions`는
-        그 처방분을 그대로 들고 있어 log 기록·최종 보고가 "수행했다"고 말한다(파일 상태와
-        보고가 어긋난다).
+        **그 처방이 맡은 파일만**(`claim`) 전달한다. `claim`이 겹침을 막으므로 그 집합은
+        다른 처방의 결과를 담지 않는다 — 과잉 복원(앞 처방 결과까지 되돌림)도, 미복원
+        (이미 백업돼 차집합에서 빠진 공유 파일)도 생기지 않는다.
 
         **사본이 있는 파일만** 되돌린다 — 신설된 하위 파일은 사본이 없으므로 그대로 남는데,
         그것은 다음 실행이 같은 이름으로 덮어쓰거나 사람이 지울 수 있는 상태다(원본이
         온전하면 유실이 아니다). 반환: 되돌린 파일 수."""
         n = 0
-        for p in sorted(self.backed_up if only is None else only):
+        for p in sorted(self.backed_up if only is None else (only & self.backed_up)):
             src = os.path.join(self.backup_dir, os.path.relpath(p, self.vault))
             if not os.path.exists(src):
                 continue
@@ -1033,15 +1052,17 @@ def _run_prescriptions(ses):
     두면 재점검 경로에서 처방 하나가 죽을 때 그때까지의 수행분이 보고 없이 사라진다.
 
     격리는 「계속 진행」이 아니라 **「되돌리고 계속」**이다: 중간에 죽은 처방은 파일을 절반만
-    고쳤을 수 있어, **그 처방이 이번에 새로 백업한 파일만** 원복한 뒤 다음 처방으로 간다
-    (앞선 성공분까지 되돌리면 actions·보고와 파일 상태가 어긋난다 -- restore(only=) 참조)."""
+    고쳤을 수 있어, **그 처방이 맡은 파일만**(claim) 원복한 뒤 다음 처방으로 간다. 원복 범위를
+    claim으로 잡는 이유는 `backup()`이 멱등이라 「새로 백업한 것」으로 재면 **앞 처방이 이미
+    백업해 둔 공유 파일이 차집합에서 빠져 반쯤 고쳐진 채 남기** 때문이다(claim이 애초에
+    그 공유를 막으므로 두 오류 방향이 함께 닫힌다 -- claim()·restore(only=) 참조)."""
     for prescribe in PRESCRIPTIONS:
         before_actions = len(ses.actions)
-        before_backed = set(ses.backed_up)
+        before_claimed = set(ses.claimed)
         try:
             prescribe(ses)
         except Exception as e:      # 처방 구현의 어떤 실패든 나머지를 막지 않게(광의 포획 의도)
-            restored = ses.restore(only=ses.backed_up - before_backed)
+            restored = ses.restore(only=ses.claimed - before_claimed)
             del ses.actions[before_actions:]
             ses.notes.append(
                 f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
