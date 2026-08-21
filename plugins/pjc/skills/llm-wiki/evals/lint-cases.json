@@ -1,5 +1,5 @@
 {
-  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 31개 lint 검사 중 대표 19개(깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(기능별 인덱스 §7-16 + 가이드 alias §7-27)·시크릿·decision 어휘·index 부재·feature 각주·구현 방법 섹션 부재·updated 누락·관련 파일 섹션/경로(§7-21)·각주/관련 파일 경로 실존(§7-20·21)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산+신선도 면제(§7-2·§7-3)·이동·분리 도달 경로(§7-30ⓐ정·ⓑ역)·작업 규약 미마이그레이션(§7-31)). 나머지는 Deferred(plan 참조).",
+  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 31개 lint 검사 중 대표 19개(깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(§7-16 — 통합 표의 가이드 행까지 포함. 종전의 가이드 섹션 전용 검사는 폐지돼 여기에 흡수됐다)·시크릿·decision 어휘·index 부재·feature 각주·구현 방법 섹션 부재·updated 누락·관련 파일 섹션/경로(§7-21)·각주/관련 파일 경로 실존(§7-20·21)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산+신선도 면제(§7-2·§7-3)·이동·분리 도달 경로(§7-30 ⓐ정·ⓑ역·ⓒ인덱스 등록·ⓓguide 허브↔하위)·작업 규약 미마이그레이션(§7-31)). 나머지는 Deferred(plan 참조).",
   "cases": [
     {
       "fixture": "clean",
@@ -266,12 +266,51 @@
       "rationale": "§7-2 펜스 제외 판정(v1.125.0, v1.138.0 문자 수 전환) — ui-ux 가이드(약 2650자, 대부분 펜스 내부)는 펜스 제외 유효 문자가 예산(6000자) 미만이라 WARN이 없어야 하고(펜스 제외가 빠지면 전체 문자로 WARN 가능성), recipe(약 10324자, 대부분 펜스)는 펜스 포함 판정 유지로 예산(8500자) 초과 WARN이 나야 한다(recipe까지 제외되면 keywords 미검출 FAIL). expect_absent '코드 펜스'는 이 fixture에서 제외 병기 문구가 나올 경로가 없음을 이중 가드(우발 확대 적용 검출). expect_absent를 파일명이 아니라 '예산 초과: <경로>' 정밀 문자열로 둔 이유 — 60일+ 신선도 INFO가 파일명을 언급해도 노화 FAIL하지 않게"
     },
     {
+      "fixture": "guide-hub-orphan",
+      "expect_keywords": [
+        "가이드 하위 문서 목록 깨짐",
+        "demo-sub-gone",
+        "가이드 하위 문서 목록 누락",
+        "demo-sub-unlisted"
+      ],
+      "expect_absent": [
+        "40_guides/ui-ux/standalone.md 미등재",
+        "demo-sub-listed.md 미등재"
+      ],
+      "rationale": "§7-30 ⓓ 양방향 — guide 허브의 `## 하위 문서` 목록 ↔ 하위 파일. convention과 달리 guide는 파일명 접두 규약이 없어 폴더+guide_kind만으로 하위를 특정하면 **무관한 독립 가이드가 오탐**된다(실 vault의 `40_guides/ui-ux/`가 정확히 그 구성이다 — 분할 하위 2 + 독립 1). 그래서 **하위→허브 역링크**를 신호로 쓴다(§2.6이 요구하는 복귀 링크). expect_absent 2건이 그 경계를 고정하는 **음성 축**이다 — `standalone`(복귀 링크 없음)과 `demo-sub-listed`(정상 등재)가 잡히면 판정이 무너진 것이다. 깨진 링크 ERR은 §7-1이 같은 지점을 별도로 잡는 것이라 이 케이스의 축이 아니다"
+    },
+    {
+      "fixture": "index-unregistered",
+      "expect_keywords": [
+        "인덱스 등록 누락",
+        "40_guides/ui-ux/orphan-guide",
+        "30_knowledge/patterns/orphan-pattern",
+        "30_knowledge/tech/orphan-tech"
+      ],
+      "expect_absent": [
+        "인덱스 등록 누락: 30_knowledge/tech/reg-tech"
+      ],
+      "rationale": "§7-30 ⓒ 양성 검출 — guide·entity·concept이 index·sub-index 어느 곳에도 안 실리면 WARN. 종전에는 이 셋에 대응 검사가 없어 분할·신설 페이지가 등록에서 빠져도 기계가 침묵했다(§7-8 고아 검사는 위키 **어디서든** 링크되면 통과해 '인덱스 밖' 상태를 못 잡는다). expect_absent의 reg-tech는 **음성 축**이다 — 정상 등재된 entity까지 잡으면 타입 전체를 오탐하는 것이므로, 양성과 함께 고정해야 검사 경계가 살아 있다"
+    },
+    {
       "fixture": "no-hanyeong-guide",
       "expect_keywords": [
-        "가이드 한/영 병기 누락",
+        "한/영 병기 누락",
         "도움말 스타일 안내"
       ],
-      "rationale": "§7-27 양성 검출(v1.125.0, deferred 2026-07-19 종결) — platform/ui-ux 가이드 행 alias가 한글 전용이면 WARN. 기존 검증은 실vault 1회성 스모크뿐이라 리팩터로 §7-27이 무력화돼도 eval이 못 잡던 공백을 회귀 그물로 승격(guide-kind-missing의 유일 가이드 행은 recipe라 §7-27 미발화)"
+      "rationale": "§7-16 양성 검출 — **통합 표 형상의 ui-ux 행**이 한글 전용 라벨이면 WARN. 이 케이스가 지키는 것은 `is_feat_recipe_row`의 대상 조건이 `40_guides/` 전체를 포괄한다는 것이다: 조건을 `40_guides/recipes/`로 되돌리면 이 행이 탈락해 즉시 FAIL한다. 종전에는 가이드 섹션 전용 검사(첫 컬럼 wikilink 형상)가 이 축을 봤으나 통합 표로 그 섹션이 사라지면서 폐지됐고, 검사 주체만 바뀌었을 뿐 「ui-ux 가이드의 병기가 검사된다」는 보증은 끊기지 않는다(v1.125.0에 deferred 2026-07-19로 세운 회귀 그물의 승계)"
+    },
+    {
+      "fixture": "legacy-guide-section",
+      "expect_keywords": [
+        "한/영 병기 누락",
+        "옛 섹션 도움말 가이드"
+      ],
+      "expect_absent": [
+        "변경 로그",
+        "옛 섹션 레시피"
+      ],
+      "rationale": "§7-16 양성 검출 — **마커 없는 vault의 옛 `## 가이드 / 레시피` 섹션 형상**(첫 컬럼이 wikilink, 표시 이름은 alias)에서도 한글 전용 라벨이 WARN을 낸다. 통합 표 전용 판정(첫 컬럼 평문)만 남기면 이 형상은 폐지된 가이드 섹션 전용 검사에도 §7-16에도 걸리지 않아 **병기 무신호 구간**이 생긴다 — wiki-schema §4가 마커 없는 vault에 그 섹션 유지를 지시하므로 실재하는 경로다. red 실증: `feat_row_name` 조건 ②에서 wikilink 첫 컬럼 분기를 빼면 이 행이 탈락해 WARN 0건으로 FAIL한다. `expect_absent`는 반대 축 **둘**이다 — `옛 섹션 레시피`는 §3 「하위호환 형상」 ①(`40_guides/recipes/` 제외 — 마커 없는 vault에서 recipe는 `## 기능별 인덱스`에도 실려 이중 요구가 된다)을 고정한다: alias가 한글 전용인데도 WARN이 나지 않아야 하고, 그 제외를 지우면 WARN이 생겨 FAIL한다. `변경 로그`는 또 다른 반대 축이다 — 같은 형상이라도 대상이 `40_guides/`가 아닌 행(프로젝트·기술·참조 표)은 종전대로 제외돼야 하므로, 그 한글 전용 라벨이 WARN에 등장하면 과탐이다."
     },
     {
       "fixture": "release-marker",
@@ -480,7 +519,7 @@
     {
       "fixture": "build-index",
       "build_index": true,
-      "why": "FR-9/FR-10 인덱스 생성 — frontmatter에서 7섹션을 파생하고, index_label이 있으면 그것을 라벨로 쓰고 없으면 폴백(feature_name·concept_name·H1)에 「미역이관」 표식을 붙인다. 마커 밖 텍스트(증상별 인덱스·참조·머리말)는 한 글자도 바뀌지 않아야 하고, --dry-run은 파일을 쓰지 않아야 한다(파일 바이트 앞뒤 비교로 실증). Edge Case 실증: 라벨 원천이 전무하면 「(라벨 미정)」으로 두고 파일명에서 지어내지 않으며, `90_archive/` 하위 페이지는 인덱스에 오르지 않는다. recipe는 **두 섹션 모두**에 등재된다(wiki-schema §4 「recipe는 본체 기능별 인덱스·`## 가이드 / 레시피` 섹션에서 관리한다」 · §7-27도 이 섹션에 recipe 행이 있음을 전제) — 한쪽에서 빼면 실 vault 기준 100행이 사라진다(T13 실측).",
+      "why": "FR-9/FR-10 인덱스 생성 — frontmatter에서 6섹션을 파생하고, index_label이 있으면 그것을 라벨로 쓰고 없으면 폴백(feature_name·concept_name·H1)에 「미역이관」 표식을 붙인다. 마커 밖 텍스트(증상별 인덱스·참조·머리말)는 한 글자도 바뀌지 않아야 하고, --dry-run은 파일을 쓰지 않아야 한다(파일 바이트 앞뒤 비교로 실증). Edge Case 실증: 라벨 원천이 전무하면 「(라벨 미정)」으로 두고 파일명에서 지어내지 않으며, `90_archive/` 하위 페이지는 인덱스에 오르지 않는다. guide는 종류를 가리지 않고 **`index-guides.md` 통합 표 한 곳**에 등재된다 — 종전에는 recipe가 본체 기능별 인덱스와 `## 가이드 / 레시피` 두 곳에 실려 실 vault 기준 106행이 중복이었다. 통합 표는 첫 컬럼이 평문 라벨이라 §7-16 하나가 전 행의 병기를 보고, 행은 합집합으로 흡수돼 사라지지 않는다(변경 전후 링크 집합 대조 소실 0 실증). **이 fixture의 index.md는 생성 *전* 스냅샷이다** — 마커 안이 치환 안내 한 줄이고 expect_absent가 그 문구의 소멸로 치환을 실증한다. 그래서 bare lint(생성 없이 검사)를 돌리면 §7-30 ⓒ 등록 누락 WARN이 정상적으로 난다 — **이 fixture에 plain lint 케이스를 추가하지 말 것**(생성 전 상태를 위반으로 세게 된다).",
       "expect_keywords": [
         "== --build-index --dry-run (파일 미변경) ==",
         "20_projects/personal/demo/feat-beta.md",
@@ -502,7 +541,11 @@
         "라벨 미역이관 4건",
         "30_knowledge/patterns/no-label.md",
         "(라벨 미정)",
-        "| [[40_guides/recipes/demo-recipe\\|데모 레시피 (demo recipe)]] | recipe | cross |"
+        "---- index-guides.md ----",
+        "| 데모 레시피 (demo recipe) | recipe | cross | [[40_guides/recipes/demo-recipe\\|recipe]] |",
+        "| 데모 부트스트랩 (demo bootstrap) | platform-bootstrap | cli | [[40_guides/platforms/demo-bootstrap\\|platform-bootstrap]] |",
+        "| 데모 UI 가이드 (demo ui guide) | ui-ux | windows-desktop | [[40_guides/ui-ux/demo-uiux\\|ui-ux]] |",
+        "기능별 인덱스 행은 전부 sub-index에 있다"
       ],
       "expect_absent": [
         "(여기는 --build-index가 통째로 치환한다)",
@@ -526,6 +569,7 @@
       "build_index_write": true,
       "why": "생성기의 **실제 쓰기 경로**. dry-run만 돌리면 파일을 만드는 분기가 한 번도 실행되지 않는다 — index.md 마커 치환·sub-index 파일 생성·마커 밖 보존을 쓰인 파일에서 다시 읽어 대조하고, 원자적 치환의 임시 파일(`.tmp-build-index`)이 남지 않는지도 본다.",
       "expect_sub_files": [
+        "index-guides.md",
         "index-personal.md"
       ],
       "expect_outside_preserved": [
@@ -553,7 +597,7 @@
         "## 개인 프로젝트",
         "## 미해결 질문",
         "아직 없음 -- personal project 페이지 0개",
-        "레시피 없음",
+        "등재된 기능·가이드 없음",
         "entity 없음",
         "미해결 질문 없음"
       ],

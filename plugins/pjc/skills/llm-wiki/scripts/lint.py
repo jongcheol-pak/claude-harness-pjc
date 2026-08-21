@@ -165,6 +165,12 @@ EMOJI_EXEMPT_TYPES = {"decision-log"}
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
 INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 수
 
+# 인덱스 등록 검사 대상(§7-30 ⓒ) — feature는 종전대로 §7-6이 따로 보므로 여기서 제외한다.
+#  이 세 타입은 등록처가 서로 다른데(guide→index-guides / entity→기술 스택 지식 / concept→범용 패턴)
+#  **어느 곳에도 안 실리면 조회 경로 밖**이 된다는 점은 같다. convention·question은 대상이 아니다 —
+#  전자는 §7-30 ⓑ가 허브 목록으로, 후자는 §7-23이 미해결 질문 표로 각각 도달성을 이미 본다.
+INDEXED_TYPES = {"guide", "entity", "concept"}
+
 # 시크릿 의심 패턴 (wiki-schema §7-22 — 키워드+구분자+실값 형태만 매칭하는 보수 정규식.
 #  post-write-checks.ps1의 민감정보 검사를 위키용으로 이식하되, IP 주소는 산문 오탐 위험으로 제외).
 #  password/api key 계열은 값을 캡처해 아래 secret_value_is_codey()로 "코드 꼴" 값을 걸러낸다.
@@ -333,25 +339,75 @@ def budget_split_suppressed(fm, chars):
     return judged > 0 and chars <= judged * (1 + BUDGET_REJUDGE_MARGIN)
 
 
-def is_feat_recipe_row(line):
-    """기능별 인덱스 유형의 feature/recipe 표 행 판정(§7-14 행수·§7-16 병기 공용 — 이중 구현 방지).
+def feat_row_name(line):
+    """기능별 인덱스 유형 행이면 **첫 컬럼의 표시 이름**을, 아니면 None을 돌려준다
+    (§7-14 행수·§7-16 병기 공용 — 이중 구현 방지. 판정과 이름 추출을 한 함수에 두는 이유는
+    §7-16이 따로 `split("|")[1]`을 쓰면 아래 옛 형상의 `\\|` 이스케이프에서 이름이 잘리기 때문).
     형상+대상 기반이라 상세 컬럼 alias 표기(`\\|feature]]` 권장 관례, schema §3)에 의존하지 않는다:
-    ① `|`로 시작 ② 첫 컬럼이 비어 있지 않은 평문(wikilink 미포함 — 프로젝트/기술/가이드 표처럼
-    첫 컬럼이 링크인 행은 제외, `\\|` 이스케이프로 split이 경로만 잡는 오탐 차단) ③ 행 내 wikilink
-    대상(정규화: 이스케이프 `\\`·`#`앵커 제거 — wikilink_targets와 동일 규칙)의 basename이
-    `feat-` 시작(단축 링크 포함)이거나 대상에 `40_guides/recipes/` 포함."""
+    ① `|`로 시작 ② 첫 컬럼이 비어 있지 않은 **평문**(통합 표 — 현행) **또는 `40_guides/` wikilink**
+    (옛 `## 가이드 / 레시피` 섹션 형상 — 단 `40_guides/recipes/`는 이중 요구 방지로 제외, 아래 참조).
+    프로젝트/기술 표처럼 첫 컬럼이 `20_projects/`·`30_knowledge/` 링크인 행은 종전대로 제외된다.
+    `\\|` 이스케이프로 split이 경로만 잡는 오탐은 아래 재추출로 차단.
+    ③ 행 내 wikilink 대상(정규화: 이스케이프 `\\`·`#`앵커 제거 — wikilink_targets와 동일 규칙)의
+    basename이 `feat-` 시작(단축 링크 포함)이거나 대상에 `40_guides/` 포함.
+
+    ③의 대상을 `40_guides/recipes/`가 아니라 `40_guides/` 전체로 두는 이유: 가이드·레시피가
+    통합 표 하나로 합쳐지면서(`_rows_guides`) platform-bootstrap·ui-ux 행도 첫 컬럼이 평문이 됐다.
+    좁은 조건을 두면 그 행들은 **형상은 맞는데 대상 조건에서 탈락**해 §7-16 병기 검사를 통째로
+    비껴간다 -- 종전에 그 사각을 메우던 「가이드 섹션 전용 병기 검사」는 통합 표로 대체돼
+    폐지하고 이 검사에 흡수했다.
+
+    ②가 wikilink 첫 컬럼을 함께 받는 이유: **생성 마커가 없는 vault는 `## 가이드 / 레시피` 섹션을
+    그대로 유지**하고(wiki-schema §4의 마커 없는 vault 분기) 그 행은 첫 컬럼이 wikilink다. 평문만
+    받으면 그 vault의 guide 행은 폐지된 전용 검사에도 이 검사에도 걸리지 않아 **병기 무신호 구간**이
+    생긴다 -- 폐지가 만든 공백이라 하위호환 형상을 여기서 함께 받는다."""
     s = line.lstrip()
     if not s.startswith("|"):
-        return False
+        return None
     parts = s.split("|")
-    first = parts[1].strip() if len(parts) > 1 else ""
-    if not first or "[[" in first:
-        return False
+    if len(parts) < 2:
+        return None
+    first = parts[1].strip()
+    if "[[" in first:
+        # 옛 형상: 첫 컬럼이 통째로 wikilink라 `\|` 이스케이프에서 split이 잘린다 -- 원문에서 재추출.
+        m = re.match(r"\|\s*\[\[([^\]]+)\]\]", s)
+        if not m:
+            return None
+        inner = m.group(1)
+        target, _, alias = inner.partition("\\|")
+        if not alias:
+            target, _, alias = inner.partition("|")
+        target = target.replace("\\", "").split("#")[0].strip()
+        if "40_guides/" not in target:
+            return None
+        if "40_guides/recipes/" in target:
+            # 폐지된 §7-27이 recipe를 명시 제외했던 이유를 승계한다(규정 정본: wiki-schema §3
+            #  「하위호환 형상」 ①) -- 마커 없는 vault에서 recipe는 `## 기능별 인덱스`(첫 컬럼 평문)와
+            #  `## 가이드 / 레시피`(첫 컬럼 wikilink) **두 곳**에 실리므로, 여기서 받으면 같은
+            #  페이지에 병기 WARN이 두 번 난다(이중 요구). 평문 쪽 행이 이미 대상이라 커버는 유지된다.
+            return None
+        # ⚠ 하위호환 수용은 **full path 형상 한정**이다(wiki-schema §3 「하위호환 형상」 ②) --
+        #  단축 wikilink(`[[help-style|...]]`)는 대상이 `40_guides/`를 담지 않아 여기서도 조건 ③에서도
+        #  탈락한다. 폐지된 §7-27은 섹션 스코프라 경로를 보지 않고 잡았으므로 그만큼 커버가 좁다.
+        #  닫으려면 링크 대상을 페이지 집합에 해소해야 하는데(이 함수는 행 문자열만 받는다) 실 vault
+        #  가이드 행은 전부 full path라 실사용 근거 없이 구조를 바꾸지 않는다.
+        #  실측(재현 가능): vault에서 `git show 53d036e^:index.md`의 `## 가이드 / 레시피` 섹션 링크 행
+        #  **111행 중 첫 컬럼 full path 111 / 단축 0**.
+        name = alias.strip() or target.split("/")[-1]
+    else:
+        if not first:
+            return None
+        name = first
     for m in re.findall(r"\[\[([^\]|]+)", s):
         t = m.replace("\\", "").split("#")[0].strip()
-        if t.split("/")[-1].startswith("feat-") or "40_guides/recipes/" in t:
-            return True
-    return False
+        if t.split("/")[-1].startswith("feat-") or "40_guides/" in t:
+            return name
+    return None
+
+
+def is_feat_recipe_row(line):
+    """기능별 인덱스 유형 행 여부(판정 본체는 feat_row_name — 이중 구현 방지)."""
+    return feat_row_name(line) is not None
 
 
 def feature_index_rows(text):
@@ -483,7 +539,7 @@ def scan_index_pages(vault):
 def display_label(fm, text, fallback_field):
     """표시 라벨 -> (라벨, 미역이관 여부). `index_label`이 1차 원천이고, 없으면 타입별 폴백
     원천(feature_name·entity_name 등) 또는 H1을 쓴다. 폴백값은 인덱스 표기 규약(한/영 병기
-    §7-16·§7-27)을 만족하지 못할 수 있으므로 「미역이관」으로 표시해 구분한다 --
+    §7-16)을 만족하지 못할 수 있으므로 「미역이관」으로 표시해 구분한다 --
     파일명에서 라벨을 유도하지는 않는다(추측 금지)."""
     lbl = fm.get("index_label", "").strip()
     if lbl:
@@ -511,42 +567,47 @@ def _rows_projects(pages, category):
 
 
 def _rows_features(pages, category):
-    """category에 속한 feature 행. category가 None이면 recipe(가이드 레시피) 행만."""
+    """category(personal|work)에 속한 project feature 행.
+
+    종전에는 `category=None`으로 recipe 행도 냈으나, 가이드·레시피가 통합 표로 옮겨가면서
+    (`_rows_guides`) 그 호출부가 사라져 feature 전용이 됐다."""
     rows, pend = [], []
     for r in sorted(pages):
         fm, text = pages[r]
-        if category is None:
-            if fm.get("type") != "guide" or fm.get("guide_kind") != "recipe":
-                continue
-            lbl, todo = display_label(fm, text, None)
-            proj = "(레시피)"
-        else:
-            if fm.get("type") != "feature" or fm.get("category") != category:
-                continue
-            lbl, todo = display_label(fm, text, "feature_name")
-            proj = fm.get("project", "-")
+        if fm.get("type") != "feature" or fm.get("category") != category:
+            continue
+        lbl, todo = display_label(fm, text, "feature_name")
         if todo:
             pend.append(r)
-        kind = "recipe" if category is None else "feature"
-        rows.append("| %s | %s | %s | [[%s\\|%s]] |"
-                    % (lbl, fm.get("platform", "-"), proj, r[:-3], kind))
+        rows.append("| %s | %s | %s | [[%s\\|feature]] |"
+                    % (lbl, fm.get("platform", "-"), fm.get("project", "-"), r[:-3]))
     return rows, pend
 
-
 def _rows_guides(pages):
+    """guide 전 종류(recipe·platform-bootstrap·ui-ux)를 담는 **통합 표** 행.
+
+    종전에는 recipe가 두 곳에 실렸다 -- 본체 `## 기능별 인덱스`(첫 컬럼 평문 라벨)와
+    `## 가이드 / 레시피`(첫 컬럼 wikilink). 실 vault에서 그 중복이 106행이었고, 두 표의 형상이
+    달라 병기 검사도 첫 컬럼 평문용과 wikilink용으로 갈려 있었다(후자는 이 통합으로 폐지). 통합 표는 **첫 컬럼을 평문
+    라벨로 두고 마지막을 wikilink로** 잡아 한 표에 합친다 -- 행이 사라지지 않으면서(합집합
+    흡수) §7-16 하나가 전 행의 병기를 본다 -- 단 그것이 성립하려면 `is_feat_recipe_row`의
+    대상 조건이 `40_guides/` 전체를 포괄해야 한다(그 함수 docstring 참조). 두 변경은 한 벌이며,
+    조건을 넓히지 않은 채 표만 합치면 platform-bootstrap·ui-ux 행이 어느 검사에도 안 걸린다.
+
+    컬럼: `| 이름(평문 한/영) | 종류(guide_kind) | 플랫폼 | 상세(wikilink) |`
+      종전 기능별 인덱스의 `프로젝트` 컬럼은 recipe에서 항상 `(레시피)` 고정값이라 정보가 없었다 --
+      그 자리를 `guide_kind`가 대신해 종류 구분이 살아난다."""
     rows, pend = [], []
     for r in sorted(pages):
         fm, text = pages[r]
-        # recipe도 이 섹션에 남긴다 -- wiki-schema §4가 "recipe는 본체 기능별 인덱스·`## 가이드 /
-        #  레시피` 섹션에서 관리한다"로 **양쪽 등재**를 규정하고, §3(§7-27)도 이 섹션에 recipe 행이
-        #  있음을 전제한다(그 행만 병기 검사에서 빼는 규칙이 있다). 빼면 규약 위반이자 100행 소실이다.
         if fm.get("type") != "guide":
             continue
         lbl, todo = display_label(fm, text, None)
         if todo:
             pend.append(r)
-        rows.append("| [[%s\\|%s]] | %s | %s |"
-                    % (r[:-3], lbl, fm.get("guide_kind", "-"), fm.get("platform", "-")))
+        rows.append("| %s | %s | %s | [[%s\\|%s]] |"
+                    % (lbl, fm.get("guide_kind", "-"), fm.get("platform", "-"),
+                       r[:-3], fm.get("guide_kind", "guide")))
     return rows, pend
 
 
@@ -586,18 +647,27 @@ def _table(header, sep, rows, empty_note):
 
 
 def _sub_index_text(name, rows):
-    """category sub-index 파일 본문. 생성물이므로 머리말에 그 사실을 적는다 --
-    수기로 고쳐도 다음 `--build-index`가 덮어쓴다는 것을 파일 자신이 알려야 한다."""
-    title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
+    """sub-index 파일 본문. 생성물이므로 머리말에 그 사실을 적는다 --
+    수기로 고쳐도 다음 `--build-index`가 덮어쓴다는 것을 파일 자신이 알려야 한다.
+
+    헤딩은 세 파일 모두 `## 기능별 인덱스`로 통일한다 -- §7-14의 행수 측정
+    (`feature_index_rows`)과 §7-16의 병기 검사가 그 헤딩을 기준으로 스코프를 잡으므로,
+    guides만 다른 헤딩을 쓰면 그 파일의 행이 두 검사에서 통째로 빠진다."""
+    if name == "index-guides":
+        title = "가이드 / 레시피 인덱스"
+        lead = ("[[index|위키 인덱스]]에서 분할된 가이드·레시피 인덱스"
+                " (recipe·platform-bootstrap·ui-ux 전 종류를 한 표에 담는다)")
+    else:
+        title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
+        lead = "[[index|위키 인덱스]]에서 분할된 기능별 인덱스 (wiki-schema §4 2단계)"
     return ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
-            "# %s\n\n> [[index|위키 인덱스]]에서 분할된 기능별 인덱스"
-            " (wiki-schema §4 2단계). **이 파일은 `--build-index`가 생성한다 --"
+            "# %s\n\n> %s. **이 파일은 `--build-index`가 생성한다 --"
             " 수기 편집은 다음 생성에서 사라진다.**\n\n"
-            "## 기능별 인덱스\n\n%s\n") % (name, title, "\n".join(rows))
+            "## 기능별 인덱스\n\n%s\n") % (name, title, lead, "\n".join(rows))
 
 
 def build_index(vault, dry_run):
-    """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 7섹션으로 채우고, category별
+    """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 6섹션으로 채우고, category별
     sub-index를 함께 생성한다. 마커 밖은 한 글자도 바꾸지 않는다.
     반환: 종료 코드(0 정상 / 1 마커 없음·읽기·쓰기 실패)."""
     pages = scan_index_pages(vault)
@@ -614,8 +684,9 @@ def build_index(vault, dry_run):
                        "아직 없음 -- %s project 페이지 0개" % cat)
         body.append("")
 
-    # 기능별 인덱스: 본체에는 recipe 행만 두고 프로젝트 feature는 category별 sub-index로 낸다
-    #  (§4 2단계 분할 -- 본체를 얇게 유지하면서 category 단위로 grep이 좁혀진다)
+    # 기능별 인덱스: 본체에는 sub-index 목록만 두고 실제 행은 전부 sub-index로 낸다.
+    #  project feature는 category별(§4 2단계)로, guide 전 종류는 index-guides로 간다 --
+    #  본체가 얇아야 절차 K가 매 코드 세션에서 이 파일을 여는 비용이 낮다(실측 39,747자였다).
     sub_links = []
     for cat, title in (("personal", "개인"), ("work", "업무")):
         rows, pend = _rows_features(pages, cat)
@@ -626,23 +697,24 @@ def build_index(vault, dry_run):
         sub_links.append("[[%s|%s 프로젝트 기능별 인덱스]]" % (name, title))
         sub_files[name] = _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
                                  "|------|--------|----------|------|", rows, "없음")
-    rows, pend = _rows_features(pages, None)
+    # 가이드·레시피 통합 표 -- 종전의 본체 recipe 행 + `## 가이드 / 레시피` 섹션을 한 표로 합친 것.
+    #  두 섹션이 같은 recipe를 각각 실어 실 vault에서 106행이 중복이었다(_rows_guides docstring).
+    guide_rows, pend = _rows_guides(pages)
     pending += pend
+    if guide_rows:
+        sub_links.append("[[index-guides|가이드 / 레시피 인덱스]]")
+        sub_files["index-guides"] = _table(
+            "| 이름 | 종류 | 플랫폼 | 상세 |", "|------|------|--------|------|",
+            guide_rows, "가이드 없음")
     body.append("## 기능별 인덱스")
     body.append("")
     if sub_links:
-        body.append("> **분할 인덱스**: 프로젝트 feature의 기능별 인덱스는 category별로 분할돼 "
-                    "있다 -- " + " · ".join(sub_links) + ". 아래에는 레시피(cross-stack) 행만 남는다.")
-        body.append("")
-    body += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
-                   "|------|--------|----------|------|", rows, "레시피 없음")
-    body.append("")
-
-    rows, pend = _rows_guides(pages)
-    pending += pend
-    body.append("## 가이드 / 레시피")
-    body.append("")
-    body += _table("| 가이드 | 종류 | 플랫폼 |", "|--------|------|--------|", rows, "가이드 없음")
+        body.append("> **분할 인덱스**: 기능별 인덱스 행은 전부 sub-index에 있다 -- "
+                    + " · ".join(sub_links) + ". 한/영 어느 쪽으로 grep해도 해당 sub-index "
+                    "한 줄에서 잡히므로, 본체를 통째로 읽지 말고 관련 sub-index만 연다.")
+    else:
+        body += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                       "|------|--------|----------|------|", [], "등재된 기능·가이드 없음")
     body.append("")
 
     rows, pend = _rows_knowledge(pages, "entity", "entity_name", "used_by")
@@ -998,6 +1070,8 @@ def main():
     open_questions = 0                        # 미해결 question 집계 (〃)
     dep_count = 0                             # deprecated 페이지 집계 (wiki-schema §7-17)
     feat_files, index_feat_links = set(), set()
+    indexed_files = {}     # typ -> {무확장 경로} — guide·entity·concept 인덱스 등록 검사(§7-30 ⓒ)
+    stale60 = []           # (경과일, 경로) — 60일+ 미편집 집계용(§7-3)
     link_targets = set()   # 위키 전체에서 링크된 대상 (고아 검사용)
     pages = {}             # rel -> (frontmatter, type, 본문 텍스트)
     unreadable = set()     # 읽기 실패한 rel 경로 — 부재와 구분해 진단하기 위해 실패 지점에서 기록한다
@@ -1216,7 +1290,7 @@ def main():
                 if days >= 90 and typ not in ARCHIVE_EXEMPT_TYPES:
                     infos.append(f"90일+ 미편집(아카이브 후보): {r} ({days}일)")
                 elif days >= 60:
-                    infos.append(f"60일+ 미편집(confidence 하락 후보): {r} ({days}일)")
+                    stale60.append((days, r))
 
         # 네이밍 규칙
         base = os.path.basename(r)
@@ -1293,8 +1367,17 @@ def main():
                          f"위키 본문은 평문 유지 (schema §7-29)", r)
 
         # 90_archive/ 하위(백업 사본 포함)는 인덱스 동기 대상이 아님 — §8 "백업 파일이 WARN을 만들지 않는다"
-        if typ == "feature" and not r.startswith("90_archive/"):
-            feat_files.add(r[:-3])
+        #  등록처는 타입마다 다르다: feature는 category sub-index, guide는 index-guides 통합 표,
+        #  entity는 `## 기술 스택 지식`, concept은 `## 범용 패턴`. 어디에 실리든 인덱스 전체 텍스트
+        #  (index.md + sub-index 합산)에서 링크되면 등록으로 본다 — "올바른 등록처인가"까지는 보지
+        #  않는다(그건 생성기가 결정론으로 배치한다). 여기서 막는 것은 **어느 인덱스에도 없어 조회
+        #  경로 밖에 남는 것**이며, §7-8 고아 검사는 위키 어디서든 링크되면 통과하므로 "인덱스에는
+        #  없지만 다른 페이지가 링크한" 상태를 놓친다.
+        if not r.startswith("90_archive/"):
+            if typ == "feature":
+                feat_files.add(r[:-3])
+            elif typ in INDEXED_TYPES:
+                indexed_files.setdefault(typ, set()).add(r[:-3])
 
     # index.md: 분할 신호(줄수/행수) + sub-index 목록 정합 + 기능별 인덱스 ↔ feature 동기화
     sub_files = sorted(glob.glob(os.path.join(glob.escape(vault), "index-*.md")))  # L-3: vault만 escape('index-*'의 *는 패턴 유지)
@@ -1332,7 +1415,10 @@ def main():
 
         # 분할 신호 (wiki-schema §4) — sub 합치기 전 index.md 본체로 측정
         idx_lines = itext.count("\n") + 1
-        feat_rows = feature_index_rows(itext)
+        #  행수는 증상별 인덱스를 뺀 본문으로 잰다 -- 그 섹션 행은 첫 컬럼이 평문이고 해법
+        #  컬럼이 `40_guides/`를 가리켜 is_feat_recipe_row에 걸리는데, 기능 등재가 아니라
+        #  증상->해법 매핑이라 분할 판정의 분모가 아니다(§7-6·§7-16이 쓰는 제외와 같은 이유).
+        feat_rows = feature_index_rows(without_section(itext, "증상별 인덱스"))
         if idx_lines > INDEX_BODY_LINES or feat_rows > INDEX_FEAT_ROWS:
             infos.append(f"index.md 분할 대상: 본문 {idx_lines}줄(임계 {INDEX_BODY_LINES}), "
                          f"기능별 인덱스 {feat_rows}행(임계 {INDEX_FEAT_ROWS}) — B/F 세션이 "
@@ -1388,39 +1474,38 @@ def main():
         for f in sorted(feat_files - index_feat_links):
             warn(f"기능별 인덱스 누락: {f} (feature인데 index 미등록)", f)
 
+        # 인덱스 등록 (§7-30 ⓒ): guide·entity·concept이 어느 인덱스에도 안 실렸는가.
+        #  §7-6이 feature에 하는 일을 나머지 타입으로 넓힌 것이다 — 종전에는 이 셋에 대응 검사가
+        #  없어, 분할·신설한 페이지가 등록에서 빠져도 기계가 침묵했다(§7-8 고아 검사는 위키 어디서든
+        #  링크되면 통과하므로 "인덱스 밖" 상태를 잡지 못한다). 증상별 인덱스 제외본(itext_feat)을
+        #  쓰는 이유는 §7-6과 같다 — 증상 행의 해법 링크가 그 페이지를 "등록됨"으로 마스킹한다.
+        idx_links = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(itext_feat)}
+        for typ_name in sorted(indexed_files):
+            for f in sorted(indexed_files[typ_name] - idx_links):
+                warn(f"인덱스 등록 누락: {f} ({typ_name}인데 index·sub-index 어디에도 미등록 "
+                     f"— 조회 경로 밖, wiki-schema §7-30)", f)
+
         # 한/영 양방향 병기: 기능별 인덱스 유형 행(is_feat_recipe_row — 형상+대상 기반, alias 무관)의
         #  첫 컬럼(기능명)에 한글·영문 중 한쪽만 있으면 WARN. 한글 등록이든 영문 등록이든 양방향
         #  검색이 되게(wiki-schema §3·§7-16). 스캔은 sub-index까지 합친 itext 전체 — `## ` 소분할
-        #  뒤의 행도 누락하지 않는다(§4 보증). 첫 컬럼은 평문 행만 판정에 들어오므로(헬퍼 조건 ②)
-        #  split("|")[1] 추출이 이후 컬럼 wikilink의 \| 이스케이프에 영향받지 않는다.
+        #  뒤의 행도 누락하지 않는다(§4 보증). 이름 추출은 feat_row_name이 형상별로 처리한다 --
+        #  통합 표는 첫 컬럼 평문, 옛 `## 가이드 / 레시피` 섹션은 첫 컬럼 wikilink의 alias.
         han, lat = re.compile(r"[가-힣]"), re.compile(r"[A-Za-z]")
         for line in itext_feat.splitlines():   # 증상별 인덱스 섹션 제외본(위 §7-6) — 증상 관찰 표현 오탐 차단
-            if not is_feat_recipe_row(line):
+            name = feat_row_name(line)
+            if name is None:
                 continue
-            name = line.lstrip().split("|")[1].strip()
             has_h, has_l = bool(han.search(name)), bool(lat.search(name))
             if has_h != has_l:
                 warn(f"한/영 병기 누락: '{name}' ({'한글만' if has_h else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
 
-        # §7-27 가이드/레시피 섹션 가이드 행 한/영 병기: 이 섹션 행은 첫 컬럼이 wikilink라
-        #  is_feat_recipe_row(첫 컬럼 평문)에 안 걸려 위 §7-16이 형상 자체로 놓친다. recipe(대상
-        #  40_guides/recipes/)는 기능별 인덱스 등록분이 §7-16으로 병기가 강제되므로 제외하고,
-        #  platform/ui-ux 가이드 행 표시이름(alias)에 한/영 한쪽만이면 WARN — ui-ux 가이드는
-        #  기능별 인덱스 미등록(§5)이라 이 섹션이 유일 검색 경로. 섹션 없으면(신규 vault) skip.
-        guide_sec = section(itext, "가이드 / 레시피")
-        if guide_sec:
-            for line in guide_sec.splitlines():
-                # 첫 컬럼 wikilink [[대상|표시]] — Obsidian 테이블은 \| 이스케이프라 대상의 \ 제거
-                #  (wikilink_targets·is_feat_recipe_row와 동일 정규화). 헤더·구분선은 [[ 없어 skip.
-                m = re.match(r"\|\s*\[\[([^\]|]+)\|([^\]]+)\]\]", line.lstrip())
-                if not m:
-                    continue
-                if "40_guides/recipes/" in m.group(1).replace("\\", ""):
-                    continue  # recipe는 §7-16(기능별 인덱스)이 이미 병기 강제 — 이중 요구 방지
-                gname = m.group(2).replace("\\", "").strip()
-                has_gh, has_gl = bool(han.search(gname)), bool(lat.search(gname))
-                if has_gh != has_gl:
-                    warn(f"가이드 한/영 병기 누락: '{gname}' ({'한글만' if has_gh else '영문만'} — 양방향 검색 위해 한글·영문 모두 병기)")
+        # 「가이드/레시피 섹션 가이드 행 병기」 검사는 **폐지**됐다 -- 위 병기 검사에 흡수.
+        #  그 검사가 있던 이유는 `## 가이드 / 레시피` 섹션 행의 첫 컬럼이 wikilink라
+        #  종전 판정(첫 컬럼 평문)이 형상 자체로 놓친다는 것이었는데, 그 섹션이 통합 표
+        #  (index-guides.md, 첫 컬럼 평문)로 대체되고 대상 조건이 `40_guides/` 전체로 넓어졌으며,
+        #  **옛 섹션 형상도 feat_row_name 조건 ②가 함께 받으므로** 위 검사 하나가 신·구 양쪽
+        #  전 행을 본다 — 마커 없는 vault가 옛 섹션을 유지해도 무신호 구간이 생기지 않는다.
+        #  폐지 이력은 wiki-schema §7 목록에 남긴다.
 
     elif "index.md" in unreadable:
         # 파일은 실재하는데 못 읽은 경우 — 처방이 부재와 정반대라(골격 생성 ✗ / 인코딩 복구 ✓)
@@ -1623,6 +1708,47 @@ def main():
                 warn(f"규약 하위 문서 목록 누락: {r}의 '## 하위 문서'에 {other} 미등재 "
                      f"— 분리한 규약이 조회 경로 밖(조회 홉 1 위반, wiki-schema §2.9)", r)
 
+    # ⓓ guide 허브 `## 하위 문서` 목록 ↔ 하위 파일 양방향.
+    #  convention과 달리 guide에는 `conventions-{주제}.md` 같은 **파일명 접두 규약이 없다** —
+    #  같은 폴더·같은 guide_kind만으로 하위를 특정하면 서로 무관한 독립 가이드끼리 하위로 잡힌다
+    #  (실측: `40_guides/ui-ux/`에 분할 하위 2개와 무관한 가이드 1개가 함께 있다).
+    #  그래서 **하위→허브 역링크**를 신호로 쓴다 — §2.6이 "하위 문서는 상단에 허브 복귀 링크"를
+    #  규정하므로, 그 링크를 가진 같은 폴더 guide만 하위 후보다. 독립 가이드는 대개 그 링크가
+    #  없어 후보에 들지 않는다(실 vault 399파일에서 신규 WARN 0).
+    #  **판정은 링크의 위치를 가리지 않는다** — 본문 어디서든 허브를 가리키면 후보다. §2.6은
+    #  "상단"을 규정하지만 상단의 경계(첫 `## ` 이전? N줄?)를 정의하지 않아, 그 선을 여기서
+    #  지어내면 규정에 없는 기준으로 미탐이 생긴다. 대가는 **같은 폴더의 독립 가이드가 허브를
+    #  단순 참조하면 후보로 잡히는 것**이고, 그때 나오는 WARN의 처방(목록에 올리거나 참조를
+    #  떼거나)은 어느 쪽도 파괴적이지 않다 — 미탐(하위가 목록 밖에 남는 것)이 더 비싸다.
+    #  허브는 `## 하위 문서` 섹션 보유로 식별한다(파일명 고정이 아니므로 섹션 존재가 유일한
+    #  구조 신호다).
+    #  폴더별 guide 인덱스를 미리 만든다 — 허브마다 전체 pages(실측 399개)를 훑으면
+    #  O(허브 x 전체 페이지)가 되는데, 후보는 애초에 같은 폴더 guide뿐이다.
+    guides_by_folder = {}
+    for gr, (gfm, gtyp, gtext) in pages.items():
+        if gtyp == "guide" and not gr.startswith("90_archive/"):
+            guides_by_folder.setdefault(os.path.dirname(gr), []).append(gr)
+    guide_hubs = {r for r, (fm, typ, text) in pages.items()
+                  if typ == "guide" and not r.startswith("90_archive/")
+                  and section(text, "하위 문서")}
+    for hub in sorted(guide_hubs):
+        listed = {t[:-3] if t.endswith(".md") else t
+                  for t in wikilink_targets(section(pages[hub][2], "하위 문서") or "")}
+        for t in sorted(listed):
+            if t + ".md" not in pages:
+                warn(f"가이드 하위 문서 목록 깨짐: {hub} -> {t} 없음 (wiki-schema §2.6)", hub)
+        # 역방향: 이 허브를 복귀 링크한 같은 폴더 guide가 목록에 있는가
+        folder = os.path.dirname(hub)
+        hub_stem = hub[:-3]
+        for other in sorted(guides_by_folder.get(folder, [])):
+            if other == hub or other in guide_hubs:
+                continue        # 자기 자신·다른 허브는 하위가 아니다
+            back = {x[:-3] if x.endswith(".md") else x for x in wikilink_targets(pages[other][2])}
+            if hub_stem in back and other[:-3] not in listed:
+                warn(f"가이드 하위 문서 목록 누락: {hub}의 '## 하위 문서'에 {other} 미등재 "
+                     f"— 이 허브를 가리키는 링크는 있는데 목록에 없어 조회 홉 1이 깨진다 "
+                     f"(하위가 아니라 단순 참조면 그 링크를 떼거나 목록에 올린다, wiki-schema §2.6)", hub)
+
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
     for r, (fm, typ, text) in pages.items():
@@ -1751,6 +1877,18 @@ def main():
             continue
         if r[:-3].casefold() not in link_targets:  # link_targets는 casefold 정규화값(M-3/L-1과 정합)
             warn(f"고아 페이지(어디서도 링크되지 않음): {r}", r)
+
+    # 60일+ 미편집 집계 (§7-3) — 개별 나열하지 않는다.
+    #  실 vault에서 86건이 나와 INFO 89건 중 96%를 차지했고, 그 더미에 다른 신호가 묻혔다.
+    #  이 축은 "confidence를 낮출지 판단하라"는 **경향 신호**라 개별 파일명이 액션에 직결되지
+    #  않는다 — 오래된 순 상위 5건만 보이면 어디부터 볼지 정할 수 있다. 반면 90일+(아카이브
+    #  후보)는 파일 단위 처리 대상이라 개별 유지한다(위 검사).
+    if stale60:
+        top = sorted(stale60, reverse=True)[:5]
+        more = len(stale60) - len(top)
+        tail = (" … 외 %d건" % more) if more > 0 else ""
+        infos.append("60일+ 미편집 %d건(confidence 하락 후보) — 오래된 순: %s%s"
+                     % (len(stale60), ", ".join("%s(%d일)" % (r, d) for d, r in top), tail))
 
     # (미검증)·미해결 question 집계 리포트 — 사용자 검증 후보 (0건이면 생략, wiki-schema §11)
     if unverified_hits:
