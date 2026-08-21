@@ -24,23 +24,23 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  **⚠ 이대로 실행하면 완주하지 않는다** — 스위트가 **도구 시간 캡(10분)을 넘는다**(643케이스 — 2026-08-21 실측. 소요 편차가 커 시간으로 완료를 판정하지 않는다)인데 Bash 도구의 시간 캡은 **전경·`run_in_background` 모두 10분**이라 어느 쪽으로 띄워도 killed되고, `Start-Process`의 리다이렉트 파라미터는 0바이트 파일을 남긴다. **분리 프로세스 + 래퍼 스크립트 + `Monitor` 폴링**이 정본 절차이며 **실행·대기·판정·모드(`-Sequential`·`-Resume`·`-Filter`) 상세는 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」이 정본**이다. 그 절을 읽지 않고 돌리면 과거처럼 "환경상 실행 불가"로 F-2를 갈음하게 된다.
+  **⚠ 이대로 실행하면 완주하지 않는다** — 스위트가 도구 시간 캡(10분)을 넘어 전경·백그라운드 어느 쪽으로 띄워도 killed된다. **분리 프로세스 + 래퍼 스크립트 + `Monitor` 폴링**이 정본 절차이며, 실행·대기·판정·모드와 검사 대상 hook 목록은 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」이 정본이다 — 그 절을 읽지 않고 돌리면 "환경상 실행 불가"로 F-2를 갈음하게 된다.
 
-  격리 USERPROFILE에서 hook 12종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context·session-end-cleanup)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
-  부분 실행 `-Filter <hook명>`(쉼표 복수, `.ps1` 생략 가능)은 **구현 중 반복 확인 전용**이고, task 검증과 Phase F-2는 무인자 **전체 실행**이 정본이다 — **부분 실행 결과로 검증 판정 금지**(골든 케이스가 hook 간 얽혀 있어 커버리지가 좁다).
+  케이스 정본은 `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오이고, 전부 OK면 exit 0이다.
+  부분 실행(`-Filter`)은 개발 중 반복 확인 전용이고 **검증 판정 근거로 쓸 수 없다** — 갈음 조건은 `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격 (예외 조건)」.
   **케이스를 추가할 때는 `docs/harness-conventions.md` 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다.
 - **llm-wiki 상수·배치 정합 셀프체크 (SKILL.md 예산표·「예산 단계 신호」 표·라우팅 표·references/procedures-*.md·wiki-schema §2/§3/§4/§7/§8/§11/§12·목차·templates.md·lint.py 상수 수정 시 필수)**:
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
-  다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합 / **예산 단계 임계·판정 어휘**(SKILL 「예산 단계 신호」 표 ↔ lint 상수 4값+어휘 — 임계는 이 축 말고는 어디서도 대조되지 않는다) / **타입 열거 정합 11자리·12항목**(새 타입이 산문 열거에서 조용히 빠지는 사각 — ⓐ `lint.py` 타입 집합 상수 ↔ 문서 산문 8항목(§3 origin·confidence·§7-3·§7-9·§7-28·§7-29·§8 아카이브 예외·§11) ⓑ §2 타입 전 커버 4항목(목차 §2 행·계층 태그·templates 목차·§12 권장/비대상 분할 커버)) / **트리거 유일성**(예산 처방의 발동·종료·재발동·승급 조건이 wiki-schema §7-2와 SKILL 「예산 단계 신호」 표 밖에 서술되지 않는가 — 면제는 열거로만 두고 앵커별 매치 수를 함께 검증한다. 상세 리포트는 `--trigger-report`). 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
+  네 곳의 공유 상수·절차 배치·타입 열거 정합·트리거 유일성을 기계 대조한다(일치 exit 0 / 불일치 1 / 앵커 실패 2). 대조 항목 전문은 `docs/harness-conventions.md` 「llm-wiki 정합 셀프체크가 대조하는 것」.
   **lint 검사에 제외(exemption)를 넣을 때는 `docs/harness-conventions.md` 「검증 케이스의 축 분리」를 먼저 본다** — 제외 기준에 걸리는 기존 골든 케이스가 다른 축을 함께 싣고 있으면 그 축이 통째로 가려진다(§7-29 타입 제외에서 실측).
 - **하니스 정합 셀프체크 (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·`deferred.md` 수정 시 필수)**:
   ```
   python plugins/pjc/evals/check-harness-consistency.py
   ```
-  열 축(문서 로드 예산 · 리뷰어 각주 앵커 · **실행 예산 수치** · 포인터 도달성 · 마커 동기 · **개념 정본** · Deferred 잔량 · **볼드 마커 짝** · **한 줄 문장 중복** · **착수 조건 동기**)을 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). 축별 기준표는 `docs/harness-conventions.md`.
-- **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것**: Claude Code **PowerShell 도구의 내장 경로 보호**가 삭제 대상을 추출할 때 실제 대상이 아니라 **같은 명령 문자열 안 다른 위치의 따옴표 경로**를 집어 오차단한다(`Remove-Item on system path ''D:\Personal' is blocked.`). **하니스 hook과 무관하다** — `block-destructive`에 변형 11종을 stdin 주입한 결과 **11/11 exit 0**(차단 0건)이다. `Remove-Item` 토큰과 공백 포함 경로가 **한 명령 문자열에 함께 있을 때만** 발화하는 조합 의존이라 "가끔 막힌다"로 보인다. **회피**: 검증 배치를 **스크립트 파일로 분리**(가장 확실) · **Bash 도구** 사용 · 환경변수 제거는 `$env:NAME = ''` 대입.
+  열 축(문서 로드 예산 · 리뷰어 각주 앵커 · **실행 예산 수치** · 포인터 도달성 · 마커 동기 · **개념 정본** · Deferred 잔량 · **볼드 마커 짝** · **한 줄 문장 중복** · **착수 조건 동기**)을 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). **열 축 중 여섯**(문서 로드 예산·리뷰어 각주·개념 정본·볼드 마커 짝·한 줄 문장 중복·착수 조건 동기)**만 `docs/harness-conventions.md`에 기준표·설명 절이 있다** — 실행 예산 수치·포인터 도달성·마커 동기는 판정 규칙이 곧 코드라 그 함수 주석이 정본이고, **Deferred 잔량은 대장 자신의 「카운트 기준」 블록**이 정본이다.
+- **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 내장 경로 보호가 같은 명령 문자열 안 다른 따옴표 경로를 집어 오차단한다(하니스 hook과 무관). 조건·회피법은 `docs/harness-conventions.md` 「검증 배치의 `Remove-Item` 오차단」.
 - **통합 검증 (재설치 후)**: `pwsh ./validate.ps1` — ⚠️ **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 위 Build/Test로 한다.
 
 ### 검증 매핑 (task 검증 선택)
