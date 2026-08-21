@@ -1255,7 +1255,11 @@ def _rollover_items(items, fits, keep_min=1):
         if fits([b for j, (_d, b) in enumerate(items) if j not in moved]):
             break
         moved.add(i)
-    moving = [items[i][1] for i in order if i in moved]
+    # (날짜, 블록) 튜플을 그대로 돌려준다 -- 블록 텍스트만 주면 호출부가 날짜를 되찾으려고
+    #  본문으로 역인덱스를 만들게 되는데, **같은 본문이 두 번 적힌 항목이 있으면** 그 dict가
+    #  하나를 덮어써 날짜를 잘못 짚는다(중복 기록은 실제로 있다 -- 실 vault log.md의
+    #  아카이브 인덱스 구역에 거의 같은 QUEUE 항목이 두 벌 들어 있다).
+    moving = [items[i] for i in order if i in moved]
     kept = [items[i] for i in range(len(items)) if i not in moved]
     return moving, kept
 
@@ -1304,11 +1308,9 @@ def rollover_log(ses):
     if not moving:
         return
 
-    by_block = {b: d for d, b in items}
     targets = {}
-    for blk in moving:
-        d = by_block[blk]
-        targets.setdefault("%04d-%02d" % (d.year, d.month), []).append(blk)
+    for d, blk in moving:
+        targets.setdefault("%04d-%02d" % (d.year, d.month), []).append((d, blk))
     undated = sum(1 for d, _b in kept if d is None)
     if undated:
         ses.notes.append(f"log.md 날짜 없는 항목 {undated}건은 월을 정할 수 없어 그대로 두었다")
@@ -1326,7 +1328,7 @@ def rollover_log(ses):
     # 아카이브 인덱스(검색 진입점, §8). **키워드 요약은 판단이라 자동 경로가 쓸 수 없다** --
     #  건수·기간이라는 결정론 형식으로 대신한다(진입점이 아예 없는 것보다 검색에 쓰인다).
     for mon in sorted(targets):
-        blocks = targets[mon]
+        blocks = [b for _d, b in targets[mon]]
         af = os.path.join(arch_dir, "%s.md" % mon)
         if os.path.exists(af):
             prev, abom, anl = _read_page(af)
@@ -1337,7 +1339,7 @@ def rollover_log(ses):
         if not ses.dry_run:
             os.makedirs(arch_dir, exist_ok=True)
             _atomic_write(af, body, abom, anl)
-        dates = sorted(by_block[b] for b in blocks)
+        dates = sorted(d for d, _b in targets[mon])
         line = "- %s.md: %d건 (%s~%s)" % (mon, len(blocks), dates[0], dates[-1])
         idx_sec = section(new_text, "아카이브 인덱스")
         if idx_sec:
