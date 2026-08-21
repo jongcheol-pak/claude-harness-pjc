@@ -336,8 +336,8 @@ def budget_split_suppressed(fm, chars):
 def is_feat_recipe_row(line):
     """기능별 인덱스 유형의 feature/recipe 표 행 판정(§7-14 행수·§7-16 병기 공용 — 이중 구현 방지).
     형상+대상 기반이라 상세 컬럼 alias 표기(`\\|feature]]` 권장 관례, schema §3)에 의존하지 않는다:
-    ① `|`로 시작 ② 첫 컬럼이 비어 있지 않은 평문(wikilink 미포함 — 프로젝트/기술/가이드 표처럼
-    첫 컬럼이 링크인 행은 제외, `\\|` 이스케이프로 split이 경로만 잡는 오탐 차단) ③ 행 내 wikilink
+    ① `|`로 시작 ② 첫 컬럼이 비어 있지 않은 평문(wikilink 미포함 — 프로젝트/기술 표처럼
+    첫 컬럼이 링크인 행은 제외(가이드·레시피는 통합 표에서 평문이라 포함), `\\|` 이스케이프로 split이 경로만 잡는 오탐 차단) ③ 행 내 wikilink
     대상(정규화: 이스케이프 `\\`·`#`앵커 제거 — wikilink_targets와 동일 규칙)의 basename이
     `feat-` 시작(단축 링크 포함)이거나 대상에 `40_guides/` 포함.
 
