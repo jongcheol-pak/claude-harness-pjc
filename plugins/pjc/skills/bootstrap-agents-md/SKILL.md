@@ -1,6 +1,6 @@
 ---
 name: bootstrap-agents-md
-description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by plan-feature when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". 파일 이름을 대지 않고 목적만 말하는 요청도 이 스킬이다 — 빌드·실행·테스트 방법이나 프로젝트 규약을 정리한 문서를 새로 만들어 달라는 요청이 여기 해당한다. 그 경우에도 산출물은 AGENTS.md이며 README·ONBOARDING 등 다른 이름의 문서를 새로 만들지 않는다. Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from one of 9 stack templates (plus generic/multi-stack). If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md or CLAUDE.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README.
+description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by plan-feature when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". 파일 이름을 대지 않고 목적만 말하는 요청도 이 스킬이다 — 빌드·실행·테스트 방법이나 프로젝트 규약을 정리한 문서를 새로 만들어 달라는 요청이 여기 해당한다. 그 경우에도 산출물은 AGENTS.md이며 README·ONBOARDING 등 다른 이름의 문서를 새로 만들지 않는다. Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from one of 9 stack templates (plus generic/multi-stack). If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README. An existing CLAUDE.md does NOT block it — that file is Claude-only and usually gitignored, while AGENTS.md is committed and read by other agents.
 argument-hint: "(자동)"
 ---
 
@@ -21,7 +21,7 @@ argument-hint: "(자동)"
 ## 절대 규칙
 
 1. **사용자 확인 없이 저장 금지.** 생성한 내용을 보여주고 명시적 승인 받음.
-2. **기존 AGENTS.md 덮어쓰기 금지.** 있으면 즉시 종료.
+2. **기존 AGENTS.md 덮어쓰기 금지.** 있으면 즉시 종료. **판정 대상은 `AGENTS.md`뿐이다** — `CLAUDE.md`가 있어도 진행한다(Step 1의 근거).
 3. **빈 칸은 빈 칸으로 유지.** 모르는 정보를 추측해 채우지 않음.
 4. **다중 stack 발견 시 사용자에게 선택 요청.**
 5. **AGENTS.md 신규 생성은 이 스킬 절차로만.** 스킬을 발동하지 않은 직접 Write는 `require-plan-for-write` hook의 bootstrap 게이트가 차단한다 — 차단되면 정상 경로는 이 스킬을 Skill 도구로 호출하는 것이며, 게이트를 우회할 다른 쓰기 경로를 찾지 않는다.
@@ -31,9 +31,17 @@ argument-hint: "(자동)"
 ### Step 1. 기존 AGENTS.md 확인
 
 ```powershell
-(Test-Path AGENTS.md) -or (Test-Path CLAUDE.md)
+Test-Path AGENTS.md
 ```
-결과가 True면(둘 중 하나라도 있으면) → 즉시 종료, plan-feature로 복귀.
+True면 → 즉시 종료, plan-feature로 복귀(절대 규칙 2 — 덮어쓰기 금지).
+
+**`CLAUDE.md` 존재는 종료 조건이 아니다.** 두 파일은 역할이 다르다 — `CLAUDE.md`는 Claude 전용이고
+**대개 전역 `.gitignore`에 걸려 커밋되지 않는 로컬 파일**인 반면, `AGENTS.md`는 커밋되어 팀·다른 PC·
+다른 에이전트(Codex·Gemini 등)에게 전파되는 공용 가이드다. 종전처럼 `CLAUDE.md`가 있다고 종료하면
+**그 프로젝트는 AGENTS.md를 영영 만들 수 없고**(hook이 직접 Write를 막고 이 스킬이 유일 경로이므로),
+가이드가 한 PC에만 남는다. 실제로 LLM WIKI vault에서 이 봉쇄가 관측됐다(v1.190.0).
+- 다만 `CLAUDE.md`가 있으면 **그 내용을 먼저 읽고** 중복 서술을 피한다 — 같은 사실을 두 파일에 적으면
+  한쪽만 갱신될 때 갈린다. 겹치는 항목은 AGENTS.md에 두고 `CLAUDE.md`에는 포인터만 남기도록 제안한다.
 
 ### Step 2. 표식 파일 감지
 
