@@ -883,16 +883,15 @@ def build_index(vault, dry_run):
         _emit_sub_index(sub_links, sub_files, "index-guides", "가이드 / 레시피 인덱스",
                         guide_rows, "| 이름 | 종류 | 플랫폼 | 상세 |",
                         "|------|------|--------|------|", "가이드 없음")
-    body.append("## 기능별 인덱스")
-    body.append("")
+    feature_block = ["## 기능별 인덱스", ""]
     if sub_links:
-        body.append("> **분할 인덱스**: 기능별 인덱스 행은 전부 sub-index에 있다 -- "
-                    + " · ".join(sub_links) + ". 한/영 어느 쪽으로 grep해도 해당 sub-index "
-                    "한 줄에서 잡히므로, 본체를 통째로 읽지 말고 관련 sub-index만 연다.")
+        feature_block.append("> **분할 인덱스**: 기능별 인덱스 행은 전부 sub-index에 있다 -- "
+                             + " · ".join(sub_links) + ". 한/영 어느 쪽으로 grep해도 해당 sub-index "
+                             "한 줄에서 잡히므로, 본체를 통째로 읽지 말고 관련 sub-index만 연다.")
     else:
-        body += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
-                       "|------|--------|----------|------|", [], "등재된 기능·가이드 없음")
-    body.append("")
+        feature_block += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                                "|------|--------|----------|------|", [], "등재된 기능·가이드 없음")
+    feature_block.append("")
 
     rows, pend = _rows_knowledge(pages, "entity", "entity_name", "used_by")
     pending += pend
@@ -921,19 +920,29 @@ def build_index(vault, dry_run):
     moved = []
     for key, name, title in sorted(AUX_INDEX_GROUPS, key=lambda g: -len(groups[g[0]])):
         # 덜어낸 구역은 본체에 안내 줄 2줄을 남긴다 — 그 몫도 미리 센다.
-        remaining = (outside + len(body) + 2 * len(moved)
+        remaining = (outside + len(body) + len(feature_block) + 2 * len(moved)
                      + sum(len(groups[k]) for k, _n, _t in AUX_INDEX_GROUPS
                            if k not in moved))
         if remaining <= INDEX_BODY_LINES:
             break
         aux_files[name] = (title, groups[key])
         moved.append(key)
-    for key, name, title in AUX_INDEX_GROUPS:
+    # **조립 순서를 여기 한 곳에서 정한다** — §4 「생성 대상 6섹션」이 규정한 순서
+    #  (프로젝트 → 기능별 인덱스 → 기술 스택 → 범용 패턴 → 미해결 질문)를 그대로 재현한다.
+    #  구역을 지연 조립로 바꾸면서 기능별 인덱스만 코드 중간에서 곧바로 붙이면, 덜어내기가
+    #  발동하지 않는 vault에서도 프로젝트 테이블이 그 뒤로 밀린다(무회귀 위반).
+    def _place(key):
         if key in moved:
-            body += ["> **덜어낸 구역**: %s는 [[%s|%s]]에 있다(본체 %d줄 임계)."
-                     % (title, name, title, INDEX_BODY_LINES), ""]
-        else:
-            body += groups[key]
+            title = dict((k, t) for k, _n, t in AUX_INDEX_GROUPS)[key]
+            name = dict((k, n) for k, n, _t in AUX_INDEX_GROUPS)[key]
+            return ["> **덜어낸 구역**: %s는 [[%s|%s]]에 있다(본체 %d줄 임계)."
+                    % (title, name, title, INDEX_BODY_LINES), ""]
+        return groups[key]
+
+    body += _place("projects")
+    body += feature_block
+    for key in ("tech", "patterns", "questions"):
+        body += _place(key)
 
     generated = "\n".join(body)
 
@@ -1845,29 +1854,6 @@ def main():
     if "index.md" in pages:
         itext = pages["index.md"][2]
 
-        # 미해결 질문 인덱스 동기 (wiki-schema §7-23): open question ↔ index.md '## 미해결 질문'
-        #  (비분할 섹션 — 본체 기준 §4, 아래 sub-index 합산 '전'에 검사해야 하므로 이 위치).
-        #  섹션 탐색도 strip_code 사본에서 수행해 코드펜스 안 예시 헤딩 오매칭을 막는다.
-        #  lint-* 리포트는 질문이 아니라 등록 요구에서 제외(is_lint_report — §7-12 집계와 동일 기준).
-        #  질문 '유실'(등록 누락으로 잊힘)과 'stale'(해결됐는데 미해결 목록 잔존)을 기계로 잡는다.
-        #  resolved 페이지의 '삭제' 자체는 스냅샷 검사로 탐지 불가 — 삭제 금지는 절차 규칙
-        #  (§2.7·SKILL 사전 준수)이 담당한다.
-        q_section = section(strip_code(itext), "미해결 질문") or ""
-        # 등록 판정: 규약(§3)은 무확장자 경로 링크가 원칙이나, `.md` 포함·파일명만 링크도 등록으로
-        #  인정한다 — 그 형식 위반은 §7-1 링크 검사가 별도 보고하므로 여기서 겹치면 '미등록' 오탐.
-        q_listed = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(q_section)}
-        for qr, (qfm, qtyp, _) in sorted(pages.items()):
-            if qtyp != "question" or qr.startswith("90_archive/"):
-                continue
-            resolved = question_is_resolved(qfm)
-            listed = qr[:-3] in q_listed or os.path.basename(qr)[:-3] in q_listed
-            if not resolved and not is_lint_report(qr) and not listed:
-                warn(f"미해결 질문 index 미등록: {qr} "
-                     f"(유실 위험 — index.md '## 미해결 질문'에 등록, schema §7-23)", qr)
-            if resolved and listed:
-                warn(f"해결된 질문이 index 미해결 목록에 잔존: {qr} "
-                     f"(index에서 제거 — 페이지는 보존, B-2 3-1, schema §7-23)", qr)
-
         # 분할 신호 (wiki-schema §4) — sub 합치기 전 index.md 본체로 측정
         idx_lines = itext.count("\n") + 1
         #  행수는 증상별 인덱스를 뺀 본문으로 잰다 -- 그 섹션 행은 첫 컬럼이 평문이고 해법
@@ -1916,6 +1902,32 @@ def main():
                     itext += "\n" + sfh.read()
             except (UnicodeDecodeError, OSError):  # M-2: 비 UTF-8 sub-index 하나로 전체가 죽지 않게
                 pass
+        # 미해결 질문 인덱스 동기 (wiki-schema §7-23): open question ↔ '## 미해결 질문' 표.
+        #  **sub-index 합산 '뒤'에 검사한다** — 종전에는 이 섹션이 언제나 본체에 있어 본체만 보면
+        #  됐으나, 본체가 임계를 지나면 `index-questions.md`로 덜어내지므로(§4 1단계) 본체만 보면
+        #  옮겨간 질문이 전부 '미등록'으로 오탐된다. 등록 여부가 묻는 것은 「조회 경로에 있는가」이고
+        #  그 경로는 index.md + sub-index 전체다.
+        #  섹션 탐색은 strip_code 사본에서 수행해 코드펜스 안 예시 헤딩 오매칭을 막는다.
+        #  lint-* 리포트는 질문이 아니라 등록 요구에서 제외(is_lint_report — §7-12 집계와 동일 기준).
+        #  질문 '유실'(등록 누락으로 잊힘)과 'stale'(해결됐는데 미해결 목록 잔존)을 기계로 잡는다.
+        #  resolved 페이지의 '삭제' 자체는 스냅샷 검사로 탐지 불가 — 삭제 금지는 절차 규칙
+        #  (§2.7·SKILL 사전 준수)이 담당한다.
+        q_section = section(strip_code(itext), "미해결 질문") or ""
+        # 등록 판정: 규약(§3)은 무확장자 경로 링크가 원칙이나, `.md` 포함·파일명만 링크도 등록으로
+        #  인정한다 — 그 형식 위반은 §7-1 링크 검사가 별도 보고하므로 여기서 겹치면 '미등록' 오탐.
+        q_listed = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(q_section)}
+        for qr, (qfm, qtyp, _) in sorted(pages.items()):
+            if qtyp != "question" or qr.startswith("90_archive/"):
+                continue
+            resolved = question_is_resolved(qfm)
+            listed = qr[:-3] in q_listed or os.path.basename(qr)[:-3] in q_listed
+            if not resolved and not is_lint_report(qr) and not listed:
+                warn(f"미해결 질문 index 미등록: {qr} "
+                     f"(유실 위험 — index.md '## 미해결 질문'에 등록, schema §7-23)", qr)
+            if resolved and listed:
+                warn(f"해결된 질문이 index 미해결 목록에 잔존: {qr} "
+                     f"(index에서 제거 — 페이지는 보존, B-2 3-1, schema §7-23)", qr)
+
         # 증상별 인덱스(§6)는 행 형상이 기능별 인덱스와 겹치나 의미가 달라 등록(§7-6)·한/영(§7-16)
         #  검사에서 제외한다(증상 행이 feature를 '등록됨'으로 마스킹하거나, 증상 관찰 표현에 한/영을
         #  요구하는 오탐 방지). 깨진 링크는 §7-1이 전 페이지에서 잡으므로 이 제외로 놓치지 않는다.

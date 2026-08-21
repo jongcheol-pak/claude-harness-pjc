@@ -587,7 +587,16 @@
       "expect_absent": [
         "(여기는 --build-index가 통째로 치환한다)",
         "보관된 기능 (archived feature)"
-      ]
+      ],
+      "expect_section_order": [
+        "## 개인 프로젝트",
+        "## 업무 프로젝트",
+        "## 기능별 인덱스",
+        "## 기술 스택 지식 (tech/)",
+        "## 범용 패턴 (patterns/)",
+        "## 미해결 질문"
+      ],
+      "rationale": " 아울러 **섹션 조립 순서**를 검증한다 — 키워드 존재만 보면 순서가 뒤바뀌어도 통과하는데, §4 「생성 대상 6섹션」은 순서까지 규정한다(구역 지연 조립로 바꾸며 프로젝트 테이블이 기능별 인덱스 뒤로 밀린 회귀가 실제로 났다)."
     },
     {
       "fixture": "build-index-empty",
@@ -671,6 +680,19 @@
       "expect_total_rows": 405,
       "expect_row_limit": 200,
       "rationale": "청크 경계가 임계의 배수와 정확히 맞아떨어지는 구간에서 빈 sub-index를 만들지 않는지(off-by-one). feature 400개 + 픽스처 기존 5행이라 청크가 정확히 나뉘는 자리를 지나며, 빈 파일이 생기면 러너가 잡는다."
+    },
+    {
+      "fixture": "build-index",
+      "aux_split": true,
+      "concept_count": 420,
+      "open_questions": 2,
+      "expect_aux_files": [
+        "index-patterns.md"
+      ],
+      "after_expect_absent": [
+        "미해결 질문 index 미등록"
+      ],
+      "rationale": "§4 1단계 본체 구역 분리를 실제 쓰기로 태운다. concept 420개로 본체를 임계 위로 밀어 올려 `## 범용 패턴`이 index-patterns.md로 덜어내지는지, 그 파일이 type: index와 자기 헤딩을 갖는지 본다. **핵심은 §7-23 오탐 회귀 가드다** — 구역이 sub-index로 옮겨간 뒤 그 검사가 본체만 보면 open question이 전부 '미등록'으로 잡히는데(수정 전 실측 1건), 합본 뒤로 판정을 옮겨 0건이 됐다. open question을 심지 않으면 그 검사가 아무것도 세지 않아 회귀가 침묵한다."
     }
   ]
 }

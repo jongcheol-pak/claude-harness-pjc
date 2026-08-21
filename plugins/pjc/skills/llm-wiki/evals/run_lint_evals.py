@@ -183,6 +183,40 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
     return tmp, dest
 
 
+def prepare_aux_split_vault(fixture_dir, concept_count, open_questions):
+    """fixture를 임시 복사하고 **본체를 임계 위로 밀어 올릴 만큼** concept을 생성한 뒤,
+    open question을 심는다(§4 1단계 본체 구역 분리 골든).
+
+    concept을 쓰는 이유: feature는 sub-index로 빠져 본체를 키우지 않지만 `## 범용 패턴`은
+    본체 구역이라 행이 그대로 쌓인다. open question은 §7-23 오탐 회귀(구역이 옮겨간 뒤
+    본체만 보면 전부 '미등록'으로 잡히던 것)를 재현하는 데 필요하다 — 질문이 0건이면
+    그 검사가 아무것도 세지 않아 회귀가 침묵한다.
+    반환: (정리용 임시 루트, vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-aux-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    pat = os.path.join(dest, "30_knowledge", "patterns")
+    os.makedirs(pat, exist_ok=True)
+    for i in range(1, concept_count + 1):
+        with open(os.path.join(pat, "bulk-concept-%03d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: concept\n"
+                     'concept_name: "대량 개념 %03d"\n'
+                     'index_label: "대량 개념 %03d (bulk concept %03d)"\n'
+                     "platform: cross\norigin: agent-synthesized\nconfidence: medium\n"
+                     "updated: 2026-07-02\nrelated_projects: [Demo]\ntags: [concept]\n---\n\n"
+                     "# 대량 개념 %03d\n\n## 정의\n골든용 최소 concept.\n" % (i, i, i, i))
+    qd = os.path.join(dest, "30_knowledge", "questions")
+    os.makedirs(qd, exist_ok=True)
+    for i in range(1, open_questions + 1):
+        with open(os.path.join(qd, "q-20260822-bulk%02d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: question\nstatus: open\npriority: medium\n"
+                     "updated: 2026-08-22\nrelated: [Demo]\ntags: [question]\n---\n\n"
+                     "# 미해결 질문 %02d\n\n## 질문\n골든용.\n" % i)
+    return tmp, dest
+
+
 def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
     """fixture를 임시 복사하고 **feature 페이지를 feature_count개 생성**한 뒤,
     stale_names의 sub-index를 미리 심어 둔다(§4 3단계 순번 분할 골든).
@@ -248,7 +282,7 @@ def check_case(case):
     #  키워드 대조를 쓰지 않는다 — 그 모드가 스스로 구조를 세어 판정하므로 여기서 요구하면
     #  의미 없는 키워드를 형식상 넣게 된다(방어가 오히려 케이스를 왜곡한다).
     if ("expect_clean" not in case and "expect_keywords" not in case
-            and not case.get("chunk_split")):
+            and not case.get("chunk_split") and not case.get("aux_split")):
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
 
     # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
@@ -302,6 +336,22 @@ def check_case(case):
         present = [kw for kw in case.get("expect_absent", []) if kw in after + sub_text]
         if present:
             return False, "쓰인 파일에 있으면 안 되는 것: " + ", ".join(present)
+        # 섹션 **순서** 검증 — 키워드 존재만 보면 조립 순서가 뒤바뀌어도 통과한다.
+        #  §4 「생성 대상 6섹션」이 순서를 규정하므로 그 순서 자체가 계약이다(T3 리뷰 B1:
+        #  구역 지연 조립로 바꾸며 프로젝트 테이블이 기능별 인덱스 뒤로 밀린 회귀가 실재했다).
+        want_order = case.get("expect_section_order", [])
+        if want_order:
+            got = [ln for ln in after.splitlines() if ln.startswith("## ")]
+            idx, missing_h = -1, []
+            for h in want_order:
+                try:
+                    nxt = got.index(h, idx + 1)
+                except ValueError:
+                    missing_h.append(h)
+                    break
+                idx = nxt
+            if missing_h:
+                return False, ("섹션 순서 불일치 — 기대 %s / 실제 %s" % (want_order, got))
         if before == after:
             return False, "index.md가 갱신되지 않음(마커 치환 미발생)"
         return True, "실제 쓰기 대조: sub-index %d개 · 마커 밖 보존 · 임시 파일 0" % len(subs)
@@ -349,6 +399,44 @@ def check_case(case):
         if missing:
             return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
         return True, f"백업 정리 확인: {len(before)}개 → {len(kept)}개 (제거 {len(before) - len(kept)})"
+
+    # aux_split 케이스: §4 1단계 **본체 구역 분리**를 실제 쓰기로 대조한다.
+    #  ① 본체가 임계 이하로 내려갔는가 ② 덜어낸 구역이 자기 헤딩을 갖고 sub-index로 갔는가
+    #  ③ **§7-23이 오탐하지 않는가** — 구역이 옮겨간 뒤에도 open question이 '등록됨'으로
+    #     판정되는지를 재lint로 확인한다(이 검사가 없으면 「본체만 보는 판정」 회귀가 침묵한다).
+    if case.get("aux_split"):
+        tmp, dest = prepare_aux_split_vault(
+            vault, case.get("concept_count", 260), case.get("open_questions", 2))
+        out, rc, err = run_lint(dest, ["--build-index"])
+        with open(os.path.join(dest, "index.md"), encoding="utf-8-sig") as fh:
+            idx = fh.read()
+        body_lines = idx.count("\n") + 1
+        out2, rc2, err2 = run_lint(dest)
+        problems = []
+        if rc != 0:
+            problems.append("build-index 종료코드 %d" % rc)
+        limit = case.get("expect_body_limit", 400)
+        if body_lines > limit and case.get("expect_under_limit", True):
+            problems.append("본체 %d줄 > 임계 %d(덜어내기 미달)" % (body_lines, limit))
+        for name in case.get("expect_aux_files", []):
+            path = os.path.join(dest, name)
+            if not os.path.exists(path):
+                problems.append("덜어낸 구역 파일 없음: " + name)
+                continue
+            with open(path, encoding="utf-8-sig") as fh:
+                aux = fh.read()
+            if "type: index" not in aux:
+                problems.append("%s에 type: index 없음" % name)
+            if not any(l.startswith("## ") for l in aux.splitlines()):
+                problems.append("%s에 자기 헤딩 없음" % name)
+        for kw in case.get("after_expect_absent", []):
+            if kw in out2:
+                problems.append("수행 후 재lint에 위반 잔존: " + kw)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if problems:
+            return False, " / ".join(problems)
+        return True, ("본체 %d줄(임계 %d 이하) · 덜어낸 구역 %d개 · §7-23 오탐 0"
+                      % (body_lines, limit, len(case.get("expect_aux_files", []))))
 
     # chunk_split 케이스: §4 3단계 **순번 분할**과 stale sub-index 정리를 실제 쓰기로 대조한다.
     #  키워드만으로는 "행이 보존됐는가"·"빈 청크가 안 생겼는가"를 증명할 수 없어 생성된
