@@ -268,10 +268,10 @@
     {
       "fixture": "no-hanyeong-guide",
       "expect_keywords": [
-        "가이드 한/영 병기 누락",
+        "한/영 병기 누락",
         "도움말 스타일 안내"
       ],
-      "rationale": "§7-27 양성 검출(v1.125.0, deferred 2026-07-19 종결) — platform/ui-ux 가이드 행 alias가 한글 전용이면 WARN. 기존 검증은 실vault 1회성 스모크뿐이라 리팩터로 §7-27이 무력화돼도 eval이 못 잡던 공백을 회귀 그물로 승격(guide-kind-missing의 유일 가이드 행은 recipe라 §7-27 미발화)"
+      "rationale": "§7-16 양성 검출 — **통합 표 형상의 ui-ux 행**이 한글 전용 라벨이면 WARN. 이 케이스가 지키는 것은 `is_feat_recipe_row`의 대상 조건이 `40_guides/` 전체를 포괄한다는 것이다: 조건을 `40_guides/recipes/`로 되돌리면 이 행이 탈락해 즉시 FAIL한다. 종전에는 §7-27(첫 컬럼 wikilink 형상 전용)이 이 축을 봤으나 통합 표로 그 섹션이 사라지면서 폐지됐고, 검사 주체만 바뀌었을 뿐 「ui-ux 가이드의 병기가 검사된다」는 보증은 끊기지 않는다(v1.125.0에 deferred 2026-07-19로 세운 회귀 그물의 승계)"
     },
     {
       "fixture": "release-marker",
