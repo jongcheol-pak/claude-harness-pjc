@@ -16,6 +16,7 @@ updated: 2026-08-21
 | 가이드 | 설명 |
 |---|---|
 | [[40_guides/ui-ux/legacy-help\|옛 섹션 도움말 가이드]] | 첫 컬럼 wikilink · 한글 전용 alias |
+| [[40_guides/recipes/demo/legacy-recipe\|옛 섹션 레시피]] | recipe — §3 ① 제외 축(한글 전용 alias인데도 WARN이 나면 안 된다) |
 
 ## 참조
 | 대상 | 설명 |
