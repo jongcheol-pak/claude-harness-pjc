@@ -1395,6 +1395,12 @@ def rollover_decisions(ses):
         _h, items = _split_items(body)
         if not items:
             continue
+        # 목표치를 예산의 `BUDGET_NEAR_RATIO`(80%)로 잡는 이유: 이 타입에는 log.md 같은
+        #  명시 목표치가 없어 §7-2 종료 조건(발동 해소)만 있는데, 그 선(95%·여유 500)에
+        #  딱 맞추면 **다음 결정 한 건에 곧 재발동**한다. 80%는 결정 몇 건분 여유를 남긴다.
+        #  조회 목적(§2.8 — 계획 전에 읽어 보류·기각을 회수)을 해치지 않음을 실측으로 확인했다:
+        #  실 vault에서 moa 12건·claude-harness-pjc 10건(최근 6일치)이 남고 그 이전은
+        #  `## 아카이브` 포인터로 도달한다.
         fits = lambda blocks: len(head) + len("".join(blocks)) + len(tail) <= st.budget * BUDGET_NEAR_RATIO
         moving, kept = _rollover_items(items, fits)
         if not moving:
