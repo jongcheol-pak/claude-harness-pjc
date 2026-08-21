@@ -1354,7 +1354,10 @@ def main():
 
         # 분할 신호 (wiki-schema §4) — sub 합치기 전 index.md 본체로 측정
         idx_lines = itext.count("\n") + 1
-        feat_rows = feature_index_rows(itext)
+        #  행수는 증상별 인덱스를 뺀 본문으로 잰다 -- 그 섹션 행은 첫 컬럼이 평문이고 해법
+        #  컬럼이 `40_guides/`를 가리켜 is_feat_recipe_row에 걸리는데, 기능 등재가 아니라
+        #  증상->해법 매핑이라 분할 판정의 분모가 아니다(§7-6·§7-16이 쓰는 제외와 같은 이유).
+        feat_rows = feature_index_rows(without_section(itext, "증상별 인덱스"))
         if idx_lines > INDEX_BODY_LINES or feat_rows > INDEX_FEAT_ROWS:
             infos.append(f"index.md 분할 대상: 본문 {idx_lines}줄(임계 {INDEX_BODY_LINES}), "
                          f"기능별 인덱스 {feat_rows}행(임계 {INDEX_FEAT_ROWS}) — B/F 세션이 "
