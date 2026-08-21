@@ -1027,6 +1027,7 @@ def main():
     dep_count = 0                             # deprecated 페이지 집계 (wiki-schema §7-17)
     feat_files, index_feat_links = set(), set()
     indexed_files = {}     # typ -> {무확장 경로} — guide·entity·concept 인덱스 등록 검사(§7-30 ⓒ)
+    stale60 = []           # (경과일, 경로) — 60일+ 미편집 집계용(§7-3)
     link_targets = set()   # 위키 전체에서 링크된 대상 (고아 검사용)
     pages = {}             # rel -> (frontmatter, type, 본문 텍스트)
     unreadable = set()     # 읽기 실패한 rel 경로 — 부재와 구분해 진단하기 위해 실패 지점에서 기록한다
@@ -1245,7 +1246,7 @@ def main():
                 if days >= 90 and typ not in ARCHIVE_EXEMPT_TYPES:
                     infos.append(f"90일+ 미편집(아카이브 후보): {r} ({days}일)")
                 elif days >= 60:
-                    infos.append(f"60일+ 미편집(confidence 하락 후보): {r} ({days}일)")
+                    stale60.append((days, r))
 
         # 네이밍 규칙
         base = os.path.basename(r)
@@ -1823,6 +1824,18 @@ def main():
             continue
         if r[:-3].casefold() not in link_targets:  # link_targets는 casefold 정규화값(M-3/L-1과 정합)
             warn(f"고아 페이지(어디서도 링크되지 않음): {r}", r)
+
+    # 60일+ 미편집 집계 (§7-3) — 개별 나열하지 않는다.
+    #  실 vault에서 86건이 나와 INFO 89건 중 96%를 차지했고, 그 더미에 다른 신호가 묻혔다.
+    #  이 축은 "confidence를 낮출지 판단하라"는 **경향 신호**라 개별 파일명이 액션에 직결되지
+    #  않는다 — 오래된 순 상위 5건만 보이면 어디부터 볼지 정할 수 있다. 반면 90일+(아카이브
+    #  후보)는 파일 단위 처리 대상이라 개별 유지한다(위 검사).
+    if stale60:
+        top = sorted(stale60, reverse=True)[:5]
+        more = len(stale60) - len(top)
+        tail = (" … 외 %d건" % more) if more > 0 else ""
+        infos.append("60일+ 미편집 %d건(confidence 하락 후보) — 오래된 순: %s%s"
+                     % (len(stale60), ", ".join("%s(%d일)" % (r, d) for d, r in top), tail))
 
     # (미검증)·미해결 question 집계 리포트 — 사용자 검증 후보 (0건이면 생략, wiki-schema §11)
     if unverified_hits:
