@@ -1661,6 +1661,36 @@ def main():
                 warn(f"규약 하위 문서 목록 누락: {r}의 '## 하위 문서'에 {other} 미등재 "
                      f"— 분리한 규약이 조회 경로 밖(조회 홉 1 위반, wiki-schema §2.9)", r)
 
+    # ⓓ guide 허브 `## 하위 문서` 목록 ↔ 하위 파일 양방향.
+    #  convention과 달리 guide에는 `conventions-{주제}.md` 같은 **파일명 접두 규약이 없다** —
+    #  같은 폴더·같은 guide_kind만으로 하위를 특정하면 서로 무관한 독립 가이드끼리 하위로 잡힌다
+    #  (실측: `40_guides/ui-ux/`에 분할 하위 2개와 무관한 가이드 1개가 함께 있다).
+    #  그래서 **하위→허브 역링크**를 신호로 쓴다 — §2.6이 "하위 문서는 상단에 허브 복귀 링크"를
+    #  규정하므로, 그 링크를 가진 같은 폴더 guide만 하위 후보다. 독립 가이드는 그 링크가 없어
+    #  후보에 들지 않는다(오탐 0). 허브는 `## 하위 문서` 섹션 보유로 식별한다(파일명 고정이
+    #  아니므로 섹션 존재가 유일한 구조 신호다).
+    guide_hubs = {r for r, (fm, typ, text) in pages.items()
+                  if typ == "guide" and not r.startswith("90_archive/")
+                  and section(text, "하위 문서")}
+    for hub in sorted(guide_hubs):
+        listed = {t[:-3] if t.endswith(".md") else t
+                  for t in wikilink_targets(section(pages[hub][2], "하위 문서") or "")}
+        for t in sorted(listed):
+            if t + ".md" not in pages:
+                warn(f"가이드 하위 문서 목록 깨짐: {hub} -> {t} 없음 (wiki-schema §2.6)", hub)
+        # 역방향: 이 허브를 복귀 링크한 같은 폴더 guide가 목록에 있는가
+        folder = os.path.dirname(hub)
+        hub_stem = hub[:-3]
+        for other, (ofm, otyp, otext) in sorted(pages.items()):
+            if otyp != "guide" or other == hub or os.path.dirname(other) != folder:
+                continue
+            if other.startswith("90_archive/") or other in guide_hubs:
+                continue        # 허브끼리는 서로의 하위가 아니다
+            back = {x[:-3] if x.endswith(".md") else x for x in wikilink_targets(otext)}
+            if hub_stem in back and other[:-3] not in listed:
+                warn(f"가이드 하위 문서 목록 누락: {hub}의 '## 하위 문서'에 {other} 미등재 "
+                     f"— 허브 복귀 링크는 있는데 목록에 없어 조회 홉 1이 깨진다 (wiki-schema §2.6)", hub)
+
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
     for r, (fm, typ, text) in pages.items():
