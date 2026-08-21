@@ -816,6 +816,9 @@ TRIGGER_ALLOWLIST = [
     (LINT_PY, "# index.md 분할 신호 임계", "INDEX_BODY_LINES 상수 주석 — index 축"),
     (LINT_PY, "#   sub-index(순번 파일) 초과는", "위 상수 주석의 이어지는 줄 — index 축"),
     (LINT_PY, "# sub-index(순번 파일)가 초과하면", "§7-14 3단계 자동 분할 구현 주석"),
+    (LINT_PY, "# 본체 조립 + 임계 초과 시 덜어내기", "§4 1단계 본체 구역 분리 — 줄 수 축(§7-14)"),
+    (LINT_PY, "「본문(frontmatter 포함 전체)」이라 생성 구역만 세면",
+     "§7-14 측정 단위(파일 전체 줄 수) 근거 — 문자 예산 무관"),
 
     # ── `--auto-split` 처방 구현(§4·§8) — 조건을 **정의**하지 않고 §7-2 조건을 구현·인용한다.
     #  budget_state/budget_resolved가 §7-2 네 조건의 유일 구현이므로 그 docstring은 조건의

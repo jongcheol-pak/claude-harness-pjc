@@ -788,23 +788,76 @@ def _sub_index_text(name, rows):
             "## 기능별 인덱스\n\n%s\n") % (name, title, lead, "\n".join(rows))
 
 
+def _aux_index_text(name, title, body_lines):
+    """본체에서 덜어낸 비분할 섹션을 담는 sub-index 본문(§4 1단계 자동 수행).
+
+    `_sub_index_text`와 나누어 두는 이유: 그쪽은 헤딩이 `## 기능별 인덱스`로 **고정**돼야
+    한다(§7-14 행수·§7-16 병기 검사가 그 헤딩으로 스코프를 잡는다). 여기 담기는 것은
+    프로젝트 테이블·기술 스택·범용 패턴·미해결 질문이라 그 두 검사의 대상이 아니고,
+    자기 헤딩을 그대로 가져가야 §7-23 등 섹션 이름으로 찾는 검사가 계속 찾을 수 있다."""
+    return ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
+            "# %s\n\n> [[index|위키 인덱스]] 본체가 임계를 지나 덜어낸 구역이다."
+            " **이 파일은 `--build-index`가 생성한다 -- 수기 편집은 다음 생성에서 사라진다.**\n\n"
+            "%s\n") % (name, title, "\n".join(body_lines))
+
+
+# 본체가 임계를 지날 때 덜어낼 수 있는 구역 — (섹션 키, 파일명, 제목).
+#  파일명에 하이픈을 하나만 쓰는 것은 §7-15 목록 정합의 stem 정규식(`index-[a-z]+(-\d+)?`)에
+#  맞추기 위해서다. 두 단어를 이으면 그 검사가 stem을 잘라 읽어 「미등록」을 오탐한다.
+#  프로젝트 테이블 둘은 한 파일에 함께 담는다(개별 분리하면 이름이 두 단어가 된다).
+AUX_INDEX_GROUPS = [
+    ("projects", "index-projects", "프로젝트 카탈로그"),
+    ("tech", "index-tech", "기술 스택 지식"),
+    ("patterns", "index-patterns", "범용 패턴"),
+    ("questions", "index-questions", "미해결 질문"),
+]
+
+
 def build_index(vault, dry_run):
     """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 6섹션으로 채우고, category별
     sub-index를 함께 생성한다. 마커 밖은 한 글자도 바꾸지 않는다.
+    본체가 `INDEX_BODY_LINES`를 지나면 비분할 구역을 큰 것부터 덜어낸다(§4 1단계).
     반환: 종료 코드(0 정상 / 1 마커 없음·읽기·쓰기 실패)."""
+    idx_path = os.path.join(vault, "index.md")
+    try:
+        with open(idx_path, "rb") as fh:
+            cur = fh.read().decode("utf-8-sig")
+    except (UnicodeDecodeError, OSError) as e:
+        print("index.md 읽기 실패(%s) -- 생성을 중단합니다." % type(e).__name__)
+        return 1
+    cur_n = cur.replace("\r\n", "\n").replace("\r", "\n")
+    if AUTO_INDEX_BEGIN not in cur_n or AUTO_INDEX_END not in cur_n:
+        print("생성 마커 없음 -- index.md를 덮어쓰지 않았습니다.")
+        print("  도입하려면 생성 대상 구역(프로젝트 테이블~미해결 질문)을 다음 두 줄로 감싸세요:")
+        print("    %s" % AUTO_INDEX_BEGIN)
+        print("    %s" % AUTO_INDEX_END)
+        print("  마커 밖(증상별 인덱스·참조·머리말)은 생성이 건드리지 않습니다.")
+        return 1
+
+    head, _sep, rest = cur_n.partition(AUTO_INDEX_BEGIN)
+    if AUTO_INDEX_END not in rest:
+        # END가 BEGIN보다 앞에 있는 malformed 파일 -- "마커 없음"과 같은 경로로 닫는다
+        #  (여기서 split을 그냥 하면 ValueError로 죽어, 안내 없이 트레이스백만 남는다).
+        print("마커 순서 이상(END가 BEGIN보다 앞) -- index.md를 덮어쓰지 않았습니다.")
+        return 1
+    _, tail = rest.split(AUTO_INDEX_END, 1)
+
     pages = scan_index_pages(vault)
     pending = []          # 라벨 미역이관 페이지 (index_label 부재)
     body, sub_files = [], {}
+    # 구역별로 모았다가 마지막에 조립한다 -- 본체가 임계를 지나면 큰 구역부터 sub-index로
+    #  덜어내야 하는데(§4 1단계), 곧바로 body에 이어 붙이면 그 판정을 할 대상이 없다.
+    groups = {k: [] for k, _n, _t in AUX_INDEX_GROUPS}
+    aux_files = {}         # 덜어낸 구역: 파일명 -> (제목, 본문 줄) — 렌더러가 sub_files와 다르다
 
     for cat, title in (("personal", "개인 프로젝트"), ("work", "업무 프로젝트")):
         rows, pend = _rows_projects(pages, cat)
         pending += pend
-        body.append("## " + title)
-        body.append("")
-        body += _table("| 프로젝트 | 플랫폼 | 기술 스택 | 상태 |",
-                       "|----------|--------|-----------|------|", rows,
-                       "아직 없음 -- %s project 페이지 0개" % cat)
-        body.append("")
+        groups["projects"] += ["## " + title, ""]
+        groups["projects"] += _table("| 프로젝트 | 플랫폼 | 기술 스택 | 상태 |",
+                                     "|----------|--------|-----------|------|", rows,
+                                     "아직 없음 -- %s project 페이지 0개" % cat)
+        groups["projects"].append("")
 
     # 기능별 인덱스: 본체에는 sub-index 목록만 두고 실제 행은 전부 sub-index로 낸다.
     #  project feature는 category별(§4 2단계)로, guide 전 종류는 index-guides로 간다 --
@@ -843,49 +896,47 @@ def build_index(vault, dry_run):
 
     rows, pend = _rows_knowledge(pages, "entity", "entity_name", "used_by")
     pending += pend
-    body.append("## 기술 스택 지식 (tech/)")
-    body.append("")
-    body += _table("| 기술 | 사용 프로젝트 |", "|------|--------------|", rows, "entity 없음")
-    body.append("")
+    groups["tech"] += ["## 기술 스택 지식 (tech/)", ""]
+    groups["tech"] += _table("| 기술 | 사용 프로젝트 |", "|------|--------------|", rows, "entity 없음")
+    groups["tech"].append("")
 
     rows, pend = _rows_knowledge(pages, "concept", "concept_name", "related_projects")
     pending += pend
-    body.append("## 범용 패턴 (patterns/)")
-    body.append("")
-    body += _table("| 패턴 | 관련 프로젝트 |", "|------|--------------|", rows, "concept 없음")
-    body.append("")
+    groups["patterns"] += ["## 범용 패턴 (patterns/)", ""]
+    groups["patterns"] += _table("| 패턴 | 관련 프로젝트 |", "|------|--------------|", rows, "concept 없음")
+    groups["patterns"].append("")
 
     rows, pend = _rows_questions(pages)
     pending += pend
-    body.append("## 미해결 질문")
-    body.append("")
-    body += _table("| 질문 | 상태 | 관련 |", "|------|------|------|", rows, "미해결 질문 없음")
+    groups["questions"] += ["## 미해결 질문", ""]
+    groups["questions"] += _table("| 질문 | 상태 | 관련 |", "|------|------|------|", rows, "미해결 질문 없음")
+
+    # 본체 조립 + 임계 초과 시 덜어내기(§4 1단계). **행이 많은 구역부터** 고르고 본체가 임계
+    #  이하가 되면 멈춘다 -- 더 덜어내도 조회 홉만 늘고 이득이 없다. 덜어낸 자리에는 목록 줄
+    #  하나를 두고, 섹션 이름으로 찾는 검사(§7-23 등)는 index.md+sub-index 합본을 보므로
+    #  구역이 옮겨가도 계속 찾는다.
+    # 마커 밖(머리말·증상별 인덱스·참조)도 파일 줄 수에 포함된다 — §7-14가 재는 단위가
+    #  「본문(frontmatter 포함 전체)」이라 생성 구역만 세면 임계를 넘긴 채 멈춘다.
+    outside = head.count("\n") + tail.count("\n") + 2   # 마커 두 줄
+    moved = []
+    for key, name, title in sorted(AUX_INDEX_GROUPS, key=lambda g: -len(groups[g[0]])):
+        # 덜어낸 구역은 본체에 안내 줄 2줄을 남긴다 — 그 몫도 미리 센다.
+        remaining = (outside + len(body) + 2 * len(moved)
+                     + sum(len(groups[k]) for k, _n, _t in AUX_INDEX_GROUPS
+                           if k not in moved))
+        if remaining <= INDEX_BODY_LINES:
+            break
+        aux_files[name] = (title, groups[key])
+        moved.append(key)
+    for key, name, title in AUX_INDEX_GROUPS:
+        if key in moved:
+            body += ["> **덜어낸 구역**: %s는 [[%s|%s]]에 있다(본체 %d줄 임계)."
+                     % (title, name, title, INDEX_BODY_LINES), ""]
+        else:
+            body += groups[key]
 
     generated = "\n".join(body)
 
-    idx_path = os.path.join(vault, "index.md")
-    try:
-        with open(idx_path, "rb") as fh:
-            cur = fh.read().decode("utf-8-sig")
-    except (UnicodeDecodeError, OSError) as e:
-        print("index.md 읽기 실패(%s) -- 생성을 중단합니다." % type(e).__name__)
-        return 1
-    cur_n = cur.replace("\r\n", "\n").replace("\r", "\n")
-    if AUTO_INDEX_BEGIN not in cur_n or AUTO_INDEX_END not in cur_n:
-        print("생성 마커 없음 -- index.md를 덮어쓰지 않았습니다.")
-        print("  도입하려면 생성 대상 구역(프로젝트 테이블~미해결 질문)을 다음 두 줄로 감싸세요:")
-        print("    %s" % AUTO_INDEX_BEGIN)
-        print("    %s" % AUTO_INDEX_END)
-        print("  마커 밖(증상별 인덱스·참조·머리말)은 생성이 건드리지 않습니다.")
-        return 1
-
-    head, _sep, rest = cur_n.partition(AUTO_INDEX_BEGIN)
-    if AUTO_INDEX_END not in rest:
-        # END가 BEGIN보다 앞에 있는 malformed 파일 -- "마커 없음"과 같은 경로로 닫는다
-        #  (여기서 split을 그냥 하면 ValueError로 죽어, 안내 없이 트레이스백만 남는다).
-        print("마커 순서 이상(END가 BEGIN보다 앞) -- index.md를 덮어쓰지 않았습니다.")
-        return 1
-    _, tail = rest.split(AUTO_INDEX_END, 1)
     new = head + AUTO_INDEX_BEGIN + "\n" + generated + "\n" + AUTO_INDEX_END + tail
 
     if pending:
@@ -912,7 +963,9 @@ def build_index(vault, dry_run):
     try:
         for path, content in [(idx_path, new)] + [
                 (os.path.join(vault, name + ".md"), _sub_index_text(name, lines))
-                for name, lines in sorted(sub_files.items())]:
+                for name, lines in sorted(sub_files.items())] + [
+                (os.path.join(vault, name + ".md"), _aux_index_text(name, title, lines))
+                for name, (title, lines) in sorted(aux_files.items())]:
             tmp = path + ".tmp-build-index"
             with open(tmp, "wb") as fh:
                 fh.write(content.encode("utf-8"))
@@ -932,13 +985,13 @@ def build_index(vault, dry_run):
     #  "지워졌는데 index.md는 옛 상태"가 남고, 삭제는 tmp 정리로 되돌릴 수 없다.
     #  개별 삭제 실패는 격리한다 -- 치환은 이미 끝났으므로 되돌릴 대상이 아니다.
     removed = []
-    for p in _stale_sub_indexes(vault, set(sub_files)):
+    for p in _stale_sub_indexes(vault, set(sub_files) | set(aux_files)):
         try:
             os.remove(p)
             removed.append(os.path.basename(p))
         except OSError as e:
             print("  [정리 실패] %s (%s)" % (os.path.basename(p), type(e).__name__))
-    print("index.md 생성 구역 갱신 · sub-index %d개 생성" % len(sub_files)
+    print("index.md 생성 구역 갱신 · sub-index %d개 생성" % (len(sub_files) + len(aux_files))
           + (" · stale %d개 제거(%s)" % (len(removed), "·".join(removed)) if removed else ""))
     return 0
 
