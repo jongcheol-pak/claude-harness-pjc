@@ -642,7 +642,7 @@
       "after_expect_keywords": [
         "예산 임박(분리 불가 판정 유지)"
       ],
-      "rationale": "budget_split=none 판정이 붙은 임박(96%) concept을 --auto-split이 건드리지 않는지 보는 델타 음성. 규정이 「더 나눌 것이 없다」고 판정한 페이지를 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다(wiki-schema §7-2 억제). 수행 후 재lint에서 억제 INFO가 그대로 남는 것이 존중의 증거다."
+      "rationale": "budget_split=none 판정이 붙은 96% concept을 --auto-split이 건드리지 않는지 보는 델타 음성. 규정이 「더 나눌 것이 없다」고 판정한 페이지를 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다(wiki-schema §7-2 억제). 수행 후 재lint에서 억제 INFO가 그대로 남는 것이 존중의 증거다."
     }
   ]
 }
