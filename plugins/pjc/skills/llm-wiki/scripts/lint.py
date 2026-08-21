@@ -733,6 +733,22 @@ def _chunk_rows(rows, limit):
     return [rows[i:i + limit] for i in range(0, len(rows), limit)]
 
 
+def _emit_sub_index(sub_links, sub_files, base, label, rows, header, sep, empty_note):
+    """행을 임계 단위로 잘라 sub-index 파일 1~N개를 낸다(§4 3단계 순번 분할).
+    `sub_links`(목록 링크)·`sub_files`(파일명 → 본문 행)에 결과를 채워 넣는다.
+
+    **라우팅은 `sorted(pages)` 정렬의 슬라이스**라 같은 vault면 같은 청크가 나온다
+    (생성기는 매 실행 전체를 다시 만들므로 「append-only 증분」이라는 수기 절차 전제가
+    여기서는 성립하지 않는다). 한 덩어리면 종전대로 무순번 이름을 쓴다 -- 임계에 닿지
+    않은 vault의 파일명을 바꾸지 않기 위함이다(무회귀)."""
+    chunks = _chunk_rows(rows, INDEX_FEAT_ROWS)
+    for i, chunk in enumerate(chunks, start=1):
+        name = base if len(chunks) == 1 else "%s-%d" % (base, i)
+        suffix = "" if len(chunks) == 1 else " (%d/%d)" % (i, len(chunks))
+        sub_links.append("[[%s|%s]]" % (name, label + suffix))
+        sub_files[name] = _table(header, sep, chunk, empty_note)
+
+
 def _stale_sub_indexes(vault, keep_names):
     """이번 생성 대상이 아닌 기존 `index-*.md` 경로 목록(생성물 정리 대상).
 
@@ -795,28 +811,15 @@ def build_index(vault, dry_run):
     #  본체가 얇아야 절차 K가 매 코드 세션에서 이 파일을 여는 비용이 낮다(실측 39,747자였다).
     sub_links = []
 
-    def _emit_sub(base, label_fmt, rows, header, sep, empty_note):
-        """행을 임계 단위로 잘라 sub-index 파일 1~N개를 낸다(§4 3단계 순번 분할).
-
-        **라우팅은 `sorted(pages)` 정렬의 슬라이스**라 같은 vault면 같은 청크가 나온다
-        (생성기는 매 실행 전체를 다시 만들므로 「append-only 증분」이라는 수기 절차 전제가
-        여기서는 성립하지 않는다). 한 덩어리면 종전대로 무순번 이름을 쓴다 -- 임계에 닿지
-        않은 vault의 파일명을 바꾸지 않기 위함이다(무회귀)."""
-        chunks = _chunk_rows(rows, INDEX_FEAT_ROWS)
-        for i, chunk in enumerate(chunks, start=1):
-            name = base if len(chunks) == 1 else "%s-%d" % (base, i)
-            suffix = "" if len(chunks) == 1 else " (%d/%d)" % (i, len(chunks))
-            sub_links.append("[[%s|%s]]" % (name, label_fmt + suffix))
-            sub_files[name] = _table(header, sep, chunk, empty_note)
-
     for cat, title in (("personal", "개인"), ("work", "업무")):
         rows, pend = _rows_features(pages, cat)
         pending += pend
         if not rows:
             continue
-        _emit_sub("index-%s" % cat, "%s 프로젝트 기능별 인덱스" % title, rows,
-                  "| 기능 | 플랫폼 | 프로젝트 | 상세 |",
-                  "|------|--------|----------|------|", "없음")
+        _emit_sub_index(sub_links, sub_files, "index-%s" % cat,
+                        "%s 프로젝트 기능별 인덱스" % title, rows,
+                        "| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                        "|------|--------|----------|------|", "없음")
     # 가이드·레시피 통합 표 -- 종전의 본체 recipe 행 + `## 가이드 / 레시피` 섹션을 한 표로 합친 것.
     #  두 섹션이 같은 recipe를 각각 실어 실 vault에서 106행이 중복이었다(_rows_guides docstring).
     guide_rows, pend = _rows_guides(pages)
@@ -824,9 +827,9 @@ def build_index(vault, dry_run):
     if guide_rows:
         # 가이드도 같은 임계·같은 순번 규칙을 쓴다 — category가 없을 뿐 행 수가 많아지면
         #  조회 비용은 똑같이 오른다(§7-14가 sub-index 전체를 대상으로 재는 것과 정합).
-        _emit_sub("index-guides", "가이드 / 레시피 인덱스", guide_rows,
-                  "| 이름 | 종류 | 플랫폼 | 상세 |", "|------|------|--------|------|",
-                  "가이드 없음")
+        _emit_sub_index(sub_links, sub_files, "index-guides", "가이드 / 레시피 인덱스",
+                        guide_rows, "| 이름 | 종류 | 플랫폼 | 상세 |",
+                        "|------|------|--------|------|", "가이드 없음")
     body.append("## 기능별 인덱스")
     body.append("")
     if sub_links:
