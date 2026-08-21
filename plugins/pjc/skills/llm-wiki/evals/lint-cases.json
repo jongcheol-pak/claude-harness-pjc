@@ -643,6 +643,34 @@
         "예산 임박(분리 불가 판정 유지)"
       ],
       "rationale": "budget_split=none 판정이 붙은 96% concept을 --auto-split이 건드리지 않는지 보는 델타 음성. 규정이 「더 나눌 것이 없다」고 판정한 페이지를 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다(wiki-schema §7-2 억제). 수행 후 재lint에서 억제 INFO가 그대로 남는 것이 존중의 증거다."
+    },
+    {
+      "fixture": "build-index",
+      "chunk_split": true,
+      "feature_count": 401,
+      "stale_names": [
+        "index-personal-7.md",
+        "index-work-3.md"
+      ],
+      "expect_kept": [
+        "index-notes.md"
+      ],
+      "expect_min_subs": 3,
+      "expect_total_rows": 406,
+      "expect_row_limit": 200,
+      "rationale": "§4 3단계 순번 분할을 N>=3 경로로 실제로 태운다(feature 401개 생성). 2청크만 보면 세 번째 이후 경로가 미검증으로 남고 경계 오류는 대개 그 자리에서 난다. 함께 보는 것 넷 — 행 총계 보존(406 = 생성 401 + build-index 픽스처의 기존 feature·recipe 5), 각 파일이 임계 200 이하, index.md 목록에 전부 등재(조회 홉 1), 생성 대상 밖 sub-index 2개 자동 제거. index-notes.md(type: guide)는 이름이 index-*.md여도 생성물이 아니라 삭제되면 안 되는 델타 음성이다."
+    },
+    {
+      "fixture": "build-index",
+      "chunk_split": true,
+      "feature_count": 400,
+      "expect_kept": [
+        "index-notes.md"
+      ],
+      "expect_min_subs": 2,
+      "expect_total_rows": 405,
+      "expect_row_limit": 200,
+      "rationale": "청크 경계가 임계의 배수와 정확히 맞아떨어지는 구간에서 빈 sub-index를 만들지 않는지(off-by-one). feature 400개 + 픽스처 기존 5행이라 청크가 정확히 나뉘는 자리를 지나며, 빈 파일이 생기면 러너가 잡는다."
     }
   ]
 }

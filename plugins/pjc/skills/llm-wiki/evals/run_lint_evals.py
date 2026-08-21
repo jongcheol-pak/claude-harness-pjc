@@ -183,6 +183,46 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
     return tmp, dest
 
 
+def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
+    """fixture를 임시 복사하고 **feature 페이지를 feature_count개 생성**한 뒤,
+    stale_names의 sub-index를 미리 심어 둔다(§4 3단계 순번 분할 골든).
+
+    페이지를 체크인하지 않고 실행 시점에 만드는 이유: 순번 분할은 임계(200행)를 넘겨야
+    발동하는데 그만큼의 md를 레포에 커밋하면 픽스처가 수백 개 파일로 불어난다. 날짜 폴더를
+    실행 시점에 만드는 backup_cleanup 선례와 같은 이유다.
+    반환: (정리용 임시 루트, vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-chunk-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    demo = os.path.join(dest, "20_projects", "personal", "demo")
+    os.makedirs(demo, exist_ok=True)
+    for i in range(1, feature_count + 1):
+        with open(os.path.join(demo, "feat-bulk-%03d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write(
+                "---\ntype: feature\nproject: Demo\ncategory: personal\n"
+                'feature_name: "대량 %03d"\nindex_label: "대량 %03d (bulk %03d)"\n'
+                "platform: windows-desktop\nstatus: active\norigin: agent-synthesized\n"
+                "confidence: medium\nupdated: 2026-07-02\ntags: [feature, demo]\n---\n\n"
+                "# 대량 %03d (bulk %03d)\n\n## 개요\n순번 분할 골든용 최소 feature.\n\n"
+                "## 관련 파일\n- `src/Demo/Bulk%03d.cs` — 더미\n\n"
+                "## 동작(사용법)\n없음.\n\n## 구현 방법\n없음.[^src-b]\n\n"
+                "## UI·UX\n없음.\n\n## 관련 지식·레시피\n- 없음\n\n"
+                "[^src-b]: [[10_sources/personal/src-demo|소스: Demo]] — `src/Demo/Bulk%03d.cs`\n"
+                % (i, i, i, i, i, i, i))
+    for name in stale_names:
+        with open(os.path.join(dest, name), "w", encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: index\ntags: [index]\n---\n\n# 옛 순번 파일\n\n"
+                     "## 기능별 인덱스\n\n| 기능 | 플랫폼 | 프로젝트 | 상세 |\n"
+                     "|------|--------|----------|------|\n")
+    # 델타 음성: 이름은 index-*.md지만 type이 index가 아니다 — 삭제되면 안 된다.
+    with open(os.path.join(dest, "index-notes.md"), "w", encoding="utf-8", newline="") as fh:
+        fh.write("---\ntype: guide\nguide_kind: recipe\nplatform: cross\n"
+                 "origin: human-validated\nconfidence: high\nupdated: 2026-07-02\n"
+                 "tags: [guide]\n---\n\n# 사용자 메모\n\n## 목적\n생성물이 아니다.\n")
+    return tmp, dest
+
+
 def _snapshot_md(root):
     """vault 안 모든 .md의 (상대경로 -> 바이트) 스냅샷. --build-index --dry-run이 정말로
     아무것도 쓰지 않았는지 앞뒤 비교로 증명하기 위한 것 — 출력 부재는 미변경의 증거가 아니다."""
@@ -204,7 +244,11 @@ def check_case(case):
     if not os.path.isdir(vault):
         return False, f"픽스처 폴더 없음: {vault}"
     # case 스키마 방어: 기대 조건이 하나도 없으면 오타로 조용히 PASS되는 것을 막는다.
-    if "expect_clean" not in case and "expect_keywords" not in case:
+    #  단 **자체 기대 필드를 갖는 모드**(chunk_split의 expect_total_rows·expect_min_subs 등)는
+    #  키워드 대조를 쓰지 않는다 — 그 모드가 스스로 구조를 세어 판정하므로 여기서 요구하면
+    #  의미 없는 키워드를 형식상 넣게 된다(방어가 오히려 케이스를 왜곡한다).
+    if ("expect_clean" not in case and "expect_keywords" not in case
+            and not case.get("chunk_split")):
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
 
     # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
@@ -305,6 +349,58 @@ def check_case(case):
         if missing:
             return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
         return True, f"백업 정리 확인: {len(before)}개 → {len(kept)}개 (제거 {len(before) - len(kept)})"
+
+    # chunk_split 케이스: §4 3단계 **순번 분할**과 stale sub-index 정리를 실제 쓰기로 대조한다.
+    #  키워드만으로는 "행이 보존됐는가"·"빈 청크가 안 생겼는가"를 증명할 수 없어 생성된
+    #  파일을 다시 읽어 **행 총계·임계 준수·목록 등재·델타 음성**을 직접 센다.
+    if case.get("chunk_split"):
+        tmp, dest = prepare_chunk_split_vault(
+            vault, case.get("feature_count", 210), case.get("stale_names", []))
+        out, rc, err = run_lint(dest, ["--build-index"])
+        subs = sorted(n for n in os.listdir(dest)
+                      if n.startswith("index-") and n.endswith(".md"))
+        def _rows(name):
+            with open(os.path.join(dest, name), encoding="utf-8-sig") as fh:
+                text = fh.read()
+            sec = text.split("## 기능별 인덱스", 1)[-1]
+            return sum(1 for ln in sec.splitlines()
+                       if ln.startswith("|") and "---" not in ln and "| 기능 |" not in ln
+                       and "| 이름 |" not in ln)
+        with open(os.path.join(dest, "index.md"), encoding="utf-8-sig") as fh:
+            idx = fh.read()
+        gen_subs = [s for s in subs if s != "index-notes.md"]
+        total = sum(_rows(s) for s in gen_subs)
+        limit = case.get("expect_row_limit", 200)
+        problems = []
+        if rc != 0:
+            problems.append("build-index 종료코드 %d" % rc)
+        over = [s for s in gen_subs if _rows(s) > limit]
+        if over:
+            problems.append("임계 초과 sub-index: " + ", ".join(over))
+        empty = [s for s in gen_subs if _rows(s) == 0]
+        if empty:
+            problems.append("빈 sub-index 생성: " + ", ".join(empty))
+        if case.get("expect_min_subs") and len(gen_subs) < case["expect_min_subs"]:
+            problems.append("sub-index %d개 < 기대 %d개(순번 경로 미발동)"
+                            % (len(gen_subs), case["expect_min_subs"]))
+        if case.get("expect_total_rows") and total != case["expect_total_rows"]:
+            problems.append("행 총계 %d ≠ 기대 %d(분할이 행을 잃거나 늘림)"
+                            % (total, case["expect_total_rows"]))
+        unlisted = [s for s in gen_subs if s[:-3] not in idx]
+        if unlisted:
+            problems.append("index.md 목록 미등재: " + ", ".join(unlisted))
+        for stale in case.get("stale_names", []):
+            if os.path.exists(os.path.join(dest, stale)):
+                problems.append("stale sub-index 미제거: " + stale)
+        for keep in case.get("expect_kept", []):
+            if not os.path.exists(os.path.join(dest, keep)):
+                problems.append("생성물이 아닌 파일이 삭제됨(델타 음성 실패): " + keep)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if problems:
+            return False, " / ".join(problems)
+        return True, ("순번 분할 %d개·행 %d 보존·임계 %d 준수·stale %d 제거·델타 음성 유지"
+                      % (len(gen_subs), total, limit,
+                         len(case.get("stale_names", []))))
 
     # auto_split 케이스: `--auto-split`(임계 자동 분할·롤오버)을 임시 복사본에서 돌린다.
     #  ① dry-run은 파일을 한 바이트도 바꾸지 않아야 하고(계약 — 출력 부재는 미변경의 증거가
