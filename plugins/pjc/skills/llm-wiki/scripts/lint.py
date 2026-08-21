@@ -922,6 +922,23 @@ class SplitSession:
                 return False
         return True
 
+    def restore(self):
+        """이 세션이 만든 `-presplit` 사본으로 되돌린다(§4 절차 5번 원복).
+        **사본이 있는 파일만** 되돌린다 — 신설된 하위 파일은 사본이 없으므로 그대로 남는데,
+        그것은 다음 실행이 같은 이름으로 덮어쓰거나 사람이 지울 수 있는 상태다(원본이
+        온전하면 유실이 아니다). 반환: 되돌린 파일 수."""
+        n = 0
+        for p in sorted(self.backed_up):
+            src = os.path.join(self.backup_dir, os.path.relpath(p, self.vault))
+            if not os.path.exists(src):
+                continue
+            try:
+                shutil.copy2(src, p)
+                n += 1
+            except OSError:
+                self.notes.append(f"원복 실패: {os.path.relpath(p, self.vault)}")
+        return n
+
     def record(self, kind, target, created):
         self.actions.append((kind, target, list(created)))
 
@@ -932,6 +949,49 @@ class SplitSession:
                 f"{target}: {made}. (사유: 임계 초과)")
 
 
+def _atomic_write(path, content, bom=False, newline="\n"):
+    """임시 파일에 쓴 뒤 os.replace로 치환한다 — 쓰기 도중 실패가 원본을 깨뜨리지 않게.
+    build_index가 확립한 관례를 파일 하나짜리 쓰기에도 그대로 쓴다(같은 파일 안에서
+    한쪽만 직접 덮어쓰면 그 파일이 손상 위험을 혼자 진다).
+
+    **원본의 BOM·줄바꿈을 보존한다** — `apply_fixes`의 `write`/`nl_of`가 지키는 규약과 같다.
+    보존하지 않으면 CRLF·BOM 파일이 수정될 때마다 조용히 LF·BOM 없음으로 평탄화돼,
+    변경한 줄과 무관한 전체 diff가 만들어진다. 반환: 성공 여부."""
+    if newline != "\n":
+        content = content.replace("\n", newline)
+    data = content.encode("utf-8")
+    if bom:
+        data = b"\xef\xbb\xbf" + data
+    tmp = path + ".tmp-write"
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(data)
+        os.replace(tmp, path)
+        return True
+    except OSError:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass   # 임시 파일 정리 실패는 원본에 영향이 없다 -- 원 실패를 가리지 않는다
+        return False
+
+
+def _read_page(path):
+    """페이지를 읽어 (정규화 텍스트, BOM 여부, 줄바꿈)을 돌려준다. 실패면 (None, False, "\\n").
+    쓰기 쪽(_atomic_write)이 원본 형상을 보존하려면 읽기 쪽이 그 형상을 함께 알려줘야 한다."""
+    try:
+        with open(path, "rb") as fh:
+            b = fh.read()
+    except OSError:
+        return None, False, "\n"
+    bom = b.startswith(b"\xef\xbb\xbf")
+    try:
+        raw = b.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return None, False, "\n"
+    return raw.replace("\r\n", "\n").replace("\r", "\n"), bom, ("\r\n" if "\r\n" in raw else "\n")
+
+
 def _append_log_entries(vault, lines):
     """§4 7번 기록을 log.md `## 최근 변경`에 append한다. 파일·섹션이 없으면 만들지 않고
     건너뛴다 — 없는 vault에 구조를 지어내지 않는다(그 경우 보고에만 남는다).
@@ -939,19 +999,14 @@ def _append_log_entries(vault, lines):
     path = os.path.join(vault, "log.md")
     if not lines or not os.path.exists(path):
         return 0
-    try:
-        with open(path, encoding="utf-8-sig") as fh:
-            text = fh.read()
-    except (UnicodeDecodeError, OSError):
+    text, bom, nl = _read_page(path)
+    if text is None:
         return 0
     sec = section(text, "최근 변경")
     if not sec:
         return 0
     new_sec = sec.rstrip("\n") + "\n" + "\n".join(lines) + "\n\n"
-    try:
-        with open(path, "w", encoding="utf-8", newline="") as fh:
-            fh.write(text.replace(sec, new_sec, 1))
-    except OSError:
+    if not _atomic_write(path, text.replace(sec, new_sec, 1), bom, nl):
         return 0
     return len(lines)
 
@@ -987,8 +1042,22 @@ def auto_split(vault, dry_run):
     # 처방 목록. 플러그인·전략 클래스로 추상화하지 않는다 -- 이 순차 호출 목록이 곧 처방
     #  목록이고, 새 처방은 여기 한 줄이 는다. 순서는 「롤오버 먼저, 산문 분리 나중」이다:
     #  롤오버가 먼저 줄여 두면 산문 분리가 손댈 페이지가 줄어든다(project 허브가 그렇다).
+    #
+    # **처방 단위 격리**: 한 처방의 예외가 나머지를 죽이지 않게 한다(`apply_fixes`의
+    #  `[FIX-FAIL]` 선례). 다만 격리는 「계속 진행」이 아니라 「되돌리고 계속」이다 --
+    #  중간에 죽은 처방은 파일을 절반만 고쳤을 수 있어, 그 세션 사본으로 원복한 뒤에야
+    #  다음 처방이 온전한 상태에서 시작한다.
     for prescribe in PRESCRIPTIONS:
-        prescribe(ses)
+        before = len(ses.actions)
+        try:
+            prescribe(ses)
+        except Exception as e:      # 처방 구현의 어떤 실패든 나머지를 막지 않게(광의 포획 의도)
+            restored = ses.restore()
+            del ses.actions[before:]
+            ses.notes.append(
+                f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
+                f"{type(e).__name__} — 사본에서 {restored}개 파일 원복 후 다음 처방 계속")
+            ses.failed = True
 
     if not ses.actions:
         print("== --auto-split: 수행 대상 없음 ==")
@@ -1009,10 +1078,15 @@ def auto_split(vault, dry_run):
     #  기록을 다시 남기지 않는다 -- 기록→롤오버→기록의 연쇄를 끊는 것이 이 「1회」의 의미다.
     written = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
     if written:
+        # 재점검은 처방 **목록 전체**를 다시 돌린다 -- 특정 처방을 이름으로 부르지 않는 이유는
+        #  그 이름이 이 골격에 없는 심볼에 대한 계약이 되어(정의 위치가 후속 task) 목록과
+        #  이름 참조 두 곳이 갈리기 때문이다. 이미 해소된 처방은 발동 조건이 거짓이라 no-op다.
         recheck = SplitSession(vault, dry_run)
-        rollover_log(recheck)
+        for prescribe in PRESCRIPTIONS:
+            prescribe(recheck)
         if recheck.actions:
-            ses.notes.append("log 기록 후 재점검에서 log.md 롤오버 1회 추가 수행(기록 미생성)")
+            ses.notes.append(
+                f"log 기록 후 재점검에서 {len(recheck.actions)}건 추가 수행(§4 7번 기록 미생성 — 연쇄 차단)")
 
     # 신설 하위를 인덱스에 등재한다 -- 이 연쇄가 없으면 분할 직후 §7-6·§7-30ⓒ가 미등록을
     #  경고하고 조회 경로가 끊긴다. 생성 마커가 없는 vault에서는 build_index가 아무것도 쓰지

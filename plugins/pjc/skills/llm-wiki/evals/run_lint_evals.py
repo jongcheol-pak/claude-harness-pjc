@@ -306,6 +306,43 @@ def check_case(case):
             return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
         return True, f"백업 정리 확인: {len(before)}개 → {len(kept)}개 (제거 {len(before) - len(kept)})"
 
+    # auto_split 케이스: `--auto-split`(임계 자동 분할·롤오버)을 임시 복사본에서 돌린다.
+    #  ① dry-run은 파일을 한 바이트도 바꾸지 않아야 하고(계약 — 출력 부재는 미변경의 증거가
+    #     아니므로 실제 바이트를 앞뒤 비교한다) ② 실행 출력에 expect_keywords가 전부 있어야 하며
+    #  ③ after_expect_absent가 있으면 **수행 후 재lint**에서 그 위반이 사라져야 한다.
+    #  `--fix`와 달리 승인 불요 경로라 별도 모드로 둔다(두 규약을 한 케이스에 섞지 않는다).
+    if case.get("auto_split"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-split-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        dry_before = _snapshot_md(dest)
+        out_dry, rc_dry, err_dry = run_lint(dest, ["--auto-split", "--dry-run"])
+        dry_after = _snapshot_md(dest)
+        if dry_before != dry_after:
+            shutil.rmtree(tmp, ignore_errors=True)
+            changed = sorted(k for k in set(dry_before) | set(dry_after)
+                             if dry_before.get(k) != dry_after.get(k))
+            return False, "--auto-split --dry-run이 파일을 변경함: " + ", ".join(changed)
+        out, rc, err = run_lint(dest, ["--auto-split"])
+        out2, rc2, err2 = run_lint(dest)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if rc not in (0, 1):
+            tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
+            return False, f"--auto-split 비정상 종료({rc}): {tail}"
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+        if missing:
+            return False, "--auto-split 출력 미검출 키워드: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "--auto-split 출력에 금지 키워드: " + ", ".join(present)
+        residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
+        if residual:
+            return False, "수행 후 재lint에 위반 잔존: " + ", ".join(residual)
+        missing2 = [kw for kw in case.get("after_expect_keywords", []) if kw not in out2]
+        if missing2:
+            return False, "수행 후 재lint 기대 키워드 미검출: " + ", ".join(missing2)
+        return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
+
     if case.get("fix_mode"):
         tmp = tempfile.mkdtemp(prefix="lint-eval-fix-")
         dest = os.path.join(tmp, os.path.basename(vault))

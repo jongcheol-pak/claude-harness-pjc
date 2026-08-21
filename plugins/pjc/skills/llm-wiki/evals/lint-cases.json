@@ -616,6 +616,33 @@
       "after_expect_keywords": [
         "[ERR] 오류 0건"
       ]
+    },
+    {
+      "fixture": "split-no-target",
+      "auto_split": true,
+      "expect_keywords": [
+        "== --auto-split: 수행 대상 없음 =="
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "Traceback"
+      ],
+      "rationale": "임계 미달 vault에서 --auto-split이 아무것도 하지 않고 exit 0으로 끝나는지(무대상 계약). dry-run 무변경도 같은 케이스가 파일 바이트 앞뒤 비교로 실증한다 — 출력 부재는 미변경의 증거가 아니다."
+    },
+    {
+      "fixture": "split-suppressed",
+      "auto_split": true,
+      "expect_keywords": [
+        "== --auto-split: 수행 대상 없음 =="
+      ],
+      "expect_absent": [
+        "suppressed-concept",
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_keywords": [
+        "예산 임박(분리 불가 판정 유지)"
+      ],
+      "rationale": "budget_split=none 판정이 붙은 임박(96%) concept을 --auto-split이 건드리지 않는지 보는 델타 음성. 규정이 「더 나눌 것이 없다」고 판정한 페이지를 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다(wiki-schema §7-2 억제). 수행 후 재lint에서 억제 INFO가 그대로 남는 것이 존중의 증거다."
     }
   ]
 }
