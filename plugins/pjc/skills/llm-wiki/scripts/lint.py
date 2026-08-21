@@ -1362,6 +1362,100 @@ def rollover_log(ses):
 PRESCRIPTIONS.append(rollover_log)
 
 
+def _decision_body_span(text):
+    """decision-log의 **항목 구간**을 (앞부분, 항목 구간, 뒷부분)으로 가른다.
+
+    `log.md`와 달리 이 타입은 항목이 섹션 없이 본문에 바로 온다(§2.8) — `# {프로젝트}
+    결정 이력` 헤딩 뒤부터 `## 아카이브` 앞까지다. 그래서 `section()`으로 스코프를 잡을 수
+    없고, 뒷부분(아카이브 포인터·주석)을 그대로 보존하려면 세 조각으로 갈라야 한다."""
+    m = re.search(r"(?m)^(- \[\d{4}-\d{2}-\d{2})", text)
+    if not m:
+        return text, "", ""
+    tail_m = re.search(r"(?m)^##\s", text[m.start():])
+    end = m.start() + tail_m.start() if tail_m else len(text)
+    return text[:m.start()], text[m.start():end], text[end:]
+
+
+def rollover_decisions(ses):
+    """decision-log 롤오버(§2.8) — 오래된 항목부터 `90_archive/{원경로}`로 옮긴다.
+
+    **항목 불변**(§2.8)이라 옮기는 본문을 손대지 않는다. 목적지에 파일이 있으면 덮어쓰지
+    않고 append한다 — 덮어쓰면 이미 이동된 과거 결정이 사라진다."""
+    for rel in sorted(_decision_log_paths(ses.vault)):
+        path = os.path.join(ses.vault, rel.replace("/", os.sep))
+        text, bom, nl = _read_page(path)
+        if text is None:
+            continue
+        st = budget_state(rel, frontmatter(text), text)
+        if not st or not (st.critical or st.over) or st.suppressed:
+            continue
+        head, body, tail = _decision_body_span(text)
+        if not body:
+            continue
+        _h, items = _split_items(body)
+        if not items:
+            continue
+        fits = lambda blocks: len(head) + len("".join(blocks)) + len(tail) <= st.budget * BUDGET_NEAR_RATIO
+        moving, kept = _rollover_items(items, fits)
+        if not moving:
+            continue
+
+        arch_rel = "90_archive/" + rel
+        arch_path = os.path.join(ses.vault, arch_rel.replace("/", os.sep))
+        if not ses.claim(path, arch_path) or not ses.backup(path, arch_path):
+            ses.notes.append(f"{rel} 롤오버 건너뜀 — 다른 처방이 맡았거나 사본 실패")
+            continue
+
+        blocks = [b for _d, b in moving]
+        if os.path.exists(arch_path):
+            prev, abom, anl = _read_page(arch_path)
+            arch_text = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+        else:
+            abom, anl = False, nl
+            proj = frontmatter(text).get("project", "") or os.path.basename(os.path.dirname(rel))
+            # 아카이브는 frontmatter 없이 둔다(§2.8) — type을 남기면 무한 성장 파일에
+            #  예산 검사가 걸릴 이유가 없는데도 걸린다.
+            arch_text = "# %s 결정 이력 아카이브\n\n" % proj + "".join(blocks)
+        new_text = head + "".join(b for _d, b in kept) + tail
+        # `## 아카이브` 포인터(§2.8·§7-24). **기존 포인터가 있으면 그 형식을 유지**하고
+        #  날짜·건수만 갱신한다 — 실 vault는 규정 문면과 다른 wikilink 형식을 쓰는데(실측),
+        #  그것도 §7-24를 통과하므로 형식을 갈아엎을 이유가 없다.
+        dates = sorted(d for d, _b in moving)
+        total = len(re.findall(r"(?m)^- \[\d{4}-\d{2}-\d{2}", arch_text))
+        span = "%s~%s, 누적 %d건" % (dates[0], dates[-1], total)
+        sec = section(new_text, "아카이브")
+        if sec and DEC_PTR_RX.search(sec):
+            new_sec = re.sub(r"\(\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}, 누적 \d+건\)",
+                             "(%s)" % span, sec)
+            if new_sec == sec:      # 옛 포인터에 날짜·건수 표기가 없으면 뒤에 덧붙인다
+                new_sec = sec.rstrip("\n") + "\n"
+            new_text = new_text.replace(sec, new_sec, 1)
+        else:
+            new_text = new_text.rstrip("\n") + (
+                "\n\n## 아카이브\n\n- 이전 이력: %s (%s)\n" % (arch_rel, span))
+        if not ses.dry_run:
+            os.makedirs(os.path.dirname(arch_path), exist_ok=True)
+            _atomic_write(arch_path, arch_text, abom, anl)
+            _atomic_write(path, new_text, bom, nl)
+        ses.record("롤오버", rel, [arch_rel])
+
+
+def _decision_log_paths(vault):
+    """vault의 현행 decision-log 상대경로 목록(90_archive 제외)."""
+    out = []
+    for p in glob.glob(os.path.join(glob.escape(vault), "**", "decisions.md"), recursive=True):
+        rel = os.path.relpath(p, vault).replace("\\", "/")
+        if rel.startswith("90_archive/"):
+            continue
+        text, _bom, _nl = _read_page(p)
+        if text is not None and frontmatter(text).get("type") == "decision-log":
+            out.append(rel)
+    return out
+
+
+PRESCRIPTIONS.append(rollover_decisions)
+
+
 def auto_split(vault, dry_run):
     """임계에 닿은 파일을 규정된 처방대로 **코드가** 나누거나 옮긴다(§4·§8).
 

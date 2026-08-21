@@ -756,6 +756,33 @@
       "expect_kept_contains": [
         "형식이 어긋난 항목"
       ]
+    },
+    {
+      "fixture": "dec-rollover",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo/decisions.md",
+        "90_archive/20_projects/personal/demo/decisions.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 초과: 20_projects/personal/demo/decisions.md",
+        "예산 임박: 20_projects/personal/demo/decisions.md"
+      ],
+      "rationale": "§2.8 decision-log 롤오버. log.md와 달리 항목이 섹션 없이 본문에 바로 오므로(`# 결정 이력` 뒤 ~ `## 아카이브` 앞) 세 조각으로 갈라 뒷부분(포인터·주석)을 보존한다. 함께 보는 것 넷 — 오래된 것부터 이동(최신이 위 관례), 기존 아카이브 9건에 **append**(덮어쓰면 이미 옮긴 과거 결정이 사라진다), 포인터의 날짜·**누적 건수**가 실제 아카이브 파일을 세어 갱신되는지(9 + 8 = 17), 항목 불변(§2.8)이라 옮기는 본문이 무변조인지."
+    },
+    {
+      "fixture": "dec-under",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "롤오버 — 20_projects/personal/demo/decisions.md"
+      ],
+      "rationale": "예산 여유가 있는 decision-log는 건드리지 않는다(무회귀 음성). 결정 이력은 조회가 목적이라 이유 없이 아카이브로 밀면 계획 세션이 과거 결정을 못 본다."
     }
   ]
 }
