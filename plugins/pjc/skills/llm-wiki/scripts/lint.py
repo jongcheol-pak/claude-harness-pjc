@@ -1329,6 +1329,8 @@ def rollover_log(ses):
     # kept는 _rollover_items가 moving과 배타적으로 돌려준 것이라 그대로 쓴다
     #  (원래 순서가 유지되므로 최신이 위인 log.md 형상이 보존된다).
     new_sec = head + "".join(b for _d, b in kept)
+    if sec.endswith("\n\n") and not new_sec.endswith("\n\n"):
+        new_sec += "\n"
     new_text = _replace_section(text, "최근 변경", new_sec)
     # 아카이브 인덱스(검색 진입점, §8). **키워드 요약은 판단이라 자동 경로가 쓸 수 없다** --
     #  건수·기간이라는 결정론 형식으로 대신한다(진입점이 아예 없는 것보다 검색에 쓰인다).
@@ -1422,7 +1424,10 @@ def rollover_decisions(ses):
             # 아카이브는 frontmatter 없이 둔다(§2.8) — type을 남기면 무한 성장 파일에
             #  예산 검사가 걸릴 이유가 없는데도 걸린다.
             arch_text = "# %s 결정 이력 아카이브\n\n" % proj + "".join(blocks)
-        new_text = head + "".join(b for _d, b in kept) + tail
+        new_body = "".join(b for _d, b in kept)
+        if body.endswith("\n\n") and not new_body.endswith("\n\n"):
+            new_body += "\n"
+        new_text = head + new_body + tail
         # `## 아카이브` 포인터(§2.8·§7-24). **기존 포인터가 있으면 그 형식을 유지**하고
         #  날짜·건수만 갱신한다 — 실 vault는 규정 문면과 다른 wikilink 형식을 쓰는데(실측),
         #  그것도 §7-24를 통과하므로 형식을 갈아엎을 이유가 없다.
@@ -1468,6 +1473,7 @@ def _decision_log_paths(vault):
 
 
 PRESCRIPTIONS.append(rollover_decisions)
+
 
 def _project_hub_paths(vault):
     """vault의 현행 project 허브 상대경로 목록(90_archive 제외).
@@ -1562,7 +1568,6 @@ def rollover_hub_changes(ses):
 
 
 PRESCRIPTIONS.append(rollover_hub_changes)
-
 
 
 def auto_split(vault, dry_run):
