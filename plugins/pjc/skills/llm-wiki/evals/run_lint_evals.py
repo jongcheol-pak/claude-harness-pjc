@@ -25,8 +25,10 @@ lint.py 자체는 수정하지 않고 subprocess로 호출만 한다(실사용 �
 exit code: 전 case PASS면 0, 하나라도 FAIL이면 1.
 """
 import datetime
+import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -509,7 +511,6 @@ def check_case(case):
             return False, "--auto-split --dry-run이 파일을 변경함: " + ", ".join(changed)
         out, rc, err = run_lint(dest, ["--auto-split"])
         out2, rc2, err2 = run_lint(dest)
-        shutil.rmtree(tmp, ignore_errors=True)
         if rc not in (0, 1):
             tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
             return False, f"--auto-split 비정상 종료({rc}): {tail}"
@@ -525,6 +526,30 @@ def check_case(case):
         missing2 = [kw for kw in case.get("after_expect_keywords", []) if kw not in out2]
         if missing2:
             return False, "수행 후 재lint 기대 키워드 미검출: " + ", ".join(missing2)
+        # **롤오버 방향 검증** — 출력 키워드만 보면 「오래된 것부터」인지 알 수 없다.
+        #  log.md는 최신이 위라, 위치로 고르는 구현은 정반대(최신부터)로 옮기면서도
+        #  "롤오버 — log.md"라는 같은 줄을 낸다. 남은 월·옮겨진 월을 직접 센다.
+        want_kept = case.get("expect_kept_months")
+        want_arch = case.get("expect_archive_months")
+        if want_kept or want_arch:
+            lp = os.path.join(dest, "log.md")
+            with open(lp, encoding="utf-8-sig") as fh:
+                lt = fh.read()
+            m = re.search(r"(?ms)^##\s*최근 변경\b.*?(?=^##\s|\Z)", lt)
+            kept_months = sorted({d[:7] for d in
+                                  re.findall(r"(?m)^- \[(\d{4}-\d{2}-\d{2})\]", m.group(0) if m else "")})
+            arch_months = sorted(os.path.basename(f)[:-3] for f in
+                                 glob.glob(os.path.join(dest, "90_archive", "log", "*.md")))
+            if want_kept is not None and kept_months != want_kept:
+                return False, "남은 월 불일치 — 기대 %s / 실제 %s(오래된 것부터가 아닐 수 있다)" % (want_kept, kept_months)
+            if want_arch is not None and arch_months != want_arch:
+                return False, "아카이브 월 불일치 — 기대 %s / 실제 %s" % (want_arch, arch_months)
+            # 이동 대상이 아닌 항목이 **남아 있는가**(유실 가드). 초기 구현은 날짜 없는 항목을
+            #  이동 목록에 담았다가 월 분배에서 빼면서 어느 파일에도 쓰지 않아 통째로 잃었다.
+            for kw in case.get("expect_kept_contains", []):
+                if kw not in lt:
+                    return False, "남아야 할 항목이 사라짐(유실): " + kw
+        shutil.rmtree(tmp, ignore_errors=True)
         return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
 
     if case.get("fix_mode"):

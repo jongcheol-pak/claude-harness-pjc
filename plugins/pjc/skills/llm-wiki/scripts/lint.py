@@ -1229,6 +1229,37 @@ def _split_items(section_text):
     return head, out
 
 
+def _rollover_items(items, fits, keep_min=1):
+    """항목 목록에서 **가장 오래된 것부터** 이동 대상을 고른다(§2.8·§8 롤오버 공용).
+
+    **순서는 파일 위치가 아니라 날짜로 정한다.** log.md·decisions.md는 **최신이 위**라
+    위치로 고르면 정반대(최신부터)가 된다 — 실측: 실 vault log.md가 내림차순이고, 그
+    상태에서 앞에서부터 옮기면 방금 쓴 기록이 아카이브로 간다. 같은 날짜끼리는 파일에서
+    **아래쪽이 더 오래된 것**이므로 그쪽을 먼저 고른다.
+
+    **날짜 없는 블록은 이동 대상이 아니다** — 어느 월 파일로 갈지 정할 수 없다. 그런 블록은
+    남는 쪽에 그대로 둔다(이동 대상에서 빼기만 하고 버리지 않는다).
+
+    `fits(kept_blocks)`가 참이 되면 멈춘다. **판정은 「지금 남아 있는 것」 기준**이다 —
+    「이걸 옮기면」을 기준으로 보면 정작 목표를 만족시키는 그 이동을 하지 않고 멈춰, 항상
+    한 항목을 덜 옮기고 목표를 넘긴 채 끝난다(가장 오래된 항목이 크면 아무것도 안 옮긴다).
+
+    `keep_min`개는 반드시 남긴다 — 전부 옮기면 「최근 변경」이 비어 최근을 볼 수 없다.
+    반환: (moving 블록 목록[오래된 순], kept 항목 목록[원래 순서 유지])."""
+    order = sorted((i for i, (d, _b) in enumerate(items) if d is not None),
+                   key=lambda i: (items[i][0], -i))
+    moved = set()
+    for i in order:
+        if len(items) - len(moved) <= keep_min:
+            break
+        if fits([b for j, (_d, b) in enumerate(items) if j not in moved]):
+            break
+        moved.add(i)
+    moving = [items[i][1] for i in order if i in moved]
+    kept = [items[i] for i in range(len(items)) if i not in moved]
+    return moving, kept
+
+
 def _replace_section(text, heading, new_section):
     """`## {heading}` 섹션을 통째로 교체한 사본. 섹션이 없으면 원본 그대로."""
     sec = section(text, heading)
@@ -1268,24 +1299,19 @@ def rollover_log(ses):
     #  log.md에 append되는데, 목표에 딱 맞춰 멈추면 그 한 줄 때문에 **다음 실행이 또
     #  롤오버한다**(실측 3,081/3,000). 매 실행 조금씩 도는 것을 막으려면 기록 몫을 미리 비운다.
     goal = max(0, st.target - LOG_ROLLOVER_SLACK)
-    moving, kept = [], list(items)
-    while len(kept) > 1:
-        trial = head + "".join(b for _d, b in kept[1:])
-        if len(text) - len(sec) + len(trial) <= goal:
-            break
-        moving.append(kept.pop(0))
+    fits = lambda blocks: len(text) - len(sec) + len(head) + len("".join(blocks)) <= goal
+    moving, kept = _rollover_items(items, fits)
     if not moving:
         return
 
+    by_block = {b: d for d, b in items}
     targets = {}
-    undated = 0
-    for d, blk in moving:
-        if d is None:
-            undated += 1
-            continue      # 날짜 없는 항목은 어느 월로 갈지 정할 수 없다 -- 남긴다
+    for blk in moving:
+        d = by_block[blk]
         targets.setdefault("%04d-%02d" % (d.year, d.month), []).append(blk)
+    undated = sum(1 for d, _b in kept if d is None)
     if undated:
-        ses.notes.append(f"log.md 날짜 없는 항목 {undated}건은 월을 정할 수 없어 남겼다")
+        ses.notes.append(f"log.md 날짜 없는 항목 {undated}건은 월을 정할 수 없어 그대로 두었다")
 
     arch_dir = os.path.join(ses.vault, "90_archive", "log")
     paths = [path] + [os.path.join(arch_dir, "%s.md" % m) for m in sorted(targets)]
@@ -1293,8 +1319,8 @@ def rollover_log(ses):
         ses.notes.append("log.md 롤오버 건너뜀 — 대상 파일을 다른 처방이 맡았거나 사본 실패")
         return
 
-    # kept는 pop으로 이미 moving과 배타적이다 — 다시 걸러내면 같은 날짜·같은 본문 블록이
-    #  둘 있을 때 남길 것을 잘못 지운다(중복 항목은 실제로 있을 수 있다).
+    # kept는 _rollover_items가 moving과 배타적으로 돌려준 것이라 그대로 쓴다
+    #  (원래 순서가 유지되므로 최신이 위인 log.md 형상이 보존된다).
     new_sec = head + "".join(b for _d, b in kept)
     new_text = _replace_section(text, "최근 변경", new_sec)
     # 아카이브 인덱스(검색 진입점, §8). **키워드 요약은 판단이라 자동 경로가 쓸 수 없다** --
@@ -1311,7 +1337,7 @@ def rollover_log(ses):
         if not ses.dry_run:
             os.makedirs(arch_dir, exist_ok=True)
             _atomic_write(af, body, abom, anl)
-        dates = sorted(d for d, _b in moving if d and "%04d-%02d" % (d.year, d.month) == mon)
+        dates = sorted(by_block[b] for b in blocks)
         line = "- %s.md: %d건 (%s~%s)" % (mon, len(blocks), dates[0], dates[-1])
         idx_sec = section(new_text, "아카이브 인덱스")
         if idx_sec:
