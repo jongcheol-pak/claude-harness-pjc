@@ -1669,6 +1669,12 @@ def main():
     #  규정하므로, 그 링크를 가진 같은 폴더 guide만 하위 후보다. 독립 가이드는 그 링크가 없어
     #  후보에 들지 않는다(오탐 0). 허브는 `## 하위 문서` 섹션 보유로 식별한다(파일명 고정이
     #  아니므로 섹션 존재가 유일한 구조 신호다).
+    #  폴더별 guide 인덱스를 미리 만든다 — 허브마다 전체 pages(실측 399개)를 훑으면
+    #  O(허브 x 전체 페이지)가 되는데, 후보는 애초에 같은 폴더 guide뿐이다.
+    guides_by_folder = {}
+    for gr, (gfm, gtyp, gtext) in pages.items():
+        if gtyp == "guide" and not gr.startswith("90_archive/"):
+            guides_by_folder.setdefault(os.path.dirname(gr), []).append(gr)
     guide_hubs = {r for r, (fm, typ, text) in pages.items()
                   if typ == "guide" and not r.startswith("90_archive/")
                   and section(text, "하위 문서")}
@@ -1681,12 +1687,10 @@ def main():
         # 역방향: 이 허브를 복귀 링크한 같은 폴더 guide가 목록에 있는가
         folder = os.path.dirname(hub)
         hub_stem = hub[:-3]
-        for other, (ofm, otyp, otext) in sorted(pages.items()):
-            if otyp != "guide" or other == hub or os.path.dirname(other) != folder:
-                continue
-            if other.startswith("90_archive/") or other in guide_hubs:
-                continue        # 허브끼리는 서로의 하위가 아니다
-            back = {x[:-3] if x.endswith(".md") else x for x in wikilink_targets(otext)}
+        for other in sorted(guides_by_folder.get(folder, [])):
+            if other == hub or other in guide_hubs:
+                continue        # 자기 자신·다른 허브는 하위가 아니다
+            back = {x[:-3] if x.endswith(".md") else x for x in wikilink_targets(pages[other][2])}
             if hub_stem in back and other[:-3] not in listed:
                 warn(f"가이드 하위 문서 목록 누락: {hub}의 '## 하위 문서'에 {other} 미등재 "
                      f"— 허브 복귀 링크는 있는데 목록에 없어 조회 홉 1이 깨진다 (wiki-schema §2.6)", hub)
