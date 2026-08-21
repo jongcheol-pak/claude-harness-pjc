@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -34,6 +34,12 @@
      ⑥⑦은 앞의 축들과 성격이 다르다 — **문서 기록값 ↔ 실측**이 아니라 **레포 md 전수의 표기
      결함**을 본다. 판정 단위·제외 정책·못 잡는 것은 각 함수의 주석과
      `docs/harness-conventions.md` 「문서 표기 축」이 정본이다.
+  ⑬ 착수 조건 동기  — Deferred 소진 batch 「착수 조건」을 **의도적으로 복제 보유**하는 두 파일
+     (`phase-f-detail.md` ⓪ 정본 ↔ `plan-feature/SKILL.md` Step 1 ③)이 갈리지 않았는가.
+     수치 4종과 **판정일 도출 문장**을 대조한다 — 후자를 함께 보는 이유는 v1.188.0이 고친
+     결함이 수치가 아니라 그 문장에 있었기 때문이다(부기 형식 미인식). 수치만 대조하면
+     그 문장이 한쪽에서만 지워져도 통과한다. **못 잡는 것**: 두 파일이 같은 방향으로
+     함께 틀리는 경우(정본이 곧 기준이라 서로 일치하면 통과한다).
 
 왜 하드코딩하지 않는가: 검사 대상 목록·기대값을 코드에 박으면 문서가 바뀌어도 검사가 낡는다.
 모든 기대값은 문서에서 파싱하며, 앵커를 못 찾으면 통과가 아니라 `[ANCHOR FAIL]`(exit 2)이다 —
@@ -203,6 +209,69 @@ def check_reviewer_budget():
             checked += 1
     if checked == 0:
         die("실행 예산: 「실행 예산」 절을 가진 리뷰어를 하나도 찾지 못함 (절 제목이 바뀌었는지 확인)")
+    return issues, checked
+
+
+def check_batch_trigger_sync():
+    """Deferred 소진 batch 「착수 조건」을 복제 보유한 두 파일이 갈리지 않았는지 대조한다.
+
+    `phase-f-detail.md` ⓪(정본)과 `plan-feature/SKILL.md` Step 1 ③(복제)은 착수 조건을
+    **의도적으로 복제**한다 — ⓪ 자신이 *"규정을 이 파일에만 두면 판정할 사람이 그것을
+    보지 않는다"*를 근거로 든다. 그런데 이 repo가 리뷰어 4종에 쓰는 **각주 + 기계 대조**
+    패턴이 이 쌍에는 없었다(대장 `[2026-08-20]` 항목이 등재한 사실).
+
+    대조 대상은 둘이다 —
+      ⓐ 착수 조건 **4수치**(잔량 임계 · 신규 등재분 · 날짜 · 절대 상한): 두 파일에서 각각
+         뽑아 집합으로 비교한다. 어느 쪽이 값을 바꾸고 다른 쪽을 두면 여기서 잡힌다.
+      ⓑ 판정일 도출의 **공통 리터럴 한 문장**: 완전 일치(마크업·공백 포함)로 본다. 그 문장
+         **밖의 근거절은 파일별로 다른 것이 정상**이라 대조하지 않는다 — 경계를 문장으로
+         고정해야 근거절 차이가 섞여 들어오지 않는다.
+
+    ⓑ를 넣은 이유는 v1.188.0이 고친 결함이 **수치가 아니라 판정 기준 문장**에 있었기
+    때문이다(부기 형식 미인식). 수치만 대조하면 그 문장이 한쪽에서만 지워져도 통과한다.
+    """
+    # `section()`을 쓰지 않는다 — 그 헬퍼는 `#` 헤딩으로 절을 자르는데, 대조 대상인 ⓪과
+    # Step 1 ③은 **리스트 불릿**이라 헤딩 경계가 없다. 파일 전체에서 정규식으로 찾는 편이
+    # 정확하고(각 패턴이 파일당 1회만 출현함을 확인했다) 절 제목 변경에도 견딘다.
+    canon_p = os.path.join(ROOT, "plugins", "pjc", "skills", "implement-task",
+                           "references", "phase-f-detail.md")
+    copy_p = os.path.join(ROOT, "plugins", "pjc", "skills", "plan-feature", "SKILL.md")
+    canon, copy = read(canon_p), read(copy_p)
+
+    # 판정 기준 문장 — 두 파일에서 같은 정규식으로 떼어 낸다.
+    rule_rx = re.compile(r"그 날짜는 \*\*그 항목이 마지막으로 판정된 날\*\*이다 —.*?둘 다 없으면 등록일이다\.")
+    # 착수 조건 수치 — 값 앞 주어가 파일마다 다르므로(정본 «`## 대기`가» / 복제
+    # «`▶ 현행 잔량` 앵커가») 그 토큰까지 묶지 않고 값만 뽑는다. 묶으면 정당한
+    # 문면 차이에 ANCHOR FAIL이 난다.
+    num_rxs = (
+        ("잔량 임계", r"\*\*(\d+)건을 넘고"),
+        ("신규 등재분", r"신규 등재분」이 (\d+)건 이상"),
+        ("날짜", r"최솟값이 (\d+)일을 넘거나"),
+        ("절대 상한", r"절대 상한\(현행 (\d+)건\)"),
+    )
+
+    issues, checked = [], 0
+    for label, rx in num_rxs:
+        a, b = re.search(rx, canon), re.search(rx, copy)
+        if not a or not b:
+            # 양쪽 다 결측일 수 있다 — 한쪽만 지목하면 나머지가 함께 바뀐 것을 놓친다.
+            missing = ", ".join(n for n, v in (("정본", a), ("복제", b)) if not v)
+            die("착수 조건 동기 — %s 문면을 %s에서 찾지 못함(절 표기가 바뀌었는지 확인)"
+                % (label, missing))
+        if a.group(1) != b.group(1):
+            issues.append("착수 조건 동기 %s — 정본 %s / 복제 %s (phase-f-detail ⓪ ↔ plan-feature Step 1 ③)"
+                          % (label, a.group(1), b.group(1)))
+        checked += 1
+
+    ra, rb = rule_rx.search(canon), rule_rx.search(copy)
+    if not ra or not rb:
+        missing = ", ".join(n for n, v in (("정본", ra), ("복제", rb)) if not v)
+        die("착수 조건 동기 — 판정일 도출 문장을 %s에서 찾지 못함(문면이 바뀌었는지 확인)"
+            % missing)
+    if ra.group(0) != rb.group(0):
+        issues.append("착수 조건 동기 판정일 도출 문장 — 두 파일의 문면이 다르다"
+                      "(공통 리터럴은 완전 일치여야 한다 — 근거절은 대조 대상이 아니다)")
+    checked += 1
     return issues, checked
 
 
@@ -655,6 +724,9 @@ def main():
         ("Deferred 집계", check_deferred_stats(ledger)),
         ("볼드 마커 짝", check_bold_pairing()),
         ("한 줄 문장 중복", check_line_dup()),
+        # 맨 뒤에 둔다 — `harness-conventions.md` 「문서 표기 축」이 볼드/중복 축을
+        # **서수**("여덟째·아홉째")로 가리키므로, 중간에 끼우면 그 서술이 어긋난다.
+        ("착수 조건 동기", check_batch_trigger_sync()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
