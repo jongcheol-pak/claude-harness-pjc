@@ -35,7 +35,7 @@
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3~§4·이 파일 3중 동기화).
 """
-import os, re, sys, glob, shutil, datetime, subprocess
+import os, re, sys, glob, shutil, datetime, subprocess, collections
 
 # Windows 콘솔(cp949)에서도 한글이 깨지지 않도록 UTF-8 출력 강제
 try:
@@ -134,6 +134,13 @@ CATEGORY_VOCAB = {"personal", "work"}
 UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log", "convention"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, wiki-schema §4·§8)
 SPECIAL_BUDGET = {"log.md": 6000}
+# 타입별 **더 낮은 목표치** — 처방을 어디까지 수행하고 멈추는가(§7-2 종료 조건의 마지막 문장:
+#  "타입이 더 낮은 목표치를 따로 정하면 그쪽이 우선한다"). log.md만 §8이 3000자를 명시한다.
+#  나머지 타입은 목표치가 따로 없어 §7-2 종료 조건(발동이 풀릴 때까지)이 그대로 적용된다.
+BUDGET_ROLLOVER_TARGET = {"log.md": 3000}
+# project 허브 `## 최근 주요 변경` 유지 개수(§2.2·§8 — 3~5개 유지, 6번째가 생기면 롤오버).
+#  **문자 예산과 무관한 별개 트리거**다(§7-2 「별개 트리거」ⓑ) — budget_state를 타지 않는다.
+HUB_CHANGES_KEEP = 5
 # 신선도·고아·타입 검사에서 제외하는 인프라 타입 (위키 본문 페이지가 아님)
 INFRA_TYPES = {"index", "log", "dashboard", "schema"}
 # 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
@@ -337,6 +344,74 @@ def budget_split_suppressed(fm, chars):
     except (TypeError, ValueError):
         return False
     return judged > 0 and chars <= judged * (1 + BUDGET_REJUDGE_MARGIN)
+
+
+BudgetState = collections.namedtuple(
+    "BudgetState",
+    "typ budget chars eff_chars fence_note over near critical suppressed target stage")
+
+
+def budget_state(rel_path, fm, text):
+    """§7-2 예산 조건을 **한 곳에서** 계산해 BudgetState로 돌려준다. 대상이 아니면 None.
+
+    이 함수가 유일 구현인 이유: 2026-08-17 결정(예산 트리거 §7-2 단일 정의화)이 **산문에서**
+    이룬 것을 코드에서도 유지한다. 종전에는 같은 판정이 메인 루프의 SPECIAL_BUDGET 분기와
+    일반 분기에 각각 인라인돼 있었고, 여기에 `--auto-split`이 자기 판정을 또 두면 세 벌이 된다.
+    조건이 복제되면 한 자리만 고쳐지는 드리프트가 생기는데, 그 드리프트는 개별 지점을 고치는
+    방식으로 6라운드를 돌아도 수렴하지 않았다(v1.177 실측).
+
+    필드 의미:
+      over/near/critical -- §7-2 발동 판정의 세 축. near는 선행 게이트(자체 신호 없음),
+        critical이 실제 발동이다(억제 전 값 -- suppressed와 함께 읽는다).
+      suppressed -- 「분리 불가 판정」(budget_split)이 유효해 신호가 강등되는 상태.
+        **`--auto-split`은 이 페이지를 건드리지 않는다** -- 규정이 「더 나눌 것이 없다」고
+        판정한 것을 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다.
+      target -- 처방을 어디까지 수행하고 멈추는가. 타입별 더 낮은 목표치가 있으면 그 값,
+        없으면 None(그 경우 종료 기준은 「발동이 풀릴 때까지」이지 「예산 이내」가 아니다).
+      stage -- 다단 처방의 진입 단계. convention은 ①(무효 항목 제거)이 「무엇이 무효인가」를
+        묻는 판단이라 자동 경로가 수행할 수 없어 **2부터 시작**한다(하위 분리). ①을 건너뛰어도
+        손실이 없다 -- 제거 대신 분리하면 내용이 남을 뿐이다. 나머지 타입은 단계가 하나다."""
+    chars = len(text)
+    if rel_path in SPECIAL_BUDGET:
+        budget, typ, eff_chars, fence_note = SPECIAL_BUDGET[rel_path], "log", chars, ""
+    else:
+        typ = fm.get("type", "")
+        eff_chars, fence_note = chars, ""
+        if typ == "guide":
+            gk = fm.get("guide_kind", "")
+            budget = GUIDE_BUDGET.get(gk, 9000)
+            # platform-bootstrap·ui-ux는 펜스 내부를 뺀 유효 문자 수로 잰다(§2.6 예산 판정 방식).
+            if gk in ("platform-bootstrap", "ui-ux"):
+                fenced = fenced_interior_chars(text)
+                if fenced:
+                    eff_chars = chars - fenced
+                    fence_note = f", 코드 펜스 {fenced}자 제외"
+        elif typ in BUDGET:
+            budget = BUDGET[typ]
+        else:
+            return None
+    if not budget:
+        return None
+    near = eff_chars >= budget * BUDGET_NEAR_RATIO
+    critical = near and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
+                         or budget - eff_chars < BUDGET_CRITICAL_SLACK)
+    return BudgetState(
+        typ=typ, budget=budget, chars=chars, eff_chars=eff_chars, fence_note=fence_note,
+        over=eff_chars > budget, near=near, critical=critical,
+        suppressed=budget_split_suppressed(fm, eff_chars),
+        target=BUDGET_ROLLOVER_TARGET.get(rel_path),
+        stage=2 if typ == "convention" else 1)
+
+
+def budget_resolved(state):
+    """처방을 더 수행할 필요가 없는 상태인가(§7-2 종료 조건).
+
+    **「예산 이내」가 종료 기준이 아니다** -- 한 항목·한 절만 옮겨 문턱 바로 아래로 내려오면
+    다음 추가로 곧 재발화하므로, 발동이 풀릴 때까지 오래된 것부터 반복한다. 타입이 더 낮은
+    목표치를 따로 정했으면(log.md 3000자) 그쪽이 우선한다."""
+    if state.target is not None:
+        return state.eff_chars <= state.target
+    return not (state.over or state.critical)
 
 
 def feat_row_name(line):
@@ -807,6 +882,153 @@ def build_index(vault, dry_run):
     return 0
 
 
+class SplitSession:
+    """`--auto-split` 한 번의 실행 컨텍스트 — 사본·기록·보고를 모은다(§4 분할 수행 절차).
+
+    `--fix`(apply_fixes)와 합치지 않는 이유: 그쪽은 「참조 무결성 3종」으로 대상이 한정되고
+    실행에 사용자 승인이 필요한데(§7 서두), 분할·롤오버는 승인 불요다(§7 결과 처리 예외 ①②③).
+    규약이 정반대라 한 함수에 섞으면 승인 경계가 흐려진다."""
+
+    def __init__(self, vault, dry_run):
+        self.vault = vault
+        self.dry_run = dry_run
+        self.backup_dir = os.path.join(
+            vault, "90_archive", "backup",
+            datetime.date.today().isoformat() + "-presplit")
+        self.backed_up = set()
+        self.actions = []      # (종류, 대상, 신설 파일 목록) — §4 7번 log 기록·사후 보고 공용
+        self.notes = []        # 건너뛴 사유 등 보고용 1줄들
+        self.failed = False
+
+    def backup(self, *paths):
+        """착수 직전 사본(§4 절차 1번·§8 `-presplit`). 실패하면 처방을 시작하지 않는다 —
+        사본 없는 분할은 원복 수단이 없다. 같은 세션 2회째는 재복사하지 않는다(§8: 그 세션
+        최초 상태 1부만 보존 — 재복사하면 이미 분할한 중간 상태가 원본 자리를 덮는다)."""
+        if self.dry_run:
+            return True
+        for p in paths:
+            if not os.path.exists(p) or p in self.backed_up:
+                continue
+            rel = os.path.relpath(p, self.vault)
+            dest = os.path.join(self.backup_dir, rel)
+            try:
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                if not os.path.exists(dest):   # §8 미덮어쓰기 — 그날 최초 상태를 지키다
+                    shutil.copy2(p, dest)
+                self.backed_up.add(p)
+            except OSError as e:
+                self.notes.append(f"사본 실패({type(e).__name__}) — 처방 미수행: {rel}")
+                self.failed = True
+                return False
+        return True
+
+    def record(self, kind, target, created):
+        self.actions.append((kind, target, list(created)))
+
+    def log_line(self, kind, target, created):
+        """§4 절차 7번 기록 1줄. 형식은 그 절이 정본이다."""
+        made = "·".join(created) if created else "(신설 없음)"
+        return (f"- [{datetime.date.today().isoformat()}] [SCHEMA] {kind} — "
+                f"{target}: {made}. (사유: 임계 초과)")
+
+
+def _append_log_entries(vault, lines):
+    """§4 7번 기록을 log.md `## 최근 변경`에 append한다. 파일·섹션이 없으면 만들지 않고
+    건너뛴다 — 없는 vault에 구조를 지어내지 않는다(그 경우 보고에만 남는다).
+    반환: 기록한 줄 수."""
+    path = os.path.join(vault, "log.md")
+    if not lines or not os.path.exists(path):
+        return 0
+    try:
+        with open(path, encoding="utf-8-sig") as fh:
+            text = fh.read()
+    except (UnicodeDecodeError, OSError):
+        return 0
+    sec = section(text, "최근 변경")
+    if not sec:
+        return 0
+    new_sec = sec.rstrip("\n") + "\n" + "\n".join(lines) + "\n\n"
+    try:
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text.replace(sec, new_sec, 1))
+    except OSError:
+        return 0
+    return len(lines)
+
+
+# 처방 목록 — 각 처방이 자기 함수를 정의하고 여기 등록한다(auto_split의 순차 호출 대상).
+#  등록 순서가 곧 수행 순서다. 비어 있으면 `--auto-split`은 "수행 대상 없음"으로 끝난다.
+PRESCRIPTIONS = []
+
+
+def auto_split(vault, dry_run):
+    """임계에 닿은 파일을 규정된 처방대로 **코드가** 나누거나 옮긴다(§4·§8).
+
+    **수행 주체가 세션에서 코드로 바뀐 근거**: 종전 §7-2는 *"무엇을 옮길지는 판단"*이라며
+    스크립트 수행을 배제했는데, 그 전제는 **옮길 단위를 임의로 잡을 때만** 참이다. 경계를
+    스키마가 이미 정한 `## ` 섹션과 항목 단위로 고정하면 「무엇을 옮길지」가 크기·시간
+    순서로 결정돼 판단이 사라진다. 롤오버 3종은 §2.8·§8이 이미 그렇게 규정하고 있었다.
+
+    실행 순서(각 처방은 자기 절에서 정의된다):
+      ① index 계열 -- `build_index`가 담당(생성 마커 vault). 여기서는 마지막에 연쇄 호출한다.
+      ② 롤오버 -- log.md · decision-log · project 허브 `## 최근 주요 변경`
+      ③ 산문 하위 분리 -- 필수 섹션 헤딩은 남기고 본문만 옮긴 뒤 포인터 1줄
+      ④ 등록 -- ①의 연쇄로 신설 하위가 인덱스에 오른다(등록이 빠지면 분할이 곧 유실이다)
+
+    반환: 종료 코드(0 정상 / 1 처방 실패)."""
+    ses = SplitSession(vault, dry_run)
+    if not dry_run:
+        cleaned, cleanup_failed = cleanup_backups(vault, datetime.date.today())
+        if cleaned:
+            print(f"백업 정리: {cleaned}건 제거 (§8 30일)")
+        for f in cleanup_failed:
+            print(f"  [정리 실패] {f}")
+
+    # 처방 목록. 플러그인·전략 클래스로 추상화하지 않는다 -- 이 순차 호출 목록이 곧 처방
+    #  목록이고, 새 처방은 여기 한 줄이 는다. 순서는 「롤오버 먼저, 산문 분리 나중」이다:
+    #  롤오버가 먼저 줄여 두면 산문 분리가 손댈 페이지가 줄어든다(project 허브가 그렇다).
+    for prescribe in PRESCRIPTIONS:
+        prescribe(ses)
+
+    if not ses.actions:
+        print("== --auto-split: 수행 대상 없음 ==")
+        for n in ses.notes:
+            print(f"  {n}")
+        return 1 if ses.failed else 0
+
+    if dry_run:
+        print("== --auto-split --dry-run (파일 미변경) ==")
+        for kind, target, created in ses.actions:
+            print(f"  {kind} — {target}: {'·'.join(created) if created else '(신설 없음)'}")
+        for n in ses.notes:
+            print(f"  {n}")
+        return 0
+
+    # §4 7번 기록. **이 기록이 log.md를 다시 임계로 밀 수 있으므로** 기록 후 롤오버 트리거를
+    #  1회 재점검한다(§8 "log 기록 추가 직후 트리거 점검"). 그 재점검이 유발한 롤오버는
+    #  기록을 다시 남기지 않는다 -- 기록→롤오버→기록의 연쇄를 끊는 것이 이 「1회」의 의미다.
+    written = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
+    if written:
+        recheck = SplitSession(vault, dry_run)
+        rollover_log(recheck)
+        if recheck.actions:
+            ses.notes.append("log 기록 후 재점검에서 log.md 롤오버 1회 추가 수행(기록 미생성)")
+
+    # 신설 하위를 인덱스에 등재한다 -- 이 연쇄가 없으면 분할 직후 §7-6·§7-30ⓒ가 미등록을
+    #  경고하고 조회 경로가 끊긴다. 생성 마커가 없는 vault에서는 build_index가 아무것도 쓰지
+    #  않고 1을 돌려주므로 **실패로 보지 않고** 등록이 수기 몫임을 알린다(§4 절차 4번).
+    if build_index(vault, False) != 0:
+        ses.notes.append("생성 마커 없음 — 인덱스 등록은 수기 몫(§4 절차 4번)")
+
+    print(f"== --auto-split: {len(ses.actions)}건 수행 ==")
+    for kind, target, created in ses.actions:
+        print(f"  {kind} — {target}: {'·'.join(created) if created else '(신설 없음)'}")
+    for n in ses.notes:
+        print(f"  {n}")
+    print(f"  사본: {ses.backup_dir}")
+    return 1 if ses.failed else 0
+
+
 def apply_fixes(vault):
     """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 3종만 자동 수정한다 (§7 —fix 규약) —
       ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거 —
@@ -1025,7 +1247,8 @@ def apply_fixes(vault):
 
 def main():
     if len(sys.argv) < 2:
-        print("사용법: python lint.py \"<vault_path>\" [--fix] [--build-index [--dry-run]]")
+        print("사용법: python lint.py \"<vault_path>\" "
+              "[--fix] [--build-index [--dry-run]] [--auto-split [--dry-run]]")
         sys.exit(1)
     vault = sys.argv[1].rstrip("/\\")
     # --fix는 opt-in — 지정 시 안전 3종을 먼저 수정하고, 이어지는 본 lint가 수정 후 상태를 보고한다.
@@ -1033,6 +1256,15 @@ def main():
     # --build-index는 검사와 독립이다 -- 생성만 하고 끝낸다(검사가 섞이면 결과가 진단에 묻힌다).
     if "--build-index" in sys.argv[2:]:
         sys.exit(build_index(vault, "--dry-run" in sys.argv[2:]))
+    # --auto-split도 검사와 독립이다(같은 이유). --fix와 **함께 쓸 수 없다** — 그쪽은 사용자
+    #  승인 후 실행하는 참조 무결성 수리이고 이쪽은 승인 불요 분할이라, 한 번에 섞으면
+    #  어느 변경이 어느 규약으로 이뤄졌는지 사후에 가릴 수 없다(§7 서두·결과 처리 예외).
+    if "--auto-split" in sys.argv[2:]:
+        if "--fix" in sys.argv[2:]:
+            print("--auto-split과 --fix는 함께 쓸 수 없습니다 "
+                  "(승인 규약이 다름 — 따로 실행하세요, wiki-schema §7).")
+            sys.exit(1)
+        sys.exit(auto_split(vault, "--dry-run" in sys.argv[2:]))
     if "--fix" in sys.argv[2:]:
         apply_fixes(vault)
     # L-3: vault 경로에 glob 메타문자([ ] * ? 등)가 있어도 리터럴로 취급 — glob.escape로 감싸지 않으면
@@ -1151,23 +1383,22 @@ def main():
         #  90_archive/ 하위는 제외 — "아카이브는 lint 자동 제외" 서술과 동작 일치(§8),
         #  특히 append 성장하는 decisions 롤오버 파일에 영구 WARN이 걸리는 것 방지(§2.8).
         if r in SPECIAL_BUDGET:
-            chars = len(text)
-            if chars > SPECIAL_BUDGET[r]:
-                warn(f"예산 초과: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
+            st = budget_state(r, fm, text)
+            chars = st.chars
+            if st.over:
+                warn(f"예산 초과: {r} {chars}/{st.budget}자 "
                      f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)", r)
-            elif (chars >= SPECIAL_BUDGET[r] * BUDGET_NEAR_RATIO
-                  and (chars >= SPECIAL_BUDGET[r] * BUDGET_CRITICAL_RATIO
-                       or SPECIAL_BUDGET[r] - chars < BUDGET_CRITICAL_SLACK)):
+            elif st.critical:
                 # 이 경로에는 임박 계층이 없어 근접 INFO만 있었다 — 그것을 지우면 log.md는 초과 전
                 #  무신호가 되고, "임박 도달 시 소비 지점이 처방을 수행한다"는 규정이 이 타입에만
-                #  도달하지 못한다. 일반 예산 분기와 같은 임계·같은 OR 결합을 쓴다(새 임계 없음).
-                warn(f"예산 임박: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
-                     f"({chars / SPECIAL_BUDGET[r] * 100:.0f}%, 여유 {SPECIAL_BUDGET[r] - chars}자) "
+                #  도달하지 못한다. 일반 예산 분기와 같은 임계·같은 OR 결합을 쓴다(새 임계 없음 —
+                #  판정은 budget_state 공용).
+                warn(f"예산 임박: {r} {chars}/{st.budget}자 "
+                     f"({chars / st.budget * 100:.0f}%, 여유 {st.budget - chars}자) "
                      f"— 다음 기록 전에 §8 롤오버 수행 (wiki-schema §8)", r)
         elif not in_archive:
-            budget = None
-            chars = len(text)
-            eff_chars, fence_note = chars, ""
+            # 판정은 budget_state 공용 — 조건을 여기 다시 쓰지 않는다(그 함수 docstring 참조).
+            #  guide_kind 통제어휘 WARN은 예산 판정이 아니라 「값 위반 가시화」라 여기 남는다.
             if typ == "guide":
                 gk = fm.get("guide_kind", "")
                 # L-3: guide_kind 오타(예: 'recipes')면 기본 9000자가 조용히 적용돼 recipe 8500자 예산을
@@ -1178,20 +1409,14 @@ def main():
                     warn(f"guide_kind 누락: {r} (허용: {', '.join(GUIDE_BUDGET)}) — 기본 9000자 적용됨(recipe 8500자 예산 우회 주의, schema §2.6)", r)
                 elif gk not in GUIDE_BUDGET:
                     warn(f"guide_kind 통제어휘 위반: {r} guide_kind='{gk}' (허용: {', '.join(GUIDE_BUDGET)}) — 기본 9000자 적용됨", r)
-                budget = GUIDE_BUDGET.get(gk, 9000)
-                # platform-bootstrap·ui-ux는 펜스 내부 문자 제외 판정(§7-2·§4) — 통짜 템플릿·예제 펜스는
-                #   분할 불가능한 페이로드라 산문 예산 대상이 아니다. recipe·타 타입은 기존 판정 유지.
-                if gk in ("platform-bootstrap", "ui-ux"):
-                    fenced = fenced_interior_chars(text)
-                    if fenced:
-                        eff_chars = chars - fenced
-                        fence_note = f", 코드 펜스 {fenced}자 제외"
-            elif typ in BUDGET:
-                budget = BUDGET[typ]
+            st = budget_state(r, fm, text)
+            budget = st.budget if st else None
+            eff_chars = st.eff_chars if st else 0
+            fence_note = st.fence_note if st else ""
             # L-2: lint 리포트(questions/lint-YYYYMMDD.md)는 발견 다건이면 길어지는 게 정상이라
             #   예산 검사에서 제외한다(§7-12/23 집계·등록 제외와 동일 기준) — 자기 리포트가 다음 lint에서
             #   영구 '예산 초과' WARN을 만드는 것을 막는다.
-            if budget and eff_chars > budget and not is_lint_report(r):
+            if budget and st.over and not is_lint_report(r):
                 # 수리 경로가 정해진 타입은 초과 시점에도 그 처방을 병기한다 — 임박 WARN에서만
                 #  안내하고 초과 WARN에서 침묵하면, 정작 고쳐야 할 시점에 방법을 못 받는다.
                 hint = {
@@ -1200,10 +1425,7 @@ def main():
                     "convention": " — 무효 항목 제거 → 주제별 하위 파일(conventions-{주제}.md) 분리 + '## 하위 문서' 목록 갱신 (wiki-schema §2.9)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{fence_note}){hint}", r)
-            elif (budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r)
-                  and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
-                       or budget - eff_chars < BUDGET_CRITICAL_SLACK)
-                  and not budget_split_suppressed(fm, eff_chars)):
+            elif budget and st.critical and not is_lint_report(r) and not st.suppressed:
                 # L-5: 초과 전에 나는 유일한 신호다. 80% INFO를 함께 내던 때는 여유 28자와 1,624자가
                 #   같은 줄로 나와 정작 급한 것이 INFO 더미에 묻혔고(실측: INFO 99건 중 10건이 그것이었고
                 #   그 상태로 방치돼 feature 하나가 여유 28자까지 왔다), 그래서 묻히는 층을 없앴다.
@@ -1219,9 +1441,7 @@ def main():
                 warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
                      f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
                      f"{crit_hint} — 다음 편집 전에 §4 처방 수행 (나눌 하위가 없으면 budget_split 판정)", r)
-            elif (budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r)
-                  and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
-                       or budget - eff_chars < BUDGET_CRITICAL_SLACK)):
+            elif budget and st.critical and not is_lint_report(r):
                 # L-4: 위 임박 분기가 budget_split 억제로 건너뛴 파일이 여기로 내려온다(조건식은 임박과
                 #   동일하고 억제 여부만 다르다 — 선행 게이트만으로 잡으면 82%짜리가 「임박」으로 오표기된다).
                 #   침묵시키지 않는 이유: 억제를 영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어
