@@ -345,8 +345,9 @@ def feat_row_name(line):
     §7-16이 따로 `split("|")[1]`을 쓰면 아래 옛 형상의 `\\|` 이스케이프에서 이름이 잘리기 때문).
     형상+대상 기반이라 상세 컬럼 alias 표기(`\\|feature]]` 권장 관례, schema §3)에 의존하지 않는다:
     ① `|`로 시작 ② 첫 컬럼이 비어 있지 않은 **평문**(통합 표 — 현행) **또는 `40_guides/` wikilink**
-    (옛 `## 가이드 / 레시피` 섹션 형상). 프로젝트/기술 표처럼 첫 컬럼이 `20_projects/`·`30_knowledge/`
-    링크인 행은 종전대로 제외된다. `\\|` 이스케이프로 split이 경로만 잡는 오탐은 아래 재추출로 차단.
+    (옛 `## 가이드 / 레시피` 섹션 형상 — 단 `40_guides/recipes/`는 이중 요구 방지로 제외, 아래 참조).
+    프로젝트/기술 표처럼 첫 컬럼이 `20_projects/`·`30_knowledge/` 링크인 행은 종전대로 제외된다.
+    `\\|` 이스케이프로 split이 경로만 잡는 오탐은 아래 재추출로 차단.
     ③ 행 내 wikilink 대상(정규화: 이스케이프 `\\`·`#`앵커 제거 — wikilink_targets와 동일 규칙)의
     basename이 `feat-` 시작(단축 링크 포함)이거나 대상에 `40_guides/` 포함.
 
@@ -379,6 +380,17 @@ def feat_row_name(line):
         target = target.replace("\\", "").split("#")[0].strip()
         if "40_guides/" not in target:
             return None
+        if "40_guides/recipes/" in target:
+            # 폐지된 §7-27이 recipe를 명시 제외했던 이유를 승계한다 -- 마커 없는 vault에서 recipe는
+            #  `## 기능별 인덱스`(첫 컬럼 평문)와 `## 가이드 / 레시피`(첫 컬럼 wikilink) **두 곳**에
+            #  실리므로, 여기서 받으면 같은 페이지에 병기 WARN이 두 번 난다(이중 요구). 평문 쪽
+            #  행이 이미 대상이라 커버는 유지된다.
+            return None
+        # ⚠ 하위호환 수용은 **full path 형상 한정**이다 -- 단축 wikilink(`[[help-style|...]]`)는
+        #  대상이 `40_guides/`를 담지 않아 여기서도 조건 ③에서도 탈락한다. 폐지된 §7-27은 섹션
+        #  스코프라 경로를 보지 않고 잡았으므로 그만큼 커버가 좁다. 닫으려면 링크 대상을 페이지
+        #  집합에 해소해야 하는데(이 함수는 행 문자열만 받는다) 실 vault 가이드 행은 전부 full
+        #  path라(마이그레이션 전 113행 실측) 실사용 근거 없이 구조를 바꾸지 않는다.
         name = alias.strip() or target.split("/")[-1]
     else:
         if not first:
