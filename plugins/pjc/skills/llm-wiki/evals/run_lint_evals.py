@@ -549,6 +549,18 @@ def check_case(case):
             for kw in case.get("expect_kept_contains", []):
                 if kw not in lt:
                     return False, "남아야 할 항목이 사라짐(유실): " + kw
+        # 수행 **결과 파일**의 내용을 직접 대조한다. stdout 키워드는 처방이 「돌았다」만 말하고
+        #  「옳게 썼다」는 말하지 않는다 — 코드 경로 도달과 결과 정확성은 다른 것이라,
+        #  경로만 태우는 케이스는 버그를 되돌려도 그대로 통과한다(T5 quality 2R M1).
+        for rel, needles in (case.get("expect_file_contains") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                return False, "결과 파일 없음: " + rel
+            with open(fp, encoding="utf-8-sig") as fh:
+                ft = fh.read()
+            missing_n = [n for n in needles if n not in ft]
+            if missing_n:
+                return False, "%s에 기대 문자열 없음: %s" % (rel, ", ".join(missing_n))
         shutil.rmtree(tmp, ignore_errors=True)
         return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
 
