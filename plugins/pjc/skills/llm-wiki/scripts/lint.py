@@ -1469,6 +1469,101 @@ def _decision_log_paths(vault):
 
 PRESCRIPTIONS.append(rollover_decisions)
 
+def _project_hub_paths(vault):
+    """vault의 현행 project 허브 상대경로 목록(90_archive 제외).
+
+    허브는 `20_projects/{카테고리}/{프로젝트}.md`라 파일명으로 특정할 수 없다 —
+    그 자리의 `.md`를 전부 훑고 frontmatter type으로 가른다(`_decision_log_paths`와
+    같은 방식이되 glob 패턴만 다르다)."""
+    out = []
+    for f in glob.glob(os.path.join(glob.escape(vault), "20_projects", "*", "*.md")):
+        rel = os.path.relpath(f, vault).replace("\\", "/")
+        text, _bom, _nl = _read_page(f)
+        if text is not None and frontmatter(text).get("type") == "project":
+            out.append(rel)
+    return out
+
+
+def rollover_hub_changes(ses):
+    """project 허브 `## 최근 주요 변경` 롤오버(§2.2) — 6번째 항목이 생기면 5개만 남긴다.
+
+    **트리거가 문자 예산과 별개다**(§7-2 「별개 트리거」ⓑ). 그래서 `budget_state`를 보지
+    않고 항목 수만 센다 — 허브가 문자 신호 대상이어도 항목이 5개 이하면 이 처방의 대상이
+    아니고(그쪽 처방은 `conventions.md` 분리 §2.9다), 신호가 없어도 6개가 되면 수행한다."""
+    for rel in sorted(_project_hub_paths(ses.vault)):
+        path = os.path.join(ses.vault, rel.replace("/", os.sep))
+        text, bom, nl = _read_page(path)
+        if text is None:
+            continue
+        sec = section(text, "최근 주요 변경")
+        if not sec:
+            continue
+        head, items = _split_items(sec)
+        if len(items) <= HUB_CHANGES_KEEP:
+            continue
+        moving, kept = _rollover_items(items, lambda blocks: len(blocks) <= HUB_CHANGES_KEEP)
+        if not moving:
+            continue
+
+        # 경로 도출이 §7-24와 다르다 — 허브는 `{proj}.md` 파일인데 아카이브는
+        #  `{proj}/changes.md`라 폴더가 된다(§7-30ⓐ 역방향이 지적한 비대칭).
+        arch_rel = "90_archive/" + rel[:-len(".md")] + "/changes.md"
+        arch_path = os.path.join(ses.vault, arch_rel.replace("/", os.sep))
+        if not ses.claim(path, arch_path) or not ses.backup(path, arch_path):
+            ses.notes.append(f"{rel} 변경 이력 롤오버 건너뜀 — 다른 처방이 맡았거나 사본 실패")
+            continue
+
+        blocks = [b for _d, b in moving]
+        if os.path.exists(arch_path):
+            prev, abom, anl = _read_page(arch_path)
+            arch_text = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+        else:
+            abom, anl = False, nl
+            proj = frontmatter(text).get("project", "") or os.path.basename(rel)[:-len(".md")]
+            # 아카이브는 frontmatter 없이 둔다(§2.2) — `90_archive/` 하위라 lint 검사에서
+            #  자동 제외되므로 타입을 붙일 이유가 없다.
+            arch_text = "# %s 변경 이력 아카이브\n\n" % proj + "".join(blocks)
+        new_sec = head + "".join(b for _d, b in kept)
+        # 마지막 항목이 이동하면 그 뒤 빈 줄까지 딸려가 다음 헤딩이 붙는다 —
+        #  원본이 빈 줄로 끝났으면 그 형상을 유지한다.
+        if sec.endswith("\n\n") and not new_sec.endswith("\n\n"):
+            new_sec += "\n"
+        new_text = _replace_section(text, "최근 주요 변경", new_sec)
+
+        # `## 아카이브` 포인터(§2.2 — 정합은 §7-30ⓐ). decision-log와 같은 처리다:
+        #  기존 포인터가 있으면 그 형식을 유지한 채 날짜·건수만 갱신하고, 없을 때만 규정
+        #  형식으로 신설한다(실 vault 포인터가 규정 문면과 다른 wikilink 형식을 쓴다).
+        dates = sorted(d for d, _b in moving)
+        total = len(re.findall(r"(?m)^- \[\d{4}-\d{2}-\d{2}", arch_text))
+        span = "%s~%s, 누적 %d건" % (dates[0], dates[-1], total)
+        asec = section(new_text, "아카이브")
+        if asec and CHG_PTR_RX.search(asec):
+            upd = re.sub(r"\(\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}, 누적 \d+건\)",
+                         "(%s)" % span, asec)
+            if upd == asec:
+                # 옛 포인터에 날짜·건수 표기가 없으면 그 줄 끝에 덧붙인다 — 그냥 두면
+                #  포인터가 실제 아카이브 상태와 어긋난 채 남아, 조회 세션이 「어디까지
+                #  옮겨졌는지」를 알 수 없다.
+                lines_ = upd.split("\n")
+                for k, ln in enumerate(lines_):
+                    if CHG_PTR_RX.search(ln):
+                        lines_[k] = ln.rstrip() + " (%s)" % span
+                        break
+                upd = "\n".join(lines_)
+            new_text = new_text.replace(asec, upd, 1)
+        else:
+            new_text = new_text.rstrip("\n") + (
+                "\n\n## 아카이브\n\n- 이전 이력: %s (%s)\n" % (arch_rel, span))
+        if not ses.dry_run:
+            os.makedirs(os.path.dirname(arch_path), exist_ok=True)
+            _atomic_write(arch_path, arch_text, abom, anl)
+            _atomic_write(path, new_text, bom, nl)
+        ses.record("롤오버", rel, [arch_rel])
+
+
+PRESCRIPTIONS.append(rollover_hub_changes)
+
+
 
 def auto_split(vault, dry_run):
     """임계에 닿은 파일을 규정된 처방대로 **코드가** 나누거나 옮긴다(§4·§8).

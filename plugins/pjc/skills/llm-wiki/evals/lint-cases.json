@@ -809,6 +809,75 @@
           "— 이전 결정들 (2026-06-02~2026-06-09, 누적 17건)"
         ]
       }
+    },
+    {
+      "fixture": "hub-rollover",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo.md",
+        "90_archive/20_projects/personal/demo/changes.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "§2.2 project 허브 `## 최근 주요 변경` 롤오버. 트리거가 문자 예산이 아니라 **6번째 항목**이라(§7-2 「별개 트리거」ⓑ) 예산 신호 없이도 수행한다. 함께 보는 것 셋 — 5개만 남는지, **가장 오래된 것부터** 옮기는지(허브에 최신 '변경 01'이 남고 아카이브에 최古 '변경 06'이 가는지로 방향을 고정한다. 위치로 고르는 구현은 최신을 아카이브로 보내면서도 같은 출력 줄을 낸다), `## 아카이브` 섹션이 없을 때 규정 형식 포인터가 신설되는지(§7-30ⓐ 양방향 정합).",
+      "expect_file_contains": {
+        "20_projects/personal/demo.md": [
+          "- 이전 이력: 90_archive/20_projects/personal/demo/changes.md (2026-08-01~2026-08-01, 누적 1건)",
+          "**변경 01**",
+          "**변경 05**"
+        ],
+        "90_archive/20_projects/personal/demo/changes.md": [
+          "# Demo 변경 이력 아카이브",
+          "**변경 06**"
+        ]
+      }
+    },
+    {
+      "fixture": "hub-under",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "롤오버 — 20_projects/personal/demo.md"
+      ],
+      "rationale": "항목이 5개면 건드리지 않는다(무회귀 음성). §2.2는 3~5개 유지가 정상 상태라, 발동선을 잘못 잡아 5개에서 돌면 허브가 이유 없이 비어 조회가 최근 변경을 잃는다."
+    },
+    {
+      "fixture": "hub-budget-only",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "롤오버 — 20_projects/personal/demo.md"
+      ],
+      "after_expect_keywords": [
+        "예산 임박: 20_projects/personal/demo.md"
+      ],
+      "rationale": "**델타 음성 — 두 축이 별개임을 고정한다.** 허브가 문자 예산 96%로 §7-2 발동 중이지만 항목이 5개라 이 롤오버는 대상이 아니다(§7-2 「별개 트리거」ⓑ — 문자 쪽 처방은 `conventions.md` 분리 §2.9다). 수행 후 재lint에 예산 신호가 **그대로 남아 있는지**까지 본다. **잡는 범위를 정확히 적는다**(역검증 실측): 발동 판정만 `budget_state`로 바꾼 구현은 이 케이스가 잡지 못한다 — 남길 개수 판정(`fits`)이 이미 참이라 아무것도 옮기지 않기 때문이다. 이 케이스가 잡는 것은 **처방 전체를 문자 축으로 오인한 구현**(발동도 목표치도 예산으로 재는 것)이고, 그때 5개짜리 허브가 이유 없이 비워지며 FAIL한다. 발동 판정만 바꾼 회귀는 hub-rollover가 잡는다(6항목인데 문자 여유가 있어 안 돈다)."
+    },
+    {
+      "fixture": "hub-oldptr",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "실 vault의 포인터는 규정 문면과 다른 **wikilink 형식**이고 날짜·건수 표기가 없다 — 그 경로에서도 줄 끝에 `(최古~最新, 누적 N건)`이 덧붙는지 본다(decision-log의 dec-oldptr와 같은 자리다. 정규식 치환만 있는 구현은 여기서 사실상 아무것도 하지 않아 포인터가 실제 아카이브 상태와 어긋난 채 남는다). 함께 보는 것은 **append 보존**이다 — 이미 옮겨진 2건이 그대로 있고 누적이 3건으로 세어지는지로 덮어쓰기 0을 고정한다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo.md": [
+          "|변경 이력 아카이브]] (2026-08-01~2026-08-01, 누적 3건)"
+        ],
+        "90_archive/20_projects/personal/demo/changes.md": [
+          "**옛 변경 A**",
+          "**옛 변경 B**",
+          "**변경 06**"
+        ]
+      }
     }
   ]
 }
