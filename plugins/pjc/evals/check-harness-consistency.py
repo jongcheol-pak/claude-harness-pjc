@@ -133,21 +133,18 @@ def check_doc_budget(conv):
             issues.append("예산 기준선 %s — 표 %s / 실측 %s (바이트·행·경계행)"
                           % (path, want, real))
         if path == "AGENTS.md":
-            limit = _agents_inject_limit()
+            # 상한의 정본은 hook이므로 코드에 박지 않고 거기서 읽는다. 대상이 이 한 행뿐이라
+            # 헬퍼로 빼지 않고 지역 처리한다(공통화 문턱 미달 — 이 파일의 명시적·직접적 코드 원칙).
+            hook = os.path.join(ROOT, "plugins", "pjc", "scripts", "session-context.ps1")
+            m = re.search(r"\$agentsMaxBytes\s*=\s*(\d+)", read(hook))
+            if not m:
+                die("주입 상한: `session-context.ps1`에서 $agentsMaxBytes 정의를 찾지 못함")
+            limit = int(m.group(1))
             if real[0] > limit:
                 issues.append("주입 상한 초과 %s — 실측 %d B / 상한 %d B (초과 %d B) "
                               "— SessionStart가 전문 대신 목차 폴백을 주입한다"
                               % (path, real[0], limit, real[0] - limit))
     return issues, len(rows)
-
-
-def _agents_inject_limit():
-    """`session-context.ps1`에서 AGENTS.md 전문 주입 상한을 읽는다(정본 단일화)."""
-    hook = os.path.join(ROOT, "plugins", "pjc", "scripts", "session-context.ps1")
-    m = re.search(r"\$agentsMaxBytes\s*=\s*(\d+)", read(hook))
-    if not m:
-        die("주입 상한: `session-context.ps1`에서 $agentsMaxBytes 정의를 찾지 못함")
-    return int(m.group(1))
 
 
 # ─────────────────────────────────────────────────────────────
