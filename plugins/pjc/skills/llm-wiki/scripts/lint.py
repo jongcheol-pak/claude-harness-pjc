@@ -165,6 +165,12 @@ EMOJI_EXEMPT_TYPES = {"decision-log"}
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
 INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 수
 
+# 인덱스 등록 검사 대상(§7-30 ⓒ) — feature는 종전대로 §7-6이 따로 보므로 여기서 제외한다.
+#  이 세 타입은 등록처가 서로 다른데(guide→index-guides / entity→기술 스택 지식 / concept→범용 패턴)
+#  **어느 곳에도 안 실리면 조회 경로 밖**이 된다는 점은 같다. convention·question은 대상이 아니다 —
+#  전자는 §7-30 ⓑ가 허브 목록으로, 후자는 §7-23이 미해결 질문 표로 각각 도달성을 이미 본다.
+INDEXED_TYPES = {"guide", "entity", "concept"}
+
 # 시크릿 의심 패턴 (wiki-schema §7-22 — 키워드+구분자+실값 형태만 매칭하는 보수 정규식.
 #  post-write-checks.ps1의 민감정보 검사를 위키용으로 이식하되, IP 주소는 산문 오탐 위험으로 제외).
 #  password/api key 계열은 값을 캡처해 아래 secret_value_is_codey()로 "코드 꼴" 값을 걸러낸다.
@@ -1020,6 +1026,7 @@ def main():
     open_questions = 0                        # 미해결 question 집계 (〃)
     dep_count = 0                             # deprecated 페이지 집계 (wiki-schema §7-17)
     feat_files, index_feat_links = set(), set()
+    indexed_files = {}     # typ -> {무확장 경로} — guide·entity·concept 인덱스 등록 검사(§7-30 ⓒ)
     link_targets = set()   # 위키 전체에서 링크된 대상 (고아 검사용)
     pages = {}             # rel -> (frontmatter, type, 본문 텍스트)
     unreadable = set()     # 읽기 실패한 rel 경로 — 부재와 구분해 진단하기 위해 실패 지점에서 기록한다
@@ -1315,8 +1322,17 @@ def main():
                          f"위키 본문은 평문 유지 (schema §7-29)", r)
 
         # 90_archive/ 하위(백업 사본 포함)는 인덱스 동기 대상이 아님 — §8 "백업 파일이 WARN을 만들지 않는다"
-        if typ == "feature" and not r.startswith("90_archive/"):
-            feat_files.add(r[:-3])
+        #  등록처는 타입마다 다르다: feature는 category sub-index, guide는 index-guides 통합 표,
+        #  entity는 `## 기술 스택 지식`, concept은 `## 범용 패턴`. 어디에 실리든 인덱스 전체 텍스트
+        #  (index.md + sub-index 합산)에서 링크되면 등록으로 본다 — "올바른 등록처인가"까지는 보지
+        #  않는다(그건 생성기가 결정론으로 배치한다). 여기서 막는 것은 **어느 인덱스에도 없어 조회
+        #  경로 밖에 남는 것**이며, §7-8 고아 검사는 위키 어디서든 링크되면 통과하므로 "인덱스에는
+        #  없지만 다른 페이지가 링크한" 상태를 놓친다.
+        if not r.startswith("90_archive/"):
+            if typ == "feature":
+                feat_files.add(r[:-3])
+            elif typ in INDEXED_TYPES:
+                indexed_files.setdefault(typ, set()).add(r[:-3])
 
     # index.md: 분할 신호(줄수/행수) + sub-index 목록 정합 + 기능별 인덱스 ↔ feature 동기화
     sub_files = sorted(glob.glob(os.path.join(glob.escape(vault), "index-*.md")))  # L-3: vault만 escape('index-*'의 *는 패턴 유지)
@@ -1412,6 +1428,17 @@ def main():
                 index_feat_links.add(t[:-3] if t.endswith(".md") else t)
         for f in sorted(feat_files - index_feat_links):
             warn(f"기능별 인덱스 누락: {f} (feature인데 index 미등록)", f)
+
+        # 인덱스 등록 (§7-30 ⓒ): guide·entity·concept이 어느 인덱스에도 안 실렸는가.
+        #  §7-6이 feature에 하는 일을 나머지 타입으로 넓힌 것이다 — 종전에는 이 셋에 대응 검사가
+        #  없어, 분할·신설한 페이지가 등록에서 빠져도 기계가 침묵했다(§7-8 고아 검사는 위키 어디서든
+        #  링크되면 통과하므로 "인덱스 밖" 상태를 잡지 못한다). 증상별 인덱스 제외본(itext_feat)을
+        #  쓰는 이유는 §7-6과 같다 — 증상 행의 해법 링크가 그 페이지를 "등록됨"으로 마스킹한다.
+        idx_links = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(itext_feat)}
+        for typ_name in sorted(indexed_files):
+            for f in sorted(indexed_files[typ_name] - idx_links):
+                warn(f"인덱스 등록 누락: {f} ({typ_name}인데 index·sub-index 어디에도 미등록 "
+                     f"— 조회 경로 밖, wiki-schema §7-30)", f)
 
         # 한/영 양방향 병기: 기능별 인덱스 유형 행(is_feat_recipe_row — 형상+대상 기반, alias 무관)의
         #  첫 컬럼(기능명)에 한글·영문 중 한쪽만 있으면 WARN. 한글 등록이든 영문 등록이든 양방향
