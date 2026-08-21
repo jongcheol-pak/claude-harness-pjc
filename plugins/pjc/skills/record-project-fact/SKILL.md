@@ -1,6 +1,6 @@
 ---
 name: record-project-fact
-description: This skill should be used when recording a CONFIRMED project fact (build/run command, DB access method, file/artifact location, test/verify command, intentionally untested layers) into an EXISTING AGENTS.md — either right after the suggest-agents-record hook emits "[AGENTS 기록 제안]" and the user accepts, or when the user explicitly asks to record such a fact. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "테스트 비대상 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘", or accepting the hook's suggestion. The fact may be added, updated, or removed. Do NOT trigger for — creating a new AGENTS.md from scratch (use bootstrap-agents-md), planning or writing code (plan-feature/implement-task). Records into AGENTS.md ONLY — never the global/project CLAUDE.md — and ONLY after showing the exact change and getting user approval (no silent writes). Real secrets/connection strings/credentials are forbidden — environment variable names only.
+description: This skill should be used when recording a CONFIRMED project fact (build/run command, DB access method, file/artifact location, test/verify command, intentionally untested layers) into an EXISTING AGENTS.md — either right after the suggest-agents-record hook emits "[AGENTS 기록 제안]" and the user accepts, or when the user explicitly asks to record such a fact. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "테스트 비대상 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘", or accepting the hook's suggestion. The fact may be added, updated, or removed. Also triggers when AGENTS.md has grown near or past the SessionStart injection limit — on "AGENTS.md가 너무 커졌어", "주입 상한 넘었어", "AGENTS.md 정리해줘", or on receiving the session-context hook's "주입 상한 임박" warning — in which case Step 5 moves whole oversized sections out to a separate document and leaves a pointer in place. Do NOT trigger for — creating a new AGENTS.md from scratch (use bootstrap-agents-md), planning or writing code (plan-feature/implement-task). Records into AGENTS.md ONLY — never the global/project CLAUDE.md — and ONLY after showing the exact change and getting user approval (no silent writes); the single exception is Step 5's budget relocation, which moves content verbatim and leaves a pointer, so it runs without approval and reports afterward. Real secrets/connection strings/credentials are forbidden — environment variable names only.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
@@ -25,6 +25,7 @@ bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)�
 ## 절대 규칙 (Hard Rules)
 
 1. **승인 없이 쓰지 않는다.** 기록 전, **어느 섹션에 무엇을 추가/갱신/제거하는지** 정확히 보여주고 사용자 승인을 받은 뒤에만 Edit한다. hook 제안은 "기록 제안"일 뿐 자동 기록 위임이 아니다. 삭제도 동일하게 승인 게이트를 거친다.
+   - **예외는 Step 5(주입 상한 이관) 하나뿐이다.** 이 규칙이 막는 것은 *"무엇을 사실로 적을지"* 를 사용자 모르게 정하는 것인데, 이관은 **내용을 바꾸지 않고 위치만 옮기고 포인터를 남기는 무손실 이동**이라 판정할 것이 없고 사본으로 되돌아간다. 대신 사후 보고가 의무다(Step 5 ⓗ).
 2. **AGENTS.md만 대상.** 프로젝트 루트의 `AGENTS.md`에만 기록한다. **글로벌/프로젝트 `CLAUDE.md`는 수정하지 않는다**(지침 파일이라 위험).
 3. **실제 시크릿 금지.** DB 연결 문자열·비밀번호·API 키·토큰·내부 IP/호스트를 기록하지 않는다. **환경변수 이름·설정 키 이름만** 적고 실제 값은 `.env`(gitignore)로. (예: `접속: 환경변수 DB_CONNECTION` — 실제 문자열 금지.)
 4. **확인된 사실만.** 직접 실행·확인한 명령/경로만 기록한다. 추측("아마 이 명령일 것")은 기록하지 않는다.
@@ -75,6 +76,46 @@ bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)�
 - UTF-8(BOM 없음) 유지, 기존 문구·다른 섹션 불변(최소 변경).
 - "반영 완료: `<섹션>`에 `<항목>` 추가/갱신/제거" 보고.
 
+### Step 5. 주입 상한 점검·이관 (기록으로 파일이 커졌을 때)
+
+> **이 단계만 승인 게이트가 없다.** 규칙 1이 막는 것은 *"무엇을 사실로 적을지"* 를 사용자 모르게 정하는 것인데, 이관은 **내용을 한 글자도 바꾸지 않고 위치만 옮기고 그 자리에 포인터를 남기는 무손실 이동**이라 사용자가 보탤 판단이 없다(위키 롤오버가 승인 없이 도는 것과 같은 근거). **기록 자체(Step 1~4)의 승인 게이트는 그대로다.**
+
+**ⓐ 발동 조건.** Step 4를 마친 뒤 `AGENTS.md`의 파일 바이트를 재고, **상한의 95% 이상이거나 여유가 500B 미만**이면 이관한다(상한은 `session-context.ps1`의 `$agentsMaxBytes` — 현재 16,384B. 값을 여기 박지 말고 그 hook에서 읽는다). 세션 시작 시 `[pjc 세션 컨텍스트] … ⚠ 주입 상한 임박` 경고를 받았다면 그것이 같은 신호다. **미달이면 이 단계를 조용히 통과한다.**
+
+**ⓑ 잔류 절 (이관 금지).** 다음은 옮기지 않는다 — 세션이 이것을 잃으면 빌드도 못 하고 금지선도 모른다:
+`## Stack` · `## Build & Test`의 **명령 줄**(설명 산문은 이관 가능) · `## DO NOT` · `## Plan Location`.
+해당 절이 없는 프로젝트에서는 그 항목을 건너뛴다(이 열거는 pjc bootstrap 템플릿 기준이다).
+
+**ⓒ 이관 대상 선정.** 잔류 대상 밖의 `## ` 절을 **바이트 크기 순**으로 세어 큰 것부터 옮긴다. 크기는 `## ` 헤딩 줄부터 **다음 `## ` 직전까지**의 파일 바이트(CRLF 포함 — `$agentsMaxBytes` 판정과 같은 단위)다. **한 절을 옮길 때마다 다시 재고, 상한의 90% 아래로 내려오면 멈춘다**(임박 임계 바로 아래에서 멈추면 다음 기록에 곧 재발동한다).
+
+**ⓓ 이관처 (결정적 2분기 — 판단 금지).**
+1. **AGENTS.md가 이미 포인터로 가리키고 있는 문서가 있으면 그 문서**(예: 본문에 `정본은 docs/harness-conventions.md의 …`처럼 등장하는 경로). 여럿이면 **가장 많이 가리켜진 것** 하나.
+2. 없으면 `docs/agents-detail.md`를 신설한다(`docs/`가 없으면 만든다).
+
+*"규약 문서처럼 보이는 것을 고른다"* 같은 판단 여지를 두지 않는다 — 회차마다 다른 곳으로 흩어지면 그것이 곧 유실이다.
+
+**ⓔ 포인터 (도달 경로 — 이관의 핵심).** 옮긴 자리에 **절 제목을 유지한 채** 다음 1줄을 남긴다:
+```
+**정본은 `<이관처 경로>`의 「<절 이름>」이다** — <그 절이 무엇을 규정하는지 한 줄>.
+```
+절 제목을 지우고 통째로 옮기지 않는다 — 제목이 사라지면 목차 폴백에서도 그 주제가 보이지 않아 **"어디로 갔는지 물을 실마리"조차 없다.** 이관처에는 같은 절 이름의 `## ` 헤딩으로 원문을 그대로 붙인다(요약·압축 금지).
+
+**ⓕ 사본과 원복.** 착수 직전 `AGENTS.md`와 이관처 파일을 **`docs/.agents-presplit/{YYYY-MM-DD}/`에 복사**한다(git 저장소여도 만든다 — 이관은 미커밋 작업 도중에도 돌 수 있어 `git checkout` 원복이 그 작업까지 지운다). 검증(ⓖ)에 실패하면 **사본으로 두 파일을 되돌리고 보고**한다. 자동 재시도하지 않는다.
+
+**ⓖ 검증.** 이관 후 ① `AGENTS.md`가 상한 이내인가 ② 잔류 절 4종이 모두 남아 있는가 ③ **포인터가 가리키는 경로의 파일이 실재하고 그 안에 같은 절 이름이 있는가**(도달성 — 이것이 "못 찾는 문제"를 막는 유일한 기계 확인이다) ④ 옮긴 원문이 이관처에 그대로 있는가(줄 수 대조). 하나라도 실패면 ⓕ로 원복.
+
+**ⓗ 사후 보고 (승인을 없앤 대가는 가시성).**
+```
+## 📦 AGENTS.md 주입 상한 이관
+- 이관 전: <N>B / 상한 <M>B
+- 옮긴 절: 「<절 이름>」 <K>B → `<이관처>`
+- 남긴 포인터: AGENTS.md의 같은 자리 1줄
+- 이관 후: <N'>B (여유 <M-N'>B)
+- 되돌리려면: `docs/.agents-presplit/{날짜}/` 사본
+```
+
+**ⓘ 이관 불가 (정지 조건).** 잔류 절만으로 이미 상한을 넘거나 옮길 절이 하나도 없으면 **이관하지 않고 그 사실을 보고**한다 — *"잔류 대상(Stack·Build & Test 명령·DO NOT·Plan Location)만으로 <N>B라 이관으로는 해소되지 않습니다. 잔류 절 자체를 줄일지 사용자 판단이 필요합니다."* 옮길 것이 없는데 반복해서 재판정하지 않는다.
+
 ## 출력 형식
 
 ```markdown
@@ -91,7 +132,8 @@ bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)�
 
 | 잘못된 동작 | 올바른 동작 |
 |---|---|
-| 승인 없이 AGENTS.md를 바로 Edit | 변경안 제시 → 승인 → Edit |
+| 승인 없이 AGENTS.md를 **기록**(추가·갱신·제거) | 변경안 제시 → 승인 → Edit (**Step 5 이관은 예외** — 무손실 이동이라 승인 없이 수행하고 사후 보고) |
+| 상한을 넘겼는데 그대로 두거나, 이관하며 내용을 요약·압축 | Step 5로 큰 절을 통째 옮기고 그 자리에 포인터 1줄 (원문 무변조) |
 | 실제 DB 연결 문자열·비밀번호 기록 | 환경변수 이름만 |
 | CLAUDE.md 수정 | AGENTS.md만 |
 | 같은 명령을 새 줄로 중복 추가 | 기존 줄 갱신 |
