@@ -62,7 +62,7 @@ $env:USERPROFILE = $EvalIso        # 자식 hook 프로세스가 이 격리 홈�
 $env:CLAUDE_PROJECT_DIR = $null
 Set-Location $EvalWork             # 중립 cwd — hook의 (Get-Location) 폴백이 레포 plan.md를 줍지 않게
 
-# 시나리오가 직접 참조하는 이름(추출 전과 동일하게 유지 — 시나리오 14개를 수정하지 않기 위함)
+# 시나리오가 직접 참조하는 이름(추출 전과 동일하게 유지 — 시나리오 15개를 수정하지 않기 위함)
 $iso  = $EvalIso
 $work = $EvalWork
 
