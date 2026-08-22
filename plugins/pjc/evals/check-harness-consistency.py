@@ -106,22 +106,28 @@ def top_sections(path, n=3):
     절이 3개 미만이면 있는 만큼만, 헤딩이 없으면 빈 목록을 돌려준다(경고 문면이
     "(절 없음)"으로 닫히므로 호출부에 분기를 만들지 않는다).
     """
-    # `read()`는 파일이 없으면 `die()`로 프로세스를 끝내므로 여기서 쓰지 않는다 — 이 헬퍼는
-    # **경고 문면을 꾸미는 보조**라, 읽기에 실패해도 검사 자체를 죽이면 안 된다(부재는 호출부의
+    # **바이너리로 읽는다** — 텍스트 모드는 universal newline 변환으로 `\r\n`을 `\n`으로 바꿔
+    # 절 바이트가 줄 수만큼 축소된다. 이 레포의 단위는 「실제 파일 바이트(CRLF 포함)」이고
+    # 같은 파일의 `measure()`도 `+2`로 그 보정을 한다 — 한 스크립트가 같은 단위를 다르게
+    # 다루면 출력끼리 대조가 안 된다(「문서 로드 예산 기준선」의 "단위를 섞지 말 것").
+    # `read()`를 쓰지 않는 것은 그 함수가 파일 부재 시 `die()`로 프로세스를 끝내기 때문이다 —
+    # 이 헬퍼는 **경고 문면을 꾸미는 보조**라 읽기 실패로 검사를 죽이면 안 된다(부재는 호출부의
     # 「파일 없음」 이슈가 이미 보고한다).
     try:
-        with open(path, encoding="utf-8") as f:
+        with open(path, "rb") as f:
             raw = f.read()
     except OSError:
         return []
-    heads = [m.start() for m in re.finditer(r"(?m)^## .+$", raw)]
+    heads = [m.start() for m in re.finditer(rb"(?m)^## .+$", raw)]
     if not heads:
         return []
     bounds = heads + [len(raw)]
     out = []
     for i, s in enumerate(heads):
-        title = raw[s:raw.index("\n", s) if "\n" in raw[s:] else len(raw)][3:].strip()
-        out.append((title, len(raw[s:bounds[i + 1]].encode("utf-8"))))
+        eol = raw.find(b"\n", s)
+        head_line = raw[s:eol if eol != -1 else len(raw)]
+        title = head_line[3:].decode("utf-8", "replace").strip()
+        out.append((title, bounds[i + 1] - s))
     return sorted(out, key=lambda x: -x[1])[:n]
 
 
@@ -142,12 +148,16 @@ def measure(path):
 # ① 문서 로드 예산
 # ─────────────────────────────────────────────────────────────
 def check_doc_budget(conv):
-    """예산 표의 파일들이 표 기록값과 일치하는가. `AGENTS.md`만 상한 대비도 함께 잰다.
+    """예산 표의 파일들이 표 기록값과 일치하는가. `AGENTS.md`만 크기 축 둘을 더 잰다.
 
-    표 대조(기록값 == 실측)와 상한 대조(실측 <= 상한)는 **다른 축**이다 — 전자는
-    "표가 낡았나"를, 후자는 "그 파일이 SessionStart 주입 상한을 넘겼나"를 본다.
+    **판정은 셋이고 서로 다른 축이다.** ① 표 대조(기록값 == 실측) — "표가 낡았나"
+    ② 상한 대조(실측 <= 상한) — "그 파일이 SessionStart 주입 상한을 넘겼나"
+    ③ 목표선 대조(실측 <= `AGENTS_TARGET_BYTES`) — "넘기기 전에 다시 차오르고 있나".
+    ②③은 `elif`로 묶여 상한을 넘긴 상태에서 목표선 메시지가 중복되지 않는다(상한이 더 급하다).
     AGENTS.md가 상한을 넘으면 전문 주입이 **목차 폴백**으로 바뀌어 모든 세션이 보는
     내용이 통째로 달라지는데, 그것을 알려주는 장치가 없었다(대장 [2026-08-19]).
+    ③을 더한 이유는 ②가 **넘긴 뒤에야** 알린다는 것이다 — 그때는 이미 그 세션들이
+    명령도 금지선도 못 본 상태다.
 
     **상한 값은 코드에 박지 않고 hook에서 파싱한다** — 정본이 `session-context.ps1`의
     `$agentsMaxBytes`이므로, 그쪽을 고치면 이 검사도 함께 따라가야 갈리지 않는다.
