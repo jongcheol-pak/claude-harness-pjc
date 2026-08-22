@@ -6,7 +6,7 @@
 ## 위키
 
 - **프로젝트 페이지**: `20_projects/personal/claude-harness-pjc.md` (LLM WIKI vault)
-- 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다 — "어디에 코드를 둘지"는 매 변경마다 필요하고 `pjc:add-domain-service`가 그것을 레이어 판정 근거로 쓴다).
+- 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
 - 작업 규약·함정: 같은 폴더의 `conventions.md`(+ `conventions-*.md` 하위)
 
 ## Build & Test
@@ -89,4 +89,4 @@ PRD Location:  docs/prd.md · docs/prds/<YYYY-MM-DD>-<slug>.md
 ## OS/플랫폼
 
 - Windows 검증 · macOS/Linux 실험적(hooks는 pwsh 7 cross-platform 의도). 검증·배포는 Windows 기준.
-- **Claude Code 권장 v2.1.219+** (최소 v2.0) — plan 리뷰어 2종의 `model: opus` 별칭이 Claude Opus 5로 해소되는 최소 버전. 미만에서는 이전 세대로 실행돼 판정 품질이 달라진다.
+- **Claude Code**: 최소 v2.0 · **권장 v2.1.219+**(plan 리뷰어 2종의 `opus` 별칭 해소 기준).
