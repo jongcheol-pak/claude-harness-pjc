@@ -906,9 +906,10 @@
         "관련 파일 섹션 누락",
         "구현 근거 각주 누락",
         "기능별 인덱스 누락",
-        "허브 기능 목록 누락"
+        "허브 기능 목록 누락",
+        "예산 초과: 20_projects/personal/demo/feat-thing"
       ],
-      "rationale": "§4 처방 ③ 산문 하위 분리. **가장 큰 섹션의 본문만** 옮기고 헤딩과 포인터는 원본에 남긴다(D2 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을 낸다). 이 케이스가 한꺼번에 고정하는 것 다섯 — ⓐ 원본에 헤딩 + 정본 포인터가 남는지 ⓑ **하위에도 타입별 필수 섹션이 재현**되는지(하위는 같은 타입이라 §7-18ⓐ·§7-21이 그대로 걸린다 — 재현하지 않으면 자동 분할이 스스로 새 위반을 만든다. 실제로 초기 구현이 그랬다) ⓒ 각주 정의가 원본에 남고 하위에도 복제되는지(§7-18ⓑ는 문서 전체의 `[^src-` 개수를 본다) ⓓ 허브 `## 기능 목록`과 `build_index` 연쇄로 **분할 직후 인덱스 등록이 끝나는지**(사람이 `--build-index`를 따로 돌려야 통과하는 상태로 끝내지 않는다) ⓔ 원본과 하위 **양쪽 모두** 예산 신호가 사라지는지.",
+      "rationale": "§4 처방 ③ 산문 하위 분리. **가장 큰 섹션의 본문만** 옮기고 헤딩과 포인터는 원본에 남긴다(D2 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을 낸다). 이 케이스가 한꺼번에 고정하는 것 다섯 — ⓐ 원본에 헤딩 + 정본 포인터가 남는지 ⓑ **하위에도 타입별 필수 섹션이 재현**되는지(하위는 같은 타입이라 §7-18ⓐ·§7-21이 그대로 걸린다 — 재현하지 않으면 자동 분할이 스스로 새 위반을 만든다. 실제로 초기 구현이 그랬다) ⓒ 각주 정의가 원본에 남고 하위에도 복제되는지(§7-18ⓑ는 문서 전체의 `[^src-` 개수를 본다) ⓓ 허브 `## 기능 목록`과 `build_index` 연쇄로 **분할 직후 인덱스 등록이 끝나는지**(사람이 `--build-index`를 따로 돌려야 통과하는 상태로 끝내지 않는다) ⓔ 원본과 하위 **양쪽 모두** 예산 신호가 사라지는지. **수렴도 함께 본다** — 옮겨도 하위가 곧바로 발동할 섹션을 그대로 옮기면 `-2-2`·`-2-2-2`로 번지는데, 파일명을 끝까지 적은 needle은 그 새 이름을 놓친다. 그래서 예산 위반 needle을 **접두**로 두어 원본·하위·재분할물 어느 것이 남아도 걸리게 했다.",
       "expect_file_contains": {
         "20_projects/personal/demo/feat-thing.md": [
           "## UI·UX",
@@ -973,6 +974,103 @@
           "[UI·UX] 이 문단은"
         ]
       }
+    },
+    {
+      "fixture": "prose-convention",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/conventions.md",
+        "20_projects/personal/demo/conventions-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 20_projects/personal/demo/conventions.md",
+        "예산 초과: 20_projects/personal/demo/conventions.md",
+        "예산 임박: 20_projects/personal/demo/conventions-2.md",
+        "예산 초과: 20_projects/personal/demo/conventions-2.md",
+        "하위 문서 목록"
+      ],
+      "rationale": "convention(예산 12,000자) 경로. **하위 파일명이 순번**인지를 고정한다(D1 ⓐ) — §2.9는 `conventions-{주제}.md`를 규정하지만 위키 본문은 한글이 원칙이라 제목 전사가 §3 네이밍(영문소문자 하이픈)을 어기고, `## 주의점 / 함정`처럼 경로 구분자를 포함한 제목이 실재해 경로가 깨진다. 주제 정보는 `## 하위 문서` 목록의 담당 범위 줄이 담고 §7-30ⓑ가 그 목록↔실파일 양방향을 기계 검사한다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/conventions.md": [
+          "## 하위 문서",
+          "- [[20_projects/personal/demo/conventions-2|Demo 작업 규약 (Demo Conventions) — 릴리즈 절차]] — 릴리즈 절차"
+        ],
+        "20_projects/personal/demo/conventions-2.md": [
+          "> 상위 문서: [[20_projects/personal/demo/conventions|Demo 작업 규약 (Demo Conventions)]]",
+          "index_label: Demo 작업 규약 (Demo Conventions) — 릴리즈 절차"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-guide",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 40_guides/ui-ux/demo-guide.md",
+        "40_guides/ui-ux/demo-guide-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 40_guides/ui-ux/demo-guide.md",
+        "예산 초과: 40_guides/ui-ux/demo-guide.md",
+        "예산 임박: 40_guides/ui-ux/demo-guide-2.md",
+        "예산 초과: 40_guides/ui-ux/demo-guide-2.md",
+        "한/영 병기",
+        "예산 초과: 40_guides/ui-ux/demo-guide"
+      ],
+      "rationale": "guide(ui-ux 예산 6,000자) 경로. 같은 폴더·같은 `guide_kind`를 유지하고 허브 복귀 링크를 두어 §2.6 허브+하위 형상과 같은 모습이 되는지 본다. **`index_label` 접미**(D1 ⓓ)도 함께 고정한다 — 원본이 한/영 병기이므로 접미를 붙여도 병기가 유지돼 §7-16이 자동 생성물에서 반복되지 않는다. **수렴도 함께 본다** — 옮겨도 하위가 곧바로 발동할 섹션을 그대로 옮기면 `-2-2`·`-2-2-2`로 번지는데, 파일명을 끝까지 적은 needle은 그 새 이름을 놓친다. 그래서 예산 위반 needle을 **접두**로 두어 원본·하위·재분할물 어느 것이 남아도 걸리게 했다.",
+      "expect_file_contains": {
+        "40_guides/ui-ux/demo-guide-2.md": [
+          "guide_kind: ui-ux",
+          "index_label: 데모 가이드 (Demo Guide) — 화면 구성",
+          "> 상위 문서: [[40_guides/ui-ux/demo-guide|데모 가이드 (Demo Guide)]]"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-entity",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 30_knowledge/tech/demo-tech.md",
+        "30_knowledge/tech/demo-tech-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 30_knowledge/tech/demo-tech.md",
+        "예산 초과: 30_knowledge/tech/demo-tech.md",
+        "예산 임박: 30_knowledge/tech/demo-tech-2.md",
+        "예산 초과: 30_knowledge/tech/demo-tech-2.md",
+        "고아 페이지(어디서도 링크되지 않음): 30_knowledge/tech/demo-tech-2",
+        "예산 초과: 30_knowledge/tech/demo-tech"
+      ],
+      "rationale": "entity(예산 6,000자) 경로. 허브가 없는 타입이라 도달 경로를 `index.md` 기능별 인덱스(`build_index` 연쇄)와 상위 참조가 담당한다 — 신설 하위가 고아로 남지 않는지까지 본다. 타입별 필수 섹션이 `## 핵심`으로 feature와 다르다는 것도 이 케이스가 지킨다. **수렴도 함께 본다** — 옮겨도 하위가 곧바로 발동할 섹션을 그대로 옮기면 `-2-2`·`-2-2-2`로 번지는데, 파일명을 끝까지 적은 needle은 그 새 이름을 놓친다. 그래서 예산 위반 needle을 **접두**로 두어 원본·하위·재분할물 어느 것이 남아도 걸리게 했다.",
+      "expect_file_contains": {
+        "30_knowledge/tech/demo-tech.md": [
+          "## 핵심",
+          "**정본은 [[30_knowledge/tech/demo-tech-2|데모 기술 (Demo Tech) — 사용 프로젝트]]의 「사용 프로젝트」이다**"
+        ],
+        "30_knowledge/tech/demo-tech-2.md": [
+          "## 핵심",
+          "[사용 프로젝트] 이 문단은"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-oversize",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 30_knowledge/tech/demo-tech.md"
+      ],
+      "rationale": "**수렴 가드.** 이동 가능한 유일 섹션이 예산(entity 6,000자)보다 커서, 옮겨도 하위가 곧바로 발동한다 — 그런 섹션을 옮기면 같은 크기의 파일이 하나 더 생길 뿐이고 다음 실행이 그 하위를 또 쪼개 `-2-2`·`-2-2-2`로 번진다(가드 없는 구현에서 실측했다). 한 섹션은 더 쪼갤 수 없으므로 여기서 멈추는 것이 §7-2의 정지 가드이고, 남는 신호는 실패가 아니라 「더 나눌 것이 없다」는 보고다. **다른 픽스처는 이 가드를 태우지 못한다** — 섹션이 예산보다 작으면 옮긴 하위가 발동하지 않아 가드가 있으나 없으나 결과가 같다."
     }
   ]
 }

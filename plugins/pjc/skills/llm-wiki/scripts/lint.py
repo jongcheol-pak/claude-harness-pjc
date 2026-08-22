@@ -1609,7 +1609,7 @@ def _md_sections(text):
     얻은 오프셋을 원문에 그대로 쓸 수 있다."""
     probe = strip_code(text)
     marks = [(m.start(), m.group(1).strip())
-             for m in re.finditer(r"(?m)^##\s+(.+?)\s*$", probe)]
+             for m in re.finditer(r"(?m)^##[ \t]+(.+)$", probe)]
     out = []
     for i, (pos, title) in enumerate(marks):
         end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
@@ -1632,7 +1632,7 @@ def _next_sub_index(vault, rel):
     return n + 1
 
 
-def _sub_page_text(text, fm, typ, title, body, label, rel, nl):
+def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
     """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다(D1 ⓓ).
 
     **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번) §7-18ⓐ·
@@ -1646,7 +1646,7 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl):
             continue
         head += "%s: %s\n" % (k, v)
     head += "index_label: %s — %s\n---\n\n" % (fm.get("index_label", label), title)
-    h1 = re.search(r"(?m)^#\s+(.+?)\s*$", text)
+    h1 = re.search(r"(?m)^#[ \t]+(.+)$", text)
     back = "> 상위 문서: [[%s|%s]]\n\n" % (rel[:-len(".md")], label)
     out = head + "# %s — %s\n\n" % (h1.group(1).strip() if h1 else label, title) + back
 
@@ -1657,7 +1657,7 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl):
     for req in TYPE_REQUIRED_SECTIONS.get(typ, ()):
         if req == title:
             continue
-        src = section(text, req)
+        src = secmap.get(req)
         if src is None:
             continue
         if req == "관련 파일":
@@ -1728,6 +1728,7 @@ def relocate_sections(ses):
         keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_REQUIRED_SECTIONS.get(st.typ, ()))
         label = fm.get("index_label", "").strip() or os.path.basename(rel)[:-len(".md")]
 
+        secmap = {ti: text[s:e] for ti, s, e in _md_sections(text)}
         created, entries, moved = [], [], 0
         cur = text
         while True:
@@ -1736,19 +1737,33 @@ def relocate_sections(ses):
             movable = [s for s in secs if s[0] not in keep]
             if len(secs) < 2 or not movable:
                 break
-            title, s0, s1 = max(movable, key=lambda s: s[2] - s[1])
-            hd_end = cur.index("\n", s0) + 1
-            body = cur[hd_end:s1]
-            if not body.strip():
-                break
             n = _next_sub_index(ses.vault, rel) + len(created)
             sub_rel = "%s-%d.md" % (rel[:-len(".md")], n)
             sub_path = os.path.join(ses.vault, sub_rel.replace("/", os.sep))
+            # **옮겨도 하위가 곧바로 발동할 섹션은 후보에서 뺀다.** 그런 섹션을 옮기면 같은
+            #  크기의 파일이 하나 더 생길 뿐이고, 다음 실행이 그 하위를 또 쪼개 `-2-2`·`-2-2-2`로
+            #  끝없이 번진다(실측). 한 섹션은 더 쪼갤 수 없으므로 여기서 멈추는 것이 §7-2의
+            #  정지 가드다 -- 남는 신호는 실패가 아니라 「더 나눌 것이 없다」는 보고다.
+            pick = None
+            for cand in sorted(movable, key=lambda s: s[2] - s[1], reverse=True):
+                c_title, c0, c1 = cand
+                c_body = cur[cur.index("\n", c0) + 1:c1]
+                if not c_body.strip():
+                    continue
+                sub_text = _sub_page_text(text, fm, st.typ, c_title, c_body, label, rel, nl, secmap)
+                sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
+                if sst and (sst.critical or sst.over):
+                    continue
+                pick = (cand, c_body, sub_text)
+                break
+            if pick is None:
+                break
+            (title, s0, s1), body, sub_text = pick
+            hd_end = cur.index("\n", s0) + 1
             ptr = ("**정본은 [[%s|%s — %s]]의 「%s」이다** — 본문 %d자를 옮겼다(§7-2 발동 처방).\n\n"
                    % (sub_rel[:-len(".md")], label, title, title, len(body)))
             cur = cur[:hd_end] + "\n" + ptr + cur[s1:]
-            created.append((sub_path, sub_rel,
-                            _sub_page_text(text, fm, st.typ, title, body, label, rel, nl)))
+            created.append((sub_path, sub_rel, sub_text))
             entries.append((sub_rel[:-len(".md")], "%s — %s" % (label, title), title, label))
             moved += 1
             nst = budget_state(rel, fm, cur)
