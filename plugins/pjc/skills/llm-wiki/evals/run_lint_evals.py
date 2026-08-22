@@ -561,6 +561,18 @@ def check_case(case):
             missing_n = [n for n in needles if n not in ft]
             if missing_n:
                 return False, "%s에 기대 문자열 없음: %s" % (rel, ", ".join(missing_n))
+        # **개수**를 대조한다. 중복 등록은 존재 여부로 잡히지 않는다 — 있기는 있기 때문이다.
+        #  재분할이 이전 회차 하위를 허브 표에 다시 넣는 회귀가 정확히 그 형태였다.
+        for rel, wants in (case.get("expect_file_count") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                return False, "결과 파일 없음: " + rel
+            with open(fp, encoding="utf-8-sig") as fh:
+                ft = fh.read()
+            for needle, want in wants.items():
+                got = ft.count(needle)
+                if got != want:
+                    return False, "%s의 '%s' 개수 불일치 — 기대 %d / 실제 %d" % (rel, needle, want, got)
         shutil.rmtree(tmp, ignore_errors=True)
         return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
 

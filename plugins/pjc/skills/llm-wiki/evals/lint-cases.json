@@ -1237,6 +1237,31 @@
         "정본 포인터"
       ],
       "rationale": "**`90_archive/` 제외**(Edge Case). 동결 사본에는 목록이 없어도 정상이다 — 규약이 수정을 막아 둔 자리에 수리를 요구하면 고칠 수 없는 WARN이 영구히 남는다(§8의 「백업 파일이 WARN을 만들지 않는다」와 같은 계열). 여기 상위·하위 쌍은 목록 없이도 침묵해야 한다."
+    },
+    {
+      "fixture": "prose-resplit-hub",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ],
+      "expect_file_count": {
+        "20_projects/personal/demo.md": {
+          "20_projects/personal/demo/feat-thing-2": 1
+        },
+        "20_projects/personal/demo/feat-thing.md": {
+          "20_projects/personal/demo/feat-thing-2": 1
+        }
+      },
+      "rationale": "**두 소비처의 차이를 고정한다.** 재분할은 `## 하위 문서` 목록에 이전 회차 형제를 다시 적어야 하지만(그 목록은 매 회차 전량을 담는다), 허브 `## 기능 목록`은 **신설분만** 받아야 한다 — 형제는 지난 회차에 이미 등재됐다. 두 소비처에 같은 목록을 전달하면 허브 표에 같은 기능이 두 줄로 쌓이는데, **존재 여부로는 잡히지 않아**(있기는 있다) 개수를 센다. 이 픽스처는 허브에 형제가 **이미 등록된** 상태에서 시작해 그 차이를 드러낸다 — `prose-resplit`은 허브가 비어 있어 중복이 처음 등록처럼 보인다."
     }
   ]
 }

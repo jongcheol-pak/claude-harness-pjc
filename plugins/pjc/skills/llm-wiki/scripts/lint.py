@@ -1800,9 +1800,12 @@ def relocate_sections(ses):
         #  파일을 가리키는 복귀 링크.
         already = set(wikilink_targets(section(cur, "하위 문서") or ""))
         made = {c[1] for c in created}
+        siblings = []
         for f in sorted(glob.glob(os.path.join(
                 glob.escape(ses.vault), rel[:-len(".md")].replace("/", os.sep) + "-*.md"))):
             srel = os.path.relpath(f, ses.vault).replace("\\", "/")
+            if not re.match(r"^.+-\d+$", srel[:-len(".md")]):
+                continue      # 글롭은 숫자가 아닌 접미도 잡는다 — ⓔ와 같은 신호로 좁힌다
             if srel in made or srel[:-len(".md")] in already:
                 continue
             stext, _sb, _sn = _read_page(f)
@@ -1818,9 +1821,11 @@ def relocate_sections(ses):
             slabel = sfm.get("index_label", "").strip() or os.path.basename(srel)[:-len(".md")]
             # 담당 범위는 `index_label`의 접미(`{원본} — {절}`)에서 그대로 가져온다 — 그 접미를
             #  붙인 것이 이 처방이므로 다시 판단할 것이 없다.
-            entries.append((srel[:-len(".md")], slabel,
-                            slabel.split(" — ")[-1] if " — " in slabel else slabel, label))
-        cur = _sub_doc_list(cur, entries, nl)
+            siblings.append((srel[:-len(".md")], slabel,
+                             slabel.split(" — ")[-1] if " — " in slabel else slabel, label))
+        # 목록은 형제까지 적고, **허브 표는 신설분만** 받는다 — 형제는 지난 회차에 이미
+        #  등재됐으므로 다시 전달하면 같은 기능이 표에 두 줄로 쌓인다.
+        cur = _sub_doc_list(cur, entries + siblings, nl)
         hub = _register_feature_rows(ses.vault, rel, entries) if st.typ == "feature" else None
         hub_path = os.path.join(ses.vault, hub[0].replace("/", os.sep)) if hub else None
         touched = [path] + [c[0] for c in created] + ([hub_path] if hub else [])
