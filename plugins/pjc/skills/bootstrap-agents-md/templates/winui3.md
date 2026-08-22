@@ -5,11 +5,11 @@
 >
 > **이 템플릿은 그대로 써도 동작합니다.** 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고 고유 규칙을 추가하면 Claude가 추측을 줄여 더 정확하게 작업합니다. 빌드·테스트 명령만 채워 시작하고 점진적으로 다듬는 것을 권장합니다.
 
-## Stack
-- **언어**: C# / .NET <version, 예: net10.0-windows10.0.22621.0>
-- **UI**: WinUI 3 (Windows App SDK 2.x), MVVM = `CommunityToolkit.Mvvm`
-- **주요 패키지**: `Microsoft.WindowsAppSDK`, `CommunityToolkit.WinUI.Controls.SettingsControls`, `CommunityToolkit.WinUI.Extensions`, `WinUIEx` <실제 사용하는 것만>
-- **테스트**: <xUnit | NUnit | MSTest>
+## 위키
+
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·아키텍처·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다.
+- 미등록이면 `pjc:plan-feature` Step 1이 자동 등록한다(경로는 그때 채워진다).
 
 ## Build & Test
 - **Build**: `dotnet build <Project>.csproj -c Debug -p:Platform=x64`  ← **반드시 `-p:Platform` 명시**
@@ -79,24 +79,6 @@
 - **비동기**: `async`/`await` 일관. `.Result`/`.Wait()` 금지, `async void`는 이벤트 핸들러만
 - **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 - **접근성**: 포커스 비주얼 + `AutomationProperties.Name` 설정
-
-## Repository Structure
-
-```
-<repo>/
-├── <Project>.slnx              # 플랫폼 매핑 포함
-├── <Project>/
-│   ├── <Project>.csproj        # UseWinUI=true, WindowsAppSDK
-│   ├── App.xaml(.cs)           # OnLaunched → new MainWindow()
-│   ├── MainWindow.xaml(.cs)    # 진입점 Window
-│   ├── Package.appxmanifest
-│   ├── Resources/              # 디자인 토큰 5개 사전 (Colors/Brushes/Typography/Spacing/ControlStyles)
-│   ├── Strings/                # en-US, ko-KR .resw
-│   ├── Views/ + ViewModels/
-│   └── Properties/launchSettings.json
-├── tests/
-└── docs/                       # WINUI3-PROJECT-GUIDE.md, WINUI3-DESIGN-GUIDE.md (있으면)
-```
 
 ## 산출물·파일 관리
 - **빌드 산출물**: `bin/` · `obj/` (gitignore)

@@ -4,15 +4,15 @@
 
 > **이 템플릿은 그대로 써도 동작합니다.** 다만 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고, 프로젝트 고유의 규칙·함정·금지사항을 추가하면 Claude가 추측을 줄여 **더 정확하고 안정적으로** 작업합니다. 처음엔 빌드·테스트 명령만 채워 시작하고, 작업하며 점진적으로 다듬는 것을 권장합니다.
 
+## 위키
 
-## Stack
-- **언어**: C# / .NET <version>
-- **주요 패키지**: <CommunityToolkit.Mvvm, MediatR, EF Core 등 — 실제로 사용하는 것 명시>
-- **테스트**: <xUnit | NUnit | MSTest>
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·아키텍처·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다.
+- 미등록이면 `pjc:plan-feature` Step 1이 자동 등록한다(경로는 그때 채워진다).
 
 ## Build & Test
 - **Build**: `dotnet build src/<Sln 또는 Project>.sln`
-- **Test**: `dotnet test src/<Sln>.sln` 또는 테스트 프로젝트 단일 지정 (`tests/` 디렉터리 지정은 테스트 프로젝트가 2개 이상이면 MSB1011로 실패 — 아래 구조처럼 3개면 반드시 솔루션 단위)
+- **Test**: `dotnet test src/<Sln>.sln` 또는 테스트 프로젝트 단일 지정 (⚠ `tests/` 디렉터리 지정은 테스트 프로젝트가 2개 이상이면 MSB1011로 실패 — 솔루션 단위로 지정할 것)
 - **Lint/Format**: `dotnet format`
 - **Watch (개발)**: `dotnet watch run --project src/<Main>`
 
@@ -23,24 +23,6 @@
 - **시드/조회**: <개발용 데이터 확인 방법>
 
 > ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
-
-## Repository Structure
-
-> 아래는 **DDD/Clean을 택했을 때**의 구조다. 계층형을 택했으면 이 트리를 그대로 두지 말고 실제 구조로 바꾼다(예: `src/<App>/` 단일 프로젝트 + `Services/`·`Data/` 폴더). **선택한 아키텍처에 맞게 조정하세요.**
-
-```
-<repo>/
-├── src/
-│   ├── <Domain>/          # 비즈니스 로직 (POCO, no infra deps)
-│   ├── <Application>/     # UseCases, Services
-│   ├── <Infrastructure>/  # DB, External API
-│   └── <UI/Host>/         # WinUI 3, WPF, ASP.NET 등
-├── tests/
-│   ├── <Domain>.Tests/
-│   ├── <Application>.Tests/
-│   └── <Integration>.Tests/
-└── docs/
-```
 
 ## 산출물·파일 관리
 - **빌드 산출물**: `bin/` · `obj/` (gitignore)

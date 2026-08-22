@@ -4,13 +4,11 @@
 
 > **이 템플릿은 그대로 써도 동작합니다.** 다만 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고, 프로젝트 고유의 규칙·함정·금지사항을 추가하면 Claude가 추측을 줄여 **더 정확하고 안정적으로** 작업합니다. 처음엔 빌드·테스트 명령만 채워 시작하고, 작업하며 점진적으로 다듬는 것을 권장합니다.
 
+## 위키
 
-## Stack
-- **런타임**: Node.js <version> (또는 Bun / Deno)
-- **언어**: TypeScript <version> (또는 JavaScript)
-- **패키지 매니저**: npm / pnpm / yarn (실제 사용하는 것)
-- **주요 프레임워크**: <Next.js / Express / NestJS / Fastify / React / Vue 등>
-- **테스트**: <Vitest / Jest / Mocha>
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·아키텍처·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다.
+- 미등록이면 `pjc:plan-feature` Step 1이 자동 등록한다(경로는 그때 채워진다).
 
 ## Build & Test
 - **설치**: `npm install` (또는 `pnpm install`, `yarn`)
@@ -28,23 +26,6 @@
 - **시드/조회**: <예: `prisma db seed` / 개발용 조회 방법>
 
 > ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
-
-## Repository Structure
-
-> 아래는 **Clean/DDD를 택했을 때**의 구조다. 계층형을 택했으면 실제 구조로 바꾼다(예: `routes/`·`services/`·`db/`). **선택한 아키텍처에 맞게 조정하세요.**
-
-```
-<repo>/
-├── src/
-│   ├── domain/           # 비즈니스 로직 (순수 TS, no framework deps)
-│   ├── application/      # UseCases, Services
-│   ├── infrastructure/   # DB, External API
-│   └── interfaces/       # Express routes, React components 등
-├── tests/                # 또는 src/**/*.test.ts
-├── package.json
-├── tsconfig.json
-└── .eslintrc / eslint.config.js
-```
 
 ## 산출물·파일 관리
 - **빌드 산출물**: `dist/` · `build/` · `.next/` (gitignore)

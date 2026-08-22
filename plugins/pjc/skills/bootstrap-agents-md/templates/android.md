@@ -4,11 +4,11 @@
 >
 > **이 템플릿은 그대로 써도 동작합니다.** 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고 고유 규칙을 추가하면 Claude가 추측을 줄여 더 정확하게 작업합니다. 빌드·테스트 명령만 채워 시작하고 점진적으로 다듬는 것을 권장합니다.
 
-## Stack
-- **언어**: Kotlin <version> (또는 Java)
-- **UI**: Jetpack Compose (권장) / View XML
-- **최소 SDK / 타겟 SDK**: <minSdk> / <targetSdk>
-- **주요 라이브러리**: Hilt, Room, Retrofit, Coroutines/Flow 등 (실제 사용 명시)
+## 위키
+
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·아키텍처·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다.
+- 미등록이면 `pjc:plan-feature` Step 1이 자동 등록한다(경로는 그때 채워진다).
 
 ## 검증·테스트 — Android CLI 우선
 
@@ -129,27 +129,6 @@ Android 공식 skill(agentskills.io 오픈 표준, repo: github.com/android/skil
 - 리스트-디테일 등은 `ListDetailPaneScaffold` 등 적응형 레이아웃 사용
 - 회전·창 크기 변경·접힘 상태에서 상태 보존
 - 단, 사용자가 "폰 전용" 등 명시하면 그 범위를 따른다
-
-## Repository Structure
-
-> 아래는 **Clean Architecture를 택했을 때**의 구조다. 계층형(단순 Repository)을 택했으면 실제 구조로 바꾼다(예: `ui/`·`data/`만 두고 `domain/` UseCase 레이어 생략). **선택한 아키텍처에 맞게 조정하세요.**
-
-```
-<repo>/
-├── app/
-│   ├── src/main/
-│   │   ├── java/<package>/
-│   │   │   ├── domain/        # 비즈니스 로직
-│   │   │   ├── data/          # Repository, DTO, API
-│   │   │   ├── ui/            # Composable, ViewModel
-│   │   │   └── di/            # Hilt 모듈
-│   │   ├── res/               # strings, drawables, layouts
-│   │   └── AndroidManifest.xml
-│   ├── src/test/              # JVM 단위 테스트
-│   └── src/androidTest/       # Instrumented 테스트
-├── build.gradle.kts (또는 build.gradle)
-└── settings.gradle.kts
-```
 
 ## 산출물·파일 관리
 - **빌드 산출물**: `build/` · `app/build/` (APK: `app/build/outputs/apk/`, gitignore)

@@ -4,15 +4,11 @@
 
 > **이 템플릿은 그대로 써도 동작합니다.** 다만 빈 칸(빌드/테스트 명령·타깃 플랫폼·아키텍처·컨벤션)을 프로젝트에 맞게 채우고, 프로젝트 고유의 규칙·함정·금지사항을 추가하면 Claude가 추측을 줄여 **더 정확하고 안정적으로** 작업합니다. 처음엔 빌드·테스트 명령만 채워 시작하고, 작업하며 점진적으로 다듬는 것을 권장합니다.
 
+## 위키
 
-## Stack
-- **언어**: C# / .NET <version, 예: net8.0>
-- **UI 프레임워크**: .NET MAUI (`<UseMaui>true</UseMaui>`). 단일 프로젝트 멀티타깃
-- **MVVM**: `CommunityToolkit.Mvvm` (`[ObservableProperty]`, `[RelayCommand]`)
-- **UI 보조**: `CommunityToolkit.Maui` (Behaviors·Converters·Popup·Snackbar 등, 사용 시)
-- **DI**: `MauiProgram.CreateMauiApp()`의 `builder.Services` (`Microsoft.Extensions.DependencyInjection`)
-- **네비게이션**: Shell (`AppShell.xaml`) 또는 `INavigation` — 프로젝트 패턴 확인
-- **공식 문서**: https://learn.microsoft.com/dotnet/maui/
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·아키텍처·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다.
+- 미등록이면 `pjc:plan-feature` Step 1이 자동 등록한다(경로는 그때 채워진다).
 
 ## Build & Test
 - **타깃 프레임워크(TFM)**: `<TODO: net8.0-android;net8.0-ios;net8.0-maccatalyst;net8.0-windows10.0.19041.0 중 사용하는 것>`
@@ -93,23 +89,6 @@ public static MauiApp CreateMauiApp()
 - **테마/색**: `AppThemeBinding` (Light/Dark 대응). 색 하드코딩 금지
 - **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 - **접근성**: `SemanticProperties.Description`, `SemanticProperties.HeadingLevel`
-
-## Repository Structure
-```
-<repo>/
-├── <Project>.sln
-├── <Project>/
-│   ├── <Project>.csproj        # UseMaui=true, TargetFrameworks 멀티타깃
-│   ├── MauiProgram.cs          # CreateMauiApp — DI 등록 진입점
-│   ├── App.xaml(.cs)           # 앱 리소스·테마
-│   ├── AppShell.xaml(.cs)      # Shell 네비게이션 (사용 시)
-│   ├── Views/ + ViewModels/
-│   ├── Services/               # DI 등록 서비스
-│   ├── Resources/              # Styles/ Fonts/ Images/ Raw/
-│   └── Platforms/              # Android/ iOS/ MacCatalyst/ Windows/ (플랫폼별 코드)
-├── tests/                      # UI 비의존 단위 테스트 (net8.0)
-└── docs/
-```
 
 ## 산출물·파일 관리
 - **빌드 산출물**: `bin/` · `obj/` (플랫폼별 APK/AAB·MSIX 출력 포함, gitignore)

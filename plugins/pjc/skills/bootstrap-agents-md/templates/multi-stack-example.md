@@ -10,35 +10,19 @@
 
 ---
 
-# A. WinUI 3 / .NET 예시
+## 위키
 
-## Stack
-- 언어/런타임: C# 12, .NET 8
-- 주요 프레임워크: WinUI 3, Windows App SDK
-- 아키텍처: MVVM + DDD  <!-- 예시일 뿐입니다. 실제 프로젝트의 구조를 적으세요 — 도메인 규칙이 얇으면 계층형이 정당합니다 -->
-- 핵심 라이브러리: CommunityToolkit.Mvvm, Microsoft.Extensions.DependencyInjection, Serilog
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·아키텍처·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다.
+- 미등록이면 `pjc:plan-feature` Step 1이 자동 등록한다(경로는 그때 채워진다).
+
+# A. WinUI 3 / .NET 예시
 
 ## Build & Test
 - **Build**: `dotnet build src/MyApp.sln -c Debug`
 - **Test**: `dotnet test tests/`
 - **Lint/Format**: `dotnet format`
 - **Run (local)**: `dotnet run --project src/MyApp.UI`
-
-## Repository Structure
-
-```
-<repo>/
-├── src/
-│   ├── MyApp.Domain         ← 도메인 (UI/Infra 의존 금지)
-│   ├── MyApp.Application    ← UseCase, 오케스트레이션
-│   ├── MyApp.Infrastructure ← EF Core, HttpClient, 외부 어댑터
-│   └── MyApp.UI             ← Views, ViewModels (WinUI 3)
-├── tests/
-│   ├── MyApp.Domain.Tests
-│   └── MyApp.Integration.Tests
-└── docs/
-    └── adr/                 ← 아키텍처 결정 기록
-```
 
 ## Conventions
 - 비즈니스 로직은 **Domain 레이어** (DDD).
@@ -61,13 +45,6 @@
 
 # B. Android / Kotlin 예시
 
-## Stack
-- 언어/런타임: Kotlin 2.x, JDK 17, Android Gradle Plugin 8.x
-- minSdk / targetSdk: 24 / 34 (또는 프로젝트 값)
-- 주요 프레임워크: Jetpack Compose, AndroidX
-- 아키텍처: Clean Architecture (data/domain/presentation) + MVVM  <!-- 예시일 뿐입니다. 실제 구조를 적으세요 -->
-- 핵심 라이브러리: Hilt(DI), Coroutines + Flow, Retrofit + OkHttp, Room, Coil, Timber
-
 ## Build & Test
 
 > Windows는 `.\gradlew.bat`, macOS/Linux는 `./gradlew` (아래는 Windows 표기 — `android.md` 템플릿과 동일 기준).
@@ -77,30 +54,6 @@
 - **Test (instrumented)**: `.\gradlew.bat connectedAndroidTest` (에뮬레이터/디바이스 필요)
 - **Lint**: `.\gradlew.bat lint detekt ktlintCheck`
 - **Run (debug)**: `.\gradlew.bat installDebug` 후 디바이스에서 실행
-
-## Repository Structure
-
-```
-<repo>/
-├── app/                          ← Application 모듈 (DI 진입, Activity)
-│   └── src/main/java/.../
-├── core/
-│   ├── common/                   ← 유틸, 공통 모델
-│   ├── ui/                       ← 공통 Compose 컴포넌트, 테마
-│   ├── data/                     ← 데이터 소스, Repository 구현
-│   ├── network/                  ← Retrofit API
-│   └── database/                 ← Room
-├── domain/                       ← 순수 Kotlin 모듈 (Android 의존 금지)
-│   ├── model/
-│   ├── repository/               ← 인터페이스만
-│   └── usecase/
-├── feature/
-│   ├── home/
-│   ├── settings/
-│   └── login/
-└── docs/
-    └── adr/                      ← 아키텍처 결정 기록
-```
 
 ## Conventions
 - 비즈니스 로직은 **`:domain` 모듈**에. UI/Android API 의존 금지 (`androidx.*`, `android.*` import 금지).
