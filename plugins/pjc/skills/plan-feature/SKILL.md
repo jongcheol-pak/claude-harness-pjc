@@ -150,6 +150,7 @@ USER-INTERACTIVE                | FULLY AUTONOMOUS
 - `AGENTS.md` (또는 `CLAUDE.md`) 읽기
   - **없으면**: `pjc:bootstrap-agents-md`를 **Skill 도구로 호출**한다(자동 호출) → 사용자 승인 후 plan-feature 계속. **AGENTS.md를 스킬 경유 없이 직접 Write로 작성하는 것 금지** — 스택 템플릿 자산과 [Y/E/N] 승인 게이트가 통째로 우회된다("내가 내용을 쓸 수 있으니 스킬 생략"은 위반이며, require-plan-for-write hook의 bootstrap 게이트가 신규 생성을 차단한다 — 차단되면 정상 경로는 스킬 호출이다).
   - 사용자가 bootstrap을 거부하면 추측 모드로 진행 (build/test 명령 모름 → 작업 중 Halt 빈번)
+  - **AGENTS.md가 담는 것·담지 않는 것의 정본은 `docs/harness-conventions.md`의 「AGENTS.md 내용 경계」다** — 계획에 프로젝트 정보(스택·구조·아키텍처 상세)가 필요하면 AGENTS.md가 아니라 **위키 허브**를 본다(아래 「위키 참조」). 이 스킬은 그 표를 재서술하지 않는다.
   - **신선도 경량 점검 (stale 탐지)**: AGENTS.md를 읽으면서, **이번 계획이 실제 참조하는** 명령·경로(빌드/테스트 명령이 가리키는 스크립트·파일, Repository Structure의 주요 디렉터리, Plan Location)가 실재하는지 가볍게 확인한다(Glob/Test-Path 수준의 존재 확인만 — **명령 실행 검증은 하지 않는다**, 부작용 위험). 기록 후 시간이 지나 코드와 어긋난 항목(stale)은 계획을 오도하므로: **즉시 수정하지 않고** Step 8 일괄 질문(또는 계획 보고)에 "AGENTS.md 갱신 제안"으로 모아, 사용자 승인 시 `pjc:record-project-fact`로 갱신한다(승인 게이트 준수). 전수 검증이 아니다 — 이번 작업과 무관한 항목·트리 아스키 아트의 기계 추출은 요구하지 않는다(과잉 방지). 어긋남 0건이면 조용히 통과하고, AGENTS.md가 없으면(위 bootstrap 경로) 이 점검은 해당 없음.
 - 관련 모듈/파일 식별
 - 기존 컨벤션, 테스트 위치, 빌드 명령 확인
