@@ -17,6 +17,14 @@ import shutil
 import sys
 import tempfile
 
+# Windows 콘솔(cp949)에서도 한글·줄표가 깨지지 않도록 UTF-8 출력 강제.
+#  형제 스크립트(`llm-wiki/evals/run_lint_evals.py`·`evals/check-harness-consistency.py`)와
+#  같은 관례다 — 이것이 없으면 문서가 안내한 그대로 실행할 때 UnicodeEncodeError로 죽는다.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, "..", "scripts", "relocate-agents.py")
 FIXTURES = os.path.join(HERE, "fixtures")
@@ -54,7 +62,18 @@ def run_case(mod, case):
                     return False, "기대한 문제 미검출: " + needle
             return True, "검증 대조: " + ("통과" if ok else "; ".join(problems))
 
-        code, log = mod.relocate(dest, case.get("dry_run", False))
+        before = {}
+        for rel in case.get("expect_unchanged", []):
+            before[rel] = open(os.path.join(dest, rel.replace("/", os.sep)), "rb").read()
+        orig_verify = mod.verify
+        if case.get("sabotage_verify"):
+            # 검증을 강제로 실패시켜 **원복 경로**를 태운다. 정상 경로만 돌리면 그 코드는
+            #  한 번도 실행되지 않고, 결함이 있어도 골든이 침묵한다.
+            mod.verify = lambda *a, **k: (False, ["강제 실패(원복 경로 검증용)"])
+        try:
+            code, log = mod.relocate(dest, case.get("dry_run", False))
+        finally:
+            mod.verify = orig_verify
         out = "\n".join(log)
         if code != case.get("expect_rc", 0):
             return False, "종료 코드 불일치 — 기대 %d / 실제 %d (%s)" % (
@@ -73,6 +92,13 @@ def run_case(mod, case):
             miss = [n for n in needles if n not in ft]
             if miss:
                 return False, "%s에 기대 문자열 없음: %s" % (rel, ", ".join(miss))
+        for rel in case.get("expect_absent_files", []):
+            if os.path.exists(os.path.join(dest, rel.replace("/", os.sep))):
+                return False, "원복 후에도 남아 있다: " + rel
+        for rel, raw in before.items():
+            now = open(os.path.join(dest, rel.replace("/", os.sep)), "rb").read()
+            if now != raw:
+                return False, "원복되지 않았다: " + rel
         return True, out.splitlines()[0] if out else "(무출력)"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

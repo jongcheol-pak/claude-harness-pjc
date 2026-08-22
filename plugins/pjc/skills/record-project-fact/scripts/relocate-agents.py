@@ -38,6 +38,14 @@ import re
 import shutil
 import sys
 
+# Windows 콘솔(cp949)에서도 한글·줄표가 깨지지 않도록 UTF-8 출력 강제.
+#  형제 스크립트(`llm-wiki/evals/run_lint_evals.py`·`evals/check-harness-consistency.py`)와
+#  같은 관례다 — 이것이 없으면 문서가 안내한 그대로 실행할 때 UnicodeEncodeError로 죽는다.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 KEEP_SECTIONS = ("Stack", "Build & Test", "DO NOT", "Plan Location")
 DEFAULT_DEST = "docs/agents-detail.md"
 BACKUP_DIR = os.path.join("docs", ".agents-presplit")
@@ -97,6 +105,7 @@ def pick_destination(raw):
         count[p] = count.get(p, 0) + 1
     if not count:
         return DEFAULT_DEST, True
+    # 동수면 **먼저 등장한** 경로가 이기도록 `-index`를 키에 함께 둔다(ⓓ의 「동수면 먼저」).
     best = max(order, key=lambda p: (count[p], -order.index(p)))
     return best, False
 
@@ -179,8 +188,12 @@ def relocate(root, dry_run=False):
         if not dry_run:
             for orig, b in backups:
                 shutil.copy2(b, orig)
-            if dest_new and not backups:
-                os.path.exists(dest) and os.remove(dest)
+            # 이 회차에 **신설한** 이관처는 사본이 없으므로 되돌릴 대상이 아니라 지울
+            #  대상이다. 판정은 「그 파일이 백업 목록에 있는가」로 한다 — `not backups`는
+            #  AGENTS.md 백업이 늘 들어가 항상 거짓이라 아무것도 지우지 못했다.
+            if dest_new and not any(p == dest for p, _b in backups):
+                if os.path.exists(dest):
+                    os.remove(dest)
         return 1, ["[검증 실패] " + p for p in problems] + ["사본으로 원복했다: " + bdir]
 
     log.append("이관 전: %dB / 상한 %dB" % (size, limit))
