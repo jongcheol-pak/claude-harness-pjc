@@ -125,6 +125,10 @@ DEC_PTR_RX = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
 #  대상 파일만 바꿔 쓴다. 통합 함수를 만들지 않는 이유: 대상 섹션·현행 경로 도출 규칙·--fix 대상
 #  여부가 달라(§7-30은 --fix 비대상) 분기 파라미터만 늘고 --fix 안전 경계가 흐려진다.
 CHG_PTR_RX = re.compile(r"(90_archive/[^\s`()]+changes\.md)")
+# 자동 분할 하위의 복귀 링크(§4 공통 규약) — 이 줄이 있어야 「분리해 나온 하위」로 본다.
+SUBDOC_BACK_RX = re.compile(r"(?m)^>\s*상위 문서:\s*\[\[([^\]|]+)")
+# 본문을 옮긴 자리에 남는 정본 포인터. 대상 파일과 **절 이름**을 함께 뽑아 도달성을 검사한다.
+PROSE_PTR_RX = re.compile(r"\*\*정본은 \[\[([^\]|]+)\|[^\]]*\]\]의 「([^」]+)」이다\*\*")
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
@@ -2828,6 +2832,50 @@ def main():
                 warn(f"가이드 하위 문서 목록 누락: {hub}의 '## 하위 문서'에 {other} 미등재 "
                      f"— 이 허브를 가리키는 링크는 있는데 목록에 없어 조회 홉 1이 깨진다 "
                      f"(하위가 아니라 단순 참조면 그 링크를 떼거나 목록에 올린다, wiki-schema §2.6)", hub)
+
+    # ⓔ 자동 분할 하위(`{stem}-{n}.md`) ↔ 진입 파일 `## 하위 문서` 양방향 + 포인터 도달성.
+    #  ⓑ·ⓓ는 타입이 정해진 두 경로(convention·guide)만 보는데, `--auto-split`은 feature·project·
+    #  entity·concept에도 하위를 만든다 — 그 산출물이 목록 밖에 남으면 조회가 닿지 못한다.
+    #  **판정 신호를 둘 다 요구한다**: 파일명 순번 접두(자동 경로가 항상 지키는 규약)와 복귀 링크.
+    #  하나만 쓰면 ⓓ가 겪은 오탐(같은 폴더의 무관한 페이지)이나 미탐(수기 하위)이 생긴다.
+    #  **ⓑ·ⓓ가 이미 보는 타입은 제외**해 같은 쌍을 두 번 지적하지 않는다.
+    for r, (fm, typ, text) in pages.items():
+        if r.startswith("90_archive/") or typ in ("convention", "guide"):
+            continue
+        m = re.match(r"^(.+)-(\d+)$", r[:-3])
+        if not m:
+            continue
+        parent = m.group(1) + ".md"
+        if parent not in pages or not SUBDOC_BACK_RX.search(text):
+            continue          # 복귀 링크가 없으면 자동 분할 하위가 아니다(수기 순번 파일 오탐 방지)
+        listed = {x[:-3] if x.endswith(".md") else x
+                  for x in wikilink_targets(section(pages[parent][2], "하위 문서") or "")}
+        if r[:-3] not in listed:
+            warn(f"하위 문서 목록 누락: {parent}의 '## 하위 문서'에 {r} 미등재 "
+                 f"— 분리한 본문이 조회 경로 밖(조회 홉 1 위반, wiki-schema §4)", parent)
+    #  정방향 — 목록이 가리키는 하위가 실재하는가(ⓑ·ⓓ가 보는 타입은 그쪽이 담당한다).
+    for r, (fm, typ, text) in pages.items():
+        if r.startswith("90_archive/") or typ in ("convention", "guide"):
+            continue
+        for tgt in sorted(wikilink_targets(section(text, "하위 문서") or "")):
+            tf = tgt if tgt.endswith(".md") else tgt + ".md"
+            if tf not in pages:
+                warn(f"하위 문서 목록 깨짐: {r} -> {tgt} 없음 (wiki-schema §4)", r)
+    #  포인터 도달성 — 본문을 옮긴 자리에 남는 `**정본은 …의 「…」이다**`가 실제로 닿는가.
+    #  **파일 실재만이 아니라 그 절 이름까지 본다** — 이것이 「옮겼는데 못 찾는」 상태를 잡는
+    #  유일한 기계 확인이다(§7-1 링크 검사는 파일까지만 본다).
+    for r, (fm, typ, text) in pages.items():
+        if r.startswith("90_archive/"):
+            continue
+        for m in PROSE_PTR_RX.finditer(text):
+            tgt, sec_name = m.group(1), m.group(2)
+            tf = tgt if tgt.endswith(".md") else tgt + ".md"
+            if tf not in pages:
+                warn(f"정본 포인터 깨짐: {r} -> {tgt} 없음 (wiki-schema §4)", r)
+            elif not re.search(r"(?m)^##[ \t]+" + re.escape(sec_name) + r"[ \t]*$",
+                               pages[tf][2]):
+                warn(f"정본 포인터 절 없음: {r} -> {tgt}에 '## {sec_name}' 없음 "
+                     f"— 옮긴 본문에 닿지 못한다 (wiki-schema §4)", r)
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
