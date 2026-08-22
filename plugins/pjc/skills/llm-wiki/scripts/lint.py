@@ -26,7 +26,8 @@
       / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
       / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향
         ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향)
-      / 작업 규약 미마이그레이션(§7-31 — 허브에 '## 작업 규약·주의사항' 잔존 시 INFO, conventions.md 이전 대상).
+      / 작업 규약 미마이그레이션(§7-31 — 허브에 '## 작업 규약·주의사항' 잔존 시 INFO, conventions.md 이전 대상)
+      / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 지나면서 '### ' 0개면 INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 자동 백업 — schema §7 서두 정본).
 범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
@@ -85,6 +86,11 @@ GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
 #  접두, 뒤는 경로 포함이다. 모듈 상수로 둔 이유는 `check_consistency.py`가 이 값을
 #  wiki-schema §3의 고정 형식 1줄과 기계 대조하기 때문이다(함수 본문 리터럴은 읽을 수 없다).
 FEAT_ROW_TARGET_TOKENS = ("feat-", "40_guides/")
+# §7-32 feature 섹션 구역화 신호 — 한 `## ` 섹션이 이 문자 수를 지나면서 `### ` 소제목이
+#  하나도 없으면 INFO. **파일 예산(§7-2)과 다른 축이다** -- 그쪽은 「파일이 크다」를 보고
+#  여기는 「한 섹션이 통짜라 부분 조회가 안 된다」를 본다(파일이 예산 안이어도 발화한다).
+#  값의 근거: 실 vault feature 섹션 1,052개 전수 실측 -- 그 값을 지난 13섹션 중 소제목 0개가 12섹션.
+SECTION_H3_CHARS = 6000
 # 단축 wikilink를 페이지 집합으로 해소하는 축이 켜져 있는가(§3 「하위호환 형상」 ②).
 #  **해소 로직 자체는 골든이 본다** -- 이 플래그가 대조하는 것은 「그 축이 있다」는 사실뿐이다.
 FEAT_ROW_STEM_RESOLVE = True
@@ -2931,6 +2937,24 @@ def main():
                                pages[tf][2]):
                 warn(f"정본 포인터 절 없음: {r} -> {tgt}에 '## {sec_name}' 없음 "
                      f"— 옮긴 본문에 닿지 못한다 (wiki-schema §4)", r)
+
+    # §7-32: feature의 한 `## ` 섹션이 통짜로 커서 부분 조회가 안 되는 상태를 알린다.
+    #  **INFO 고정** -- 구역화는 내용 판단이라 코드가 대신할 수 없고(어디서 끊을지가 판단이다),
+    #  WARN이면 점진 적용 대상 전부가 매 lint마다 경고를 내 실제 결함이 묻힌다(§7-31과 같은 계열).
+    #  판정은 `strip_code` 사본으로 한다 -- 코드펜스 안의 `### `를 소제목으로 세면 통짜 섹션이
+    #  구역화된 것처럼 보인다. `## 목차`는 대상이 아니다(그 자체가 조회 진입점이라 소제목이 없다).
+    for r, (fm, typ, text) in pages.items():
+        if typ != "feature" or r.startswith("90_archive/"):
+            continue
+        probe = strip_code(text)
+        for ti, s0, s1 in _md_sections(text):
+            if ti == "목차":
+                continue
+            body = probe[s0:s1]
+            if len(body) <= SECTION_H3_CHARS or re.search(r"(?m)^###[ \t]+\S", body):
+                continue
+            infos.append(f"섹션 구역화 권장: {r}의 '## {ti}' {len(body)}자에 '### ' 소제목 0개 "
+                         f"— 부분 조회가 안 된다(다음 편집에서 구역화, schema §2.3·§7-32)")
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
