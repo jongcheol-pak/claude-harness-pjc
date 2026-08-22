@@ -790,7 +790,12 @@ BUDGET_PARTIAL_SOURCE_OK = {
     "log.md": "§2에 없음 — log는 페이지 타입이 아니라 단일 파일이라 타입별 예산 서술 대상이 아니다",
 }
 
-# 면제 열거 — 「파일, 줄 내용 앵커, 사유[, 기대 매치 수]」. 줄 번호가 아니라 **줄 내용**으로
+# 면제 열거 — 「파일, 앵커, 사유[, 기대 매치 수]」. **앵커 자리는 문자열 하나 또는 조각
+#  리스트**다(정규화는 `_entry_anchors`). 리스트면 첫 원소가 **대표 앵커**이고 나머지가
+#  **보조 조각**이며, 그 줄의 조건어(`TRIGGER_COND_RX`)를 **전부 덮어야** 면제 잔여가 0이 된다 —
+#  덮지 못한 조건어는 위반이다. 조각은 **조건어를 포함하는 최소 구간**만 잡는다(사유와 무관한
+#  문면까지 덮으면 그 뒤에 진짜 트리거 서술이 숨어 이 검사가 막으려던 것을 되살린다).
+#  줄 번호가 아니라 **줄 내용**으로
 #  잡는 이유는 후속 task의 편집으로 번호가 밀리기 때문이다. 앵커는 대상 파일의 스캔 대상
 #  줄에서 **기대 매치 수만큼**(4번째 원소 생략 시 1건) 매치해야 하고, 어긋나면 issue로 낸다 —
 #  적으면 문면이 바뀌어 면제가 허공을 가리키는 것이고, 많으면 면제가 의도하지 않은 줄까지
@@ -1014,6 +1019,24 @@ def _anchor_span(path, lines):
     return set(range(start, lines[-1][0] + 1)), issues
 
 
+def _entry_anchors(entry):
+    """화이트리스트 엔트리를 `(파일, 대표 앵커, 보조 조각, 사유, 기대 매치 수)`로 편다.
+
+    앵커 자리는 **문자열 하나** 또는 **조각 리스트**다. 리스트면 첫 원소가 **대표 앵커**(그 줄을
+    특정하고 기대 매치 수 검증을 받는 조각)이고 나머지가 **보조 조각**(그 줄에서 조건어를 덮는
+    구간)이다. 조각 자리를 5번째 원소로 따로 만들지 않은 이유: 4번째가 이미 선택적이라
+    `entry[3]`/`entry[4]` 판별이 지저분해지고, 앵커 자리 확장은 엔트리 수를 건드리지 않아
+    `TRIGGER_ALLOWLIST_BASELINE`이 불변으로 남는다.
+
+    엔트리를 푸는 코드가 판정부와 리포트부 두 곳에 있어 여기로 모은다 -- 한쪽만 고치면
+    리포트가 내는 기대치와 실제 판정이 갈린다."""
+    path, anchor, reason = entry[0], entry[1], entry[2]
+    expected = entry[3] if len(entry) > 3 else 1
+    if isinstance(anchor, str):
+        return path, anchor, [], reason, expected
+    return path, anchor[0], list(anchor[1:]), reason, expected
+
+
 # ⑫ §7-16 대상 조건 ↔ §3 서술. 값의 정본은 `lint.py` 상수이고, 규정은 그 값을 **고정 형식
 #  1줄**로 적는다 -- 산문을 정규식으로 파싱하면 문구를 조금만 다듬어도 앵커가 깨진다.
 ROW_SHAPE_LINE_RX = re.compile(
@@ -1080,11 +1103,10 @@ def check_trigger_locality():
         # 화이트리스트 앵커를 줄 번호로 해소 (0건·2건 이상은 그 자체가 issue)
         allowed_nos = set()
         for entry in TRIGGER_ALLOWLIST:
-            a_path, needle, reason = entry[0], entry[1], entry[2]
             # 4번째 원소는 **기대 매치 수**(생략 시 1). 같은 문면이 한 파일에 여러 벌
             # 복제된 자리가 실재해서(템플릿 두 곳의 동일 필드 주석) 필요하다 — 그때
             # "몇 벌인가"를 열거에 적어 두면 벌 수가 달라지는 것 자체가 신호가 된다.
-            expected = entry[3] if len(entry) > 3 else 1
+            a_path, needle, frags, reason, expected = _entry_anchors(entry)
             if a_path != path:
                 continue
             hits = [no for no, ln in scan if needle in ln]
@@ -1093,16 +1115,29 @@ def check_trigger_locality():
                 violations.append(
                     f"{name}: 화이트리스트 앵커가 {len(hits)}건 매치 ({expected}건이어야 함) — {needle!r}")
             allowed_nos.update(hits)
-            # 면제 잔여 — 앵커가 설명하는 조건어를 지운 **나머지**에 조건어가 또 있으면 보고한다.
+            # 면제 잔여 — 대표 앵커와 보조 조각을 **모두 지운 나머지**에 조건어가 남으면 보고한다.
             #  화이트리스트는 줄 단위라, 한 줄에 정당한 면제(예: index 축)와 진짜 트리거 서술이
             #  함께 있으면 **후자가 통째로 숨는다.** 실제로 `wiki-schema.md:384`가 그렇게 숨었다 —
             #  index 자동화 근거를 말하는 줄 안에 §7 결과 처리 예외 ②의 구 문구가 복제돼 있었고,
             #  같은 문구를 `:536`에서는 치환했는데 여기만 면제로 넘어갔다.
-            #  하드 위반으로 내지 않는 이유: 앵커가 조건어를 포함하지 않는 정당한 항목이 많아
-            #  (앵커는 「그 줄을 특정하는 조각」이지 「면제할 조건어」가 아니다) 전건이 잔여로 잡힌다.
-            #  판정은 사람이 하되 **보이게** 만드는 것이 목적이다(차집합 절과 같은 취급).
+            #  종전에는 대표 앵커 하나만 지웠는데, 앵커는 「그 줄을 특정하는 조각」이라 조건어를
+            #  포함하지 않는 항목이 많아 **전건에 가까운 89건이 잔여로 잡혔다**(리포트 노이즈).
+            #  이제 조건어마다 그것을 덮는 조각을 요구하고, 잔여가 남으면 **위반**이다(main 편입).
+            # ⚠ 이 변경으로 못 잡게 되는 것: 조각을 다는 행위 자체가 「그 조건어는 정당한 면제다」
+            #  라는 판정을 고정한다 — 그 판정이 틀렸으면(실은 트리거 서술인데 덮은 것) 기계는 더
+            #  이상 그 자리를 보여주지 않는다. 종전 잔여 목록은 노이즈였지만 재판정 여지는 남겼다.
+            #  그래서 조각은 **조건어를 포함하는 최소 구간**만 잡고 사유로 설명되는 자리에만 단다.
             for no in hits:
-                rest = scan_by_no[no].replace(needle, "")
+                line = scan_by_no[no]
+                rest = line.replace(needle, "")
+                for frag in frags:
+                    # 미매치 판정은 **원본 줄** 기준이다 — 대표 앵커에 이미 포함된 조각은
+                    #  rest에서 사라져 있으므로, rest로 재면 정상 조각이 허공을 가리킨다고 잡힌다.
+                    if frag not in line:
+                        violations.append(
+                            f"{name}:{no}: 보조 조각이 그 줄에 없다 — {frag!r}")
+                        continue
+                    rest = rest.replace(frag, "")
                 for m in TRIGGER_COND_RX.finditer(rest):
                     ctx = rest[max(0, m.start() - 30):m.start() + 40].strip()
                     residual.append((name, no, m.group(0), ctx, reason))
@@ -1140,8 +1175,10 @@ def report_trigger_locality():
         print(f"  {v}")
 
     print(f"\n[화이트리스트] {len(allow_report)}건 — 앵커별 매치 수(엔트리 기대치와 대조 — 기본 1)")
-    expected_by = {(os.path.basename(e[0]), e[1]): (e[3] if len(e) > 3 else 1)
-                   for e in TRIGGER_ALLOWLIST}
+    expected_by = {}
+    for e in TRIGGER_ALLOWLIST:
+        e_path, e_needle, _frags, _reason, e_expected = _entry_anchors(e)
+        expected_by[(os.path.basename(e_path), e_needle)] = e_expected
     for name, needle, hits, reason in allow_report:
         flag = "OK " if hits == expected_by.get((name, needle), 1) else "!! "
         print(f"  {flag}{name} ({hits}건) {needle[:50]!r} — {reason}")
