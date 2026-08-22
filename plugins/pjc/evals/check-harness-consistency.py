@@ -440,7 +440,10 @@ def check_concept_locality(conv, report=False):
 # ③ 포인터 도달성
 # ─────────────────────────────────────────────────────────────
 def _md_files():
-    skip = {".git", "node_modules", "__pycache__", "notes-archive"}
+    # `evals/fixtures/`는 **검사 대상이 아니다** — 골든 픽스처는 검사기가 잡아야 할
+    #  위반을 **의도적으로** 담고 있어(깨진 포인터·누락 절 등), 여기서 세면 그 의도가
+    #  곧 실패로 보고된다. lint.py가 `90_archive/`를 제외하는 것과 같은 계열이다.
+    skip = {".git", "node_modules", "__pycache__", "notes-archive", "fixtures"}
     for base, dirs, names in os.walk(ROOT):
         dirs[:] = [d for d in dirs if d not in skip]
         for n in names:

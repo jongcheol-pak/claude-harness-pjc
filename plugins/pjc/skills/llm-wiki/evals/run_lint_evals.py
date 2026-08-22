@@ -25,8 +25,10 @@ lint.py 자체는 수정하지 않고 subprocess로 호출만 한다(실사용 �
 exit code: 전 case PASS면 0, 하나라도 FAIL이면 1.
 """
 import datetime
+import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -183,6 +185,80 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
     return tmp, dest
 
 
+def prepare_aux_split_vault(fixture_dir, concept_count, open_questions):
+    """fixture를 임시 복사하고 **본체를 임계 위로 밀어 올릴 만큼** concept을 생성한 뒤,
+    open question을 심는다(§4 1단계 본체 구역 분리 골든).
+
+    concept을 쓰는 이유: feature는 sub-index로 빠져 본체를 키우지 않지만 `## 범용 패턴`은
+    본체 구역이라 행이 그대로 쌓인다. open question은 §7-23 오탐 회귀(구역이 옮겨간 뒤
+    본체만 보면 전부 '미등록'으로 잡히던 것)를 재현하는 데 필요하다 — 질문이 0건이면
+    그 검사가 아무것도 세지 않아 회귀가 침묵한다.
+    반환: (정리용 임시 루트, vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-aux-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    pat = os.path.join(dest, "30_knowledge", "patterns")
+    os.makedirs(pat, exist_ok=True)
+    for i in range(1, concept_count + 1):
+        with open(os.path.join(pat, "bulk-concept-%03d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: concept\n"
+                     'concept_name: "대량 개념 %03d"\n'
+                     'index_label: "대량 개념 %03d (bulk concept %03d)"\n'
+                     "platform: cross\norigin: agent-synthesized\nconfidence: medium\n"
+                     "updated: 2026-07-02\nrelated_projects: [Demo]\ntags: [concept]\n---\n\n"
+                     "# 대량 개념 %03d\n\n## 정의\n골든용 최소 concept.\n" % (i, i, i, i))
+    qd = os.path.join(dest, "30_knowledge", "questions")
+    os.makedirs(qd, exist_ok=True)
+    for i in range(1, open_questions + 1):
+        with open(os.path.join(qd, "q-20260822-bulk%02d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: question\nstatus: open\npriority: medium\n"
+                     "updated: 2026-08-22\nrelated: [Demo]\ntags: [question]\n---\n\n"
+                     "# 미해결 질문 %02d\n\n## 질문\n골든용.\n" % i)
+    return tmp, dest
+
+
+def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
+    """fixture를 임시 복사하고 **feature 페이지를 feature_count개 생성**한 뒤,
+    stale_names의 sub-index를 미리 심어 둔다(§4 3단계 순번 분할 골든).
+
+    페이지를 체크인하지 않고 실행 시점에 만드는 이유: 순번 분할은 임계(200행)를 넘겨야
+    발동하는데 그만큼의 md를 레포에 커밋하면 픽스처가 수백 개 파일로 불어난다. 날짜 폴더를
+    실행 시점에 만드는 backup_cleanup 선례와 같은 이유다.
+    반환: (정리용 임시 루트, vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-chunk-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    demo = os.path.join(dest, "20_projects", "personal", "demo")
+    os.makedirs(demo, exist_ok=True)
+    for i in range(1, feature_count + 1):
+        with open(os.path.join(demo, "feat-bulk-%03d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write(
+                "---\ntype: feature\nproject: Demo\ncategory: personal\n"
+                'feature_name: "대량 %03d"\nindex_label: "대량 %03d (bulk %03d)"\n'
+                "platform: windows-desktop\nstatus: active\norigin: agent-synthesized\n"
+                "confidence: medium\nupdated: 2026-07-02\ntags: [feature, demo]\n---\n\n"
+                "# 대량 %03d (bulk %03d)\n\n## 개요\n순번 분할 골든용 최소 feature.\n\n"
+                "## 관련 파일\n- `src/Demo/Bulk%03d.cs` — 더미\n\n"
+                "## 동작(사용법)\n없음.\n\n## 구현 방법\n없음.[^src-b]\n\n"
+                "## UI·UX\n없음.\n\n## 관련 지식·레시피\n- 없음\n\n"
+                "[^src-b]: [[10_sources/personal/src-demo|소스: Demo]] — `src/Demo/Bulk%03d.cs`\n"
+                % (i, i, i, i, i, i, i))
+    for name in stale_names:
+        with open(os.path.join(dest, name), "w", encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: index\ntags: [index]\n---\n\n# 옛 순번 파일\n\n"
+                     "## 기능별 인덱스\n\n| 기능 | 플랫폼 | 프로젝트 | 상세 |\n"
+                     "|------|--------|----------|------|\n")
+    # 델타 음성: 이름은 index-*.md지만 type이 index가 아니다 — 삭제되면 안 된다.
+    with open(os.path.join(dest, "index-notes.md"), "w", encoding="utf-8", newline="") as fh:
+        fh.write("---\ntype: guide\nguide_kind: recipe\nplatform: cross\n"
+                 "origin: human-validated\nconfidence: high\nupdated: 2026-07-02\n"
+                 "tags: [guide]\n---\n\n# 사용자 메모\n\n## 목적\n생성물이 아니다.\n")
+    return tmp, dest
+
+
 def _snapshot_md(root):
     """vault 안 모든 .md의 (상대경로 -> 바이트) 스냅샷. --build-index --dry-run이 정말로
     아무것도 쓰지 않았는지 앞뒤 비교로 증명하기 위한 것 — 출력 부재는 미변경의 증거가 아니다."""
@@ -204,7 +280,11 @@ def check_case(case):
     if not os.path.isdir(vault):
         return False, f"픽스처 폴더 없음: {vault}"
     # case 스키마 방어: 기대 조건이 하나도 없으면 오타로 조용히 PASS되는 것을 막는다.
-    if "expect_clean" not in case and "expect_keywords" not in case:
+    #  단 **자체 기대 필드를 갖는 모드**(chunk_split의 expect_total_rows·expect_min_subs 등)는
+    #  키워드 대조를 쓰지 않는다 — 그 모드가 스스로 구조를 세어 판정하므로 여기서 요구하면
+    #  의미 없는 키워드를 형식상 넣게 된다(방어가 오히려 케이스를 왜곡한다).
+    if ("expect_clean" not in case and "expect_keywords" not in case
+            and not case.get("chunk_split") and not case.get("aux_split")):
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
 
     # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
@@ -258,6 +338,22 @@ def check_case(case):
         present = [kw for kw in case.get("expect_absent", []) if kw in after + sub_text]
         if present:
             return False, "쓰인 파일에 있으면 안 되는 것: " + ", ".join(present)
+        # 섹션 **순서** 검증 — 키워드 존재만 보면 조립 순서가 뒤바뀌어도 통과한다.
+        #  §4 「생성 대상 6섹션」이 순서를 규정하므로 그 순서 자체가 계약이다(T3 리뷰 B1:
+        #  구역 지연 조립로 바꾸며 프로젝트 테이블이 기능별 인덱스 뒤로 밀린 회귀가 실재했다).
+        want_order = case.get("expect_section_order", [])
+        if want_order:
+            got = [ln for ln in after.splitlines() if ln.startswith("## ")]
+            idx, missing_h = -1, []
+            for h in want_order:
+                try:
+                    nxt = got.index(h, idx + 1)
+                except ValueError:
+                    missing_h.append(h)
+                    break
+                idx = nxt
+            if missing_h:
+                return False, ("섹션 순서 불일치 — 기대 %s / 실제 %s" % (want_order, got))
         if before == after:
             return False, "index.md가 갱신되지 않음(마커 치환 미발생)"
         return True, "실제 쓰기 대조: sub-index %d개 · 마커 밖 보존 · 임시 파일 0" % len(subs)
@@ -305,6 +401,180 @@ def check_case(case):
         if missing:
             return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
         return True, f"백업 정리 확인: {len(before)}개 → {len(kept)}개 (제거 {len(before) - len(kept)})"
+
+    # aux_split 케이스: §4 1단계 **본체 구역 분리**를 실제 쓰기로 대조한다.
+    #  ① 본체가 임계 이하로 내려갔는가 ② 덜어낸 구역이 자기 헤딩을 갖고 sub-index로 갔는가
+    #  ③ **§7-23이 오탐하지 않는가** — 구역이 옮겨간 뒤에도 open question이 '등록됨'으로
+    #     판정되는지를 재lint로 확인한다(이 검사가 없으면 「본체만 보는 판정」 회귀가 침묵한다).
+    if case.get("aux_split"):
+        tmp, dest = prepare_aux_split_vault(
+            vault, case.get("concept_count", 260), case.get("open_questions", 2))
+        out, rc, err = run_lint(dest, ["--build-index"])
+        with open(os.path.join(dest, "index.md"), encoding="utf-8-sig") as fh:
+            idx = fh.read()
+        body_lines = idx.count("\n") + 1
+        out2, rc2, err2 = run_lint(dest)
+        problems = []
+        if rc != 0:
+            problems.append("build-index 종료코드 %d" % rc)
+        limit = case.get("expect_body_limit", 400)
+        if body_lines > limit and case.get("expect_under_limit", True):
+            problems.append("본체 %d줄 > 임계 %d(덜어내기 미달)" % (body_lines, limit))
+        for name in case.get("expect_aux_files", []):
+            path = os.path.join(dest, name)
+            if not os.path.exists(path):
+                problems.append("덜어낸 구역 파일 없음: " + name)
+                continue
+            with open(path, encoding="utf-8-sig") as fh:
+                aux = fh.read()
+            if "type: index" not in aux:
+                problems.append("%s에 type: index 없음" % name)
+            if not any(l.startswith("## ") for l in aux.splitlines()):
+                problems.append("%s에 자기 헤딩 없음" % name)
+        for kw in case.get("after_expect_absent", []):
+            if kw in out2:
+                problems.append("수행 후 재lint에 위반 잔존: " + kw)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if problems:
+            return False, " / ".join(problems)
+        return True, ("본체 %d줄(임계 %d 이하) · 덜어낸 구역 %d개 · §7-23 오탐 0"
+                      % (body_lines, limit, len(case.get("expect_aux_files", []))))
+
+    # chunk_split 케이스: §4 3단계 **순번 분할**과 stale sub-index 정리를 실제 쓰기로 대조한다.
+    #  키워드만으로는 "행이 보존됐는가"·"빈 청크가 안 생겼는가"를 증명할 수 없어 생성된
+    #  파일을 다시 읽어 **행 총계·임계 준수·목록 등재·델타 음성**을 직접 센다.
+    if case.get("chunk_split"):
+        tmp, dest = prepare_chunk_split_vault(
+            vault, case.get("feature_count", 210), case.get("stale_names", []))
+        out, rc, err = run_lint(dest, ["--build-index"])
+        subs = sorted(n for n in os.listdir(dest)
+                      if n.startswith("index-") and n.endswith(".md"))
+        def _rows(name):
+            with open(os.path.join(dest, name), encoding="utf-8-sig") as fh:
+                text = fh.read()
+            sec = text.split("## 기능별 인덱스", 1)[-1]
+            return sum(1 for ln in sec.splitlines()
+                       if ln.startswith("|") and "---" not in ln and "| 기능 |" not in ln
+                       and "| 이름 |" not in ln)
+        with open(os.path.join(dest, "index.md"), encoding="utf-8-sig") as fh:
+            idx = fh.read()
+        gen_subs = [s for s in subs if s != "index-notes.md"]
+        total = sum(_rows(s) for s in gen_subs)
+        limit = case.get("expect_row_limit", 200)
+        problems = []
+        if rc != 0:
+            problems.append("build-index 종료코드 %d" % rc)
+        over = [s for s in gen_subs if _rows(s) > limit]
+        if over:
+            problems.append("임계 초과 sub-index: " + ", ".join(over))
+        empty = [s for s in gen_subs if _rows(s) == 0]
+        if empty:
+            problems.append("빈 sub-index 생성: " + ", ".join(empty))
+        if case.get("expect_min_subs") and len(gen_subs) < case["expect_min_subs"]:
+            problems.append("sub-index %d개 < 기대 %d개(순번 경로 미발동)"
+                            % (len(gen_subs), case["expect_min_subs"]))
+        if case.get("expect_total_rows") and total != case["expect_total_rows"]:
+            problems.append("행 총계 %d ≠ 기대 %d(분할이 행을 잃거나 늘림)"
+                            % (total, case["expect_total_rows"]))
+        unlisted = [s for s in gen_subs if s[:-3] not in idx]
+        if unlisted:
+            problems.append("index.md 목록 미등재: " + ", ".join(unlisted))
+        for stale in case.get("stale_names", []):
+            if os.path.exists(os.path.join(dest, stale)):
+                problems.append("stale sub-index 미제거: " + stale)
+        for keep in case.get("expect_kept", []):
+            if not os.path.exists(os.path.join(dest, keep)):
+                problems.append("생성물이 아닌 파일이 삭제됨(델타 음성 실패): " + keep)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if problems:
+            return False, " / ".join(problems)
+        return True, ("순번 분할 %d개·행 %d 보존·임계 %d 준수·stale %d 제거·델타 음성 유지"
+                      % (len(gen_subs), total, limit,
+                         len(case.get("stale_names", []))))
+
+    # auto_split 케이스: `--auto-split`(임계 자동 분할·롤오버)을 임시 복사본에서 돌린다.
+    #  ① dry-run은 파일을 한 바이트도 바꾸지 않아야 하고(계약 — 출력 부재는 미변경의 증거가
+    #     아니므로 실제 바이트를 앞뒤 비교한다) ② 실행 출력에 expect_keywords가 전부 있어야 하며
+    #  ③ after_expect_absent가 있으면 **수행 후 재lint**에서 그 위반이 사라져야 한다.
+    #  `--fix`와 달리 승인 불요 경로라 별도 모드로 둔다(두 규약을 한 케이스에 섞지 않는다).
+    if case.get("auto_split"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-split-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        dry_before = _snapshot_md(dest)
+        out_dry, rc_dry, err_dry = run_lint(dest, ["--auto-split", "--dry-run"])
+        dry_after = _snapshot_md(dest)
+        if dry_before != dry_after:
+            shutil.rmtree(tmp, ignore_errors=True)
+            changed = sorted(k for k in set(dry_before) | set(dry_after)
+                             if dry_before.get(k) != dry_after.get(k))
+            return False, "--auto-split --dry-run이 파일을 변경함: " + ", ".join(changed)
+        out, rc, err = run_lint(dest, ["--auto-split"])
+        out2, rc2, err2 = run_lint(dest)
+        if rc not in (0, 1):
+            tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
+            return False, f"--auto-split 비정상 종료({rc}): {tail}"
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+        if missing:
+            return False, "--auto-split 출력 미검출 키워드: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "--auto-split 출력에 금지 키워드: " + ", ".join(present)
+        residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
+        if residual:
+            return False, "수행 후 재lint에 위반 잔존: " + ", ".join(residual)
+        missing2 = [kw for kw in case.get("after_expect_keywords", []) if kw not in out2]
+        if missing2:
+            return False, "수행 후 재lint 기대 키워드 미검출: " + ", ".join(missing2)
+        # **롤오버 방향 검증** — 출력 키워드만 보면 「오래된 것부터」인지 알 수 없다.
+        #  log.md는 최신이 위라, 위치로 고르는 구현은 정반대(최신부터)로 옮기면서도
+        #  "롤오버 — log.md"라는 같은 줄을 낸다. 남은 월·옮겨진 월을 직접 센다.
+        want_kept = case.get("expect_kept_months")
+        want_arch = case.get("expect_archive_months")
+        if want_kept or want_arch:
+            lp = os.path.join(dest, "log.md")
+            with open(lp, encoding="utf-8-sig") as fh:
+                lt = fh.read()
+            m = re.search(r"(?ms)^##\s*최근 변경\b.*?(?=^##\s|\Z)", lt)
+            kept_months = sorted({d[:7] for d in
+                                  re.findall(r"(?m)^- \[(\d{4}-\d{2}-\d{2})\]", m.group(0) if m else "")})
+            arch_months = sorted(os.path.basename(f)[:-3] for f in
+                                 glob.glob(os.path.join(dest, "90_archive", "log", "*.md")))
+            if want_kept is not None and kept_months != want_kept:
+                return False, "남은 월 불일치 — 기대 %s / 실제 %s(오래된 것부터가 아닐 수 있다)" % (want_kept, kept_months)
+            if want_arch is not None and arch_months != want_arch:
+                return False, "아카이브 월 불일치 — 기대 %s / 실제 %s" % (want_arch, arch_months)
+            # 이동 대상이 아닌 항목이 **남아 있는가**(유실 가드). 초기 구현은 날짜 없는 항목을
+            #  이동 목록에 담았다가 월 분배에서 빼면서 어느 파일에도 쓰지 않아 통째로 잃었다.
+            for kw in case.get("expect_kept_contains", []):
+                if kw not in lt:
+                    return False, "남아야 할 항목이 사라짐(유실): " + kw
+        # 수행 **결과 파일**의 내용을 직접 대조한다. stdout 키워드는 처방이 「돌았다」만 말하고
+        #  「옳게 썼다」는 말하지 않는다 — 코드 경로 도달과 결과 정확성은 다른 것이라,
+        #  경로만 태우는 케이스는 버그를 되돌려도 그대로 통과한다(T5 quality 2R M1).
+        for rel, needles in (case.get("expect_file_contains") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                return False, "결과 파일 없음: " + rel
+            with open(fp, encoding="utf-8-sig") as fh:
+                ft = fh.read()
+            missing_n = [n for n in needles if n not in ft]
+            if missing_n:
+                return False, "%s에 기대 문자열 없음: %s" % (rel, ", ".join(missing_n))
+        # **개수**를 대조한다. 중복 등록은 존재 여부로 잡히지 않는다 — 있기는 있기 때문이다.
+        #  재분할이 이전 회차 하위를 허브 표에 다시 넣는 회귀가 정확히 그 형태였다.
+        for rel, wants in (case.get("expect_file_count") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                return False, "결과 파일 없음: " + rel
+            with open(fp, encoding="utf-8-sig") as fh:
+                ft = fh.read()
+            for needle, want in wants.items():
+                got = ft.count(needle)
+                if got != want:
+                    return False, "%s의 '%s' 개수 불일치 — 기대 %d / 실제 %d" % (rel, needle, want, got)
+        shutil.rmtree(tmp, ignore_errors=True)
+        return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
 
     if case.get("fix_mode"):
         tmp = tempfile.mkdtemp(prefix="lint-eval-fix-")

@@ -35,6 +35,17 @@
   ```
   네 곳의 공유 상수·절차 배치·타입 열거 정합·트리거 유일성을 기계 대조한다(일치 exit 0 / 불일치 1 / 앵커 실패 2). 대조 항목 전문은 `docs/harness-conventions.md` 「llm-wiki 정합 셀프체크가 대조하는 것」.
   **lint 검사에 제외(exemption)를 넣을 때는 `docs/harness-conventions.md` 「검증 케이스의 축 분리」를 먼저 본다** — 제외 기준에 걸리는 기존 골든 케이스가 다른 축을 함께 싣고 있으면 그 축이 통째로 가려진다(§7-29 타입 제외에서 실측).
+- **llm-wiki lint 골든 회귀 (`lint.py`·골든 케이스·픽스처 수정 시 필수)**:
+  ```
+  python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
+  ```
+  케이스 정본은 `plugins/pjc/skills/llm-wiki/evals/lint-cases.json` + `fixtures/`. **기준선 99케이스**(2026-08-22 실측, 약 45초). 전건 PASS면 exit 0. **케이스를 추가할 때는 `docs/harness-conventions.md` 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다.
+- **`--auto-split` 처방 골든 (임계 자동 분할·롤오버 수정 시 필수)**: 위 러너에 포함된 **26케이스**가 별도 명령 없이 같은 실행에서 돈다 — 각 케이스가 `--dry-run` 무변경 → 실제 수행 → 재lint까지 태운다. 처방(롤오버 3종·산문 하위 분리)을 고치면 이 러너가 필수 검증이다.
+- **AGENTS.md 이관 골든 (`relocate-agents.py` 수정 시 필수)**:
+  ```
+  python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
+  ```
+  **기준선 7케이스**(2026-08-22 실측, 1초 미만). 발동·미발동·이관 불가·검증 델타 음성·이관처 신설·원복 2종을 덮는다. 판정 서술의 정본은 그 스크립트의 모듈 docstring이다(스킬 문서가 아니다).
 - **하니스 정합 셀프체크 (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·`deferred.md` 수정 시 필수)**:
   ```
   python plugins/pjc/evals/check-harness-consistency.py
@@ -48,24 +59,8 @@
 같은 문서의 **「골든 부분 실행의 판정 자격」**(부분 실행으로 갈음할 수 있는 조건 — plan에 미리 명시 + 커밋 `Tests:` 범위 기재)과 **「문서 로드 예산 기준선」**(스킬·리뷰어 파일 바이트 기계 대조)도 함께 읽는다.
 
 ## Repository Structure
-```
-<repo>/
-├── .claude-plugin/marketplace.json
-├── plugins/pjc/
-│   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
-│   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop/SessionStart/SessionEnd 배선
-│   ├── skills/llm-wiki/scripts/lint.py  # 검사 + `--fix`(안전 3종) + `--build-index`(index.md 생성 구역 파생 · sub-index 생성) / migrate-index-labels.py  # index 라벨 역이관(1회성, 기본 dry-run)
-│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(버전 드리프트 경고)·session-end-cleanup(SessionEnd — 고아 콘솔 프로세스 회수)·session-context(SessionStart **startup|resume|clear|compact|fork** — fork 세션도 주입 대상이다, plan 상태 + **위키 vault 설정 상태**(설정+실재 / 경로 부재만 1줄 주입, 미설정은 무출력 — 절차 K의 "미설정" 오판정 차단. 게이팅은 cwd 수집 라인 기준이고 compact 리마인더는 신호가 아니다) + AGENTS.md 전문 주입(**16KB 초과 시 목차 폴백** · **95%/여유 500B 임박 시 전문 주입 + 경고 1구** — 해소는 `pjc:record-project-fact` Step 5, 정본 `docs/harness-conventions.md` 「AGENTS.md 주입 상한 관리」) — compact 포함)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log·orphan-process-cleanup(고아 more.com·find.exe 회수 — Stop·SessionStart·SessionEnd가 호출) — 차단/경고 이벤트를 `~/.claude/.state/hook-events/`에 jsonl 적재, hook 아님) + 수동 도구 report-hook-events(이벤트 집계 리포트, 읽기 전용, hook 아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets·warn-global-find를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용). hooks.json command는 스크립트를 hook 셸에서 직접 실행한다(엔트리당 outer+inner 2프로세스 → outer 1프로세스. 실행 셸은 Claude Code가 powershell로 해석하며 실측상 pwsh 우선 — 크로스플랫폼 hook 디버깅 시 이 해석 규칙을 먼저 본다).
-│   ├── agents/*.md                  # reviewer subagent 정의
-│   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
-├── docs/
-│   ├── harness-conventions.md       # 하니스 전역 규약 상세 (hook 차단·검증 매핑·문서 예산·리뷰어 각주의 정본)
-│   ├── prd.md
-│   └── plans/deferred.md            # 미처리 Deferred 단일 대장
-├── validate.ps1                     # 설치본 검증
-├── install.ps1
-└── README.md                        # (notes.md·plan.md·notes-archive/ 는 .gitignore — 로컬 전용)
-```
+
+**정본은 `docs/harness-conventions.md`의 「Repository Structure」이다** — 이 절의 규정은 그 문서가 담는다.
 
 ## Conventions
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.

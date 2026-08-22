@@ -813,9 +813,28 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_MD, "2b. **델타 신뢰도 점검**", "허브 `updated` 30일 초과 = 신선도 축(§7-3)"),
     (OPS_RULES_MD, "| index.md | 제한 없음", "§7-14 index 트리거 — 줄/행 기준"),
     (OPS_MD, "`[기계]` index·sub-index 분할 신호", "F-1 인덱스의 §7-14 라벨"),
+    # ── 섹션 구역화 축(§7-32) — 파일 예산이 아니라 **한 섹션의 문자 수 + `### ` 유무**가
+    #  트리거다. 처방도 분리가 아니라 소제목 추가라 §7-2와 겹치지 않는다(D8).
+    (SCHEMA_MD, "32. **섹션 구역화 권장**", "§7-32 검사 항목 본문 — 섹션 축 정본"),
+    (SCHEMA_MD, "> **섹션 구역화 (`### ` 소제목)**", "§2.3 구역화 규칙 — 섹션 축"),
+    (OPS_MD, "`[기계]` 섹션 구역화 권장", "F-1 인덱스의 §7-32 라벨"),
+    (LINT_PY, "# §7-32 feature 섹션 구역화 신호", "SECTION_H3_CHARS 상수 주석 — 섹션 축"),
+    (LINT_PY, "#  값의 근거: 실 vault feature 섹션", "위 상수 주석의 이어지는 줄 — 섹션 축"),
+    (LINT_PY, "      / 섹션 구역화 권장(§7-32", "파일 헤더 docstring의 검사 열거 — 섹션 축"),
+    (TEMPLATES_MD, "<!-- 섹션이 길어지면 `### ` 소제목으로 구역화한다", "feature 골격 구역화 주석 첫 줄 — 섹션 축"),
     (LINT_PY, "# index.md 분할 신호 임계", "INDEX_BODY_LINES 상수 주석 — index 축"),
     (LINT_PY, "#   sub-index(순번 파일) 초과는", "위 상수 주석의 이어지는 줄 — index 축"),
     (LINT_PY, "# sub-index(순번 파일)가 초과하면", "§7-14 3단계 자동 분할 구현 주석"),
+    (LINT_PY, "# 본체 조립 + 임계 초과 시 덜어내기", "§4 1단계 본체 구역 분리 — 줄 수 축(§7-14)"),
+    (LINT_PY, "「본문(frontmatter 포함 전체)」이라 생성 구역만 세면",
+     "§7-14 측정 단위(파일 전체 줄 수) 근거 — 문자 예산 무관"),
+
+    # ── `--auto-split` 처방 구현(§4·§8) — 조건을 **정의**하지 않고 §7-2 조건을 구현·인용한다.
+    #  budget_state/budget_resolved가 §7-2 네 조건의 유일 구현이므로 그 docstring은 조건의
+    #  형태를 말하지 않으면 근거가 성립하지 않는다(임계 상수 근거 주석과 같은 예외 축).
+    (LINT_PY, "없으면 None(그 경우 종료 기준은", "budget_state target 필드 설명 — §7-2 종료 조건 구현"),
+    (LINT_PY, "**발동은 §7-2 조건이고, 목표치는", "rollover_log 발동 판정 — §7-2 조건을 정의하지 않고 인용"),
+    (LINT_PY, "**「예산 이내」가 종료 기준이 아니다**", "budget_resolved docstring — §7-2 종료 조건 정본 인용"),
 
     # ── §2.2 항목 개수 축 — `## 최근 주요 변경`은 6번째 항목이 트리거이고 문자 예산과 무관하다
     #    (§7 결과 처리가 "⚠ project 허브만 트리거가 다르다"로 명시 배제한 대상이다).
@@ -830,6 +849,7 @@ TRIGGER_ALLOWLIST = [
     # ── 예산과 무관한 「초과」·「넘」 — 축어 정규식이 넓어 걸리지만 트리거 서술이 아니다
     (SCHEMA_MD, "소비 대상은 두 태그뿐이다", "절차 M 보류 8종의 상황 범주 열거 — 예산은 그중 한 항목명"),
     (SCHEMA_MD, "7. **기록**: `log.md`에", "log 기록 형식의 `(사유: 임계 초과)` 예시 문자열"),
+    (SCHEMA_MD, "19. **log 아카이브 인덱스 정합**", "§7-19 검사 항목 본문 — 오배치 항목이 아카이브로 「넘어가지 않는다」는 결과 서술이지 예산 조건이 아니다"),
     (CONTENT_MD, "그 파일은 프로젝트 단위 규약", "「스택을 넘는 일반 패턴」 — 귀속 판정이지 예산 아님"),
     (CONTENT_MD, "5. **델타 신뢰도 점검**", "허브 `updated` 30일 초과 = 신선도 축"),
     (CONTENT_MD, "> **축소 조건 (소규모 갱신)**", "변경 파일 5개 초과 = 개수 조건, 예산 무관"),
@@ -840,6 +860,10 @@ TRIGGER_ALLOWLIST = [
     (SKILL_MD, "- **잔량 경고**: append 시 `pending.md`", "pending 큐 잔량 임계"),
     (LINT_PY, "#   기존 `[^\\n]*`는 줄바꿈을 못 넘어", "펜스 정규식 구현 주석 — 예산 무관"),
     (LINT_PY, "#  **수용된 한계**: 접두가 15자를 넘는 위반", "큐 형식 접두 길이 — 예산 무관"),
+    (LINT_PY, "「뒷부분」으로 넘어가고 롤오버 대상에서",
+     "_decision_body_span docstring — 코드펜스가 항목 구간 경계를 가로챌 때의 결과 서술이지 예산 조건이 아니다"),
+    (LINT_PY, "#  「최근 변경」 절만 훑으므로 여기 놓인 항목은",
+     "아카이브 인덱스 오배치 검사 주석 — 롤오버가 훑는 절 범위 서술이지 예산 조건이 아니다"),
 
     # ── `lint.py` 구현 주석 — 임계 상수의 근거와 억제 로직 설명. 신호를 만드는 코드 옆의
     #    주석이라 §7-2·SKILL 예산 단계 표의 코드측 대응이며, 규정을 다시 서술하는 자리가 아니다.
@@ -872,11 +896,25 @@ TRIGGER_ALLOWLIST = [
     (LINT_CASES_JSON, '"rationale": "「분리 불가 판정」(budget_split)', "억제·재판정 케이스 실증 서술"),
     (LINT_CASES_JSON, '"rationale": "§7-2 convention 예산(12000자) 초과 WARN + 처방 힌트',
      "convention 초과 WARN·힌트 병기 케이스 실증 서술 — 「초과 WARN」은 §7-2가 내는 신호의 이름이고 이 케이스가 실증하는 대상이다"),
+    (LINT_CASES_JSON, '"rationale": "**항목 구간의 경계를 코드펜스가',
+     "dec-fenced 케이스 실증 서술 — 경계 오인의 결과(항목이 롤오버에서 빠짐)이지 예산 조건이 아니다"),
+    (LINT_CASES_JSON, '"rationale": "**롤오버가 훑지 않는 구역에',
+     "log-stray 케이스 실증 서술 — 절 오배치의 결과이지 예산 조건이 아니다"),
 
     # ── budget_split 부속 — 「분리 불가 판정」 필드 정의(§3). 처방 불가 판정의 기록 규약이지
     #    발동 조건 서술이 아니다.
     (SCHEMA_MD, "- **`budget_split` 3필드 (선택", "§3 budget_split 필드 정의"),
 ]
+
+# 면제 총량 기준선 — 이 숫자와 실제 `TRIGGER_ALLOWLIST` 길이가 다르면 기본 실행이 exit 1이다.
+#  축 ⑪의 설계 전제는 "정규식의 사각은 보이지 않지만 **면제는 늘어나는 것이 보인다**"인데,
+#  종전에는 건수가 `--trigger-report`에만 나와 그것을 돌리지 않으면 보이지 않았다. 면제를
+#  더할 때 이 숫자를 함께 올리게 하면 **증가가 diff에 남는다** — 검사를 강하게 만드는 장치가
+#  아니라 **면제에 마찰을 주는 장치**다(막지 않는다. 다만 조용히 늘지 못하게 한다).
+#  ⚠ 정당한 추가면 여기를 올리는 것이 정답이다. 숫자를 맞추려고 면제를 지우면 안 된다 —
+#   그 자리는 다시 위반으로 잡혀 결국 조건어 문면을 피해 쓰게 되고, 그것이 T11이 금지한
+#   "회피"다(면제는 기록이 남지만 회피는 아무 흔적도 남기지 않는다).
+TRIGGER_ALLOWLIST_BASELINE = 76
 
 # 차집합 사유 — 광의 패턴에는 걸리지만 예산 트리거가 아닌 줄. 위 화이트리스트와 자료구조를
 #  나누는 이유는 이쪽이 **스캔 밖**의 줄이라 「앵커 1건 매치」 검증의 대상이 아니기 때문이다.
@@ -974,6 +1012,43 @@ def _anchor_span(path, lines):
         if no > start and re.match(end_rx, ln):
             return set(range(start, no)), issues
     return set(range(start, lines[-1][0] + 1)), issues
+
+
+# ⑫ §7-16 대상 조건 ↔ §3 서술. 값의 정본은 `lint.py` 상수이고, 규정은 그 값을 **고정 형식
+#  1줄**로 적는다 -- 산문을 정규식으로 파싱하면 문구를 조금만 다듬어도 앵커가 깨진다.
+ROW_SHAPE_LINE_RX = re.compile(
+    r"(?m)^>\s*\*\*§7-16 대상 토큰\(기계 대조\)\*\*:\s*(.+?)\s*$")
+
+
+def check_row_shape_sync(schema_text, lint):
+    """§7-16이 「기능별 인덱스 유형 행」으로 인정하는 대상 토큰이 §3 서술과 같은지 본다.
+
+    **커버 한계**: 이 축이 보는 것은 **대상 토큰**과 「단축 해소 축이 켜져 있는가」뿐이다.
+    해소 **로직**(basename 유일성 판정 등)은 규정 1줄로 표현할 수 없어 골든이 본다 --
+    그 사실을 여기 적어 두지 않으면 다음 세션이 이 축을 로직 보증으로 오해한다.
+    반환: (불일치 목록, 대조 항목 수)."""
+    m = ROW_SHAPE_LINE_RX.search(schema_text)
+    if not m:
+        die("wiki-schema §3에서 '§7-16 대상 토큰(기계 대조)' 줄을 찾지 못했다")
+    parts = [p.strip() for p in m.group(1).split("·")]
+    doc_tokens, doc_resolve = [], None
+    for p in parts:
+        pm = re.match(r"^단축 해소\s+(on|off)$", p)
+        if pm:
+            doc_resolve = pm.group(1) == "on"
+            continue
+        doc_tokens.append(p.strip("`"))
+    issues = []
+    lint_tokens = list(lint.FEAT_ROW_TARGET_TOKENS)
+    if doc_tokens != lint_tokens:
+        issues.append(f"§7-16 대상 토큰 불일치: schema={doc_tokens} / lint={lint_tokens}")
+    if doc_resolve is None:
+        die("'§7-16 대상 토큰' 줄에 '단축 해소 on|off' 플래그가 없다")
+    if doc_resolve != bool(lint.FEAT_ROW_STEM_RESOLVE):
+        issues.append(
+            f"단축 해소 축 불일치: schema={'on' if doc_resolve else 'off'} / "
+            f"lint={'on' if lint.FEAT_ROW_STEM_RESOLVE else 'off'}")
+    return issues, len(lint_tokens) + 1
 
 
 def check_trigger_locality():
@@ -1206,11 +1281,22 @@ def main():
 
     # ⑪ 트리거 유일성 — 4-튜플의 앞 두 값만 접어 쓴다. 차집합·면제 잔여는 사람이
     #  판정할 리포트라 `--trigger-report`에만 나오고, 여기서는 **위반 유무**만 본다.
-    trigger_issues, trigger_allow, _diffset, _residual = check_trigger_locality()
+    trigger_issues, trigger_allow, trigger_diffset, trigger_residual = check_trigger_locality()
     trigger_checked = len(trigger_allow) + len(TRIGGER_ANCHORS)
     checked += trigger_checked
     mismatches.extend(trigger_issues)
-    axes.append(("트리거 유일성", trigger_checked, "항목"))
+    if len(TRIGGER_ALLOWLIST) != TRIGGER_ALLOWLIST_BASELINE:
+        mismatches.append(
+            f"트리거 면제 총량 {len(TRIGGER_ALLOWLIST)}건 (기준선 {TRIGGER_ALLOWLIST_BASELINE}건) — "
+            f"정당한 증감이면 TRIGGER_ALLOWLIST_BASELINE을 함께 갱신한다(그 diff가 면제 증가의 기록이다)")
+    checked += 1
+    axes.append(("트리거 유일성", trigger_checked + 1, "항목"))
+
+    # ⑫ §7-16 대상 조건 ↔ §3 서술
+    row_issues, row_checked = check_row_shape_sync(schema_text, lint)
+    checked += row_checked
+    mismatches.extend(row_issues)
+    axes.append(("행 대상 조건", row_checked, "항목"))
 
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
@@ -1221,6 +1307,11 @@ def main():
         sys.exit(1)
     breakdown = " + ".join(f"{label} {n}{unit}" for label, n, unit in axes)
     print(f"결과: 대조 {checked}항목 전부 일치 ({breakdown} — 항목당 소스 2~4곳 대조)")
+    # 축 ⑪의 면제 규모 — 판정이 아니라 **가시성**이다. 셋 다 사람이 읽고 판단할 목록이고
+    #  상세는 `--trigger-report`가 낸다. 여기 한 줄을 두는 이유는 그 모드를 돌리지 않는
+    #  회차에서도 규모가 눈에 들어오게 하기 위해서다(면제가 조용히 자라는 것을 막는다).
+    print(f"  ⑪ 면제 규모: 화이트리스트 {len(trigger_allow)}건 / 면제 잔여 {len(trigger_residual)}건 / "
+          f"차집합 {len(trigger_diffset)}건 — 상세는 --trigger-report")
     sys.exit(0)
 
 

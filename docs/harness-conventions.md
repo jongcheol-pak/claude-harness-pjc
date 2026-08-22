@@ -98,6 +98,8 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) |
 | `plugins/pjc/skills/implement-task/SKILL.md`의 **「🚫 금지 표현」 ②③④⑤ 절** | **Hook 골든 회귀** — hook을 한 줄도 안 고쳐도 깨질 수 있다. `hooks/evals/scenarios/require-evidence.ps1:216`의 L12 블록이 **그 SKILL.md를 열어 문구 목록을 파싱**해 hook 정규식과 대조하기 때문이다(추출 0건이면 그 자체가 FAIL). 아래 「골든 부분 실행의 판정 자격」 예외를 plan에 미리 적었다면 `-Filter require-evidence`로 갈음 가능 |
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
+| `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든 26케이스**가 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint를 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
+| `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (7케이스, 1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |
 | `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」·「리뷰어 4종 공통 규약」 절** · `plugins/pjc/agents/*.md` · `docs/plans/deferred.md` | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
@@ -119,7 +121,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 > | 컨텍스트 | 동시 로드되는 것 | 현행 바이트 |
 > |---|---|---|
 > | **메인** | 작업 SKILL(`implement-task` **또는** `plan-feature`) **+ `llm-wiki`** — 절차 K(계획·구현 중 read-only 참조)·절차 M(F-6.5 큐 소비)로 **자동 호출**되므로 코드 작업 세션에서 함께 로드된다 | **최대 162,674B** (104,303 + 58,371 — 아래 표의 실측 합). 한 세션에서 계획 → 구현을 연달아 하면 `plan-feature` 89,509B가 더해진다. **이 세 수치는 아래 표에서 옮겨 적은 것이라 기계 대조 대상이 아니다** — 표를 갱신하는 task가 이 줄도 함께 고친다(v1.186.0 전까지 실제로 어긋나 있었다) |
-> | **메인에 상시 추가** | `AGENTS.md` — SessionStart가 **매 세션 주입**하므로 위 「메인」 조합에 **항상 더해진다**. 단 상한을 넘기면 전문 대신 **목차만** 들어가 그 값이 크게 준다 — 그때는 명령·규약이 통째로 빠진 상태이므로 바이트가 줄었다고 좋은 것이 아니다. **이 수치도 위 「메인」과 같이 아래 표에서 옮겨 적은 것이라 기계 대조 대상이 아니다** — `AGENTS.md` 예산 행을 고치는 task가 이 줄도 함께 갱신한다 | **+14,875B** |
+> | **메인에 상시 추가** | `AGENTS.md` — SessionStart가 **매 세션 주입**하므로 위 「메인」 조합에 **항상 더해진다**. 단 상한을 넘기면 전문 대신 **목차만** 들어가 그 값이 크게 준다 — 그때는 명령·규약이 통째로 빠진 상태이므로 바이트가 줄었다고 좋은 것이 아니다. **이 수치도 위 「메인」과 같이 아래 표에서 옮겨 적은 것이라 기계 대조 대상이 아니다** — `AGENTS.md` 예산 행을 고치는 task가 이 줄도 함께 갱신한다 | **+13,276B** |
 > | **리뷰어** (호출마다 별개) | 리뷰어 **1종**. 4종은 **서로 합산되지 않고 메인과도 합산되지 않는다** — 각 subagent는 자기 정의 파일만 로드한다(같은 문서 「리뷰어 4종 공통 규약」이 단일 소스화 불가의 근거로 쓰는 바로 그 사실) | 29,628 ~ 51,274B |
 >
 > **문서량 증감을 acceptance로 삼는 plan은 「그 회차가 실제로 동시 로드한 조합」을 명시하고 그 단위로 잰다.** 9행 합계로 재면 **서로 만나지 않는 파일의 바이트가 더해져 판정이 뒤집힌다** — v1.179.0 T11이 실증했다: 합계는 **+16,864B**인데, 조합별로 보면 **메인은 −971B**(늘어난 `plan-feature`와 줄어든 `implement-task`는 서로 다른 조합에 속한다)이고 **증가분은 전부 리뷰어 쪽**이라 **호출당 +2,760~6,024B**였다. 두 축의 방향이 반대인데 합계는 그것을 한 숫자로 뭉갠다.
@@ -134,10 +136,10 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
-| `AGENTS.md` | 14,875 | 93 | 60 |
+| `AGENTS.md` | 13,276 | 88 | 70 |
 | `plugins/pjc/skills/implement-task/SKILL.md` | 104,303 | 632 | 66 |
 | `plugins/pjc/skills/plan-feature/SKILL.md` | 89,509 | 511 | 83 |
-| `plugins/pjc/skills/llm-wiki/SKILL.md` | 58,371 | 192 | 80 |
+| `plugins/pjc/skills/llm-wiki/SKILL.md` | 58,668 | 194 | 81 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,873 | 354 | 135 |
 | `plugins/pjc/agents/plan-reviewer.md` | 51,274 | 416 | 78 |
 | `plugins/pjc/agents/spec-compliance-reviewer.md` | 30,796 | 308 | 104 |
@@ -257,6 +259,8 @@ task 1개가 통과하는 검증·리뷰 지점은 **19곳**이다 — Phase V�
 ## 골든 러너 운용 (실행·대기·판정)
 
 > `AGENTS.md` 「Hook 골든 회귀」가 지목하는 정본이다. **이 절을 읽지 않고 돌리면 완주하지 않는다** — 과거 "환경상 실행 불가"로 Phase F-2를 갈음한 사례들이 전부 이 절차를 쓰지 않은 것이다.
+>
+> **이 절의 분리 프로세스·`Monitor` 폴링 절차는 hook 골든 하나에만 해당한다.** 다른 두 골든은 전경 실행으로 완주하므로 그 절차가 필요 없다 — **llm-wiki lint 골든**(`run_lint_evals.py`, 99케이스)은 약 45초, **AGENTS.md 이관 골든**(`run_relocation_evals.py`, 7케이스)은 1초 미만이다(2026-08-22 실측). 셋을 한 덩어리로 읽고 전부 백그라운드로 돌리면 오히려 느려지고, 결과 회수도 한 단계 늘어난다.
 
 ### 검사 대상
 
@@ -396,10 +400,31 @@ Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File
 
 > `AGENTS.md` 「Build & Test」의 llm-wiki 셀프체크 항목이 지목하는 정본이다. 명령은 그쪽에 있고, **무엇을 대조하는지**가 여기다 — 세션마다 필요한 것은 *"언제 돌리는가"* 이고 이 목록은 **그 검사를 고칠 때** 필요하다.
 
-다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합 / **예산 단계 임계·판정 어휘**(SKILL 「예산 단계 신호」 표 ↔ lint 상수 4값+어휘 — 임계는 이 축 말고는 어디서도 대조되지 않는다) / **타입 열거 정합 11자리·12항목**(새 타입이 산문 열거에서 조용히 빠지는 사각 — ⓐ `lint.py` 타입 집합 상수 ↔ 문서 산문 8항목(§3 origin·confidence·§7-3·§7-9·§7-28·§7-29·§8 아카이브 예외·§11) ⓑ §2 타입 전 커버 4항목(목차 §2 행·계층 태그·templates 목차·§12 권장/비대상 분할 커버)) / **트리거 유일성**(예산 처방의 발동·종료·재발동·승급 조건이 wiki-schema §7-2와 SKILL 「예산 단계 신호」 표 밖에 서술되지 않는가 — 면제는 열거로만 두고 앵커별 매치 수를 함께 검증한다. 상세 리포트는 `--trigger-report`). 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
+다음을 기계 대조한다 — 네 곳의 공유 상수(파일 예산·통제 어휘) / 절차 배치(본체 `## 절차 목차` 라우팅 표 **전 행** ↔ `references/procedures-content.md`·`procedures-ops.md`의 절차 헤딩 실존·1곳·위치 일치. 절차 문자는 표에서 동적 캡처라 신규 절차도 자동 검사되고, 비문자 행·중복 행·스트레이 헤딩도 잡는다) / wiki-schema 목차 § ↔ `## N.` 헤딩 / procedures-ops F-1 실행 순서 ↔ wiki-schema §7 검사 번호 1:1 / 산문 크로스파일 포인터(절차 라벨 ↔ 실제 `### X.` 헤딩 파일) / templates.md 타입 ↔ schema §2 타입 집합 / **예산 단계 임계·판정 어휘**(SKILL 「예산 단계 신호」 표 ↔ lint 상수 4값+어휘 — 임계는 이 축 말고는 어디서도 대조되지 않는다) / **타입 열거 정합 11자리·12항목**(새 타입이 산문 열거에서 조용히 빠지는 사각 — ⓐ `lint.py` 타입 집합 상수 ↔ 문서 산문 8항목(§3 origin·confidence·§7-3·§7-9·§7-28·§7-29·§8 아카이브 예외·§11) ⓑ §2 타입 전 커버 4항목(목차 §2 행·계층 태그·templates 목차·§12 권장/비대상 분할 커버)) / **트리거 유일성**(예산 처방의 발동·종료·재발동·승급 조건이 wiki-schema §7-2와 SKILL 「예산 단계 신호」 표 밖에 서술되지 않는가 — 면제는 열거로만 두고 앵커별 매치 수를 함께 검증한다. **면제 총량은 기준선 상수(`TRIGGER_ALLOWLIST_BASELINE`)와 대조**해 늘거나 줄면 불일치로 낸다 — 이 축의 전제가 「정규식의 사각은 안 보이지만 면제는 늘어나는 것이 보인다」인데 종전에는 그 건수가 리포트 모드에만 나와, 돌리지 않는 회차에는 보이지 않았다. 정당한 증감이면 상수를 함께 올리는 것이 정답이고 **숫자를 맞추려 면제를 지우면 안 된다**(그 자리가 다시 위반으로 잡혀 결국 조건어를 피해 쓰게 되는데, 면제는 기록이 남지만 회피는 흔적이 없다). 기본 실행 요약이 화이트리스트·면제 잔여·차집합 건수를 1줄로 내고, 상세 리포트는 `--trigger-report`) / **§7-16 행 대상 조건**(`lint.py`의 `FEAT_ROW_TARGET_TOKENS`·`FEAT_ROW_STEM_RESOLVE` ↔ wiki-schema §3의 **고정 형식 1줄** `> **§7-16 대상 토큰(기계 대조)**: …` — 대상 조건을 코드에서만 바꾸면 잡힌다. **이 축이 보는 것은 토큰과 「단축 해소 축이 켜져 있는가」뿐이고**, 해소 로직 자체는 규정 한 줄로 표현할 수 없어 골든이 본다). 일치 exit 0, 불일치 1, 파싱 앵커 실패 2.
 
 ## 검증 배치의 `Remove-Item` 오차단
 
 > `AGENTS.md` 「Build & Test」가 지목하는 정본이다. 검증 배치를 짜는 순간에만 필요한 함정이라 여기 둔다.
 
 - **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것**: Claude Code **PowerShell 도구의 내장 경로 보호**가 삭제 대상을 추출할 때 실제 대상이 아니라 **같은 명령 문자열 안 다른 위치의 따옴표 경로**를 집어 오차단한다(`Remove-Item on system path ''D:\Personal' is blocked.`). **하니스 hook과 무관하다** — `block-destructive`에 변형 11종을 stdin 주입한 결과 **11/11 exit 0**(차단 0건)이다. `Remove-Item` 토큰과 공백 포함 경로가 **한 명령 문자열에 함께 있을 때만** 발화하는 조합 의존이라 "가끔 막힌다"로 보인다. **회피**: 검증 배치를 **스크립트 파일로 분리**(가장 확실) · **Bash 도구** 사용 · 환경변수 제거는 `$env:NAME = ''` 대입.
+
+## Repository Structure
+```
+<repo>/
+├── .claude-plugin/marketplace.json
+├── plugins/pjc/
+│   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
+│   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop/SessionStart/SessionEnd 배선
+│   ├── skills/llm-wiki/scripts/lint.py  # 검사 + `--fix`(안전 3종) + `--build-index`(index.md 생성 구역 파생 · sub-index 생성) / migrate-index-labels.py  # index 라벨 역이관(1회성, 기본 dry-run)
+│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(버전 드리프트 경고)·session-end-cleanup(SessionEnd — 고아 콘솔 프로세스 회수)·session-context(SessionStart **startup|resume|clear|compact|fork** — fork 세션도 주입 대상이다, plan 상태 + **위키 vault 설정 상태**(설정+실재 / 경로 부재만 1줄 주입, 미설정은 무출력 — 절차 K의 "미설정" 오판정 차단. 게이팅은 cwd 수집 라인 기준이고 compact 리마인더는 신호가 아니다) + AGENTS.md 전문 주입(**16KB 초과 시 목차 폴백** · **95%/여유 500B 임박 시 전문 주입 + 경고 1구** — 해소는 `pjc:record-project-fact` Step 5, 정본 `docs/harness-conventions.md` 「AGENTS.md 주입 상한 관리」) — compact 포함)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log·orphan-process-cleanup(고아 more.com·find.exe 회수 — Stop·SessionStart·SessionEnd가 호출) — 차단/경고 이벤트를 `~/.claude/.state/hook-events/`에 jsonl 적재, hook 아님) + 수동 도구 report-hook-events(이벤트 집계 리포트, 읽기 전용, hook 아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets·warn-global-find를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용). hooks.json command는 스크립트를 hook 셸에서 직접 실행한다(엔트리당 outer+inner 2프로세스 → outer 1프로세스. 실행 셸은 Claude Code가 powershell로 해석하며 실측상 pwsh 우선 — 크로스플랫폼 hook 디버깅 시 이 해석 규칙을 먼저 본다).
+│   ├── agents/*.md                  # reviewer subagent 정의
+│   └── skills/*/SKILL.md            # plan-feature·implement-task 등 (+ references/·templates/)
+├── docs/
+│   ├── harness-conventions.md       # 하니스 전역 규약 상세 (hook 차단·검증 매핑·문서 예산·리뷰어 각주의 정본)
+│   ├── prd.md
+│   └── plans/deferred.md            # 미처리 Deferred 단일 대장
+├── validate.ps1                     # 설치본 검증
+├── install.ps1
+└── README.md                        # (notes.md·plan.md·notes-archive/ 는 .gitignore — 로컬 전용)
+```
+

@@ -41,6 +41,8 @@ description: >
 
 > **지연 로드 규칙 (필수)**: 절차를 수행할 때는 **해당 위치의 파일을 먼저 Read**한다. 파일을 읽지 않고 이 표의 절차 이름만 보고 작업을 진행하지 않는다 — 각 절차에는 생략하면 안 되는 필수 단계·사용자 게이트(pending 큐 소비, recipe 승격 확인, 삭제 확인 등)가 있다.
 >
+> **예산 처방은 세션이 손으로 옮기지 않는다** — `python "<skill>/scripts/lint.py" "<vault>" --auto-split`을 호출하고 결과를 검증·보고한다(§7-2 번복 · §4 분할 수행 절차 1·5·6번). 그 호출 지점은 F-2(lint)·A-4(등록)·B-3(ingest) 셋이다.
+>
 > - WRONG: 라우팅 표만 보고 B(ingest)를 수행 → pending 큐 소비(B-1 0)·망라 재대조(B-1a)·recipe 게이트(A-3a) 등 필수 단계 생략
 > - RIGHT: `references/procedures-content.md`를 Read한 뒤 B-1부터 순서대로 수행
 >

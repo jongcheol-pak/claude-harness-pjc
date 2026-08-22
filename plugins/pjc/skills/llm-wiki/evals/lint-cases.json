@@ -587,7 +587,16 @@
       "expect_absent": [
         "(여기는 --build-index가 통째로 치환한다)",
         "보관된 기능 (archived feature)"
-      ]
+      ],
+      "expect_section_order": [
+        "## 개인 프로젝트",
+        "## 업무 프로젝트",
+        "## 기능별 인덱스",
+        "## 기술 스택 지식 (tech/)",
+        "## 범용 패턴 (patterns/)",
+        "## 미해결 질문"
+      ],
+      "rationale": " 아울러 **섹션 조립 순서**를 검증한다 — 키워드 존재만 보면 순서가 뒤바뀌어도 통과하는데, §4 「생성 대상 6섹션」은 순서까지 규정한다(구역 지연 조립로 바꾸며 프로젝트 테이블이 기능별 인덱스 뒤로 밀린 회귀가 실제로 났다)."
     },
     {
       "fixture": "build-index-empty",
@@ -616,6 +625,736 @@
       "after_expect_keywords": [
         "[ERR] 오류 0건"
       ]
+    },
+    {
+      "fixture": "split-no-target",
+      "auto_split": true,
+      "expect_keywords": [
+        "== --auto-split: 수행 대상 없음 =="
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "Traceback"
+      ],
+      "rationale": "임계 미달 vault에서 --auto-split이 아무것도 하지 않고 exit 0으로 끝나는지(무대상 계약). dry-run 무변경도 같은 케이스가 파일 바이트 앞뒤 비교로 실증한다 — 출력 부재는 미변경의 증거가 아니다."
+    },
+    {
+      "fixture": "split-suppressed",
+      "auto_split": true,
+      "expect_keywords": [
+        "== --auto-split: 수행 대상 없음 =="
+      ],
+      "expect_absent": [
+        "suppressed-concept",
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_keywords": [
+        "예산 임박(분리 불가 판정 유지)"
+      ],
+      "rationale": "budget_split=none 판정이 붙은 96% concept을 --auto-split이 건드리지 않는지 보는 델타 음성. 규정이 「더 나눌 것이 없다」고 판정한 페이지를 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다(wiki-schema §7-2 억제). 수행 후 재lint에서 억제 INFO가 그대로 남는 것이 존중의 증거다."
+    },
+    {
+      "fixture": "build-index",
+      "chunk_split": true,
+      "feature_count": 401,
+      "stale_names": [
+        "index-personal-7.md",
+        "index-work-3.md"
+      ],
+      "expect_kept": [
+        "index-notes.md"
+      ],
+      "expect_min_subs": 3,
+      "expect_total_rows": 406,
+      "expect_row_limit": 200,
+      "rationale": "§4 3단계 순번 분할을 N>=3 경로로 실제로 태운다(feature 401개 생성). 2청크만 보면 세 번째 이후 경로가 미검증으로 남고 경계 오류는 대개 그 자리에서 난다. 함께 보는 것 넷 — 행 총계 보존(406 = 생성 401 + build-index 픽스처의 기존 feature·recipe 5), 각 파일이 임계 200 이하, index.md 목록에 전부 등재(조회 홉 1), 생성 대상 밖 sub-index 2개 자동 제거. index-notes.md(type: guide)는 이름이 index-*.md여도 생성물이 아니라 삭제되면 안 되는 델타 음성이다."
+    },
+    {
+      "fixture": "build-index",
+      "chunk_split": true,
+      "feature_count": 400,
+      "expect_kept": [
+        "index-notes.md"
+      ],
+      "expect_min_subs": 2,
+      "expect_total_rows": 405,
+      "expect_row_limit": 200,
+      "rationale": "청크 경계가 임계의 배수와 정확히 맞아떨어지는 구간에서 빈 sub-index를 만들지 않는지(off-by-one). feature 400개 + 픽스처 기존 5행이라 청크가 정확히 나뉘는 자리를 지나며, 빈 파일이 생기면 러너가 잡는다."
+    },
+    {
+      "fixture": "build-index",
+      "aux_split": true,
+      "concept_count": 420,
+      "open_questions": 2,
+      "expect_aux_files": [
+        "index-patterns.md"
+      ],
+      "after_expect_absent": [
+        "미해결 질문 index 미등록"
+      ],
+      "rationale": "§4 1단계 본체 구역 분리를 실제 쓰기로 태운다. concept 420개로 본체를 임계 위로 밀어 올려 `## 범용 패턴`이 index-patterns.md로 덜어내지는지, 그 파일이 type: index와 자기 헤딩을 갖는지 본다. **핵심은 §7-23 오탐 회귀 가드다** — 구역이 sub-index로 옮겨간 뒤 그 검사가 본체만 보면 open question이 전부 '미등록'으로 잡히는데(수정 전 실측 1건), 합본 뒤로 판정을 옮겨 0건이 됐다. open question을 심지 않으면 그 검사가 아무것도 세지 않아 회귀가 침묵한다."
+    },
+    {
+      "fixture": "log-rollover",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — log.md",
+        "90_archive/log/2026-07.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 초과: log.md",
+        "예산 임박: log.md"
+      ],
+      "rationale": "§8 log 월별 롤오버. 가장 오래된 항목부터 그 항목 날짜의 월 파일로 이동해 목표(3000자) 아래로 내려가는지, 수행 후 재lint에서 예산 신호가 사라지는지 본다. 목표보다 LOG_ROLLOVER_SLACK만큼 더 내려가는 이유는 §4 7번 기록 1줄이 처방 직후 append되기 때문 — 딱 맞춰 멈추면 그 줄 때문에 매 실행 조금씩 도는 것이 실측됐다(3,081/3,000). 여유를 둔 뒤 3회 연속 실행에서 2,914자로 수렴하고 2회차부터 '수행 대상 없음'이 나온다."
+    },
+    {
+      "fixture": "log-guard",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — log.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "§7-2 정지 가드. 가장 최신 항목 하나가 목표(3000자)보다 커서(3,703자) 그 앞의 것을 다 옮겨도 목표에 닿지 못한다 — 코드가 최소 1건을 남기므로 거기서 멈추고, 그 상태를 실패로 판정하지 않는다(쪼개느니 약간 큰 게 낫다). 항목을 쪼개지 않는다는 규정이 지켜지는지 보는 케이스다."
+    },
+    {
+      "fixture": "log-under",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "롤오버 — log.md"
+      ],
+      "rationale": "예산 여유가 있는 log.md는 건드리지 않는다(무회귀 음성). 발동 조건이 없는데 롤오버가 돌면 「최근 변경」이 이유 없이 비워진다."
+    },
+    {
+      "fixture": "log-desc",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — log.md",
+        "90_archive/log/2026-06.md",
+        "날짜 없는 항목 1건"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "expect_kept_months": [
+        "2026-08"
+      ],
+      "expect_archive_months": [
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08"
+      ],
+      "rationale": "§8 「가장 오래된 항목부터」의 **방향**을 고정한다. 실제 log.md는 최신이 위(내림차순)라, 파일 위치로 이동 대상을 고르는 구현은 방금 쓴 최신 기록을 아카이브로 보내면서도 출력 줄은 똑같이 낸다 — 초기 구현이 실제로 그랬고 기존 픽스처들이 과거를 앞에 둬 가려졌다. 이 픽스처는 최신 20건 위·오래된 20건 아래로 실제 형상을 재현하고, 남은 월이 2026-08뿐인지·아카이브가 2026-06부터 채워졌는지를 직접 센다(오래된 06월 20건 전부 + 목표 미달분으로 08월 중 가장 오래된 3건만 추가 이동). 아울러 **날짜 없는 항목이 보존되는지**를 함께 본다 — 초기 구현은 그런 항목을 이동 목록에 담았다가 월 분배에서 빼면서 어느 파일에도 쓰지 않아 통째로 잃었다(spec 리뷰 B1). 아울러 같은 본문을 2026-07-15·2026-05-03 두 날짜로 심어 **월 분배가 항목별로 이뤄지는지**를 함께 본다. 다만 이것이 텍스트→날짜 역인덱스 회귀를 잡지는 못한다 — 블록 텍스트에 날짜가 내장돼 있어 본문이 완전히 같으면 날짜도 같기 때문이다(역검증에서 FAIL 0건으로 확인). 튜플 반환은 그 위험을 없애서가 아니라 역인덱스라는 우회 자체를 없애 읽기 쉬워서 유지한다. **섹션 경계도 본다** — 가장 오래된 항목은 파일 물리 위치상 마지막이라, 그것이 이동하면 섹션 끝 빈 줄이 함께 딸려가 다음 헤딩이 앞 항목에 들러붙는다(실측). 보정이 빠지면 다음 헤딩 앞 빈 줄이 사라지므로 그 형상을 needle로 고정한다.",
+      "expect_kept_contains": [
+        "형식이 어긋난 항목"
+      ],
+      "expect_file_contains": {
+        "log.md": [
+          "\n\n## 아카이브 인덱스"
+        ]
+      }
+    },
+    {
+      "fixture": "dec-rollover",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo/decisions.md",
+        "90_archive/20_projects/personal/demo/decisions.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 초과: 20_projects/personal/demo/decisions.md",
+        "예산 임박: 20_projects/personal/demo/decisions.md"
+      ],
+      "rationale": "§2.8 decision-log 롤오버. log.md와 달리 항목이 섹션 없이 본문에 바로 오므로(`# 결정 이력` 뒤 ~ `## 아카이브` 앞) 세 조각으로 갈라 뒷부분(포인터·주석)을 보존한다. 함께 보는 것 넷 — 오래된 것부터 이동(최신이 위 관례), 기존 아카이브 9건에 **append**(덮어쓰면 이미 옮긴 과거 결정이 사라진다), 포인터의 날짜·**누적 건수**가 실제 아카이브 파일을 세어 갱신되는지(9 + 8 = 17), 항목 불변(§2.8)이라 옮기는 본문이 무변조인지. **섹션 경계도 본다** — 가장 오래된 항목은 파일 물리 위치상 마지막이라, 그것이 이동하면 섹션 끝 빈 줄이 함께 딸려가 다음 헤딩이 앞 항목에 들러붙는다(실측). 보정이 빠지면 다음 헤딩 앞 빈 줄이 사라지므로 그 형상을 needle로 고정한다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/decisions.md": [
+          "(2026-06-02~2026-06-09, 누적 17건)",
+          "\n\n## 아카이브"
+        ],
+        "90_archive/20_projects/personal/demo/decisions.md": [
+          "# Demo 결정 이력 아카이브",
+          "옛 주제 09",
+          "옛 주제 01"
+        ]
+      }
+    },
+    {
+      "fixture": "dec-under",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "롤오버 — 20_projects/personal/demo/decisions.md"
+      ],
+      "rationale": "예산 여유가 있는 decision-log는 건드리지 않는다(무회귀 음성). 결정 이력은 조회가 목적이라 이유 없이 아카이브로 밀면 계획 세션이 과거 결정을 못 본다."
+    },
+    {
+      "fixture": "dec-oldptr",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo/decisions.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "포인터가 §2.8 규정 문면과 다른 옛 형식(날짜·건수 표기 없음)일 때도 그 줄 끝에 `(최古~最新, 누적 N건)`이 덧붙는지 본다. 초기 구현은 정규식 치환이 실패하면 사실상 아무것도 하지 않아 포인터가 실제 아카이브 상태와 어긋난 채 남았다 — 조회 세션이 「어디까지 옮겨졌는지」를 알 수 없게 되는 자리다. 실 vault도 규정과 다른 wikilink 형식을 쓰므로 이 경로가 실사용 경로다. **결과 문자열을 직접 대조한다** — stdout 키워드는 처방이 「돌았다」만 말하고 「옳게 썼다」는 말하지 않아, 경로만 태우는 케이스는 폴백을 no-op으로 되돌려도 그대로 통과한다(quality 2R M1).",
+      "expect_file_contains": {
+        "20_projects/personal/demo/decisions.md": [
+          "— 이전 결정들 (2026-06-02~2026-06-09, 누적 17건)"
+        ]
+      }
+    },
+    {
+      "fixture": "hub-rollover",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo.md",
+        "90_archive/20_projects/personal/demo/changes.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "§2.2 project 허브 `## 최근 주요 변경` 롤오버. 트리거가 문자 예산이 아니라 **6번째 항목**이라(§7-2 「별개 트리거」ⓑ) 예산 신호 없이도 수행한다. 함께 보는 것 셋 — 5개만 남는지, **가장 오래된 것부터** 옮기는지(허브에 최신 '변경 01'이 남고 아카이브에 최古 '변경 06'이 가는지로 방향을 고정한다. 위치로 고르는 구현은 최신을 아카이브로 보내면서도 같은 출력 줄을 낸다), `## 아카이브` 섹션이 없을 때 규정 형식 포인터가 신설되는지(§7-30ⓐ 양방향 정합). **섹션 경계도 본다** — 가장 오래된 항목은 파일 물리 위치상 마지막이라, 그것이 이동하면 섹션 끝 빈 줄이 함께 딸려가 다음 헤딩이 앞 항목에 들러붙는다(실측). 보정이 빠지면 다음 헤딩 앞 빈 줄이 사라지므로 그 형상을 needle로 고정한다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo.md": [
+          "- 이전 이력: 90_archive/20_projects/personal/demo/changes.md (2026-08-01~2026-08-01, 누적 1건)",
+          "**변경 01**",
+          "**변경 05**",
+          "\n\n## 기능 목록"
+        ],
+        "90_archive/20_projects/personal/demo/changes.md": [
+          "# Demo 변경 이력 아카이브",
+          "**변경 06**"
+        ]
+      }
+    },
+    {
+      "fixture": "hub-under",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "롤오버 — 20_projects/personal/demo.md"
+      ],
+      "rationale": "항목이 5개면 건드리지 않는다(무회귀 음성). §2.2는 3~5개 유지가 정상 상태라, 발동선을 잘못 잡아 5개에서 돌면 허브가 이유 없이 비어 조회가 최근 변경을 잃는다."
+    },
+    {
+      "fixture": "hub-budget-only",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "롤오버 — 20_projects/personal/demo.md"
+      ],
+      "after_expect_keywords": [
+        "예산 임박: 20_projects/personal/demo.md"
+      ],
+      "rationale": "**델타 음성 — 두 축이 별개임을 고정한다.** 허브가 문자 예산 96%로 §7-2 발동 중이지만 항목이 5개라 이 롤오버는 대상이 아니다(§7-2 「별개 트리거」ⓑ — 문자 쪽 처방은 `conventions.md` 분리 §2.9다). 수행 후 재lint에 예산 신호가 **그대로 남아 있는지**까지 본다. **잡는 범위를 정확히 적는다**(역검증 실측): 발동 판정만 `budget_state`로 바꾼 구현은 이 케이스가 잡지 못한다 — 남길 개수 판정(`fits`)이 이미 참이라 아무것도 옮기지 않기 때문이다. 이 케이스가 잡는 것은 **처방 전체를 문자 축으로 오인한 구현**(발동도 목표치도 예산으로 재는 것)이고, 그때 5개짜리 허브가 이유 없이 비워지며 FAIL한다. 발동 판정만 바꾼 회귀는 hub-rollover가 잡는다(6항목인데 문자 여유가 있어 안 돈다)."
+    },
+    {
+      "fixture": "hub-oldptr",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "실 vault의 포인터는 규정 문면과 다른 **wikilink 형식**이고 날짜·건수 표기가 없다 — 그 경로에서도 줄 끝에 `(최古~最新, 누적 N건)`이 덧붙는지 본다(decision-log의 dec-oldptr와 같은 자리다. 정규식 치환만 있는 구현은 여기서 사실상 아무것도 하지 않아 포인터가 실제 아카이브 상태와 어긋난 채 남는다). 함께 보는 것은 **append 보존**이다 — 이미 옮겨진 2건이 그대로 있고 누적이 3건으로 세어지는지로 덮어쓰기 0을 고정한다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo.md": [
+          "|변경 이력 아카이브]] (2026-08-01~2026-08-01, 누적 3건)"
+        ],
+        "90_archive/20_projects/personal/demo/changes.md": [
+          "**옛 변경 A**",
+          "**옛 변경 B**",
+          "**변경 06**"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-split",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "생성 마커 없음"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 20_projects/personal/demo/feat-thing.md",
+        "예산 초과: 20_projects/personal/demo/feat-thing.md",
+        "예산 임박: 20_projects/personal/demo/feat-thing-2.md",
+        "예산 초과: 20_projects/personal/demo/feat-thing-2.md",
+        "구현 방법 섹션 누락",
+        "관련 파일 섹션 누락",
+        "구현 근거 각주 누락",
+        "기능별 인덱스 누락",
+        "허브 기능 목록 누락",
+        "예산 초과: 20_projects/personal/demo/feat-thing",
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ],
+      "rationale": "§4 처방 ③ 산문 하위 분리. **가장 큰 섹션의 본문만** 옮기고 헤딩과 포인터는 원본에 남긴다(D2 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을 낸다). 이 케이스가 한꺼번에 고정하는 것 다섯 — ⓐ 원본에 헤딩 + 정본 포인터가 남는지 ⓑ **하위에도 타입별 필수 섹션이 재현**되는지(하위는 같은 타입이라 §7-18ⓐ·§7-21이 그대로 걸린다 — 재현하지 않으면 자동 분할이 스스로 새 위반을 만든다. 실제로 초기 구현이 그랬다) ⓒ 각주 정의가 원본에 남고 하위에도 복제되는지(§7-18ⓑ는 문서 전체의 `[^src-` 개수를 본다) ⓓ 허브 `## 기능 목록`과 `build_index` 연쇄로 **분할 직후 인덱스 등록이 끝나는지**(사람이 `--build-index`를 따로 돌려야 통과하는 상태로 끝내지 않는다) ⓔ 원본과 하위 **양쪽 모두** 예산 신호가 사라지는지. **수렴도 함께 본다** — 옮겨도 하위가 곧바로 발동할 섹션을 그대로 옮기면 `-2-2`·`-2-2-2`로 번지는데, 파일명을 끝까지 적은 needle은 그 새 이름을 놓친다. 그래서 예산 위반 needle을 **접두**로 두어 원본·하위·재분할물 어느 것이 남아도 걸리게 했다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "## UI·UX",
+          "**정본은 [[20_projects/personal/demo/feat-thing-2|것 (Thing) — UI·UX]]의 「UI·UX」이다**",
+          "[^src-thing]:",
+          "## 하위 문서",
+          "- [[20_projects/personal/demo/feat-thing-2|것 (Thing) — UI·UX]] — UI·UX"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "index_label: 것 (Thing) — UI·UX",
+          "> 상위 문서: [[20_projects/personal/demo/feat-thing|것 (Thing)]]",
+          "## 관련 파일",
+          "`src/Demo/Thing.cs`",
+          "## 구현 방법",
+          "[UI·UX] 이 문단은",
+          "[^src-thing]:"
+        ],
+        "20_projects/personal/demo.md": [
+          "[[20_projects/personal/demo/feat-thing-2\\|것 (Thing) — UI·UX]]"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-guard",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "rationale": "**정지 가드.** 예산은 발동했지만 옮길 수 있는 섹션이 없다 — `## 개요`·`## 관련 파일`·`## 구현 방법`은 본문째 원본에 남기는 대상이라(그것이 필수 섹션 게이트를 지키는 방법이다) 남는 것이 없다. 이때 쪼개지 않고 멈추며 그 상태를 실패로 판정하지 않는다."
+    },
+    {
+      "fixture": "prose-under",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "rationale": "예산 여유가 있는 산문은 건드리지 않는다(무회귀 음성). 발동 조건 없이 돌면 멀쩡한 페이지가 이유 없이 쪼개져 조회가 한 홉 더 든다."
+    },
+    {
+      "fixture": "prose-resplit",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-3.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "이미 `-2.md`가 있는 페이지의 재분할. 순번은 **기존 최대값 + 1**이라 `-3.md`가 되고, 기존 하위를 덮어쓰지 않는다 — 순번을 항상 2부터 잡는 구현은 여기서 이전 회차의 하위를 통째로 지운다(유실). 그 보존을 needle로 직접 대조한다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "## 옛 절",
+          "이전 회차에 이미 분리된 하위다."
+        ],
+        "20_projects/personal/demo/feat-thing-3.md": [
+          "[UI·UX] 이 문단은"
+        ]
+      },
+      "after_expect_absent": [
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ]
+    },
+    {
+      "fixture": "prose-convention",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/conventions.md",
+        "20_projects/personal/demo/conventions-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 20_projects/personal/demo/conventions.md",
+        "예산 초과: 20_projects/personal/demo/conventions.md",
+        "예산 임박: 20_projects/personal/demo/conventions-2.md",
+        "예산 초과: 20_projects/personal/demo/conventions-2.md",
+        "하위 문서 목록",
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ],
+      "rationale": "convention(예산 12,000자) 경로. **하위 파일명이 순번**인지를 고정한다(D1 ⓐ) — §2.9는 `conventions-{주제}.md`를 규정하지만 위키 본문은 한글이 원칙이라 제목 전사가 §3 네이밍(영문소문자 하이픈)을 어기고, `## 주의점 / 함정`처럼 경로 구분자를 포함한 제목이 실재해 경로가 깨진다. 주제 정보는 `## 하위 문서` 목록의 담당 범위 줄이 담고 §7-30ⓑ가 그 목록↔실파일 양방향을 기계 검사한다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/conventions.md": [
+          "## 하위 문서",
+          "- [[20_projects/personal/demo/conventions-2|Demo 작업 규약 (Demo Conventions) — 릴리즈 절차]] — 릴리즈 절차"
+        ],
+        "20_projects/personal/demo/conventions-2.md": [
+          "> 상위 문서: [[20_projects/personal/demo/conventions|Demo 작업 규약 (Demo Conventions)]]",
+          "index_label: Demo 작업 규약 (Demo Conventions) — 릴리즈 절차"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-guide",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 40_guides/ui-ux/demo-guide.md",
+        "40_guides/ui-ux/demo-guide-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 40_guides/ui-ux/demo-guide.md",
+        "예산 초과: 40_guides/ui-ux/demo-guide.md",
+        "예산 임박: 40_guides/ui-ux/demo-guide-2.md",
+        "예산 초과: 40_guides/ui-ux/demo-guide-2.md",
+        "한/영 병기",
+        "예산 초과: 40_guides/ui-ux/demo-guide",
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ],
+      "rationale": "guide(ui-ux 예산 6,000자) 경로. 같은 폴더·같은 `guide_kind`를 유지하고 허브 복귀 링크를 두어 §2.6 허브+하위 형상과 같은 모습이 되는지 본다. **`index_label` 접미**(D1 ⓓ)도 함께 고정한다 — 원본이 한/영 병기이므로 접미를 붙여도 병기가 유지돼 §7-16이 자동 생성물에서 반복되지 않는다. **수렴도 함께 본다** — 옮겨도 하위가 곧바로 발동할 섹션을 그대로 옮기면 `-2-2`·`-2-2-2`로 번지는데, 파일명을 끝까지 적은 needle은 그 새 이름을 놓친다. 그래서 예산 위반 needle을 **접두**로 두어 원본·하위·재분할물 어느 것이 남아도 걸리게 했다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "expect_file_contains": {
+        "40_guides/ui-ux/demo-guide-2.md": [
+          "guide_kind: ui-ux",
+          "index_label: 데모 가이드 (Demo Guide) — 화면 구성",
+          "> 상위 문서: [[40_guides/ui-ux/demo-guide|데모 가이드 (Demo Guide)]]"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-entity",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 30_knowledge/tech/demo-tech.md",
+        "30_knowledge/tech/demo-tech-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 30_knowledge/tech/demo-tech.md",
+        "예산 초과: 30_knowledge/tech/demo-tech.md",
+        "예산 임박: 30_knowledge/tech/demo-tech-2.md",
+        "예산 초과: 30_knowledge/tech/demo-tech-2.md",
+        "고아 페이지(어디서도 링크되지 않음): 30_knowledge/tech/demo-tech-2",
+        "예산 초과: 30_knowledge/tech/demo-tech",
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ],
+      "rationale": "entity(예산 6,000자) 경로. 허브가 없는 타입이라 도달 경로를 `index.md` 기능별 인덱스(`build_index` 연쇄)와 상위 참조가 담당한다 — 신설 하위가 고아로 남지 않는지까지 본다. 타입별 필수 섹션이 `## 핵심`으로 feature와 다르다는 것도 이 케이스가 지킨다. **수렴도 함께 본다** — 옮겨도 하위가 곧바로 발동할 섹션을 그대로 옮기면 `-2-2`·`-2-2-2`로 번지는데, 파일명을 끝까지 적은 needle은 그 새 이름을 놓친다. 그래서 예산 위반 needle을 **접두**로 두어 원본·하위·재분할물 어느 것이 남아도 걸리게 했다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "expect_file_contains": {
+        "30_knowledge/tech/demo-tech.md": [
+          "## 핵심",
+          "**정본은 [[30_knowledge/tech/demo-tech-2|데모 기술 (Demo Tech) — 사용 프로젝트]]의 「사용 프로젝트」이다**"
+        ],
+        "30_knowledge/tech/demo-tech-2.md": [
+          "## 핵심",
+          "[사용 프로젝트] 이 문단은"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-oversize",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 30_knowledge/tech/demo-tech.md"
+      ],
+      "rationale": "**수렴 가드.** 이동 가능한 유일 섹션이 예산(entity 6,000자)보다 커서, 옮겨도 하위가 곧바로 발동한다 — 그런 섹션을 옮기면 같은 크기의 파일이 하나 더 생길 뿐이고 다음 실행이 그 하위를 또 쪼개 `-2-2`·`-2-2-2`로 번진다(가드 없는 구현에서 실측했다). 한 섹션은 더 쪼갤 수 없으므로 여기서 멈추는 것이 §7-2의 정지 가드이고, 남는 신호는 실패가 아니라 「더 나눌 것이 없다」는 보고다. **다른 픽스처는 이 가드를 태우지 못한다** — 섹션이 예산보다 작으면 옮긴 하위가 발동하지 않아 가드가 있으나 없으나 결과가 같다."
+    },
+    {
+      "fixture": "prose-impl",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 초과: 20_projects/personal/demo/feat-thing",
+        "예산 임박: 20_projects/personal/demo/feat-thing",
+        "구현 방법 섹션 누락",
+        "구현 근거 각주 누락",
+        "관련 파일 섹션 누락",
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ],
+      "rationale": "**`## 구현 방법`이 최대 섹션인 경우** — 실 vault에서 발동 직전인 형상이 정확히 이것이다(`feat-implement-task.md`의 그 섹션이 10,173자). 초기 구현은 이 섹션을 이동 제외에 넣어 여기서 「옮길 것이 없다」로 멈췄는데, §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을 옮겨도 게이트가 깨지지 않는다(원본에 헤딩 + 포인터가 남고 각주 정의도 남는다). 이동 제외는 지도(`## 관련 파일`)와 정체성(`## 개요`)뿐이라는 것을 이 케이스가 고정한다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "## 구현 방법",
+          "**정본은 [[20_projects/personal/demo/feat-thing-2|것 (Thing) — 구현 방법]]의 「구현 방법」이다**",
+          "[^src-thing]:"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "## 구현 방법",
+          "[구현 방법] 이 문단은",
+          "## 관련 파일",
+          "[^src-thing]:"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-single",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 30_knowledge/patterns/demo-pattern.md"
+      ],
+      "rationale": "**섹션이 하나뿐인데 예산보다 커진 경우**(Edge Case). 그 하나를 옮기면 원본이 헤딩과 포인터만 남은 껍데기가 되므로 옮기지 않고 멈춘다 — `len(secs) < 2` 분기를 태우는 유일한 케이스다(`prose-guard`는 「필수 섹션만 남아 movable이 없다」는 다른 분기를 태운다)."
+    },
+    {
+      "fixture": "prose-stub-cycle",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "feat-thing-4"
+      ],
+      "rationale": "**스텁 순환 가드.** `## 개요`(이동 제외 대상)만으로 그 자체로 예산만 한 문서라 실 콘텐츠를 다 옮겨도 발동이 풀리지 않는다. 옮기고 난 자리에는 헤딩과 포인터 한 줄만 남는데, 그 스텁을 후보에서 빼지 않으면 거의 같은 길이의 새 포인터로 바뀌기만 하면서 `-4`·`-5`로 그 스텁을 옮기고 또 옮긴다(문서가 줄지 않으니 종료 조건 셋 중 어느 것도 걸리지 않는다). **역검증에서 이 케이스는 FAIL이 아니라 타임아웃으로 드러난다** — 가드를 빼고 골든을 돌리면 판정에 닿기 전에 멈추지 않는다(실측). 그래서 `expect_absent`의 `feat-thing-4`는 유한하게 끝나되 신설이 `-3`까지인지를 보는 2차 방어이고, 1차 신호는 「끝나는가」다. 다른 픽스처는 이 경로를 태우지 못한다 — 필수 섹션 총량이 예산보다 작아 발동이 정상적으로 풀린다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "after_expect_absent": [
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ]
+    },
+    {
+      "fixture": "subdoc-missing",
+      "expect_keywords": [
+        "하위 문서 목록 누락: 20_projects/personal/demo/feat-thing.md의 '## 하위 문서'에 20_projects/personal/demo/feat-thing-2.md"
+      ],
+      "expect_absent": [
+        "하위 문서 목록 깨짐"
+      ],
+      "rationale": "§7-30ⓔ 역방향 — 분리해 나온 하위가 진입 파일 목록에 없으면 조회가 그 본문에 닿지 못한다(조회 홉 1). 판정 신호는 **파일명 순번 접두 + 복귀 링크 둘 다**다 — 접두만 쓰면 수기로 만든 무관한 순번 파일이 오탐되고, 복귀 링크만 쓰면 단순 참조가 섞인다."
+    },
+    {
+      "fixture": "subdoc-broken",
+      "expect_keywords": [
+        "하위 문서 목록 깨짐: 20_projects/personal/demo/feat-thing.md"
+      ],
+      "rationale": "§7-30ⓔ 정방향 — 목록이 실재하지 않는 하위를 가리키면 그 줄이 곧 막힌 길이다. convention(ⓑ)·guide(ⓓ)에만 있던 검사를 나머지 타입으로 넓힌 자리다. **축을 하나만 싣는다** — 목록에 정상 항목을 함께 둬 「누락」 축이 발화하지 않게 했다(한 케이스가 두 축을 담으면 한쪽을 제외할 때 나머지가 조용히 무력화된다).",
+      "expect_absent": [
+        "하위 문서 목록 누락"
+      ]
+    },
+    {
+      "fixture": "ptr-broken",
+      "expect_keywords": [
+        "정본 포인터 깨짐: 20_projects/personal/demo/feat-thing.md"
+      ],
+      "rationale": "본문을 옮긴 자리에 남는 정본 포인터가 없는 파일을 가리킨다. §7-1 링크 검사도 이 깨짐을 보지만, 여기서는 **포인터라는 맥락**으로 잡아 처방(다시 옮기거나 포인터를 고치거나)이 분명해진다."
+    },
+    {
+      "fixture": "ptr-nosection",
+      "expect_keywords": [
+        "정본 포인터 절 없음: 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_absent": [
+        "정본 포인터 깨짐"
+      ],
+      "rationale": "**「옮겼는데 못 찾는」 상태를 잡는 유일한 기계 확인.** 포인터가 가리키는 파일은 실재하지만 그 안에 같은 절 이름이 없다 — §7-1은 파일까지만 보므로 이 상태를 통과시킨다. 절 이름까지 대조해야 이동이 곧 유실이 되지 않는다."
+    },
+    {
+      "fixture": "subdoc-standalone",
+      "expect_keywords": [
+        "[ERR] 오류 0건"
+      ],
+      "expect_absent": [
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터"
+      ],
+      "rationale": "**복귀 링크 신호의 음성.** 파일명에 순번이 붙었을 뿐 분리해 나온 하위가 아닌 독립 페이지다 — 접두만으로 판정하면 이것이 「목록에서 빠진 하위」로 오탐된다. §7-30ⓔ가 접두와 **복귀 링크를 함께** 요구하는 이유가 이 자리이고, 그 요구를 빼면 이 케이스가 곧바로 WARN을 낸다(역검증에서 실측)."
+    },
+    {
+      "fixture": "subdoc-double-warn",
+      "expect_keywords": [
+        "규약 하위 문서 목록 누락"
+      ],
+      "expect_absent": [
+        "분리한 본문이 조회 경로 밖"
+      ],
+      "rationale": "**이중 WARN 방지.** convention 하위가 목록에서 빠진 상태는 §7-30ⓑ가 이미 보는 쌍이다 — ⓔ가 같은 쌍을 다시 지적하면 한 결함에 두 줄이 나와 처방이 흐려진다. ⓔ의 convention·guide 제외를 빼면 이 케이스가 두 WARN을 함께 내어 FAIL한다. **needle은 ⓑ와 구분되는 문면을 쓴다** — ⓔ 메시지의 접두(`하위 문서 목록 누락`)는 ⓑ의 `규약 하위 문서 목록 누락`에 부분 문자열로 들어가 ⓑ 자신을 잡는다(실측). 그래서 처방 문구(`분리한 본문이 …` / `분리한 규약이 …`)로 가른다."
+    },
+    {
+      "fixture": "subdoc-otherparent",
+      "expect_keywords": [
+        "[ERR] 오류 0건"
+      ],
+      "expect_absent": [
+        "분리한 본문이 조회 경로 밖"
+      ],
+      "rationale": "**복귀 링크의 대상까지 본다.** 파일명이 `feat-thing-2`라 순번 접두로는 `feat-thing`의 하위처럼 보이지만, 복귀 링크는 `feat-other`를 가리키고 실제로 그 문서의 목록에 등재돼 있다. 링크의 **존재**만 확인하는 구현은 이것을 `feat-thing`의 미등재 하위로 잘못 지적한다 — 신호를 둘 요구한 취지가 「그 진입 파일의 하위인가」이므로 대상 대조까지가 그 판정이다."
+    },
+    {
+      "fixture": "subdoc-archived",
+      "expect_keywords": [
+        "[ERR] 오류 0건"
+      ],
+      "expect_absent": [
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터"
+      ],
+      "rationale": "**`90_archive/` 제외**(Edge Case). 동결 사본에는 목록이 없어도 정상이다 — 규약이 수정을 막아 둔 자리에 수리를 요구하면 고칠 수 없는 WARN이 영구히 남는다(§8의 「백업 파일이 WARN을 만들지 않는다」와 같은 계열). 여기 상위·하위 쌍은 목록 없이도 침묵해야 한다."
+    },
+    {
+      "fixture": "prose-resplit-hub",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "분리한 본문이 조회 경로 밖",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ],
+      "expect_file_count": {
+        "20_projects/personal/demo.md": {
+          "20_projects/personal/demo/feat-thing-2": 1
+        },
+        "20_projects/personal/demo/feat-thing.md": {
+          "20_projects/personal/demo/feat-thing-2": 1
+        }
+      },
+      "rationale": "**두 소비처의 차이를 고정한다.** 재분할은 `## 하위 문서` 목록에 이전 회차 형제를 다시 적어야 하지만(그 목록은 매 회차 전량을 담는다), 허브 `## 기능 목록`은 **신설분만** 받아야 한다 — 형제는 지난 회차에 이미 등재됐다. 두 소비처에 같은 목록을 전달하면 허브 표에 같은 기능이 두 줄로 쌓이는데, **존재 여부로는 잡히지 않아**(있기는 있다) 개수를 센다. 이 픽스처는 허브에 형제가 **이미 등록된** 상태에서 시작해 그 차이를 드러낸다 — `prose-resplit`은 허브가 비어 있어 중복이 처음 등록처럼 보인다."
+    },
+    {
+      "fixture": "guide-shortlink",
+      "expect_keywords": [
+        "한/영 병기 누락: '도움말 스타일 안내'"
+      ],
+      "rationale": "옛 `## 가이드 / 레시피` 섹션의 **단축 wikilink** 행. 대상에 경로가 없어 형상만으로는 가릴 수 없었고, 폐지된 §7-27(섹션 스코프)이 보던 커버가 그만큼 비어 있었다 — 호출부가 전달한 페이지 집합으로 해소해 §7-16 병기 검사 대상으로 되돌린다."
+    },
+    {
+      "fixture": "guide-shortlink-dup",
+      "expect_keywords": [
+        "[ERR] 오류 0건"
+      ],
+      "expect_absent": [
+        "한/영 병기 누락: '도움말 스타일 안내'"
+      ],
+      "rationale": "**basename 충돌 — 해소하지 않는다.** 같은 이름 guide가 둘이면 링크가 어느 쪽을 가리키는지 알 수 없고, 그때 해소하는 것이 곧 오탐이다. 호출부가 충돌 키를 아예 빼서 전달하므로 이 행은 대상 밖으로 남는다."
+    },
+    {
+      "fixture": "guide-shortlink-nonguide",
+      "expect_keywords": [
+        "[ERR] 오류 0건"
+      ],
+      "expect_absent": [
+        "한/영 병기 누락: '도움말 패턴'"
+      ],
+      "rationale": "**델타 음성 — 단축 링크 대상이 guide가 아니다.** 해소는 guide 페이지 집합에서만 하므로 concept를 가리키는 행은 대상이 아니다. 넓게 잡으면 프로젝트·기술 표의 행까지 병기 요구를 받는데, 그 표는 §7-16의 대상이 아니다."
+    },
+    {
+      "fixture": "h3-missing",
+      "expect_keywords": [
+        "섹션 구역화 권장: 20_projects/personal/demo/feat-thing.md의 '## 동작(사용법)'",
+        "'### ' 소제목 0개"
+      ],
+      "expect_rc": 0,
+      "rationale": "§7-32 양성. 한 섹션이 6,000자를 지나면서 `### `가 하나도 없으면 **부분 조회가 되지 않는다** — 절차 K가 필요한 대목만 읽지 못하고 섹션 전체를 읽는다. **INFO 고정**이라 exit code는 그대로다(`expect_rc: 0`) — 어디서 끊을지가 내용 판단이라 코드가 대신할 수 없고, WARN이면 점진 적용 대상 전부가 매 lint마다 경고를 내 실제 결함이 묻힌다."
+    },
+    {
+      "fixture": "h3-present",
+      "expect_keywords": [
+        "[ERR] 오류 0건"
+      ],
+      "expect_absent": [
+        "섹션 구역화 권장"
+      ],
+      "rationale": "**음성 — 같은 크기인데 `### `가 있다.** 구역화의 처방은 분리가 아니라 소제목 추가이므로, 소제목이 하나라도 있으면 신호가 없다(크기 자체는 §7-2가 별도로 본다)."
+    },
+    {
+      "fixture": "h3-nonfeature",
+      "expect_keywords": [
+        "[ERR] 오류 0건"
+      ],
+      "expect_absent": [
+        "섹션 구역화 권장"
+      ],
+      "rationale": "**델타 음성 — feature 아닌 타입은 대상이 아니다.** 실측 근거가 feature에만 있어 대상을 그 한 타입으로 두었고, 확대는 다른 타입에서 같은 관측이 나온 뒤에 한다(타입별 임계 테이블을 미리 만들지 않는다)."
+    },
+    {
+      "fixture": "h3-fenced",
+      "expect_keywords": [
+        "섹션 구역화 권장: 20_projects/personal/demo/feat-thing.md의 '## 동작(사용법)'"
+      ],
+      "expect_rc": 0,
+      "rationale": "**코드펜스 제외.** 펜스 **안**의 `### `는 출력 예시이지 소제목이 아니다 — 원문으로 판정하면 그것이 소제목으로 세어져 **통짜 섹션이 구역화된 것처럼 가려진다**. 판정을 `strip_code` 사본으로 하는 이유가 이 자리이고, 다른 픽스처는 이 축을 태우지 못한다(펜스 안에 헤딩이 없어 원문으로 재도 결과가 같다)."
+    },
+    {
+      "fixture": "dec-fenced",
+      "auto_split": true,
+      "expect_keywords": [
+        "롤오버 — 20_projects/personal/demo/decisions.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 20_projects/personal/demo/decisions.md",
+        "예산 초과: 20_projects/personal/demo/decisions.md"
+      ],
+      "expect_file_contains": {
+        "90_archive/20_projects/personal/demo/decisions.md": [
+          "옛 주제 01",
+          "옛 주제 09"
+        ]
+      },
+      "rationale": "**항목 구간의 경계를 코드펜스가 가로채지 못하게 한다.** 결정 항목이 근거로 마크다운을 인용하면 본문에 `## `로 시작하는 줄이 들어온다 — 원문으로 경계를 재는 구현은 거기서 잘라 **그 아래 전 항목을 「뒷부분」으로 넘기고 롤오버 대상에서 통째로 빼버린다**(신호는 그대로 나므로 조용히 빠진다). 판정을 `strip_code` 사본으로 하면 펜스 안이 공백이 되어 경계가 제자리를 지킨다. 다른 decision-log 픽스처는 본문에 펜스가 없어 이 축을 태우지 못한다. **펜스는 들여쓰지 않는다** — 들여쓴 펜스의 `## `는 경계 정규식(`(?m)^##\\s`)에 애초에 걸리지 않아 방어를 걷어내도 이 케이스가 통과해버린다(역검증 FAIL 0으로 실측)."
+    },
+    {
+      "fixture": "log-stray",
+      "expect_keywords": [
+        "log 이력 항목 오배치",
+        "'## 아카이브 인덱스'에 이력 항목 1건"
+      ],
+      "rationale": "**롤오버가 훑지 않는 구역에 이력 항목이 놓이면 조용히 유실된다.** 롤오버는 `## 최근 변경`만 보므로 `## 아카이브 인덱스`에 섞인 항목은 영영 월별 파일로 넘어가지 않고, 그 시기를 조회하면 아카이브에도 본문에도 없어 「기록 없음」으로 읽힌다(실 vault log.md에서 큐 소비 기록 2건이 이 상태였다). 정상 항목은 `- {YYYY-MM}.md: …` 형태라 날짜 대괄호로 가른다. `log-under`와 픽스처를 나눈 이유는 그 케이스의 축이 「임계 미만이면 처방이 돌지 않는다」라서다 — 한 픽스처에 두 축을 실으면 한쪽을 손댈 때 다른 쪽이 조용히 무력화된다."
     }
   ]
 }

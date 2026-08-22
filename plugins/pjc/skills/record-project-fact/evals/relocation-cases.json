@@ -1,0 +1,114 @@
+{
+  "cases": [
+    {
+      "fixture": "near-96",
+      "expect_rc": 0,
+      "expect_keywords": [
+        "옮긴 절:",
+        "docs/harness-conventions.md",
+        "이관 후:"
+      ],
+      "expect_absent": [
+        "[이관 불가]",
+        "[검증 실패]"
+      ],
+      "expect_file_contains": {
+        "AGENTS.md": [
+          "## Build & Test",
+          "## DO NOT",
+          "**정본은 `docs/harness-conventions.md`의 「Conventions」이다**"
+        ],
+        "docs/harness-conventions.md": [
+          "## Conventions",
+          "[Conventions] 이 문단은"
+        ]
+      },
+      "rationale": "발동(96%) → 가장 큰 절부터 이관. 이관처는 **최다 등장 경로**로 결정론 선정하고(3회 등장), 잔류 절 4종은 그대로 남으며 옮긴 자리에는 절 제목 + 포인터가 남는다."
+    },
+    {
+      "fixture": "under-80",
+      "expect_rc": 0,
+      "expect_keywords": [
+        "이관 대상 아님"
+      ],
+      "expect_absent": [
+        "옮긴 절:"
+      ],
+      "rationale": "미발동(80%). 여유가 있는 파일을 건드리면 이관이 곧 소음이 된다 — 발동선 아래에서는 아무것도 하지 않는다."
+    },
+    {
+      "fixture": "keep-only",
+      "expect_rc": 0,
+      "expect_keywords": [
+        "[이관 불가]",
+        "잔류 절만으로"
+      ],
+      "expect_absent": [
+        "옮긴 절:"
+      ],
+      "rationale": "**정지 조건.** 잔류 절만으로 이미 상한을 넘으면 옮겨도 해소되지 않는다 — 그때는 아무것도 옮기지 않고 사실만 보고한다(잔류 절을 줄 단위로 가르지 않는다는 규정이 여기서 지켜진다)."
+    },
+    {
+      "fixture": "ptr-orphan",
+      "verify_only": true,
+      "dest_rel": "docs/agents-detail.md",
+      "expect_ok": false,
+      "expect_problems": [
+        "포인터가 가리키는 절이 이관처에 없다"
+      ],
+      "rationale": "**검증이 실제로 잡는가**(델타 음성). 정상 경로만 돌리면 검증 함수는 늘 통과라 「잡는다」가 증명되지 않는다 — 포인터가 실재하지 않는 절을 가리키는 상태를 직접 만들어 verify가 FAIL을 내는지 본다. 이것이 「옮겼는데 못 찾는」 상태를 막는 유일한 확인이다."
+    },
+    {
+      "fixture": "dest-new",
+      "expect_rc": 0,
+      "expect_keywords": [
+        "옮긴 절:",
+        "docs/agents-detail.md",
+        "(신설)"
+      ],
+      "expect_absent": [
+        "[이관 불가]",
+        "[검증 실패]"
+      ],
+      "expect_file_contains": {
+        "docs/agents-detail.md": [
+          "## Conventions",
+          "[Conventions] 이 문단은"
+        ],
+        "AGENTS.md": [
+          "**정본은 `docs/agents-detail.md`의 「Conventions」이다**"
+        ]
+      },
+      "rationale": "**이관처 후보 0 → 신설 분기.** 본문에 `.md` 경로가 하나도 없으면 `docs/agents-detail.md`를 만든다(`docs/`가 없으면 함께 만든다). 다른 픽스처는 기존 후보가 있어 이 분기를 태우지 못한다."
+    },
+    {
+      "fixture": "near-96",
+      "sabotage_verify": true,
+      "expect_rc": 1,
+      "expect_keywords": [
+        "[검증 실패]",
+        "사본으로 원복했다"
+      ],
+      "expect_unchanged": [
+        "AGENTS.md"
+      ],
+      "rationale": "**원복 전체 흐름**(사본 → 이관 → 실패 감지 → 복원). `verify()`를 강제로 실패시켜 `relocate()`가 실제로 되돌리는지 본다 — `ptr-orphan`은 검증 함수만 고립 호출하므로 이 경로를 태우지 못하고, 원복 로직에 결함이 있어도 골든이 못 잡는다(실제로 신설 이관처를 지우지 못하는 죽은 분기가 있었다)."
+    },
+    {
+      "fixture": "dest-new",
+      "sabotage_verify": true,
+      "expect_rc": 1,
+      "expect_keywords": [
+        "[검증 실패]",
+        "사본으로 원복했다"
+      ],
+      "expect_unchanged": [
+        "AGENTS.md"
+      ],
+      "expect_absent_files": [
+        "docs/agents-detail.md"
+      ],
+      "rationale": "**신설 이관처의 원복.** 이 회차에 만든 이관처는 사본이 없으므로 되돌릴 대상이 아니라 **지울** 대상이다. 판정을 「백업 목록이 비었는가」로 두면 AGENTS.md 백업이 늘 들어가 항상 거짓이 되어 아무것도 지우지 못한다(실제로 그런 죽은 분기가 있었다) — 원복 후 그 파일이 남지 않는지 직접 본다."
+    }
+  ]
+}

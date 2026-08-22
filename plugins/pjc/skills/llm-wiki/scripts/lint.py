@@ -26,7 +26,8 @@
       / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
       / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향
         ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향)
-      / 작업 규약 미마이그레이션(§7-31 — 허브에 '## 작업 규약·주의사항' 잔존 시 INFO, conventions.md 이전 대상).
+      / 작업 규약 미마이그레이션(§7-31 — 허브에 '## 작업 규약·주의사항' 잔존 시 INFO, conventions.md 이전 대상)
+      / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 초과하면서 '### ' 0개면 INFO).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 자동 백업 — schema §7 서두 정본).
 범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
@@ -35,7 +36,7 @@
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3~§4·이 파일 3중 동기화).
 """
-import os, re, sys, glob, shutil, datetime, subprocess
+import os, re, sys, glob, shutil, datetime, subprocess, collections
 
 # Windows 콘솔(cp949)에서도 한글이 깨지지 않도록 UTF-8 출력 강제
 try:
@@ -80,6 +81,19 @@ BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 —
     "convention": 12000,
 }
 GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
+# §7-16(병기)·§7-14(행수)가 「기능별 인덱스 유형 행」으로 인정하는 **대상 토큰**.
+#  (feature 파일명 접두, guide 경로 조각) 순이며 매칭 방식이 서로 다르다 -- 앞은 basename
+#  접두, 뒤는 경로 포함이다. 모듈 상수로 둔 이유는 `check_consistency.py`가 이 값을
+#  wiki-schema §3의 고정 형식 1줄과 기계 대조하기 때문이다(함수 본문 리터럴은 읽을 수 없다).
+FEAT_ROW_TARGET_TOKENS = ("feat-", "40_guides/")
+# §7-32 feature 섹션 구역화 신호 — 한 `## ` 섹션이 이 문자 수를 초과하면서 `### ` 소제목이
+#  하나도 없으면 INFO. **파일 예산(§7-2)과 다른 축이다** -- 그쪽은 「파일이 크다」를 보고
+#  여기는 「한 섹션이 통짜라 부분 조회가 안 된다」를 본다(파일이 예산 안이어도 발화한다).
+#  값의 근거: 실 vault feature 섹션 1,052개 전수 실측 -- 초과 13섹션 중 소제목 0개가 12섹션.
+SECTION_H3_CHARS = 6000
+# 단축 wikilink를 페이지 집합으로 해소하는 축이 켜져 있는가(§3 「하위호환 형상」 ②).
+#  **해소 로직 자체는 골든이 본다** -- 이 플래그가 대조하는 것은 「그 축이 있다」는 사실뿐이다.
+FEAT_ROW_STEM_RESOLVE = True
 PLATFORM_VOCAB = {"windows-desktop", "web", "mobile", "cli", "cross"}
 ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
@@ -125,6 +139,10 @@ DEC_PTR_RX = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
 #  대상 파일만 바꿔 쓴다. 통합 함수를 만들지 않는 이유: 대상 섹션·현행 경로 도출 규칙·--fix 대상
 #  여부가 달라(§7-30은 --fix 비대상) 분기 파라미터만 늘고 --fix 안전 경계가 흐려진다.
 CHG_PTR_RX = re.compile(r"(90_archive/[^\s`()]+changes\.md)")
+# 자동 분할 하위의 복귀 링크(§4 공통 규약) — 이 줄이 있어야 「분리해 나온 하위」로 본다.
+SUBDOC_BACK_RX = re.compile(r"(?m)^>\s*상위 문서:\s*\[\[([^\]|]+)")
+# 본문을 옮긴 자리에 남는 정본 포인터. 대상 파일과 **절 이름**을 함께 뽑아 도달성을 검사한다.
+PROSE_PTR_RX = re.compile(r"\*\*정본은 \[\[([^\]|]+)\|[^\]]*\]\]의 「([^」]+)」이다\*\*")
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
@@ -134,6 +152,17 @@ CATEGORY_VOCAB = {"personal", "work"}
 UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log", "convention"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, wiki-schema §4·§8)
 SPECIAL_BUDGET = {"log.md": 6000}
+# 타입별 **더 낮은 목표치** — 처방을 어디까지 수행하고 멈추는가(§7-2 종료 조건의 마지막 문장:
+#  "타입이 더 낮은 목표치를 따로 정하면 그쪽이 우선한다"). log.md만 §8이 3000자를 명시한다.
+#  나머지 타입은 목표치가 따로 없어 §7-2 종료 조건(발동이 풀릴 때까지)이 그대로 적용된다.
+BUDGET_ROLLOVER_TARGET = {"log.md": 3000}
+# log 롤오버가 목표보다 더 내려가는 여유 — §4 7번 기록 1줄이 처방 직후 append되므로,
+#  목표에 딱 맞춰 멈추면 그 줄 때문에 다음 실행이 또 롤오버한다(실측 3,081/3,000).
+#  기록 한 줄은 길어야 300자 남짓이라 그만큼을 미리 비워 수렴시킨다.
+LOG_ROLLOVER_SLACK = 300
+# project 허브 `## 최근 주요 변경` 유지 개수(§2.2·§8 — 3~5개 유지, 6번째가 생기면 롤오버).
+#  **문자 예산과 무관한 별개 트리거**다(§7-2 「별개 트리거」ⓑ) — budget_state를 타지 않는다.
+HUB_CHANGES_KEEP = 5
 # 신선도·고아·타입 검사에서 제외하는 인프라 타입 (위키 본문 페이지가 아님)
 INFRA_TYPES = {"index", "log", "dashboard", "schema"}
 # 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
@@ -339,7 +368,75 @@ def budget_split_suppressed(fm, chars):
     return judged > 0 and chars <= judged * (1 + BUDGET_REJUDGE_MARGIN)
 
 
-def feat_row_name(line):
+BudgetState = collections.namedtuple(
+    "BudgetState",
+    "typ budget chars eff_chars fence_note over near critical suppressed target stage")
+
+
+def budget_state(rel_path, fm, text):
+    """§7-2 예산 조건을 **한 곳에서** 계산해 BudgetState로 돌려준다. 대상이 아니면 None.
+
+    이 함수가 유일 구현인 이유: 2026-08-17 결정(예산 트리거 §7-2 단일 정의화)이 **산문에서**
+    이룬 것을 코드에서도 유지한다. 종전에는 같은 판정이 메인 루프의 SPECIAL_BUDGET 분기와
+    일반 분기에 각각 인라인돼 있었고, 여기에 `--auto-split`이 자기 판정을 또 두면 세 벌이 된다.
+    조건이 복제되면 한 자리만 고쳐지는 드리프트가 생기는데, 그 드리프트는 개별 지점을 고치는
+    방식으로 6라운드를 돌아도 수렴하지 않았다(v1.177 실측).
+
+    필드 의미:
+      over/near/critical -- §7-2 발동 판정의 세 축. near는 선행 게이트(자체 신호 없음),
+        critical이 실제 발동이다(억제 전 값 -- suppressed와 함께 읽는다).
+      suppressed -- 「분리 불가 판정」(budget_split)이 유효해 신호가 강등되는 상태.
+        **`--auto-split`은 이 페이지를 건드리지 않는다** -- 규정이 「더 나눌 것이 없다」고
+        판정한 것을 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다.
+      target -- 처방을 어디까지 수행하고 멈추는가. 타입별 더 낮은 목표치가 있으면 그 값,
+        없으면 None(그 경우 종료 기준은 「발동이 풀릴 때까지」이지 「예산 이내」가 아니다).
+      stage -- 다단 처방의 진입 단계. convention은 ①(무효 항목 제거)이 「무엇이 무효인가」를
+        묻는 판단이라 자동 경로가 수행할 수 없어 **2부터 시작**한다(하위 분리). ①을 건너뛰어도
+        손실이 없다 -- 제거 대신 분리하면 내용이 남을 뿐이다. 나머지 타입은 단계가 하나다."""
+    chars = len(text)
+    if rel_path in SPECIAL_BUDGET:
+        budget, typ, eff_chars, fence_note = SPECIAL_BUDGET[rel_path], "log", chars, ""
+    else:
+        typ = fm.get("type", "")
+        eff_chars, fence_note = chars, ""
+        if typ == "guide":
+            gk = fm.get("guide_kind", "")
+            budget = GUIDE_BUDGET.get(gk, 9000)
+            # platform-bootstrap·ui-ux는 펜스 내부를 뺀 유효 문자 수로 잰다(§2.6 예산 판정 방식).
+            if gk in ("platform-bootstrap", "ui-ux"):
+                fenced = fenced_interior_chars(text)
+                if fenced:
+                    eff_chars = chars - fenced
+                    fence_note = f", 코드 펜스 {fenced}자 제외"
+        elif typ in BUDGET:
+            budget = BUDGET[typ]
+        else:
+            return None
+    if not budget:
+        return None
+    near = eff_chars >= budget * BUDGET_NEAR_RATIO
+    critical = near and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
+                         or budget - eff_chars < BUDGET_CRITICAL_SLACK)
+    return BudgetState(
+        typ=typ, budget=budget, chars=chars, eff_chars=eff_chars, fence_note=fence_note,
+        over=eff_chars > budget, near=near, critical=critical,
+        suppressed=budget_split_suppressed(fm, eff_chars),
+        target=BUDGET_ROLLOVER_TARGET.get(rel_path),
+        stage=2 if typ == "convention" else 1)
+
+
+def budget_resolved(state):
+    """처방을 더 수행할 필요가 없는 상태인가(§7-2 종료 조건).
+
+    **「예산 이내」가 종료 기준이 아니다** -- 한 항목·한 절만 옮겨 문턱 바로 아래로 내려오면
+    다음 추가로 곧 재발화하므로, 발동이 풀릴 때까지 오래된 것부터 반복한다. 타입이 더 낮은
+    목표치를 따로 정했으면(log.md 3000자) 그쪽이 우선한다."""
+    if state.target is not None:
+        return state.eff_chars <= state.target
+    return not (state.over or state.critical)
+
+
+def feat_row_name(line, guide_stems=None):
     """기능별 인덱스 유형 행이면 **첫 컬럼의 표시 이름**을, 아니면 None을 돌려준다
     (§7-14 행수·§7-16 병기 공용 — 이중 구현 방지. 판정과 이름 추출을 한 함수에 두는 이유는
     §7-16이 따로 `split("|")[1]`을 쓰면 아래 옛 형상의 `\\|` 이스케이프에서 이름이 잘리기 때문).
@@ -361,6 +458,7 @@ def feat_row_name(line):
     그대로 유지**하고(wiki-schema §4의 마커 없는 vault 분기) 그 행은 첫 컬럼이 wikilink다. 평문만
     받으면 그 vault의 guide 행은 폐지된 전용 검사에도 이 검사에도 걸리지 않아 **병기 무신호 구간**이
     생긴다 -- 폐지가 만든 공백이라 하위호환 형상을 여기서 함께 받는다."""
+    feat_prefix, guide_seg = FEAT_ROW_TARGET_TOKENS
     s = line.lstrip()
     if not s.startswith("|"):
         return None
@@ -378,21 +476,24 @@ def feat_row_name(line):
         if not alias:
             target, _, alias = inner.partition("|")
         target = target.replace("\\", "").split("#")[0].strip()
-        if "40_guides/" not in target:
-            return None
+        if guide_seg not in target:
+            # 단축 wikilink(`[[help-style|...]]`)는 대상에 경로가 없어 형상만으로는 가릴 수 없다.
+            #  호출부가 전달한 페이지 집합으로 **해소되면** 받는다 -- 폐지된 §7-27은 섹션 스코프라
+            #  경로를 보지 않고 잡았고, 그 커버를 여기서 되찾는다(실 vault 가이드 행은 전부
+            #  full path라 이 경로는 지금 오지 않지만, 형상이 규정에 남아 있는 한 사각이다).
+            #  해소는 `/`가 없는 단축 대상에 한하고, basename이 유일할 때만 성립한다
+            #  (호출부가 충돌 키를 빼고 전달한다 — 둘 중 어느 쪽인지 정할 수 없을 때
+            #  해소하는 것이 곧 오탐이다).
+            resolved = guide_stems.get(target) if guide_stems and "/" not in target else None
+            if not resolved:
+                return None
+            target = resolved       # recipe 제외는 바로 아래 공통 체크가 담당한다
         if "40_guides/recipes/" in target:
             # 폐지된 §7-27이 recipe를 명시 제외했던 이유를 승계한다(규정 정본: wiki-schema §3
             #  「하위호환 형상」 ①) -- 마커 없는 vault에서 recipe는 `## 기능별 인덱스`(첫 컬럼 평문)와
             #  `## 가이드 / 레시피`(첫 컬럼 wikilink) **두 곳**에 실리므로, 여기서 받으면 같은
             #  페이지에 병기 WARN이 두 번 난다(이중 요구). 평문 쪽 행이 이미 대상이라 커버는 유지된다.
             return None
-        # ⚠ 하위호환 수용은 **full path 형상 한정**이다(wiki-schema §3 「하위호환 형상」 ②) --
-        #  단축 wikilink(`[[help-style|...]]`)는 대상이 `40_guides/`를 담지 않아 여기서도 조건 ③에서도
-        #  탈락한다. 폐지된 §7-27은 섹션 스코프라 경로를 보지 않고 잡았으므로 그만큼 커버가 좁다.
-        #  닫으려면 링크 대상을 페이지 집합에 해소해야 하는데(이 함수는 행 문자열만 받는다) 실 vault
-        #  가이드 행은 전부 full path라 실사용 근거 없이 구조를 바꾸지 않는다.
-        #  실측(재현 가능): vault에서 `git show 53d036e^:index.md`의 `## 가이드 / 레시피` 섹션 링크 행
-        #  **111행 중 첫 컬럼 full path 111 / 단축 0**.
         name = alias.strip() or target.split("/")[-1]
     else:
         if not first:
@@ -400,7 +501,9 @@ def feat_row_name(line):
         name = first
     for m in re.findall(r"\[\[([^\]|]+)", s):
         t = m.replace("\\", "").split("#")[0].strip()
-        if t.split("/")[-1].startswith("feat-") or "40_guides/" in t:
+        if t.split("/")[-1].startswith(feat_prefix) or guide_seg in t:
+            return name
+        if guide_stems and "/" not in t and t in guide_stems:
             return name
     return None
 
@@ -646,6 +749,53 @@ def _table(header, sep, rows, empty_note):
     return out
 
 
+def _chunk_rows(rows, limit):
+    """행 목록을 limit 단위로 자른 리스트의 리스트. 행이 limit 이하면 통째로 한 덩어리다.
+
+    **나누어떨어져도 빈 덩어리를 만들지 않는다** — 400행 / 200 임계면 파일 3개가 아니라
+    2개다(빈 sub-index는 조회에 쓸모가 없고 §7-15 목록만 늘린다).
+    덩어리 수에 상한이 없다 -- category 안에서 순번이 무제한으로 늘 뿐 계층은 깊어지지
+    않으므로(§4 3단계), 지식이 몇 배가 되어도 조회 홉 1이 유지된다."""
+    if len(rows) <= limit:
+        return [rows]
+    return [rows[i:i + limit] for i in range(0, len(rows), limit)]
+
+
+def _emit_sub_index(sub_links, sub_files, base, label, rows, header, sep, empty_note):
+    """행을 임계 단위로 잘라 sub-index 파일 1~N개를 낸다(§4 3단계 순번 분할).
+    `sub_links`(목록 링크)·`sub_files`(파일명 → 본문 행)에 결과를 채워 넣는다.
+
+    **라우팅은 `sorted(pages)` 정렬의 슬라이스**라 같은 vault면 같은 청크가 나온다
+    (생성기는 매 실행 전체를 다시 만들므로 「append-only 증분」이라는 수기 절차 전제가
+    여기서는 성립하지 않는다). 한 덩어리면 종전대로 무순번 이름을 쓴다 -- 임계에 닿지
+    않은 vault의 파일명을 바꾸지 않기 위함이다(무회귀)."""
+    chunks = _chunk_rows(rows, INDEX_FEAT_ROWS)
+    for i, chunk in enumerate(chunks, start=1):
+        name = base if len(chunks) == 1 else "%s-%d" % (base, i)
+        suffix = "" if len(chunks) == 1 else " (%d/%d)" % (i, len(chunks))
+        sub_links.append("[[%s|%s]]" % (name, label + suffix))
+        sub_files[name] = _table(header, sep, chunk, empty_note)
+
+
+def _stale_sub_indexes(vault, keep_names):
+    """이번 생성 대상이 아닌 기존 `index-*.md` 경로 목록(생성물 정리 대상).
+
+    삭제 조건을 **3중으로 좁힌다**: ① 파일명이 `index-*.md` ② frontmatter `type: index`
+    ③ 이번 생성 대상(keep_names) 밖. 사용자가 만든 다른 파일을 지우지 않기 위함이며,
+    읽을 수 없는 파일은 판정 불가이므로 **건드리지 않는다**(세 조건 중 ②를 확인할 수 없다)."""
+    out = []
+    for p in sorted(glob.glob(os.path.join(glob.escape(vault), "index-*.md"))):
+        stem = os.path.basename(p)[:-3]
+        if stem in keep_names:
+            continue
+        text, _bom, _nl = _read_page(p)
+        if text is None:
+            continue          # 읽기 실패 -- 타입을 확인할 수 없으면 삭제 대상으로 보지 않는다
+        if frontmatter(text).get("type") == "index":
+            out.append(p)
+    return out
+
+
 def _sub_index_text(name, rows):
     """sub-index 파일 본문. 생성물이므로 머리말에 그 사실을 적는다 --
     수기로 고쳐도 다음 `--build-index`가 덮어쓴다는 것을 파일 자신이 알려야 한다.
@@ -666,79 +816,39 @@ def _sub_index_text(name, rows):
             "## 기능별 인덱스\n\n%s\n") % (name, title, lead, "\n".join(rows))
 
 
+def _aux_index_text(name, title, body_lines):
+    """본체에서 덜어낸 비분할 섹션을 담는 sub-index 본문(§4 1단계 자동 수행).
+
+    `_sub_index_text`와 나누어 두는 이유: 그쪽은 헤딩이 `## 기능별 인덱스`로 **고정**돼야
+    한다(§7-14 행수·§7-16 병기 검사가 그 헤딩으로 스코프를 잡는다). 여기 담기는 것은
+    프로젝트 테이블·기술 스택·범용 패턴·미해결 질문이라 그 두 검사의 대상이 아니고,
+    자기 헤딩을 그대로 가져가야 §7-23 등 섹션 이름으로 찾는 검사가 계속 찾을 수 있다."""
+    return ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
+            "# %s\n\n> [[index|위키 인덱스]] 본체가 임계를 지나 덜어낸 구역이다."
+            " **이 파일은 `--build-index`가 생성한다 -- 수기 편집은 다음 생성에서 사라진다.**\n\n"
+            "%s\n") % (name, title, "\n".join(body_lines))
+
+
+# 본체가 임계를 지날 때 덜어낼 수 있는 구역 — (섹션 키, 파일명, 제목).
+#  파일명에 하이픈을 하나만 쓰는 것은 §7-15 목록 정합의 stem 정규식(`index-[a-z]+(-\d+)?`)에
+#  맞추기 위해서다. 두 단어를 이으면 그 검사가 stem을 잘라 읽어 「미등록」을 오탐한다.
+#  프로젝트 테이블 둘은 한 파일에 함께 담는다(개별 분리하면 이름이 두 단어가 된다).
+AUX_INDEX_GROUPS = [
+    ("projects", "index-projects", "프로젝트 카탈로그"),
+    ("tech", "index-tech", "기술 스택 지식"),
+    ("patterns", "index-patterns", "범용 패턴"),
+    ("questions", "index-questions", "미해결 질문"),
+]
+# 키 → (파일명, 제목) 조회용. 위 목록이 순서를 정하고 이 dict는 조회만 맡는다(같은 4항목을
+#  조회할 때마다 다시 순회하지 않게).
+AUX_INDEX_META = {k: (n, t) for k, n, t in AUX_INDEX_GROUPS}
+
+
 def build_index(vault, dry_run):
     """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 6섹션으로 채우고, category별
     sub-index를 함께 생성한다. 마커 밖은 한 글자도 바꾸지 않는다.
+    본체가 `INDEX_BODY_LINES`를 지나면 비분할 구역을 큰 것부터 덜어낸다(§4 1단계).
     반환: 종료 코드(0 정상 / 1 마커 없음·읽기·쓰기 실패)."""
-    pages = scan_index_pages(vault)
-    pending = []          # 라벨 미역이관 페이지 (index_label 부재)
-    body, sub_files = [], {}
-
-    for cat, title in (("personal", "개인 프로젝트"), ("work", "업무 프로젝트")):
-        rows, pend = _rows_projects(pages, cat)
-        pending += pend
-        body.append("## " + title)
-        body.append("")
-        body += _table("| 프로젝트 | 플랫폼 | 기술 스택 | 상태 |",
-                       "|----------|--------|-----------|------|", rows,
-                       "아직 없음 -- %s project 페이지 0개" % cat)
-        body.append("")
-
-    # 기능별 인덱스: 본체에는 sub-index 목록만 두고 실제 행은 전부 sub-index로 낸다.
-    #  project feature는 category별(§4 2단계)로, guide 전 종류는 index-guides로 간다 --
-    #  본체가 얇아야 절차 K가 매 코드 세션에서 이 파일을 여는 비용이 낮다(실측 39,747자였다).
-    sub_links = []
-    for cat, title in (("personal", "개인"), ("work", "업무")):
-        rows, pend = _rows_features(pages, cat)
-        pending += pend
-        if not rows:
-            continue
-        name = "index-%s" % cat
-        sub_links.append("[[%s|%s 프로젝트 기능별 인덱스]]" % (name, title))
-        sub_files[name] = _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
-                                 "|------|--------|----------|------|", rows, "없음")
-    # 가이드·레시피 통합 표 -- 종전의 본체 recipe 행 + `## 가이드 / 레시피` 섹션을 한 표로 합친 것.
-    #  두 섹션이 같은 recipe를 각각 실어 실 vault에서 106행이 중복이었다(_rows_guides docstring).
-    guide_rows, pend = _rows_guides(pages)
-    pending += pend
-    if guide_rows:
-        sub_links.append("[[index-guides|가이드 / 레시피 인덱스]]")
-        sub_files["index-guides"] = _table(
-            "| 이름 | 종류 | 플랫폼 | 상세 |", "|------|------|--------|------|",
-            guide_rows, "가이드 없음")
-    body.append("## 기능별 인덱스")
-    body.append("")
-    if sub_links:
-        body.append("> **분할 인덱스**: 기능별 인덱스 행은 전부 sub-index에 있다 -- "
-                    + " · ".join(sub_links) + ". 한/영 어느 쪽으로 grep해도 해당 sub-index "
-                    "한 줄에서 잡히므로, 본체를 통째로 읽지 말고 관련 sub-index만 연다.")
-    else:
-        body += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
-                       "|------|--------|----------|------|", [], "등재된 기능·가이드 없음")
-    body.append("")
-
-    rows, pend = _rows_knowledge(pages, "entity", "entity_name", "used_by")
-    pending += pend
-    body.append("## 기술 스택 지식 (tech/)")
-    body.append("")
-    body += _table("| 기술 | 사용 프로젝트 |", "|------|--------------|", rows, "entity 없음")
-    body.append("")
-
-    rows, pend = _rows_knowledge(pages, "concept", "concept_name", "related_projects")
-    pending += pend
-    body.append("## 범용 패턴 (patterns/)")
-    body.append("")
-    body += _table("| 패턴 | 관련 프로젝트 |", "|------|--------------|", rows, "concept 없음")
-    body.append("")
-
-    rows, pend = _rows_questions(pages)
-    pending += pend
-    body.append("## 미해결 질문")
-    body.append("")
-    body += _table("| 질문 | 상태 | 관련 |", "|------|------|------|", rows, "미해결 질문 없음")
-
-    generated = "\n".join(body)
-
     idx_path = os.path.join(vault, "index.md")
     try:
         with open(idx_path, "rb") as fh:
@@ -762,6 +872,110 @@ def build_index(vault, dry_run):
         print("마커 순서 이상(END가 BEGIN보다 앞) -- index.md를 덮어쓰지 않았습니다.")
         return 1
     _, tail = rest.split(AUTO_INDEX_END, 1)
+
+    pages = scan_index_pages(vault)
+    pending = []          # 라벨 미역이관 페이지 (index_label 부재)
+    body, sub_files = [], {}
+    # 구역별로 모았다가 마지막에 조립한다 -- 본체가 임계를 지나면 큰 구역부터 sub-index로
+    #  덜어내야 하는데(§4 1단계), 곧바로 body에 이어 붙이면 그 판정을 할 대상이 없다.
+    groups = {k: [] for k, _n, _t in AUX_INDEX_GROUPS}
+    aux_files = {}         # 덜어낸 구역: 파일명 -> (제목, 본문 줄) — 렌더러가 sub_files와 다르다
+
+    for cat, title in (("personal", "개인 프로젝트"), ("work", "업무 프로젝트")):
+        rows, pend = _rows_projects(pages, cat)
+        pending += pend
+        groups["projects"] += ["## " + title, ""]
+        groups["projects"] += _table("| 프로젝트 | 플랫폼 | 기술 스택 | 상태 |",
+                                     "|----------|--------|-----------|------|", rows,
+                                     "아직 없음 -- %s project 페이지 0개" % cat)
+        groups["projects"].append("")
+
+    # 기능별 인덱스: 본체에는 sub-index 목록만 두고 실제 행은 전부 sub-index로 낸다.
+    #  project feature는 category별(§4 2단계)로, guide 전 종류는 index-guides로 간다 --
+    #  본체가 얇아야 절차 K가 매 코드 세션에서 이 파일을 여는 비용이 낮다(실측 39,747자였다).
+    sub_links = []
+
+    for cat, title in (("personal", "개인"), ("work", "업무")):
+        rows, pend = _rows_features(pages, cat)
+        pending += pend
+        if not rows:
+            continue
+        _emit_sub_index(sub_links, sub_files, "index-%s" % cat,
+                        "%s 프로젝트 기능별 인덱스" % title, rows,
+                        "| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                        "|------|--------|----------|------|", "없음")
+    # 가이드·레시피 통합 표 -- 종전의 본체 recipe 행 + `## 가이드 / 레시피` 섹션을 한 표로 합친 것.
+    #  두 섹션이 같은 recipe를 각각 실어 실 vault에서 106행이 중복이었다(_rows_guides docstring).
+    guide_rows, pend = _rows_guides(pages)
+    pending += pend
+    if guide_rows:
+        # 가이드도 같은 임계·같은 순번 규칙을 쓴다 — category가 없을 뿐 행 수가 많아지면
+        #  조회 비용은 똑같이 오른다(§7-14가 sub-index 전체를 대상으로 재는 것과 정합).
+        _emit_sub_index(sub_links, sub_files, "index-guides", "가이드 / 레시피 인덱스",
+                        guide_rows, "| 이름 | 종류 | 플랫폼 | 상세 |",
+                        "|------|------|--------|------|", "가이드 없음")
+    feature_block = ["## 기능별 인덱스", ""]
+    if sub_links:
+        feature_block.append("> **분할 인덱스**: 기능별 인덱스 행은 전부 sub-index에 있다 -- "
+                             + " · ".join(sub_links) + ". 한/영 어느 쪽으로 grep해도 해당 sub-index "
+                             "한 줄에서 잡히므로, 본체를 통째로 읽지 말고 관련 sub-index만 연다.")
+    else:
+        feature_block += _table("| 기능 | 플랫폼 | 프로젝트 | 상세 |",
+                                "|------|--------|----------|------|", [], "등재된 기능·가이드 없음")
+    feature_block.append("")
+
+    rows, pend = _rows_knowledge(pages, "entity", "entity_name", "used_by")
+    pending += pend
+    groups["tech"] += ["## 기술 스택 지식 (tech/)", ""]
+    groups["tech"] += _table("| 기술 | 사용 프로젝트 |", "|------|--------------|", rows, "entity 없음")
+    groups["tech"].append("")
+
+    rows, pend = _rows_knowledge(pages, "concept", "concept_name", "related_projects")
+    pending += pend
+    groups["patterns"] += ["## 범용 패턴 (patterns/)", ""]
+    groups["patterns"] += _table("| 패턴 | 관련 프로젝트 |", "|------|--------------|", rows, "concept 없음")
+    groups["patterns"].append("")
+
+    rows, pend = _rows_questions(pages)
+    pending += pend
+    groups["questions"] += ["## 미해결 질문", ""]
+    groups["questions"] += _table("| 질문 | 상태 | 관련 |", "|------|------|------|", rows, "미해결 질문 없음")
+
+    # 본체 조립 + 임계 초과 시 덜어내기(§4 1단계). **행이 많은 구역부터** 고르고 본체가 임계
+    #  이하가 되면 멈춘다 -- 더 덜어내도 조회 홉만 늘고 이득이 없다. 덜어낸 자리에는 목록 줄
+    #  하나를 두고, 섹션 이름으로 찾는 검사(§7-23 등)는 index.md+sub-index 합본을 보므로
+    #  구역이 옮겨가도 계속 찾는다.
+    # 마커 밖(머리말·증상별 인덱스·참조)도 파일 줄 수에 포함된다 — §7-14가 재는 단위가
+    #  「본문(frontmatter 포함 전체)」이라 생성 구역만 세면 임계를 넘긴 채 멈춘다.
+    outside = head.count("\n") + tail.count("\n") + 2   # 마커 두 줄
+    moved = []
+    for key, name, title in sorted(AUX_INDEX_GROUPS, key=lambda g: -len(groups[g[0]])):
+        # 덜어낸 구역은 본체에 안내 줄 2줄을 남긴다 — 그 몫도 미리 센다.
+        remaining = (outside + len(body) + len(feature_block) + 2 * len(moved)
+                     + sum(len(groups[k]) for k, _n, _t in AUX_INDEX_GROUPS
+                           if k not in moved))
+        if remaining <= INDEX_BODY_LINES:
+            break
+        aux_files[name] = (title, groups[key])
+        moved.append(key)
+    # **조립 순서를 여기 한 곳에서 정한다** — §4 「생성 대상 6섹션」이 규정한 순서
+    #  (프로젝트 → 기능별 인덱스 → 기술 스택 → 범용 패턴 → 미해결 질문)를 그대로 재현한다.
+    #  구역을 지연 조립로 바꾸면서 기능별 인덱스만 코드 중간에서 곧바로 붙이면, 덜어내기가
+    #  발동하지 않는 vault에서도 프로젝트 테이블이 그 뒤로 밀린다(무회귀 위반).
+    def _place(key):
+        if key in moved:
+            name, title = AUX_INDEX_META[key]
+            return ["> **덜어낸 구역**: %s는 [[%s|%s]]에 있다(본체 %d줄 임계)."
+                    % (title, name, title, INDEX_BODY_LINES), ""]
+        return groups[key]
+
+    body += _place("projects")
+    body += feature_block
+    for key in ("tech", "patterns", "questions"):
+        body += _place(key)
+
+    generated = "\n".join(body)
+
     new = head + AUTO_INDEX_BEGIN + "\n" + generated + "\n" + AUTO_INDEX_END + tail
 
     if pending:
@@ -788,7 +1002,9 @@ def build_index(vault, dry_run):
     try:
         for path, content in [(idx_path, new)] + [
                 (os.path.join(vault, name + ".md"), _sub_index_text(name, lines))
-                for name, lines in sorted(sub_files.items())]:
+                for name, lines in sorted(sub_files.items())] + [
+                (os.path.join(vault, name + ".md"), _aux_index_text(name, title, lines))
+                for name, (title, lines) in sorted(aux_files.items())]:
             tmp = path + ".tmp-build-index"
             with open(tmp, "wb") as fh:
                 fh.write(content.encode("utf-8"))
@@ -803,8 +1019,931 @@ def build_index(vault, dry_run):
                 pass   # 임시 파일 정리 실패는 원본에 영향이 없다 -- 원 실패를 가리지 않는다
         print("인덱스 쓰기 실패(%s) -- 원본을 그대로 두었습니다." % type(e).__name__)
         return 1
-    print("index.md 생성 구역 갱신 · sub-index %d개 생성" % len(sub_files))
+
+    # stale sub-index 제거는 **치환 전건 성공 이후에만** 한다. 앞에 두면 쓰기가 실패했을 때
+    #  "지워졌는데 index.md는 옛 상태"가 남고, 삭제는 tmp 정리로 되돌릴 수 없다.
+    #  개별 삭제 실패는 격리한다 -- 치환은 이미 끝났으므로 되돌릴 대상이 아니다.
+    removed = []
+    for p in _stale_sub_indexes(vault, set(sub_files) | set(aux_files)):
+        try:
+            os.remove(p)
+            removed.append(os.path.basename(p))
+        except OSError as e:
+            print("  [정리 실패] %s (%s)" % (os.path.basename(p), type(e).__name__))
+    print("index.md 생성 구역 갱신 · sub-index %d개 생성" % (len(sub_files) + len(aux_files))
+          + (" · stale %d개 제거(%s)" % (len(removed), "·".join(removed)) if removed else ""))
     return 0
+
+
+class SplitSession:
+    """`--auto-split` 한 번의 실행 컨텍스트 — 사본·기록·보고를 모은다(§4 분할 수행 절차).
+
+    `--fix`(apply_fixes)와 합치지 않는 이유: 그쪽은 「참조 무결성 3종」으로 대상이 한정되고
+    실행에 사용자 승인이 필요한데(§7 서두), 분할·롤오버는 승인 불요다(§7 결과 처리 예외 ①②③).
+    규약이 정반대라 한 함수에 섞으면 승인 경계가 흐려진다."""
+
+    def __init__(self, vault, dry_run):
+        self.vault = vault
+        self.dry_run = dry_run
+        self.backup_dir = os.path.join(
+            vault, "90_archive", "backup",
+            datetime.date.today().isoformat() + "-presplit")
+        self.backed_up = set()
+        self.claimed = set()   # 이번 실행에서 어느 처방이 이미 맡은 파일 — claim() 참조
+        self.current_claims = set()   # **지금 도는 처방이** 맡은 것 — 격리·계약 강제의 단위
+        self.actions = []      # (종류, 대상, 신설 파일 목록) — §4 7번 log 기록·사후 보고 공용
+        self.notes = []        # 건너뛴 사유 등 보고용 1줄들
+        self.failed = False
+
+    def backup(self, *paths):
+        """착수 직전 사본(§4 절차 1번·§8 `-presplit`). 실패하면 처방을 시작하지 않는다 —
+        사본 없는 분할은 원복 수단이 없다. 같은 세션 2회째는 재복사하지 않는다(§8: 그 세션
+        최초 상태 1부만 보존 — 재복사하면 이미 분할한 중간 상태가 원본 자리를 덮는다)."""
+        # 계약 강제: 백업하려는 파일은 이 처방이 맡은 것이어야 한다. 처방이 claim을 잊고
+        #  바로 쓰기로 들어가면 겹침 방지·원복 범위 보장이 조용히 무너지므로, 여기서 대신
+        #  claim해 보고 **다른 처방이 이미 맡았으면 예외**로 즉시 드러낸다(격리 루프가 잡아
+        #  `[SPLIT-FAIL]`로 보고한다). docstring 규율만으로는 위반이 침묵한다.
+        unclaimed = [p for p in paths if p not in self.current_claims]
+        if unclaimed and not self.claim(*unclaimed):
+            raise RuntimeError(
+                "claim 없이 백업 시도 — 다른 처방이 맡은 파일: "
+                + ", ".join(sorted(os.path.relpath(p, self.vault) for p in unclaimed)))
+        if self.dry_run:
+            return True
+        for p in paths:
+            if not os.path.exists(p) or p in self.backed_up:
+                continue
+            rel = os.path.relpath(p, self.vault)
+            dest = os.path.join(self.backup_dir, rel)
+            try:
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                if not os.path.exists(dest):   # §8 미덮어쓰기 — 그날 최초 상태를 지키다
+                    shutil.copy2(p, dest)
+                self.backed_up.add(p)
+            except OSError as e:
+                self.notes.append(f"사본 실패({type(e).__name__}) — 처방 미수행: {rel}")
+                self.failed = True
+                return False
+        return True
+
+    def claim(self, *paths):
+        """이번 실행에서 이 파일들을 **이 처방이 맡는다**고 선언한다. 이미 다른 처방이 맡은
+        파일이 하나라도 있으면 False — 그 처방은 이번 실행에서 그 대상을 건너뛴다.
+
+        **한 실행에서 한 파일은 한 처방만 손댄다**는 규칙이 필요한 이유: 사본은 §8상
+        「그 세션 최초 상태 1부」뿐이라 **중간 상태로 되돌릴 방법이 없다.** 두 처방이 같은
+        파일을 순차로 고치면(등록 순서 주석이 예고하는 project 허브가 그렇다) 뒤 처방이
+        실패할 때 되돌릴 수 있는 것은 「첫 처방 이전」뿐이고, 그러면 이미 보고된 앞 처방의
+        결과가 조용히 사라진다. 겹침을 애초에 막으면 원복 범위가 언제나 명확하다.
+
+        건너뛴 대상은 **다음 실행이 처리한다** — 처방은 멱등이고 `--auto-split`은 반복
+        실행이 전제이므로(수렴하면 「수행 대상 없음」), 한 실행에서 다 끝내려다 원복 불가
+        상태를 만드는 것보다 낫다."""
+        want = set(paths)
+        if want & self.claimed:
+            return False
+        self.claimed |= want
+        self.current_claims |= want
+        return True
+
+    def restore(self, only=None):
+        """`-presplit` 사본으로 되돌린다(§4 절차 5번 원복).
+
+        **`only`로 범위를 좁힌다 — 기본값(None)은 세션 전체다.** 처방 단위 격리에서는
+        **그 처방이 맡은 파일만**(`claim`) 전달한다. `claim`이 겹침을 막으므로 그 집합은
+        다른 처방의 결과를 담지 않는다 — 과잉 복원(앞 처방 결과까지 되돌림)도, 미복원
+        (이미 백업돼 차집합에서 빠진 공유 파일)도 생기지 않는다.
+
+        **사본이 있는 파일만** 되돌린다 — 신설된 하위 파일은 사본이 없으므로 그대로 남는데,
+        그것은 다음 실행이 같은 이름으로 덮어쓰거나 사람이 지울 수 있는 상태다(원본이
+        온전하면 유실이 아니다). 반환: 되돌린 파일 수."""
+        n = 0
+        for p in sorted(self.backed_up if only is None else (only & self.backed_up)):
+            src = os.path.join(self.backup_dir, os.path.relpath(p, self.vault))
+            if not os.path.exists(src):
+                continue
+            try:
+                shutil.copy2(src, p)
+                n += 1
+            except OSError:
+                self.notes.append(f"원복 실패: {os.path.relpath(p, self.vault)}")
+        return n
+
+    def record(self, kind, target, created):
+        self.actions.append((kind, target, list(created)))
+
+    def log_line(self, kind, target, created):
+        """§4 절차 7번 기록 1줄. 형식은 그 절이 정본이다."""
+        made = "·".join(created) if created else "(신설 없음)"
+        return (f"- [{datetime.date.today().isoformat()}] [SCHEMA] {kind} — "
+                f"{target}: {made}. (사유: 임계 초과)")
+
+
+def _atomic_write(path, content, bom=False, newline="\n"):
+    """임시 파일에 쓴 뒤 os.replace로 치환한다 — 쓰기 도중 실패가 원본을 깨뜨리지 않게.
+    build_index가 확립한 관례를 파일 하나짜리 쓰기에도 그대로 쓴다(같은 파일 안에서
+    한쪽만 직접 덮어쓰면 그 파일이 손상 위험을 혼자 진다).
+
+    **원본의 BOM·줄바꿈을 보존한다** — `apply_fixes`의 `write`/`nl_of`가 지키는 규약과 같다.
+    보존하지 않으면 CRLF·BOM 파일이 수정될 때마다 조용히 LF·BOM 없음으로 평탄화돼,
+    변경한 줄과 무관한 전체 diff가 만들어진다. 반환: 성공 여부."""
+    if newline != "\n":
+        content = content.replace("\n", newline)
+    data = content.encode("utf-8")
+    if bom:
+        data = b"\xef\xbb\xbf" + data
+    tmp = path + ".tmp-write"
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(data)
+        os.replace(tmp, path)
+        return True
+    except OSError:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass   # 임시 파일 정리 실패는 원본에 영향이 없다 -- 원 실패를 가리지 않는다
+        return False
+
+
+def _read_page(path):
+    """페이지를 읽어 (정규화 텍스트, BOM 여부, 줄바꿈)을 돌려준다. 실패면 (None, False, "\\n").
+    쓰기 쪽(_atomic_write)이 원본 형상을 보존하려면 읽기 쪽이 그 형상을 함께 알려줘야 한다."""
+    try:
+        with open(path, "rb") as fh:
+            b = fh.read()
+    except OSError:
+        return None, False, "\n"
+    bom = b.startswith(b"\xef\xbb\xbf")
+    try:
+        raw = b.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return None, False, "\n"
+    return raw.replace("\r\n", "\n").replace("\r", "\n"), bom, ("\r\n" if "\r\n" in raw else "\n")
+
+
+def _append_log_entries(vault, lines):
+    """§4 7번 기록을 log.md `## 최근 변경`에 append한다. 파일·섹션이 없으면 만들지 않고
+    건너뛴다 — 없는 vault에 구조를 지어내지 않는다(그 경우 보고에만 남는다).
+    반환: 기록한 줄 수."""
+    path = os.path.join(vault, "log.md")
+    if not lines or not os.path.exists(path):
+        return 0
+    text, bom, nl = _read_page(path)
+    if text is None:
+        return 0
+    sec = section(text, "최근 변경")
+    if not sec:
+        return 0
+    # **맨 위에 넣는다** — log.md는 최신이 위(내림차순)가 관례다(실측). 아래에 붙이면 방금 쓴
+    #  기록이 가장 오래된 자리에 놓여, 롤오버가 「같은 날짜면 아래쪽이 더 오래된 것」으로 tie를
+    #  가를 때 그 기록부터 아카이브로 보내게 된다(자기가 남긴 기록을 자기가 치우는 꼴).
+    head, items = _split_items(sec)
+    body = "".join(b for _d, b in items)
+    new_sec = head + "\n".join(lines) + "\n" + body
+    if not _atomic_write(path, text.replace(sec, new_sec, 1), bom, nl):
+        return 0
+    return len(lines)
+
+
+# 처방 목록 — 각 처방이 자기 함수를 정의하고 여기 등록한다(auto_split의 순차 호출 대상).
+#  등록 순서가 곧 수행 순서이며 「롤오버 먼저, 산문 분리 나중」이다: 롤오버가 먼저 줄여 두면
+#  산문 분리가 손댈 페이지가 줄어든다(project 허브가 그렇다). 플러그인·전략 클래스로
+#  추상화하지 않는다 -- 이 목록이 곧 처방 목록이고, 새 처방은 여기 한 줄이 는다.
+#  비어 있으면 `--auto-split`은 "수행 대상 없음"으로 끝난다.
+PRESCRIPTIONS = []
+
+
+def _run_prescriptions(ses):
+    """처방 목록을 **격리해서** 순차 실행한다(본 실행·재점검 공용).
+
+    두 호출 지점이 같은 안전 계약을 쓰게 하려고 함수로 묶었다 -- 한쪽에만 try/except를
+    두면 재점검 경로에서 처방 하나가 죽을 때 그때까지의 수행분이 보고 없이 사라진다.
+
+    격리는 「계속 진행」이 아니라 **「되돌리고 계속」**이다: 중간에 죽은 처방은 파일을 절반만
+    고쳤을 수 있어, **그 처방이 맡은 파일만**(claim) 원복한 뒤 다음 처방으로 간다. 원복 범위를
+    claim으로 잡는 이유는 `backup()`이 멱등이라 「새로 백업한 것」으로 재면 **앞 처방이 이미
+    백업해 둔 공유 파일이 차집합에서 빠져 반쯤 고쳐진 채 남기** 때문이다(claim이 애초에
+    그 공유를 막으므로 두 오류 방향이 함께 닫힌다 -- claim()·restore(only=) 참조)."""
+    for prescribe in PRESCRIPTIONS:
+        before_actions = len(ses.actions)
+        ses.current_claims = set()      # 처방 단위 리셋 — 격리·계약 강제가 이 집합을 단위로 본다
+        try:
+            prescribe(ses)
+        except Exception as e:      # 처방 구현의 어떤 실패든 나머지를 막지 않게(광의 포획 의도)
+            restored = ses.restore(only=set(ses.current_claims))
+            del ses.actions[before_actions:]
+            ses.notes.append(
+                f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
+                f"{type(e).__name__} — 사본에서 {restored}개 파일 원복 후 다음 처방 계속")
+            ses.failed = True
+
+
+def _split_items(section_text):
+    """`- [YYYY-MM-DD] …` 항목 목록을 **블록 단위**로 자른다(§2.8·§8 「항목 단위로만 자른다」).
+
+    다음 `- [` 직전까지가 한 블록이라 하위 불릿이 딸려 있어도 통째로 따라온다 — 규정이
+    말하는 「하위 불릿 포함 블록이 한 항목」이 이 split만으로 성립한다.
+    반환: (헤딩부, [(날짜, 블록 텍스트), ...]). 날짜가 없는 블록은 날짜 None으로 돌려준다."""
+    m = re.search(r"(?m)^(- \[\d{4}-\d{2}-\d{2})", section_text)
+    if not m:
+        return section_text, []
+    head, rest = section_text[:m.start()], section_text[m.start():]
+    out = []
+    for blk in re.split(r"(?m)^(?=- \[)", rest):
+        if not blk.strip():
+            continue
+        dm = re.match(r"- \[(\d{4}-\d{2}-\d{2})\]", blk)
+        out.append((parse_date(dm.group(1)) if dm else None, blk))
+    return head, out
+
+
+def _rollover_items(items, fits, keep_min=1):
+    """항목 목록에서 **가장 오래된 것부터** 이동 대상을 고른다(§2.8·§8 롤오버 공용).
+
+    **순서는 파일 위치가 아니라 날짜로 정한다.** log.md·decisions.md는 **최신이 위**라
+    위치로 고르면 정반대(최신부터)가 된다 — 실측: 실 vault log.md가 내림차순이고, 그
+    상태에서 앞에서부터 옮기면 방금 쓴 기록이 아카이브로 간다. 같은 날짜끼리는 파일에서
+    **아래쪽이 더 오래된 것**이므로 그쪽을 먼저 고른다.
+
+    **날짜 없는 블록은 이동 대상이 아니다** — 어느 월 파일로 갈지 정할 수 없다. 그런 블록은
+    남는 쪽에 그대로 둔다(이동 대상에서 빼기만 하고 버리지 않는다).
+
+    `fits(kept_blocks)`가 참이 되면 멈춘다. **판정은 「지금 남아 있는 것」 기준**이다 —
+    「이걸 옮기면」을 기준으로 보면 정작 목표를 만족시키는 그 이동을 하지 않고 멈춰, 항상
+    한 항목을 덜 옮겨 목표에 닿지 못한 채 끝난다(가장 오래된 항목이 크면 아무것도 안 옮긴다).
+
+    `keep_min`개는 반드시 남긴다 — 전부 옮기면 「최근 변경」이 비어 최근을 볼 수 없다.
+    반환: (moving 블록 목록[오래된 순], kept 항목 목록[원래 순서 유지])."""
+    order = sorted((i for i, (d, _b) in enumerate(items) if d is not None),
+                   key=lambda i: (items[i][0], -i))
+    moved = set()
+    for i in order:
+        if len(items) - len(moved) <= keep_min:
+            break
+        if fits([b for j, (_d, b) in enumerate(items) if j not in moved]):
+            break
+        moved.add(i)
+    # (날짜, 블록) 튜플을 그대로 돌려준다 -- 블록 텍스트만 주면 호출부가 날짜를 되찾으려고
+    #  본문으로 역인덱스를 만들게 되는데, **같은 본문이 두 번 적힌 항목이 있으면** 그 dict가
+    #  하나를 덮어써 날짜를 잘못 짚는다(큐 소비 기록처럼 문면이 정형인 항목은 실제로 겹친다).
+    moving = [items[i] for i in order if i in moved]
+    kept = [items[i] for i in range(len(items)) if i not in moved]
+    return moving, kept
+
+
+def _replace_section(text, heading, new_section):
+    """`## {heading}` 섹션을 통째로 교체한 사본. 섹션이 없으면 원본 그대로."""
+    sec = section(text, heading)
+    return text.replace(sec, new_section, 1) if sec else text
+
+
+def rollover_log(ses):
+    """log.md 월별 롤오버(§8) — 가장 오래된 항목부터 `90_archive/log/{YYYY-MM}.md`로 옮긴다.
+
+    목표치는 §8이 정한 3000자이며 §7-2 종료 조건보다 **낮은 쪽이 우선**한다(budget_state.target).
+    **항목을 쪼개지 않는다** — 한 항목이 커서 목표에 못 미치면 그것까지만 옮기고 멈춘다
+    (§7-2 정지 가드: 쪼개느니 약간 큰 게 낫다. 그 경우 검증을 실패로 보지 않는다)."""
+    path = os.path.join(ses.vault, "log.md")
+    if not os.path.exists(path):
+        return
+    text, bom, nl = _read_page(path)
+    if text is None:
+        return
+    st = budget_state("log.md", frontmatter(text), text)
+    # **발동은 §7-2 조건이고, 목표치는 「얼마나 옮길지」다.** 둘을 섞어 목표치로 발동을
+    #  판정하면 예산에 여유가 있는 파일까지 매번 롤오버한다(실측: 90.8%인 실 vault log.md가
+    #  아직 신호 대상이 아닌데 발동했다 — 목표 3,000자로 재면 언제나 「미해소」이기 때문).
+    if not st or not (st.critical or st.over) or st.suppressed:
+        return
+    sec = section(text, "최근 변경")
+    if not sec:
+        ses.notes.append("log.md에 `## 최근 변경` 섹션이 없어 롤오버 대상을 찾지 못했다")
+        return
+
+    head, items = _split_items(sec)
+    if not items:
+        return
+    # 오래된 것부터 옮긴다. 목표에 닿으면 멈추되, 마지막 한 항목은 남긴다 --
+    #  전부 옮기면 `## 최근 변경`이 비어 "최근"을 볼 수 없다(§8은 이동이지 비우기가 아니다).
+    #
+    # **목표보다 LOG_ROLLOVER_SLACK만큼 더 내려간다**: 이 처방이 끝나면 §4 7번 기록 1줄이
+    #  log.md에 append되는데, 목표에 딱 맞춰 멈추면 그 한 줄 때문에 **다음 실행이 또
+    #  롤오버한다**(실측 3,081/3,000). 매 실행 조금씩 도는 것을 막으려면 기록 몫을 미리 비운다.
+    goal = max(0, st.target - LOG_ROLLOVER_SLACK)
+    fits = lambda blocks: len(text) - len(sec) + len(head) + len("".join(blocks)) <= goal
+    moving, kept = _rollover_items(items, fits)
+    if not moving:
+        return
+
+    targets = {}
+    for d, blk in moving:
+        targets.setdefault("%04d-%02d" % (d.year, d.month), []).append((d, blk))
+    undated = sum(1 for d, _b in kept if d is None)
+    if undated:
+        ses.notes.append(f"log.md 날짜 없는 항목 {undated}건은 월을 정할 수 없어 그대로 두었다")
+
+    arch_dir = os.path.join(ses.vault, "90_archive", "log")
+    paths = [path] + [os.path.join(arch_dir, "%s.md" % m) for m in sorted(targets)]
+    if not ses.claim(*paths) or not ses.backup(path, *paths[1:]):
+        ses.notes.append("log.md 롤오버 건너뜀 — 대상 파일을 다른 처방이 맡았거나 사본 실패")
+        return
+
+    # kept는 _rollover_items가 moving과 배타적으로 돌려준 것이라 그대로 쓴다
+    #  (원래 순서가 유지되므로 최신이 위인 log.md 형상이 보존된다).
+    new_sec = head + "".join(b for _d, b in kept)
+    # 마지막 항목이 이동하면 그 뒤 빈 줄까지 딸려가 다음 헤딩이 붙는다 — 원본이 빈 줄로 끝났으면 그 형상을 유지한다.
+    if sec.endswith("\n\n") and not new_sec.endswith("\n\n"):
+        new_sec += "\n"
+    new_text = _replace_section(text, "최근 변경", new_sec)
+    # 아카이브 인덱스(검색 진입점, §8). **키워드 요약은 판단이라 자동 경로가 쓸 수 없다** --
+    #  건수·기간이라는 결정론 형식으로 대신한다(진입점이 아예 없는 것보다 검색에 쓰인다).
+    for mon in sorted(targets):
+        blocks = [b for _d, b in targets[mon]]
+        af = os.path.join(arch_dir, "%s.md" % mon)
+        if os.path.exists(af):
+            prev, abom, anl = _read_page(af)
+            body = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+        else:
+            abom, anl = False, nl
+            body = "# %s log\n\n" % mon + "".join(blocks)
+        if not ses.dry_run:
+            os.makedirs(arch_dir, exist_ok=True)
+            _atomic_write(af, body, abom, anl)
+        dates = sorted(d for d, _b in targets[mon])
+        line = "- %s.md: %d건 (%s~%s)" % (mon, len(blocks), dates[0], dates[-1])
+        idx_sec = section(new_text, "아카이브 인덱스")
+        if idx_sec:
+            rx = re.compile(r"(?m)^- %s\.md:.*$" % re.escape(mon))
+            new_idx = rx.sub(line, idx_sec) if rx.search(idx_sec) else idx_sec.rstrip("\n") + "\n" + line + "\n\n"
+            new_text = _replace_section(new_text, "아카이브 인덱스", new_idx)
+        else:
+            new_text = new_text.rstrip("\n") + "\n\n## 아카이브 인덱스\n\n" + line + "\n"
+    if not ses.dry_run:
+        _atomic_write(path, new_text, bom, nl)
+    ses.record("롤오버", "log.md",
+               ["90_archive/log/%s.md" % m for m in sorted(targets)])
+
+
+PRESCRIPTIONS.append(rollover_log)
+
+
+def _decision_body_span(text):
+    """decision-log의 **항목 구간**을 (앞부분, 항목 구간, 뒷부분)으로 가른다.
+
+    `log.md`와 달리 이 타입은 항목이 섹션 없이 본문에 바로 온다(§2.8) — `# {프로젝트}
+    결정 이력` 헤딩 뒤부터 `## 아카이브` 앞까지다. 그래서 `section()`으로 스코프를 잡을 수
+    없고, 뒷부분(아카이브 포인터·주석)을 그대로 보존하려면 세 조각으로 갈라야 한다.
+
+    **경계 판정은 `strip_code` 사본으로 한다** -- 항목 본문의 코드펜스 안에 `## `로 시작하는
+    줄이 있으면(결정 근거로 마크다운을 인용하는 항목이 그렇다) 거기서 잘려 **그 뒤 항목이 통째로
+    「뒷부분」으로 넘어가고 롤오버 대상에서 조용히 빠진다.** 사본은 길이를 보존하므로 오프셋을
+    원문에 그대로 쓸 수 있다."""
+    probe = strip_code(text)
+    m = re.search(r"(?m)^(- \[\d{4}-\d{2}-\d{2})", probe)
+    if not m:
+        return text, "", ""
+    tail_m = re.search(r"(?m)^##\s", probe[m.start():])
+    end = m.start() + tail_m.start() if tail_m else len(text)
+    return text[:m.start()], text[m.start():end], text[end:]
+
+
+def rollover_decisions(ses):
+    """decision-log 롤오버(§2.8) — 오래된 항목부터 `90_archive/{원경로}`로 옮긴다.
+
+    **항목 불변**(§2.8)이라 옮기는 본문을 손대지 않는다. 목적지에 파일이 있으면 덮어쓰지
+    않고 append한다 — 덮어쓰면 이미 이동된 과거 결정이 사라진다."""
+    for rel in sorted(_decision_log_paths(ses.vault)):
+        path = os.path.join(ses.vault, rel.replace("/", os.sep))
+        text, bom, nl = _read_page(path)
+        if text is None:
+            continue
+        st = budget_state(rel, frontmatter(text), text)
+        if not st or not (st.critical or st.over) or st.suppressed:
+            continue
+        head, body, tail = _decision_body_span(text)
+        if not body:
+            continue
+        _h, items = _split_items(body)
+        if not items:
+            continue
+        # 목표치를 예산의 `BUDGET_NEAR_RATIO`(80%)로 잡는 이유: 이 타입에는 log.md 같은
+        #  명시 목표치가 없어 §7-2 종료 조건(발동 해소)만 있는데, 그 선(95%·여유 500)에
+        #  딱 맞추면 **다음 결정 한 건에 곧 재발동**한다. 80%는 결정 몇 건분 여유를 남긴다.
+        #  조회 목적(§2.8 — 계획 전에 읽어 보류·기각을 회수)을 해치지 않음을 실측으로 확인했다:
+        #  실 vault에서 moa 12건·claude-harness-pjc 10건(최근 6일치)이 남고 그 이전은
+        #  `## 아카이브` 포인터로 도달한다.
+        fits = lambda blocks: len(head) + len("".join(blocks)) + len(tail) <= st.budget * BUDGET_NEAR_RATIO
+        moving, kept = _rollover_items(items, fits)
+        if not moving:
+            continue
+
+        arch_rel = "90_archive/" + rel
+        arch_path = os.path.join(ses.vault, arch_rel.replace("/", os.sep))
+        if not ses.claim(path, arch_path) or not ses.backup(path, arch_path):
+            ses.notes.append(f"{rel} 롤오버 건너뜀 — 다른 처방이 맡았거나 사본 실패")
+            continue
+
+        blocks = [b for _d, b in moving]
+        if os.path.exists(arch_path):
+            prev, abom, anl = _read_page(arch_path)
+            arch_text = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+        else:
+            abom, anl = False, nl
+            proj = frontmatter(text).get("project", "") or os.path.basename(os.path.dirname(rel))
+            # 아카이브는 frontmatter 없이 둔다(§2.8) — type을 남기면 무한 성장 파일에
+            #  예산 검사가 걸릴 이유가 없는데도 걸린다.
+            arch_text = "# %s 결정 이력 아카이브\n\n" % proj + "".join(blocks)
+        new_body = "".join(b for _d, b in kept)
+        # 마지막 항목이 이동하면 그 뒤 빈 줄까지 딸려가 다음 헤딩이 붙는다 — 원본이 빈 줄로 끝났으면 그 형상을 유지한다.
+        if body.endswith("\n\n") and not new_body.endswith("\n\n"):
+            new_body += "\n"
+        new_text = head + new_body + tail
+        # `## 아카이브` 포인터(§2.8·§7-24). **기존 포인터가 있으면 그 형식을 유지**하고
+        #  날짜·건수만 갱신한다 — 실 vault는 규정 문면과 다른 wikilink 형식을 쓰는데(실측),
+        #  그것도 §7-24를 통과하므로 형식을 갈아엎을 이유가 없다.
+        dates = sorted(d for d, _b in moving)
+        total = len(re.findall(r"(?m)^- \[\d{4}-\d{2}-\d{2}", arch_text))
+        span = "%s~%s, 누적 %d건" % (dates[0], dates[-1], total)
+        sec = section(new_text, "아카이브")
+        if sec and DEC_PTR_RX.search(sec):
+            new_sec = re.sub(r"\(\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}, 누적 \d+건\)",
+                             "(%s)" % span, sec)
+            if new_sec == sec:
+                # 옛 포인터에 날짜·건수 표기가 없으면 **그 줄 끝에 덧붙인다**. 그냥 두면
+                #  포인터가 실제 아카이브 상태와 어긋난 채 남아, 조회 세션이 「어디까지
+                #  옮겨졌는지」를 알 수 없다(§2.8이 그 표기를 요구하는 이유다).
+                lines_ = new_sec.split("\n")
+                for k, ln in enumerate(lines_):
+                    if DEC_PTR_RX.search(ln):
+                        lines_[k] = ln.rstrip() + " (%s)" % span
+                        break
+                new_sec = "\n".join(lines_)
+            new_text = new_text.replace(sec, new_sec, 1)
+        else:
+            new_text = new_text.rstrip("\n") + (
+                "\n\n## 아카이브\n\n- 이전 이력: %s (%s)\n" % (arch_rel, span))
+        if not ses.dry_run:
+            os.makedirs(os.path.dirname(arch_path), exist_ok=True)
+            _atomic_write(arch_path, arch_text, abom, anl)
+            _atomic_write(path, new_text, bom, nl)
+        ses.record("롤오버", rel, [arch_rel])
+
+
+def _decision_log_paths(vault):
+    """vault의 현행 decision-log 상대경로 목록(90_archive 제외)."""
+    out = []
+    for p in glob.glob(os.path.join(glob.escape(vault), "**", "decisions.md"), recursive=True):
+        rel = os.path.relpath(p, vault).replace("\\", "/")
+        if rel.startswith("90_archive/"):
+            continue
+        text, _bom, _nl = _read_page(p)
+        if text is not None and frontmatter(text).get("type") == "decision-log":
+            out.append(rel)
+    return out
+
+
+PRESCRIPTIONS.append(rollover_decisions)
+
+
+def _project_hub_paths(vault):
+    """vault의 현행 project 허브 상대경로 목록(90_archive 제외).
+
+    허브는 `20_projects/{카테고리}/{프로젝트}.md`라 파일명으로 특정할 수 없다 —
+    그 자리의 `.md`를 전부 훑고 frontmatter type으로 가른다(`_decision_log_paths`와
+    같은 방식이되 glob 패턴만 다르다)."""
+    out = []
+    for f in glob.glob(os.path.join(glob.escape(vault), "20_projects", "*", "*.md")):
+        rel = os.path.relpath(f, vault).replace("\\", "/")
+        text, _bom, _nl = _read_page(f)
+        if text is not None and frontmatter(text).get("type") == "project":
+            out.append(rel)
+    return out
+
+
+def rollover_hub_changes(ses):
+    """project 허브 `## 최근 주요 변경` 롤오버(§2.2) — 6번째 항목이 생기면 5개만 남긴다.
+
+    **트리거가 문자 예산과 별개다**(§7-2 「별개 트리거」ⓑ). 그래서 `budget_state`를 보지
+    않고 항목 수만 센다 — 허브가 문자 신호 대상이어도 항목이 5개 이하면 이 처방의 대상이
+    아니고(그쪽 처방은 `conventions.md` 분리 §2.9다), 신호가 없어도 6개가 되면 수행한다."""
+    for rel in sorted(_project_hub_paths(ses.vault)):
+        path = os.path.join(ses.vault, rel.replace("/", os.sep))
+        text, bom, nl = _read_page(path)
+        if text is None:
+            continue
+        sec = section(text, "최근 주요 변경")
+        if not sec:
+            continue
+        head, items = _split_items(sec)
+        if len(items) <= HUB_CHANGES_KEEP:
+            continue
+        moving, kept = _rollover_items(items, lambda blocks: len(blocks) <= HUB_CHANGES_KEEP)
+        if not moving:
+            continue
+
+        # 경로 도출이 §7-24와 다르다 — 허브는 `{proj}.md` 파일인데 아카이브는
+        #  `{proj}/changes.md`라 폴더가 된다(§7-30ⓐ 역방향이 지적한 비대칭).
+        arch_rel = "90_archive/" + rel[:-len(".md")] + "/changes.md"
+        arch_path = os.path.join(ses.vault, arch_rel.replace("/", os.sep))
+        if not ses.claim(path, arch_path) or not ses.backup(path, arch_path):
+            ses.notes.append(f"{rel} 변경 이력 롤오버 건너뜀 — 다른 처방이 맡았거나 사본 실패")
+            continue
+
+        blocks = [b for _d, b in moving]
+        if os.path.exists(arch_path):
+            prev, abom, anl = _read_page(arch_path)
+            arch_text = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+        else:
+            abom, anl = False, nl
+            proj = frontmatter(text).get("project", "") or os.path.basename(rel)[:-len(".md")]
+            # 아카이브는 frontmatter 없이 둔다(§2.2) — `90_archive/` 하위라 lint 검사에서
+            #  자동 제외되므로 타입을 붙일 이유가 없다.
+            arch_text = "# %s 변경 이력 아카이브\n\n" % proj + "".join(blocks)
+        new_sec = head + "".join(b for _d, b in kept)
+        # 마지막 항목이 이동하면 그 뒤 빈 줄까지 딸려가 다음 헤딩이 붙는다 —
+        #  원본이 빈 줄로 끝났으면 그 형상을 유지한다.
+        if sec.endswith("\n\n") and not new_sec.endswith("\n\n"):
+            new_sec += "\n"
+        new_text = _replace_section(text, "최근 주요 변경", new_sec)
+
+        # `## 아카이브` 포인터(§2.2 — 정합은 §7-30ⓐ). decision-log와 같은 처리다:
+        #  기존 포인터가 있으면 그 형식을 유지한 채 날짜·건수만 갱신하고, 없을 때만 규정
+        #  형식으로 신설한다(실 vault 포인터가 규정 문면과 다른 wikilink 형식을 쓴다).
+        dates = sorted(d for d, _b in moving)
+        total = len(re.findall(r"(?m)^- \[\d{4}-\d{2}-\d{2}", arch_text))
+        span = "%s~%s, 누적 %d건" % (dates[0], dates[-1], total)
+        asec = section(new_text, "아카이브")
+        if asec and CHG_PTR_RX.search(asec):
+            upd = re.sub(r"\(\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}, 누적 \d+건\)",
+                         "(%s)" % span, asec)
+            if upd == asec:
+                # 옛 포인터에 날짜·건수 표기가 없으면 그 줄 끝에 덧붙인다 — 그냥 두면
+                #  포인터가 실제 아카이브 상태와 어긋난 채 남아, 조회 세션이 「어디까지
+                #  옮겨졌는지」를 알 수 없다.
+                lines_ = upd.split("\n")
+                for k, ln in enumerate(lines_):
+                    if CHG_PTR_RX.search(ln):
+                        lines_[k] = ln.rstrip() + " (%s)" % span
+                        break
+                upd = "\n".join(lines_)
+            new_text = new_text.replace(asec, upd, 1)
+        else:
+            new_text = new_text.rstrip("\n") + (
+                "\n\n## 아카이브\n\n- 이전 이력: %s (%s)\n" % (arch_rel, span))
+        if not ses.dry_run:
+            os.makedirs(os.path.dirname(arch_path), exist_ok=True)
+            _atomic_write(arch_path, arch_text, abom, anl)
+            _atomic_write(path, new_text, bom, nl)
+        ses.record("롤오버", rel, [arch_rel])
+
+
+PRESCRIPTIONS.append(rollover_hub_changes)
+
+# ── §4 처방 ③: 산문 타입의 섹션 하위 분리 ────────────────────────────────
+# **본문까지 원본에 남기는 섹션** — 지도(§7-21은 `## 관련 파일` 목록이 비면 위반이다)와
+#  정체성(`## 개요`), 그리고 도달 경로·다른 처방의 대상 구역(`## 하위 문서`·`## 아카이브`)이다.
+#  **`## 구현 방법`은 여기 넣지 않는다** — §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을
+#  옮겨도 게이트가 깨지지 않고, 실 vault에서 발동을 만드는 최대 섹션이 바로 그 자리다.
+RELOCATE_KEEP_COMMON = ("개요", "관련 파일", "하위 문서", "아카이브", "아카이브 인덱스")
+# 타입별 추가 유지 섹션 — 롤오버·포인터가 대상으로 삼는 구역이거나(project) 그 타입의
+#  정체성 섹션이라(entity `## 핵심`) 옮기면 다른 규정이 깨진다.
+TYPE_KEEP_SECTIONS = {
+    "project": ("기능 목록", "최근 주요 변경", "레포 정보", "관련 위키 지식"),
+    "entity": ("핵심",),
+}
+# **하위에도 재현해야 하는 필수 섹션**(이동 제외와 다른 축이다) — 하위는 원본과 같은 타입이라
+#  §7-18ⓐ·§7-21 게이트가 하위에도 그대로 걸린다.
+TYPE_REQUIRED_SECTIONS = {
+    "feature": ("개요", "관련 파일", "구현 방법"),
+    "project": ("기능 목록", "최근 주요 변경", "레포 정보", "관련 위키 지식"),
+    "entity": ("핵심",),
+    "concept": ("개요",),
+    "guide": ("개요",),
+    "convention": (),
+}
+RELOCATE_TYPES = tuple(TYPE_REQUIRED_SECTIONS)
+FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
+
+
+def _prose_page_paths(vault):
+    """분할 대상 산문 페이지의 상대경로 목록(90_archive·index 계열 제외)."""
+    out = []
+    for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True):
+        rel = os.path.relpath(f, vault).replace("\\", "/")
+        if rel.startswith("90_archive/") or os.path.basename(rel).startswith("index"):
+            continue
+        text, _bom, _nl = _read_page(f)
+        if text is not None and frontmatter(text).get("type") in RELOCATE_TYPES:
+            out.append(rel)
+    return out
+
+
+def _md_sections(text, probe=None):
+    """`## ` 섹션을 [(제목, 시작, 끝)]으로 돌려준다.
+
+    판정은 `strip_code` 사본으로 한다 — 코드펜스·인라인코드 안의 `## `를 헤딩으로 세면
+    본문 한가운데를 자른다. 그 사본은 **길이를 보존**하므로(같은 길이 공백 치환) 여기서
+    얻은 오프셋을 원문에 그대로 쓸 수 있다.
+
+    `probe`를 받으면 그것을 쓴다 -- 호출부가 같은 사본을 이미 만들었을 때 두 번 만들지 않기
+    위해서다(사본 생성은 정규식 3회라 큰 문서에서 공짜가 아니다)."""
+    if probe is None:
+        probe = strip_code(text)
+    marks = [(m.start(), m.group(1).strip())
+             for m in re.finditer(r"(?m)^##[ \t]+(.+)$", probe)]
+    out = []
+    for i, (pos, title) in enumerate(marks):
+        end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
+        out.append((title, pos, end))
+    return out
+
+
+def _next_sub_index(vault, rel):
+    """`{stem}-{n}.md`의 다음 순번. 이미 있는 최대값 + 1이고 없으면 2다.
+
+    **섹션 제목을 파일명에 전사하지 않는다**(D1 ⓐ) — §3 네이밍이 전 타입에 영문소문자
+    하이픈을 요구하는데 위키 본문은 한글이 원칙이고 `## 주의점 / 함정`처럼 경로 구분자를
+    포함한 제목이 실재한다. 순번은 결정론이면서 네이밍 규칙을 항상 만족한다."""
+    stem = rel[:-len(".md")]
+    n = 1
+    for f in glob.glob(os.path.join(glob.escape(vault), stem.replace("/", os.sep) + "-*.md")):
+        m = re.match(r"^\d+$", os.path.basename(f)[len(os.path.basename(stem)) + 1:-len(".md")])
+        if m:
+            n = max(n, int(m.group(0)))
+    return n + 1
+
+
+def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
+    """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다(D1 ⓓ).
+
+    **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번) §7-18ⓐ·
+    §7-21 같은 필수 섹션 게이트가 하위에도 그대로 걸린다 — 재현하지 않으면 자동 분할이
+    스스로 새 위반을 만든다. 재현 방식은 결정론이다: **지도인 `## 관련 파일`은 원본 목록을
+    복제**하고(§7-20이 양쪽에서 경로 실존을 각각 검사하므로 정보가 왜곡되지 않는다),
+    나머지는 **상위를 가리키는 한 줄**을 둔다(정본은 하나라는 것을 문면으로 못박는다)."""
+    head = "---\n"
+    for k, v in fm.items():
+        if k == "index_label":
+            continue
+        head += "%s: %s\n" % (k, v)
+    head += "index_label: %s — %s\n---\n\n" % (fm.get("index_label", label), title)
+    h1 = re.search(r"(?m)^#[ \t]+(.+)$", text)
+    back = "> 상위 문서: [[%s|%s]]\n\n" % (rel[:-len(".md")], label)
+    out = head + "# %s — %s\n\n" % (h1.group(1).strip() if h1 else label, title) + back
+
+    # 각주 정의는 **원본에 남기고 하위에도 복제**한다(D2) — 각주는 파일 로컬이라 본문만
+    #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본의 `[^src-` 가 0이 되어
+    #  §7-18ⓑ가 곧바로 새 위반을 낸다(자동 분할이 스스로 만든 위반).
+    keep_body = ""
+    for req in TYPE_REQUIRED_SECTIONS.get(typ, ()):
+        if req == title:
+            continue
+        src = secmap.get(req)
+        if src is None:
+            continue
+        if req == "관련 파일":
+            keep_body += src.rstrip("\n") + "\n\n"
+        else:
+            ref = "정본은 [[%s|%s]]의 「%s」이다." % (rel[:-len(".md")], label, req)
+            # `## 구현 방법`은 각주 0개가 곧 위반이라(§7-18ⓑ) 원본 각주를 한 번 인용한다.
+            fns = re.findall(r"\[\^[^\]\n]+\]", src)
+            if fns:
+                ref += fns[0]
+            keep_body += "## %s\n\n%s\n\n" % (req, ref)
+    out += keep_body + "## %s\n\n" % title + body
+
+    used = set(re.findall(r"\[\^([^\]\n]+)\]", keep_body + body))
+    defs = [d for d in FOOTNOTE_DEF_RX.findall(text)
+            if d.split("]:")[0][2:] in used and d not in body]
+    if defs:
+        out = out.rstrip("\n") + "\n\n" + "\n".join(defs) + "\n"
+    return out
+
+
+def _sub_doc_list(text, entries, nl):
+    """원본 `## 하위 문서` 목록을 갱신·신설한다(§2.9·§7-30ⓑ 계열 — 조회 홉 1 보장)."""
+    sec = section(text, "하위 문서")
+    lines = "".join("- [[%s|%s]] — %s\n" % e[:3] for e in entries)
+    if sec:
+        return text.replace(sec, sec.rstrip("\n") + "\n" + lines + "\n", 1)
+    return text.rstrip("\n") + "\n\n## 하위 문서\n\n" + lines
+
+
+def _register_feature_rows(vault, rel, entries):
+    """신설 feature 하위를 프로젝트 허브 `## 기능 목록` 표에 등재한다(§4 4번).
+
+    허브에 없으면 조회가 그 하위에 닿지 못한다 — feature는 허브 개념이 있는 타입이라
+    「상위 참조 중 실제로 이 페이지를 등록한 곳」이 이 표다. **설명 칸은 판단이 아니라
+    결정론 형식**을 쓴다(어느 절에서 갈라졌는지 — 그 정보가 곧 조회 판정에 쓰인다).
+    반환: (허브 상대경로, 새 본문) 또는 None."""
+    m = re.match(r"^(20_projects/[^/]+/[^/]+)/", rel)
+    if not m:
+        return None
+    hub_rel = m.group(1) + ".md"
+    hub_path = os.path.join(vault, hub_rel.replace("/", os.sep))
+    hub_text, _bom, _nl = _read_page(hub_path)
+    if hub_text is None:
+        return None
+    sec = section(hub_text, "기능 목록")
+    if not sec:
+        return None
+    rows = "".join("| %s | %s의 「%s」 절 | [[%s\\|%s]] |\n" % (title, label0, title, sub, name)
+                   for sub, name, title, label0 in entries)
+    return hub_rel, hub_text.replace(sec, sec.rstrip("\n") + "\n" + rows + "\n", 1)
+
+
+def relocate_sections(ses):
+    """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다(D2).
+
+    헤딩과 포인터 1줄은 원본에 남는다 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을
+    내고, 제목까지 지우면 목차에서 그 주제가 사라져 물을 실마리가 없어진다."""
+    for rel in sorted(_prose_page_paths(ses.vault)):
+        path = os.path.join(ses.vault, rel.replace("/", os.sep))
+        text, bom, nl = _read_page(path)
+        if text is None:
+            continue
+        fm = frontmatter(text)
+        st = budget_state(rel, fm, text)
+        if not st or not (st.critical or st.over) or st.suppressed:
+            continue
+        keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(st.typ, ()))
+        label = fm.get("index_label", "").strip() or os.path.basename(rel)[:-len(".md")]
+
+        # 필수 섹션은 이동 대상이 아니라 원본에서 불변이므로 **한 번만** 뽑아 재사용한다.
+        #  공용 `section()`을 쓰지 않는 이유는 그 함수가 `strip_code`를 거치지 않아 **코드펜스
+        #  안의 `## `를 헤딩으로 오인**할 수 있어서다(여기 경계는 `_md_sections`가 잡은 것과
+        #  같아야 한다). 필수 섹션마다 원문을 다시 훑지 않는 것은 그 덤이다.
+        secmap = {ti: text[s:e] for ti, s, e in _md_sections(text)}
+        created, entries, moved = [], [], 0
+        cur = text
+        while True:
+            secs = _md_sections(cur)
+            # 섹션이 하나뿐이면 옮기지 않는다 — 옮기면 원본이 껍데기만 남는다(정지 가드).
+            movable = [s for s in secs if s[0] not in keep]
+            if len(secs) < 2 or not movable:
+                break
+            n = _next_sub_index(ses.vault, rel) + len(created)
+            sub_rel = "%s-%d.md" % (rel[:-len(".md")], n)
+            sub_path = os.path.join(ses.vault, sub_rel.replace("/", os.sep))
+            # **옮겨도 하위가 곧바로 발동할 섹션은 후보에서 뺀다.** 그런 섹션을 옮기면 같은
+            #  크기의 파일이 하나 더 생길 뿐이고, 다음 실행이 그 하위를 또 쪼개 `-2-2`·`-2-2-2`로
+            #  끝없이 번진다(실측). 한 섹션은 더 쪼갤 수 없으므로 여기서 멈추는 것이 §7-2의
+            #  정지 가드다 -- 남는 신호는 실패가 아니라 「더 나눌 것이 없다」는 보고다.
+            pick = None
+            for cand in sorted(movable, key=lambda s: s[2] - s[1], reverse=True):
+                c_title, c0, c1 = cand
+                c_body = cur[cur.index("\n", c0) + 1:c1]
+                if not c_body.strip():
+                    continue
+                sub_text = _sub_page_text(text, fm, st.typ, c_title, c_body, label, rel, nl, secmap)
+                sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
+                if sst and (sst.critical or sst.over):
+                    continue
+                pick = (cand, c_body, sub_text)
+                break
+            if pick is None:
+                break
+            (title, s0, s1), body, sub_text = pick
+            hd_end = cur.index("\n", s0) + 1
+            ptr = ("**정본은 [[%s|%s — %s]]의 「%s」이다** — 본문 %d자를 옮겼다(§7-2 발동 처방).\n\n"
+                   % (sub_rel[:-len(".md")], label, title, title, len(body)))
+            cur = cur[:hd_end] + "\n" + ptr + cur[s1:]
+            # 옮긴 섹션은 이후 라운드의 후보에서 뺀다. 그 자리에 남는 것은 헤딩과 포인터
+            #  한 줄뿐인데, 빼지 않으면 그 **스텁이 다시 최대 후보로 뽑혀** 거의 같은 길이의
+            #  새 포인터로 바뀌기만 한다 — 문서가 줄지 않으니 발동도 풀리지 않아 `-3`·`-4`로
+            #  그 스텁을 옮기고 또 옮긴다(필수 섹션 총량이 예산보다 큰 문서에서 실재하는 경로다).
+            keep.add(title)
+            created.append((sub_path, sub_rel, sub_text))
+            entries.append((sub_rel[:-len(".md")], "%s — %s" % (label, title), title, label))
+            moved += 1
+            nst = budget_state(rel, fm, cur)
+            if not nst or not (nst.critical or nst.over):
+                break
+        if not created:
+            continue
+
+        # 이전 회차에 나온 형제 하위도 함께 등재한다 — 이번 것만 넣으면 재분할할 때마다
+        #  목록이 최신 하나로 갈리고 옛 하위가 조회 경로 밖에 남는다(§7-30ⓔ가 잡는 그 상태를
+        #  자동 경로가 스스로 만들게 된다). 판정은 ⓔ와 같은 신호를 쓴다 — 순번 접두 + 이
+        #  파일을 가리키는 복귀 링크.
+        already = set(wikilink_targets(section(cur, "하위 문서") or ""))
+        made = {c[1] for c in created}
+        siblings = []
+        for f in sorted(glob.glob(os.path.join(
+                glob.escape(ses.vault), rel[:-len(".md")].replace("/", os.sep) + "-*.md"))):
+            srel = os.path.relpath(f, ses.vault).replace("\\", "/")
+            if not re.match(r"^.+-\d+$", srel[:-len(".md")]):
+                continue      # 글롭은 숫자가 아닌 접미도 잡는다 — ⓔ와 같은 신호로 좁힌다
+            if srel in made or srel[:-len(".md")] in already:
+                continue
+            stext, _sb, _sn = _read_page(f)
+            if stext is None:
+                continue
+            bm = SUBDOC_BACK_RX.search(stext)
+            if not bm:
+                continue
+            bt = bm.group(1)
+            if (bt if bt.endswith(".md") else bt + ".md") != rel:
+                continue
+            sfm = frontmatter(stext)
+            slabel = sfm.get("index_label", "").strip() or os.path.basename(srel)[:-len(".md")]
+            # 담당 범위는 `index_label`의 접미(`{원본} — {절}`)에서 그대로 가져온다 — 그 접미를
+            #  붙인 것이 이 처방이므로 다시 판단할 것이 없다.
+            siblings.append((srel[:-len(".md")], slabel,
+                             slabel.split(" — ")[-1] if " — " in slabel else slabel, label))
+        # 목록은 형제까지 적고, **허브 표는 신설분만** 받는다 — 형제는 지난 회차에 이미
+        #  등재됐으므로 다시 전달하면 같은 기능이 표에 두 줄로 쌓인다.
+        cur = _sub_doc_list(cur, entries + siblings, nl)
+        hub = _register_feature_rows(ses.vault, rel, entries) if st.typ == "feature" else None
+        hub_path = os.path.join(ses.vault, hub[0].replace("/", os.sep)) if hub else None
+        touched = [path] + [c[0] for c in created] + ([hub_path] if hub else [])
+        if not ses.claim(*touched) or not ses.backup(*[p for p in (path, hub_path) if p]):
+            ses.notes.append(f"{rel} 하위 분리 건너뜀 — 다른 처방이 맡았거나 사본 실패")
+            continue
+        if not ses.dry_run:
+            for sub_path, _sub_rel, body_text in created:
+                _atomic_write(sub_path, body_text, bom, nl)
+            _atomic_write(path, cur, bom, nl)
+            if hub:
+                hbom, hnl = _read_page(hub_path)[1:]
+                _atomic_write(hub_path, hub[1], hbom, hnl)
+        if st.typ == "feature" and not hub:
+            ses.notes.append(f"{rel} 허브 `## 기능 목록` 미갱신 — 허브를 찾지 못했다(수기 등록 필요)")
+        ses.record("산문 분리", rel, [c[1] for c in created])
+
+
+PRESCRIPTIONS.append(relocate_sections)
+
+
+
+def auto_split(vault, dry_run):
+    """임계에 닿은 파일을 규정된 처방대로 **코드가** 나누거나 옮긴다(§4·§8).
+
+    **수행 주체가 세션에서 코드로 바뀐 근거**: 종전 §7-2는 *"무엇을 옮길지는 판단"*이라며
+    스크립트 수행을 배제했는데, 그 전제는 **옮길 단위를 임의로 잡을 때만** 참이다. 경계를
+    스키마가 이미 정한 `## ` 섹션과 항목 단위로 고정하면 「무엇을 옮길지」가 크기·시간
+    순서로 결정돼 판단이 사라진다. 롤오버 3종은 §2.8·§8이 이미 그렇게 규정하고 있었다.
+
+    실행 순서(각 처방은 자기 절에서 정의된다):
+      ① index 계열 -- `build_index`가 담당(생성 마커 vault). 여기서는 마지막에 연쇄 호출한다.
+      ② 롤오버 -- log.md · decision-log · project 허브 `## 최근 주요 변경`
+      ③ 산문 하위 분리 -- 필수 섹션 헤딩은 남기고 본문만 옮긴 뒤 포인터 1줄
+      ④ 등록 -- ①의 연쇄로 신설 하위가 인덱스에 오른다(등록이 빠지면 분할이 곧 유실이다)
+
+    반환: 종료 코드(0 정상 / 1 처방 실패)."""
+    ses = SplitSession(vault, dry_run)
+    if not dry_run:
+        cleaned, cleanup_failed = cleanup_backups(vault, datetime.date.today())
+        if cleaned:
+            print(f"백업 정리: {cleaned}건 제거 (§8 30일)")
+        for f in cleanup_failed:
+            print(f"  [정리 실패] {f}")
+
+    _run_prescriptions(ses)
+
+    if not ses.actions:
+        print("== --auto-split: 수행 대상 없음 ==")
+        for n in ses.notes:
+            print(f"  {n}")
+        return 1 if ses.failed else 0
+
+    if dry_run:
+        print("== --auto-split --dry-run (파일 미변경) ==")
+        for kind, target, created in ses.actions:
+            print(f"  {kind} — {target}: {'·'.join(created) if created else '(신설 없음)'}")
+        for n in ses.notes:
+            print(f"  {n}")
+        return 0
+
+    # §4 7번 기록. **이 기록이 log.md를 다시 임계로 밀 수 있으므로** 기록 후 롤오버 트리거를
+    #  1회 재점검한다(§8 "log 기록 추가 직후 트리거 점검"). 그 재점검이 유발한 롤오버는
+    #  기록을 다시 남기지 않는다 -- 기록→롤오버→기록의 연쇄를 끊는 것이 이 「1회」의 의미다.
+    written = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
+    if written:
+        # 재점검은 처방 **목록 전체**를 다시 돌린다 -- 특정 처방을 이름으로 부르지 않는 이유는
+        #  그 이름이 이 골격에 없는 심볼에 대한 계약이 되어(정의 위치가 후속 task) 목록과
+        #  이름 참조 두 곳이 갈리기 때문이다. 이미 해소된 처방은 발동 조건이 거짓이라 no-op다.
+        #  본 실행과 **같은 격리 계약**을 쓴다(_run_prescriptions 공용).
+        recheck = SplitSession(vault, dry_run)
+        _run_prescriptions(recheck)
+        if recheck.actions:
+            ses.notes.append(
+                f"log 기록 후 재점검에서 {len(recheck.actions)}건 추가 수행(§4 7번 기록 미생성 — 연쇄 차단)")
+
+    # 신설 하위를 인덱스에 등재한다 -- 이 연쇄가 없으면 분할 직후 §7-6·§7-30ⓒ가 미등록을
+    #  경고하고 조회 경로가 끊긴다. 생성 마커가 없는 vault에서는 build_index가 아무것도 쓰지
+    #  않고 1을 돌려주므로 **실패로 보지 않고** 등록이 수기 몫임을 알린다(§4 절차 4번).
+    if build_index(vault, False) != 0:
+        ses.notes.append("생성 마커 없음 — 인덱스 등록은 수기 몫(§4 절차 4번)")
+
+    print(f"== --auto-split: {len(ses.actions)}건 수행 ==")
+    for kind, target, created in ses.actions:
+        print(f"  {kind} — {target}: {'·'.join(created) if created else '(신설 없음)'}")
+    for n in ses.notes:
+        print(f"  {n}")
+    print(f"  사본: {ses.backup_dir}")
+    return 1 if ses.failed else 0
 
 
 def apply_fixes(vault):
@@ -813,7 +1952,11 @@ def apply_fixes(vault):
          섹션이 표면 표 행, 아니면 불릿으로 추가: insert_into_section)
       ② §7-24 decisions '## 아카이브' 포인터 동기(양방향: 깨진 포인터 행 제거 + 실재 아카이브 포인터 행 추가
          — 제거는 '## 아카이브' 섹션 안 행만, 결정 항목 본문 인용은 불변 §2.8)
-      ③ §7-19 log 아카이브 인덱스 stale 행 '제거만' (누락 행 추가는 그 달 키워드 요약이 필요해 판단 개입 — 수동)
+      ③ §7-19 log 아카이브 인덱스 stale 행 '제거만' (누락 행 추가는 이 경로가 하지 않는다 —
+         §8이 요구하는 「그 달 주요 작업 키워드」가 요약 판단이기 때문이다. **추가는 `--auto-split`의
+         롤오버가 맡는다** — 그쪽은 자기가 옮긴 항목을 알기에 `{N}건 ({최古}~{최新})` 결정론 형식으로
+         쓸 수 있다. 키워드 요약은 사람이 나중에 덧붙이는 추가이지 그 줄의 부재를 대신하지 못한다.
+         두 경로가 같은 자산을 다루되 방향이 다르다: `--fix`는 stale 제거, `--auto-split`은 추가)
     그 외 검사(인덱스 행 생성·한/영 병기·updated 등)는 내용 판단이 필요해 --fix 대상이 아니다.
     안전장치: 수정 전 원본을 90_archive/backup/{오늘}/ 원경로에 백업(목적지 존재 시 미덮어쓰기 — §8,
       복구는 절차 L 그대로 적용). 인코딩(BOM)·줄바꿈은 원본 상태를 보존한다. 항목별 실패는 격리
@@ -1025,7 +2168,8 @@ def apply_fixes(vault):
 
 def main():
     if len(sys.argv) < 2:
-        print("사용법: python lint.py \"<vault_path>\" [--fix] [--build-index [--dry-run]]")
+        print("사용법: python lint.py \"<vault_path>\" "
+              "[--fix] [--build-index [--dry-run]] [--auto-split [--dry-run]]")
         sys.exit(1)
     vault = sys.argv[1].rstrip("/\\")
     # --fix는 opt-in — 지정 시 안전 3종을 먼저 수정하고, 이어지는 본 lint가 수정 후 상태를 보고한다.
@@ -1033,6 +2177,15 @@ def main():
     # --build-index는 검사와 독립이다 -- 생성만 하고 끝낸다(검사가 섞이면 결과가 진단에 묻힌다).
     if "--build-index" in sys.argv[2:]:
         sys.exit(build_index(vault, "--dry-run" in sys.argv[2:]))
+    # --auto-split도 검사와 독립이다(같은 이유). --fix와 **함께 쓸 수 없다** — 그쪽은 사용자
+    #  승인 후 실행하는 참조 무결성 수리이고 이쪽은 승인 불요 분할이라, 한 번에 섞으면
+    #  어느 변경이 어느 규약으로 이뤄졌는지 사후에 가릴 수 없다(§7 서두·결과 처리 예외).
+    if "--auto-split" in sys.argv[2:]:
+        if "--fix" in sys.argv[2:]:
+            print("--auto-split과 --fix는 함께 쓸 수 없습니다 "
+                  "(승인 규약이 다름 — 따로 실행하세요, wiki-schema §7).")
+            sys.exit(1)
+        sys.exit(auto_split(vault, "--dry-run" in sys.argv[2:]))
     if "--fix" in sys.argv[2:]:
         apply_fixes(vault)
     # L-3: vault 경로에 glob 메타문자([ ] * ? 등)가 있어도 리터럴로 취급 — glob.escape로 감싸지 않으면
@@ -1151,23 +2304,22 @@ def main():
         #  90_archive/ 하위는 제외 — "아카이브는 lint 자동 제외" 서술과 동작 일치(§8),
         #  특히 append 성장하는 decisions 롤오버 파일에 영구 WARN이 걸리는 것 방지(§2.8).
         if r in SPECIAL_BUDGET:
-            chars = len(text)
-            if chars > SPECIAL_BUDGET[r]:
-                warn(f"예산 초과: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
+            st = budget_state(r, fm, text)
+            chars = st.chars
+            if st.over:
+                warn(f"예산 초과: {r} {chars}/{st.budget}자 "
                      f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)", r)
-            elif (chars >= SPECIAL_BUDGET[r] * BUDGET_NEAR_RATIO
-                  and (chars >= SPECIAL_BUDGET[r] * BUDGET_CRITICAL_RATIO
-                       or SPECIAL_BUDGET[r] - chars < BUDGET_CRITICAL_SLACK)):
+            elif st.critical:
                 # 이 경로에는 임박 계층이 없어 근접 INFO만 있었다 — 그것을 지우면 log.md는 초과 전
                 #  무신호가 되고, "임박 도달 시 소비 지점이 처방을 수행한다"는 규정이 이 타입에만
-                #  도달하지 못한다. 일반 예산 분기와 같은 임계·같은 OR 결합을 쓴다(새 임계 없음).
-                warn(f"예산 임박: {r} {chars}/{SPECIAL_BUDGET[r]}자 "
-                     f"({chars / SPECIAL_BUDGET[r] * 100:.0f}%, 여유 {SPECIAL_BUDGET[r] - chars}자) "
+                #  도달하지 못한다. 일반 예산 분기와 같은 임계·같은 OR 결합을 쓴다(새 임계 없음 —
+                #  판정은 budget_state 공용).
+                warn(f"예산 임박: {r} {chars}/{st.budget}자 "
+                     f"({chars / st.budget * 100:.0f}%, 여유 {st.budget - chars}자) "
                      f"— 다음 기록 전에 §8 롤오버 수행 (wiki-schema §8)", r)
         elif not in_archive:
-            budget = None
-            chars = len(text)
-            eff_chars, fence_note = chars, ""
+            # 판정은 budget_state 공용 — 조건을 여기 다시 쓰지 않는다(그 함수 docstring 참조).
+            #  guide_kind 통제어휘 WARN은 예산 판정이 아니라 「값 위반 가시화」라 여기 남는다.
             if typ == "guide":
                 gk = fm.get("guide_kind", "")
                 # L-3: guide_kind 오타(예: 'recipes')면 기본 9000자가 조용히 적용돼 recipe 8500자 예산을
@@ -1178,20 +2330,14 @@ def main():
                     warn(f"guide_kind 누락: {r} (허용: {', '.join(GUIDE_BUDGET)}) — 기본 9000자 적용됨(recipe 8500자 예산 우회 주의, schema §2.6)", r)
                 elif gk not in GUIDE_BUDGET:
                     warn(f"guide_kind 통제어휘 위반: {r} guide_kind='{gk}' (허용: {', '.join(GUIDE_BUDGET)}) — 기본 9000자 적용됨", r)
-                budget = GUIDE_BUDGET.get(gk, 9000)
-                # platform-bootstrap·ui-ux는 펜스 내부 문자 제외 판정(§7-2·§4) — 통짜 템플릿·예제 펜스는
-                #   분할 불가능한 페이로드라 산문 예산 대상이 아니다. recipe·타 타입은 기존 판정 유지.
-                if gk in ("platform-bootstrap", "ui-ux"):
-                    fenced = fenced_interior_chars(text)
-                    if fenced:
-                        eff_chars = chars - fenced
-                        fence_note = f", 코드 펜스 {fenced}자 제외"
-            elif typ in BUDGET:
-                budget = BUDGET[typ]
+            st = budget_state(r, fm, text)
+            budget = st.budget if st else None
+            eff_chars = st.eff_chars if st else 0
+            fence_note = st.fence_note if st else ""
             # L-2: lint 리포트(questions/lint-YYYYMMDD.md)는 발견 다건이면 길어지는 게 정상이라
             #   예산 검사에서 제외한다(§7-12/23 집계·등록 제외와 동일 기준) — 자기 리포트가 다음 lint에서
             #   영구 '예산 초과' WARN을 만드는 것을 막는다.
-            if budget and eff_chars > budget and not is_lint_report(r):
+            if budget and st.over and not is_lint_report(r):
                 # 수리 경로가 정해진 타입은 초과 시점에도 그 처방을 병기한다 — 임박 WARN에서만
                 #  안내하고 초과 WARN에서 침묵하면, 정작 고쳐야 할 시점에 방법을 못 받는다.
                 hint = {
@@ -1200,16 +2346,15 @@ def main():
                     "convention": " — 무효 항목 제거 → 주제별 하위 파일(conventions-{주제}.md) 분리 + '## 하위 문서' 목록 갱신 (wiki-schema §2.9)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{fence_note}){hint}", r)
-            elif (budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r)
-                  and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
-                       or budget - eff_chars < BUDGET_CRITICAL_SLACK)
-                  and not budget_split_suppressed(fm, eff_chars)):
+            elif budget and st.critical and not is_lint_report(r) and not st.suppressed:
                 # L-5: 초과 전에 나는 유일한 신호다. 80% INFO를 함께 내던 때는 여유 28자와 1,624자가
                 #   같은 줄로 나와 정작 급한 것이 INFO 더미에 묻혔고(실측: INFO 99건 중 10건이 그것이었고
                 #   그 상태로 방치돼 feature 하나가 여유 28자까지 왔다), 그래서 묻히는 층을 없앴다.
-                #   이 WARN을 소비하는 것은 lint 세션(F-2)·ingest(A-4·B-3)다. **자동 수리는 하지 않는다**
-                #   — 무엇을 옮길지는 판단이라 §4 index 자동 분할의 결정론 근거가 성립하지 않는다.
-                #   여기서 하는 일은 신호를 내는 것까지이고, 처방을 수행하는 것은 세션이다(`--fix` 아님).
+                #   이 WARN을 소비하는 것은 lint 세션(F-2)·ingest(A-4·B-3)다. **처방을 수행하는
+                #   것은 `--auto-split`이고 그 세 지점은 호출·검증·보고만 한다**(§7-2 번복 —
+                #   경계를 스키마가 정한 `## ` 섹션·항목 단위로 고정하면 「무엇을 옮길지」가
+                #   크기·시간 순서로 결정돼 판단이 사라진다). 여기서 하는 일은 신호를 내는
+                #   것까지다(`--fix`는 여전히 참조 무결성 3종 한정이라 이 처방과 무관하다).
                 #   그 수행의 승인 여부는 절차 문서(F-2·A-4·B-3)가 정하며 이 스크립트가 규정하지 않는다.
                 #   억제(budget_split)가 걸리면 이 분기를 건너뛰어 아래 「분리 불가 판정 유지」 INFO로
                 #   강등된다 — 나눌 하위가 없는 페이지에 실행 불가능한 처방을 반복 요구하지 않기 위함이다.
@@ -1219,9 +2364,7 @@ def main():
                 warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
                      f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
                      f"{crit_hint} — 다음 편집 전에 §4 처방 수행 (나눌 하위가 없으면 budget_split 판정)", r)
-            elif (budget and eff_chars >= budget * BUDGET_NEAR_RATIO and not is_lint_report(r)
-                  and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
-                       or budget - eff_chars < BUDGET_CRITICAL_SLACK)):
+            elif budget and st.critical and not is_lint_report(r):
                 # L-4: 위 임박 분기가 budget_split 억제로 건너뛴 파일이 여기로 내려온다(조건식은 임박과
                 #   동일하고 억제 여부만 다르다 — 선행 게이트만으로 잡으면 82%짜리가 「임박」으로 오표기된다).
                 #   침묵시키지 않는 이유: 억제를 영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어
@@ -1390,29 +2533,6 @@ def main():
     if "index.md" in pages:
         itext = pages["index.md"][2]
 
-        # 미해결 질문 인덱스 동기 (wiki-schema §7-23): open question ↔ index.md '## 미해결 질문'
-        #  (비분할 섹션 — 본체 기준 §4, 아래 sub-index 합산 '전'에 검사해야 하므로 이 위치).
-        #  섹션 탐색도 strip_code 사본에서 수행해 코드펜스 안 예시 헤딩 오매칭을 막는다.
-        #  lint-* 리포트는 질문이 아니라 등록 요구에서 제외(is_lint_report — §7-12 집계와 동일 기준).
-        #  질문 '유실'(등록 누락으로 잊힘)과 'stale'(해결됐는데 미해결 목록 잔존)을 기계로 잡는다.
-        #  resolved 페이지의 '삭제' 자체는 스냅샷 검사로 탐지 불가 — 삭제 금지는 절차 규칙
-        #  (§2.7·SKILL 사전 준수)이 담당한다.
-        q_section = section(strip_code(itext), "미해결 질문") or ""
-        # 등록 판정: 규약(§3)은 무확장자 경로 링크가 원칙이나, `.md` 포함·파일명만 링크도 등록으로
-        #  인정한다 — 그 형식 위반은 §7-1 링크 검사가 별도 보고하므로 여기서 겹치면 '미등록' 오탐.
-        q_listed = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(q_section)}
-        for qr, (qfm, qtyp, _) in sorted(pages.items()):
-            if qtyp != "question" or qr.startswith("90_archive/"):
-                continue
-            resolved = question_is_resolved(qfm)
-            listed = qr[:-3] in q_listed or os.path.basename(qr)[:-3] in q_listed
-            if not resolved and not is_lint_report(qr) and not listed:
-                warn(f"미해결 질문 index 미등록: {qr} "
-                     f"(유실 위험 — index.md '## 미해결 질문'에 등록, schema §7-23)", qr)
-            if resolved and listed:
-                warn(f"해결된 질문이 index 미해결 목록에 잔존: {qr} "
-                     f"(index에서 제거 — 페이지는 보존, B-2 3-1, schema §7-23)", qr)
-
         # 분할 신호 (wiki-schema §4) — sub 합치기 전 index.md 본체로 측정
         idx_lines = itext.count("\n") + 1
         #  행수는 증상별 인덱스를 뺀 본문으로 잰다 -- 그 섹션 행은 첫 컬럼이 평문이고 해법
@@ -1439,8 +2559,8 @@ def main():
             if s_lines > INDEX_BODY_LINES or s_rows > INDEX_FEAT_ROWS:
                 infos.append(
                     f"{os.path.basename(sp)} 순번 파일 자동 분할 대상: 본문 {s_lines}줄(임계 {INDEX_BODY_LINES}), "
-                    f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — B/F 세션이 순번 파일"
-                    f"(index-{{cat}}-{{n}}.md)로 자동 분할(승인 불요, wiki-schema §4 3단계)")
+                    f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — `--build-index`를 한 번 "
+                    f"실행하면 순번 파일(index-{{cat}}-{{n}}.md)로 나뉜다(wiki-schema §4 3단계)")
 
         # sub-index 목록 정합: 실재하는 index-*.md가 index.md에 언급(등록)됐는지.
         #  A(실재 파일) − B(index.md 언급) = 미등록 → WARN. 역방향(언급은 있으나 파일 없음)은
@@ -1461,6 +2581,32 @@ def main():
                     itext += "\n" + sfh.read()
             except (UnicodeDecodeError, OSError):  # M-2: 비 UTF-8 sub-index 하나로 전체가 죽지 않게
                 pass
+        # 미해결 질문 인덱스 동기 (wiki-schema §7-23): open question ↔ '## 미해결 질문' 표.
+        #  **sub-index 합산 '뒤'에 검사한다** — 종전에는 이 섹션이 언제나 본체에 있어 본체만 보면
+        #  됐으나, 본체가 임계를 지나면 `index-questions.md`로 덜어내지므로(§4 1단계) 본체만 보면
+        #  옮겨간 질문이 전부 '미등록'으로 오탐된다. 등록 여부가 묻는 것은 「조회 경로에 있는가」이고
+        #  그 경로는 index.md + sub-index 전체다.
+        #  섹션 탐색은 strip_code 사본에서 수행해 코드펜스 안 예시 헤딩 오매칭을 막는다.
+        #  lint-* 리포트는 질문이 아니라 등록 요구에서 제외(is_lint_report — §7-12 집계와 동일 기준).
+        #  질문 '유실'(등록 누락으로 잊힘)과 'stale'(해결됐는데 미해결 목록 잔존)을 기계로 잡는다.
+        #  resolved 페이지의 '삭제' 자체는 스냅샷 검사로 탐지 불가 — 삭제 금지는 절차 규칙
+        #  (§2.7·SKILL 사전 준수)이 담당한다.
+        q_section = section(strip_code(itext), "미해결 질문") or ""
+        # 등록 판정: 규약(§3)은 무확장자 경로 링크가 원칙이나, `.md` 포함·파일명만 링크도 등록으로
+        #  인정한다 — 그 형식 위반은 §7-1 링크 검사가 별도 보고하므로 여기서 겹치면 '미등록' 오탐.
+        q_listed = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(q_section)}
+        for qr, (qfm, qtyp, _) in sorted(pages.items()):
+            if qtyp != "question" or qr.startswith("90_archive/"):
+                continue
+            resolved = question_is_resolved(qfm)
+            listed = qr[:-3] in q_listed or os.path.basename(qr)[:-3] in q_listed
+            if not resolved and not is_lint_report(qr) and not listed:
+                warn(f"미해결 질문 index 미등록: {qr} "
+                     f"(유실 위험 — index.md '## 미해결 질문'에 등록, schema §7-23)", qr)
+            if resolved and listed:
+                warn(f"해결된 질문이 index 미해결 목록에 잔존: {qr} "
+                     f"(index에서 제거 — 페이지는 보존, B-2 3-1, schema §7-23)", qr)
+
         # 증상별 인덱스(§6)는 행 형상이 기능별 인덱스와 겹치나 의미가 달라 등록(§7-6)·한/영(§7-16)
         #  검사에서 제외한다(증상 행이 feature를 '등록됨'으로 마스킹하거나, 증상 관찰 표현에 한/영을
         #  요구하는 오탐 방지). 깨진 링크는 §7-1이 전 페이지에서 잡으므로 이 제외로 놓치지 않는다.
@@ -1491,8 +2637,14 @@ def main():
         #  뒤의 행도 누락하지 않는다(§4 보증). 이름 추출은 feat_row_name이 형상별로 처리한다 --
         #  통합 표는 첫 컬럼 평문, 옛 `## 가이드 / 레시피` 섹션은 첫 컬럼 wikilink의 alias.
         han, lat = re.compile(r"[가-힣]"), re.compile(r"[A-Za-z]")
+        # 단축 wikilink 해소용 basename -> 경로. **충돌하는 이름은 빼서 전달한다** -- 같은 이름
+        #  guide가 둘이면 어느 쪽인지 정할 수 없고, 그때 해소하는 것이 곧 오탐이다.
+        guide_stems = {}
+        for f in indexed_files.get("guide", ()):
+            guide_stems.setdefault(f.split("/")[-1], []).append(f)
+        guide_stems = {k: v[0] for k, v in guide_stems.items() if len(v) == 1}
         for line in itext_feat.splitlines():   # 증상별 인덱스 섹션 제외본(위 §7-6) — 증상 관찰 표현 오탐 차단
-            name = feat_row_name(line)
+            name = feat_row_name(line, guide_stems)
             if name is None:
                 continue
             has_h, has_l = bool(han.search(name)), bool(lat.search(name))
@@ -1538,6 +2690,15 @@ def main():
         for ym in sorted(indexed - archived):
             warn(f"log 아카이브 인덱스 깨짐: log.md가 {ym}.md를 가리키나 90_archive/log/{ym}.md 없음",
                  f"90_archive/log/{ym}.md")
+        # 「아카이브 인덱스」 절에 섞여 들어온 이력 항목(`- [YYYY-MM-DD]`)을 잡는다. 롤오버는
+        #  「최근 변경」 절만 훑으므로 여기 놓인 항목은 **영영 아카이브로 넘어가지 않고**,
+        #  월별 파일에도 없어 그 시기를 조회하면 없는 것으로 읽힌다(조용한 유실). 이 절의
+        #  정상 항목은 `- {YYYY-MM}.md: {요약}` 형태라 날짜 대괄호로 둘을 가른다.
+        stray = [ln for ln in (sec or "").split("\n") if re.match(r"- \[\d{4}-\d{2}-\d{2}\]", ln)]
+        if stray:
+            warn(f"log 이력 항목 오배치: log.md '## 아카이브 인덱스'에 이력 항목 {len(stray)}건 — "
+                 f"롤오버가 훑지 않는 구역이라 아카이브로 넘어가지 않는다('## 최근 변경'으로 이동)",
+                 "log.md")
 
     # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/K 5-3/K 5-4/K 5-5/B-1 0): 잔량이 있으면 INFO로 알려
     #  다음 소비 세션이 소비하게 한다 (0건·파일 없음이면 생략). 소비 주체는 ingest/lint 세션이고,
@@ -1748,6 +2909,72 @@ def main():
                 warn(f"가이드 하위 문서 목록 누락: {hub}의 '## 하위 문서'에 {other} 미등재 "
                      f"— 이 허브를 가리키는 링크는 있는데 목록에 없어 조회 홉 1이 깨진다 "
                      f"(하위가 아니라 단순 참조면 그 링크를 떼거나 목록에 올린다, wiki-schema §2.6)", hub)
+
+    # ⓔ 자동 분할 하위(`{stem}-{n}.md`) ↔ 진입 파일 `## 하위 문서` 양방향 + 포인터 도달성.
+    #  ⓑ·ⓓ는 타입이 정해진 두 경로(convention·guide)만 보는데, `--auto-split`은 feature·project·
+    #  entity·concept에도 하위를 만든다 — 그 산출물이 목록 밖에 남으면 조회가 닿지 못한다.
+    #  **판정 신호를 둘 다 요구한다**: 파일명 순번 접두(자동 경로가 항상 지키는 규약)와 복귀 링크.
+    #  하나만 쓰면 ⓓ가 겪은 오탐(같은 폴더의 무관한 페이지)이나 미탐(수기 하위)이 생긴다.
+    #  **ⓑ·ⓓ가 이미 보는 타입은 제외**해 같은 쌍을 두 번 지적하지 않는다.
+    for r, (fm, typ, text) in pages.items():
+        if r.startswith("90_archive/") or typ in ("convention", "guide"):
+            continue
+        m = re.match(r"^(.+)-(\d+)$", r[:-3])
+        if not m:
+            continue
+        parent = m.group(1) + ".md"
+        back = SUBDOC_BACK_RX.search(text)
+        if parent not in pages or not back:
+            continue          # 복귀 링크가 없으면 자동 분할 하위가 아니다(수기 순번 파일 오탐 방지)
+        bt = back.group(1)
+        if (bt if bt.endswith(".md") else bt + ".md") != parent:
+            continue          # 다른 문서를 상위로 가리킨다 — 이 진입 파일이 판정할 대상이 아니다
+        listed = {x[:-3] if x.endswith(".md") else x
+                  for x in wikilink_targets(section(pages[parent][2], "하위 문서") or "")}
+        if r[:-3] not in listed:
+            warn(f"하위 문서 목록 누락: {parent}의 '## 하위 문서'에 {r} 미등재 "
+                 f"— 분리한 본문이 조회 경로 밖(조회 홉 1 위반, wiki-schema §4)", parent)
+    #  정방향 — 목록이 가리키는 하위가 실재하는가(ⓑ·ⓓ가 보는 타입은 그쪽이 담당한다).
+    for r, (fm, typ, text) in pages.items():
+        if r.startswith("90_archive/") or typ in ("convention", "guide"):
+            continue
+        for tgt in sorted(wikilink_targets(section(text, "하위 문서") or "")):
+            tf = tgt if tgt.endswith(".md") else tgt + ".md"
+            if tf not in pages:
+                warn(f"하위 문서 목록 깨짐: {r} -> {tgt} 없음 (wiki-schema §4)", r)
+    #  포인터 도달성 — 본문을 옮긴 자리에 남는 `**정본은 …의 「…」이다**`가 실제로 닿는가.
+    #  **파일 실재만이 아니라 그 절 이름까지 본다** — 이것이 「옮겼는데 못 찾는」 상태를 잡는
+    #  유일한 기계 확인이다(§7-1 링크 검사는 파일까지만 본다).
+    for r, (fm, typ, text) in pages.items():
+        if r.startswith("90_archive/"):
+            continue
+        for m in PROSE_PTR_RX.finditer(text):
+            tgt, sec_name = m.group(1), m.group(2)
+            tf = tgt if tgt.endswith(".md") else tgt + ".md"
+            if tf not in pages:
+                warn(f"정본 포인터 깨짐: {r} -> {tgt} 없음 (wiki-schema §4)", r)
+            elif not re.search(r"(?m)^##[ \t]+" + re.escape(sec_name) + r"[ \t]*$",
+                               pages[tf][2]):
+                warn(f"정본 포인터 절 없음: {r} -> {tgt}에 '## {sec_name}' 없음 "
+                     f"— 옮긴 본문에 닿지 못한다 (wiki-schema §4)", r)
+
+    # §7-32: feature의 한 `## ` 섹션이 통짜로 커서 부분 조회가 안 되는 상태를 알린다.
+    #  **INFO 고정** -- 구역화는 내용 판단이라 코드가 대신할 수 없고(어디서 끊을지가 판단이다),
+    #  WARN이면 점진 적용 대상 전부가 매 lint마다 경고를 내 실제 결함이 묻힌다(§7-31과 같은 계열).
+    #  판정은 `strip_code` 사본으로 한다 -- 코드펜스 안의 `### `를 소제목으로 세면 통짜 섹션이
+    #  구역화된 것처럼 보인다. `## 목차`는 대상이 아니다(그 자체가 조회 진입점이라 소제목이 없다).
+    for r, (fm, typ, text) in pages.items():
+        if typ != "feature" or r.startswith("90_archive/"):
+            continue
+        probe = strip_code(text)
+        for ti, s0, s1 in _md_sections(text, probe):
+            if ti == "목차":
+                continue
+            body = probe[s0:s1]
+            if len(body) <= SECTION_H3_CHARS or re.search(r"(?m)^###[ \t]+\S", body):
+                continue
+            infos.append(f"섹션 구역화 권장: {r}의 '## {ti}' {len(body)}자에 '### ' 소제목 0개 "
+                         f"— 부분 조회가 안 된다(다음 편집에서 구역화, schema §2.3·§7-32)")
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
