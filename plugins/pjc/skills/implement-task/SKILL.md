@@ -616,7 +616,7 @@ Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 �
 > - **「도착한 것 같다」로 판단하지 않는다** — 조사 서술만 온 응답·부분 출력·중복 알림을 판정문으로 오인할 수 있다. **`Verdict:` 줄이 실제로 있는지** 확인하고, 없으면 판정문만 재요청한다(`references/recovery.md` D 분기).
 > - 이 규칙이 생긴 사고(판정 전 산출물을 최종 판정으로 오인해 릴리즈까지 진행): `references/rationale.md`.
 
-최종 보고는 `references/final-report-template.md`의 양식을 그대로 사용한다 — Tasks 완료 수·변경 요약·Phase F/G 결과(G-1 충족표 포함)·**Plan 변경 내역(구현 중 plan.md에 가해진 수정 — 추가 task·Files 추가·신규 Deferred/Decisions·체크박스 확인; 없으면 "계획 원안대로 완료" 1줄)**·실행 통계·follow-up·분할 plan 안내, 그리고 마지막의 "여기서 멈춥니다"(외부 작업은 각각 별도 승인) 고지까지 포함해 보고한다.
+최종 보고는 `references/final-report-template.md`의 양식을 그대로 사용한다 — Tasks 완료 수·변경 요약·Phase F/G 결과(G-1 충족표 포함)·**Plan 변경 내역(구현 중 plan.md에 가해진 수정 — 추가 task·Files 추가·신규 Deferred/Decisions·체크박스 확인; 없으면 "계획 원안대로 완료" 1줄)**·실행 통계·follow-up·분할 plan 안내·**다음 회차 인계**(이연 항목이 있어 다음 착수가 정해질 때 — **새 세션에 붙여넣을 프롬프트를 코드블록으로** 낸다. 대장 등재·`## Next Steps` 갱신으로 갈음하지 않는다), 그리고 마지막의 "여기서 멈춥니다"(외부 작업은 각각 별도 승인) 고지까지 포함해 보고한다.
 
 ## 참조 문서
 
