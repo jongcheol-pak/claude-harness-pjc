@@ -1572,10 +1572,19 @@ def rollover_hub_changes(ses):
 PRESCRIPTIONS.append(rollover_hub_changes)
 
 # ── §4 처방 ③: 산문 타입의 섹션 하위 분리 ────────────────────────────────
-# **본문까지 원본에 남기는 섹션.** 옮기면 lint가 곧바로 새 위반을 내거나(§7-18ⓐ `## 구현 방법`
-#  존재 · §7-21 `## 관련 파일` 목록 비지 않음) 다른 처방이 대상 구역을 잃는다(§2.2 롤오버 ·
-#  §7-30 포인터 목록). 이동 대상은 그 밖의 `## ` 섹션이다.
-RELOCATE_KEEP_COMMON = ("하위 문서", "아카이브", "아카이브 인덱스")
+# **본문까지 원본에 남기는 섹션** — 지도(§7-21은 `## 관련 파일` 목록이 비면 위반이다)와
+#  정체성(`## 개요`), 그리고 도달 경로·다른 처방의 대상 구역(`## 하위 문서`·`## 아카이브`)이다.
+#  **`## 구현 방법`은 여기 넣지 않는다** — §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을
+#  옮겨도 게이트가 깨지지 않고, 실 vault에서 발동을 만드는 최대 섹션이 바로 그 자리다.
+RELOCATE_KEEP_COMMON = ("개요", "관련 파일", "하위 문서", "아카이브", "아카이브 인덱스")
+# 타입별 추가 유지 섹션 — 롤오버·포인터가 대상으로 삼는 구역이거나(project) 그 타입의
+#  정체성 섹션이라(entity `## 핵심`) 옮기면 다른 규정이 깨진다.
+TYPE_KEEP_SECTIONS = {
+    "project": ("기능 목록", "최근 주요 변경", "레포 정보", "관련 위키 지식"),
+    "entity": ("핵심",),
+}
+# **하위에도 재현해야 하는 필수 섹션**(이동 제외와 다른 축이다) — 하위는 원본과 같은 타입이라
+#  §7-18ⓐ·§7-21 게이트가 하위에도 그대로 걸린다.
 TYPE_REQUIRED_SECTIONS = {
     "feature": ("개요", "관련 파일", "구현 방법"),
     "project": ("기능 목록", "최근 주요 변경", "레포 정보", "관련 위키 지식"),
@@ -1725,9 +1734,13 @@ def relocate_sections(ses):
         st = budget_state(rel, fm, text)
         if not st or not (st.critical or st.over) or st.suppressed:
             continue
-        keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_REQUIRED_SECTIONS.get(st.typ, ()))
+        keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(st.typ, ()))
         label = fm.get("index_label", "").strip() or os.path.basename(rel)[:-len(".md")]
 
+        # 필수 섹션은 이동 대상이 아니라 원본에서 불변이므로 **한 번만** 뽑아 재사용한다.
+        #  공용 `section()`을 쓰지 않는 이유는 그 함수가 `strip_code`를 거치지 않아 **코드펜스
+        #  안의 `## `를 헤딩으로 오인**할 수 있어서다(여기 경계는 `_md_sections`가 잡은 것과
+        #  같아야 한다). 필수 섹션마다 원문을 다시 훑지 않는 것은 그 덤이다.
         secmap = {ti: text[s:e] for ti, s, e in _md_sections(text)}
         created, entries, moved = [], [], 0
         cur = text
@@ -1763,6 +1776,11 @@ def relocate_sections(ses):
             ptr = ("**정본은 [[%s|%s — %s]]의 「%s」이다** — 본문 %d자를 옮겼다(§7-2 발동 처방).\n\n"
                    % (sub_rel[:-len(".md")], label, title, title, len(body)))
             cur = cur[:hd_end] + "\n" + ptr + cur[s1:]
+            # 옮긴 섹션은 이후 라운드의 후보에서 뺀다. 그 자리에 남는 것은 헤딩과 포인터
+            #  한 줄뿐인데, 빼지 않으면 그 **스텁이 다시 최대 후보로 뽑혀** 거의 같은 길이의
+            #  새 포인터로 바뀌기만 한다 — 문서가 줄지 않으니 발동도 풀리지 않아 `-3`·`-4`로
+            #  그 스텁을 옮기고 또 옮긴다(필수 섹션 총량이 예산보다 큰 문서에서 실재하는 경로다).
+            keep.add(title)
             created.append((sub_path, sub_rel, sub_text))
             entries.append((sub_rel[:-len(".md")], "%s — %s" % (label, title), title, label))
             moved += 1

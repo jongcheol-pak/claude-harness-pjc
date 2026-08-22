@@ -1071,6 +1071,61 @@
         "산문 분리 — 30_knowledge/tech/demo-tech.md"
       ],
       "rationale": "**수렴 가드.** 이동 가능한 유일 섹션이 예산(entity 6,000자)보다 커서, 옮겨도 하위가 곧바로 발동한다 — 그런 섹션을 옮기면 같은 크기의 파일이 하나 더 생길 뿐이고 다음 실행이 그 하위를 또 쪼개 `-2-2`·`-2-2-2`로 번진다(가드 없는 구현에서 실측했다). 한 섹션은 더 쪼갤 수 없으므로 여기서 멈추는 것이 §7-2의 정지 가드이고, 남는 신호는 실패가 아니라 「더 나눌 것이 없다」는 보고다. **다른 픽스처는 이 가드를 태우지 못한다** — 섹션이 예산보다 작으면 옮긴 하위가 발동하지 않아 가드가 있으나 없으나 결과가 같다."
+    },
+    {
+      "fixture": "prose-impl",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 초과: 20_projects/personal/demo/feat-thing",
+        "예산 임박: 20_projects/personal/demo/feat-thing",
+        "구현 방법 섹션 누락",
+        "구현 근거 각주 누락",
+        "관련 파일 섹션 누락"
+      ],
+      "rationale": "**`## 구현 방법`이 최대 섹션인 경우** — 실 vault에서 발동 직전인 형상이 정확히 이것이다(`feat-implement-task.md`의 그 섹션이 10,173자). 초기 구현은 이 섹션을 이동 제외에 넣어 여기서 「옮길 것이 없다」로 멈췄는데, §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을 옮겨도 게이트가 깨지지 않는다(원본에 헤딩 + 포인터가 남고 각주 정의도 남는다). 이동 제외는 지도(`## 관련 파일`)와 정체성(`## 개요`)뿐이라는 것을 이 케이스가 고정한다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "## 구현 방법",
+          "**정본은 [[20_projects/personal/demo/feat-thing-2|것 (Thing) — 구현 방법]]의 「구현 방법」이다**",
+          "[^src-thing]:"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "## 구현 방법",
+          "[구현 방법] 이 문단은",
+          "## 관련 파일",
+          "[^src-thing]:"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-single",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 30_knowledge/patterns/demo-pattern.md"
+      ],
+      "rationale": "**섹션이 하나뿐인데 예산보다 커진 경우**(Edge Case). 그 하나를 옮기면 원본이 헤딩과 포인터만 남은 껍데기가 되므로 옮기지 않고 멈춘다 — `len(secs) < 2` 분기를 태우는 유일한 케이스다(`prose-guard`는 「필수 섹션만 남아 movable이 없다」는 다른 분기를 태운다)."
+    },
+    {
+      "fixture": "prose-stub-cycle",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "feat-thing-4"
+      ],
+      "rationale": "**스텁 순환 가드.** `## 개요`(이동 제외 대상)만으로 그 자체로 예산만 한 문서라 실 콘텐츠를 다 옮겨도 발동이 풀리지 않는다. 옮기고 난 자리에는 헤딩과 포인터 한 줄만 남는데, 그 스텁을 후보에서 빼지 않으면 거의 같은 길이의 새 포인터로 바뀌기만 하면서 `-4`·`-5`로 그 스텁을 옮기고 또 옮긴다(문서가 줄지 않으니 종료 조건 셋 중 어느 것도 걸리지 않는다). **역검증에서 이 케이스는 FAIL이 아니라 타임아웃으로 드러난다** — 가드를 빼고 골든을 돌리면 판정에 닿기 전에 멈추지 않는다(실측). 그래서 `expect_absent`의 `feat-thing-4`는 유한하게 끝나되 신설이 `-3`까지인지를 보는 2차 방어이고, 1차 신호는 「끝나는가」다. 다른 픽스처는 이 경로를 태우지 못한다 — 필수 섹션 총량이 예산보다 작아 발동이 정상적으로 풀린다."
     }
   ]
 }
