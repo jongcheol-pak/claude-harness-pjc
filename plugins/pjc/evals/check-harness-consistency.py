@@ -63,6 +63,14 @@ IMPL_MD = os.path.join(ROOT, "plugins", "pjc", "skills", "implement-task", "SKIL
 # 문서에서 읽으면 계산식과 결과를 같은 곳에서 가져와 대조가 자기순환이 된다.
 HEAD_BUDGET_BYTES = 9000
 
+# AGENTS.md 목표선 — 상한(16,384B, `session-context.ps1`이 정본)과 **다른 축**이다.
+#   상한은 "주입이 목차 폴백으로 깨졌나"를 보는 하드 게이트이고, 이 값은 "다시 차오르고 있나"를
+#   넘기기 전에 알리는 경고선이다. 실측 증가율이 하루 약 +170B라(2026-08 2주간 이관 3회)
+#   상한만 보면 넘긴 뒤에야 알게 되는데, 그때는 이미 그 세션들이 명령도 금지선도 못 본 상태다.
+#   값의 근거: 상한 대비 여유 6,384B ≈ 그 증가율로 약 37일. 상한처럼 hook에서 읽지 않는 이유는
+#   정본이 없기 때문이다 — 이 경고선은 이 검사기 고유의 판정이라 여기가 정본이다.
+AGENTS_TARGET_BYTES = 10000
+
 
 def die(msg):
     """앵커를 못 찾았다 — 검사 자체가 성립하지 않으므로 통과로 처리하지 않는다."""
@@ -88,6 +96,33 @@ def section(text, heading_re, stop_re=r"^#{1,6} ", label=""):
             end = j
             break
     return "\n".join(lines[start:end])
+
+
+def top_sections(path, n=3):
+    """`## ` 절을 바이트 크기순으로 상위 n개 돌려준다 — [(제목, 바이트), …].
+
+    목표선 초과를 알릴 때 **어느 절이 큰지**를 함께 준다. 크기만 알리면 사람이
+    파일을 열어 다시 재야 하는데, 그 재측정이 매번 같은 작업이라 여기서 미리 한다.
+    절이 3개 미만이면 있는 만큼만, 헤딩이 없으면 빈 목록을 돌려준다(경고 문면이
+    "(절 없음)"으로 닫히므로 호출부에 분기를 만들지 않는다).
+    """
+    # `read()`는 파일이 없으면 `die()`로 프로세스를 끝내므로 여기서 쓰지 않는다 — 이 헬퍼는
+    # **경고 문면을 꾸미는 보조**라, 읽기에 실패해도 검사 자체를 죽이면 안 된다(부재는 호출부의
+    # 「파일 없음」 이슈가 이미 보고한다).
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = f.read()
+    except OSError:
+        return []
+    heads = [m.start() for m in re.finditer(r"(?m)^## .+$", raw)]
+    if not heads:
+        return []
+    bounds = heads + [len(raw)]
+    out = []
+    for i, s in enumerate(heads):
+        title = raw[s:raw.index("\n", s) if "\n" in raw[s:] else len(raw)][3:].strip()
+        out.append((title, len(raw[s:bounds[i + 1]].encode("utf-8"))))
+    return sorted(out, key=lambda x: -x[1])[:n]
 
 
 def measure(path):
@@ -144,6 +179,17 @@ def check_doc_budget(conv):
                 issues.append("주입 상한 초과 %s — 실측 %d B / 상한 %d B (초과 %d B) "
                               "— SessionStart가 전문 대신 목차 폴백을 주입한다"
                               % (path, real[0], limit, real[0] - limit))
+            elif real[0] > AGENTS_TARGET_BYTES:
+                # 상한(하드)과 다른 축이다 — 상한은 "주입이 깨졌나", 목표선은 "다시 차오르고 있나"를 본다.
+                # 실측 증가율이 하루 약 +170B라(2026-08 2주간 이관 3회) 상한만 보면 넘긴 뒤에야 알게 되고,
+                # 그때는 이미 그 세션들이 목차만 받은 상태다. 목표선은 그 전에 알린다.
+                top = top_sections(full)
+                detail = " · ".join("%s %dB" % (t, b) for t, b in top) or "(절 없음)"
+                issues.append("목표선 초과 %s — 실측 %d B / 목표 %d B (초과 %d B) "
+                              "— 큰 절: %s. 「AGENTS.md 내용 경계」의 증가 억제·서술 밀도 규칙을 적용하거나 "
+                              "`pjc:record-project-fact` Step 5로 이관할 것"
+                              % (path, real[0], AGENTS_TARGET_BYTES,
+                                 real[0] - AGENTS_TARGET_BYTES, detail))
     return issues, len(rows)
 
 
