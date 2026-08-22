@@ -61,6 +61,11 @@ Assert-Case -Name "guard-agents-content: 마크다운 표 통과 (트리 오탐 
 $r = Invoke-Hook 'guard-agents-content.ps1' (New-GacWrite "$gacFwd/AGENTS-old.md" "## 현재 진행 상태`n")
 Assert-Case -Name "guard-agents-content: 파일명 불일치(AGENTS-old.md) 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 
+# 하위 경로의 AGENTS.md 는 **대상이다** — 판정은 basename 이고 경로를 보지 않는다.
+#   내용 경계는 파일의 위치가 아니라 그 파일이 무엇인가에 딸린 규약이므로 모노레포 하위도 같은 정책을 받는다.
+$r = Invoke-Hook 'guard-agents-content.ps1' (New-GacWrite "$gacFwd/packages/x/AGENTS.md" "# A`n`n## 현재 진행 상태`n")
+Assert-Case -Name "guard-agents-content: 하위 경로 AGENTS.md 도 차단 (basename 판정)" -R $r -ExpectExit 2
+
 # ---- 우회 변수 (require-plan-for-write의 AGENTS 게이트와 같은 CLAUDE_HARNESS_QUICK) ----
 $savedQuick = $env:CLAUDE_HARNESS_QUICK
 try {
