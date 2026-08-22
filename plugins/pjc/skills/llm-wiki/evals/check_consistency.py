@@ -3,9 +3,9 @@
 
 사용법: python check_consistency.py   (인자 없음 — 번들 내 상대 위치로 세 파일을 찾는다)
        python check_consistency.py --trigger-report
-         축 ⑪(예산 트리거 조건 어휘 유일성)의 위반·화이트리스트·차집합 목록만 출력한다.
-         정합 대조는 돌지 않고 exit 0으로 끝난다(위반 여부는 인자 없는 기본 실행이 축으로 본다 —
-         여기는 차집합·면제 잔여까지 펼쳐 보는 상세 리포트다).
+         축 ⑪(예산 트리거 조건 어휘 유일성)의 위반·화이트리스트·차집합·면제 잔여 목록만
+         출력한다. 정합 대조는 돌지 않고 exit 0으로 끝난다(위반·면제 잔여는 인자 없는 기본
+         실행이 exit 1로 판정한다 — 여기는 그것이 어느 줄의 무엇인지 펼쳐 보는 상세 리포트다).
 
 무엇을: llm-wiki의 공유 상수(파일 예산·통제 어휘)는 네 곳에 존재한다 —
   ① lint.py 상수(BUDGET·GUIDE_BUDGET·SPECIAL_BUDGET·INDEX_*·*_VOCAB)
@@ -51,7 +51,8 @@ schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.
 `§7-2 발동 시` 포인터만 둔다 — **예외는 §7-2가 명시한 `lint.py` 임계 상수 근거 주석 하나**로,
 그 자리는 조건의 형태를 말하지 않으면 '이 상수를 지우면 안 되는 이유'가 성립하지 않는다. 그 자리들이 저마다 조건을 다시 쓰던 것이 v1.177 회차에서 6라운드
 연속 드리프트를 낸 원인이다(헤딩은 「임박」인데 본문은 「초과」 같은 반쪽 상태). 조건이 한 곳에만
-있으면 그 상태를 만들 수 없다. 상세 리포트(차집합·면제 잔여)는 `--trigger-report`로 본다.
+있으면 그 상태를 만들 수 없다. **면제로 덮인 줄에 남은 조건어(면제 잔여)도 위반이며**, 어느
+줄의 무엇인지는 `--trigger-report`가 차집합과 함께 펼친다.
 
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
@@ -1082,9 +1083,9 @@ def check_trigger_locality():
     다른 축은 `(issues, checked)` 2-튜플을 반환하는데 이 축만 4-튜플인 이유: 리포트가
     위반뿐 아니라 **화이트리스트 앵커별 매치 수**와 **차집합 처분 상태**를 함께 내야
     하고(그 둘이 각각 「면제가 엉뚱한 줄을 덮지 않는가」·「정규식이 좁아 놓친 것이
-    없는가」를 지키는 장치다), 2-튜플로는 그 정보가 담기지 않는다. main() 축으로 편입할
-    `main()`은 앞의 두 값만 `(issues, checked)`로 접어 기존 집계 루프에 맞추고,
-    뒤의 둘은 `--trigger-report`에서만 펼친다.
+    없는가」를 지키는 장치다), 2-튜플로는 그 정보가 담기지 않는다.
+    `main()`은 **위반과 면제 잔여를 함께** `issues`로 접고(둘 다 exit 1 대상이다),
+    차집합은 사람이 처분할 목록이라 `--trigger-report`에서만 펼친다.
 
     위반 = 정본 앵커 밖 + 화이트리스트 밖인데 조건어가 있는 스캔 대상 줄.
     이 목록이 곧 「포인터로 바꿔야 할 자리」의 전수다 — 사람이 grep으로 세면 형태가
@@ -1169,10 +1170,11 @@ def check_trigger_locality():
 def report_trigger_locality():
     """`--trigger-report` 진입점. 목록만 출력하고 실패시키지 않는다 (exit 0).
 
-    축은 `main()`에 편입돼 있고(v1.178.0 T7) 위반이 남으면 기본 실행이 exit 1이다.
-    이 리포트 모드를 함께 남긴 이유: **차집합·면제 잔여는 사람이 판정할 목록**이라
-    `main()` 집계에 접히지 않는다. 편입을 소진이 끝난 뒤로 미룬 것도 같은 축의 판단이었다 —
-    위반이 남은 도중에 넣었으면 매 task 검증이 FAIL해 자율 루프가 그라인딩했을 것이다."""
+    축은 `main()`에 편입돼 있고(v1.178.0 T7) **위반과 면제 잔여**가 남으면 기본 실행이
+    exit 1이다. 이 리포트 모드를 함께 남긴 이유: **차집합은 사람이 처분할 목록**이라
+    `main()` 집계에 접히지 않고, 위반·잔여도 **어느 줄의 무엇인지**는 여기서만 펼쳐진다.
+    잔여 편입을 전건 재작성이 끝난 뒤로 미룬 것도 같은 축의 판단이었다 —
+    잔여가 남은 도중에 넣었으면 매 task 검증이 FAIL해 자율 루프가 그라인딩했을 것이다."""
     violations, allow_report, diffset, residual = check_trigger_locality()
 
     print("== ⑪ 예산 트리거 조건 어휘 유일성 (리포트 모드 — 실패시키지 않음) ==")
@@ -1206,8 +1208,9 @@ def report_trigger_locality():
 
     print(f"\n[면제 잔여] {len(residual)}건 — 화이트리스트 줄에서 "
           f"**대표 앵커와 보조 조각을 모두 지운 나머지**에 남은 조건어")
-    print("  ⚠ 줄 단위 면제라 한 줄에 정당한 면제와 진짜 트리거 서술이 섞이면 후자가 숨는다.")
-    print("    각 줄이 그 사유로 정말 덮이는지 확인하고, 아니면 치환 대상으로 꺼낸다.")
+    print("  ⚠ 이 목록이 비어 있지 않으면 기본 실행이 exit 1이다 — 판정 대기가 아니라 위반이다.")
+    print("    해소는 둘 중 하나다: 정당한 면제면 그 조건어를 덮는 보조 조각을 엔트리에 더하고,")
+    print("    진짜 트리거 서술이면 조각을 달지 말고 포인터(`§7-2 발동 시`)로 치환한다.")
     for name, no, word, ctx, reason in residual:
         print(f"  ~~ {name}:{no} [{word}] {ctx[:70]} — 사유: {reason[:40]}")
 
@@ -1323,12 +1326,18 @@ def main():
     mismatches.extend(stage_issues)
     axes.append(("예산 단계", stage_checked, "항목"))
 
-    # ⑪ 트리거 유일성 — 4-튜플의 앞 두 값만 접어 쓴다. 차집합·면제 잔여는 사람이
-    #  판정할 리포트라 `--trigger-report`에만 나오고, 여기서는 **위반 유무**만 본다.
+    # ⑪ 트리거 유일성 — 4-튜플 중 **위반과 면제 잔여**를 접어 쓴다(둘 다 exit 1 대상이다).
+    #  차집합만 사람이 처분할 리포트라 `--trigger-report`에 남는다.
+    #  잔여를 여기 넣을 수 있게 된 것은 전건 재작성으로 잔여가 0이 됐기 때문이다 — 그 전에는
+    #  앵커가 조건어를 못 덮어 89건이 상시 잡혀, 편입하면 매 실행이 FAIL했다.
     trigger_issues, trigger_allow, trigger_diffset, trigger_residual = check_trigger_locality()
     trigger_checked = len(trigger_allow) + len(TRIGGER_ANCHORS)
     checked += trigger_checked
     mismatches.extend(trigger_issues)
+    for name, no, word, ctx, reason in trigger_residual:
+        mismatches.append(
+            f"면제 잔여 {name}:{no} [{word}] {ctx[:60]} — 면제 사유({reason[:30]})가 덮지 못한 "
+            f"조건어다. 정당하면 보조 조각을 더하고, 트리거 서술이면 포인터로 치환한다")
     if len(TRIGGER_ALLOWLIST) != TRIGGER_ALLOWLIST_BASELINE:
         mismatches.append(
             f"트리거 면제 총량 {len(TRIGGER_ALLOWLIST)}건 (기준선 {TRIGGER_ALLOWLIST_BASELINE}건) — "
@@ -1351,7 +1360,9 @@ def main():
         sys.exit(1)
     breakdown = " + ".join(f"{label} {n}{unit}" for label, n, unit in axes)
     print(f"결과: 대조 {checked}항목 전부 일치 ({breakdown} — 항목당 소스 2~4곳 대조)")
-    # 축 ⑪의 면제 규모 — 판정이 아니라 **가시성**이다. 셋 다 사람이 읽고 판단할 목록이고
+    # 축 ⑪의 면제 규모 — 여기 닿았다면 위반·잔여는 이미 0이다(둘 다 위 집계에서 exit 1로
+    #  걸러진다). 그래서 이 줄이 재는 것은 **남은 두 값의 가시성**이다: 화이트리스트는 커져도
+    #  실패가 아니라 기준선 상수로만 마찰을 받고, 차집합은 사람이 처분할 목록이다.
     #  상세는 `--trigger-report`가 낸다. 여기 한 줄을 두는 이유는 그 모드를 돌리지 않는
     #  회차에서도 규모가 눈에 들어오게 하기 위해서다(면제가 조용히 자라는 것을 막는다).
     print(f"  ⑪ 면제 규모: 화이트리스트 {len(trigger_allow)}건 / 면제 잔여 {len(trigger_residual)}건 / "
