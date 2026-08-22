@@ -422,17 +422,6 @@ def budget_resolved(state):
     return not (state.over or state.critical)
 
 
-def _resolve_guide_stem(target, guide_stems):
-    """단축 wikilink 대상을 guide 경로로 해소한다. 못 하면 None.
-
-    **basename이 하나의 guide로만 특정될 때만** 해소한다 -- 같은 이름 guide가 둘이면 어느
-    쪽인지 알 수 없어, 해소하는 쪽이 곧 오탐이다(호출부가 충돌 키를 아예 빼서 전달한다).
-    경로가 들어오면(`/` 포함) 단축이 아니므로 대상이 아니다."""
-    if not guide_stems or "/" in target:
-        return None
-    return guide_stems.get(target)
-
-
 def feat_row_name(line, guide_stems=None):
     """기능별 인덱스 유형 행이면 **첫 컬럼의 표시 이름**을, 아니면 None을 돌려준다
     (§7-14 행수·§7-16 병기 공용 — 이중 구현 방지. 판정과 이름 추출을 한 함수에 두는 이유는
@@ -477,12 +466,13 @@ def feat_row_name(line, guide_stems=None):
             #  호출부가 전달한 페이지 집합으로 **해소되면** 받는다 -- 폐지된 §7-27은 섹션 스코프라
             #  경로를 보지 않고 잡았고, 그 커버를 여기서 되찾는다(실 vault 가이드 행은 전부
             #  full path라 이 경로는 지금 오지 않지만, 형상이 규정에 남아 있는 한 사각이다).
-            resolved = _resolve_guide_stem(target, guide_stems)
+            #  해소는 `/`가 없는 단축 대상에 한하고, basename이 유일할 때만 성립한다
+            #  (호출부가 충돌 키를 빼고 전달한다 — 둘 중 어느 쪽인지 정할 수 없을 때
+            #  해소하는 것이 곧 오탐이다).
+            resolved = guide_stems.get(target) if guide_stems and "/" not in target else None
             if not resolved:
                 return None
-            if "40_guides/recipes/" in resolved:
-                return None
-            target = resolved
+            target = resolved       # recipe 제외는 바로 아래 공통 체크가 담당한다
         if "40_guides/recipes/" in target:
             # 폐지된 §7-27이 recipe를 명시 제외했던 이유를 승계한다(규정 정본: wiki-schema §3
             #  「하위호환 형상」 ①) -- 마커 없는 vault에서 recipe는 `## 기능별 인덱스`(첫 컬럼 평문)와
@@ -498,7 +488,7 @@ def feat_row_name(line, guide_stems=None):
         t = m.replace("\\", "").split("#")[0].strip()
         if t.split("/")[-1].startswith("feat-") or "40_guides/" in t:
             return name
-        if _resolve_guide_stem(t, guide_stems):
+        if guide_stems and "/" not in t and t in guide_stems:
             return name
     return None
 

@@ -514,8 +514,7 @@
         "[CLEANUP] 백업 제거",
         "이전 날짜 — 누적 금지",
         "30일 경과"
-      ],
-      "rationale": ""
+      ]
     },
     {
       "fixture": "build-index",
@@ -552,8 +551,7 @@
         "(여기는 --build-index가 통째로 치환한다)",
         "보관된 기능 (archived feature)",
         "90_archive/"
-      ],
-      "rationale": ""
+      ]
     },
     {
       "fixture": "clean",
@@ -564,8 +562,7 @@
         "생성 마커 없음 -- index.md를 덮어쓰지 않았습니다.",
         "<!-- AUTO-INDEX:BEGIN -->",
         "마커 밖(증상별 인덱스·참조·머리말)은 생성이 건드리지 않습니다."
-      ],
-      "rationale": ""
+      ]
     },
     {
       "fixture": "build-index",
@@ -615,8 +612,7 @@
       ],
       "expect_absent": [
         "라벨 미역이관"
-      ],
-      "rationale": ""
+      ]
     },
     {
       "fixture": "build-index",
@@ -628,8 +624,7 @@
       ],
       "after_expect_keywords": [
         "[ERR] 오류 0건"
-      ],
-      "rationale": ""
+      ]
     },
     {
       "fixture": "split-no-target",
