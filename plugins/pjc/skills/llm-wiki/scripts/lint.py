@@ -1794,6 +1794,32 @@ def relocate_sections(ses):
         if not created:
             continue
 
+        # 이전 회차에 나온 형제 하위도 함께 등재한다 — 이번 것만 넣으면 재분할할 때마다
+        #  목록이 최신 하나로 갈리고 옛 하위가 조회 경로 밖에 남는다(§7-30ⓔ가 잡는 그 상태를
+        #  자동 경로가 스스로 만들게 된다). 판정은 ⓔ와 같은 신호를 쓴다 — 순번 접두 + 이
+        #  파일을 가리키는 복귀 링크.
+        already = set(wikilink_targets(section(cur, "하위 문서") or ""))
+        made = {c[1] for c in created}
+        for f in sorted(glob.glob(os.path.join(
+                glob.escape(ses.vault), rel[:-len(".md")].replace("/", os.sep) + "-*.md"))):
+            srel = os.path.relpath(f, ses.vault).replace("\\", "/")
+            if srel in made or srel[:-len(".md")] in already:
+                continue
+            stext, _sb, _sn = _read_page(f)
+            if stext is None:
+                continue
+            bm = SUBDOC_BACK_RX.search(stext)
+            if not bm:
+                continue
+            bt = bm.group(1)
+            if (bt if bt.endswith(".md") else bt + ".md") != rel:
+                continue
+            sfm = frontmatter(stext)
+            slabel = sfm.get("index_label", "").strip() or os.path.basename(srel)[:-len(".md")]
+            # 담당 범위는 `index_label`의 접미(`{원본} — {절}`)에서 그대로 가져온다 — 그 접미를
+            #  붙인 것이 이 처방이므로 다시 판단할 것이 없다.
+            entries.append((srel[:-len(".md")], slabel,
+                            slabel.split(" — ")[-1] if " — " in slabel else slabel, label))
         cur = _sub_doc_list(cur, entries, nl)
         hub = _register_feature_rows(ses.vault, rel, entries) if st.typ == "feature" else None
         hub_path = os.path.join(ses.vault, hub[0].replace("/", os.sep)) if hub else None
