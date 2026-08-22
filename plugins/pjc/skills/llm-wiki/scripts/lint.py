@@ -2846,8 +2846,12 @@ def main():
         if not m:
             continue
         parent = m.group(1) + ".md"
-        if parent not in pages or not SUBDOC_BACK_RX.search(text):
+        back = SUBDOC_BACK_RX.search(text)
+        if parent not in pages or not back:
             continue          # 복귀 링크가 없으면 자동 분할 하위가 아니다(수기 순번 파일 오탐 방지)
+        bt = back.group(1)
+        if (bt if bt.endswith(".md") else bt + ".md") != parent:
+            continue          # 다른 문서를 상위로 가리킨다 — 이 진입 파일이 판정할 대상이 아니다
         listed = {x[:-3] if x.endswith(".md") else x
                   for x in wikilink_targets(section(pages[parent][2], "하위 문서") or "")}
         if r[:-3] not in listed:
