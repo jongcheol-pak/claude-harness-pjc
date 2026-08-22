@@ -422,7 +422,18 @@ def budget_resolved(state):
     return not (state.over or state.critical)
 
 
-def feat_row_name(line):
+def _resolve_guide_stem(target, guide_stems):
+    """단축 wikilink 대상을 guide 경로로 해소한다. 못 하면 None.
+
+    **basename이 하나의 guide로만 특정될 때만** 해소한다 -- 같은 이름 guide가 둘이면 어느
+    쪽인지 알 수 없어, 해소하는 쪽이 곧 오탐이다(호출부가 충돌 키를 아예 빼서 전달한다).
+    경로가 들어오면(`/` 포함) 단축이 아니므로 대상이 아니다."""
+    if not guide_stems or "/" in target:
+        return None
+    return guide_stems.get(target)
+
+
+def feat_row_name(line, guide_stems=None):
     """기능별 인덱스 유형 행이면 **첫 컬럼의 표시 이름**을, 아니면 None을 돌려준다
     (§7-14 행수·§7-16 병기 공용 — 이중 구현 방지. 판정과 이름 추출을 한 함수에 두는 이유는
     §7-16이 따로 `split("|")[1]`을 쓰면 아래 옛 형상의 `\\|` 이스케이프에서 이름이 잘리기 때문).
@@ -462,20 +473,22 @@ def feat_row_name(line):
             target, _, alias = inner.partition("|")
         target = target.replace("\\", "").split("#")[0].strip()
         if "40_guides/" not in target:
-            return None
+            # 단축 wikilink(`[[help-style|...]]`)는 대상에 경로가 없어 형상만으로는 가릴 수 없다.
+            #  호출부가 전달한 페이지 집합으로 **해소되면** 받는다 -- 폐지된 §7-27은 섹션 스코프라
+            #  경로를 보지 않고 잡았고, 그 커버를 여기서 되찾는다(실 vault 가이드 행은 전부
+            #  full path라 이 경로는 지금 오지 않지만, 형상이 규정에 남아 있는 한 사각이다).
+            resolved = _resolve_guide_stem(target, guide_stems)
+            if not resolved:
+                return None
+            if "40_guides/recipes/" in resolved:
+                return None
+            target = resolved
         if "40_guides/recipes/" in target:
             # 폐지된 §7-27이 recipe를 명시 제외했던 이유를 승계한다(규정 정본: wiki-schema §3
             #  「하위호환 형상」 ①) -- 마커 없는 vault에서 recipe는 `## 기능별 인덱스`(첫 컬럼 평문)와
             #  `## 가이드 / 레시피`(첫 컬럼 wikilink) **두 곳**에 실리므로, 여기서 받으면 같은
             #  페이지에 병기 WARN이 두 번 난다(이중 요구). 평문 쪽 행이 이미 대상이라 커버는 유지된다.
             return None
-        # ⚠ 하위호환 수용은 **full path 형상 한정**이다(wiki-schema §3 「하위호환 형상」 ②) --
-        #  단축 wikilink(`[[help-style|...]]`)는 대상이 `40_guides/`를 담지 않아 여기서도 조건 ③에서도
-        #  탈락한다. 폐지된 §7-27은 섹션 스코프라 경로를 보지 않고 잡았으므로 그만큼 커버가 좁다.
-        #  닫으려면 링크 대상을 페이지 집합에 해소해야 하는데(이 함수는 행 문자열만 받는다) 실 vault
-        #  가이드 행은 전부 full path라 실사용 근거 없이 구조를 바꾸지 않는다.
-        #  실측(재현 가능): vault에서 `git show 53d036e^:index.md`의 `## 가이드 / 레시피` 섹션 링크 행
-        #  **111행 중 첫 컬럼 full path 111 / 단축 0**.
         name = alias.strip() or target.split("/")[-1]
     else:
         if not first:
@@ -484,6 +497,8 @@ def feat_row_name(line):
     for m in re.findall(r"\[\[([^\]|]+)", s):
         t = m.replace("\\", "").split("#")[0].strip()
         if t.split("/")[-1].startswith("feat-") or "40_guides/" in t:
+            return name
+        if _resolve_guide_stem(t, guide_stems):
             return name
     return None
 
@@ -2606,8 +2621,14 @@ def main():
         #  뒤의 행도 누락하지 않는다(§4 보증). 이름 추출은 feat_row_name이 형상별로 처리한다 --
         #  통합 표는 첫 컬럼 평문, 옛 `## 가이드 / 레시피` 섹션은 첫 컬럼 wikilink의 alias.
         han, lat = re.compile(r"[가-힣]"), re.compile(r"[A-Za-z]")
+        # 단축 wikilink 해소용 basename -> 경로. **충돌하는 이름은 빼서 전달한다** -- 같은 이름
+        #  guide가 둘이면 어느 쪽인지 정할 수 없고, 그때 해소하는 것이 곧 오탐이다.
+        guide_stems = {}
+        for f in indexed_files.get("guide", ()):
+            guide_stems.setdefault(f.split("/")[-1], []).append(f)
+        guide_stems = {k: v[0] for k, v in guide_stems.items() if len(v) == 1}
         for line in itext_feat.splitlines():   # 증상별 인덱스 섹션 제외본(위 §7-6) — 증상 관찰 표현 오탐 차단
-            name = feat_row_name(line)
+            name = feat_row_name(line, guide_stems)
             if name is None:
                 continue
             has_h, has_l = bool(han.search(name)), bool(lat.search(name))
