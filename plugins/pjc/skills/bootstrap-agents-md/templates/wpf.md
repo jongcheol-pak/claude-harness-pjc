@@ -4,13 +4,11 @@
 
 > **이 템플릿은 그대로 써도 동작합니다.** 다만 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고, 프로젝트 고유의 규칙·함정·금지사항을 추가하면 Claude가 추측을 줄여 **더 정확하고 안정적으로** 작업합니다. 처음엔 빌드·테스트 명령만 채워 시작하고, 작업하며 점진적으로 다듬는 것을 권장합니다.
 
+## 위키
 
-## Stack
-- **언어**: C# / .NET <version, 예: net10.0-windows10.0.22621.0>
-- **UI 프레임워크**: WPF + **WPF-UI** (NuGet `WPF-UI`, Fluent/Windows 11 스타일)
-- **MVVM**: `CommunityToolkit.Mvvm` (`[ObservableProperty]`, `[RelayCommand]`)
-- **DI**: `Microsoft.Extensions.DependencyInjection` / `Microsoft.Extensions.Hosting`
-- **공식 가이드**: https://wpfui.lepo.co  (소스: https://github.com/lepoco/wpfui)
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
+- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan-feature` Step 1 소관).
 
 ## Build & Test
 - **Build**: `dotnet build <Project>.csproj -c Debug`
@@ -89,21 +87,6 @@ dotnet add package WPF-UI
 - **색/브러시**: `DynamicResource` (테마 대응). `StaticResource`는 테마 무관 항목만
 - **파일**: 단일 책임 유지(분할은 줄 수가 아니라 책임·읽기 부담으로 판정), UTF-8 (BOM 없음, `.ps1`만 BOM — Windows PowerShell 5.1 호환), 주석은 한글 ("왜"만 설명)
 - **접근성**: `AutomationProperties.Name`, 키보드 내비게이션
-
-## Repository Structure
-```
-<repo>/
-├── <Project>.sln
-├── <Project>/
-│   ├── <Project>.csproj        # UseWPF=true, WPF-UI 패키지
-│   ├── App.xaml(.cs)           # ThemesDictionary + ControlsDictionary 병합
-│   ├── MainWindow.xaml(.cs)    # ui:FluentWindow
-│   ├── Views/ + ViewModels/
-│   ├── Services/               # DI 등록 서비스
-│   └── Assets/
-├── tests/
-└── docs/                       # WPF-UI 커스텀 패턴 메모 (있으면)
-```
 
 ## 산출물·파일 관리
 - **빌드 산출물**: `bin/` · `obj/` (gitignore)

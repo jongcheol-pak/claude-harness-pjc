@@ -4,12 +4,11 @@
 
 > **이 템플릿은 그대로 써도 동작합니다.** 다만 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고, 프로젝트 고유의 규칙·함정·금지사항을 추가하면 Claude가 추측을 줄여 **더 정확하고 안정적으로** 작업합니다. 처음엔 빌드·테스트 명령만 채워 시작하고, 작업하며 점진적으로 다듬는 것을 권장합니다.
 
+## 위키
 
-## Stack
-- **언어**: Rust <stable / 1.80+>
-- **에디션**: <2021 / 2024>
-- **주요 crates**: <tokio / actix-web / axum / serde / sqlx 등 — 실제 사용 명시>
-- **빌드 도구**: Cargo
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
+- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan-feature` Step 1 소관).
 
 ## Build & Test
 - **Build (debug)**: `cargo build`
@@ -29,27 +28,6 @@
 - **시드/조회**: <개발용 데이터 확인 방법>
 
 > ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
-
-## Repository Structure
-
-> 아래는 **Clean/Hexagonal을 택했을 때**의 구조다. 계층형(단일 crate)을 택했으면 실제 구조로 바꾼다(예: `src/` 아래 모듈만 분리, crate 분리 없음). **선택한 아키텍처에 맞게 조정하세요.**
-
-```
-<repo>/
-├── Cargo.toml
-├── Cargo.lock
-├── src/
-│   ├── main.rs              # 단일 binary인 경우
-│   ├── lib.rs               # 라이브러리 진입점
-│   ├── domain/              # 비즈니스 로직 (no_std 가능하면 좋음)
-│   ├── application/         # UseCases
-│   ├── infrastructure/      # DB, HTTP client
-│   └── interfaces/          # HTTP handlers, CLI
-├── tests/                   # 통합 테스트 (binary별로)
-└── benches/                 # criterion benchmarks (있을 때)
-```
-
-Workspace 사용 시 `members = ["crates/*"]`로 구분.
 
 ## 산출물·파일 관리
 - **빌드 산출물**: `target/` (debug·release, gitignore)

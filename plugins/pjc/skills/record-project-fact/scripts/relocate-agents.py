@@ -11,9 +11,12 @@
   ⓐ 발동 — 파일 바이트가 상한의 `near_ratio` 이상이거나 여유가 `near_slack` 미만이면 이관한다.
      **상한·비율·잔여를 여기 박지 않는다** — `session-context.ps1`에서 셋 다 읽는다. 상한만
      읽고 나머지를 박으면 hook이 임계를 바꿔도 판정이 따라가지 않는다.
-  ⓑ 잔류 — `## Stack` · `## Build & Test` · `## DO NOT` · `## Plan Location`은 절 단위로
+  ⓑ 잔류 — `## 위키` · `## Build & Test` · `## DO NOT` · `## Plan Location`은 절 단위로
      통째 남긴다. **줄 단위로 가르지 않는다**: 명령만 남기고 「언제 어떤 조건에서 쓰는지」를
      설명하는 산문을 떼면 남은 명령이 그대로 오용된다.
+     **`## Stack`이 아니라 `## 위키`인 이유**: 프로젝트 정보는 위키가 정본이 되어 `## Stack`
+     자체가 사라졌고(`docs/harness-conventions.md` 「AGENTS.md 내용 경계」), `## 위키`는
+     그 정본으로 가는 유일한 포인터라 옮기면 도달 경로가 끊긴다.
   ⓒ 대상 — 잔류 밖의 `## ` 절을 바이트 크기순으로 세어 큰 것부터. 크기는 헤딩 줄부터 다음
      `## ` 직전까지의 **파일 바이트**(CRLF 포함 — ⓐ 판정과 같은 기준).
   ⓓ 이관처 — 결정론 2분기다. ① 본문에 백틱·링크로 등장하는 `.md` 경로 중 **최다 등장**(동수면
@@ -46,7 +49,7 @@ try:
 except Exception:
     pass
 
-KEEP_SECTIONS = ("Stack", "Build & Test", "DO NOT", "Plan Location")
+KEEP_SECTIONS = ("위키", "Build & Test", "DO NOT", "Plan Location")
 DEFAULT_DEST = "docs/agents-detail.md"
 BACKUP_DIR = os.path.join("docs", ".agents-presplit")
 # hook에서 읽을 세 값의 변수 이름. 이름이 바뀌면 여기서 **명확히 실패**한다(조용한 기본값 금지).

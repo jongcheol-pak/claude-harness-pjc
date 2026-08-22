@@ -4,12 +4,11 @@
 
 > **이 템플릿은 그대로 써도 동작합니다.** 다만 빈 칸(빌드/테스트 명령·아키텍처·컨벤션)을 프로젝트에 맞게 채우고, 프로젝트 고유의 규칙·함정·금지사항을 추가하면 Claude가 추측을 줄여 **더 정확하고 안정적으로** 작업합니다. 처음엔 빌드·테스트 명령만 채워 시작하고, 작업하며 점진적으로 다듬는 것을 권장합니다.
 
+## 위키
 
-## Stack
-- **언어**: Python <3.11+>
-- **패키지 매니저**: <pip / poetry / uv / pdm>
-- **주요 프레임워크**: <FastAPI / Django / Flask / pytorch 등>
-- **테스트**: pytest
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
+- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan-feature` Step 1 소관).
 
 ## Build & Test
 - **가상환경 생성**: `python -m venv .venv` 또는 `uv venv` (poetry는 `poetry install` 시 자동 생성 — 활성화는 `poetry env activate`, `poetry shell`은 Poetry 2.x에서 제거됨)
@@ -28,24 +27,6 @@
 - **시드/조회**: <개발용 데이터 확인 방법>
 
 > ⚠️ 실제 연결문자열·계정·비밀번호는 적지 않는다(환경변수 이름만). DB가 없으면 "없음".
-
-## Repository Structure
-
-> 아래는 **Clean/DDD를 택했을 때**의 구조다. 계층형을 택했으면 실제 구조로 바꾼다(예: `api/`·`services/`·`db/`). **선택한 아키텍처에 맞게 조정하세요.**
-
-```
-<repo>/
-├── src/<package>/
-│   ├── domain/           # 비즈니스 로직 (pure Python)
-│   ├── application/      # UseCases, Services
-│   ├── infrastructure/   # DB, External API
-│   └── interfaces/       # FastAPI routes, CLI 등
-├── tests/
-│   ├── unit/
-│   └── integration/
-├── pyproject.toml
-└── (선택) .python-version
-```
 
 ## 산출물·파일 관리
 - **빌드 산출물**: `dist/` · `build/` · `*.egg-info/` (gitignore)

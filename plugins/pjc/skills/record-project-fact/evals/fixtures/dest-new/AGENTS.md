@@ -2,8 +2,8 @@
 
 > 이관 골든용 픽스처.
 
-## Stack
-- 언어: Python 3.12
+## 위키
+- 프로젝트 정보는 위키가 정본
 
 ## Build & Test
 - Build: `python -m compileall .`

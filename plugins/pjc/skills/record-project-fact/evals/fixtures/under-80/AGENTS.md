@@ -2,9 +2,9 @@
 
 > 이관 골든용 픽스처.
 
-## Stack
-- 언어: Python 3.12 · PowerShell 7
-- 프레임워크: 없음
+## 위키
+- **프로젝트 페이지**: `20_projects/personal/demo.md`
+- 프로젝트 정보는 위키가 정본
 
 ## Build & Test
 - Build: `python -m compileall .`
