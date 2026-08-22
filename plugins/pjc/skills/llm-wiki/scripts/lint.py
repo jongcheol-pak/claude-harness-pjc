@@ -1329,6 +1329,7 @@ def rollover_log(ses):
     # kept는 _rollover_items가 moving과 배타적으로 돌려준 것이라 그대로 쓴다
     #  (원래 순서가 유지되므로 최신이 위인 log.md 형상이 보존된다).
     new_sec = head + "".join(b for _d, b in kept)
+    # 마지막 항목이 이동하면 그 뒤 빈 줄까지 딸려가 다음 헤딩이 붙는다 — 원본이 빈 줄로 끝났으면 그 형상을 유지한다.
     if sec.endswith("\n\n") and not new_sec.endswith("\n\n"):
         new_sec += "\n"
     new_text = _replace_section(text, "최근 변경", new_sec)
@@ -1425,6 +1426,7 @@ def rollover_decisions(ses):
             #  예산 검사가 걸릴 이유가 없는데도 걸린다.
             arch_text = "# %s 결정 이력 아카이브\n\n" % proj + "".join(blocks)
         new_body = "".join(b for _d, b in kept)
+        # 마지막 항목이 이동하면 그 뒤 빈 줄까지 딸려가 다음 헤딩이 붙는다 — 원본이 빈 줄로 끝났으면 그 형상을 유지한다.
         if body.endswith("\n\n") and not new_body.endswith("\n\n"):
             new_body += "\n"
         new_text = head + new_body + tail
