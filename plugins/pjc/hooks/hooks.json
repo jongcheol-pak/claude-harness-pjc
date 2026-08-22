@@ -45,6 +45,17 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-agents-content.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [

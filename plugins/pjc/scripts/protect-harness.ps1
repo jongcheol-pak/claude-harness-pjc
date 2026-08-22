@@ -73,7 +73,7 @@ $norm = '/' + ($segs -join '/')
 # orphan-process-cleanup도 같은 이유로 헬퍼이면서 보호 대상이다 — 회수 함수 모듈 하나를 개조하면
 # 그것을 dot-source하는 세 hook(require-evidence·session-context·session-end-cleanup)의 고아 프로세스
 # 회수가 한꺼번에 무력화된다(secret-patterns와 동형의 등가 우회).
-$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib|warn-version-drift|session-context|hook-event-log|orphan-process-cleanup|session-end-cleanup'
+$harnessHookName = 'block-destructive|require-plan-for-write|require-task-checkbox|require-evidence|post-write-checks|warn-external-ops|suggest-agents-record|protect-harness|warn-commit-secrets|secret-patterns|pre-bash-dispatch|bash-hook-lib|warn-version-drift|session-context|hook-event-log|orphan-process-cleanup|session-end-cleanup|guard-agents-content'
 
 # (1) .claude/ 하위 설치본 hook 스크립트·hooks.json 개조
 $isHookScript = ($norm -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$')) -or

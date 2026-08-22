@@ -8,7 +8,7 @@
 # 무엇을: scripts/*.ps1 hook을 격리 USERPROFILE·중립 cwd에서 stdin JSON으로 실행해
 #   exit code·출력 키워드를 대조한다. 케이스 정본은 두 곳 —
 #   ① hook-cases.json: 무상태(command 기반) 케이스 (block-destructive·warn-external-ops)
-#   ② scenarios/*.ps1 14개: 상태 필요(plan 폴더·git repo·AGENTS.md 마커·post-write 파일)
+#   ② scenarios/*.ps1 15개: 상태 필요(plan 폴더·git repo·AGENTS.md 마커·post-write 파일)
 #   공용 헬퍼·격리 구성은 eval-common.ps1이며, 이 파일과 run-scenario.ps1이 함께 dot-source한다.
 #
 # 실행 구조(v1.159.0): 기본은 **시나리오 그룹 단위 병렬**이다 — 그룹마다 자식 pwsh를 띄워
@@ -76,7 +76,8 @@ $scenarioGroups = @(
     @('warn-commit-secrets'),
     @('warn-version-drift'),
     @('protect-harness-installed', 'hook-event-log'),
-    @('session-context')
+    @('session-context'),
+    @('guard-agents-content')
 )
 
 Write-Host "== pjc hook 골든 회귀 =="
