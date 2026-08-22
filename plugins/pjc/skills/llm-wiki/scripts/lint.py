@@ -80,6 +80,14 @@ BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 —
     "convention": 12000,
 }
 GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
+# §7-16(병기)·§7-14(행수)가 「기능별 인덱스 유형 행」으로 인정하는 **대상 토큰**.
+#  (feature 파일명 접두, guide 경로 조각) 순이며 매칭 방식이 서로 다르다 -- 앞은 basename
+#  접두, 뒤는 경로 포함이다. 모듈 상수로 둔 이유는 `check_consistency.py`가 이 값을
+#  wiki-schema §3의 고정 형식 1줄과 기계 대조하기 때문이다(함수 본문 리터럴은 읽을 수 없다).
+FEAT_ROW_TARGET_TOKENS = ("feat-", "40_guides/")
+# 단축 wikilink를 페이지 집합으로 해소하는 축이 켜져 있는가(§3 「하위호환 형상」 ②).
+#  **해소 로직 자체는 골든이 본다** -- 이 플래그가 대조하는 것은 「그 축이 있다」는 사실뿐이다.
+FEAT_ROW_STEM_RESOLVE = True
 PLATFORM_VOCAB = {"windows-desktop", "web", "mobile", "cli", "cross"}
 ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
@@ -444,6 +452,7 @@ def feat_row_name(line, guide_stems=None):
     그대로 유지**하고(wiki-schema §4의 마커 없는 vault 분기) 그 행은 첫 컬럼이 wikilink다. 평문만
     받으면 그 vault의 guide 행은 폐지된 전용 검사에도 이 검사에도 걸리지 않아 **병기 무신호 구간**이
     생긴다 -- 폐지가 만든 공백이라 하위호환 형상을 여기서 함께 받는다."""
+    feat_prefix, guide_seg = FEAT_ROW_TARGET_TOKENS
     s = line.lstrip()
     if not s.startswith("|"):
         return None
@@ -461,7 +470,7 @@ def feat_row_name(line, guide_stems=None):
         if not alias:
             target, _, alias = inner.partition("|")
         target = target.replace("\\", "").split("#")[0].strip()
-        if "40_guides/" not in target:
+        if guide_seg not in target:
             # 단축 wikilink(`[[help-style|...]]`)는 대상에 경로가 없어 형상만으로는 가릴 수 없다.
             #  호출부가 전달한 페이지 집합으로 **해소되면** 받는다 -- 폐지된 §7-27은 섹션 스코프라
             #  경로를 보지 않고 잡았고, 그 커버를 여기서 되찾는다(실 vault 가이드 행은 전부
@@ -486,7 +495,7 @@ def feat_row_name(line, guide_stems=None):
         name = first
     for m in re.findall(r"\[\[([^\]|]+)", s):
         t = m.replace("\\", "").split("#")[0].strip()
-        if t.split("/")[-1].startswith("feat-") or "40_guides/" in t:
+        if t.split("/")[-1].startswith(feat_prefix) or guide_seg in t:
             return name
         if guide_stems and "/" not in t and t in guide_stems:
             return name

@@ -986,6 +986,43 @@ def _anchor_span(path, lines):
     return set(range(start, lines[-1][0] + 1)), issues
 
 
+# ⑫ §7-16 대상 조건 ↔ §3 서술. 값의 정본은 `lint.py` 상수이고, 규정은 그 값을 **고정 형식
+#  1줄**로 적는다 -- 산문을 정규식으로 파싱하면 문구를 조금만 다듬어도 앵커가 깨진다.
+ROW_SHAPE_LINE_RX = re.compile(
+    r"(?m)^>\s*\*\*§7-16 대상 토큰\(기계 대조\)\*\*:\s*(.+?)\s*$")
+
+
+def check_row_shape_sync(schema_text, lint):
+    """§7-16이 「기능별 인덱스 유형 행」으로 인정하는 대상 토큰이 §3 서술과 같은지 본다.
+
+    **커버 한계**: 이 축이 보는 것은 **대상 토큰**과 「단축 해소 축이 켜져 있는가」뿐이다.
+    해소 **로직**(basename 유일성 판정 등)은 규정 1줄로 표현할 수 없어 골든이 본다 --
+    그 사실을 여기 적어 두지 않으면 다음 세션이 이 축을 로직 보증으로 오해한다.
+    반환: (불일치 목록, 대조 항목 수)."""
+    m = ROW_SHAPE_LINE_RX.search(schema_text)
+    if not m:
+        die("wiki-schema §3에서 '§7-16 대상 토큰(기계 대조)' 줄을 찾지 못했다")
+    parts = [p.strip() for p in m.group(1).split("·")]
+    doc_tokens, doc_resolve = [], None
+    for p in parts:
+        pm = re.match(r"^단축 해소\s+(on|off)$", p)
+        if pm:
+            doc_resolve = pm.group(1) == "on"
+            continue
+        doc_tokens.append(p.strip("`"))
+    issues = []
+    lint_tokens = list(lint.FEAT_ROW_TARGET_TOKENS)
+    if doc_tokens != lint_tokens:
+        issues.append(f"§7-16 대상 토큰 불일치: schema={doc_tokens} / lint={lint_tokens}")
+    if doc_resolve is None:
+        die("'§7-16 대상 토큰' 줄에 '단축 해소 on|off' 플래그가 없다")
+    if doc_resolve != bool(lint.FEAT_ROW_STEM_RESOLVE):
+        issues.append(
+            f"단축 해소 축 불일치: schema={'on' if doc_resolve else 'off'} / "
+            f"lint={'on' if lint.FEAT_ROW_STEM_RESOLVE else 'off'}")
+    return issues, len(lint_tokens) + 1
+
+
 def check_trigger_locality():
     """⑪ 예산 트리거 조건 어휘 유일성. 반환: (위반, 화이트리스트 검증, 차집합, 면제 잔여).
 
@@ -1221,6 +1258,12 @@ def main():
     checked += trigger_checked
     mismatches.extend(trigger_issues)
     axes.append(("트리거 유일성", trigger_checked, "항목"))
+
+    # ⑫ §7-16 대상 조건 ↔ §3 서술
+    row_issues, row_checked = check_row_shape_sync(schema_text, lint)
+    checked += row_checked
+    mismatches.extend(row_issues)
+    axes.append(("행 대상 조건", row_checked, "항목"))
 
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
