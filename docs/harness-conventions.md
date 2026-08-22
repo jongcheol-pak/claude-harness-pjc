@@ -98,7 +98,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) |
 | `plugins/pjc/skills/implement-task/SKILL.md`의 **「🚫 금지 표현」 ②③④⑤ 절** | **Hook 골든 회귀** — hook을 한 줄도 안 고쳐도 깨질 수 있다. `hooks/evals/scenarios/require-evidence.ps1:216`의 L12 블록이 **그 SKILL.md를 열어 문구 목록을 파싱**해 hook 정규식과 대조하기 때문이다(추출 0건이면 그 자체가 FAIL). 아래 「골든 부분 실행의 판정 자격」 예외를 plan에 미리 적었다면 `-Filter require-evidence`로 갈음 가능 |
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
-| `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든 25케이스**가 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint를 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
+| `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든 26케이스**가 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint를 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (7케이스, 1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |
 | `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」·「리뷰어 4종 공통 규약」 절** · `plugins/pjc/agents/*.md` · `docs/plans/deferred.md` | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
@@ -260,7 +260,7 @@ task 1개가 통과하는 검증·리뷰 지점은 **19곳**이다 — Phase V�
 
 > `AGENTS.md` 「Hook 골든 회귀」가 지목하는 정본이다. **이 절을 읽지 않고 돌리면 완주하지 않는다** — 과거 "환경상 실행 불가"로 Phase F-2를 갈음한 사례들이 전부 이 절차를 쓰지 않은 것이다.
 >
-> **이 절의 분리 프로세스·`Monitor` 폴링 절차는 hook 골든 하나에만 해당한다.** 다른 두 골든은 전경 실행으로 완주하므로 그 절차가 필요 없다 — **llm-wiki lint 골든**(`run_lint_evals.py`, 97케이스)은 약 75초, **AGENTS.md 이관 골든**(`run_relocation_evals.py`, 7케이스)은 1초 미만이다(2026-08-22 실측). 셋을 한 덩어리로 읽고 전부 백그라운드로 돌리면 오히려 느려지고, 결과 회수도 한 단계 늘어난다.
+> **이 절의 분리 프로세스·`Monitor` 폴링 절차는 hook 골든 하나에만 해당한다.** 다른 두 골든은 전경 실행으로 완주하므로 그 절차가 필요 없다 — **llm-wiki lint 골든**(`run_lint_evals.py`, 99케이스)은 약 45초, **AGENTS.md 이관 골든**(`run_relocation_evals.py`, 7케이스)은 1초 미만이다(2026-08-22 실측). 셋을 한 덩어리로 읽고 전부 백그라운드로 돌리면 오히려 느려지고, 결과 회수도 한 단계 늘어난다.
 
 ### 검사 대상
 

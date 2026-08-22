@@ -1286,8 +1286,7 @@ def _rollover_items(items, fits, keep_min=1):
         moved.add(i)
     # (날짜, 블록) 튜플을 그대로 돌려준다 -- 블록 텍스트만 주면 호출부가 날짜를 되찾으려고
     #  본문으로 역인덱스를 만들게 되는데, **같은 본문이 두 번 적힌 항목이 있으면** 그 dict가
-    #  하나를 덮어써 날짜를 잘못 짚는다(중복 기록은 실제로 있다 -- 실 vault log.md의
-    #  아카이브 인덱스 구역에 거의 같은 QUEUE 항목이 두 벌 들어 있다).
+    #  하나를 덮어써 날짜를 잘못 짚는다(큐 소비 기록처럼 문면이 정형인 항목은 실제로 겹친다).
     moving = [items[i] for i in order if i in moved]
     kept = [items[i] for i in range(len(items)) if i not in moved]
     return moving, kept
@@ -1394,11 +1393,17 @@ def _decision_body_span(text):
 
     `log.md`와 달리 이 타입은 항목이 섹션 없이 본문에 바로 온다(§2.8) — `# {프로젝트}
     결정 이력` 헤딩 뒤부터 `## 아카이브` 앞까지다. 그래서 `section()`으로 스코프를 잡을 수
-    없고, 뒷부분(아카이브 포인터·주석)을 그대로 보존하려면 세 조각으로 갈라야 한다."""
-    m = re.search(r"(?m)^(- \[\d{4}-\d{2}-\d{2})", text)
+    없고, 뒷부분(아카이브 포인터·주석)을 그대로 보존하려면 세 조각으로 갈라야 한다.
+
+    **경계 판정은 `strip_code` 사본으로 한다** -- 항목 본문의 코드펜스 안에 `## `로 시작하는
+    줄이 있으면(결정 근거로 마크다운을 인용하는 항목이 그렇다) 거기서 잘려 **그 뒤 항목이 통째로
+    「뒷부분」으로 넘어가고 롤오버 대상에서 조용히 빠진다.** 사본은 길이를 보존하므로 오프셋을
+    원문에 그대로 쓸 수 있다."""
+    probe = strip_code(text)
+    m = re.search(r"(?m)^(- \[\d{4}-\d{2}-\d{2})", probe)
     if not m:
         return text, "", ""
-    tail_m = re.search(r"(?m)^##\s", text[m.start():])
+    tail_m = re.search(r"(?m)^##\s", probe[m.start():])
     end = m.start() + tail_m.start() if tail_m else len(text)
     return text[:m.start()], text[m.start():end], text[end:]
 
@@ -1634,13 +1639,17 @@ def _prose_page_paths(vault):
     return out
 
 
-def _md_sections(text):
+def _md_sections(text, probe=None):
     """`## ` 섹션을 [(제목, 시작, 끝)]으로 돌려준다.
 
     판정은 `strip_code` 사본으로 한다 — 코드펜스·인라인코드 안의 `## `를 헤딩으로 세면
     본문 한가운데를 자른다. 그 사본은 **길이를 보존**하므로(같은 길이 공백 치환) 여기서
-    얻은 오프셋을 원문에 그대로 쓸 수 있다."""
-    probe = strip_code(text)
+    얻은 오프셋을 원문에 그대로 쓸 수 있다.
+
+    `probe`를 받으면 그것을 쓴다 -- 호출부가 같은 사본을 이미 만들었을 때 두 번 만들지 않기
+    위해서다(사본 생성은 정규식 3회라 큰 문서에서 공짜가 아니다)."""
+    if probe is None:
+        probe = strip_code(text)
     marks = [(m.start(), m.group(1).strip())
              for m in re.finditer(r"(?m)^##[ \t]+(.+)$", probe)]
     out = []
@@ -2681,6 +2690,15 @@ def main():
         for ym in sorted(indexed - archived):
             warn(f"log 아카이브 인덱스 깨짐: log.md가 {ym}.md를 가리키나 90_archive/log/{ym}.md 없음",
                  f"90_archive/log/{ym}.md")
+        # 「아카이브 인덱스」 절에 섞여 들어온 이력 항목(`- [YYYY-MM-DD]`)을 잡는다. 롤오버는
+        #  「최근 변경」 절만 훑으므로 여기 놓인 항목은 **영영 아카이브로 넘어가지 않고**,
+        #  월별 파일에도 없어 그 시기를 조회하면 없는 것으로 읽힌다(조용한 유실). 이 절의
+        #  정상 항목은 `- {YYYY-MM}.md: {요약}` 형태라 날짜 대괄호로 둘을 가른다.
+        stray = [ln for ln in (sec or "").split("\n") if re.match(r"- \[\d{4}-\d{2}-\d{2}\]", ln)]
+        if stray:
+            warn(f"log 이력 항목 오배치: log.md '## 아카이브 인덱스'에 이력 항목 {len(stray)}건 — "
+                 f"롤오버가 훑지 않는 구역이라 아카이브로 넘어가지 않는다('## 최근 변경'으로 이동)",
+                 "log.md")
 
     # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/K 5-3/K 5-4/K 5-5/B-1 0): 잔량이 있으면 INFO로 알려
     #  다음 소비 세션이 소비하게 한다 (0건·파일 없음이면 생략). 소비 주체는 ingest/lint 세션이고,
@@ -2949,7 +2967,7 @@ def main():
         if typ != "feature" or r.startswith("90_archive/"):
             continue
         probe = strip_code(text)
-        for ti, s0, s1 in _md_sections(text):
+        for ti, s0, s1 in _md_sections(text, probe):
             if ti == "목차":
                 continue
             body = probe[s0:s1]

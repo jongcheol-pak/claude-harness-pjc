@@ -39,8 +39,8 @@
   ```
   python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
   ```
-  케이스 정본은 `plugins/pjc/skills/llm-wiki/evals/lint-cases.json` + `fixtures/`. **기준선 97케이스**(2026-08-22 실측, 약 75초). 전건 PASS면 exit 0. **케이스를 추가할 때는 `docs/harness-conventions.md` 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다.
-- **`--auto-split` 처방 골든 (임계 자동 분할·롤오버 수정 시 필수)**: 위 러너에 포함된 **25케이스**가 별도 명령 없이 같은 실행에서 돈다 — 각 케이스가 `--dry-run` 무변경 → 실제 수행 → 재lint까지 태운다. 처방(롤오버 3종·산문 하위 분리)을 고치면 이 러너가 필수 검증이다.
+  케이스 정본은 `plugins/pjc/skills/llm-wiki/evals/lint-cases.json` + `fixtures/`. **기준선 99케이스**(2026-08-22 실측, 약 45초). 전건 PASS면 exit 0. **케이스를 추가할 때는 `docs/harness-conventions.md` 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다.
+- **`--auto-split` 처방 골든 (임계 자동 분할·롤오버 수정 시 필수)**: 위 러너에 포함된 **26케이스**가 별도 명령 없이 같은 실행에서 돈다 — 각 케이스가 `--dry-run` 무변경 → 실제 수행 → 재lint까지 태운다. 처방(롤오버 3종·산문 하위 분리)을 고치면 이 러너가 필수 검증이다.
 - **AGENTS.md 이관 골든 (`relocate-agents.py` 수정 시 필수)**:
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
