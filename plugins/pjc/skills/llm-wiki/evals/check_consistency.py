@@ -906,6 +906,16 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_MD, "- **`budget_split` 3필드 (선택", "§3 budget_split 필드 정의"),
 ]
 
+# 면제 총량 기준선 — 이 숫자와 실제 `TRIGGER_ALLOWLIST` 길이가 다르면 기본 실행이 exit 1이다.
+#  축 ⑪의 설계 전제는 "정규식의 사각은 보이지 않지만 **면제는 늘어나는 것이 보인다**"인데,
+#  종전에는 건수가 `--trigger-report`에만 나와 그것을 돌리지 않으면 보이지 않았다. 면제를
+#  더할 때 이 숫자를 함께 올리게 하면 **증가가 diff에 남는다** — 검사를 강하게 만드는 장치가
+#  아니라 **면제에 마찰을 주는 장치**다(막지 않는다. 다만 조용히 늘지 못하게 한다).
+#  ⚠ 정당한 추가면 여기를 올리는 것이 정답이다. 숫자를 맞추려고 면제를 지우면 안 된다 —
+#   그 자리는 다시 위반으로 잡혀 결국 조건어 문면을 피해 쓰게 되고, 그것이 T11이 금지한
+#   "회피"다(면제는 기록이 남지만 회피는 아무 흔적도 남기지 않는다).
+TRIGGER_ALLOWLIST_BASELINE = 76
+
 # 차집합 사유 — 광의 패턴에는 걸리지만 예산 트리거가 아닌 줄. 위 화이트리스트와 자료구조를
 #  나누는 이유는 이쪽이 **스캔 밖**의 줄이라 「앵커 1건 매치」 검증의 대상이 아니기 때문이다.
 #  섞으면 두 검사의 의미가 충돌한다.
@@ -1271,11 +1281,16 @@ def main():
 
     # ⑪ 트리거 유일성 — 4-튜플의 앞 두 값만 접어 쓴다. 차집합·면제 잔여는 사람이
     #  판정할 리포트라 `--trigger-report`에만 나오고, 여기서는 **위반 유무**만 본다.
-    trigger_issues, trigger_allow, _diffset, _residual = check_trigger_locality()
+    trigger_issues, trigger_allow, trigger_diffset, trigger_residual = check_trigger_locality()
     trigger_checked = len(trigger_allow) + len(TRIGGER_ANCHORS)
     checked += trigger_checked
     mismatches.extend(trigger_issues)
-    axes.append(("트리거 유일성", trigger_checked, "항목"))
+    if len(TRIGGER_ALLOWLIST) != TRIGGER_ALLOWLIST_BASELINE:
+        mismatches.append(
+            f"트리거 면제 총량 {len(TRIGGER_ALLOWLIST)}건 (기준선 {TRIGGER_ALLOWLIST_BASELINE}건) — "
+            f"정당한 증감이면 TRIGGER_ALLOWLIST_BASELINE을 함께 갱신한다(그 diff가 면제 증가의 기록이다)")
+    checked += 1
+    axes.append(("트리거 유일성", trigger_checked + 1, "항목"))
 
     # ⑫ §7-16 대상 조건 ↔ §3 서술
     row_issues, row_checked = check_row_shape_sync(schema_text, lint)
@@ -1292,6 +1307,11 @@ def main():
         sys.exit(1)
     breakdown = " + ".join(f"{label} {n}{unit}" for label, n, unit in axes)
     print(f"결과: 대조 {checked}항목 전부 일치 ({breakdown} — 항목당 소스 2~4곳 대조)")
+    # 축 ⑪의 면제 규모 — 판정이 아니라 **가시성**이다. 셋 다 사람이 읽고 판단할 목록이고
+    #  상세는 `--trigger-report`가 낸다. 여기 한 줄을 두는 이유는 그 모드를 돌리지 않는
+    #  회차에서도 규모가 눈에 들어오게 하기 위해서다(면제가 조용히 자라는 것을 막는다).
+    print(f"  ⑪ 면제 규모: 화이트리스트 {len(trigger_allow)}건 / 면제 잔여 {len(trigger_residual)}건 / "
+          f"차집합 {len(trigger_diffset)}건 — 상세는 --trigger-report")
     sys.exit(0)
 
 
