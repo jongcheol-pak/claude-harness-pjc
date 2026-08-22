@@ -885,6 +885,94 @@
           "**변경 06**"
         ]
       }
+    },
+    {
+      "fixture": "prose-split",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "생성 마커 없음"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 20_projects/personal/demo/feat-thing.md",
+        "예산 초과: 20_projects/personal/demo/feat-thing.md",
+        "예산 임박: 20_projects/personal/demo/feat-thing-2.md",
+        "예산 초과: 20_projects/personal/demo/feat-thing-2.md",
+        "구현 방법 섹션 누락",
+        "관련 파일 섹션 누락",
+        "구현 근거 각주 누락",
+        "기능별 인덱스 누락",
+        "허브 기능 목록 누락"
+      ],
+      "rationale": "§4 처방 ③ 산문 하위 분리. **가장 큰 섹션의 본문만** 옮기고 헤딩과 포인터는 원본에 남긴다(D2 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을 낸다). 이 케이스가 한꺼번에 고정하는 것 다섯 — ⓐ 원본에 헤딩 + 정본 포인터가 남는지 ⓑ **하위에도 타입별 필수 섹션이 재현**되는지(하위는 같은 타입이라 §7-18ⓐ·§7-21이 그대로 걸린다 — 재현하지 않으면 자동 분할이 스스로 새 위반을 만든다. 실제로 초기 구현이 그랬다) ⓒ 각주 정의가 원본에 남고 하위에도 복제되는지(§7-18ⓑ는 문서 전체의 `[^src-` 개수를 본다) ⓓ 허브 `## 기능 목록`과 `build_index` 연쇄로 **분할 직후 인덱스 등록이 끝나는지**(사람이 `--build-index`를 따로 돌려야 통과하는 상태로 끝내지 않는다) ⓔ 원본과 하위 **양쪽 모두** 예산 신호가 사라지는지.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "## UI·UX",
+          "**정본은 [[20_projects/personal/demo/feat-thing-2|것 (Thing) — UI·UX]]의 「UI·UX」이다**",
+          "[^src-thing]:",
+          "## 하위 문서",
+          "- [[20_projects/personal/demo/feat-thing-2|것 (Thing) — UI·UX]] — UI·UX"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "index_label: 것 (Thing) — UI·UX",
+          "> 상위 문서: [[20_projects/personal/demo/feat-thing|것 (Thing)]]",
+          "## 관련 파일",
+          "`src/Demo/Thing.cs`",
+          "## 구현 방법",
+          "[UI·UX] 이 문단은",
+          "[^src-thing]:"
+        ],
+        "20_projects/personal/demo.md": [
+          "[[20_projects/personal/demo/feat-thing-2\\|것 (Thing) — UI·UX]]"
+        ]
+      }
+    },
+    {
+      "fixture": "prose-guard",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "rationale": "**정지 가드.** 예산은 발동했지만 옮길 수 있는 섹션이 없다 — `## 개요`·`## 관련 파일`·`## 구현 방법`은 본문째 원본에 남기는 대상이라(그것이 필수 섹션 게이트를 지키는 방법이다) 남는 것이 없다. 이때 쪼개지 않고 멈추며 그 상태를 실패로 판정하지 않는다."
+    },
+    {
+      "fixture": "prose-under",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "rationale": "예산 여유가 있는 산문은 건드리지 않는다(무회귀 음성). 발동 조건 없이 돌면 멀쩡한 페이지가 이유 없이 쪼개져 조회가 한 홉 더 든다."
+    },
+    {
+      "fixture": "prose-resplit",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-3.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "rationale": "이미 `-2.md`가 있는 페이지의 재분할. 순번은 **기존 최대값 + 1**이라 `-3.md`가 되고, 기존 하위를 덮어쓰지 않는다 — 순번을 항상 2부터 잡는 구현은 여기서 이전 회차의 하위를 통째로 지운다(유실). 그 보존을 needle로 직접 대조한다.",
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "## 옛 절",
+          "이전 회차에 이미 분리된 하위다."
+        ],
+        "20_projects/personal/demo/feat-thing-3.md": [
+          "[UI·UX] 이 문단은"
+        ]
+      }
     }
   ]
 }

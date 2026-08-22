@@ -1571,6 +1571,214 @@ def rollover_hub_changes(ses):
 
 PRESCRIPTIONS.append(rollover_hub_changes)
 
+# ── §4 처방 ③: 산문 타입의 섹션 하위 분리 ────────────────────────────────
+# **본문까지 원본에 남기는 섹션.** 옮기면 lint가 곧바로 새 위반을 내거나(§7-18ⓐ `## 구현 방법`
+#  존재 · §7-21 `## 관련 파일` 목록 비지 않음) 다른 처방이 대상 구역을 잃는다(§2.2 롤오버 ·
+#  §7-30 포인터 목록). 이동 대상은 그 밖의 `## ` 섹션이다.
+RELOCATE_KEEP_COMMON = ("하위 문서", "아카이브", "아카이브 인덱스")
+TYPE_REQUIRED_SECTIONS = {
+    "feature": ("개요", "관련 파일", "구현 방법"),
+    "project": ("기능 목록", "최근 주요 변경", "레포 정보", "관련 위키 지식"),
+    "entity": ("핵심",),
+    "concept": ("개요",),
+    "guide": ("개요",),
+    "convention": (),
+}
+RELOCATE_TYPES = tuple(TYPE_REQUIRED_SECTIONS)
+FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
+
+
+def _prose_page_paths(vault):
+    """분할 대상 산문 페이지의 상대경로 목록(90_archive·index 계열 제외)."""
+    out = []
+    for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True):
+        rel = os.path.relpath(f, vault).replace("\\", "/")
+        if rel.startswith("90_archive/") or os.path.basename(rel).startswith("index"):
+            continue
+        text, _bom, _nl = _read_page(f)
+        if text is not None and frontmatter(text).get("type") in RELOCATE_TYPES:
+            out.append(rel)
+    return out
+
+
+def _md_sections(text):
+    """`## ` 섹션을 [(제목, 시작, 끝)]으로 돌려준다.
+
+    판정은 `strip_code` 사본으로 한다 — 코드펜스·인라인코드 안의 `## `를 헤딩으로 세면
+    본문 한가운데를 자른다. 그 사본은 **길이를 보존**하므로(같은 길이 공백 치환) 여기서
+    얻은 오프셋을 원문에 그대로 쓸 수 있다."""
+    probe = strip_code(text)
+    marks = [(m.start(), m.group(1).strip())
+             for m in re.finditer(r"(?m)^##\s+(.+?)\s*$", probe)]
+    out = []
+    for i, (pos, title) in enumerate(marks):
+        end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
+        out.append((title, pos, end))
+    return out
+
+
+def _next_sub_index(vault, rel):
+    """`{stem}-{n}.md`의 다음 순번. 이미 있는 최대값 + 1이고 없으면 2다.
+
+    **섹션 제목을 파일명에 전사하지 않는다**(D1 ⓐ) — §3 네이밍이 전 타입에 영문소문자
+    하이픈을 요구하는데 위키 본문은 한글이 원칙이고 `## 주의점 / 함정`처럼 경로 구분자를
+    포함한 제목이 실재한다. 순번은 결정론이면서 네이밍 규칙을 항상 만족한다."""
+    stem = rel[:-len(".md")]
+    n = 1
+    for f in glob.glob(os.path.join(glob.escape(vault), stem.replace("/", os.sep) + "-*.md")):
+        m = re.match(r"^\d+$", os.path.basename(f)[len(os.path.basename(stem)) + 1:-len(".md")])
+        if m:
+            n = max(n, int(m.group(0)))
+    return n + 1
+
+
+def _sub_page_text(text, fm, typ, title, body, label, rel, nl):
+    """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다(D1 ⓓ).
+
+    **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번) §7-18ⓐ·
+    §7-21 같은 필수 섹션 게이트가 하위에도 그대로 걸린다 — 재현하지 않으면 자동 분할이
+    스스로 새 위반을 만든다. 재현 방식은 결정론이다: **지도인 `## 관련 파일`은 원본 목록을
+    복제**하고(§7-20이 양쪽에서 경로 실존을 각각 검사하므로 정보가 왜곡되지 않는다),
+    나머지는 **상위를 가리키는 한 줄**을 둔다(정본은 하나라는 것을 문면으로 못박는다)."""
+    head = "---\n"
+    for k, v in fm.items():
+        if k == "index_label":
+            continue
+        head += "%s: %s\n" % (k, v)
+    head += "index_label: %s — %s\n---\n\n" % (fm.get("index_label", label), title)
+    h1 = re.search(r"(?m)^#\s+(.+?)\s*$", text)
+    back = "> 상위 문서: [[%s|%s]]\n\n" % (rel[:-len(".md")], label)
+    out = head + "# %s — %s\n\n" % (h1.group(1).strip() if h1 else label, title) + back
+
+    # 각주 정의는 **원본에 남기고 하위에도 복제**한다(D2) — 각주는 파일 로컬이라 본문만
+    #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본의 `[^src-` 가 0이 되어
+    #  §7-18ⓑ가 곧바로 새 위반을 낸다(자동 분할이 스스로 만든 위반).
+    keep_body = ""
+    for req in TYPE_REQUIRED_SECTIONS.get(typ, ()):
+        if req == title:
+            continue
+        src = section(text, req)
+        if src is None:
+            continue
+        if req == "관련 파일":
+            keep_body += src.rstrip("\n") + "\n\n"
+        else:
+            ref = "정본은 [[%s|%s]]의 「%s」이다." % (rel[:-len(".md")], label, req)
+            # `## 구현 방법`은 각주 0개가 곧 위반이라(§7-18ⓑ) 원본 각주를 한 번 인용한다.
+            fns = re.findall(r"\[\^[^\]\n]+\]", src)
+            if fns:
+                ref += fns[0]
+            keep_body += "## %s\n\n%s\n\n" % (req, ref)
+    out += keep_body + "## %s\n\n" % title + body
+
+    used = set(re.findall(r"\[\^([^\]\n]+)\]", keep_body + body))
+    defs = [d for d in FOOTNOTE_DEF_RX.findall(text)
+            if d.split("]:")[0][2:] in used and d not in body]
+    if defs:
+        out = out.rstrip("\n") + "\n\n" + "\n".join(defs) + "\n"
+    return out
+
+
+def _sub_doc_list(text, entries, nl):
+    """원본 `## 하위 문서` 목록을 갱신·신설한다(§2.9·§7-30ⓑ 계열 — 조회 홉 1 보장)."""
+    sec = section(text, "하위 문서")
+    lines = "".join("- [[%s|%s]] — %s\n" % e[:3] for e in entries)
+    if sec:
+        return text.replace(sec, sec.rstrip("\n") + "\n" + lines + "\n", 1)
+    return text.rstrip("\n") + "\n\n## 하위 문서\n\n" + lines
+
+
+def _register_feature_rows(vault, rel, entries):
+    """신설 feature 하위를 프로젝트 허브 `## 기능 목록` 표에 등재한다(§4 4번).
+
+    허브에 없으면 조회가 그 하위에 닿지 못한다 — feature는 허브 개념이 있는 타입이라
+    「상위 참조 중 실제로 이 페이지를 등록한 곳」이 이 표다. **설명 칸은 판단이 아니라
+    결정론 형식**을 쓴다(어느 절에서 갈라졌는지 — 그 정보가 곧 조회 판정에 쓰인다).
+    반환: (허브 상대경로, 새 본문) 또는 None."""
+    m = re.match(r"^(20_projects/[^/]+/[^/]+)/", rel)
+    if not m:
+        return None
+    hub_rel = m.group(1) + ".md"
+    hub_path = os.path.join(vault, hub_rel.replace("/", os.sep))
+    hub_text, _bom, _nl = _read_page(hub_path)
+    if hub_text is None:
+        return None
+    sec = section(hub_text, "기능 목록")
+    if not sec:
+        return None
+    rows = "".join("| %s | %s의 「%s」 절 | [[%s\\|%s]] |\n" % (title, label0, title, sub, name)
+                   for sub, name, title, label0 in entries)
+    return hub_rel, hub_text.replace(sec, sec.rstrip("\n") + "\n" + rows + "\n", 1)
+
+
+def relocate_sections(ses):
+    """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다(D2).
+
+    헤딩과 포인터 1줄은 원본에 남는다 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을
+    내고, 제목까지 지우면 목차에서 그 주제가 사라져 물을 실마리가 없어진다."""
+    for rel in sorted(_prose_page_paths(ses.vault)):
+        path = os.path.join(ses.vault, rel.replace("/", os.sep))
+        text, bom, nl = _read_page(path)
+        if text is None:
+            continue
+        fm = frontmatter(text)
+        st = budget_state(rel, fm, text)
+        if not st or not (st.critical or st.over) or st.suppressed:
+            continue
+        keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_REQUIRED_SECTIONS.get(st.typ, ()))
+        label = fm.get("index_label", "").strip() or os.path.basename(rel)[:-len(".md")]
+
+        created, entries, moved = [], [], 0
+        cur = text
+        while True:
+            secs = _md_sections(cur)
+            # 섹션이 하나뿐이면 옮기지 않는다 — 옮기면 원본이 껍데기만 남는다(정지 가드).
+            movable = [s for s in secs if s[0] not in keep]
+            if len(secs) < 2 or not movable:
+                break
+            title, s0, s1 = max(movable, key=lambda s: s[2] - s[1])
+            hd_end = cur.index("\n", s0) + 1
+            body = cur[hd_end:s1]
+            if not body.strip():
+                break
+            n = _next_sub_index(ses.vault, rel) + len(created)
+            sub_rel = "%s-%d.md" % (rel[:-len(".md")], n)
+            sub_path = os.path.join(ses.vault, sub_rel.replace("/", os.sep))
+            ptr = ("**정본은 [[%s|%s — %s]]의 「%s」이다** — 본문 %d자를 옮겼다(§7-2 발동 처방).\n\n"
+                   % (sub_rel[:-len(".md")], label, title, title, len(body)))
+            cur = cur[:hd_end] + "\n" + ptr + cur[s1:]
+            created.append((sub_path, sub_rel,
+                            _sub_page_text(text, fm, st.typ, title, body, label, rel, nl)))
+            entries.append((sub_rel[:-len(".md")], "%s — %s" % (label, title), title, label))
+            moved += 1
+            nst = budget_state(rel, fm, cur)
+            if not nst or not (nst.critical or nst.over):
+                break
+        if not created:
+            continue
+
+        cur = _sub_doc_list(cur, entries, nl)
+        hub = _register_feature_rows(ses.vault, rel, entries) if st.typ == "feature" else None
+        hub_path = os.path.join(ses.vault, hub[0].replace("/", os.sep)) if hub else None
+        touched = [path] + [c[0] for c in created] + ([hub_path] if hub else [])
+        if not ses.claim(*touched) or not ses.backup(*[p for p in (path, hub_path) if p]):
+            ses.notes.append(f"{rel} 하위 분리 건너뜀 — 다른 처방이 맡았거나 사본 실패")
+            continue
+        if not ses.dry_run:
+            for sub_path, _sub_rel, body_text in created:
+                _atomic_write(sub_path, body_text, bom, nl)
+            _atomic_write(path, cur, bom, nl)
+            if hub:
+                hbom, hnl = _read_page(hub_path)[1:]
+                _atomic_write(hub_path, hub[1], hbom, hnl)
+        if st.typ == "feature" and not hub:
+            ses.notes.append(f"{rel} 허브 `## 기능 목록` 미갱신 — 허브를 찾지 못했다(수기 등록 필요)")
+        ses.record("산문 분리", rel, [c[1] for c in created])
+
+
+PRESCRIPTIONS.append(relocate_sections)
+
+
 
 def auto_split(vault, dry_run):
     """임계에 닿은 파일을 규정된 처방대로 **코드가** 나누거나 옮긴다(§4·§8).
