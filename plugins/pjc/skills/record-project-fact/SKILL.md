@@ -1,6 +1,6 @@
 ---
 name: record-project-fact
-description: Records a CONFIRMED project fact (build/run command, DB access, file/artifact location, test/verify command, intentionally untested layers) into an EXISTING AGENTS.md — after the suggest-agents-record hook's "[AGENTS 기록 제안]" is accepted, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "테스트 비대상 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘". Also when AGENTS.md nears or passes the SessionStart injection limit — "AGENTS.md가 너무 커졌어", "주입 상한 넘었어", "AGENTS.md 정리해줘", or the hook's "주입 상한 임박" warning — where Step 5 moves oversized sections out and leaves a pointer. Do NOT trigger for — creating a new AGENTS.md (use bootstrap-agents-md), or code work (plan-feature/implement-task). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's relocation, which moves content verbatim and reports afterward. Real secrets are forbidden — env var names only.
+description: Records a CONFIRMED project fact (build/run command, DB access, file/artifact location, test/verify command, intentionally untested layers) into an EXISTING AGENTS.md — after the suggest-agents-record hook's "[AGENTS 기록 제안]" is accepted, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "테스트 비대상 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘". Also when AGENTS.md nears or passes the SessionStart injection limit — "AGENTS.md가 너무 커졌어", "주입 상한 넘었어", "AGENTS.md 정리해줘", or the hook's "주입 상한 임박" warning — where Step 5 moves oversized sections out and leaves a pointer. Also for RETROFIT — bringing an existing AGENTS.md in line with the current content boundary ("AGENTS.md 정리해줘", "새 경계로 맞춰줘", or following the relocation script's "소급 정리" hint): this path measures, judges each section's destination, gets the plan approved, and hands off to plan-feature — it does NOT edit the file itself. Do NOT trigger for — creating a new AGENTS.md (use bootstrap-agents-md), or code work (plan-feature/implement-task). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's relocation, which moves content verbatim and reports afterward — the retrofit path is NOT exempt because it deletes, so it always shows the plan and waits for approval. Real secrets are forbidden — env var names only.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
@@ -19,6 +19,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 | `suggest-agents-record` hook이 `[AGENTS 기록 제안]`을 띄움 | 사용자에게 "기록할까요?" 묻고, **승인 시** 이 스킬로 기록 |
 | 사용자가 직접 "이 명령 AGENTS.md에 기록해줘" 등 | 이 스킬로 추가·갱신 |
 | 사용자가 "AGENTS.md에서 이 항목 빼줘/제거" 등 (stale·오기록·시크릿 제거) | 이 스킬로 삭제 |
+| 사용자가 "AGENTS.md 정리해줘"·"새 경계로 맞춰줘" 등 | **소급 정리** — 정리안을 만들어 `plan.md`로 넘긴다(아래 절) |
 
 bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)와 **역할이 다르다** — 이 스킬은 **이미 있는 AGENTS.md에 사실을 누적**하는 전담이다.
 
@@ -122,6 +123,29 @@ python "<skill>/scripts/relocate-agents.py" "<레포 루트>" [--dry-run]
 - **"이관 불가"를 마커로 남기지 않는다** — 잔류 절 크기는 이후 기록으로 바뀌므로 **Step 4가 끝날 때마다 다시 판정한다**(스크립트를 다시 부른다). 한 번 불가로 고정하면 그 뒤로 영영 시도하지 않는다.
 
 
+## 소급 정리 (이미 있는 AGENTS.md를 새 경계로 맞추기)
+
+> **Step 5와 다른 경로다 — 합치지 않는다.** 발동(사용자 요청 vs 주입 상한 임박)·승인(**필수** vs 없음)·산출물(**plan.md** vs 즉시 편집)이 전부 다르다.
+> Step 5가 무승인인 근거는 *"내용을 한 글자도 바꾸지 않는 무손실 이동"*인데, **소급 정리는 삭제를 포함해 그 전제가 성립하지 않는다.** 그 근거를 이 경로로 넓혀 읽지 않는다.
+
+**발동** — 사용자가 `"AGENTS.md 정리해줘"`·`"새 경계로 맞춰줘"`·`"AGENTS.md가 너무 커졌어"`처럼 요청할 때. 상한 초과로 Step 5가 「이관 불가」를 낸 뒤 그 안내를 따라 들어오는 경우도 같다(새 경계에서 잔류 7종은 AGENTS.md 절의 거의 전부라 절 단위 이관으로는 해소되지 않는다).
+
+**산출물은 `plan.md`다 — 이 스킬이 직접 고치지 않는다.** 현황 측정·판정·정리안까지 만들고 `pjc:plan-feature`로 넘긴다. 실행은 `pjc:implement-task`가 한다. 그 이유 셋:
+
+- **삭제를 포함**한다 — 대량 수정·삭제는 승인 게이트가 필요하다(글로벌 지침 1단계).
+- **규모가 plan급이다** — 실측 표본에서 레포 문서 3건 신설 + 위키 2쪽 신설 + 74KB 삭제였다.
+- **이관 후 무손실 역대조**가 검증 단계에 걸려야 한다 — 정리 도중이 아니라 끝난 뒤 기계로 대조한다.
+
+**절차**
+
+1. **현황을 잰다** — 전체 바이트와 **절별 바이트**. 절 이름과 크기가 없으면 무엇부터 손댈지 정할 수 없다.
+2. **절마다 목적지를 판정한다** — 아래 「목적지 판정」.
+3. **정리안을 표로 제시하고 승인받는다** — 절 · 현재 바이트 · 처리(위키/레포 문서/삭제/잔류) · **삭제면 정본 근거**.
+4. **`pjc:plan-feature`로 넘긴다** — 승인된 정리안이 그 plan의 입력이다.
+
+### 목적지 판정
+
+(T4에서 채운다 — P1 삭제 전 정본 실측 · P2 절 내부 축 · P4 목적지 3분기)
 ## 출력 형식
 
 ```markdown
