@@ -11,7 +11,8 @@
   ⓐ 발동 — 파일 바이트가 상한의 `near_ratio` 이상이거나 여유가 `near_slack` 미만이면 이관한다.
      **상한·비율·잔여를 여기 박지 않는다** — `session-context.ps1`에서 셋 다 읽는다. 상한만
      읽고 나머지를 박으면 hook이 임계를 바꿔도 판정이 따라가지 않는다.
-  ⓑ 잔류 — `## 위키` · `## Build & Test` · `## DO NOT` · `## Plan Location`은 절 단위로
+  ⓑ 잔류 — `## 위키` · `## Build & Test` · `## Conventions` · `## 데이터 접근` ·
+     `## 산출물·파일 관리` · `## DO NOT` · `## Plan Location`은 절 단위로
      통째 남긴다. **줄 단위로 가르지 않는다**: 명령만 남기고 「언제 어떤 조건에서 쓰는지」를
      설명하는 산문을 떼면 남은 명령이 그대로 오용된다.
      **`## Stack`이 아니라 `## 위키`인 이유**: 프로젝트 정보는 위키가 정본이 되어 `## Stack`
@@ -53,10 +54,10 @@ except Exception:
 
 # 이관 대상이 0인 것은 새 경계에서 예외가 아니라 정상 귀결이다(잔류 7종이 AGENTS.md 절의 거의 전부).
 # 그래서 막다른 메시지로 끝내지 않고 실제 해소 경로를 지목한다 — 절을 옮기는 대신 절 **안**을 줄인다.
-_MIGRATE_HINT = (
-    "[이관 불가] %s" + chr(10)
-    + "    절 단위로는 해소할 수 없다 — `record-project-fact` SKILL.md 「소급 정리」로 간다"
-    + "(잔류 절 안의 근거 서술을 레포 상세 문서·위키로 보내고 명령·값만 남긴다).")
+MIGRATE_HINT = (
+    "[이관 불가] %s\n"
+    "    절 단위로는 해소할 수 없다 — `record-project-fact` SKILL.md 「소급 정리」로 간다"
+    "(잔류 절 안의 근거 서술을 레포 상세 문서·위키로 보내고 명령·값만 남긴다).")
 
 KEEP_SECTIONS = ("위키", "Build & Test", "Conventions", "데이터 접근",
                  "산출물·파일 관리", "DO NOT", "Plan Location")
@@ -141,10 +142,10 @@ def relocate(root, dry_run=False):
     targets = pick_targets(raw)
     keep_bytes = sum(e - s for t, s, e in md_sections(raw) if t in KEEP_SECTIONS)
     if not targets:
-        return 0, [_MIGRATE_HINT % ("옮길 절이 없다 — 잔류 대상(%s)만 남아 있다"
+        return 0, [MIGRATE_HINT % ("옮길 절이 없다 — 잔류 대상(%s)만 남아 있다"
                                     % ", ".join(KEEP_SECTIONS))]
     if keep_bytes >= limit:
-        return 0, [_MIGRATE_HINT % ("잔류 절만으로 %dB라 상한 %dB를 넘는다 — 옮겨도 해소되지 않는다"
+        return 0, [MIGRATE_HINT % ("잔류 절만으로 %dB라 상한 %dB를 넘는다 — 옮겨도 해소되지 않는다"
                                     % (keep_bytes, limit))]
 
     dest_rel, dest_new = pick_destination(raw)
@@ -182,7 +183,7 @@ def relocate(root, dry_run=False):
         moved.append((title, block, len(block)))
 
     if not moved:
-        return 0, [_MIGRATE_HINT % "발동했으나 옮길 수 있는 절이 없다"]
+        return 0, [MIGRATE_HINT % "발동했으나 옮길 수 있는 절이 없다"]
 
     dest_raw = read_bytes(dest) if os.path.exists(dest) else b""
     if not dest_raw.strip():
