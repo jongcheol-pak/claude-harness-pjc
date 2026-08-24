@@ -119,8 +119,10 @@ $r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7k' 'git commit -m "a 
 Assert-Case -Name "suggest: 이스케이프된 중첩 인용은 잔여가 남아 제안 (포기 고정 ②)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 $r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7l' 'git commit -m "짝이 없는 따옴표 cargo test')
 Assert-Case -Name "suggest: 짝 없는 따옴표는 종전 동작이라 제안 (포기 고정 ③)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
-# `$(...)`는 실제로 실행되지만 인용 안이라 함께 지운다(미탐 수용).
-#   PowerShell 리터럴이어야 하므로 작은따옴표 문자열 안에 '' 로 넣는다 — 큰따옴표면 보간된다.
+# 인용 안의 `$(...)`는 지운다 — 겹따옴표였다면 셸이 실제로 실행하므로 미탐이다.
+#   여기서 홑따옴표를 쓰는 것은 이 시나리오가 PowerShell이기 때문이다(겹따옴표면 `$(...)`가
+#   시나리오 실행 시점에 보간돼 hook에 도달하지도 못한다). 스트립은 두 인용 형태를 구분하지
+#   않으므로 이 케이스가 겹따옴표 형태의 동작도 함께 고정한다.
 $r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7m' 'git commit -m ''빌드 $(npm run build)''')
 Assert-Case -Name "suggest: 인용 안 명령 치환은 미탐 수용 — 제안 안 함 (포기 고정 ④)" -R $r -ExpectExit 0 -ExpectSilent $true
 
