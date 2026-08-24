@@ -162,6 +162,15 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: vault 설정됨 상태 주입 (SC18)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
     Assert-Case -Name "session-context: vault 단정 금지 문구 (SC18b)" -R $r -ExpectExit 0 -ExpectContains '단정하지 마세요'
 
+    # SC18c/SC18d: 라인이 "참조 가능"(권유)이 아니라 **행동 지시**를 담는지 고정한다 (v1.197.0).
+    #   두 요소를 각각 재는 이유: 한쪽만 걸어두면 나머지가 지워져도 전건 통과한다.
+    #   ① 허브 직행 — 스킬을 발동하지 않는 세션(trivial 수정·질문)에는 절차 K를 부르는 주체가
+    #      없어, 이 라인이 프로젝트 맥락을 위키에서 얻게 하는 유일한 신호다.
+    #   ② 글로벌 절 포인터 — 판정 규칙(인덱스 경유·낡음·코드 정본)은 글로벌 지침이 정본이고
+    #      그것은 매 세션 상시 로드되므로 여기 복제하지 않는다(재진술은 예산만 늘린다).
+    Assert-Case -Name "session-context: vault 라인의 허브 직행 지시 (SC18c)" -R $r -ExpectExit 0 -ExpectContains '허브를 먼저 Read'
+    Assert-Case -Name "session-context: vault 라인의 글로벌 절 포인터 (SC18d)" -R $r -ExpectExit 0 -ExpectContains '위키를 먼저 본다'
+
     # SC21 (델타): 설정+실재인데 비 pjc cwd(plan·AGENTS 전무) → 게이팅으로 미주입.
     #   vault는 cwd와 무관한 사용자 홈 자원이라, 게이팅이 없으면 위키를 쓰는 사용자의 모든 세션에 라인이 붙는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scEmpty } | ConvertTo-Json -Compress)
