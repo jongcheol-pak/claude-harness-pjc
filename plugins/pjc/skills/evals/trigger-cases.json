@@ -442,6 +442,14 @@
       "why": "소급 정리 축 — 이미 있는 AGENTS.md를 현행 내용 경계로 맞추는 요청이다(description의 RETROFIT 트리거). 신규 생성(rec-neg-1)과 갈리는 지점은 **파일이 이미 있다**는 것이고, 이 경로의 산출물은 편집이 아니라 plan.md다."
     },
     {
+      "id": "rec-pos-5",
+      "skill": "pjc:record-project-fact",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "UI 레이어는 자동 테스트를 안 걸기로 했어. AGENTS.md에 그렇게 남겨줘",
+      "why": "**의도적 테스트 비대상**을 사실로 기록하는 축(description의 untested layers). 다른 rec 케이스가 빌드·DB·제거를 덮는 데 비해 이 도메인만 골든 공백이었다. \"안 한다\"는 것도 확인된 사실이라 기록 대상이다."
+    },
+    {
       "id": "rec-neg-1",
       "skill": "pjc:record-project-fact",
       "expect": "no-trigger",
