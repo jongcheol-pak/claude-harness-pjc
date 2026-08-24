@@ -26,4 +26,4 @@
 
 **서술 밀도 규칙.** `AGENTS.md`의 독자는 사용자가 아니라 **다음 세션의 에이전트 자신**이다. 설득·경위·근거 서술을 쓰지 않고 **명령·값·규칙·⚠ 1줄**만 적는다. *"왜 그런가"* 가 필요하면 **레포 상세 문서**나 위키로 보내고 포인터를 남긴다.
 
-**이 표는 이 파일이 정본이다** — `bootstrap-agents-md`·`record-project-fact`·`llm-wiki`·`plan-feature`는 여기를 가리키기만 하고 각자 재서술하지 않는다.
+**이 문서가 정본이다 — 표와 위 두 규칙 전부.** `bootstrap-agents-md`·`record-project-fact`·`llm-wiki`·`plan-feature`는 여기를 가리키기만 하고 각자 재서술하지 않는다.
