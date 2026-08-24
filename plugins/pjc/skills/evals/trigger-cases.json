@@ -434,6 +434,22 @@
       "why": "제거도 이 스킬 범위 — description이 \"추가·갱신·제거\" 모두 명시. **교정(2026-08-06)**: 질의는 그대로 두고 workspace만 `no_plan`→`stale_agents_md`로 옮겼다 — 기본 워크스페이스는 AGENTS.md가 `Test: 없음`이라 **지울 대상이 실재하지 않아** 픽스처 결함으로 미발동했다. 복창 대조(D7): 인용 문구 `테스트 명령 기록`과 2어절(\"테스트 명령\") 일치라 3어절 기준은 통과하나 수동 확인 대상 — 그 두 어절은 이 케이스가 재려는 대상 자체(어떤 종류의 사실을 빼는가)를 가리키므로 바꾸면 축이 흐려진다. D7 우선순위대로 축을 유지한다"
     },
     {
+      "id": "rec-pos-4",
+      "skill": "pjc:record-project-fact",
+      "expect": "trigger",
+      "workspace": "stale_agents_md",
+      "query": "AGENTS.md를 새 경계에 맞게 정리해줘",
+      "why": "소급 정리 축 — 이미 있는 AGENTS.md를 현행 내용 경계로 맞추는 요청이다(description의 RETROFIT 트리거). 신규 생성(rec-neg-1)과 갈리는 지점은 **파일이 이미 있다**는 것이고, 이 경로의 산출물은 편집이 아니라 plan.md다."
+    },
+    {
+      "id": "rec-pos-5",
+      "skill": "pjc:record-project-fact",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "UI 레이어는 자동 테스트를 안 걸기로 했어. AGENTS.md에 그렇게 남겨줘",
+      "why": "**의도적 테스트 비대상**을 사실로 기록하는 축(description의 untested layers). 다른 rec 케이스가 빌드·DB·제거를 덮는 데 비해 이 도메인만 골든 공백이었다. \"안 한다\"는 것도 확인된 사실이라 기록 대상이다."
+    },
+    {
       "id": "rec-neg-1",
       "skill": "pjc:record-project-fact",
       "expect": "no-trigger",

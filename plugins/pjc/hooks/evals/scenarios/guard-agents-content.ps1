@@ -1,7 +1,7 @@
 ﻿# scenarios/guard-agents-content.ps1 — guard-agents-content 시나리오 (AGENTS.md 내용 경계 게이트) (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson)와 공유 변수($work)를 그대로 쓴다.
 # 검사 대상: plan 진행 상태·세션 인계 서술(차단) · 디렉터리 트리 블록(차단) · 그 밖은 통과.
-# 내용 경계의 정본은 docs/harness-conventions.md 「AGENTS.md 내용 경계」다.
+# 내용 경계의 정본은 plugins/pjc/skills/AGENTS-BOUNDARY.md 다.
 #
 # ⚠ 델타 음성이 이 시나리오의 핵심이다 — 차단 범위를 새로 만드는 hook이므로 AGENTS.md DO NOT이
 #   "오차단 0 실증"을 요구한다. 정상 AGENTS.md 편집 · plan.md의 같은 문구 · 본문 산문의 스침 ·

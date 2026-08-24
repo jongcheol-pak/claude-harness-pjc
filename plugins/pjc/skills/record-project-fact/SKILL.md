@@ -1,6 +1,6 @@
 ---
 name: record-project-fact
-description: Records a CONFIRMED project fact (build/run command, DB access, file/artifact location, test/verify command, intentionally untested layers) into an EXISTING AGENTS.md — after the suggest-agents-record hook's "[AGENTS 기록 제안]" is accepted, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "프로젝트 사실 기록", "빌드 명령 기록해줘", "이 명령 AGENTS에 추가", "DB 접근법 적어둬", "테스트 명령 기록", "테스트 비대상 기록", "AGENTS.md에서 이 항목 빼줘", "더 이상 안 쓰는 명령 지워줘". Also when AGENTS.md nears or passes the SessionStart injection limit — "AGENTS.md가 너무 커졌어", "주입 상한 넘었어", "AGENTS.md 정리해줘", or the hook's "주입 상한 임박" warning — where Step 5 moves oversized sections out and leaves a pointer. Do NOT trigger for — creating a new AGENTS.md (use bootstrap-agents-md), or code work (plan-feature/implement-task). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's relocation, which moves content verbatim and reports afterward. Real secrets are forbidden — env var names only.
+description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into an EXISTING AGENTS.md — on the suggest-agents-record hook's acceptance, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "빌드 명령 기록해줘", "DB 접근법 적어둬", "AGENTS.md에서 이 항목 빼줘". Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 넘었어", the hook's "주입 상한 임박") — Step 5 relocates oversized sections and leaves a pointer. Also for RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘", "소급 정리") — measures, judges each section's destination, and hands off to plan-feature instead of editing. Do NOT trigger for creating a new AGENTS.md (use bootstrap-agents-md) or code work (plan-feature/implement-task). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's verbatim relocation, which reports afterward. Retrofit is not exempt — it deletes, so the plan is approved first. Real secrets are forbidden — env var names only.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
@@ -19,6 +19,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 | `suggest-agents-record` hook이 `[AGENTS 기록 제안]`을 띄움 | 사용자에게 "기록할까요?" 묻고, **승인 시** 이 스킬로 기록 |
 | 사용자가 직접 "이 명령 AGENTS.md에 기록해줘" 등 | 이 스킬로 추가·갱신 |
 | 사용자가 "AGENTS.md에서 이 항목 빼줘/제거" 등 (stale·오기록·시크릿 제거) | 이 스킬로 삭제 |
+| 사용자가 "AGENTS.md 정리해줘"·"새 경계로 맞춰줘" 등 | **소급 정리** — 정리안을 만들어 `plan.md`로 넘긴다(아래 절) |
 
 bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)와 **역할이 다르다** — 이 스킬은 **이미 있는 AGENTS.md에 사실을 누적**하는 전담이다.
 
@@ -49,7 +50,7 @@ bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)�
 
 ## 기록하지 않는 것 (금지 목록)
 
-아래는 **AGENTS.md에 기록하지 않는다.** 각각 정본이 따로 있고, 여기 적으면 매 세션 주입되는 파일이 그만큼 커진다. **무엇을 담고 무엇을 담지 않는지의 전체 경계는 `docs/harness-conventions.md`의 「AGENTS.md 내용 경계」가 정본**이다 — 이 표는 그중 *기록 요청으로 유입되기 쉬운 것*만 골라 대체 저장처를 짝지은 것이다.
+아래는 **AGENTS.md에 기록하지 않는다.** 각각 정본이 따로 있고, 여기 적으면 매 세션 주입되는 파일이 그만큼 커진다. **무엇을 담고 무엇을 담지 않는지의 전체 경계는 `plugins/pjc/skills/AGENTS-BOUNDARY.md`의 「AGENTS.md 내용 경계」가 정본**이다 — 이 표는 그중 *기록 요청으로 유입되기 쉬운 것*만 골라 대체 저장처를 짝지은 것이다.
 
 | 기록하지 않는 것 | 정본 |
 |---|---|
@@ -121,6 +122,57 @@ python "<skill>/scripts/relocate-agents.py" "<레포 루트>" [--dry-run]
 
 - **"이관 불가"를 마커로 남기지 않는다** — 잔류 절 크기는 이후 기록으로 바뀌므로 **Step 4가 끝날 때마다 다시 판정한다**(스크립트를 다시 부른다). 한 번 불가로 고정하면 그 뒤로 영영 시도하지 않는다.
 
+## 소급 정리 (이미 있는 AGENTS.md를 새 경계로 맞추기)
+
+> **Step 5와 다른 경로다 — 합치지 않는다.** 발동(사용자 요청 vs 주입 상한 임박)·승인(**필수** vs 없음)·산출물(**plan.md** vs 즉시 편집)이 전부 다르다.
+> Step 5가 무승인인 근거는 *"내용을 한 글자도 바꾸지 않는 무손실 이동"*인데, **소급 정리는 삭제를 포함해 그 전제가 성립하지 않는다.** 그 근거를 이 경로로 넓혀 읽지 않는다.
+
+**발동** — 사용자가 `"AGENTS.md 정리해줘"`·`"새 경계로 맞춰줘"`·`"AGENTS.md가 너무 커졌어"`처럼 요청할 때. 상한 초과로 Step 5가 「이관 불가」를 낸 뒤 그 안내를 따라 들어오는 경우도 같다(새 경계에서 잔류 7종은 AGENTS.md 절의 거의 전부라 절 단위 이관으로는 해소되지 않는다).
+
+**산출물은 `plan.md`다 — 이 스킬이 직접 고치지 않는다.** 현황 측정·판정·정리안까지 만들고 `pjc:plan-feature`로 넘긴다. 실행은 `pjc:implement-task`가 한다. 그 이유 셋:
+
+- **삭제를 포함**한다 — 대량 수정·삭제는 승인 게이트가 필요하다(글로벌 지침 1단계).
+- **규모가 plan급이다** — 실측 표본(Maid)에서 손댄 것은 레포 8파일 + 위키 4쪽이고 그중 **신설**이 레포 문서 3건 + 위키 2쪽, 삭제가 74KB였다.
+- **이관 후 무손실 역대조**가 검증 단계에 걸려야 한다 — 정리 도중이 아니라 끝난 뒤 기계로 대조한다.
+
+**절차**
+
+1. **현황을 잰다** — 전체 바이트와 **절별 바이트**. 절 이름과 크기가 없으면 무엇부터 손댈지 정할 수 없다.
+2. **절마다 목적지를 판정한다** — 위키 / 레포 상세 문서 / 삭제 / 잔류.
+3. **정리안을 표로 제시하고 승인받는다** — 절 · 현재 바이트 · 처리(위키/레포 문서/삭제/잔류) · **삭제면 정본 근거**.
+   **근거 칸이 빈 삭제 항목이 하나라도 있으면 승인을 요청하지 않는다** — 그 항목의 정본을 먼저 실측하거나 삭제에서 뺀다.
+4. **`pjc:plan-feature`로 넘긴다** — 승인된 정리안이 그 plan의 입력이다. 그때 **아래 도달 대조 명령을 그 plan의 검증 단계 acceptance로 넣는다** — 「무손실 역대조를 건다」는 서술만 넘기면 실행자가 무엇을 돌릴지 몰라 대조가 통째로 빠진다.
+
+   ```
+   python <스킬>/scripts/relocate-agents.py --verify-only <정리 전 원문> <정리 후 AGENTS.md> <이관처...> --declared <삭제 선언 파일>
+   ```
+
+   원문의 각 줄이 결과 어딘가에 도달했는지 세고, 도달하지 않았는데 `--declared`에도 없는 줄을 전건 출력한다(미도달 0이면 rc 0 · 있으면 rc 1 · 입력 오류는 rc 2). **`--declared`가 이 경로의 필수 인자다** — 소급 정리는 삭제가 정상이라 그 목록이 없으면 지운 만큼 미도달로 잡혀 언제나 실패한다. 그 파일은 3의 정리안에서 「삭제」로 판정한 줄을 그대로 담는다.
+
+### 목적지 판정
+
+**무엇이 어디에 담기는가의 정본은 `plugins/pjc/skills/AGENTS-BOUNDARY.md`의 「AGENTS.md 내용 경계」다** — 여기서 재서술하지 않는다. 이 절이 정하는 것은 **이미 있는 내용을 옮길 때의 판정**이다.
+
+**① 「옮긴다」와 「지운다」를 가른다 — 삭제는 정본 실측이 선행한다.**
+
+지우려는 내용의 정본이 **다른 곳에 실제로 있는지 확인한 근거**(파일 경로 · 건수 · 명령 출력) 없이는 삭제하지 않는다. 근거 없이 지우면 그것은 이관이 아니라 유실이다.
+반대로 **정본이 이미 있는데도 옮기면** 사본이 하나 더 생겨 다음 회차에 갈린다 — 그때는 옮기지 말고 지운다.
+
+> 표본에서 174,642B 중 실제로 옮긴 것은 88KB고 **74KB는 정본이 다른 곳에 있어 그냥 지웠다**. 그중 41KB(`## Plan Location`에 쌓인 진행 상태)는 지우기 전에 `docs/plans/deferred.md`에 그 항목들이 실재하는지 세어 확인했다.
+
+**② 목적지는 셋이다 — 위키 · 레포 상세 문서 · 삭제.**
+
+| 목적지 | 무엇이 가는가 | 판정 |
+|---|---|---|
+| **위키** | 경계 표의 「위키」 행에 해당하는 절 | 그 프로젝트가 **무엇인가**를 말하는 절이면 통째로 옮긴다 |
+| **레포 상세 문서** | 경계 표의 「레포 상세 문서」 행에 해당하는 것 | 절 전체일 수도, **잔류 절 안의 일부**일 수도 있다(③) |
+| **삭제** | 정본이 이미 다른 곳에 있는 것 | ①의 실측을 통과한 것만 |
+
+**레포 상세 문서가 없으면 만든다.** 이름은 그 내용이 무엇인지로 정하고(`docs/verification.md`·`docs/data-stores.md`처럼) `docs/` 아래 둔다. 한 파일에 몰아넣지 않는다 — 주제가 다르면 파일도 나눈다(그래야 다음에 열 때 필요한 것만 읽는다). 각 문서 머리에 **어디서 옮겨 왔는지 1줄**을 남긴다.
+
+> 표본에서 레포 문서 3건(`docs/verification.md`·`docs/data-stores.md`·`docs/ported-assets.md`)을 신설하고 위키 2쪽을 더했다. 한 파일에 몰았다면 다음에 열 때 셋을 다 읽어야 한다.
+
+**③ 잔류 절도 축약 대상이다.** 절 이름이 잔류라고 그 절 **전체**가 잔류인 것은 아니다 — 판정 축과 그 실측 근거는 경계 표의 「증가 억제 규칙」이 정본이며 여기서 재서술하지 않는다.
 
 ## 출력 형식
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기 · 잔류 절 동기 · batch 차수 수열.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -36,10 +36,21 @@
      `docs/harness-conventions.md` 「문서 표기 축」이 정본이다.
   ⑬ 착수 조건 동기  — Deferred 소진 batch 「착수 조건」을 **의도적으로 복제 보유**하는 두 파일
      (`phase-f-detail.md` ⓪ 정본 ↔ `plan-feature/SKILL.md` Step 1 ③)이 갈리지 않았는가.
-     수치 4종과 **판정일 도출 문장**을 대조한다 — 후자를 함께 보는 이유는 v1.188.0이 고친
+     수치 5종과 **판정일 도출 문장**을 대조한다 — 후자를 함께 보는 이유는 v1.188.0이 고친
      결함이 수치가 아니라 그 문장에 있었기 때문이다(부기 형식 미인식). 수치만 대조하면
      그 문장이 한쪽에서만 지워져도 통과한다. **못 잡는 것**: 두 파일이 같은 방향으로
      함께 틀리는 경우(정본이 곧 기준이라 서로 일치하면 통과한다).
+  ⑭ 잔류 절 동기   — 이관이 「통째 남긴다」고 보는 절 집합(`relocate-agents.py`의
+     `KEEP_SECTIONS`)이 `AGENTS-BOUNDARY.md` 경계 표의 `AGENTS.md` 행과 갈리지 않았는가.
+     배포 캐시에서 경로가 깨져 표를 파싱해 쓸 수 없으므로 값을 복제하고 동기는 이 축이
+     고정한다. v1.193.0 전까지 **표 7종 ↔ 코드 4종**으로 갈려 있었고 그 차이가 곧
+     「잔류여야 할 절이 이관돼 나가는」 경로였다. **못 잡는 것**: `위키` 1종은 표에
+     백틱 토큰이 없어 리터럴로 고정하므로 그 항목이 표에서 사라져도 통과한다.
+  ⑮ batch 차수 수열 — 대장의 소진 batch 블록 차수(`> **N차 batch`·`N차 판정`)가
+     연속·유일한가. 차수는 규약 ⓪의 순증분 보정이 「직전 batch」를 특정하는 유일한
+     단서라 중복되면 계산이 갈린다. v1.195.0이 이미 있는 `10차`에 같은 이름을 얹었는데
+     이 대조기가 통과시켰고 F-7 리뷰어가 잡았다. **못 잡는 것**: 차수는 맞는데 그 안의
+     「정리 직후 N건」이 틀린 경우(값의 옳음은 이 축의 대상이 아니다).
 
 왜 하드코딩하지 않는가: 검사 대상 목록·기대값을 코드에 박으면 문서가 바뀌어도 검사가 낡는다.
 모든 기대값은 문서에서 파싱하며, 앵커를 못 찾으면 통과가 아니라 `[ANCHOR FAIL]`(exit 2)이다 —
@@ -196,7 +207,7 @@ def check_doc_budget(conv):
                 top = top_sections(full)
                 detail = " · ".join("%s %dB" % (t, b) for t, b in top) or "(절 없음)"
                 issues.append("목표선 초과 %s — 실측 %d B / 목표 %d B (초과 %d B) "
-                              "— 큰 절: %s. 「AGENTS.md 내용 경계」의 증가 억제·서술 밀도 규칙을 적용하거나 "
+                              "— 큰 절: %s. plugins/pjc/skills/AGENTS-BOUNDARY.md 의 증가 억제·서술 밀도 규칙을 적용하거나 "
                               "`pjc:record-project-fact` Step 5로 이관할 것"
                               % (path, real[0], AGENTS_TARGET_BYTES,
                                  real[0] - AGENTS_TARGET_BYTES, detail))
@@ -299,7 +310,7 @@ def check_batch_trigger_sync():
     패턴이 이 쌍에는 없었다(대장 `[2026-08-20]` 항목이 등재한 사실).
 
     대조 대상은 둘이다 —
-      ⓐ 착수 조건 **4수치**(잔량 임계 · 신규 등재분 · 날짜 · 절대 상한): 두 파일에서 각각
+      ⓐ 착수 조건 **5수치**(잔량 임계 · 신규 등재분 · 날짜 · 절대 상한 · 절대 상한 경과일): 두 파일에서 각각
          뽑아 집합으로 비교한다. 어느 쪽이 값을 바꾸고 다른 쪽을 두면 여기서 잡힌다.
       ⓑ 판정일 도출의 **공통 리터럴 한 문장**: 완전 일치(마크업·공백 포함)로 본다. 그 문장
          **밖의 근거절은 파일별로 다른 것이 정상**이라 대조하지 않는다 — 경계를 문장으로
@@ -326,6 +337,11 @@ def check_batch_trigger_sync():
         ("신규 등재분", r"신규 등재분」이 (\d+)건 이상"),
         ("날짜", r"최솟값이 (\d+)일을 넘거나"),
         ("절대 상한", r"절대 상한\(현행 (\d+)건\)"),
+        # v1.196.0 신설 — 절대 상한 축의 AND 조건. 이 항이 없으면 한 파일에만 넣어도
+        # 조용히 통과한다(v1.195.0 F-7이 그 사각을 지적했다).
+        # 볼드 위치를 `\*{0,2}`로 열어 둔다 — 위 「값만 뽑는다」 관례와 같은 이유로,
+        # 강조 범위가 문구 전체든 숫자만이든 정당한 재서식에 깨지지 않게 한다.
+        ("절대 상한 경과일", r"직전 batch로부터 \*{0,2}(\d+)일"),
     )
 
     issues, checked = [], 0
@@ -653,6 +669,40 @@ def check_deferred_stats(ledger):
     return issues, wait + done
 
 
+def check_batch_number_sequence(ledger):
+    """대장의 소진 batch 블록 차수가 연속·유일한지 대조한다.
+
+    차수는 규약 ⓪의 순증분 보정이 「직전 batch의 정리 직후 값」을 인용할 때
+    **어느 블록을 직전으로 잡는지의 유일한 단서**라, 중복되면 계산이 갈린다.
+    실측: v1.195.0이 이미 있는 `10차 batch (v1.194.0 T9)` 위에 같은 이름의 블록을
+    얹었는데 이 대조기가 exit 0으로 통과시켰고, 잡아낸 것은 F-7 리뷰어였다.
+
+    ⚠ **줄 시작 `> **N차 …` 블록 헤더에서만 센다.** 본문에는 다른 회차를 가리키는
+    인용(`**9차 batch(v1.193.0…`·`**2차 batch`)이 실재해, 비앵커 정규식으로 뽑으면
+    현행 대장이 곧바로 중복·비연속 오탐을 낸다.
+
+    ⚠ **「1부터」가 아니라 「존재하는 최솟값부터」 연속을 본다** — 대장은 6차부터
+    담고 있다(그 이전 기록은 남아 있지 않다).
+
+    `N차 판정`(구간 batch 미실행)도 같은 수열을 쓰므로 함께 센다.
+    """
+    nums = [int(m.group(1)) for m in
+            re.finditer(r"^> \*\*(\d+)차 (?:batch|판정)", ledger, re.M)]
+    if not nums:
+        return [], 0          # batch 기록이 없는 대장(다른 프로젝트)도 통과시킨다
+    issues = []
+    dup = sorted({n for n in nums if nums.count(n) > 1})
+    if dup:
+        issues.append("batch 차수 중복 — %s (블록 %d개)"
+                      % (", ".join("%d차" % n for n in dup), len(nums)))
+    uniq = sorted(set(nums))
+    gaps = [n for n in range(uniq[0], uniq[-1] + 1) if n not in uniq]
+    if gaps:
+        issues.append("batch 차수 비연속 — %s 누락 (%d차~%d차 구간)"
+                      % (", ".join("%d차" % n for n in gaps), uniq[0], uniq[-1]))
+    return issues, len(nums)
+
+
 # ─────────────────────────────────────────────────────────────
 # ⑧ 볼드 마커 짝 · ⑨ 한 줄 안 문장 중복 (문서 표기 결함)
 #
@@ -766,6 +816,65 @@ def check_line_dup():
     return issues, checked
 
 
+# ─────────────────────────────────────────────────────────────
+# ⑭ 잔류 절 동기 (`KEEP_SECTIONS` ↔ 경계 표 `AGENTS.md` 행)
+# ─────────────────────────────────────────────────────────────
+def check_keep_sections_sync():
+    """이관이 「통째 남긴다」고 보는 절 집합이 경계 표와 갈리지 않았는지 대조한다.
+
+    `relocate-agents.py`의 `KEEP_SECTIONS`는 `AGENTS-BOUNDARY.md` 「AGENTS.md 내용 경계」
+    표의 `AGENTS.md` 행을 **복제 보유**한다. 표를 파싱해 쓰지 않는 이유는 그 파일이 배포
+    캐시에서는 다른 경로에 놓여 상대 경로 해석이 깨지기 때문이다 — 그래서 값을 복제하고
+    동기는 이 축이 고정한다(리뷰어 4종 각주와 같은 구조: 단일 소스화가 불가한 자리의
+    유일한 드리프트 신호). 실제로 v1.193.0 전까지 **표 7종 ↔ 코드 4종**으로 갈려 있었고,
+    그 차이가 곧 「잔류여야 할 절이 이관돼 나가는」 경로였다.
+
+    **추출 규칙** — 표의 담는 것 셀에서 `` `## X` `` 백틱 토큰을 뽑아 `## ` 접두를 뗀다
+    (`KEEP_SECTIONS` 값은 `"Build & Test"`이지 `"## Build & Test"`가 아니다). `위키`는
+    그 셀에 *"위키 포인터 1줄"* 로만 적혀 백틱 토큰이 없으므로 **리터럴로 고정**한다 —
+    표 문면을 고쳐 토큰을 만들지 않는 것은 경계 표 내용 개정이 이 회차 범위 밖이기 때문이다.
+
+    **알려진 한계**: `위키`가 리터럴이라 경계 표에서 「위키 포인터 1줄」이 사라져도 이 축은
+    통과한다. 그 1종은 사람이 봐야 하며, 나머지 6종은 기계가 고정한다.
+    """
+    boundary_p = os.path.join(ROOT, "plugins", "pjc", "skills", "AGENTS-BOUNDARY.md")
+    script_p = os.path.join(ROOT, "plugins", "pjc", "skills", "record-project-fact",
+                            "scripts", "relocate-agents.py")
+    boundary, script = read(boundary_p), read(script_p)
+
+    # 표의 `AGENTS.md` 행 — 첫 셀이 **`AGENTS.md`** 인 행 하나다.
+    row = next((l for l in boundary.split("\n")
+                if re.match(r"^\|\s*\*\*`AGENTS\.md`\*\*\s*\|", l)), None)
+    if not row:
+        die("잔류 절 동기 — 경계 표의 `AGENTS.md` 행을 찾지 못함(표 형식이 바뀌었는지 확인)")
+    cells = row.split("|")
+    if len(cells) < 4:
+        die("잔류 절 동기 — 경계 표 `AGENTS.md` 행의 셀 수가 3개 미만(표 형식 확인)")
+    # 담는 것 셀만 본다 — 근거 셀까지 훑으면 그쪽 서술의 절 이름이 섞여 든다.
+    doc_names = {m.group(1).strip() for m in re.finditer(r"`##\s+([^`]+)`", cells[2])}
+    if not doc_names:
+        die("잔류 절 동기 — 담는 것 셀에서 `## …` 토큰을 하나도 뽑지 못함(표기가 바뀌었는지 확인)")
+    doc_names.add("위키")
+
+    m = re.search(r"^KEEP_SECTIONS\s*=\s*\((.*?)\)", script, re.S | re.M)
+    if not m:
+        die("잔류 절 동기 — `KEEP_SECTIONS` 정의를 찾지 못함(상수명이 바뀌었는지 확인)")
+    code_names = set(re.findall(r'"([^"]+)"', m.group(1)))
+    if not code_names:
+        die("잔류 절 동기 — `KEEP_SECTIONS`에서 값을 하나도 뽑지 못함(따옴표 표기 확인)")
+
+    issues = []
+    only_doc = sorted(doc_names - code_names)
+    only_code = sorted(code_names - doc_names)
+    if only_doc:
+        issues.append("잔류 절 동기 — 경계 표에만 있다: %s (relocate-agents.py `KEEP_SECTIONS`에 없음)"
+                      % ", ".join(only_doc))
+    if only_code:
+        issues.append("잔류 절 동기 — 코드에만 있다: %s (AGENTS-BOUNDARY.md 경계 표에 없음)"
+                      % ", ".join(only_code))
+    return issues, len(doc_names | code_names)
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -808,6 +917,9 @@ def main():
         # 맨 뒤에 둔다 — `harness-conventions.md` 「문서 표기 축」이 볼드/중복 축을
         # **서수**("여덟째·아홉째")로 가리키므로, 중간에 끼우면 그 서술이 어긋난다.
         ("착수 조건 동기", check_batch_trigger_sync()),
+        # 새 축은 계속 **맨 뒤**에 붙인다(위와 같은 이유 — 서수 참조 보호).
+        ("잔류 절 동기", check_keep_sections_sync()),
+        ("batch 차수 수열", check_batch_number_sequence(ledger)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:

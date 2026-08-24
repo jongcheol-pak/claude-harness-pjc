@@ -2,10 +2,13 @@
 """AGENTS.md 이관 골든 러너 — `relocation-cases.json` + `fixtures/`를 돈다.
 
 각 케이스는 픽스처를 **임시 복사본으로** 뜨고 거기서 수행한다(픽스처 원본 무수정).
-모드는 둘이다:
+모드는 셋이다:
   - 기본: `relocate()`를 돌리고 stdout 키워드·결과 파일 내용을 대조한다.
   - `verify_only`: `verify()`를 직접 불러 **검증이 실제로 잡는가**를 본다 — 정상 경로만
     돌리면 검증 함수는 늘 통과라 「잡는다」가 증명되지 않는다(델타 음성).
+  - `cli_args`: **subprocess로 `main()`을 실제 실행**해 인자 파싱·종료 코드까지 본다.
+    앞의 둘은 모듈을 import해 함수를 직접 부르므로 그 경로를 한 줄도 지나지 않는데,
+    소급 정리가 쓰는 것은 함수가 아니라 명령이다.
 
 전 case PASS면 exit 0, 하나라도 FAIL이면 1.
 """
@@ -14,6 +17,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -46,13 +50,41 @@ def run_case(mod, case):
     dest = os.path.join(tmp, case["fixture"])
     shutil.copytree(fx, dest)
     try:
+        if case.get("cli_args") is not None:
+            # **CLI 진입점은 subprocess로만 태울 수 있다** — 위 두 모드는 모듈을 import해 함수를
+            #  직접 부르므로 `main()`의 인자 파싱·종료 코드를 한 줄도 지나지 않는다. 소급 정리가
+            #  실제로 쓰는 것은 그 명령이라, 함수만 검증하면 「명령이 도는가」는 미검증으로 남는다.
+            args = [sys.executable, os.path.normpath(SCRIPT)] + \
+                [a.replace("{fx}", dest) for a in case["cli_args"]]
+            env = dict(os.environ, PYTHONIOENCODING="utf-8")
+            r = subprocess.run(args, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", env=env)
+            out = (r.stdout or "") + (r.stderr or "")
+            if r.returncode != case.get("expect_rc", 0):
+                return False, "종료 코드 불일치 — 기대 %d / 실제 %d (%s)" % (
+                    case.get("expect_rc", 0), r.returncode, out[:120].replace("\n", " "))
+            miss = [k for k in case.get("expect_keywords", []) if k not in out]
+            if miss:
+                return False, "출력 미검출: " + ", ".join(miss)
+            bad = [k for k in case.get("expect_absent", []) if k in out]
+            if bad:
+                return False, "출력에 금지 키워드: " + ", ".join(bad)
+            return True, "CLI rc=%d — %s" % (r.returncode, out.strip().splitlines()[-1][:70])
+
         if case.get("verify_only"):
             # 검증 함수를 직접 태운다 — 인자는 픽스처 파일에서 읽는다.
             agents = open(os.path.join(dest, "AGENTS.md"), "rb").read()
             dpath = os.path.join(dest, case["dest_rel"].replace("/", os.sep))
             draw = open(dpath, "rb").read() if os.path.exists(dpath) else b""
+            # 원문은 기본적으로 AGENTS.md 자신이다(이관 전후가 같은 상태의 대조).
+            #  `orig_rel`을 주면 **다른 파일**을 원문으로 삼는다 — 도달 대조는 「원문의 줄이
+            #  결과에 닿았는가」를 보므로, 원문과 결과가 같은 파일이면 그 축이 늘 통과한다.
+            orig = agents
+            if case.get("orig_rel"):
+                orig = open(os.path.join(dest, case["orig_rel"].replace("/", os.sep)), "rb").read()
             ok, problems = mod.verify(agents, draw, case["dest_rel"],
-                                      case.get("limit", 16384), agents)
+                                      case.get("limit", 16384), orig,
+                                      tuple(case.get("declared_removals", ())))
             want = case.get("expect_ok", False)
             if ok != want:
                 return False, "검증 결과 불일치 — 기대 %s / 실제 %s (%s)" % (

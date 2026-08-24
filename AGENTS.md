@@ -1,7 +1,7 @@
 # AGENTS.md — Agent Guide
 
 > pjc 하니스 플러그인 repo. 컴파일 언어가 없어 표준 build/test가 없다 — 아래 **워킹트리 정적 검증**으로 `implement-task` V-1/V-2를 수행한다.
-> **이 파일의 내용 경계**(무엇을 담고 무엇을 담지 않는가)는 `docs/harness-conventions.md`의 「AGENTS.md 내용 경계」가 정본이다.
+> **이 파일의 내용 경계**(무엇을 담고 무엇을 담지 않는가)는 `plugins/pjc/skills/AGENTS-BOUNDARY.md`의 「AGENTS.md 내용 경계」가 정본이다.
 
 ## 위키
 
@@ -38,7 +38,7 @@
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
-- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·`deferred.md` 수정 시 필수 — 열 축, **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·`deferred.md` 수정 시 필수 — 열두 축, **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python plugins/pjc/evals/check-harness-consistency.py
   ```

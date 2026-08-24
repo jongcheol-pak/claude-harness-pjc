@@ -16,14 +16,14 @@
         "AGENTS.md": [
           "## Build & Test",
           "## DO NOT",
-          "**정본은 `docs/harness-conventions.md`의 「Conventions」이다**"
+          "**정본은 `docs/harness-conventions.md`의 「Repository Structure」이다**"
         ],
         "docs/harness-conventions.md": [
-          "## Conventions",
-          "[Conventions] 이 문단은"
+          "## Repository Structure",
+          "[Structure] 이 문단은"
         ]
       },
-      "rationale": "발동(96%) → 가장 큰 절부터 이관. 이관처는 **최다 등장 경로**로 결정론 선정하고(3회 등장), 잔류 절 4종은 그대로 남으며 옮긴 자리에는 절 제목 + 포인터가 남는다."
+      "rationale": "발동(96%) → 가장 큰 절부터 이관. 이관처는 **최다 등장 경로**로 결정론 선정하고(3회 등장), 잔류 절 7종은 그대로 남으며 옮긴 자리에는 절 제목 + 포인터가 남는다."
     },
     {
       "fixture": "under-80",
@@ -41,7 +41,9 @@
       "expect_rc": 0,
       "expect_keywords": [
         "[이관 불가]",
-        "잔류 절만으로"
+        "잔류 절만으로",
+        "절 단위로는 해소할 수 없다",
+        "「소급 정리」"
       ],
       "expect_absent": [
         "옮긴 절:"
@@ -72,11 +74,11 @@
       ],
       "expect_file_contains": {
         "docs/agents-detail.md": [
-          "## Conventions",
-          "[Conventions] 이 문단은"
+          "## Repository Structure",
+          "[Repository Structure] 이 문단은"
         ],
         "AGENTS.md": [
-          "**정본은 `docs/agents-detail.md`의 「Conventions」이다**"
+          "**정본은 `docs/agents-detail.md`의 「Repository Structure」이다**"
         ]
       },
       "rationale": "**이관처 후보 0 → 신설 분기.** 본문에 `.md` 경로가 하나도 없으면 `docs/agents-detail.md`를 만든다(`docs/`가 없으면 함께 만든다). 다른 픽스처는 기존 후보가 있어 이 분기를 태우지 못한다."
@@ -109,6 +111,91 @@
         "docs/agents-detail.md"
       ],
       "rationale": "**신설 이관처의 원복.** 이 회차에 만든 이관처는 사본이 없으므로 되돌릴 대상이 아니라 **지울** 대상이다. 판정을 「백업 목록이 비었는가」로 두면 AGENTS.md 백업이 늘 들어가 항상 거짓이 되어 아무것도 지우지 못한다(실제로 그런 죽은 분기가 있었다) — 원복 후 그 파일이 남지 않는지 직접 본다."
+    },
+    {
+      "fixture": "keep-no-target",
+      "expect_rc": 0,
+      "expect_keywords": [
+        "[이관 불가]",
+        "옮길 절이 없다",
+        "절 단위로는 해소할 수 없다",
+        "「소급 정리」"
+      ],
+      "expect_absent": [
+        "옮긴 절:"
+      ],
+      "rationale": "**안내 3분기 중 ① — 이관 대상이 0.** 절 전부가 잔류 7종이면 옮길 것이 없다. 새 경계에서 이것은 예외가 아니라 정상 귀결이라(이 레포도 8절 중 7절이 잔류) 막다른 메시지로 끝내지 않고 소급 정리 경로를 지목해야 한다. `keep-only`는 「잔류 절만으로 상한 초과」(②) 분기를 타므로 이 자리를 태우지 못한다 — 판정 순서상 ①이 먼저라 ①을 태우려면 대상이 실제로 0인 픽스처가 따로 필요하다."
+    },
+    {
+      "fixture": "empty-target",
+      "expect_rc": 0,
+      "expect_keywords": [
+        "[이관 불가]",
+        "발동했으나 옮길 수 있는 절이 없다",
+        "절 단위로는 해소할 수 없다",
+        "「소급 정리」"
+      ],
+      "expect_absent": [
+        "옮긴 절:"
+      ],
+      "rationale": "**안내 3분기 중 ③ — 대상은 있는데 옮길 본문이 없다.** 앞선 두 분기(①대상 0·②잔류만으로 초과)를 모두 통과한 뒤 이관 루프에서 걸러지는 자리다(본문이 빈 절은 옮기지 않는다). 이 픽스처는 잔류 합계를 상한 미만으로 두어 ②로 새지 않게 맞췄다 — 세 분기가 순차 게이트라 앞을 통과시키지 않으면 뒤가 실행되지 않는다."
+    },
+    {
+      "fixture": "keep-lost",
+      "verify_only": true,
+      "orig_rel": "orig.md",
+      "dest_rel": "docs/agents-detail.md",
+      "expect_ok": false,
+      "expect_problems": [
+        "잔류 절이 사라졌다: ## Conventions"
+      ],
+      "rationale": "**잔류 7종 정합을 검증이 잡는가**(델타 음성). `KEEP_SECTIONS`가 4종이던 시절에는 `Conventions`가 사라져도 아무 신호가 없었다 — 7종으로 넓힌 것이 실제로 검사에 반영됐는지 확인한다. 이관처에는 사라진 절의 본문까지 담아 **도달 대조는 통과**시켜, 이 케이스가 잡는 것을 「잔류 절 소실」 하나로 좁혔다."
+    },
+    {
+      "fixture": "unreached",
+      "verify_only": true,
+      "orig_rel": "orig.md",
+      "dest_rel": "docs/agents-detail.md",
+      "expect_ok": false,
+      "expect_problems": [
+        "어디에도 도달하지 않았다"
+      ],
+      "rationale": "**도달 대조가 유실을 잡는가.** 종전 축은 「줄 수 합이 줄지 않았는가」였는데 그것은 내용 도달을 보장하지 않는다 — 원문의 한 줄을 AGENTS.md·이관처 어디에도 두지 않은 상태를 만들어, 줄 수만 세던 시절에는 통과했던 것이 이제 FAIL로 잡히는지 본다."
+    },
+    {
+      "fixture": "unreached",
+      "verify_only": true,
+      "orig_rel": "orig.md",
+      "dest_rel": "docs/agents-detail.md",
+      "declared_removals": [
+        "[Notes] 이 줄은 어디에도 도달하지 않는다."
+      ],
+      "expect_ok": true,
+      "rationale": "**의도적 삭제를 선언하면 통과한다.** 소급 정리는 삭제가 정상 경로라 도달 대조만으로는 늘 실패하게 된다 — 그래서 `declared_removals`로 선언한 줄은 미도달로 세지 않는다. 위 케이스와 **같은 픽스처**를 쓰므로 통과·실패를 가르는 것이 선언 하나임이 드러난다(픽스처가 다르면 무엇이 판정을 바꿨는지 알 수 없다)."
+    },
+    {
+      "fixture": "unreached",
+      "cli_args": ["--verify-only", "{fx}/orig.md", "{fx}/AGENTS.md", "{fx}/docs/agents-detail.md"],
+      "expect_rc": 1,
+      "expect_keywords": [
+        "원문 도달 대조",
+        "미도달 1줄",
+        "이 줄은 어디에도 도달하지 않는다"
+      ],
+      "rationale": "**소급 정리가 실제로 부르는 것은 함수가 아니라 명령이다.** 위 두 `verify_only` 케이스는 모듈을 import해 `verify()`를 직접 부르므로 `main()`의 인자 파싱·종료 코드를 한 줄도 지나지 않는다 — 명령이 도는지는 그 경로로 증명되지 않는다. 여기서는 subprocess로 CLI를 태워 **미도달 줄이 전건 출력되는지**까지 본다(건수만 알려주면 무엇을 삭제로 선언할지 정할 수 없다)."
+    },
+    {
+      "fixture": "unreached",
+      "cli_args": ["--verify-only", "{fx}/orig.md", "{fx}/AGENTS.md", "{fx}/docs/agents-detail.md", "--declared", "{fx}/declared.txt"],
+      "expect_rc": 0,
+      "expect_keywords": [
+        "도달 대조 통과",
+        "의도적 삭제 선언 1줄"
+      ],
+      "expect_absent": [
+        "미도달"
+      ],
+      "rationale": "**`--declared`가 이 경로의 필수 인자임을 고정한다.** 바로 위 케이스와 인자 하나만 다르므로 rc 1 → 0을 뒤집는 것이 선언 파일 하나임이 드러난다. 값을 받는 플래그는 이것뿐이라 위치 인자 필터에 섞이기 쉬운데, 섞이면 원문 경로가 밀려 조용히 다른 파일을 대조하게 된다 — 그 회귀를 이 케이스가 잡는다."
     }
   ]
 }

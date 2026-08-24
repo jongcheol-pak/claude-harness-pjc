@@ -34,6 +34,56 @@ try {
 }
 if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
+# ---- 데이터 문맥 제거: heredoc 본문은 파일 내용이지 실행 명령이 아니다 ----
+#   `python - <<'EOF' ... EOF` 형태에서 본문에 빌드/테스트 명령 문자열이 들어 있으면 그것을
+#   「이번에 실행한 명령」으로 오인한다(실측 2026-08-23 — AGENTS.md를 쓰는 heredoc 안의
+#   cargo test가 제안으로 잡혔다). 셸 파서를 만들지 않고 구분자 형태만 본다 — 못 알아본 변형은
+#   종전대로 전체를 훑으므로 이 제거는 오탐만 줄이고 미탐을 새로 만들지 않는다.
+$cmdScan = [regex]::Replace($cmd, "(?ms)<<-?\s*(['`"]?)(\w+)\1\r?\n.*?^\2\r?$", ' ')
+
+# ---- 데이터 문맥 제거 2단: 「메시지 인자」 플래그 뒤의 인용 블록도 데이터다 ----
+#   `git commit -m "문서: … dotnet test 통과"`의 메시지 안 문자열이 실행 명령으로 잡혔다
+#   (실측 2026-08-24 — 이 레포는 커밋 본문에 검증 명령을 적는 관례라 자주 발화한다).
+#   **인용을 전부 지우면 안 된다** — `cd "경로"`의 인자가 사라져 아래 cd 게이트가 무너지고,
+#   `pytest -m "not slow"`처럼 명령의 일부가 정당하게 인용된 형태도 함께 잃는다. 그래서
+#   「그 자리에 실행 명령이 올 수 없는 플래그」만 화이트리스트로 잡는다.
+#
+#   [python 가드] `python -m <모듈>`은 -m 뒤가 실행 대상이라 지우면 미탐이 된다.
+#   lookbehind로는 `python3.11`·`py -3`·`python.exe`·공백 2칸 변종을 다 덮을 수 없어
+#   **python류와 `-m`의 인접**을 본다(사이에 낀 옵션은 `(-\S+\s+)*`가 흡수). 트리거를
+#   「명령 어딘가에 python류가 있으면」으로 넓히면 `\bpy\b`가 `.py` 앞 마침표에서 성립해
+#   `check-harness-consistency.py`를 지목하는 평범한 커밋 메시지까지 가드에 걸려,
+#   이 스트립이 닫으려는 오탐이 그대로 되살아난다(실측 확인).
+#
+#   [무엇을 못 잡게 되는가 — 의도한 포기]
+#     ① 화이트리스트 밖 형태(`echo "cargo test"` 등)의 오탐은 그대로 남는다.
+#     ② 이스케이프된 중첩 인용(`-m "a \"b\" cargo test"`)은 첫 닫는 따옴표에서 끊겨 잔여가 남는다.
+#     ③ 짝이 맞지 않는 따옴표는 매치되지 않아 종전 동작이다.
+#     ④ 인용 안의 명령 치환(`-m "build $(npm run build)"`·백틱 형태 `` -m "build `npm run build`" ``)도
+#        함께 지워진다 — 겹따옴표 안의 그 둘은 셸이 실제로 실행하므로 이것은 미탐이다(홑따옴표
+#        안이면 셸도 확장하지 않아 데이터가 맞다. 스트립은 둘을 구분하지 않고 지운다 — 그 구분이
+#        곧 셸 파서다).
+#     ⑤ python류와 `-m`이 인접한 형태를 **메시지 안에 적으면** 가드가 걸려 그 메시지의 오탐이 남는다.
+$msgFlags = if ($cmdScan -match '(?i)\bpy(thon[\w.]*)?(\.exe)?\s+(-\S+\s+)*-m\b') {
+    '--message|-am|--body'
+} else {
+    '-m|--message|-am|--body'
+}
+# 구분자를 선택적으로 둬 `--message=`·`-m"…"` 붙임 표기까지 덮는다.
+$quotedArgRx = "(?s)(^|\s)($msgFlags)(\s*=\s*|\s+)?('[^']*'|`"[^`"]*`")"
+$cmdScan = [regex]::Replace($cmdScan, $quotedArgRx, '$1$2 ')
+
+# ---- 대상 레포 판정: 다른 폴더로 옮겨 실행한 명령은 이 프로젝트의 사실이 아니다 ----
+#   `cd <다른 레포> && cargo test`를 cwd의 AGENTS.md 기준으로 재면 「기록 안 됨」이 항상 참이 된다.
+#   판정 불가(경로 부재·해석 실패)면 제안하지 않는다 — 여기서는 오탐이 미탐보다 비싸다.
+#   줄 시작뿐 아니라 `&&`·`;`·`|` 뒤에 이어지는 cd도 본다(`npm ci && cd sub && npm test`).
+#   여러 번 옮겼으면 **순서대로 누적**해 푼다 — 마지막 하나만 cwd 기준으로 풀면 2홉부터 틀린다
+#   (`cd sub && cd ..`은 원래 자리로 돌아오는데 부모로 계산돼 정상 명령이 조용히 억제됐다).
+#   범위 밖(정규식이 매치하지 않아 **종전 동작**으로 떨어진다): `pushd`/`popd` · 서브셸 `(cd a)`.
+#   셸 파서를 만들지 않는 대가이고, 떨어지는 자리가 「제안 안 함」이 아니라 「cwd 기준 종전 판정」이라
+#   미탐을 새로 만들지 않는다.
+$cdAll = [regex]::Matches($cmdScan, "(?im)(?:^|&&|;|\|)\s*cd\s+(?:'([^']+)'|`"([^`"]+)`"|([^\s&|;]+))")
+
 # ---- 카테고리별 명령 패턴 (변경형 빌드/테스트/DB만) ----
 # rx는 카테고리 간 배타적(build rx에 test 없음)이라 순서 무관. 매칭값을 '대표 토큰'으로 삼는다.
 $categories = @(
@@ -47,7 +97,7 @@ $categories = @(
 
 $hits = New-Object System.Collections.Generic.List[object]
 foreach ($cat in $categories) {
-    $m = [regex]::Match($cmd, $cat.rx)
+    $m = [regex]::Match($cmdScan, $cat.rx)
     if ($m.Success) {
         # 토큰 정규화: 옵션(-/로 시작)·인자(= 포함, 접속정보 등) 토큰을 제거한다.
         # 이유 (1) mvn/gradle은 키워드까지 탐욕 매칭이라 중간 옵션에 DB 접속정보(-Ddb.url=...)가 끼면
@@ -69,6 +119,35 @@ if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
     $projDir = $env:CLAUDE_PROJECT_DIR
 } else {
     $projDir = (Get-Location).Path
+}
+
+# 명령이 `cd`로 **이 프로젝트 밖**을 지목했으면 그것은 이 프로젝트의 사실이 아니다.
+#   경계는 「완전 일치」가 아니라 **하위트리 포함**이다 — `cd tests && dotnet test`처럼 같은 레포
+#   안에서 옮겨 실행하는 형태가 흔하고, 그때 판정 대상 AGENTS.md는 여전히 루트 그것이다.
+#   (완전 일치로 두면 그 흔한 형태가 통째로 억제된다 — FR-8이 겨냥한 것은 「다른 레포」다.)
+if ($cdAll.Count -gt 0) {
+    $projResolved = $null
+    try { $projResolved = (Resolve-Path -LiteralPath $projDir -ErrorAction Stop).Path } catch {}
+    if (-not $projResolved) { exit 0 }
+    # 각 cd를 **순서대로** 풀고 직전 결과를 다음 기준으로 삼는다(홉 수에 무관한 일반해).
+    #   상대경로의 기준은 hook 프로세스의 cwd가 아니라 **직전까지 옮겨 온 위치**다.
+    $cdCur = $projResolved
+    foreach ($cdM in $cdAll) {
+        $cdRaw = @($cdM.Groups[1].Value, $cdM.Groups[2].Value, $cdM.Groups[3].Value) |
+            Where-Object { $_ } | Select-Object -First 1
+        try {
+            $cdBase = if ([System.IO.Path]::IsPathRooted($cdRaw)) { $cdRaw } else { Join-Path $cdCur $cdRaw }
+            $cdCur = (Resolve-Path -LiteralPath $cdBase -ErrorAction Stop).Path
+        } catch { exit 0 }   # 해석 실패 = 판정 불가 → 제안하지 않는다
+    }
+    # 하위트리 판정 — **구분자를 붙여 비교한다**. 안 붙이면 `C:\proj`가 형제 `C:\project`를
+    #   삼켜 다른 레포를 같은 레포로 오인한다. Windows 경로라 대소문자는 무시한다.
+    $projRoot = $projResolved.TrimEnd('\', '/')
+    $cdFinal = $cdCur.TrimEnd('\', '/')
+    $inTree = $cdFinal.Equals($projRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+              $cdFinal.StartsWith($projRoot + [System.IO.Path]::DirectorySeparatorChar,
+                                  [System.StringComparison]::OrdinalIgnoreCase)
+    if (-not $inTree) { exit 0 }
 }
 
 # AGENTS.md 없으면 제안하지 않음 (bootstrap 영역 — 중복 제안 방지)
