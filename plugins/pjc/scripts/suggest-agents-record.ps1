@@ -45,9 +45,12 @@ $cmdScan = [regex]::Replace($cmd, "(?ms)<<-?\s*(['`"]?)(\w+)\1\r?\n.*?^\2\r?$", 
 #   `cd <다른 레포> && cargo test`를 cwd의 AGENTS.md 기준으로 재면 「기록 안 됨」이 항상 참이 된다.
 #   판정 불가(경로 부재·해석 실패)면 제안하지 않는다 — 여기서는 오탐이 미탐보다 비싸다.
 #   줄 시작뿐 아니라 `&&`·`;`·`|` 뒤에 이어지는 cd도 본다(`npm ci && cd sub && npm test`).
-#   여러 번 옮겼으면 **마지막 cd**가 실제 실행 위치다.
+#   여러 번 옮겼으면 **순서대로 누적**해 푼다 — 마지막 하나만 cwd 기준으로 풀면 2홉부터 틀린다
+#   (`cd sub && cd ..`은 원래 자리로 돌아오는데 부모로 계산돼 정상 명령이 조용히 억제됐다).
+#   범위 밖(정규식이 매치하지 않아 **종전 동작**으로 떨어진다): `pushd`/`popd` · 서브셸 `(cd a)`.
+#   셸 파서를 만들지 않는 대가이고, 떨어지는 자리가 「제안 안 함」이 아니라 「cwd 기준 종전 판정」이라
+#   미탐을 새로 만들지 않는다.
 $cdAll = [regex]::Matches($cmdScan, "(?im)(?:^|&&|;|\|)\s*cd\s+(?:'([^']+)'|`"([^`"]+)`"|([^\s&|;]+))")
-$cdMatch = if ($cdAll.Count -gt 0) { $cdAll[$cdAll.Count - 1] } else { $null }
 
 # ---- 카테고리별 명령 패턴 (변경형 빌드/테스트/DB만) ----
 # rx는 카테고리 간 배타적(build rx에 test 없음)이라 순서 무관. 매칭값을 '대표 토큰'으로 삼는다.
@@ -87,21 +90,22 @@ if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
 }
 
 # 명령이 `cd`로 다른 폴더를 지목했으면 그 폴더가 판정 대상이다 — 다르면 이 프로젝트의 사실이 아니다.
-if ($cdMatch -and $cdMatch.Success) {
-    $cdRaw = @($cdMatch.Groups[1].Value, $cdMatch.Groups[2].Value, $cdMatch.Groups[3].Value) |
-        Where-Object { $_ } | Select-Object -First 1
-    # 상대경로는 **명령이 돈 위치**($projDir) 기준이다 — hook 프로세스의 cwd로 풀면
-    #   `cd tests && dotnet test` 같은 흔한 형태가 해석 실패로 조용히 억제된다.
-    $cdResolved = $null
-    try {
-        $cdBase = if ([System.IO.Path]::IsPathRooted($cdRaw)) { $cdRaw } else { Join-Path $projDir $cdRaw }
-        $cdResolved = (Resolve-Path -LiteralPath $cdBase -ErrorAction Stop).Path
-    } catch {}
-    if (-not $cdResolved) { exit 0 }
+if ($cdAll.Count -gt 0) {
     $projResolved = $null
     try { $projResolved = (Resolve-Path -LiteralPath $projDir -ErrorAction Stop).Path } catch {}
     if (-not $projResolved) { exit 0 }
-    if ($cdResolved.TrimEnd('\', '/') -ne $projResolved.TrimEnd('\', '/')) { exit 0 }
+    # 각 cd를 **순서대로** 풀고 직전 결과를 다음 기준으로 삼는다(홉 수에 무관한 일반해).
+    #   상대경로의 기준은 hook 프로세스의 cwd가 아니라 **직전까지 옮겨 온 위치**다.
+    $cdCur = $projResolved
+    foreach ($cdM in $cdAll) {
+        $cdRaw = @($cdM.Groups[1].Value, $cdM.Groups[2].Value, $cdM.Groups[3].Value) |
+            Where-Object { $_ } | Select-Object -First 1
+        try {
+            $cdBase = if ([System.IO.Path]::IsPathRooted($cdRaw)) { $cdRaw } else { Join-Path $cdCur $cdRaw }
+            $cdCur = (Resolve-Path -LiteralPath $cdBase -ErrorAction Stop).Path
+        } catch { exit 0 }   # 해석 실패 = 판정 불가 → 제안하지 않는다
+    }
+    if ($cdCur.TrimEnd('\', '/') -ne $projResolved.TrimEnd('\', '/')) { exit 0 }
 }
 
 # AGENTS.md 없으면 제안하지 않음 (bootstrap 영역 — 중복 제안 방지)

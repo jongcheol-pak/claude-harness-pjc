@@ -50,6 +50,19 @@ Assert-Case -Name "suggest: 체이닝된 cd 대상이 다른 레포면 제안 �
 $sjNoCd = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6g'; tool_input = @{ command = ('cargo build --manifest-path "' + $bproj + '\Cargo.toml"') } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjNoCd
 Assert-Case -Name "suggest: cd 없는 명령은 종전대로 cwd 기준 (범위 미확대)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+# **cd 등장 횟수**가 이 게이트의 실제 분기 변수다 — 0·1은 위에서 덮었고 여기서 2·3홉을 덮는다.
+#   1홉만 보고 「마지막 cd를 cwd 기준으로 푼다」로 짰더니 2홉에서 틀렸다(`cd sub && cd ..`은 제자리인데
+#   부모로 계산돼 정상 명령이 억제됐다). 케이스를 요구사항 문구가 아니라 분기 변수로 고른다.
+New-Item -ItemType Directory (Join-Path $aproj 'sub\nested') -Force | Out-Null
+$sjHop2Back = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6h'; tool_input = @{ command = 'cd sub && cd .. && cargo build' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjHop2Back
+Assert-Case -Name "suggest: 2홉 cd가 제자리로 돌아오면 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+$sjHop2Out = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6i'; tool_input = @{ command = 'cd sub && cd nested && cargo build' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjHop2Out
+Assert-Case -Name "suggest: 2홉 cd가 다른 폴더로 가면 제안 안 함" -R $r -ExpectExit 0 -ExpectSilent $true
+$sjHop3 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6j'; tool_input = @{ command = 'cd sub && cd nested && cd ../.. && cargo build' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjHop3
+Assert-Case -Name "suggest: 3홉 cd가 제자리로 돌아오면 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 
 # [H5/T4] 30일 지난 상태 마커 자동 정리 — 수정 후 삭제가 기대
 $stateDir = Join-Path $iso '.claude/.state/suggest-agents-record'
