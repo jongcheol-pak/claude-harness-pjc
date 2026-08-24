@@ -89,7 +89,10 @@ if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
     $projDir = (Get-Location).Path
 }
 
-# 명령이 `cd`로 다른 폴더를 지목했으면 그 폴더가 판정 대상이다 — 다르면 이 프로젝트의 사실이 아니다.
+# 명령이 `cd`로 **이 프로젝트 밖**을 지목했으면 그것은 이 프로젝트의 사실이 아니다.
+#   경계는 「완전 일치」가 아니라 **하위트리 포함**이다 — `cd tests && dotnet test`처럼 같은 레포
+#   안에서 옮겨 실행하는 형태가 흔하고, 그때 판정 대상 AGENTS.md는 여전히 루트 그것이다.
+#   (완전 일치로 두면 그 흔한 형태가 통째로 억제된다 — FR-8이 겨냥한 것은 「다른 레포」다.)
 if ($cdAll.Count -gt 0) {
     $projResolved = $null
     try { $projResolved = (Resolve-Path -LiteralPath $projDir -ErrorAction Stop).Path } catch {}
@@ -105,7 +108,14 @@ if ($cdAll.Count -gt 0) {
             $cdCur = (Resolve-Path -LiteralPath $cdBase -ErrorAction Stop).Path
         } catch { exit 0 }   # 해석 실패 = 판정 불가 → 제안하지 않는다
     }
-    if ($cdCur.TrimEnd('\', '/') -ne $projResolved.TrimEnd('\', '/')) { exit 0 }
+    # 하위트리 판정 — **구분자를 붙여 비교한다**. 안 붙이면 `C:\proj`가 형제 `C:\project`를
+    #   삼켜 다른 레포를 같은 레포로 오인한다. Windows 경로라 대소문자는 무시한다.
+    $projRoot = $projResolved.TrimEnd('\', '/')
+    $cdFinal = $cdCur.TrimEnd('\', '/')
+    $inTree = $cdFinal.Equals($projRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+              $cdFinal.StartsWith($projRoot + [System.IO.Path]::DirectorySeparatorChar,
+                                  [System.StringComparison]::OrdinalIgnoreCase)
+    if (-not $inTree) { exit 0 }
 }
 
 # AGENTS.md 없으면 제안하지 않음 (bootstrap 영역 — 중복 제안 방지)

@@ -35,12 +35,12 @@ $r = Invoke-Hook 'suggest-agents-record.ps1' $sjSame
 Assert-Case -Name "suggest: cd 대상이 이 프로젝트면 종전대로 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 # 상대 경로는 **명령이 돈 위치** 기준으로 푼다 — hook 프로세스의 cwd로 풀면 `cd tests && dotnet test`
 #   같은 흔한 형태가 해석 실패로 조용히 억제된다(리뷰가 잡은 결함).
-#   **고친 것은 「해석 실패로 인한 억제」뿐이다** — 하위폴더로 옮긴 경우는 최종 위치가 프로젝트 루트와
-#   일치하지 않으므로 여전히 제안하지 않는다(의도된 보수적 범위. 넓힐지는 대장 `[SUGGEST]`에 등재).
+#   그리고 경계는 **하위트리 포함**이다 — 같은 레포 안에서 옮겨 실행해도 판정 대상 AGENTS.md는
+#   여전히 루트 그것이라 오탐이 아니다(FR-8이 겨냥한 것은 「다른 레포」).
 New-Item -ItemType Directory (Join-Path $aproj 'sub') -Force | Out-Null
 $sjRel = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6d'; tool_input = @{ command = 'cd sub && cargo build' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjRel
-Assert-Case -Name "suggest: 상대 cd 하위폴더는 제안 안 함" -R $r -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "suggest: 상대 cd 하위폴더는 같은 레포라 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 $sjDot = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6e'; tool_input = @{ command = 'cd . && cargo build' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjDot
 Assert-Case -Name "suggest: 상대 cd . 은 같은 폴더라 종전대로 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
@@ -61,7 +61,14 @@ $r = Invoke-Hook 'suggest-agents-record.ps1' $sjHop2Back
 Assert-Case -Name "suggest: 2홉 cd가 제자리로 돌아오면 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 $sjHop2Out = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6i'; tool_input = @{ command = 'cd sub && cd nested && cargo build' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjHop2Out
-Assert-Case -Name "suggest: 2홉 cd가 다른 폴더로 가면 제안 안 함" -R $r -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "suggest: 2홉 cd로 더 깊이 들어가도 같은 레포면 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+# **접두가 겹치는 형제 경로**는 하위트리가 아니다 — 구분자를 붙여 비교하지 않으면 `<proj>`가
+#   `<proj>-sibling`을 삼켜 다른 레포를 같은 레포로 오인한다(하위트리 판정을 넓힌 대가로 생기는 사각).
+$sibling = $aproj + '-sibling'
+New-Item -ItemType Directory $sibling -Force | Out-Null
+$sjSib = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6k'; tool_input = @{ command = ('cd "' + $sibling + '" && cargo build') } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjSib
+Assert-Case -Name "suggest: 접두만 겹치는 형제 경로는 제안 안 함 (하위트리 오인 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
 $sjHop3 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6j'; tool_input = @{ command = 'cd sub && cd nested && cd ../.. && cargo build' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjHop3
 Assert-Case -Name "suggest: 3홉 cd가 제자리로 돌아오면 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
