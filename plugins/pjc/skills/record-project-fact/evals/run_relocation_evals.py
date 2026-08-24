@@ -51,8 +51,15 @@ def run_case(mod, case):
             agents = open(os.path.join(dest, "AGENTS.md"), "rb").read()
             dpath = os.path.join(dest, case["dest_rel"].replace("/", os.sep))
             draw = open(dpath, "rb").read() if os.path.exists(dpath) else b""
+            # 원문은 기본적으로 AGENTS.md 자신이다(이관 전후가 같은 상태의 대조).
+            #  `orig_rel`을 주면 **다른 파일**을 원문으로 삼는다 — 도달 대조는 「원문의 줄이
+            #  결과에 닿았는가」를 보므로, 원문과 결과가 같은 파일이면 그 축이 늘 통과한다.
+            orig = agents
+            if case.get("orig_rel"):
+                orig = open(os.path.join(dest, case["orig_rel"].replace("/", os.sep)), "rb").read()
             ok, problems = mod.verify(agents, draw, case["dest_rel"],
-                                      case.get("limit", 16384), agents)
+                                      case.get("limit", 16384), orig,
+                                      tuple(case.get("declared_removals", ())))
             want = case.get("expect_ok", False)
             if ok != want:
                 return False, "검증 결과 불일치 — 기대 %s / 실제 %s (%s)" % (
