@@ -35,6 +35,8 @@ $r = Invoke-Hook 'suggest-agents-record.ps1' $sjSame
 Assert-Case -Name "suggest: cd 대상이 이 프로젝트면 종전대로 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 # 상대 경로는 **명령이 돈 위치** 기준으로 푼다 — hook 프로세스의 cwd로 풀면 `cd tests && dotnet test`
 #   같은 흔한 형태가 해석 실패로 조용히 억제된다(리뷰가 잡은 결함).
+#   **고친 것은 「해석 실패로 인한 억제」뿐이다** — 하위폴더로 옮긴 경우는 최종 위치가 프로젝트 루트와
+#   일치하지 않으므로 여전히 제안하지 않는다(의도된 보수적 범위. 넓힐지는 대장 `[SUGGEST]`에 등재).
 New-Item -ItemType Directory (Join-Path $aproj 'sub') -Force | Out-Null
 $sjRel = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6d'; tool_input = @{ command = 'cd sub && cargo build' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjRel
@@ -42,7 +44,7 @@ Assert-Case -Name "suggest: 상대 cd 하위폴더는 제안 안 함" -R $r -Exp
 $sjDot = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6e'; tool_input = @{ command = 'cd . && cargo build' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjDot
 Assert-Case -Name "suggest: 상대 cd . 은 같은 폴더라 종전대로 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
-# 여러 번 옮겼으면 마지막 cd가 실제 실행 위치다. 줄 시작이 아닌 `&&` 뒤 cd도 본다.
+# 여러 번 옮겼으면 **순서대로 누적**해 최종 위치를 구한다. 줄 시작이 아닌 `&&` 뒤 cd도 본다.
 $sjChain = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6f'; tool_input = @{ command = ('npm ci && cd "' + $bproj + '" && cargo build') } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjChain
 Assert-Case -Name "suggest: 체이닝된 cd 대상이 다른 레포면 제안 안 함" -R $r -ExpectExit 0 -ExpectSilent $true
