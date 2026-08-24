@@ -246,6 +246,7 @@ def unreached_lines(orig_raw, parts, declared_removals=()):
             out.append(line)
     return out
 
+
 def verify(agents_raw, dest_raw, dest_rel, limit, orig_raw, declared_removals=()):
     """ⓖ 검증 4종. 반환: (통과 여부, 문제 목록).
 
