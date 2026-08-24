@@ -196,7 +196,7 @@ def check_doc_budget(conv):
                 top = top_sections(full)
                 detail = " · ".join("%s %dB" % (t, b) for t, b in top) or "(절 없음)"
                 issues.append("목표선 초과 %s — 실측 %d B / 목표 %d B (초과 %d B) "
-                              "— 큰 절: %s. 「AGENTS.md 내용 경계」의 증가 억제·서술 밀도 규칙을 적용하거나 "
+                              "— 큰 절: %s. plugins/pjc/skills/AGENTS-BOUNDARY.md 의 증가 억제·서술 밀도 규칙을 적용하거나 "
                               "`pjc:record-project-fact` Step 5로 이관할 것"
                               % (path, real[0], AGENTS_TARGET_BYTES,
                                  real[0] - AGENTS_TARGET_BYTES, detail))

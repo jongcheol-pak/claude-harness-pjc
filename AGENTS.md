@@ -1,7 +1,7 @@
 # AGENTS.md — Agent Guide
 
 > pjc 하니스 플러그인 repo. 컴파일 언어가 없어 표준 build/test가 없다 — 아래 **워킹트리 정적 검증**으로 `implement-task` V-1/V-2를 수행한다.
-> **이 파일의 내용 경계**(무엇을 담고 무엇을 담지 않는가)는 `docs/harness-conventions.md`의 「AGENTS.md 내용 경계」가 정본이다.
+> **이 파일의 내용 경계**(무엇을 담고 무엇을 담지 않는가)는 `plugins/pjc/skills/AGENTS-BOUNDARY.md`의 「AGENTS.md 내용 경계」가 정본이다.
 
 ## 위키
 
