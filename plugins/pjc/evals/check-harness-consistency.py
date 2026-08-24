@@ -664,6 +664,40 @@ def check_deferred_stats(ledger):
     return issues, wait + done
 
 
+def check_batch_number_sequence(ledger):
+    """대장의 소진 batch 블록 차수가 연속·유일한지 대조한다.
+
+    차수는 규약 ⓪의 순증분 보정이 「직전 batch의 정리 직후 값」을 인용할 때
+    **어느 블록을 직전으로 잡는지의 유일한 단서**라, 중복되면 계산이 갈린다.
+    실측: v1.195.0이 이미 있는 `10차 batch (v1.194.0 T9)` 위에 같은 이름의 블록을
+    얹었는데 이 대조기가 exit 0으로 통과시켰고, 잡아낸 것은 F-7 리뷰어였다.
+
+    ⚠ **줄 시작 `> **N차 …` 블록 헤더에서만 센다.** 본문에는 다른 회차를 가리키는
+    인용(`**9차 batch(v1.193.0…`·`**2차 batch`)이 실재해, 비앵커 정규식으로 뽑으면
+    현행 대장이 곧바로 중복·비연속 오탐을 낸다.
+
+    ⚠ **「1부터」가 아니라 「존재하는 최솟값부터」 연속을 본다** — 대장은 6차부터
+    담고 있다(그 이전 기록은 남아 있지 않다).
+
+    `N차 판정`(구간 batch 미실행)도 같은 수열을 쓰므로 함께 센다.
+    """
+    nums = [int(m.group(1)) for m in
+            re.finditer(r"^> \*\*(\d+)차 (?:batch|판정)", ledger, re.M)]
+    if not nums:
+        return [], 0          # batch 기록이 없는 대장(다른 프로젝트)도 통과시킨다
+    issues = []
+    dup = sorted({n for n in nums if nums.count(n) > 1})
+    if dup:
+        issues.append("batch 차수 중복 — %s (블록 %d개)"
+                      % (", ".join("%d차" % n for n in dup), len(nums)))
+    uniq = sorted(set(nums))
+    gaps = [n for n in range(uniq[0], uniq[-1] + 1) if n not in uniq]
+    if gaps:
+        issues.append("batch 차수 비연속 — %s 누락 (%d차~%d차 구간)"
+                      % (", ".join("%d차" % n for n in gaps), uniq[0], uniq[-1]))
+    return issues, len(nums)
+
+
 # ─────────────────────────────────────────────────────────────
 # ⑧ 볼드 마커 짝 · ⑨ 한 줄 안 문장 중복 (문서 표기 결함)
 #
@@ -880,6 +914,7 @@ def main():
         ("착수 조건 동기", check_batch_trigger_sync()),
         # 새 축은 계속 **맨 뒤**에 붙인다(위와 같은 이유 — 서수 참조 보호).
         ("잔류 절 동기", check_keep_sections_sync()),
+        ("batch 차수 수열", check_batch_number_sequence(ledger)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
