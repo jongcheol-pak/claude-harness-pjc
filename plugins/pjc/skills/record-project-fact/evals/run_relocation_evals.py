@@ -14,6 +14,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -46,6 +47,27 @@ def run_case(mod, case):
     dest = os.path.join(tmp, case["fixture"])
     shutil.copytree(fx, dest)
     try:
+        if case.get("cli_args") is not None:
+            # **CLI 진입점은 subprocess로만 태울 수 있다** — 위 두 모드는 모듈을 import해 함수를
+            #  직접 부르므로 `main()`의 인자 파싱·종료 코드를 한 줄도 지나지 않는다. 소급 정리가
+            #  실제로 쓰는 것은 그 명령이라, 함수만 검증하면 「명령이 도는가」는 미검증으로 남는다.
+            args = [sys.executable, os.path.normpath(SCRIPT)] + \
+                [a.replace("{fx}", dest) for a in case["cli_args"]]
+            env = dict(os.environ, PYTHONIOENCODING="utf-8")
+            r = subprocess.run(args, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", env=env)
+            out = (r.stdout or "") + (r.stderr or "")
+            if r.returncode != case.get("expect_rc", 0):
+                return False, "종료 코드 불일치 — 기대 %d / 실제 %d (%s)" % (
+                    case.get("expect_rc", 0), r.returncode, out[:120].replace("\n", " "))
+            miss = [k for k in case.get("expect_keywords", []) if k not in out]
+            if miss:
+                return False, "출력 미검출: " + ", ".join(miss)
+            bad = [k for k in case.get("expect_absent", []) if k in out]
+            if bad:
+                return False, "출력에 금지 키워드: " + ", ".join(bad)
+            return True, "CLI rc=%d — %s" % (r.returncode, out.strip().splitlines()[-1][:70])
+
         if case.get("verify_only"):
             # 검증 함수를 직접 태운다 — 인자는 픽스처 파일에서 읽는다.
             agents = open(os.path.join(dest, "AGENTS.md"), "rb").read()

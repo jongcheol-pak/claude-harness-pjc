@@ -38,7 +38,11 @@
      그래서 막다른 메시지로 끝내지 않고 **소급 정리 경로**를 함께 지목한다(SKILL.md 「소급 정리」).
 
 사용: python relocate-agents.py <레포 루트> [--dry-run]
-종료 코드: 0 정상(이관했거나 발동하지 않음) / 1 실패(검증 실패로 원복했거나 입력 오류).
+사용: python relocate-agents.py --verify-only <원문> <결과...> [--declared <선언파일>]
+      — ⓖ ④(원문 도달 대조)만 단독 실행. **소급 정리의 검증 단계가 부르는 명령**이며,
+        그 경로는 삭제가 정상이라 `--declared`로 「의도적으로 지운 줄」을 함께 넘긴다.
+종료 코드: 0 정상(이관했거나 발동하지 않음) / 1 실패(검증 실패로 원복했거나 미도달 줄이 있음)
+      / 2 입력 오류(파일 부재·인자 부족 — 「검사할 것을 못 찾았다」이지 통과가 아니다).
 """
 import datetime
 import io
@@ -276,10 +280,70 @@ def verify(agents_raw, dest_raw, dest_rel, limit, orig_raw, declared_removals=()
     return not problems, problems
 
 
+def verify_reachability(orig_path, dest_paths, declared_path=None):
+    """ⓖ ④(원문 도달 대조)만 단독으로 돌린다. 반환: (종료 코드, 보고 줄 목록).
+
+    **소급 정리가 쓰는 진입점이다.** 그 경로는 이 스크립트가 수행하지 않고 `plan.md`로 넘어가
+    `implement-task`가 실행하므로, 검증 단계에서 부를 수 있는 **명령**이 없으면 도달 대조가
+    「걸어야 한다」는 서술로만 남는다(SKILL.md 「소급 정리」 절차 4가 이 명령을 acceptance로 넣게 한다).
+
+    `relocate()` 경로와 달리 **삭제가 정상**이므로 `--declared`로 「의도적으로 지운 줄」을 받는다 —
+    그 목록이 없으면 소급 정리는 원리상 언제나 실패한다(지운 만큼 미도달로 잡힌다).
+    판정은 재구현하지 않고 `unreached_lines`를 그대로 부른다.
+    """
+    if not os.path.exists(orig_path):
+        return 2, ["[ERROR] 원문이 없다: " + orig_path]
+    gone = [p for p in dest_paths if not os.path.exists(p)]
+    if gone:
+        return 2, ["[ERROR] 결과 파일이 없다: " + ", ".join(gone)]
+    declared = []
+    if declared_path:
+        if not os.path.exists(declared_path):
+            return 2, ["[ERROR] 삭제 선언 파일이 없다: " + declared_path]
+        declared = io.open(declared_path, encoding="utf-8-sig").read().splitlines()
+
+    orig = read_bytes(orig_path)
+    missing = unreached_lines(orig, [read_bytes(p) for p in dest_paths], declared)
+    head = "원문 `%s` → 결과 %d개 (의도적 삭제 선언 %d줄)" % (
+        orig_path, len(dest_paths), len([d for d in declared if d.strip()]))
+    if not missing:
+        return 0, [head, "도달 대조 통과 — 원문의 모든 줄이 결과 어딘가에 있거나 삭제로 선언됐다"]
+    # 전건을 찍는다 — 「몇 줄이 샜다」만으로는 무엇을 선언할지 정할 수 없다.
+    return 1, [head, "미도달 %d줄 — 결과에도 없고 삭제 선언에도 없다:" % len(missing)] + \
+        ["  · " + m for m in missing]
+
+
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    argv = sys.argv[1:]
+    if "--verify-only" in argv:
+        # `--declared <경로>`는 값을 받는 유일한 플래그라, 위치 인자 필터에 섞이기 전에 떼어 낸다.
+        declared, rest, i = None, [], 0
+        while i < len(argv):
+            a = argv[i]
+            if a == "--declared":
+                if i + 1 >= len(argv):
+                    print("[ERROR] --declared 뒤에 파일 경로가 없다")
+                    return 2
+                declared, i = argv[i + 1], i + 2
+                continue
+            if not a.startswith("--"):
+                rest.append(a)
+            i += 1
+        if len(rest) < 2:
+            print("사용: python relocate-agents.py --verify-only <원문> <결과...> [--declared <선언파일>]")
+            return 2
+        code, log = verify_reachability(rest[0], rest[1:], declared)
+        print("== 원문 도달 대조 ==")
+        for line in log:
+            print("  " + line)
+        return code
+
+    args = [a for a in argv if not a.startswith("--")]
     if not args:
-        print(__doc__.strip().splitlines()[-2])
+        # 사용법 줄을 **접두로 찾는다** — 위치 인덱스로 집으면 사용법이 늘어날 때마다 어긋난다.
+        for l in __doc__.strip().splitlines():
+            if l.startswith("사용:"):
+                print(l)
         return 2
     code, log = relocate(args[0], "--dry-run" in sys.argv)
     print("== AGENTS.md 주입 상한 이관%s ==" % (" --dry-run" if "--dry-run" in sys.argv else ""))
