@@ -78,6 +78,52 @@ $sjHop3 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6j'; tool_input = 
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjHop3
 Assert-Case -Name "suggest: 3홉 cd가 제자리로 돌아오면 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 
+# [T1/v1.195.0] 인용 안의 데이터 — FR-8 ⓑ의 남은 절반. 「메시지 인자」 플래그 뒤의 인용 블록만
+#   데이터로 보고 지운다. 인용을 전부 지우면 cd 게이트가 무너지고 정당한 인용까지 잃으므로,
+#   확대 성분은 둘이다 — ① 인용 인자 제거 ② python 인접 가드. **성분마다** 델타 음성을 건다.
+$mkCase = { param($sid, $cmdText) @{ tool_name = 'Bash'; cwd = $aproj; session_id = $sid; tool_input = @{ command = $cmdText } } | ConvertTo-Json -Compress }
+
+# 델타 음성 — 성분 ①: 새 스트립이 실제로 발화하는 자리에서 정상 제안이 그대로 나는가.
+#   `pytest -m "not slow"`는 명령 토큰이 플래그 **앞**에 있어 인용을 지워도 살아남아야 한다.
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7a' 'pytest -m "not slow"')
+Assert-Case -Name "suggest: 명령 토큰이 플래그 앞이면 인용을 지워도 제안 (델타 음성 ①)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+# 스트립 × cd 게이트 상호작용 — 메시지만 지워지고 뒤의 실제 명령·cd는 살아 있어야 한다.
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7b' 'git commit -m "msg" && cd sub && cargo build')
+Assert-Case -Name "suggest: 메시지 뒤에 이어지는 실제 명령은 보존 (델타 음성 ①)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+
+# 델타 음성 — 성분 ②: `python -m <모듈>`은 -m 뒤가 실행 대상이라 지우면 미탐이 된다.
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7c' 'python -m "pytest"')
+Assert-Case -Name "suggest: python -m 뒤 인용은 가드로 보존 (델타 음성 ②)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+# 변종 — lookbehind로는 못 덮는 형태. 가드를 인접 판정으로 둔 이유가 여기 있다.
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7d' 'python3.11 -m "pytest -v"')
+Assert-Case -Name "suggest: python 변종(python3.11)도 가드로 보존 (델타 음성 ②)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+
+# 오탐 억제 — 화이트리스트 4성분이 **전부** 걸린다(대안 하나가 죽어도 통과하는 상태 방지).
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7e' 'git commit -m "문서: FR-8 잔여 등재 — dotnet test 통과"')
+Assert-Case -Name "suggest: 커밋 메시지 안의 명령 문자열은 제안 안 함 (-m · 오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7f' "git commit -am '수정: cargo test 통과'")
+Assert-Case -Name "suggest: 작은따옴표 메시지도 제안 안 함 (-am · 오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7g' 'git commit --message="문서: cargo build 절 정리"')
+Assert-Case -Name "suggest: 등호 표기 메시지도 제안 안 함 (--message · 오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7h' 'gh pr create --body "본문에 적은 dotnet test 결과"')
+Assert-Case -Name "suggest: PR 본문 안의 명령 문자열은 제안 안 함 (--body · 오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+# 가드 트리거를 「명령 어딘가에 python류」로 넓히면 `\bpy\b`가 `.py` 앞에서 성립해 이 케이스가
+#   되살아난다 — 이 레포의 최빈 커밋 메시지 형태라 좁힌 트리거를 여기 고정한다.
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7i' 'git commit -m "문서: check-harness-consistency.py 갱신 — dotnet test 통과"')
+Assert-Case -Name "suggest: .py 파일명이 python 가드를 오발동시키지 않는다 (오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# 포기 고정 — 아래 넷은 **의도적으로 닫지 않은 형태**다. 결함으로 오인해 되돌리지 말 것.
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7j' 'echo "cargo test"')
+Assert-Case -Name "suggest: 화이트리스트 밖(echo) 인용은 종전대로 제안 (포기 고정 ①)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7k' 'git commit -m "a \"b\" dotnet test c"')
+Assert-Case -Name "suggest: 이스케이프된 중첩 인용은 잔여가 남아 제안 (포기 고정 ②)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7l' 'git commit -m "짝이 없는 따옴표 cargo test')
+Assert-Case -Name "suggest: 짝 없는 따옴표는 종전 동작이라 제안 (포기 고정 ③)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+# `$(...)`는 실제로 실행되지만 인용 안이라 함께 지운다(미탐 수용).
+#   PowerShell 리터럴이어야 하므로 작은따옴표 문자열 안에 '' 로 넣는다 — 큰따옴표면 보간된다.
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7m' 'git commit -m ''빌드 $(npm run build)''')
+Assert-Case -Name "suggest: 인용 안 명령 치환은 미탐 수용 — 제안 안 함 (포기 고정 ④)" -R $r -ExpectExit 0 -ExpectSilent $true
+
 # [H5/T4] 30일 지난 상태 마커 자동 정리 — 수정 후 삭제가 기대
 $stateDir = Join-Path $iso '.claude/.state/suggest-agents-record'
 New-Item -ItemType Directory $stateDir -Force | Out-Null
