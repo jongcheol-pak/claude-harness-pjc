@@ -34,6 +34,18 @@ try {
 }
 if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
+# ---- 데이터 문맥 제거: heredoc 본문은 파일 내용이지 실행 명령이 아니다 ----
+#   `python - <<'EOF' ... EOF` 형태에서 본문에 빌드/테스트 명령 문자열이 들어 있으면 그것을
+#   「이번에 실행한 명령」으로 오인한다(실측 2026-08-23 — AGENTS.md를 쓰는 heredoc 안의
+#   cargo test가 제안으로 잡혔다). 셸 파서를 만들지 않고 구분자 형태만 본다 — 못 알아본 변형은
+#   종전대로 전체를 훑으므로 이 제거는 오탐만 줄이고 미탐을 새로 만들지 않는다.
+$cmdScan = [regex]::Replace($cmd, "(?ms)<<-?\s*(['`"]?)(\w+)\1\r?\n.*?^\2\r?$", ' ')
+
+# ---- 대상 레포 판정: 다른 폴더로 옮겨 실행한 명령은 이 프로젝트의 사실이 아니다 ----
+#   `cd <다른 레포> && cargo test`를 cwd의 AGENTS.md 기준으로 재면 「기록 안 됨」이 항상 참이 된다.
+#   판정 불가(경로 부재·해석 실패)면 제안하지 않는다 — 여기서는 오탐이 미탐보다 비싸다.
+$cdMatch = [regex]::Match($cmdScan, "(?im)^\s*cd\s+(?:'([^']+)'|`"([^`"]+)`"|([^\s&|;]+))")
+
 # ---- 카테고리별 명령 패턴 (변경형 빌드/테스트/DB만) ----
 # rx는 카테고리 간 배타적(build rx에 test 없음)이라 순서 무관. 매칭값을 '대표 토큰'으로 삼는다.
 $categories = @(
@@ -47,7 +59,7 @@ $categories = @(
 
 $hits = New-Object System.Collections.Generic.List[object]
 foreach ($cat in $categories) {
-    $m = [regex]::Match($cmd, $cat.rx)
+    $m = [regex]::Match($cmdScan, $cat.rx)
     if ($m.Success) {
         # 토큰 정규화: 옵션(-/로 시작)·인자(= 포함, 접속정보 등) 토큰을 제거한다.
         # 이유 (1) mvn/gradle은 키워드까지 탐욕 매칭이라 중간 옵션에 DB 접속정보(-Ddb.url=...)가 끼면
@@ -69,6 +81,19 @@ if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
     $projDir = $env:CLAUDE_PROJECT_DIR
 } else {
     $projDir = (Get-Location).Path
+}
+
+# 명령이 `cd`로 다른 폴더를 지목했으면 그 폴더가 판정 대상이다 — 다르면 이 프로젝트의 사실이 아니다.
+if ($cdMatch.Success) {
+    $cdRaw = @($cdMatch.Groups[1].Value, $cdMatch.Groups[2].Value, $cdMatch.Groups[3].Value) |
+        Where-Object { $_ } | Select-Object -First 1
+    $cdResolved = $null
+    try { $cdResolved = (Resolve-Path -LiteralPath $cdRaw -ErrorAction Stop).Path } catch {}
+    if (-not $cdResolved) { exit 0 }
+    $projResolved = $null
+    try { $projResolved = (Resolve-Path -LiteralPath $projDir -ErrorAction Stop).Path } catch {}
+    if (-not $projResolved) { exit 0 }
+    if ($cdResolved.TrimEnd('\', '/') -ne $projResolved.TrimEnd('\', '/')) { exit 0 }
 }
 
 # AGENTS.md 없으면 제안하지 않음 (bootstrap 영역 — 중복 제안 방지)

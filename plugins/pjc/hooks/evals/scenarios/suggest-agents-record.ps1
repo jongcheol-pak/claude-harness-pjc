@@ -18,6 +18,22 @@ $sj2 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 's2'; tool_input = @{ c
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sj2
 Assert-Case -Name "suggest: AGENTS.md 기재 시 억제(self-terminating)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+# [T6] 오탐 2종 차단 — 명령의 대상이 이 프로젝트가 아니거나, 애초에 명령이 아닌 경우.
+#   둘 다 실측에서 나왔다(2026-08-23): 다른 레포로 cd 해 돌린 명령과, AGENTS.md를 쓰는
+#   heredoc 본문에 들어 있던 명령 문자열이 「이번에 실행한 명령」으로 잡혔다.
+$bproj = Join-Path $work 'bproj'; New-Item -ItemType Directory $bproj -Force | Out-Null
+"# AGENTS`n" | Set-Content (Join-Path $bproj 'AGENTS.md')
+$sjCd = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6a'; tool_input = @{ command = ('cd "' + $bproj + '" && cargo build') } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjCd
+Assert-Case -Name "suggest: 다른 레포 대상 명령은 제안 안 함 (오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+$sjHd = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6b'; tool_input = @{ command = ("python - <<'EOF'`ndoc = 'cargo build'`nEOF") } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjHd
+Assert-Case -Name "suggest: heredoc 본문의 명령 문자열은 제안 안 함 (오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+# 델타 음성 — 새 경계가 정상 발화까지 막지 않는지 본다(통과만 확인하는 무회귀 케이스로는 근거가 안 된다).
+$sjSame = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6c'; tool_input = @{ command = ('cd "' + $aproj + '" && cargo build') } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjSame
+Assert-Case -Name "suggest: cd 대상이 이 프로젝트면 종전대로 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+
 # [H5/T4] 30일 지난 상태 마커 자동 정리 — 수정 후 삭제가 기대
 $stateDir = Join-Path $iso '.claude/.state/suggest-agents-record'
 New-Item -ItemType Directory $stateDir -Force | Out-Null
