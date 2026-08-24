@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기 · 잔류 절 동기.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -40,6 +40,12 @@
      결함이 수치가 아니라 그 문장에 있었기 때문이다(부기 형식 미인식). 수치만 대조하면
      그 문장이 한쪽에서만 지워져도 통과한다. **못 잡는 것**: 두 파일이 같은 방향으로
      함께 틀리는 경우(정본이 곧 기준이라 서로 일치하면 통과한다).
+  ⑭ 잔류 절 동기   — 이관이 「통째 남긴다」고 보는 절 집합(`relocate-agents.py`의
+     `KEEP_SECTIONS`)이 `AGENTS-BOUNDARY.md` 경계 표의 `AGENTS.md` 행과 갈리지 않았는가.
+     배포 캐시에서 경로가 깨져 표를 파싱해 쓸 수 없으므로 값을 복제하고 동기는 이 축이
+     고정한다. v1.193.0 전까지 **표 7종 ↔ 코드 4종**으로 갈려 있었고 그 차이가 곧
+     「잔류여야 할 절이 이관돼 나가는」 경로였다. **못 잡는 것**: `위키` 1종은 표에
+     백틱 토큰이 없어 리터럴로 고정하므로 그 항목이 표에서 사라져도 통과한다.
 
 왜 하드코딩하지 않는가: 검사 대상 목록·기대값을 코드에 박으면 문서가 바뀌어도 검사가 낡는다.
 모든 기대값은 문서에서 파싱하며, 앵커를 못 찾으면 통과가 아니라 `[ANCHOR FAIL]`(exit 2)이다 —
@@ -766,6 +772,65 @@ def check_line_dup():
     return issues, checked
 
 
+# ─────────────────────────────────────────────────────────────
+# ⑭ 잔류 절 동기 (`KEEP_SECTIONS` ↔ 경계 표 `AGENTS.md` 행)
+# ─────────────────────────────────────────────────────────────
+def check_keep_sections_sync():
+    """이관이 「통째 남긴다」고 보는 절 집합이 경계 표와 갈리지 않았는지 대조한다.
+
+    `relocate-agents.py`의 `KEEP_SECTIONS`는 `AGENTS-BOUNDARY.md` 「AGENTS.md 내용 경계」
+    표의 `AGENTS.md` 행을 **복제 보유**한다. 표를 파싱해 쓰지 않는 이유는 그 파일이 배포
+    캐시에서는 다른 경로에 놓여 상대 경로 해석이 깨지기 때문이다 — 그래서 값을 복제하고
+    동기는 이 축이 고정한다(리뷰어 4종 각주와 같은 구조: 단일 소스화가 불가한 자리의
+    유일한 드리프트 신호). 실제로 v1.193.0 전까지 **표 7종 ↔ 코드 4종**으로 갈려 있었고,
+    그 차이가 곧 「잔류여야 할 절이 이관돼 나가는」 경로였다.
+
+    **추출 규칙** — 표의 담는 것 셀에서 `` `## X` `` 백틱 토큰을 뽑아 `## ` 접두를 뗀다
+    (`KEEP_SECTIONS` 값은 `"Build & Test"`이지 `"## Build & Test"`가 아니다). `위키`는
+    그 셀에 *"위키 포인터 1줄"* 로만 적혀 백틱 토큰이 없으므로 **리터럴로 고정**한다 —
+    표 문면을 고쳐 토큰을 만들지 않는 것은 경계 표 내용 개정이 이 회차 범위 밖이기 때문이다.
+
+    **알려진 한계**: `위키`가 리터럴이라 경계 표에서 「위키 포인터 1줄」이 사라져도 이 축은
+    통과한다. 그 1종은 사람이 봐야 하며, 나머지 6종은 기계가 고정한다.
+    """
+    boundary_p = os.path.join(ROOT, "plugins", "pjc", "skills", "AGENTS-BOUNDARY.md")
+    script_p = os.path.join(ROOT, "plugins", "pjc", "skills", "record-project-fact",
+                            "scripts", "relocate-agents.py")
+    boundary, script = read(boundary_p), read(script_p)
+
+    # 표의 `AGENTS.md` 행 — 첫 셀이 **`AGENTS.md`** 인 행 하나다.
+    row = next((l for l in boundary.split("\n")
+                if re.match(r"^\|\s*\*\*`AGENTS\.md`\*\*\s*\|", l)), None)
+    if not row:
+        die("잔류 절 동기 — 경계 표의 `AGENTS.md` 행을 찾지 못함(표 형식이 바뀌었는지 확인)")
+    cells = row.split("|")
+    if len(cells) < 4:
+        die("잔류 절 동기 — 경계 표 `AGENTS.md` 행의 셀 수가 3개 미만(표 형식 확인)")
+    # 담는 것 셀만 본다 — 근거 셀까지 훑으면 그쪽 서술의 절 이름이 섞여 든다.
+    doc_names = {m.group(1).strip() for m in re.finditer(r"`##\s+([^`]+)`", cells[2])}
+    if not doc_names:
+        die("잔류 절 동기 — 담는 것 셀에서 `## …` 토큰을 하나도 뽑지 못함(표기가 바뀌었는지 확인)")
+    doc_names.add("위키")
+
+    m = re.search(r"^KEEP_SECTIONS\s*=\s*\((.*?)\)", script, re.S | re.M)
+    if not m:
+        die("잔류 절 동기 — `KEEP_SECTIONS` 정의를 찾지 못함(상수명이 바뀌었는지 확인)")
+    code_names = set(re.findall(r'"([^"]+)"', m.group(1)))
+    if not code_names:
+        die("잔류 절 동기 — `KEEP_SECTIONS`에서 값을 하나도 뽑지 못함(따옴표 표기 확인)")
+
+    issues = []
+    only_doc = sorted(doc_names - code_names)
+    only_code = sorted(code_names - doc_names)
+    if only_doc:
+        issues.append("잔류 절 동기 — 경계 표에만 있다: %s (relocate-agents.py `KEEP_SECTIONS`에 없음)"
+                      % ", ".join(only_doc))
+    if only_code:
+        issues.append("잔류 절 동기 — 코드에만 있다: %s (AGENTS-BOUNDARY.md 경계 표에 없음)"
+                      % ", ".join(only_code))
+    return issues, len(doc_names | code_names)
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -808,6 +873,8 @@ def main():
         # 맨 뒤에 둔다 — `harness-conventions.md` 「문서 표기 축」이 볼드/중복 축을
         # **서수**("여덟째·아홉째")로 가리키므로, 중간에 끼우면 그 서술이 어긋난다.
         ("착수 조건 동기", check_batch_trigger_sync()),
+        # 새 축은 계속 **맨 뒤**에 붙인다(위와 같은 이유 — 서수 참조 보호).
+        ("잔류 절 동기", check_keep_sections_sync()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
