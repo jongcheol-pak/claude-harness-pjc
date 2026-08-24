@@ -69,6 +69,11 @@ New-Item -ItemType Directory $sibling -Force | Out-Null
 $sjSib = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6k'; tool_input = @{ command = ('cd "' + $sibling + '" && cargo build') } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjSib
 Assert-Case -Name "suggest: 접두만 겹치는 형제 경로는 제안 안 함 (하위트리 오인 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+# **레포 밖으로 나가는 축**은 위 세 홉 케이스가 덮지 못한다 — 그것들은 전부 제자리로 돌아온다.
+#   하위트리를 포함하도록 넓혔어도 상위로 벗어난 것은 여전히 이 프로젝트의 사실이 아니다.
+$sjUp = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6l'; tool_input = @{ command = 'cd .. && cargo build' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjUp
+Assert-Case -Name "suggest: cd ..로 레포 밖으로 나가면 제안 안 함" -R $r -ExpectExit 0 -ExpectSilent $true
 $sjHop3 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6j'; tool_input = @{ command = 'cd sub && cd nested && cd ../.. && cargo build' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjHop3
 Assert-Case -Name "suggest: 3홉 cd가 제자리로 돌아오면 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
