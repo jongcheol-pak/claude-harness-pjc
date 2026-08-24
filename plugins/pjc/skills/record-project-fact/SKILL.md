@@ -112,7 +112,6 @@ python "<skill>/scripts/relocate-agents.py" "<레포 루트>" [--dry-run]
 
 **사후 보고 (승인을 없앤 대가는 가시성).** 스크립트 출력을 그대로 옮기지 말고 아래 형식으로 정리해 보고한다:
 ```
-
 ## 📦 AGENTS.md 주입 상한 이관
 - 이관 전: <N>B / 상한 <M>B
 - 옮긴 절: 「<절 이름>」 <K>B → `<이관처>`
@@ -172,7 +171,6 @@ python "<skill>/scripts/relocate-agents.py" "<레포 루트>" [--dry-run]
 ## 출력 형식
 
 ```markdown
-
 ## 📝 record-project-fact
 
 **대상**: AGENTS.md
