@@ -33,6 +33,23 @@ Assert-Case -Name "suggest: heredoc 본문의 명령 문자열은 제안 안 함
 $sjSame = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6c'; tool_input = @{ command = ('cd "' + $aproj + '" && cargo build') } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjSame
 Assert-Case -Name "suggest: cd 대상이 이 프로젝트면 종전대로 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+# 상대 경로는 **명령이 돈 위치** 기준으로 푼다 — hook 프로세스의 cwd로 풀면 `cd tests && dotnet test`
+#   같은 흔한 형태가 해석 실패로 조용히 억제된다(리뷰가 잡은 결함).
+New-Item -ItemType Directory (Join-Path $aproj 'sub') -Force | Out-Null
+$sjRel = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6d'; tool_input = @{ command = 'cd sub && cargo build' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjRel
+Assert-Case -Name "suggest: 상대 cd 하위폴더는 제안 안 함" -R $r -ExpectExit 0 -ExpectSilent $true
+$sjDot = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6e'; tool_input = @{ command = 'cd . && cargo build' } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjDot
+Assert-Case -Name "suggest: 상대 cd . 은 같은 폴더라 종전대로 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+# 여러 번 옮겼으면 마지막 cd가 실제 실행 위치다. 줄 시작이 아닌 `&&` 뒤 cd도 본다.
+$sjChain = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6f'; tool_input = @{ command = ('npm ci && cd "' + $bproj + '" && cargo build') } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjChain
+Assert-Case -Name "suggest: 체이닝된 cd 대상이 다른 레포면 제안 안 함" -R $r -ExpectExit 0 -ExpectSilent $true
+# cd가 없으면 판정 대상은 cwd다 — 인자에 다른 경로가 있어도 종전 동작을 유지한다(범위를 넓히지 않는다).
+$sjNoCd = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6g'; tool_input = @{ command = ('cargo build --manifest-path "' + $bproj + '\Cargo.toml"') } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjNoCd
+Assert-Case -Name "suggest: cd 없는 명령은 종전대로 cwd 기준 (범위 미확대)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 
 # [H5/T4] 30일 지난 상태 마커 자동 정리 — 수정 후 삭제가 기대
 $stateDir = Join-Path $iso '.claude/.state/suggest-agents-record'

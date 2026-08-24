@@ -44,7 +44,10 @@ $cmdScan = [regex]::Replace($cmd, "(?ms)<<-?\s*(['`"]?)(\w+)\1\r?\n.*?^\2\r?$", 
 # ---- 대상 레포 판정: 다른 폴더로 옮겨 실행한 명령은 이 프로젝트의 사실이 아니다 ----
 #   `cd <다른 레포> && cargo test`를 cwd의 AGENTS.md 기준으로 재면 「기록 안 됨」이 항상 참이 된다.
 #   판정 불가(경로 부재·해석 실패)면 제안하지 않는다 — 여기서는 오탐이 미탐보다 비싸다.
-$cdMatch = [regex]::Match($cmdScan, "(?im)^\s*cd\s+(?:'([^']+)'|`"([^`"]+)`"|([^\s&|;]+))")
+#   줄 시작뿐 아니라 `&&`·`;`·`|` 뒤에 이어지는 cd도 본다(`npm ci && cd sub && npm test`).
+#   여러 번 옮겼으면 **마지막 cd**가 실제 실행 위치다.
+$cdAll = [regex]::Matches($cmdScan, "(?im)(?:^|&&|;|\|)\s*cd\s+(?:'([^']+)'|`"([^`"]+)`"|([^\s&|;]+))")
+$cdMatch = if ($cdAll.Count -gt 0) { $cdAll[$cdAll.Count - 1] } else { $null }
 
 # ---- 카테고리별 명령 패턴 (변경형 빌드/테스트/DB만) ----
 # rx는 카테고리 간 배타적(build rx에 test 없음)이라 순서 무관. 매칭값을 '대표 토큰'으로 삼는다.
@@ -84,11 +87,16 @@ if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
 }
 
 # 명령이 `cd`로 다른 폴더를 지목했으면 그 폴더가 판정 대상이다 — 다르면 이 프로젝트의 사실이 아니다.
-if ($cdMatch.Success) {
+if ($cdMatch -and $cdMatch.Success) {
     $cdRaw = @($cdMatch.Groups[1].Value, $cdMatch.Groups[2].Value, $cdMatch.Groups[3].Value) |
         Where-Object { $_ } | Select-Object -First 1
+    # 상대경로는 **명령이 돈 위치**($projDir) 기준이다 — hook 프로세스의 cwd로 풀면
+    #   `cd tests && dotnet test` 같은 흔한 형태가 해석 실패로 조용히 억제된다.
     $cdResolved = $null
-    try { $cdResolved = (Resolve-Path -LiteralPath $cdRaw -ErrorAction Stop).Path } catch {}
+    try {
+        $cdBase = if ([System.IO.Path]::IsPathRooted($cdRaw)) { $cdRaw } else { Join-Path $projDir $cdRaw }
+        $cdResolved = (Resolve-Path -LiteralPath $cdBase -ErrorAction Stop).Path
+    } catch {}
     if (-not $cdResolved) { exit 0 }
     $projResolved = $null
     try { $projResolved = (Resolve-Path -LiteralPath $projDir -ErrorAction Stop).Path } catch {}
