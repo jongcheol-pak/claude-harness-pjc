@@ -176,7 +176,7 @@
   - **Halt Forecast**: 없음.
   - **Depends on**: T2 (대장 앵커 갱신이 겹친다)
 
-- [ ] **T6. 위임 경계를 「탐색은 위임·판정은 메인」 축으로 넓힌다** (Type C)
+- [x] **T6. 위임 경계를 「탐색은 위임·판정은 메인」 축으로 넓힌다** (Type C)
   - **Files**: `plugins/pjc/agents/explorer.md` · `plugins/pjc/skills/plan-feature/SKILL.md`(Step 1 위임 규정) · `plugins/pjc/skills/implement-task/references/phase-f-detail.md`(F-3·F-4) · `docs/harness-conventions.md`(예산 표 갱신)
   - **Design**: ① **배치** — `explorer.md`의 역할 서술에 대상 확장 1구, `plan-feature` Step 1의 「위임 상한」에 판정 축 1구, F-3·F-4에 위임 가능 범위 1구씩. ② **신규 심볼과 책임** — 없음(새 에이전트를 만들지 않는다 — `explorer`가 이미 haiku·read-only·발췌 읽기라 성질이 같다). ③ **의존 방향** — 세 지점이 같은 판정 축을 쓰되 문면은 각 맥락에 맞춘다. ④ **비추상화 선언** — 「정제 에이전트」를 신설하지 않는다. 빌드·테스트 로그 정제는 「검증 목적 위임 금지」와 충돌하므로 열지 않는다.
   - **Acceptance**:
@@ -307,6 +307,10 @@
   - **spec m1 반영**: acceptance가 실사고 **2건** 인용을 요구했으나 1건(레포 루트 파일)만 인용했다. 나머지(CRLF 변환)는 **해소안이 다른 별개 실패 모드**라 이 1구의 대상이 아님을 근거 서술에 명시하고, 대장 `[2026-08-16]`이 계속 추적함을 밝혔다.
   - **quality m1은 결함이 아니었다** — 예산 표 행 수가 `wc -l`보다 1 크다는 지적인데, `measure()`가 `split("
 ")`을 써서 파일 끝 개행 뒤 빈 문자열을 세기 때문이다(633 vs 632). **검사기가 정본**이고 exit 0이므로 표가 맞다. 정정하지 않았다.
+- **T6 완료** — `explorer` 대상을 「대형 문서 후보 추출」까지 확장, `plan-feature` 위임 상한 ②에 「읽을 양」 축 추가, F-3·F-4에 탐색부 위임 1구.
+  - **세 보호를 같은 자리에 못박았다** — ⓐ 판정 위임은 여전히 금지 ⓑ 위임 금지 가드(P-2·P-3·V-7)는 확장 대상 아님(대상 크기 무관, 메인 직접) ⓒ 「검증 목적 위임 금지」와의 경계(*"내가 한 게 맞는지 봐 달라"*는 판정 위임 vs *"어디에 흔적이 있는가"*는 위치 찾기).
+  - 리뷰 2종이 **cross-file 참조 실존을 전건 확인**했다 — `plan-feature/SKILL.md:184·186`·`implement-task/SKILL.md:219·223·242`. 문서가 곧 실행 규칙인 레포에서 죽은 포인터는 규정을 무력화한다.
+  - **수치 임계를 넣지 않은 것은 설계 선택**(Design Edge ⓑ — *"수치로 박으면 파일이 자라며 낡는다"*). quality m1이 판정 일관성 리스크를 지적했으나 **판정 유보**로 배출했고 등재 게이트 ⓐ에 따라 대장에 올리지 않는다.
 ## Retry Ledger
 
 - **T3 · `[CONFLICT]` 1회** — 지점: `pjc-systematic-debugging/SKILL.md`의 9,000B 경계 이동으로 무엇이 유실됐는가. spec 2R M2(*"위키 참조 불릿이 새로 유실"*) ↔ quality 2R(*"그 줄은 BASE부터 예산 밖 — 1R 자기 정정"*). **메인 판정: quality 채택** — 근거는 `check-harness-consistency.py`의 `measure()`가 `edge = i + 1`(초과를 만든 행)이라 경계 행이 예산 밖 첫 행이라는 것, 그리고 안쪽 집합 차분 실측(새 유실 1줄). 같은 지점 2회가 아니므로 Halt 대상 아님.
