@@ -46,7 +46,7 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
   - **Agent Skills 표준: 1-1,024자** (하드 제약). 표준을 따르는 다른 도구에서도 쓰려면 이 값을 지켜야 한다.
   - **Claude Code: `description` + `when_to_use` 합산이 스킬 목록에서 1,536자로 절단**된다(목록 예산은 컨텍스트의 1% — `skillListingBudgetFraction`, 항목당 캡은 `skillListingMaxDescChars`. 출처: code.claude.com/docs/en/skills, 2026-07-29 확인). 즉 Claude Code만 놓고 보면 여유가 더 있으나, **`when_to_use`를 쓰면 그 몫만큼 `description` 가용분이 줄어든다.**
   - **pjc의 운용 기준은 1,024자**다 — 두 사양 중 낮은 쪽이고, 표준 호환을 잃지 않는다. 초과분은 잘리거나 무효가 될 수 있으므로 트리거 어휘·near-miss 경계는 유지한 채 산문 연결부를 압축해 맞춘다(v1.100.0에서 1,230자로 초과된 전례 — 개정 때마다 자수 재측정).
-- SKILL.md 본문: **500줄 미만 권장** — 초과하면 저빈도 상세를 `references/`로 분리(progressive disclosure). 5,000토큰 권장은 대형 스킬(implement-task 등)에서 의도적으로 초과 수용(자율 루프 품질 우선 — 분리 시 최빈 경로 토큰 중립 + Read 지연만 추가).
+- SKILL.md 본문: **500줄 미만 권장** — 초과하면 저빈도 상세를 `references/`로 분리(progressive disclosure). **근거 서사(「왜 그 규칙인가」)를 옮길지는 `docs/harness-conventions.md`의 「rationale 이관 임계」가 정본**(항목 300자 · 파일 신설 1,200자 — 미달이면 옮기지 않는 것이 정상이다). 5,000토큰 권장은 대형 스킬(implement-task 등)에서 의도적으로 초과 수용(자율 루프 품질 우선 — 분리 시 최빈 경로 토큰 중립 + Read 지연만 추가).
 - 측정: python으로 frontmatter `description:` 값 길이·본문 행수를 잰다(공백 포함 문자 수 기준).
 
 ### frontmatter 필드 (pjc가 쓸 수 있는 것)
