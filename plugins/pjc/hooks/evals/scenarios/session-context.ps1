@@ -131,6 +131,21 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 재읽기 경로 halt-conditions (SC14b)" -R $r -ExpectExit 0 -ExpectContains 'references/halt-conditions.md'
     Assert-Case -Name "session-context: compact 재읽기 경로 recovery (SC14c)" -R $r -ExpectExit 0 -ExpectContains 'references/recovery.md'
 
+    # SC28/SC29: 계획 세션의 압축 리마인더 (v1.198.0 T8).
+    #   SC14 계열은 `if ($planPath)` 안이라 **진행 중 plan이 있는 세션**만 닿는다. 계획을 세우던 중
+    #   압축되면 plan이 없거나 task가 0개라 그 지시를 못 받는데, plan-feature도 본체가 앞 5,000토큰
+    #   밖으로 밀리는 것은 같다. 두 케이스가 그 분기를 고정한다 — 양성 하나만 걸면 **델타 음성**이
+    #   비어 "미완료 task 세션에도 계획 지시가 새는" 회귀를 못 잡는다.
+    # SC28 (양성): compact + plan 없는 프로젝트 → 계획 재읽기 지시 발화
+    $scPlanless = Join-Path $work 'sc-planless'; New-Item -ItemType Directory $scPlanless -Force | Out-Null
+    '# Agent Guide' | Set-Content -Encoding UTF8 (Join-Path $scPlanless 'AGENTS.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact + plan 없음 → 계획 재읽기 지시 (SC28)" -R $r -ExpectExit 0 -ExpectContains 'plan-feature/SKILL.md'
+
+    # SC29 (델타 음성): compact + 미완료 task 있는 plan → implement-task 지시만, 계획 지시는 미발화
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact + 미완료 task엔 계획 지시 없음 (SC29)" -R $r -ExpectExit 0 -ExpectNotContains 'plan-feature/SKILL.md'
+
     # SC15: compact + plan 없음 → 기존 일반 리마인더만, 경로 지정 없음 (무회귀)
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact plan 없음 경로 미지정 (SC15)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains 'halt-conditions'
