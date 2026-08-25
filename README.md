@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.201.0
+**버전**: 1.202.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 **Claude Code**: 최소 v2.0 · **권장 v2.1.219+** — plan 리뷰어 2종(`plan-reviewer`·`plan-completion-reviewer`)이 쓰는 `opus` 별칭이 **Claude Opus 5**로 해소되는 버전이다. 그 미만에서도 동작하지만 두 리뷰어가 이전 세대 Opus로 실행된다(나머지 리뷰어는 sonnet·haiku 지정이라 무관). 상세는 [호환 환경](#호환-환경).
 
@@ -261,6 +261,14 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 ```powershell
 pwsh -NoProfile -File plugins/pjc/scripts/report-hook-events.ps1            # 보존분 전체
 pwsh -NoProfile -File plugins/pjc/scripts/report-hook-events.ps1 -Days 30  # 최근 30일만
+```
+
+**리뷰 1차 필터 실적 리포트**: 간단한 작업에 먼저 도는 저비용 검토자(`spec-prefilter`)가 실제로 몇 번 통과시켰고 몇 번 판정에 실패했는지를 커밋 기록에서 집계합니다. 그 검토자를 계속 둘지·모델을 올릴지 판단할 때 근거로 씁니다 (읽기 전용):
+
+```powershell
+pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1               # 이력 전체
+pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1 -Days 30      # 최근 30일만
+pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1 -Since <sha>  # 기준 시점 고정(재현용)
 ```
 
 ---
