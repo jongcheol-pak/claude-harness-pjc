@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.201.0
+**버전**: 1.202.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 **Claude Code**: 최소 v2.0 · **권장 v2.1.219+** — plan 리뷰어 2종(`plan-reviewer`·`plan-completion-reviewer`)이 쓰는 `opus` 별칭이 **Claude Opus 5**로 해소되는 버전이다. 그 미만에서도 동작하지만 두 리뷰어가 이전 세대 Opus로 실행된다(나머지 리뷰어는 sonnet·haiku 지정이라 무관). 상세는 [호환 환경](#호환-환경).
 
@@ -234,6 +234,7 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 - 외부 작업(push·릴리즈·패키지 배포) 경고
 - 커밋 직전 변경 내용에서 시크릿 감지 (커밋 직전 최종 방어선). **자격증명으로 보이는 값은 커밋을 차단**하고, 오탐 여지가 있는 나머지(API 키·비밀번호 값·토큰·IP·`.env` 스테이징)는 경고만 한다 — 공개 저장소에 한 번 올라간 자격증명은 이력에서 회수할 수 없기 때문. `git add`를 같은 명령에 붙여 보내도(`git add -A && git commit`) **아직 스테이징되지 않은 새 파일까지** 미리 검사한다. 이미 추적 중인 파일은 **새로 추가되는 라인만** 검사한다(이력에 이미 있는 내용은 재신고하지 않음 — 시크릿 예시·탐지 규칙을 다루는 파일이 커밋마다 다시 걸리는 오탐 방지).
   - **차단 대상 (구체적으로)**: ① 개인키 블록 ② DB·서비스 접속 URI에 아이디·비밀번호가 박힌 형태 ③ **아이디/비밀번호 쌍** — 계정 관련 라벨(한글·영문) 뒤에 **인용부호로 감싼 두 값**이 온 형태. 한 줄에 슬래시로 이어 쓴 것뿐 아니라 **라벨과 값이 줄을 나눠 적힌 것**(콜론 두 줄·표의 라벨-값 행 두 개)도 포함합니다 ④ DB 연결 문자열 — 서버 키 뒤 **어느 자리에 자격증명 키가 오든**, 그 키를 띄어 쓴 표기까지 잡습니다(한 줄 안에서만 성립).
+  - **한 번에 너무 많은 파일을 커밋하면 차단합니다** — `git add`로 미리 검사하는 파일이 50개를 넘으면 나머지를 검사하지 못하는데, **검사하지 못한 파일에 자격증명이 있어도 통과**하므로 그 상태로는 커밋을 막습니다(시크릿은 하나만 새어도 이력에서 회수할 수 없기 때문). 커밋을 나눠 한 번에 50개 이하로 스테이징하면 그대로 진행됩니다. 실제로 이 경계에 닿는 커밋은 드뭅니다.
   - **차단하지 않고 경고만 하는 것**: 인용부호 없는 평문 쌍, API 키·토큰·IP·`.env` 스테이징. **오탐이 곧 작업 중단이라 차단은 확실한 것만 합니다** — 나머지는 경고와 코드 검토자가 잡습니다. 값이 순수 숫자이거나 상태·오류 코드 나열(`ERR_401 / ERR_402` 류)이면 자격증명으로 보지 않습니다.
   - **값 자리에 「값」이 아니라 「참조」를 적었으면 차단하지 않습니다** — 환경변수 표기(`$env:…`·`${…}`·`%…%`), 코드 조회(`process.env.…`·`os.environ[…]`), 설정 키 경로(`appsettings:Db:Pwd`), 「환경변수 …로 지정」 같은 안내 문구. 차단 메시지 자신이 *"값을 지우고 환경변수 이름만 남기라"*고 안내하므로, **그 안내를 따른 문서가 다시 막히면 안 됩니다.**
   - 오탐 시 우회는 사용자만 설정한다(`CLAUDE_HARNESS_ALLOW_SECRET=1`, Claude Code 시작 전 터미널에서)
@@ -260,6 +261,14 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 ```powershell
 pwsh -NoProfile -File plugins/pjc/scripts/report-hook-events.ps1            # 보존분 전체
 pwsh -NoProfile -File plugins/pjc/scripts/report-hook-events.ps1 -Days 30  # 최근 30일만
+```
+
+**리뷰 1차 필터 실적 리포트**: 간단한 작업에 먼저 도는 저비용 검토자(`spec-prefilter`)가 실제로 몇 번 통과시켰고 몇 번 판정에 실패했는지를 커밋 기록에서 집계합니다. 그 검토자를 계속 둘지·모델을 올릴지 판단할 때 근거로 씁니다 (읽기 전용):
+
+```powershell
+pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1               # 이력 전체
+pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1 -Days 30      # 최근 30일만
+pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1 -Since <sha>  # 그 커밋까지만(재현용 — git --since와 방향 반대)
 ```
 
 ---
