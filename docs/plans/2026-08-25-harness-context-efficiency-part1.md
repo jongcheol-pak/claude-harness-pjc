@@ -203,7 +203,7 @@
   - **Halt Forecast**: 없음.
   - **Depends on**: T3 · T5 · T6 — 「메인 조합」 수치를 **최종값으로 확정**하려면 `implement-task/SKILL.md`(T3·T5)와 `plan-feature/SKILL.md`(T5·T6)의 편집이 모두 끝난 뒤여야 한다. 순서가 어긋나면 중간값이 박혀 v1.186.0 이전과 같은 드리프트가 재발한다.
 
-- [ ] **T8. 압축 리마인더의 커버리지를 계획 세션까지 넓힌다** (Type C)
+- [x] **T8. 압축 리마인더의 커버리지를 계획 세션까지 넓힌다** (Type C)
   - **Files**: `plugins/pjc/scripts/session-context.ps1` · `plugins/pjc/hooks/evals/scenarios/session-context.ps1`(골든 케이스) · `docs/harness-conventions.md`(케이스 수 기준선)
   - **Design**: ① **배치** — **`if ($planPath)` 블록 바깥**(=`$cwd` 블록 안, `$cwdBaseCount` 확정 이후)에 새 compact 분기를 둔다. `:100`의 기존 compact 분기는 `if ($planPath)` → `if ($planText)` → `if ($all -gt 0)` → `if ($open -gt 0)` **4중 중첩 안**이라, 그 자리의 형제 분기는 **plan이 없는 세션에 원리상 도달하지 못한다** — 이 task가 겨냥하는 것이 정확히 그 세션이다. 발동 조건은 `$source -eq 'compact'` **AND** (`$planPath`가 null **또는** `$all -eq 0`). ② **신규 심볼과 책임** — 없음(기존 `$lines.Add()` 패턴 재사용). ③ **의존 방향** — hook이 스킬 파일명을 문자열로 지정한다(현행과 동일 — 경로 존재 검사는 하지 않는다, 미설치 환경에서 무출력이 되면 리마인더 자체가 사라진다). ④ **비추상화 선언** — 어느 스킬이 활성인지 hook이 판정하지 않는다. **plan 상태로만** 분기하고(현행 `$open` 판정과 같은 축), 스킬 판정은 하지 않는다 — 활성 스킬을 알 방법이 없고 추측하면 틀린 파일을 지목한다.
   - **Acceptance**:
@@ -315,6 +315,11 @@
   - **이 task가 자기 자신을 증명했다** — 항목 18을 신설한 diff 자신이 **항목 18이 막으려는 패턴을 재현**했다. 「메인 조합」 수치(`harness-conventions.md:145~146`)를 T3이 확정했는데 T4·T5·T6이 다시 깨뜨렸고, T7이 최종 확정해야 하는데 *"review-fix에서 하겠다"*고 미뤘다. **두 리뷰어가 독립적으로 같은 지점을 잡았다**(spec은 acceptance 위반 BLOCKER, quality는 stale drift MAJOR). 그 줄 자신이 *"표를 갱신하는 task가 이 줄도 함께 고친다(v1.186.0 전까지 실제로 어긋나 있었다)"*고 경고하고 있었고, `check-harness-consistency.py`는 **기계 대조 대상이 아니라 exit 0을 냈다**.
   - **순서 판정도 리뷰가 정정했다** — *"review-fix로 미루는 것은 부적절하다. 입력이 전부 갖춰져 있고, `Depends on: T3·T5·T6`을 이 순서로 설계한 이유 자체가 T7이 pre-review 전에 최종값을 확정하는 것이다."* 그 의존을 건 사람이 나인데 목적을 스스로 미뤘다. 네 수치를 즉시 확정했다 — `164,596B`(105,863+58,733) · `plan-feature 96,072B` · `AGENTS.md +8,790B`.
   - **절차 실수 1건**: 재리뷰 요청 시 spec에는 `0c28438`, quality에는 `e1d8fb2`를 전달해 **HEAD가 갈렸다**. spec 리뷰어가 스스로 두 커밋을 대조해 *"자기정합 개선이며 0c28438의 값을 무효화하지 않는다"*를 확인했다. **교훈: 재리뷰 요청 전에 HEAD를 한 번 고정하고 두 리뷰어에 같은 SHA를 준다.**
+- **T8 완료** — `session-context.ps1`에 계획 세션용 compact 분기 신설(plan 없음 또는 task 0개). 골든 **5건** 추가(SC28 양성 · SC29·SC30 델타 음성 · SC31·SC31b 회귀 고정), 케이스 수 기준선 692 → **697**.
+  - **review-fix 3회 — 매번 성격이 달랐다.** ① **자기 유발 회귀**: 새 라인이 `$cwdBaseCount` 이후라 vault 게이팅을 켜 기존 SC23이 FAIL(골든이 잡음) ② **과잉 보정**: 그 수정(`= $lines.Count`)이 앞의 정당한 신호까지 삼켜 *다른 방향* 회귀 발생 — `++`로 축소(리뷰 2종이 독립적으로 잡음) ③ **빈 테스트**: 그 수정을 지킨다는 SC31이 **vault 설정 전**에 돌아 `$vaultLine`이 `$null`이라 회귀를 못 잡음(리뷰 2종이 또 독립적으로 잡음).
+  - **회귀 검출을 실증으로 닫았다** — `++`를 `= $lines.Count`로 **되돌려 실행**했더니 SC31은 PASS, **SC31b만 FAIL**(47/48). 리뷰어가 코드 추적만으로 예측한 결과와 일치했고, 복원 후 48/48이다.
+  - **plan Edge ⓐ 미구현 1건**(spec 1R M1) — *"plan 또는 AGENTS.md가 있는 프로젝트로 한정"*을 적어놓고 빠뜨렸다. 조건에 AGENTS.md 검사를 넣고 SC30으로 고정했다.
+  - **이 task가 사용자 지적 항목 4의 실물이다** — *"수정 때문에 다시 문제가 발견돼 리뷰가 여러 번 실행된다"*. 다만 세 번 다 리뷰가 잡았고 마지막에 **회귀 검출 자체를 실증**해 닫았다.
 ## Retry Ledger
 
 - **T3 · `[CONFLICT]` 1회** — 지점: `pjc-systematic-debugging/SKILL.md`의 9,000B 경계 이동으로 무엇이 유실됐는가. spec 2R M2(*"위키 참조 불릿이 새로 유실"*) ↔ quality 2R(*"그 줄은 BASE부터 예산 밖 — 1R 자기 정정"*). **메인 판정: quality 채택** — 근거는 `check-harness-consistency.py`의 `measure()`가 `edge = i + 1`(초과를 만든 행)이라 경계 행이 예산 밖 첫 행이라는 것, 그리고 안쪽 집합 차분 실측(새 유실 1줄). 같은 지점 2회가 아니므로 Halt 대상 아님.
