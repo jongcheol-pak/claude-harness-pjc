@@ -5,6 +5,9 @@
 #   ② 단일 pre-bash-dispatch.ps1 디스패처(도구 호출당 pwsh 콜드스타트 4→2)
 # 두 경로가 같은 함수를 호출하게 한다(동작 단일 출처 — 래퍼·디스패처가 갈라지지 않음).
 #
+# 위 3종 외에 **디스패처 전용 검사 2종**(warn-global-find·warn-dangerous-assignment)도 여기 담긴다 —
+#   대응하는 standalone 래퍼가 없고 pre-bash-dispatch가 유일한 실행 경로다(골든도 그 hook 이름으로 돈다).
+#
 # block-destructive.ps1은 이 모듈에 포함하지 않는다 — "끌 수 없는 마지막 방어선"이라 공유 모듈
 #   로드 실패에 결합시키지 않고 hooks.json 독립 엔트리로 직접 실행 유지(결정 B).
 #
@@ -72,6 +75,70 @@ function Invoke-WarnGlobalFind {
     $where = (($hits | Select-Object -Unique) -join ', ')
     $msg = "[GLOBAL FIND WARNING] 루트 전역 탐색 감지 (시작점: $where) — Bash 도구는 10분 캡이 있어 이 명령은 끝나지 않고, 캡에 걸리면 셸만 죽고 find가 고아로 남아 CPU를 계속 먹습니다(회수해도 커널에 갇히면 재부팅 전까지 안 죽습니다)."
     $ctx = "루트 전역 탐색($where)은 Bash 10분 캡 안에 끝나지 않아 회수 불가능한 고아 프로세스를 남깁니다. 탐색 시작점을 좁히거나(예: ~/.cargo/registry), 프로젝트 안을 찾는 것이라면 Glob 도구를 쓰세요."
+    return New-HookResult -Stderr @($msg) -Context $ctx
+}
+
+# ---- warn-dangerous-assignment: 위험 경로를 담은 변수를 삭제 명령에 쓰는 형태 경고 ----
+# 왜 차단이 아니라 경고인가: block-destructive는 정규식이라 `X=/; rm -rf $X`처럼 값이 변수를
+#   한 번 거치면 미탐한다(그 파일 헤더가 "의도된 트레이드오프"로 선언한 사각). 그 hook은
+#   "끌 수 없는 마지막 방어선"이라 차단 범위를 넓히면 오차단의 대가가 크고 되돌리기도 어렵다.
+#   그래서 차단 동작은 그대로 두고, 같은 명령줄에 드러난 형태만 실행 전에 알린다.
+# 범위(비추상화 선언): 데이터플로 분석을 하지 않는다. **같은 명령줄 안의 대입만** 본다 —
+#   앞선 도구 호출에서 만든 변수·파일에서 읽은 값·명령치환(`X=$(echo /)`)은 대상 밖이다.
+#   범위를 넓히면 오탐이 늘고, 경고 피로가 생기면 경고 자체가 없는 것과 같아진다.
+# 판정: 세그먼트를 앞에서부터 훑으며 대입을 기록하고, 세그먼트의 첫 실효 토큰이 삭제 계열일 때
+#   그 인자의 변수 참조를 본다. 값은 **그 사용 지점까지의 마지막 대입**이다 — 같은 줄에서
+#   변수가 재대입되면 뒤 대입이 앞 대입을 덮는다(`X=/tmp/a; X=/; rm -rf $X`는 `/`로 본다).
+function Invoke-WarnDangerousAssignment {
+    param($data)
+    $cmd = $data.tool_input.command
+    if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
+
+    # 위험값: 루트·홈 최상위·드라이브 루트. warn-global-find의 탐색 시작점 판정과 같은 형태이지만
+    #   재는 대상이 다르므로(그쪽은 인자, 이쪽은 대입값) 공통 함수로 묶지 않는다.
+    #   `C:\`도 인정한다 — PowerShell 도구 경로에서 드라이브 루트의 일상 표기다.
+    $dangerRx = '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\\/]?)$'
+    # 삭제 계열만 본다 — chmod·chown 같은 권한 변경까지 넓히면 정상 스크립트에서 자주 발화한다.
+    $deleteRx = '(?i)^(.*[\\/])?(rm|rmdir|unlink|shred|del|erase|rd|remove-item|ri)(\.exe)?$'
+
+    $assigned = @{}
+    $hits = New-Object System.Collections.Generic.List[string]
+    foreach ($seg in [regex]::Split($cmd, '(?:&&|\|\||;|\r?\n|\|)')) {
+        $t = $seg.Trim()
+        if ([string]::IsNullOrWhiteSpace($t)) { continue }
+
+        # ① 대입 기록 — bash `NAME=값` / PowerShell `$NAME = 값`. 선언 접두어는 벗긴다.
+        $decl = $t -replace '^(?i)(export|declare|local|typeset)\s+', ''
+        $asg = [regex]::Match($decl, '^\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\S*)$')
+        if ($asg.Success) {
+            $assigned[$asg.Groups[1].Value] = $asg.Groups[2].Value.Trim('"', "'")
+            continue
+        }
+
+        # ② 사용 판정 — 접두어(sudo·time·nohup·env·VAR=값)를 벗긴 첫 토큰이 삭제 계열일 때만.
+        $tokens = @(($t -split '\s+') | Where-Object { $_ })
+        $i = 0
+        while ($i -lt $tokens.Count -and
+               ($tokens[$i] -match '^(?i)(sudo|time|nohup|env)$' -or $tokens[$i] -match '^[A-Za-z_][A-Za-z0-9_]*=')) { $i++ }
+        if ($i -ge $tokens.Count) { continue }
+        if ($tokens[$i] -notmatch $deleteRx) { continue }
+
+        for ($j = $i + 1; $j -lt $tokens.Count; $j++) {
+            foreach ($m in [regex]::Matches($tokens[$j], '\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?')) {
+                $name = $m.Groups[1].Value
+                if (-not $assigned.ContainsKey($name)) { continue }
+                if ($assigned[$name] -match $dangerRx) {
+                    $pair = '$' + $name + ' = ' + $assigned[$name]
+                    if (-not $hits.Contains($pair)) { $hits.Add($pair) }
+                }
+            }
+        }
+    }
+
+    if ($hits.Count -eq 0) { return New-HookResult }
+    $where = ($hits -join ', ')
+    $msg = "[DANGEROUS ASSIGNMENT WARNING] 삭제 명령의 대상이 같은 줄에서 루트·홈 경로로 대입된 변수입니다 ($where) — 변수를 한 번 거치면 block-destructive의 정규식 차단을 통과하므로(의도된 미탐) 이 명령은 차단되지 않습니다."
+    $ctx = "삭제 대상 변수($where)가 루트·홈·드라이브 루트를 가리킵니다. 실행하면 그 아래 전체가 지워질 수 있고 차단 hook은 이 형태를 잡지 못합니다 — 대입값이 의도한 것인지 확인하고, 아니면 대상 경로를 좁히세요."
     return New-HookResult -Stderr @($msg) -Context $ctx
 }
 

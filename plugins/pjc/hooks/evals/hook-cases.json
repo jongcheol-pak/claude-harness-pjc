@@ -1355,6 +1355,90 @@
       "command": "find C:\\Users -name x",
       "expect_exit": 0,
       "expect_not_contains": "루트 전역 탐색 감지"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "위험값 대입: X=/; rm -rf $X 경고 (block-destructive 미탐 보완, v1.199.0)",
+      "command": "X=/; rm -rf $X",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "위험값 대입: 같은 줄 재대입은 뒤 대입이 유효 (v1.199.0)",
+      "command": "X=/tmp/a; X=/; rm -rf $X",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "위험값 대입: PowerShell 형태 $X = \"/\" + Remove-Item (v1.199.0)",
+      "command": "$X = \"/\"; Remove-Item -Recurse -Force $X",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "위험값 대입: $HOME 대입 (v1.199.0)",
+      "command": "H=$HOME; rm -rf $H",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "위험값 대입: 드라이브 루트 /c (v1.199.0)",
+      "command": "D=/c; rm -rf $D",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "위험값 대입: export 접두어 + ~ (v1.199.0)",
+      "command": "export R=~; rm -rf $R",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "델타 음성: 상대 경로 정리 D=./build (v1.199.0)",
+      "command": "D=./build; rm -rf $D",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "델타 음성: 루트 아닌 절대 경로 D=/tmp/build (v1.199.0)",
+      "command": "D=/tmp/build; rm -rf $D",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "델타 음성: 홈 하위 경로 P=$HOME/proj (v1.199.0)",
+      "command": "P=$HOME/proj; rm -rf $P",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "델타 음성: 삭제 계열 아님(echo) (v1.199.0)",
+      "command": "X=/; echo $X",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "델타 음성: 삭제 계열 아님(ls) (v1.199.0)",
+      "command": "X=/; ls $X",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "델타 음성: 대입 없는 루트 삭제 — 차단은 block-destructive 소관 (v1.199.0)",
+      "command": "rm -rf /",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
     }
   ]
 }
