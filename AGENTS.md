@@ -54,7 +54,7 @@
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
 - **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **md 수정은 Edit 도구를 쓴다** — `sed -i`는 파일 전체를 LF로 바꾸는데 blob이 정규화돼 `git diff`에 안 나타난다.
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
-- **명령 출력 예산**: 판정용 명령은 판정에 필요한 최소 형식으로 — `git status --porcelain`(clean이면 0B) · `git diff --stat` 선행 · `git blame -L` 범위 지정. **단 `git log`는 `--oneline`으로 줄이지 않는다** — 커밋 본문이 F-4 스캔 대상이다. 실측 표·미채택 근거는 `docs/harness-conventions.md` 「명령 출력 예산」이 정본.
+- **명령 출력 예산**: 판정용 명령은 판정에 필요한 최소 형식으로 — `git status --porcelain`(clean이면 0B) · `git diff --stat` 선행 · `git blame -L` 범위 지정 · `gh`는 `--json <필드> --jq <표현식>`로 필드 지정. **단 `git log`는 `--oneline`으로 줄이지 않는다** — 커밋 본문이 F-4 스캔 대상이다. 실측 표·미채택 근거는 `docs/harness-conventions.md` 「명령 출력 예산」이 정본.
 - **파일 크기**: 분할은 줄 수가 아니라 책임·읽기 부담으로 판정(`implement-task` 규칙 8의 네 질문이 정본).
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단은 둘 — ① **`exit 2`**: `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox`·`guard-agents-content` + `warn-commit-secrets`(조건부) ② **stdout JSON + `exit 0`**: `require-evidence`(조건부, Stop hook 전용). **두 조건부의 세부 조건·스캔 범위는 `docs/harness-conventions.md`가 정본** — hook 수정 전 반드시 읽을 것. **우회 변수는 둘이며 서로 대체되지 않는다**: `CLAUDE_HARNESS_QUICK`(require-evidence·require-plan-for-write·guard-agents-content) / `CLAUDE_HARNESS_ALLOW_SECRET`(warn-commit-secrets 전용).
 - **`require-plan-for-write`는 게이트 3종**: ① plan 존재 ② plan 작성 ③ AGENTS.md bootstrap. ①②는 같은 정규식(`$planTaskRx`)을 공유하므로 **한쪽만 고치지 말 것**(차이가 곧 우회 경로).
