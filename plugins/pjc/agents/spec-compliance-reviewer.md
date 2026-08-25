@@ -45,6 +45,7 @@ maxTurns: 36
 ### Step 1. Diff 수집
 ```bash
 git diff --stat <BASE_SHA> <HEAD_SHA>   # 규모 먼저 (큰 diff는 `-- <경로>`로 분할)
+# 나머지 둘은 비대상(grep 파이프 · 진단자).
 git diff <BASE_SHA> <HEAD_SHA>
 git log --oneline <BASE_SHA>..<HEAD_SHA>
 ```

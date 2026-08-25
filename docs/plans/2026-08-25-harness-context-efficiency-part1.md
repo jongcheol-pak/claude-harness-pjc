@@ -28,6 +28,9 @@
 
 ## Deferred / Follow-up
 
+- **`## Risks & Unknowns` 미작성 → F-5 미수행** — `plan-template.md`가 내장 섹션으로 규정하는데(생략 표기 없음) 이 plan이 빠뜨려 **Phase F 검증축 1개가 성질상 N/A가 아니라 작성 누락으로 비활성화**됐다. `plan-reviewer` 1R·2R(14건 지적)도 못 잡았다 — **검토 항목 18개 중 템플릿 내장 섹션 존재를 보는 축이 없다**(F-7 M3).
+- **원문 요청 항목 3·4의 처리 결과가 어디에도 기록되지 않았다** — 항목 3(*"골든·코드리뷰가 수정한 부분만 다시 하는지"*)·항목 4(*"리뷰가 여러 번 실행돼 느리다"*)를 `## 요구 이해`가 출처로 인용하는데, 산출물·Out of Scope·Deferred 어디에도 매핑이 없다. **검토 단계의 답은 「이미 규약이 있다」**(증분 재리뷰 표 · 골든 부분 실행 판정 자격)였으나 그 사실이 plan에 남지 않았다. T4(`--stat`)·T7(항목 18)이 항목 4를 간접적으로 겨냥한다(F-7 m2, 판정 유보).
+
 - **§157(9,000B 경계 3조건)이 리뷰어 정의에도 적용되는지 문서상 불명확** — `AGENTS.md` 행에는 예외가 명시돼 있으나 리뷰어 4종에는 없다. **T4가 만든 공백이 아니라 이전부터 잠재했던 것**이며(리뷰어 2종이 각각 확인), 닫으려면 *"subagent 호출 내부에서도 auto-compact가 일어나는가"*를 실측해야 한다. T4는 보수적으로 3조건을 그대로 적용했다. (출처: v1.198.0 T4 quality M2 · spec 2R)
 
 - **대장 대기 항목의 재확인 이력 소급 압축** — T2가 신설하는 규약을 기존 131건에 적용하는 것. 다음 소진 batch가 수행한다(T2 acceptance가 그 위임을 규약 문면에 명시).
@@ -216,6 +219,12 @@
   - **Halt Forecast**: 골든 러너 전체 실행이 도구 시간 캡을 넘는다 → `harness-conventions.md` 「골든 러너 운용」의 분리 프로세스 + 래퍼 + `Monitor` 폴링 절차를 따른다(추측 실행 금지).
   - **Depends on**: -
 
+- [x] **T9. F-7 지적 해소 (Phase F 재진입)** (Type C)
+  - **Files**: `plugins/pjc/agents/{spec-compliance-reviewer,code-quality-reviewer,spec-prefilter,plan-reviewer}.md` · `docs/harness-conventions.md` · `plan.md`
+  - **Acceptance**: F-7 B1(T4 acceptance ⑤ 미충족) · M1(리뷰어 바이트 범위 stale) · M2(케이스 기준선 주석 `694 예정`) 해소 + m1(거짓 이력) 정정 + M3·m2 Deferred 등록. **B1·M1·M2는 자기 유발이라 이연 불가**(규칙 4-1).
+  - **9,000B 경계 3조건**: ⓐ 바이트 회계 — plan-reviewer 54,241→54,304B · spec-compliance 31,163→31,325B · code-quality 33,766→33,928B ⓑ 경계 재측정 — plan-reviewer 79→77(삽입 0행 — m1 수정으로 줄이 길어짐) · spec-compliance 104→104(삽입 1행 → 정규화 1행 후퇴) · code-quality 79→79(동상) ⓒ 밀려난 규칙 — **2줄**(`spec-compliance`의 「메서드 시그니처 변경 → 모든 호출자」 표 행 · `code-quality`의 「시그니처 일치 검증」 불릿). `plan-reviewer`의 2줄은 **이 task가 수정한 줄**이라 유실이 아니다.
+  - **주석을 2회 축약해 손실을 줄였다** — 초안(긴 문장)에서 3–2행 후퇴였던 것을 `# 나머지 둘은 비대상(grep 파이프 · 진단자).`로 줄여 1–2행으로 낮췄다(T3·T4 교훈 선제 적용).
+
 ## Phase F 확인 항목
 
 - **F-2 전체 검증**: 전 ps1 parse · JSON 3종 · **hook 골든 무인자 전체**(T8이 케이스를 더하므로 기준선 갱신값과 대조) · `check-harness-consistency.py` 12축 exit 0
@@ -320,6 +329,10 @@
   - **회귀 검출을 실증으로 닫았다** — `++`를 `= $lines.Count`로 **되돌려 실행**했더니 SC31은 PASS, **SC31b만 FAIL**(47/48). 리뷰어가 코드 추적만으로 예측한 결과와 일치했고, 복원 후 48/48이다.
   - **plan Edge ⓐ 미구현 1건**(spec 1R M1) — *"plan 또는 AGENTS.md가 있는 프로젝트로 한정"*을 적어놓고 빠뜨렸다. 조건에 AGENTS.md 검사를 넣고 SC30으로 고정했다.
   - **이 task가 사용자 지적 항목 4의 실물이다** — *"수정 때문에 다시 문제가 발견돼 리뷰가 여러 번 실행된다"*. 다만 세 번 다 리뷰가 잡았고 마지막에 **회귀 검출 자체를 실증**해 닫았다.
+- **T9 완료 (Phase F 재진입)** — F-7이 BLOCKER 1 / MAJOR 3 / MINOR 2를 냈고 전건 처리했다.
+  - **B1이 이 회차의 가장 뼈아픈 지적이다** — T4 acceptance ⑤(*"다른 두 subagent 제외 사유 1줄"*)를 **실제로 넣지 않았는데 spec 2R·quality 2R·F-6 acceptance 실측이 셋 다 통과시켰다.** 그 1줄의 목적이 *"사유가 없으면 다음 회차가 「일관성」을 이유로 네 파일로 넓힌다"*라, 없으면 그 확장을 막는 장치가 0이었다.
+  - **M1·M2는 「기계 대조 밖 수치」의 세 번째 재발**이다 — T3(append 무검증)·T7(「메인 조합」 방치)에 이어 같은 형태다. F-7이 그것을 *"이번 회차가 세 번 반복한 실패 형태"*로 짚었다. 공통점은 **`exit 0`이 나는 자리**라는 것이다.
+  - **M3(Risks & Unknowns 미작성)**은 산출물 재작업이 아니라 **Deferred 등록**으로 닫았다 — `plan-reviewer` 18개 항목 중 **템플릿 내장 섹션 존재를 보는 축이 없다**는 관측이 함께 나왔다(part2와 축이 같다).
 ## Retry Ledger
 
 - **T3 · `[CONFLICT]` 1회** — 지점: `pjc-systematic-debugging/SKILL.md`의 9,000B 경계 이동으로 무엇이 유실됐는가. spec 2R M2(*"위키 참조 불릿이 새로 유실"*) ↔ quality 2R(*"그 줄은 BASE부터 예산 밖 — 1R 자기 정정"*). **메인 판정: quality 채택** — 근거는 `check-harness-consistency.py`의 `measure()`가 `edge = i + 1`(초과를 만든 행)이라 경계 행이 예산 밖 첫 행이라는 것, 그리고 안쪽 집합 차분 실측(새 유실 1줄). 같은 지점 2회가 아니므로 Halt 대상 아님.

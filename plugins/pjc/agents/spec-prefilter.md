@@ -35,6 +35,7 @@ disallowedTools: Write, Edit, NotebookEdit
 ### 1. Acceptance 충족 여부 (구체 값·조건 대조)
 ```bash
 git diff --stat <BASE> <HEAD>   # 규모 먼저 (큰 diff는 `-- <경로>`로 분할)
+# 나머지 둘은 비대상(grep 파이프 · 진단자).
 git diff <BASE> <HEAD>
 ```
 
