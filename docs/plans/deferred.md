@@ -211,7 +211,6 @@
 
 ---
 
-> **분리된 두 파일** — 이 대장은 ## 대기만 담는다(v1.198.0 분할).
-> - **종결 항목**: docs/plans/deferred-closed.md — 기각 종결분. 계수는 위 앵커가 정본이다.
-> - **소진 batch 회고**: docs/plans/deferred-history.md — 회차 서사. atch 차수 수열 축의 대조 대상이다.
-
+> **분리된 두 파일** — 이 대장은 `## 대기`만 담는다(v1.198.0 분할).
+> - **종결 항목**: `docs/plans/deferred-closed.md` — 기각 종결분. 계수는 위 앵커가 정본이다.
+> - **소진 batch 회고**: `docs/plans/deferred-history.md` — 회차 서사. `batch 차수 수열` 축의 대조 대상이다.

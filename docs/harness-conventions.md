@@ -160,7 +160,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 |---|---|---|---|
 | `AGENTS.md` | 8,390 | 93 | 0 |
 | `plugins/pjc/skills/implement-task/SKILL.md` | 104,721 | 632 | 66 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 93,805 | 519 | 83 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 93,904 | 519 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 58,733 | 194 | 81 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,873 | 354 | 135 |
 | `plugins/pjc/agents/plan-reviewer.md` | 51,274 | 416 | 78 |
