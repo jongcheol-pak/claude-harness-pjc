@@ -136,7 +136,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 >
 > **이 표에 있는 파일을 편집한 task가 같은 task 안에서 이 표를 갱신한다.** 편집과 갱신이 같은 커밋에 있어야 값이 어긋나는 구간이 생기지 않는다 — 실제로 이 표를 신설한 task 자신이 같은 커밋에서 `implement-task/SKILL.md`를 함께 고치고 갱신을 빠뜨려 리뷰에서 잡혔다.
 >
-> **왜 재는가**: 스킬 본체(`SKILL.md`)는 발동 시 **전문이 로드**되고 리뷰어 정의는 subagent 호출마다 로드된다. **그래서 리뷰어 4행의 「9,000B 경계 행」도 `AGENTS.md` 행과 같이 판정 의미가 없다** — subagent는 호출마다 정의 전문을 새로 받으므로 auto-compact 재부착 사양(그 열의 근거)의 대상이 아니다. 그 열은 형식 유지를 위한 실측치이며, **리뷰어 정의를 편집할 때 경계가 밀리는 것은 손실이 아니다**(SKILL 본체와 다른 점 — 그쪽은 실제로 유실된다). `references/`는 필요할 때만 Read하므로, 조건부 절차를 그쪽으로 옮기면 상시 로드가 준다. 이 표는 그 절감이 실제로 유지되는지를 수치로 고정한다.
+> **왜 재는가**: 스킬 본체(`SKILL.md`)는 발동 시 **전문이 로드**되고 리뷰어 정의는 subagent 호출마다 로드된다. `references/`는 필요할 때만 Read하므로, 조건부 절차를 그쪽으로 옮기면 상시 로드가 준다. 이 표는 그 절감이 실제로 유지되는지를 수치로 고정한다.
 >
 > **행 합계는 판정 축이 아니다 — 컨텍스트가 둘로 갈리기 때문이다.** 이 표의 9행은 **한 컨텍스트에 함께 올라가지 않는다.** 갈리는 지점은 **subagent 경계**다:
 >
@@ -164,8 +164,8 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 58,733 | 194 | 81 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 27,320 | 357 | 137 |
 | `plugins/pjc/agents/plan-reviewer.md` | 51,274 | 416 | 78 |
-| `plugins/pjc/agents/spec-compliance-reviewer.md` | 31,200 | 311 | 100 |
-| `plugins/pjc/agents/code-quality-reviewer.md` | 33,803 | 286 | 76 |
+| `plugins/pjc/agents/spec-compliance-reviewer.md` | 31,163 | 309 | 104 |
+| `plugins/pjc/agents/code-quality-reviewer.md` | 33,766 | 284 | 79 |
 | `plugins/pjc/agents/plan-completion-reviewer.md` | 29,628 | 324 | 86 |
 
 ## AGENTS.md 내용 경계 (무엇을 담고 무엇을 담지 않는가)

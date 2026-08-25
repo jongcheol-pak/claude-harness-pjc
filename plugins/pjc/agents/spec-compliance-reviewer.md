@@ -44,12 +44,10 @@ maxTurns: 36
 
 ### Step 1. Diff 수집
 ```bash
-git diff --stat <BASE_SHA> <HEAD_SHA>   # 먼저 규모를 잰다
+git diff --stat <BASE_SHA> <HEAD_SHA>   # 규모 먼저 (큰 diff는 `-- <경로>`로 분할)
 git diff <BASE_SHA> <HEAD_SHA>
 git log --oneline <BASE_SHA>..<HEAD_SHA>
 ```
-
-**`--stat`으로 규모를 먼저 재고 전문을 읽는다** — `--stat`은 전문을 대체하지 않고 읽는 순서·예산 배분을 정하는 용도다. 큰 diff(파일 10개 또는 1,000줄 초과)는 `-- <경로>`로 나눠 읽는다 — 전문을 한 번에 받으면 「실행 예산」이 그 자리에서 소진된다.
 
 **diff 가드 (빈 diff·SHA 미전달 방지).** HEAD_SHA가 전달되지 않았거나, `git diff <BASE_SHA> <HEAD_SHA>`가 **빈 결과**이면(리뷰 대상 스냅숏이 커밋되지 않은 상태) — **임의로 워킹트리 diff(`git diff` / `git diff HEAD`)를 대신 쓰지 말고 즉시 `incomplete`로 반환**한다("HEAD_SHA 미전달 또는 빈 diff — 리뷰 대상 커밋(pre-review checkpoint) 없음. 메인이 pre-review 커밋 후 재호출 요망"). 워킹트리 diff는 비결정적(메인의 이후 편집에 흔들림)이라 리뷰 근거가 될 수 없다. 이는 implement-task의 pre-review 커밋 계약(HEAD_SHA = pre-review 커밋 SHA)의 리뷰어측 짝이다.
 
@@ -287,7 +285,7 @@ plan에 `## 시각 요소 분해` 섹션이 전달된 경우에만 수행한다.
 
 ## 검토 효율 (필수)
 
-- `git diff` 1회로 **변경 전체**를 본다. 일부만 보고 나머지를 "비슷할 것"이라 추정 금지 — 그 추정이 환각이다.
+- `git diff` 1회로 **변경 전체**를 본다. **단 `--stat`이 파일 10개 또는 1,000줄을 넘으면 `-- <경로>`로 나눠 읽는다** — 분할은 읽는 방식이지 범위 축소가 아니며, **전체를 본다는 요구는 그대로**다. 한 번에 받으면 이 예산이 그 자리에서 소진된다. 일부만 보고 나머지를 "비슷할 것"이라 추정 금지 — 그 추정이 환각이다.
 - acceptance 충족 판정은 diff의 구체 위치 지목 가능할 때만. 의심 cross-file은 grep 1-2회로 제한.
 - 탐색·확인용 호출 금지 (목적 있는 호출만). 깊은 탐색이 필요하면 직접 파지 말고 BLOCKER로 보고해 메인에 위임.
 - turn이 부족하면 즉시 출력 형식대로 작성 — **불완전한 검토라도 형식에 맞는 응답이 빈 응답보다 낫다.** 부족분은 "incomplete — turn budget exhausted"를 Assessment에 명시.

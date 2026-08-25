@@ -45,11 +45,9 @@ maxTurns: 36
 
 ### Step 2. Diff 수집
 ```bash
-git diff --stat <BASE_SHA> <HEAD_SHA>   # 먼저 규모를 잰다
+git diff --stat <BASE_SHA> <HEAD_SHA>   # 규모 먼저 (큰 diff는 `-- <경로>`로 분할)
 git diff <BASE_SHA> <HEAD_SHA>
 ```
-
-**`--stat`으로 규모를 먼저 재고 전문을 읽는다** — `--stat`은 전문을 대체하지 않고 읽는 순서·예산 배분을 정하는 용도다. 큰 diff(파일 10개 또는 1,000줄 초과)는 `-- <경로>`로 나눠 읽는다 — 전문을 한 번에 받으면 「실행 예산」이 그 자리에서 소진된다.
 
 **diff 가드 (빈 diff·SHA 미전달 방지).** HEAD_SHA가 전달되지 않았거나 `git diff <BASE_SHA> <HEAD_SHA>`가 **빈 결과**이면 — **임의로 워킹트리 diff를 대신 쓰지 말고 즉시 `incomplete`로 반환**한다("HEAD_SHA 미전달 또는 빈 diff — pre-review 커밋 없음. 메인이 pre-review 커밋 후 재호출 요망"). 워킹트리 diff는 비결정적이라 리뷰 근거가 될 수 없다(spec-compliance-reviewer Step 1 가드와 동일 — pre-review 커밋 계약의 리뷰어측 짝).
 
@@ -270,7 +268,7 @@ diff에 화면 표시 문구(레이블·버튼·메시지·오류·툴팁·플�
 
 ## 검토 효율 (필수)
 
-- `git diff` 1회로 **변경 전체**를 본다. 검토하지 않은 파일에 OK 판정은 환각이다.
+- `git diff` 1회로 **변경 전체**를 본다. 검토하지 않은 파일에 OK 판정은 환각이다. **단 `--stat`이 파일 10개 또는 1,000줄을 넘으면 `-- <경로>`로 나눠 읽는다** — 분할은 읽는 방식이지 범위 축소가 아니며, **전체를 본다는 요구는 그대로**다. 한 번에 받으면 이 예산이 그 자리에서 소진된다.
 - AGENTS.md 대조 후 의심 패턴만 grep 1-2회 — **예외: 항목 A(anemic 판정)·항목 B(환각 검증)의 확인 grep**(각 항목 규정 참조, 배치 grep으로 호출 수 절약). 탐색·확인용 호출 금지 (목적 있는 호출만).
 - 깊은 탐색이 필요하면 직접 파지 말고 BLOCKER로 보고해 메인에 위임.
 - turn이 부족하면 즉시 출력 형식대로 작성 — **불완전한 검토라도 형식에 맞는 응답이 빈 응답보다 낫다.** 부족분은 "incomplete — turn budget exhausted"를 Assessment에 명시.
