@@ -41,8 +41,9 @@ $rangeDesc = if ($Since) { "기준 $Since 까지" } elseif ($Days -gt 0) { "최�
 # 모수는 **`Review:`/`검증:` trailer에 prefilter가 적힌 줄**이다 — 본문 산문의 언급(규정 설명·
 #   회고)은 판정 기록이 아니라 모수에서 뺀다. 이 구분이 없으면 스킬 문서를 고친 회차의 서술이
 #   전부 실적으로 잡힌다(수동 집계 실측: 언급 59건 중 trailer는 34건).
-$sample = 0; $pass = 0; $escalate = 0; $noVerdict = 0
+$sample = 0; $pass = 0; $escalate = 0; $unclassified = 0
 $failPath = New-Object System.Collections.Generic.List[string]
+$unclassSha = New-Object System.Collections.Generic.List[string]
 
 foreach ($chunk in ($raw -split "`u{2}")) {
     if ($chunk -notmatch "`u{1}") { continue }
@@ -54,9 +55,12 @@ foreach ($chunk in ($raw -split "`u{2}")) {
         $sample++
         $isPass = $line -match '(?i)prefilter[^)]*?PASS'
         $isEsc = $line -match '(?i)ESCALATE|격상'
+        # **배타 분기(if/elseif)를 쓰지 않는다** — 그러면 한 줄이 반드시 한 분류에만 들어가
+        #   아래 합계 검사가 항상 참이 되어 죽은 코드가 된다. 독립 판정이라야 「한 줄이 두 분류에
+        #   걸리는 표기」(예: 격상 후 재판정 PASS)가 합계 초과로 드러난다.
         if ($isPass) { $pass++ }
-        elseif ($isEsc) { $escalate++ }
-        else { $noVerdict++ }
+        if ($isEsc) { $escalate++ }
+        if (-not $isPass -and -not $isEsc) { $unclassified++; $unclassSha.Add($sha.Substring(0, 8)) }
         # 실패경로는 위 3분류와 **직교**한다 — PASS로 끝났어도 그 과정에 빈 응답·재요청이 있었으면
         #   절감이 그만큼 상쇄되므로 따로 센다(합계에 더하지 않는다).
         if ($line -match '(?i)무응답|빈 응답|판정문 없이|incomplete|소진|D ?분기|재요청') {
@@ -77,15 +81,25 @@ $failRate = [math]::Round(($failPath.Count / $sample) * 100, 1)
 Write-Host "표본(trailer 기재)       : $sample"
 Write-Host "  PASS                   : $pass"
 Write-Host "  ESCALATE               : $escalate"
-Write-Host "  판정 없음(incomplete)  : $noVerdict"
+Write-Host "  미분류                 : $unclassified  (판정문 없이 끝난 것·아직 모르는 표기)"
 Write-Host "실패경로(직교 축)        : $($failPath.Count)  ($failRate%)"
 Write-Host ''
 
-# 자기검사 — 세 분류의 합이 표본과 다르면 파서가 어긋난 것이다. 어느 규칙을 고쳐야 하는지
-#   그 자리에서 알 수 있어야 하므로 조용히 넘어가지 않는다.
-$sum = $pass + $escalate + $noVerdict
+# 자기검사 — 분류 합이 표본과 다르면 파서가 어긋난 것이다. 위 판정이 **독립**이므로 이 검사는
+#   실제로 발화할 수 있다: 합이 크면 한 줄이 두 분류에 걸린 것(새 표기), 작으면 계수 누락이다.
+#   어느 쪽인지 그 자리에서 알 수 있어야 하므로 조용히 넘어가지 않는다.
+$sum = $pass + $escalate + $unclassified
 if ($sum -ne $sample) {
-    Write-Host "[WARN] 분류 합계($sum)가 표본($sample)과 다릅니다 — 파서 분기 확인 필요."
+    $dir = if ($sum -gt $sample) { '한 줄이 두 분류에 걸림(새 표기 도입 의심)' } else { '계수 누락' }
+    Write-Host "[WARN] 분류 합계($sum)가 표본($sample)과 다릅니다 — $dir. 파서 분기 확인 필요."
+    Write-Host ''
+}
+
+# 미분류는 그 자체가 관측 대상이다 — 「판정문 없이 끝난 호출」이 여기 모이고, 새 표기가
+#   생기면 여기로 흘러든다. SHA를 남겨야 어느 쪽인지 사람이 확인할 수 있다.
+if ($unclassSha.Count) {
+    Write-Host '미분류 커밋 (원문은 git show 로 확인):'
+    foreach ($s in ($unclassSha | Select-Object -Unique)) { Write-Host "  - $s" }
     Write-Host ''
 }
 
@@ -97,3 +111,8 @@ if ($failPath.Count) {
 
 Write-Host '※ 모수는 Type B task의 완료 커밋 trailer뿐입니다 — prefilter가 Type B 전용이라'
 Write-Host '  이 수치는 "전체 리뷰 대비 절감률"이 아닙니다(그렇게 읽으면 과대평가입니다).'
+
+# 명시적 종료 — 없으면 마지막 네이티브 호출(`git log`)의 $LASTEXITCODE에 암묵 의존하게 되고,
+#   나중에 이 경로에 진단용 외부 명령이 하나 끼면 종료 코드가 조용히 바뀐다.
+#   형제 도구 `report-hook-events.ps1`도 같은 관례다.
+exit 0
