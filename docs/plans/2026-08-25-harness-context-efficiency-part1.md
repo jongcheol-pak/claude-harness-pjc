@@ -28,6 +28,8 @@
 
 ## Deferred / Follow-up
 
+- **§157(9,000B 경계 3조건)이 리뷰어 정의에도 적용되는지 문서상 불명확** — `AGENTS.md` 행에는 예외가 명시돼 있으나 리뷰어 4종에는 없다. **T4가 만든 공백이 아니라 이전부터 잠재했던 것**이며(리뷰어 2종이 각각 확인), 닫으려면 *"subagent 호출 내부에서도 auto-compact가 일어나는가"*를 실측해야 한다. T4는 보수적으로 3조건을 그대로 적용했다. (출처: v1.198.0 T4 quality M2 · spec 2R)
+
 - **대장 대기 항목의 재확인 이력 소급 압축** — T2가 신설하는 규약을 기존 131건에 적용하는 것. 다음 소진 batch가 수행한다(T2 acceptance가 그 위임을 규약 문면에 명시).
 - **`docs/plans/deferred.md` 항목당 크기 상한** — Step 8 Q2 미채택 안. 근거 의무 규약과의 경계 판단 필요.
 
@@ -148,7 +150,7 @@
   - **Halt Forecast**: 없음.
   - **Depends on**: -
 
-- [ ] **T4. 리뷰어 3종의 diff 수집에 `--stat` 선행을 넣는다** (Type C)
+- [x] **T4. 리뷰어 3종의 diff 수집에 `--stat` 선행을 넣는다** (Type C)
   - **Files**: `plugins/pjc/agents/spec-compliance-reviewer.md` · `plugins/pjc/agents/code-quality-reviewer.md` · `plugins/pjc/agents/spec-prefilter.md` · `docs/harness-conventions.md`(예산 표 갱신)
   - **Design**: ① **배치** — 각 정의의 Step 1/Step 2 「Diff 수집」 코드펜스 안. ② **신규 심볼과 책임** — 없음. ③ **의존 방향** — 세 파일이 같은 문면을 갖되 서로를 참조하지 않는다(리뷰어 4종 공통 규약과 같은 구조 — 각 subagent는 자기 정의만 로드하므로 단일 소스화가 불가능하다). ④ **비추상화 선언** — 임계 초과 시의 분할 방식을 규정하지 않는다(파일 그룹핑은 리뷰어 재량 — 규정하면 프로젝트마다 어긋난다).
   - **Acceptance**:
@@ -292,7 +294,7 @@
   - **자기 유발 결함 1건 (규칙 4-1 — spec B1이 잡음)**: 위 3조건을 *"Progress Log에 기록했다"*고 보고했으나 **실제로는 기록되지 않았다.** 원인은 append 스크립트가 `... if marker in s else s`로 조용히 통과하는데 `print`는 조건과 무관하게 찍히도록 짜여 **성공으로 오인**한 것이다. **교훈: 파일 편집 스크립트는 「변경 여부」를 판정해 출력한다** — 무조건 찍는 성공 메시지는 검증이 아니다.
 
 - **T4 완료** — 리뷰어 3종 diff 수집에 `--stat` 선행. 설명은 코드펜스 주석(세 파일 동일)과 각 파일의 「검토 효율」·고유 불릿으로 나눠 담았다.
-  - **9,000B 경계 3조건**: ⓐ 바이트 회계 — spec-compliance 30,796→31,131B · code-quality 33,399→33,734B ⓑ 경계 재측정 — **둘 다 BASE와 동일**(104 · 79) ⓒ 밀려난 규칙 — 각 1줄:
+  - **9,000B 경계 3조건**: ⓐ 바이트 회계 — spec-compliance 30,796→31,163B · code-quality 33,399→33,766B ⓑ 경계 재측정 — **둘 다 BASE와 동일**(104 · 79) ⓒ 밀려난 규칙 — 각 1줄:
     - `spec-compliance-reviewer.md`: `| 인터페이스 메서드 추가/변경 | 모든 구현체 |`
     - `code-quality-reviewer.md`: `- 의심 케이스:`
   - **경위**: 초안은 설명 문단을 Step 1/2 본문에 넣어 경계가 4행·3행 밀렸고 **항목 G(Cross-File Caller Impact) 표**·**항목 B(환각 검출) 절차**가 압축 시야에서 빠졌다(quality M2 실측). 설명을 뒤로 옮기고 주석을 축약해 **BASE 경계를 회복**했다 — T3 교훈(손실 0이 먼저)을 이번엔 선제 적용했다.
