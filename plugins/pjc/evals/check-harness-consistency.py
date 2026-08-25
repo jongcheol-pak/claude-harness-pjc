@@ -67,6 +67,12 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 
 CONV_MD = os.path.join(ROOT, "docs", "harness-conventions.md")
 LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
+# 대장은 v1.198.0에서 셋으로 갈렸다 — 대기(위)·종결·batch 회고.
+#   갈린 이유는 크기다(분할 전 296KB). `plan-feature` Step 1이 계획 1건마다 대장을 여는데,
+#   조회 대상은 `## 대기`뿐인데도 종결 140건과 회차 서사가 함께 컨텍스트에 실렸다.
+#   ⚠ 두 파일을 여기서 함께 읽지 않으면 계수 축과 차수 축이 **0항목으로 조용히 통과**한다.
+LEDGER_CLOSED_MD = os.path.join(ROOT, "docs", "plans", "deferred-closed.md")
+LEDGER_HISTORY_MD = os.path.join(ROOT, "docs", "plans", "deferred-history.md")
 IMPL_MD = os.path.join(ROOT, "plugins", "pjc", "skills", "implement-task", "SKILL.md")
 
 # 9,000B 경계 = auto-compact 후 스킬이 앞 5,000토큰만 재부착된다는 사양에서 온 값.
@@ -159,26 +165,32 @@ def measure(path):
 # ① 문서 로드 예산
 # ─────────────────────────────────────────────────────────────
 def check_doc_budget(conv):
-    """예산 표의 파일들이 표 기록값과 일치하는가. `AGENTS.md`만 크기 축 둘을 더 잰다.
+    """예산 표의 파일들이 표 기록값과 일치하는가. 크기 임계는 두 갈래로 잰다.
 
-    **판정은 셋이고 서로 다른 축이다.** ① 표 대조(기록값 == 실측) — "표가 낡았나"
-    ② 상한 대조(실측 <= 상한) — "그 파일이 SessionStart 주입 상한을 넘겼나"
-    ③ 목표선 대조(실측 <= `AGENTS_TARGET_BYTES`) — "넘기기 전에 다시 차오르고 있나".
-    ②③은 `elif`로 묶여 상한을 넘긴 상태에서 목표선 메시지가 중복되지 않는다(상한이 더 급하다).
-    AGENTS.md가 상한을 넘으면 전문 주입이 **목차 폴백**으로 바뀌어 모든 세션이 보는
-    내용이 통째로 달라지는데, 그것을 알려주는 장치가 없었다(대장 [2026-08-19]).
-    ③을 더한 이유는 ②가 **넘긴 뒤에야** 알린다는 것이다 — 그때는 이미 그 세션들이
-    명령도 금지선도 못 본 상태다.
+    **판정은 넷이고 서로 다른 축이다.** ① 표 대조(기록값 == 실측) — "표가 낡았나"
+    ② **표 상한 열 대조**(실측 <= 표의 `상한`) — "그 파일이 계속 커지고 있나"
+    ③ 주입 상한 대조(실측 <= hook의 `$agentsMaxBytes`) — "`AGENTS.md`가 주입 상한을 넘겼나"
+    ④ 목표선 대조(실측 <= `AGENTS_TARGET_BYTES`) — "넘기기 전에 다시 차오르고 있나".
+    ③④는 `AGENTS.md` 전용이고 `elif`로 묶여, 상한을 넘긴 상태에서 목표선 메시지가
+    중복되지 않는다(상한이 더 급하다). AGENTS.md가 상한을 넘으면 전문 주입이 **목차 폴백**으로
+    바뀌어 모든 세션이 보는 내용이 통째로 달라지는데, 그것을 알려주는 장치가 없었다
+    (대장 [2026-08-19]). ④를 더한 이유는 ③이 **넘긴 뒤에야** 알린다는 것이다.
 
-    **상한 값은 코드에 박지 않고 hook에서 파싱한다** — 정본이 `session-context.ps1`의
-    `$agentsMaxBytes`이므로, 그쪽을 고치면 이 검사도 함께 따라가야 갈리지 않는다.
+    **②와 ③은 정본이 다르다.** ③의 상한은 hook(`session-context.ps1`의 `$agentsMaxBytes`)이
+    정본이라 코드에 박지 않고 거기서 파싱한다 — 주입 동작이 실제로 갈리는 지점이 그곳이다.
+    ②의 대상인 SKILL·리뷰어 파일에는 그런 hook이 없어 **정본을 둘 자리가 표 자신뿐**이므로
+    표의 `상한` 열을 읽는다(v1.199.0 T3 — 근거는 그 표의 서문).
+
+    **상한 열은 비어 있을 수 있다.** `AGENTS.md` 행이 그렇고, 그 행은 ③이 대신 잰다.
+    행 정규식이 줄 끝 앵커를 쓰므로 셀에 수치 아닌 텍스트를 넣으면 **그 행만 놓치는 것이
+    아니라 전 행이 매치 실패해 `die()`로 exit 2**가 난다 — 그래서 빈칸만 허용한다.
     """
     sec = section(conv, r"^## 문서 로드 예산 기준선", label="문서 로드 예산 기준선")
-    rows = re.findall(r"^\| `([^`]+)` \| ([\d,]+) \| (\d+) \| (\d+) \|$", sec, re.M)
+    rows = re.findall(r"^\| `([^`]+)` \| ([\d,]+) \| (\d+) \| (\d+) \| ([\d,]*) \|$", sec, re.M)
     if not rows:
         die("「문서 로드 예산 기준선」 표에서 데이터 행을 추출하지 못함")
     issues = []
-    for path, b, n, edge in rows:
+    for path, b, n, edge, cap in rows:
         full = os.path.join(ROOT, path.replace("/", os.sep))
         if not os.path.exists(full):
             issues.append("예산 기준선: 파일 없음 %s" % path)
@@ -188,6 +200,14 @@ def check_doc_budget(conv):
         if real != want:
             issues.append("예산 기준선 %s — 표 %s / 실측 %s (바이트·행·경계행)"
                           % (path, want, real))
+        if cap:
+            # ② 표 상한 열. ①과 다른 축이다 — ①은 "표가 낡았나"를 보므로 값을 성실히
+            #    갱신하면 파일이 얼마나 커지든 영원히 통과한다. 그 사각을 이 축이 닫는다.
+            capv = int(cap.replace(",", ""))
+            if real[0] > capv:
+                issues.append("상한 초과 %s — 실측 %d B / 상한 %d B (초과 %d B) "
+                              "— 본체를 줄이거나(references 이관) 상한을 올릴 근거를 표 서문에 적을 것"
+                              % (path, real[0], capv, real[0] - capv))
         if path == "AGENTS.md":
             # 상한의 정본은 hook이므로 코드에 박지 않고 거기서 읽는다. 대상이 이 한 행뿐이라
             # 헬퍼로 빼지 않고 지역 처리한다(공통화 문턱 미달 — 이 파일의 명시적·직접적 코드 원칙).
@@ -637,7 +657,13 @@ def check_marker_sync(conv, impl):
 # ─────────────────────────────────────────────────────────────
 # ⑤ Deferred 집계
 # ─────────────────────────────────────────────────────────────
-def check_deferred_stats(ledger):
+def check_deferred_stats(ledger, closed):
+    """대기(`deferred.md`)와 종결(`deferred-closed.md`) 두 파일을 합산해 앵커와 대조한다.
+
+    **앵커는 대기 파일에만 있다** — 계수의 정본을 한 곳에 두어야 두 파일이 갈리지 않는다.
+    ⚠ 종결 파일을 읽지 않으면 `done`이 0이 되어 불변식이 통째로 어긋난다(조용한 통과가
+    아니라 즉시 FAIL이므로 위험 방향은 안전하나, 인자를 빠뜨린 호출이 없어야 한다).
+    """
     # 줄 끝(`$`)까지 앵커링한다 — 접두 매치로 두면 필드가 빠지거나 늘어도 조용히 통과해
     # 대장↔대조기 lockstep이 성립하지 않는다(4필드 도입 시 실측으로 드러났다).
     m = re.search(
@@ -647,15 +673,19 @@ def check_deferred_stats(ledger):
     if not m:
         die("대장에서 「현행 잔량」 전용 앵커를 찾지 못함(4필드 형식이 아닐 수 있다)")
     lines = ledger.split("\n")
+    closed_lines = closed.split("\n")
     try:
         w = next(i for i, l in enumerate(lines) if l.strip() == "## 대기")
-        d = next(i for i, l in enumerate(lines) if l.strip() == "## 종결")
     except StopIteration:
-        die("대장에서 `## 대기` / `## 종결` 구간 헤딩을 찾지 못함")
+        die("`deferred.md`에서 `## 대기` 구간 헤딩을 찾지 못함")
+    try:
+        d = next(i for i, l in enumerate(closed_lines) if l.strip() == "## 종결")
+    except StopIteration:
+        die("`deferred-closed.md`에서 `## 종결` 구간 헤딩을 찾지 못함")
     # 대기는 날짜 '접두'만 본다 — `[등록일, **vN에서 부분 해소**]` 부기 형식이 실재해
     # `\]`로 닫으면 조용히 누락된다. 종결은 `[등록일 → 종결일]` 범위 형식.
-    wait = sum(1 for l in lines[w:d] if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l))
-    done = sum(1 for l in lines[d:] if re.match(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]", l))
+    wait = sum(1 for l in lines[w:] if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l))
+    done = sum(1 for l in closed_lines[d:] if re.match(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]", l))
     a_wait, a_done, purged, enrolled = (int(g) for g in m.groups())
     issues = []
     if (wait, done) != (a_wait, a_done):
@@ -669,8 +699,13 @@ def check_deferred_stats(ledger):
     return issues, wait + done
 
 
-def check_batch_number_sequence(ledger):
-    """대장의 소진 batch 블록 차수가 연속·유일한지 대조한다.
+def check_batch_number_sequence(hist):
+    """batch 회고(`deferred-history.md`)의 blockquote 차수가 연속·유일한지 대조한다.
+
+    **읽는 파일이 v1.198.0에서 `deferred.md` → `deferred-history.md`로 바뀌었다.**
+    회고를 분리하면서 이 인자를 함께 옮기지 않으면 `nums`가 비고 아래 `if not nums`가
+    **exit 0으로 통과**시켜 축이 무증상으로 사라진다 — 실패가 아니라 0항목 통과라
+    러너의 종료 코드로는 잡히지 않는다. 그래서 axes 출력의 `N항목`을 함께 본다.
 
     차수는 규약 ⓪의 순증분 보정이 「직전 batch의 정리 직후 값」을 인용할 때
     **어느 블록을 직전으로 잡는지의 유일한 단서**라, 중복되면 계산이 갈린다.
@@ -687,7 +722,7 @@ def check_batch_number_sequence(ledger):
     `N차 판정`(구간 batch 미실행)도 같은 수열을 쓰므로 함께 센다.
     """
     nums = [int(m.group(1)) for m in
-            re.finditer(r"^> \*\*(\d+)차 (?:batch|판정)", ledger, re.M)]
+            re.finditer(r"^> \*\*(\d+)차 (?:batch|판정)", hist, re.M)]
     if not nums:
         return [], 0          # batch 기록이 없는 대장(다른 프로젝트)도 통과시킨다
     issues = []
@@ -900,6 +935,8 @@ def main():
 
     conv = read(CONV_MD)
     ledger = read(LEDGER_MD)
+    ledger_closed = read(LEDGER_CLOSED_MD)
+    ledger_hist = read(LEDGER_HISTORY_MD)
     impl = read(IMPL_MD)
 
     # 라벨 목록을 한 곳에 두고 **배너와 결과 문구가 둘 다 여기서 파생**되게 한다 —
@@ -911,7 +948,7 @@ def main():
         ("포인터 도달성", check_pointer_reachability()),
         ("마커 동기", check_marker_sync(conv, impl)),
         ("개념 정본", check_concept_locality(conv)),
-        ("Deferred 집계", check_deferred_stats(ledger)),
+        ("Deferred 집계", check_deferred_stats(ledger, ledger_closed)),
         ("볼드 마커 짝", check_bold_pairing()),
         ("한 줄 문장 중복", check_line_dup()),
         # 맨 뒤에 둔다 — `harness-conventions.md` 「문서 표기 축」이 볼드/중복 축을
@@ -919,7 +956,7 @@ def main():
         ("착수 조건 동기", check_batch_trigger_sync()),
         # 새 축은 계속 **맨 뒤**에 붙인다(위와 같은 이유 — 서수 참조 보호).
         ("잔류 절 동기", check_keep_sections_sync()),
-        ("batch 차수 수열", check_batch_number_sequence(ledger)),
+        ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:

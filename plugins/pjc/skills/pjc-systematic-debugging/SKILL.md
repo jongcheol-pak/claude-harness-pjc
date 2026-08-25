@@ -71,10 +71,13 @@ mattpocock `diagnosing-bugs`의 **피드백 루프(1-B)·프로브↔가설 매�
 
 ```bash
 git log --oneline -20
+git diff --stat HEAD~N..HEAD -- <의심 파일>   # 규모를 먼저 잰 뒤 큰 파일만 전문으로
 git diff HEAD~N..HEAD -- <의심 파일>
-git log --since="N hours ago"
-git blame <문제의 라인>
+git log -n 20 --since="N hours ago"           # 개수 상한을 함께 — 본문은 유지한다
+git blame -L <시작>,<끝> <파일>               # 범위를 모르면 -L 없이 쓰되 파일을 좁힌다
 ```
+
+> 형식 근거: `docs/harness-conventions.md` 「명령 출력 예산」 — `--stat`·`-L`·`-n`은 무손실이라 채택하고 **`git log` 본문은 유지한다**(`--oneline` 금지).
 
 검사 대상:
 - 최근 커밋

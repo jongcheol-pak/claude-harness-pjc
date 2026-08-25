@@ -51,8 +51,9 @@ JUDGE_TIMEOUT_SEC = 300
 # "뒷부분이 부실해서 낮은 점수"인지 "안 보여줘서 낮은 점수"인지 구분할 수 없게 만든다.
 MAX_PLAN_CHARS = 30000
 
-# plan 아카이브 파일명 규약(YYYY-MM-DD-<slug>.md). deferred.md 같은 대장 문서를 plan으로
-# 오인해 채점하지 않기 위한 필터다.
+# plan 아카이브 파일명 규약(YYYY-MM-DD-<slug>.md). deferred.md 계열 대장 문서(v1.198.0부터
+# deferred-closed.md·deferred-history.md 포함)를 plan으로 오인해 채점하지 않기 위한 필터다
+# — 판정이 파일명 규약이라 대장이 몇 개로 갈리든 동작은 같다.
 PLAN_NAME_RX = re.compile(r"^\d{4}-\d{2}-\d{2}-.+\.md$")
 RUBRIC_KEY_RX = re.compile(r"^### \d+\..*\(([a-z_]+)\)\s*$", re.MULTILINE)
 

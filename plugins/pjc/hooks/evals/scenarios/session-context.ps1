@@ -131,6 +131,27 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 재읽기 경로 halt-conditions (SC14b)" -R $r -ExpectExit 0 -ExpectContains 'references/halt-conditions.md'
     Assert-Case -Name "session-context: compact 재읽기 경로 recovery (SC14c)" -R $r -ExpectExit 0 -ExpectContains 'references/recovery.md'
 
+    # SC28/SC29: 계획 세션의 압축 리마인더 (v1.198.0 T8).
+    #   SC14 계열은 `if ($planPath)` 안이라 **진행 중 plan이 있는 세션**만 닿는다. 계획을 세우던 중
+    #   압축되면 plan이 없거나 task가 0개라 그 지시를 못 받는데, plan-feature도 본체가 앞 5,000토큰
+    #   밖으로 밀리는 것은 같다. 두 케이스가 그 분기를 고정한다 — 양성 하나만 걸면 **델타 음성**이
+    #   비어 "미완료 task 세션에도 계획 지시가 새는" 회귀를 못 잡는다.
+    # SC28 (양성): compact + plan 없는 프로젝트 → 계획 재읽기 지시 발화
+    $scPlanless = Join-Path $work 'sc-planless'; New-Item -ItemType Directory $scPlanless -Force | Out-Null
+    '# Agent Guide' | Set-Content -Encoding UTF8 (Join-Path $scPlanless 'AGENTS.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact + plan 없음 → 계획 재읽기 지시 (SC28)" -R $r -ExpectExit 0 -ExpectContains 'plan-feature/SKILL.md'
+
+    # SC29 (델타 음성): compact + 미완료 task 있는 plan → implement-task 지시만, 계획 지시는 미발화
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact + 미완료 task엔 계획 지시 없음 (SC29)" -R $r -ExpectExit 0 -ExpectNotContains 'plan-feature/SKILL.md'
+
+    # SC30 (델타 음성): compact + plan도 AGENTS.md도 없는 비 pjc 폴더 → 계획 지시 미발화.
+    #   리마인더 대상이 pjc 워크플로라 무관한 폴더에 뜨면 노이즈다(`:16` 무출력 규칙과 같은 취지).
+    #   기존 SC15·SC23이 같은 빈 픽스처를 쓰지만 각각 다른 문자열만 assert해 이 회귀를 못 잡는다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact + 비 pjc 폴더엔 계획 지시 없음 (SC30)" -R $r -ExpectExit 0 -ExpectNotContains 'plan-feature/SKILL.md'
+
     # SC15: compact + plan 없음 → 기존 일반 리마인더만, 경로 지정 없음 (무회귀)
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact plan 없음 경로 미지정 (SC15)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains 'halt-conditions'
@@ -180,6 +201,16 @@ if (Test-HookSelected @('session-context')) {
     #   리마인더는 cwd 블록 밖에서 append되므로 게이팅 신호가 아니다 — $lines.Count -gt 0 판정을 이 케이스가 검출한다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 리마인더는 vault 게이팅 신호 아님 (SC23)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains '위키 vault'
+
+    # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
+    #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
+    #   계획 지시 줄이 $cwdBaseCount를 전체 재설정하면(`= $lines.Count`) 그 앞의 「plan 존재」 신호까지
+    #   흡수돼 vault가 조용히 빠진다 — `++`여야 하는 이유를 SC31b가 고정한다.
+    #   ⚠ 이 두 케이스를 vault 설정($env:USERPROFILE = $isoV) **앞**에 두면 $vaultLine이 $null이라
+    #     게이팅 로직 자체가 안 돌아 회귀를 못 잡는다(초안이 그 자리에 있었고 리뷰 2종이 각각 잡았다).
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scNoT } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact + task 0개 plan에도 계획 지시 (SC31)" -R $r -ExpectExit 0 -ExpectContains 'plan-feature/SKILL.md'
+    Assert-Case -Name "session-context: 계획 지시가 vault 신호를 삼키지 않음 (SC31b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
 
     # SC22 (델타): AGENTS.md만 있고 plan 없는 cwd → vault 라인이 주입되고 AGENTS 라인보다 **앞**에 온다.
     #   ① 게이팅을 AGENTS 진입 전 시점에 판정하면 이 케이스가 억제된다(과억제 검출).
