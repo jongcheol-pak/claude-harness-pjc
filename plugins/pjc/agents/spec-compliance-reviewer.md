@@ -44,9 +44,12 @@ maxTurns: 36
 
 ### Step 1. Diff 수집
 ```bash
+git diff --stat <BASE_SHA> <HEAD_SHA>   # 먼저 규모를 잰다
 git diff <BASE_SHA> <HEAD_SHA>
 git log --oneline <BASE_SHA>..<HEAD_SHA>
 ```
+
+**`--stat`으로 규모를 먼저 재고 전문을 읽는다** — `--stat`은 전문을 대체하지 않고 읽는 순서·예산 배분을 정하는 용도다. 큰 diff(파일 10개 또는 1,000줄 초과)는 `-- <경로>`로 나눠 읽는다 — 전문을 한 번에 받으면 「실행 예산」이 그 자리에서 소진된다.
 
 **diff 가드 (빈 diff·SHA 미전달 방지).** HEAD_SHA가 전달되지 않았거나, `git diff <BASE_SHA> <HEAD_SHA>`가 **빈 결과**이면(리뷰 대상 스냅숏이 커밋되지 않은 상태) — **임의로 워킹트리 diff(`git diff` / `git diff HEAD`)를 대신 쓰지 말고 즉시 `incomplete`로 반환**한다("HEAD_SHA 미전달 또는 빈 diff — 리뷰 대상 커밋(pre-review checkpoint) 없음. 메인이 pre-review 커밋 후 재호출 요망"). 워킹트리 diff는 비결정적(메인의 이후 편집에 흔들림)이라 리뷰 근거가 될 수 없다. 이는 implement-task의 pre-review 커밋 계약(HEAD_SHA = pre-review 커밋 SHA)의 리뷰어측 짝이다.
 

@@ -34,8 +34,11 @@ disallowedTools: Write, Edit, NotebookEdit
 
 ### 1. Acceptance 충족 여부 (구체 값·조건 대조)
 ```bash
+git diff --stat <BASE> <HEAD>   # 먼저 규모를 잰다
 git diff <BASE> <HEAD>
 ```
+
+**`--stat`이 예상보다 큰 diff를 보이면 그 자체가 ESCALATE 신호다.** 이 필터의 대상은 Type B(단일 파일·호출자 변경 없음)인데 `--stat`이 여러 파일이나 큰 증감을 보이면 **Type 분류가 실제와 어긋난 것**이므로, 전문을 다 읽어 판정하려 들지 말고 그 사실을 근거로 escalate한다 — 그것이 이 단계의 값이다(예산 8 turn은 애초에 큰 diff를 볼 몫이 아니다). (형식 근거: `docs/harness-conventions.md` 「명령 출력 예산」.)
 - **acceptance가 지정한 구체 값·조건이 diff의 실제 값과 일치하는가**를 대조한다 — **키워드가 등장하는 것만으로 PASS하지 않는다**. 예: acceptance가 "timeout을 30으로"면 diff에 `timeout` 단어가 있는지가 아니라 **실제 값이 `30`인지**를 본다("timeout = 300"이면 불일치 → escalation).
 - 값·조건이 어긋나거나 acceptance 관련 변경이 아예 없으면 → escalation
 
