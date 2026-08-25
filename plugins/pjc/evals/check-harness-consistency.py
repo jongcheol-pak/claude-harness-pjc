@@ -67,6 +67,12 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 
 CONV_MD = os.path.join(ROOT, "docs", "harness-conventions.md")
 LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
+# 대장은 v1.198.0에서 셋으로 갈렸다 — 대기(위)·종결·batch 회고.
+#   갈린 이유는 크기다(분할 전 296KB). `plan-feature` Step 1이 계획 1건마다 대장을 여는데,
+#   조회 대상은 `## 대기`뿐인데도 종결 140건과 회차 서사가 함께 컨텍스트에 실렸다.
+#   ⚠ 두 파일을 여기서 함께 읽지 않으면 계수 축과 차수 축이 **0항목으로 조용히 통과**한다.
+LEDGER_CLOSED_MD = os.path.join(ROOT, "docs", "plans", "deferred-closed.md")
+LEDGER_HISTORY_MD = os.path.join(ROOT, "docs", "plans", "deferred-history.md")
 IMPL_MD = os.path.join(ROOT, "plugins", "pjc", "skills", "implement-task", "SKILL.md")
 
 # 9,000B 경계 = auto-compact 후 스킬이 앞 5,000토큰만 재부착된다는 사양에서 온 값.
@@ -637,7 +643,13 @@ def check_marker_sync(conv, impl):
 # ─────────────────────────────────────────────────────────────
 # ⑤ Deferred 집계
 # ─────────────────────────────────────────────────────────────
-def check_deferred_stats(ledger):
+def check_deferred_stats(ledger, closed):
+    """대기(`deferred.md`)와 종결(`deferred-closed.md`) 두 파일을 합산해 앵커와 대조한다.
+
+    **앵커는 대기 파일에만 있다** — 계수의 정본을 한 곳에 두어야 두 파일이 갈리지 않는다.
+    ⚠ 종결 파일을 읽지 않으면 `done`이 0이 되어 불변식이 통째로 어긋난다(조용한 통과가
+    아니라 즉시 FAIL이므로 위험 방향은 안전하나, 인자를 빠뜨린 호출이 없어야 한다).
+    """
     # 줄 끝(`$`)까지 앵커링한다 — 접두 매치로 두면 필드가 빠지거나 늘어도 조용히 통과해
     # 대장↔대조기 lockstep이 성립하지 않는다(4필드 도입 시 실측으로 드러났다).
     m = re.search(
@@ -647,15 +659,19 @@ def check_deferred_stats(ledger):
     if not m:
         die("대장에서 「현행 잔량」 전용 앵커를 찾지 못함(4필드 형식이 아닐 수 있다)")
     lines = ledger.split("\n")
+    closed_lines = closed.split("\n")
     try:
         w = next(i for i, l in enumerate(lines) if l.strip() == "## 대기")
-        d = next(i for i, l in enumerate(lines) if l.strip() == "## 종결")
     except StopIteration:
-        die("대장에서 `## 대기` / `## 종결` 구간 헤딩을 찾지 못함")
+        die("`deferred.md`에서 `## 대기` 구간 헤딩을 찾지 못함")
+    try:
+        d = next(i for i, l in enumerate(closed_lines) if l.strip() == "## 종결")
+    except StopIteration:
+        die("`deferred-closed.md`에서 `## 종결` 구간 헤딩을 찾지 못함")
     # 대기는 날짜 '접두'만 본다 — `[등록일, **vN에서 부분 해소**]` 부기 형식이 실재해
     # `\]`로 닫으면 조용히 누락된다. 종결은 `[등록일 → 종결일]` 범위 형식.
-    wait = sum(1 for l in lines[w:d] if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l))
-    done = sum(1 for l in lines[d:] if re.match(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]", l))
+    wait = sum(1 for l in lines[w:] if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l))
+    done = sum(1 for l in closed_lines[d:] if re.match(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]", l))
     a_wait, a_done, purged, enrolled = (int(g) for g in m.groups())
     issues = []
     if (wait, done) != (a_wait, a_done):
@@ -669,8 +685,13 @@ def check_deferred_stats(ledger):
     return issues, wait + done
 
 
-def check_batch_number_sequence(ledger):
-    """대장의 소진 batch 블록 차수가 연속·유일한지 대조한다.
+def check_batch_number_sequence(hist):
+    """batch 회고(`deferred-history.md`)의 blockquote 차수가 연속·유일한지 대조한다.
+
+    **읽는 파일이 v1.198.0에서 `deferred.md` → `deferred-history.md`로 바뀌었다.**
+    회고를 분리하면서 이 인자를 함께 옮기지 않으면 `nums`가 비고 아래 `if not nums`가
+    **exit 0으로 통과**시켜 축이 무증상으로 사라진다 — 실패가 아니라 0항목 통과라
+    러너의 종료 코드로는 잡히지 않는다. 그래서 axes 출력의 `N항목`을 함께 본다.
 
     차수는 규약 ⓪의 순증분 보정이 「직전 batch의 정리 직후 값」을 인용할 때
     **어느 블록을 직전으로 잡는지의 유일한 단서**라, 중복되면 계산이 갈린다.
@@ -687,7 +708,7 @@ def check_batch_number_sequence(ledger):
     `N차 판정`(구간 batch 미실행)도 같은 수열을 쓰므로 함께 센다.
     """
     nums = [int(m.group(1)) for m in
-            re.finditer(r"^> \*\*(\d+)차 (?:batch|판정)", ledger, re.M)]
+            re.finditer(r"^> \*\*(\d+)차 (?:batch|판정)", hist, re.M)]
     if not nums:
         return [], 0          # batch 기록이 없는 대장(다른 프로젝트)도 통과시킨다
     issues = []
@@ -900,6 +921,8 @@ def main():
 
     conv = read(CONV_MD)
     ledger = read(LEDGER_MD)
+    ledger_closed = read(LEDGER_CLOSED_MD)
+    ledger_hist = read(LEDGER_HISTORY_MD)
     impl = read(IMPL_MD)
 
     # 라벨 목록을 한 곳에 두고 **배너와 결과 문구가 둘 다 여기서 파생**되게 한다 —
@@ -911,7 +934,7 @@ def main():
         ("포인터 도달성", check_pointer_reachability()),
         ("마커 동기", check_marker_sync(conv, impl)),
         ("개념 정본", check_concept_locality(conv)),
-        ("Deferred 집계", check_deferred_stats(ledger)),
+        ("Deferred 집계", check_deferred_stats(ledger, ledger_closed)),
         ("볼드 마커 짝", check_bold_pairing()),
         ("한 줄 문장 중복", check_line_dup()),
         # 맨 뒤에 둔다 — `harness-conventions.md` 「문서 표기 축」이 볼드/중복 축을
@@ -919,7 +942,7 @@ def main():
         ("착수 조건 동기", check_batch_trigger_sync()),
         # 새 축은 계속 **맨 뒤**에 붙인다(위와 같은 이유 — 서수 참조 보호).
         ("잔류 절 동기", check_keep_sections_sync()),
-        ("batch 차수 수열", check_batch_number_sequence(ledger)),
+        ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:

@@ -122,7 +122,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
 | `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든 26케이스**가 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint를 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (7케이스, 1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |
-| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」·「리뷰어 4종 공통 규약」 절** · `plugins/pjc/agents/*.md` · `docs/plans/deferred.md` | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
+| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」·「리뷰어 4종 공통 규약」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
 | 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — 기본값. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 |
@@ -158,9 +158,9 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
-| `AGENTS.md` | 8,069 | 93 | 0 |
+| `AGENTS.md` | 8,390 | 93 | 0 |
 | `plugins/pjc/skills/implement-task/SKILL.md` | 104,721 | 632 | 66 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 93,414 | 519 | 83 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 93,805 | 519 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 58,733 | 194 | 81 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,873 | 354 | 135 |
 | `plugins/pjc/agents/plan-reviewer.md` | 51,274 | 416 | 78 |
@@ -448,7 +448,10 @@ Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File
 ├── docs/
 │   ├── harness-conventions.md       # 하니스 전역 규약 상세 (hook 차단·검증 매핑·문서 예산·리뷰어 각주의 정본)
 │   ├── prd.md
-│   └── plans/deferred.md            # 미처리 Deferred 단일 대장
+│   └── plans/                       # 대장 3파일 (v1.198.0 분할)
+│       ├── deferred.md              #   `## 대기` — 계획 때 여는 유일한 파일 + 계수 앵커
+│       ├── deferred-closed.md       #   `## 종결` — 기각 종결분 (계수 축이 합산)
+│       └── deferred-history.md      #   소진 batch 회고 (차수 수열 축이 대조)
 ├── validate.ps1                     # 설치본 검증
 ├── install.ps1
 └── README.md                        # (notes.md·plan.md·notes-archive/ 는 .gitignore — 로컬 전용)

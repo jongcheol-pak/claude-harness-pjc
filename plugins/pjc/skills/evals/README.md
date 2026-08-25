@@ -102,7 +102,7 @@ python rubric_eval.py --filter harness     # plan 파일명 부분 일치 필터
 python rubric_eval.py --plans-dir <경로>   # 입력 세트 지정
 ```
 
-`rubric.md`의 8개 항목을 judge에게 그대로 실어 보내 각 plan을 채점한다. 채점 대상은 파일명이 `YYYY-MM-DD-<slug>.md`인 것만이다 — `deferred.md` 같은 대장 문서를 plan으로 오인해 채점하지 않기 위한 필터다.
+`rubric.md`의 8개 항목을 judge에게 그대로 실어 보내 각 plan을 채점한다. 채점 대상은 파일명이 `YYYY-MM-DD-<slug>.md`인 것만이다 — `deferred.md`·`deferred-closed.md`·`deferred-history.md` 같은 대장 문서를 plan으로 오인해 채점하지 않기 위한 필터다(파일명 규약 기준이라 대장이 셋으로 갈려도 동작은 같다).
 
 ### 이 러너가 반드시 지키는 것
 
