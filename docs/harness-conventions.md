@@ -162,7 +162,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/skills/implement-task/SKILL.md` | 104,797 | 632 | 66 |
 | `plugins/pjc/skills/plan-feature/SKILL.md` | 93,904 | 519 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 58,733 | 194 | 81 |
-| `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 27,574 | 357 | 131 |
+| `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 27,320 | 357 | 137 |
 | `plugins/pjc/agents/plan-reviewer.md` | 51,274 | 416 | 78 |
 | `plugins/pjc/agents/spec-compliance-reviewer.md` | 30,796 | 308 | 104 |
 | `plugins/pjc/agents/code-quality-reviewer.md` | 33,399 | 283 | 79 |
@@ -380,7 +380,7 @@ Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File
 - **`--porcelain`·`--stat`은 채택한다.** `--porcelain`은 clean일 때 0바이트라 *"출력이 비면 clean"*이 판정이고, `--stat`은 전문을 **대체하는 것이 아니라 규모를 먼저 재는** 용도다(임계를 넘으면 파일별로 나눠 읽는다).
 - **`--oneline`은 채택하지 않는다.** 이 repo는 **커밋 본문에 회차 서사와 `Type`·`Build`·`Tests`·`Review`·`Caller-recheck`·`Self-honesty`를 담는데**, F-4가 *"모든 commit 메시지에서 follow-up·TODO·MINOR 언급"*을 스캔하므로 제목만 남기면 **그 스캔이 통째로 무력화된다**. 커밋 이력을 줄여야 하면 `--oneline`이 아니라 **개수(`-n N`)·기간으로** 좁힌다. **이 미채택 사유를 여기 남기는 이유**: 근거가 없으면 다음 회차가 "일관성"을 들어 `--oneline`을 넣는다.
 - **정제를 서브에이전트에 위임하지 않는다.** 출력이 긴 명령은 대개 **판정용**(빌드·테스트·diff)이라 「검증 목적 위임 금지」(`implement-task` 위임 상한 ③)에 걸린다 — *"남에게 물어 얻은 안심은 V-8이 요구하는 근거가 아니다"*. 위임이 값어치를 하는 것은 **플래그로 못 줄이는 대형 문서 조회**이고, 그 경계는 `plan-feature` Step 1의 위임 상한이 규정한다.
-- **적용 범위는 「판정에 쓰는 명령」이다** — 조사·디버깅 중 한 번 보고 버리는 출력에까지 형식을 강제하지 않는다(과잉 방지).
+- **적용 범위는 「판정에 쓰는 명령」이다** — 조사·디버깅 중 한 번 보고 버리는 출력에까지 형식을 강제하지 않는다(과잉 방지). **단 위 표가 예로 든 넷(`git status`·`git diff`·`git log`·`git blame`)은 조사·디버깅 맥락에서도 대상이다** — 그 넷은 어느 맥락에서든 출력이 크고, 무손실 플래그가 이미 실증돼 있어 형식을 지키는 비용이 0이다. 예외로 두려면 *"이 호출은 판정에 안 쓴다"*가 아니라 **"이 형식으로는 필요한 것이 안 보인다"**를 근거로 든다.
 
 ## 골든 부분 실행의 판정 자격 (예외 조건)
 
