@@ -1453,6 +1453,91 @@
       "command": "X=C:\\Users\\me\\proj; Remove-Item -Recurse -Force $X",
       "expect_exit": 0,
       "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] 명령치환+변수 합성 X=$(echo /) — 기존 미탐 2건(명령치환 단독·변수 단독)을 겹치면 경고 계열도 함께 통과한다 (v1.199.0)",
+      "command": "X=$(echo /); rm -rf $X",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] eval 문자열 안 변수 간접 — eval \"rm -rf /\"는 차단되는데 변수를 한 겹 끼우면 그 차단이 사라진다 (v1.199.0)",
+      "command": "eval \"X=/; rm -rf \\$X\"",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] 파라미터 확장 기본값 ${X:-/} — 대입이 없어 루트가 값으로만 등장하므로 대입 기반 경고의 대상도 아니다 (v1.199.0)",
+      "command": "rm -rf ${X:-/}",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] bash -c 작은따옴표 안 변수 간접 — bash -c \"rm -rf /\" 차단의 변수 우회형 (v1.199.0)",
+      "command": "bash -c 'X=/; rm -rf $X'",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] xargs -I{} placeholder 경유 — 기존 printf|xargs 미탐(M3)의 인자 치환 변종 (v1.199.0)",
+      "command": "printf / | xargs -I{} rm -rf {}",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[알려진 미탐] 변수 2단 전달 X=/; Y=$X — 경고는 대입 1단만 보므로 한 겹 더 거치면 놓친다(같은 줄 한정의 대가) (v1.199.0)",
+      "command": "X=/; Y=$X; rm -rf $Y",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[차단] rm 플래그 분리 -r -f — 플래그를 쪼개 정규식을 피하려는 시도는 여전히 잡힌다 (v1.199.0)",
+      "command": "rm -r -f /",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[차단] rm 롱 플래그 --recursive --force — 「짧은 플래그만 본다」는 가정이 틀렸음을 고정한다 (v1.199.0)",
+      "command": "rm --recursive --force /",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[차단] find / -delete — rm이 아닌 삭제 경로도 차단 범위 안이다 (v1.199.0)",
+      "command": "find / -delete",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[차단] Remove-Item -Path / 명시형 — 대상이 위치 인자가 아니어도 잡힌다 (v1.199.0)",
+      "command": "Remove-Item -Path / -Recurse -Force",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "[경고] sudo 접두 + 위험값 대입 — 접두어 스트립이 실제로 동작하는지 고정한다 (v1.199.0)",
+      "command": "X=/; sudo rm -rf $X",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "[경고] 작은따옴표 대입 + 큰따옴표 참조 X='/' → \"$X\" — 인용 형태가 달라도 같은 판정이다 (v1.199.0)",
+      "command": "X='/'; rm -rf \"$X\"",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "[경고] 중괄호 참조 ${X} — $X와 같게 본다 (v1.199.0)",
+      "command": "X=/ ; rm -rf ${X}",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
     }
   ]
 }
