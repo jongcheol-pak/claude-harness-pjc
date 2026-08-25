@@ -33,6 +33,9 @@
 
 - **§157(9,000B 경계 3조건)이 리뷰어 정의에도 적용되는지 문서상 불명확** — `AGENTS.md` 행에는 예외가 명시돼 있으나 리뷰어 4종에는 없다. **T4가 만든 공백이 아니라 이전부터 잠재했던 것**이며(리뷰어 2종이 각각 확인), 닫으려면 *"subagent 호출 내부에서도 auto-compact가 일어나는가"*를 실측해야 한다. T4는 보수적으로 3조건을 그대로 적용했다. (출처: v1.198.0 T4 quality M2 · spec 2R)
 
+- **「메인 조합」 파생 3행의 기계 대조 축** — `:145~:147`의 min/max·합계·`AGENTS.md` 값을 「문서 로드 예산 기준선」 표에서 도출해 대조하는 축. 현재 방어선은 *"표를 갱신하는 task가 이 줄도 함께 고친다"*는 **사람 주의뿐이고 그것이 네 번 뚫렸다**(T3 append 무검증 → T7 방치 → F-7 1R M1 → 2R B1). part2 T3(SKILL.md 크기 기계 회귀)과 같은 파일·성격이라 편입 비용이 낮다. (출처: F-7 2R Follow-ups)
+- **완료 커밋 본문 6 trailer 누락 검출 축** — `implement-task/SKILL.md:459~470`이 `Type`/`Build`/`Tests`/`Review`/`Caller-recheck`/`Self-honesty`를 두 경로 공통 필수로 규정하는데 검사는 어디에도 없다. T9이 실제로 본문 없이 커밋해 F-4 스캔 대상이 사라졌다(2R M2). 스킬 개선 큐 등재 후보. (출처: F-7 2R Follow-ups)
+- **9,000B 3조건의 「재측정 시점」 명문화** — `phase-f-detail.md`에 *"회계는 **최종 커밋 직전**의 실측값이다"* 1구 추가. 2R M1 ⓐ(세 수치 전부 초안 시점 값)의 직접 원인이며, **T9이 만든 공백이 아니라 규정에 처음부터 없던 것**이다. (출처: F-7 2R Follow-ups)
 - **대장 대기 항목의 재확인 이력 소급 압축** — T2가 신설하는 규약을 기존 131건에 적용하는 것. 다음 소진 batch가 수행한다(T2 acceptance가 그 위임을 규약 문면에 명시).
 - **`docs/plans/deferred.md` 항목당 크기 상한** — Step 8 Q2 미채택 안. 근거 의무 규약과의 경계 판단 필요.
 
@@ -222,8 +225,9 @@
 - [x] **T9. F-7 지적 해소 (Phase F 재진입)** (Type C)
   - **Files**: `plugins/pjc/agents/{spec-compliance-reviewer,code-quality-reviewer,spec-prefilter,plan-reviewer}.md` · `docs/harness-conventions.md` · `plan.md`
   - **Acceptance**: F-7 B1(T4 acceptance ⑤ 미충족) · M1(리뷰어 바이트 범위 stale) · M2(케이스 기준선 주석 `694 예정`) 해소 + m1(거짓 이력) 정정 + M3·m2 Deferred 등록. **B1·M1·M2는 자기 유발이라 이연 불가**(규칙 4-1).
-  - **9,000B 경계 3조건**: ⓐ 바이트 회계 — plan-reviewer 54,241→54,304B · spec-compliance 31,163→31,325B · code-quality 33,766→33,928B ⓑ 경계 재측정 — plan-reviewer 79→77(삽입 0행 — m1 수정으로 줄이 길어짐) · spec-compliance 104→104(삽입 1행 → 정규화 1행 후퇴) · code-quality 79→79(동상) ⓒ 밀려난 규칙 — **2줄**(`spec-compliance`의 「메서드 시그니처 변경 → 모든 호출자」 표 행 · `code-quality`의 「시그니처 일치 검증」 불릿). `plan-reviewer`의 2줄은 **이 task가 수정한 줄**이라 유실이 아니다.
-  - **주석을 2회 축약해 손실을 줄였다** — 초안(긴 문장)에서 3–2행 후퇴였던 것을 `# 나머지 둘은 비대상(grep 파이프 · 진단자).`로 줄여 1–2행으로 낮췄다(T3·T4 교훈 선제 적용).
+  - **9,000B 경계 3조건** (F-7 2R M1로 정정 — **최종 커밋 직전 실측값**): ⓐ 바이트 회계 — plan-reviewer 54,241→**54,244B** · spec-compliance 31,163→**31,223B** · code-quality 33,766→**33,826B** ⓑ 경계 재측정 — plan-reviewer 79→**79**(삽입 0행 · 2R에서 18행 문장을 14B 축약해 BASE 복귀) · spec-compliance 104→104(삽입 1행 → 정규화 1행 후퇴) · code-quality 79→79(동상) ⓒ 밀려난 규칙 — **2줄**(`spec-compliance`의 「메서드 시그니처 변경 → 모든 호출자」 표 행 · `code-quality`의 「시그니처 일치 검증」 불릿). **`plan-reviewer`는 유실 0이다** — 1R 기록이 *"수정한 줄이라 유실이 아니다"*라 적은 것은 오식별이었고(실제로 밀린 것은 「검토 계층」 표의 「심화」 행 = **항목 18의 예산 배분 지시**), 2R에서 축약으로 경계를 79로 되돌려 실제로 해소했다.
+  - **축약으로 손실을 줄였다** — 초안(긴 문장) 3–2행 후퇴 → 주석 2회 축약으로 1–2행 → 2R에서 18행 14B 추가 축약으로 **1–0행**(T3·T4 교훈 선제 적용).
+  - **2R 교훈**: 회계는 **최종 커밋 직전**에 재측정한다. 1R 기록이 세 수치 모두 틀렸던 원인은 축약 전 초안 시점 값을 그대로 옮겨 적은 것이다.
 
 ## Phase F 확인 항목
 
@@ -337,6 +341,8 @@
 
 - **T3 · `[CONFLICT]` 1회** — 지점: `pjc-systematic-debugging/SKILL.md`의 9,000B 경계 이동으로 무엇이 유실됐는가. spec 2R M2(*"위키 참조 불릿이 새로 유실"*) ↔ quality 2R(*"그 줄은 BASE부터 예산 밖 — 1R 자기 정정"*). **메인 판정: quality 채택** — 근거는 `check-harness-consistency.py`의 `measure()`가 `edge = i + 1`(초과를 만든 행)이라 경계 행이 예산 밖 첫 행이라는 것, 그리고 안쪽 집합 차분 실측(새 유실 1줄). 같은 지점 2회가 아니므로 Halt 대상 아님.
 
+- **F-7 재진입 회차 — 3라운드 (상한 3 중 2회 사용)**: 1R(B1/M3 등 6건) → **재진입 1회: T9** → 2R(B1/M1/M2 3건) → **재진입 2회: task 미개설 처리 `622ae2d`** — 2R Follow-ups가 *"산출물 로직 변경이 0이라 새 task 불요"*로 권고한 경로다 → 3R(BLOCKER 0). **task 없이 처리한 회차도 카운터에 센다** — 카운터의 목적은 압축·재개 후 상한 도달을 판정하는 것이라 task 유무와 무관하다(F-7 3R m3).
+
 ## Phase Ledger
 
-<!-- implement-task가 채운다 -->
+- **Phase F 통과** (HEAD `622ae2d` · F-7 3R BLOCKER 0 / MAJOR 1 / MINOR 3 — MAJOR·MINOR는 이 통과 기록 커밋이 자기 종결형으로 담는다)
