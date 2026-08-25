@@ -245,7 +245,7 @@ F-8   → 시각 충실도·참조 정합 최종 관문 (plan에 `## 시각 요�
 
 - 시작 시 **checkpoint** 생성 (빈 커밋 — 구현 시작점 표시, recovery reset 대상):
   ```bash
-  git status                            # clean 확인
+  git status --porcelain                # clean 확인 (출력이 비면 clean — 무플래그는 안내 문단이 딸려 온다)
   git checkout -b task/<id>-<slug>      # 작업 브랜치 (이미 있으면 스킵)
   git commit --allow-empty -m "checkpoint: T<N> start"
   ```

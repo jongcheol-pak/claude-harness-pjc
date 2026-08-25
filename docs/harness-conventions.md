@@ -158,11 +158,11 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 |
 |---|---|---|---|
-| `AGENTS.md` | 8,390 | 93 | 0 |
-| `plugins/pjc/skills/implement-task/SKILL.md` | 104,721 | 632 | 66 |
+| `AGENTS.md` | 8,790 | 94 | 0 |
+| `plugins/pjc/skills/implement-task/SKILL.md` | 104,797 | 632 | 66 |
 | `plugins/pjc/skills/plan-feature/SKILL.md` | 93,904 | 519 | 83 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 58,733 | 194 | 81 |
-| `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 26,873 | 354 | 135 |
+| `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 27,574 | 357 | 131 |
 | `plugins/pjc/agents/plan-reviewer.md` | 51,274 | 416 | 78 |
 | `plugins/pjc/agents/spec-compliance-reviewer.md` | 30,796 | 308 | 104 |
 | `plugins/pjc/agents/code-quality-reviewer.md` | 33,399 | 283 | 79 |
@@ -363,6 +363,24 @@ Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File
 **판정 절차의 정본은 `llm-wiki` patterns 「테스트 케이스의 축 분리」**다(제외 기준에 걸리는 기존 케이스의 축을 먼저 세고 → 그 축이 다른 경로로 검증되는지 확인한 뒤 → 제외를 넣는 순서). 여기서는 진입점만 두고 절차를 복제하지 않는다.
 
 **실측 사례**: v1.174.0이 §7-29(장식 이모지)에 타입 제외를 넣을 때 후보가 둘이었는데(`decision-log`·`question`), `question`을 넣으면 기존 `emoji-bad` 픽스처가 **그 타입으로 두 개의 다른 축**(`strip_code`·`is_lint_report`)을 실증하고 있어 둘 다 가려질 상황이었다. 그래서 제외를 `decision-log` 하나로 한정했다 — 이 규약은 가상의 우려가 아니라 그 실측에서 나왔다.
+
+## 명령 출력 예산 (판정용 명령의 형식)
+
+**판정용 명령은 판정에 필요한 최소 형식으로 실행한다.** 명령 출력은 도구가 반환하는 순간 컨텍스트에 들어가므로, *"로그는 핵심만 유지"*(`implement-task` 컨텍스트 관리 규칙 2) 같은 **사후 요약은 이미 지불된 비용을 되돌리지 못한다**. 줄일 수 있는 자리는 명령을 부르는 시점 하나다.
+
+**단 무손실이 실증된 축약만 채택한다** — 아래는 v1.198.0 실측이다.
+
+| 명령 | 무플래그 | 플래그 | 판정 |
+|---|---|---|---|
+| `git status` (clean) | 100B | `--porcelain` **0B** | **무손실** — 브랜치·안내 문단은 clean 판정에 불요 |
+| `git status` (dirty) | 241B | `--porcelain` **21B** | **무손실** — 파일명·상태코드 보존, 안내 문단만 제거 |
+| `git diff` (3커밋) | **462,547B** | `--stat` **2,280B** | **규모 판정 용도에 무손실** — 파일 목록·증감량 보존(203배) |
+| `git log` | 본문 전문 | `--oneline` | **손실** — 아래 |
+
+- **`--porcelain`·`--stat`은 채택한다.** `--porcelain`은 clean일 때 0바이트라 *"출력이 비면 clean"*이 판정이고, `--stat`은 전문을 **대체하는 것이 아니라 규모를 먼저 재는** 용도다(임계를 넘으면 파일별로 나눠 읽는다).
+- **`--oneline`은 채택하지 않는다.** 이 repo는 **커밋 본문에 회차 서사와 `Type`·`Build`·`Tests`·`Review`·`Caller-recheck`·`Self-honesty`를 담는데**, F-4가 *"모든 commit 메시지에서 follow-up·TODO·MINOR 언급"*을 스캔하므로 제목만 남기면 **그 스캔이 통째로 무력화된다**. 커밋 이력을 줄여야 하면 `--oneline`이 아니라 **개수(`-n N`)·기간으로** 좁힌다. **이 미채택 사유를 여기 남기는 이유**: 근거가 없으면 다음 회차가 "일관성"을 들어 `--oneline`을 넣는다.
+- **정제를 서브에이전트에 위임하지 않는다.** 출력이 긴 명령은 대개 **판정용**(빌드·테스트·diff)이라 「검증 목적 위임 금지」(`implement-task` 위임 상한 ③)에 걸린다 — *"남에게 물어 얻은 안심은 V-8이 요구하는 근거가 아니다"*. 위임이 값어치를 하는 것은 **플래그로 못 줄이는 대형 문서 조회**이고, 그 경계는 `plan-feature` Step 1의 위임 상한이 규정한다.
+- **적용 범위는 「판정에 쓰는 명령」이다** — 조사·디버깅 중 한 번 보고 버리는 출력에까지 형식을 강제하지 않는다(과잉 방지).
 
 ## 골든 부분 실행의 판정 자격 (예외 조건)
 
