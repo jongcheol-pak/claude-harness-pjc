@@ -437,6 +437,65 @@ if ($gitOk) {
     Assert-Case -Name "dispatch: warn 2개 병합 (external) — exit 0" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
     if (($r.out -match 'COMMIT SECRET') -and ($r.out -match 'EXTERNAL OP')) { $script:results.Add(@{ ok = $true; line = "[PASS] dispatch: warn 2개(secret+external) additionalContext 병합" }) }
     else { $script:results.Add(@{ ok = $false; line = "[FAIL] dispatch: warn 병합 누락 | 출력: $(($r.out -split "`r?`n" | Select-Object -First 2) -join ' / ')" }) }
+
+    # ---- [T1] 스캔 캡 도달 fail-closed (50개 상한) ----
+    # 캡 게이트는 **둘**이고 서로 다른 분기다 — 경로 나열 루프(추적 파일·디렉터리·글롭)와
+    #   untracked 정독 루프. 한쪽만 케이스를 걸면 다른 쪽이 fail-open으로 남아도 전건 green이 된다
+    #   (대장 [2026-08-19] 「차단 범위 확대의 델타 음성 요구가 경계 단위로 강제되지 않는다」).
+    #   그래서 **게이트마다 양성 + 델타 음성 쌍**을 둔다.
+    # 픽스처는 내용이 없어도 된다 — 판정 축이 스캔 개수이지 시크릿 검출이 아니다(ⓒ만 예외).
+
+    # ⓐ 경로 나열 루프: 픽스처가 **추적 파일**이어야 이 게이트를 탄다.
+    #   untracked면 $addTargets로 넘어가 아래 ⓑ 게이트에서만 계수된다(그러면 ⓐ가 ⓑ를 재게 된다).
+    $wcsCapT = Join-Path $work 'wcscaptracked'; New-Item -ItemType Directory $wcsCapT -Force | Out-Null
+    Push-Location $wcsCapT
+    git init -q; git config user.email t@t; git config user.name t
+    $capNames = 1..51 | ForEach-Object { 'f{0:D3}.txt' -f $_ }
+    foreach ($n in $capNames) { 'v=1' | Set-Content $n }
+    git add .; git commit -qm init
+    Pop-Location
+    $cap51 = ($capNames -join ' ')
+    $cap50 = (($capNames | Select-Object -First 50) -join ' ')
+
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 캡 도달(추적 51개 나열) → 차단(T1 ⓐ-양성, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    Assert-Case -Name "commit-secrets: 캡 차단 메시지가 시크릿이 아닌 상한을 사유로 든다(T1 ⓐ)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
+    Assert-Case -Name "commit-secrets: 캡 차단 메시지에 우회 변수 안내(T1 ⓐ)" -R $r -ExpectExit 2 -ExpectContains 'CLAUDE_HARNESS_ALLOW_SECRET'
+
+    # ⓐ-음성 (델타 음성): 50개는 캡 미도달 — 경계가 실제로 발화하되 정상 커밋을 막지 않음을 실증.
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap50 && git commit -m x" } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 추적 50개는 무차단(T1 ⓐ-음성, 경계값)" -R $r -ExpectExit 0
+
+    # ⓐ 우회: ALLOW_SECRET=1이면 통과하되 **경고 문면이 캡 사유**여야 한다 —
+    #   시크릿 검출 0건인데 "민감 정보 감지" 문면을 쓰면 사유를 잘못 가리킨다.
+    $env:CLAUDE_HARNESS_ALLOW_SECRET = '1'
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 캡+ALLOW_SECRET=1 우회(T1, exit 0)" -R $r -ExpectExit 0 -ExpectContains '50개 상한'
+    $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
+
+    # ⓒ 캡 + 고신뢰 시크릿 동시 → **시크릿 차단이 주 메시지**, 캡은 부기.
+    #   캡 판정을 조기 return 앞으로 올리면 이 케이스가 캡 문면으로 반환돼 깨진다(배치 고정).
+    #   시크릿은 첫 50개 안에 있어야 검출된다(51번째는 스캔되지 않는다).
+    Push-Location $wcsCapT; Set-Content $capNames[0] $credLine; Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 캡+시크릿 동시 → 자격증명 차단이 주 메시지(T1 ⓒ)" -R $r -ExpectExit 2 -ExpectContains '자격증명으로 보이는 값'
+    Assert-Case -Name "commit-secrets: 캡+시크릿 동시 → 캡 사실도 함께 알림(T1 ⓒ)" -R $r -ExpectExit 2 -ExpectContains '전부가 아닐 수 있습니다'
+
+    # ⓑ untracked 정독 루프: `git add -A` 경로. 위 ⓐ와 다른 분기라 별도 repo·별도 쌍이 필요하다.
+    $wcsCapU = Join-Path $work 'wcscapuntracked'; New-Item -ItemType Directory $wcsCapU -Force | Out-Null
+    Push-Location $wcsCapU
+    git init -q; git config user.email t@t; git config user.name t
+    'v=1' | Set-Content base.txt; git add .; git commit -qm init
+    foreach ($n in $capNames) { 'v=1' | Set-Content $n }   # 51개 untracked
+    Pop-Location
+    $capUJson = @{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = 'git add -A && git commit -m x' } } | ConvertTo-Json -Compress
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $capUJson
+    Assert-Case -Name "commit-secrets: 캡 도달(untracked 51개, add -A) → 차단(T1 ⓑ-양성, exit 2)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
+
+    # ⓑ-음성 (델타 음성): 하나를 지워 50개로 만들면 캡 미도달.
+    Remove-Item (Join-Path $wcsCapU $capNames[50]) -Force
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' $capUJson
+    Assert-Case -Name "commit-secrets: untracked 50개는 무차단(T1 ⓑ-음성, 경계값)" -R $r -ExpectExit 0
 } else {
     Write-Host "[SKIP] warn-commit-secrets 시나리오 (git 없음)"
 }

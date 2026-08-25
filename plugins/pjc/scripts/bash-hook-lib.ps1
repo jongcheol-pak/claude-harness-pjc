@@ -397,15 +397,23 @@ function Invoke-WarnCommitSecrets {
         #   사고의 실제 경로(신규 프로젝트의 새 README)이자 자율 루프의 표준 커밋 형태다.
         # → 명령에 git add가 있으면 그 대상을 미리 스캔한다 — untracked 파일은 워킹트리 전체 내용,
         #   추적 파일은 diff HEAD 추가 라인만(커밋으로 이력에 새로 들어가는 것은 추가 라인뿐).
+        # `git add`가 없는 명령도 아래 판정문을 지나므로 **블록 밖에서** 초기화한다 — 안쪽에서만
+        #   선언하면 그 경로에서 `$null`이 되어 판정이 표현식 평가 규칙에 기대게 된다.
+        $capHit = $false
         $addMatch = [regex]::Match($cmd, '(?i)git\s+((-c|-C)\s+\S+\s+)*add\s+([^&;|\r\n]*)')
         if ($addMatch.Success) {
             $addArgs = $addMatch.Groups[3].Value.Trim()
             $addTargets = @()
             # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만
             #   걸려 있어, 경로를 대량 나열하면 파일당 git 서브프로세스 2회가 무제한으로 돌았다.
-            # 캡에 걸리면 **그 사실을 stderr로 알린다** — 초과분은 스캔에서 빠지므로(미탐)
-            #   조용히 줄어들면 "검사했는데 없다"와 "검사하지 않았다"가 구분되지 않는다.
-            #   `$capNotified`는 두 루프가 각각 한 번씩 알리지 않도록 공유한다.
+            # 캡에 걸리면 **차단한다(fail-closed)** — 초과분을 검사하지 못한 것은 곧 미탐이고,
+            #   시크릿은 커밋되면 이력에서 회수할 수 없다. 아래 `$gradeUnknown`(등급 판정 함수
+            #   로드 실패)과 같은 논리다 — **판정 불가는 fail-closed로 간다.** 통과시키면
+            #   "검사했는데 없다"와 "검사하지 않았다"가 구분되지 않는다.
+            #   우회는 시크릿 차단과 같은 `CLAUDE_HARNESS_ALLOW_SECRET=1`(새 변수를 만들지 않는다).
+            # 두 플래그는 뜻이 다르다: `$capHit`은 **판정 신호**(차단 여부), `$capNotified`는
+            #   **통지 중복 억제**(두 루프가 각각 한 번씩 stderr에 쓰지 않게). 겸용하면 한쪽만
+            #   바뀌어도 조용히 어긋난다.
             $scanned = 0
             $capNotified = $false
             if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
@@ -421,8 +429,9 @@ function Invoke-WarnCommitSecrets {
                     ForEach-Object { $_.Trim('"', "'") })
                 foreach ($rt in $rawTargets) {
                     if ($scanned -ge 50) {
+                        $capHit = $true
                         if (-not $capNotified) {
-                            [Console]::Error.WriteLine('[warn-commit-secrets] 스캔 대상 50개 상한 도달 — 초과분은 검사하지 않았다(--cached/diff HEAD 경로는 그대로 작동).')
+                            [Console]::Error.WriteLine('[warn-commit-secrets] 스캔 대상 50개 상한 도달 (경로 나열) — 초과분을 검사하지 못해 커밋을 차단합니다.')
                             $capNotified = $true
                         }
                         break
@@ -447,12 +456,14 @@ function Invoke-WarnCommitSecrets {
             }
 
             # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다.
-            #   상한 초과분은 스캔하지 않으므로 미탐이 될 수 있으나, 커밋 직전 신규 파일이 50개를
-            #   넘는 경우는 드물고 그때도 --cached/diff HEAD 경로는 그대로 작동한다.
+            #   상한을 유지하는 대신 **초과 시 차단**한다(위 `$capHit` 주석) — 스캔하지 못한 것을
+            #   통과시키면 그것이 곧 미탐이기 때문이다. 실측상 이 경계에 닿는 커밋은 드물어
+            #   오차단 비용이 낮다(최근 200커밋의 변경 파일 수 최대 17개).
             foreach ($t in $addTargets) {
                 if ($scanned -ge 50) {
+                    $capHit = $true
                     if (-not $capNotified) {
-                        [Console]::Error.WriteLine('[warn-commit-secrets] 스캔 대상 50개 상한 도달 — 초과분은 검사하지 않았다(--cached/diff HEAD 경로는 그대로 작동).')
+                        [Console]::Error.WriteLine('[warn-commit-secrets] 스캔 대상 50개 상한 도달 (신규 파일 정독) — 초과분을 검사하지 못해 커밋을 차단합니다.')
                         $capNotified = $true
                     }
                     break
@@ -484,7 +495,10 @@ function Invoke-WarnCommitSecrets {
             }
         }
 
-        if ($hits.Count -eq 0 -and $envFiles.Count -eq 0) { return New-HookResult }
+        # `-and -not $capHit` — 캡에 걸렸으면 **검출 0건이어도 여기서 빠져나가면 안 된다**(그것이
+        #   곧 "검사하지 못했는데 통과"다). 캡 차단은 아래 시크릿 등급 판정 **뒤**에 두어,
+        #   시크릿이 함께 검출된 경우에는 그쪽 메시지가 주가 되고 캡은 부기로 붙는다.
+        if ($hits.Count -eq 0 -and $envFiles.Count -eq 0 -and -not $capHit) { return New-HookResult }
 
         # 고신뢰 라벨(개인키·DB 연결 문자열·DB/서비스 URI 인증정보·자격증명 쌍)은 오탐 여지가 거의 없어
         #   커밋을 차단한다(v1.119.0). 나머지 라벨·.env 스테이징은 종전대로 경고만 — 이 둘은
@@ -518,6 +532,12 @@ function Invoke-WarnCommitSecrets {
                 $lines.Add("")
                 $lines.Add("  ! 시크릿 등급 판정 함수를 불러오지 못해 검출분을 전부 차단했습니다(secret-patterns.ps1 확인 필요).")
             }
+            # 캡에도 걸렸으면 그 사실을 부기한다 — 검출된 것 말고도 **못 본 파일이 있다**는 정보가
+            #   사용자 판단에 필요하다(검출분만 지우면 통과할 것으로 오인하지 않게).
+            if ($capHit) {
+                $lines.Add("")
+                $lines.Add("  ! 스캔 대상 50개 상한에도 걸려 일부 파일은 아예 검사하지 못했습니다 — 위 목록이 전부가 아닐 수 있습니다.")
+            }
             $lines.Add("")
             $lines.Add("공개 저장소에 한 번 올라가면 커밋 이력에 남아 회수할 수 없습니다.")
             $lines.Add("")
@@ -528,6 +548,39 @@ function Invoke-WarnCommitSecrets {
             $lines.Add("     (Claude Code 시작 전 터미널에서): `$env:CLAUDE_HARNESS_ALLOW_SECRET = '1'")
             $lines.Add("     Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다.")
             return New-HookResult -Block $true -Stderr $lines
+        }
+
+        # 캡 차단 (fail-closed) — 시크릿 등급 판정 **뒤**에 둔다. 위 블록이 먼저 return하므로
+        #   시크릿이 함께 검출된 경우에는 그쪽이 주 메시지이고 캡은 거기 부기된다.
+        #   여기 오는 것은 "검출은 0건인데 전수 검사에 실패한" 경우다.
+        if ($capHit -and -not $allowSecret) {
+            $lines = New-Object System.Collections.Generic.List[string]
+            $lines.Add("[HARNESS] BLOCKED: 커밋될 파일이 많아 시크릿 검사를 끝까지 하지 못했습니다.")
+            $lines.Add("")
+            $lines.Add("  - 스캔 대상 50개 상한에 도달해 초과분은 검사하지 않았습니다(검출된 시크릿은 없음).")
+            # .env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로 여기 부기하지
+            #   않으면 그 목록이 사라진다(정보 소실 방지).
+            foreach ($e in $envFiles) { $lines.Add("  - .env 파일 스테이징: $e (시크릿 파일이 커밋에 포함되려 합니다)") }
+            $lines.Add("")
+            $lines.Add("검사하지 못한 파일에 자격증명이 있어도 통과하므로 차단합니다 — 커밋되면 이력에서 회수할 수 없습니다.")
+            $lines.Add("")
+            $lines.Add("해결 방법:")
+            $lines.Add("  1) 커밋을 나눠 한 번에 50개 이하로 스테이징한 뒤 다시 commit")
+            $lines.Add("  2) 나눌 수 없으면 — 사용자에게 보고하고 멈춥니다. 우회는 사용자만 설정합니다")
+            $lines.Add("     (Claude Code 시작 전 터미널에서): `$env:CLAUDE_HARNESS_ALLOW_SECRET = '1'")
+            $lines.Add("     Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다.")
+            return New-HookResult -Block $true -Stderr $lines
+        }
+
+        # 캡에 걸렸는데 우회가 켜져 있으면 **캡 사유로** 알린다 — 아래 시크릿 경고 문면을 쓰면
+        #   검출 0건일 때 항목 없는 "민감 정보 감지" 경고가 나가 사유를 잘못 가리킨다.
+        if ($capHit -and $hits.Count -eq 0) {
+            $lines = New-Object System.Collections.Generic.List[string]
+            $lines.Add("[COMMIT SECRET WARNING] 커밋될 파일이 많아 시크릿 검사를 끝까지 하지 못했습니다(50개 상한).")
+            foreach ($e in $envFiles) { $lines.Add("  - .env 파일 스테이징: $e (시크릿 파일이 커밋에 포함되려 합니다)") }
+            $lines.Add("  * CLAUDE_HARNESS_ALLOW_SECRET=1 — 차단이 우회된 상태입니다.")
+            $msg = ($lines -join "`n")
+            return New-HookResult -Block $false -Stderr @($msg) -Context $msg
         }
 
         $lines = New-Object System.Collections.Generic.List[string]
