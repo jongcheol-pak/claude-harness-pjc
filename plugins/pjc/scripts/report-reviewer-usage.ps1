@@ -16,6 +16,8 @@
 
 param(
     [int]$Days = 0,        # 0 = 전체 이력, >0 = 커밋 날짜 기준 최근 N일만
+    # ⚠ `-Since`는 git의 `--since`(그 시점 **이후**)와 **방향이 반대**다 — 여기서는 `git log <sha>`,
+    #   즉 **그 커밋과 그 조상**만 본다(재현용 기준점 고정). 이름이 헷갈릴 수 있어 명시한다.
     [string]$Since         # 지정 시 그 커밋까지만 집계 (재현용 — 기준 SHA 고정)
 )
 
@@ -77,12 +79,16 @@ if ($sample -eq 0) {
     exit 0
 }
 
-$failRate = [math]::Round(($failPath.Count / $sample) * 100, 1)
+# 실패율의 분자는 **커밋 단위 유니크**다 — 아래 열거도 유니크이므로 분모·분자·열거가 같은 기준이라야
+#   "실패경로 7인데 SHA는 6개"처럼 수치와 목록이 어긋나지 않는다(한 커밋 본문에 trailer 줄이
+#   둘 이상일 때 실제로 갈린다).
+$failUniq = @($failPath | Select-Object -Unique)
+$failRate = [math]::Round(($failUniq.Count / $sample) * 100, 1)
 Write-Host "표본(trailer 기재)       : $sample"
 Write-Host "  PASS                   : $pass"
 Write-Host "  ESCALATE               : $escalate"
 Write-Host "  미분류                 : $unclassified  (판정문 없이 끝난 것·아직 모르는 표기)"
-Write-Host "실패경로(직교 축)        : $($failPath.Count)  ($failRate%)"
+Write-Host "실패경로(직교 축)        : $($failUniq.Count)  ($failRate%)"
 Write-Host ''
 
 # 자기검사 — 위 판정이 **독립**이라 한 줄이 PASS와 ESCALATE에 동시에 걸릴 수 있고, 그때 합이
@@ -105,9 +111,9 @@ if ($unclassSha.Count) {
     Write-Host ''
 }
 
-if ($failPath.Count) {
+if ($failUniq.Count) {
     Write-Host '실패경로 커밋 (원문은 git show 로 확인):'
-    foreach ($s in ($failPath | Select-Object -Unique)) { Write-Host "  - $s" }
+    foreach ($s in $failUniq) { Write-Host "  - $s" }
     Write-Host ''
 }
 

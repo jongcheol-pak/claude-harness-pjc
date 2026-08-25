@@ -268,7 +268,7 @@ pwsh -NoProfile -File plugins/pjc/scripts/report-hook-events.ps1 -Days 30  # 최
 ```powershell
 pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1               # 이력 전체
 pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1 -Days 30      # 최근 30일만
-pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1 -Since <sha>  # 기준 시점 고정(재현용)
+pwsh -NoProfile -File plugins/pjc/scripts/report-reviewer-usage.ps1 -Since <sha>  # 그 커밋까지만(재현용 — git --since와 방향 반대)
 ```
 
 ---
