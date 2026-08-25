@@ -481,6 +481,26 @@ if ($gitOk) {
     Assert-Case -Name "commit-secrets: 캡+시크릿 동시 → 자격증명 차단이 주 메시지(T1 ⓒ)" -R $r -ExpectExit 2 -ExpectContains '자격증명으로 보이는 값'
     Assert-Case -Name "commit-secrets: 캡+시크릿 동시 → 캡 사실도 함께 알림(T1 ⓒ)" -R $r -ExpectExit 2 -ExpectContains '전부가 아닐 수 있습니다'
 
+    # ⓓ 캡 + 고신뢰 시크릿 + 우회(ALLOW_SECRET=1) → 두 차단 블록을 모두 지나쳐 **최하단 경고 블록**으로
+    #   떨어진다. 그때도 캡 부기가 나가야 한다 — 없으면 사용자가 "나열된 것만 지우면 통과"로 오인하는데
+    #   캡 밖의 파일은 애초에 검사되지 않았다(quality 1R M1).
+    $env:CLAUDE_HARNESS_ALLOW_SECRET = '1'
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 캡+시크릿+우회 → 경고에도 캡 부기(T1 ⓓ, exit 0)" -R $r -ExpectExit 0 -ExpectContains '전부가 아닐 수 있습니다'
+    $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
+
+    # ⓔ 캡 단독 차단 메시지는 **저신뢰 검출분을 삼키지 않는다** — 고신뢰가 아닐 뿐 감지된 것이 있으면
+    #   그 목록이 나가야 하고, "검출된 시크릿은 없음"을 고정 문구로 쓰면 사실과 다르다(spec 1R M1).
+    #   IP는 저신뢰(경고) 라벨이라 highConf에 들어가지 않아 캡 차단 블록으로 떨어진다.
+    Push-Location $wcsCapT
+    git checkout -q -- $capNames[0]                        # ⓒ가 넣은 자격증명 되돌리기(고신뢰 제거)
+    Set-Content $capNames[1] ('host = 10.' + '1.2.3')      # 저신뢰 IP 라벨
+    Pop-Location
+    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 캡 차단이 저신뢰 검출분을 삼키지 않는다(T1 ⓔ, exit 2)" -R $r -ExpectExit 2 -ExpectContains '확인 필요'
+    if ($r.out -match '검출된 시크릿은 없') { $script:results.Add(@{ ok = $false; line = "[FAIL] commit-secrets: 저신뢰 검출이 있는데 '없음'으로 표기됨(T1 ⓔ)" }) }
+    else { $script:results.Add(@{ ok = $true; line = "[PASS] commit-secrets: 저신뢰 검출 시 '없음' 고정 문구 미사용(T1 ⓔ)" }) }
+
     # ⓑ untracked 정독 루프: `git add -A` 경로. 위 ⓐ와 다른 분기라 별도 repo·별도 쌍이 필요하다.
     $wcsCapU = Join-Path $work 'wcscapuntracked'; New-Item -ItemType Directory $wcsCapU -Force | Out-Null
     Push-Location $wcsCapU

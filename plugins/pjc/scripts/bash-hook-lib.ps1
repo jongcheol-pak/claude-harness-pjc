@@ -557,9 +557,17 @@ function Invoke-WarnCommitSecrets {
             $lines = New-Object System.Collections.Generic.List[string]
             $lines.Add("[HARNESS] BLOCKED: 커밋될 파일이 많아 시크릿 검사를 끝까지 하지 못했습니다.")
             $lines.Add("")
-            $lines.Add("  - 스캔 대상 50개 상한에 도달해 초과분은 검사하지 않았습니다(검출된 시크릿은 없음).")
-            # .env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로 여기 부기하지
-            #   않으면 그 목록이 사라진다(정보 소실 방지).
+            $lines.Add("  - 스캔 대상 50개 상한에 도달해 초과분은 검사하지 않았습니다.")
+            # 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로
+            #   여기 부기하지 않으면 그 목록이 사라진다(정보 소실 방지).
+            # **"검출된 시크릿은 없음"을 고정 문구로 쓰지 않는다** — 고신뢰가 아닐 뿐 저신뢰 매치가
+            #   있을 수 있고(API 키·IP 등), 그때 "없음"이라 적으면 사실과 다르다.
+            if ($hits.Count -eq 0) {
+                $lines.Add("  - 검사한 범위에서 검출된 시크릿은 없습니다.")
+            } else {
+                $lines.Add("  - 검사한 범위에서 아래가 감지됐습니다(차단 등급은 아니지만 확인 필요):")
+                foreach ($h in ($hits | Select-Object -Unique)) { $lines.Add("      - $h") }
+            }
             foreach ($e in $envFiles) { $lines.Add("  - .env 파일 스테이징: $e (시크릿 파일이 커밋에 포함되려 합니다)") }
             $lines.Add("")
             $lines.Add("검사하지 못한 파일에 자격증명이 있어도 통과하므로 차단합니다 — 커밋되면 이력에서 회수할 수 없습니다.")
@@ -589,6 +597,12 @@ function Invoke-WarnCommitSecrets {
         foreach ($e in $envFiles) { $lines.Add("  - .env 파일 스테이징: $e (시크릿 파일이 커밋에 포함되려 합니다)") }
         if ($allowSecret -and $highConf.Count -gt 0) {
             $lines.Add("  * CLAUDE_HARNESS_ALLOW_SECRET=1 — 자격증명 차단이 우회된 상태입니다.")
+        }
+        # 캡 부기는 **이 경로에도** 필요하다 — `$hits`가 있고 우회가 켜져 있으면 위 두 차단 블록을
+        #   모두 지나쳐 여기로 떨어지는데, 그때도 못 본 파일이 있다는 사실은 그대로다.
+        #   부기가 없으면 사용자는 나열된 것만 지우면 안전하다고 오인한다.
+        if ($capHit) {
+            $lines.Add("  ! 스캔 대상 50개 상한에도 걸려 일부 파일은 아예 검사하지 못했습니다 — 위 목록이 전부가 아닐 수 있습니다.")
         }
         $lines.Add("")
         $lines.Add("실제 값을 커밋하지 말고, .env(gitignore)로 분리하거나 스테이징에서 제외(git restore --staged <파일>)하세요.")
