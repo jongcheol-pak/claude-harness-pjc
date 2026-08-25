@@ -1439,6 +1439,20 @@
       "command": "rm -rf /",
       "expect_exit": 0,
       "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "위험값 대입: 드라이브 루트 백슬래시 C:\\ (v1.199.0)",
+      "command": "X=C:\\; Remove-Item -Recurse -Force $X",
+      "expect_exit": 0,
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "델타 음성: 드라이브 하위 경로 C:\\Users\\me\\proj (v1.199.0)",
+      "command": "X=C:\\Users\\me\\proj; Remove-Item -Recurse -Force $X",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
     }
   ]
 }
