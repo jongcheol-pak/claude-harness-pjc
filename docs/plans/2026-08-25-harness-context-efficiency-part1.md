@@ -188,7 +188,7 @@
   - **Halt Forecast**: 없음.
   - **Depends on**: T1 (대장 크기 실측값이 확정된 뒤 근거 예시로 인용)
 
-- [ ] **T7. `plan-reviewer`에 task 간 상호 간섭 검증 항목을 추가한다** (Type C)
+- [x] **T7. `plan-reviewer`에 task 간 상호 간섭 검증 항목을 추가한다** (Type C)
   - **Files**: `plugins/pjc/agents/plan-reviewer.md` · `plugins/pjc/skills/plan-feature/SKILL.md`(Step 5 의존 관계 표기 + 통과 체크리스트) · `plugins/pjc/skills/plan-feature/references/plan-template.md`(`Depends on` 필드 설명) · `docs/harness-conventions.md`(예산 표 + 「메인 조합」 수치)
   - **Design**: ① **배치** — `plan-reviewer.md`의 검토 체크리스트에 **항목 18**로 추가(기존 17개 뒤). ② **신규 심볼과 책임** — 없음. ③ **의존 방향** — 항목 18이 `Depends on` 필드를 입력으로 쓰고, Step 5는 그 필드를 채우는 쪽이다. ④ **비추상화 선언** — task 의존 그래프를 기계 검사로 만들지 않는다(plan 형식에 의존하게 되고 형식이 바뀌면 조용히 깨진다 — `session-context.ps1`이 Phase 판정을 하지 않는 것과 같은 이유).
   - **Acceptance**:
@@ -311,6 +311,10 @@
   - **세 보호를 같은 자리에 못박았다** — ⓐ 판정 위임은 여전히 금지 ⓑ 위임 금지 가드(P-2·P-3·V-7)는 확장 대상 아님(대상 크기 무관, 메인 직접) ⓒ 「검증 목적 위임 금지」와의 경계(*"내가 한 게 맞는지 봐 달라"*는 판정 위임 vs *"어디에 흔적이 있는가"*는 위치 찾기).
   - 리뷰 2종이 **cross-file 참조 실존을 전건 확인**했다 — `plan-feature/SKILL.md:184·186`·`implement-task/SKILL.md:219·223·242`. 문서가 곧 실행 규칙인 레포에서 죽은 포인터는 규정을 무력화한다.
   - **수치 임계를 넣지 않은 것은 설계 선택**(Design Edge ⓑ — *"수치로 박으면 파일이 자라며 낡는다"*). quality m1이 판정 일관성 리스크를 지적했으나 **판정 유보**로 배출했고 등재 게이트 ⓐ에 따라 대장에 올리지 않는다.
+- **T7 완료** — `plan-reviewer` **항목 18**(task 간 상호 간섭) 신설 + 발동 지점 3곳(Type-aware 표·검토 계층 심화·예산 서두 17→18개) + `plan-feature` Step 5·통과 체크리스트·`plan-template` `Depends on` 주석.
+  - **이 task가 자기 자신을 증명했다** — 항목 18을 신설한 diff 자신이 **항목 18이 막으려는 패턴을 재현**했다. 「메인 조합」 수치(`harness-conventions.md:145~146`)를 T3이 확정했는데 T4·T5·T6이 다시 깨뜨렸고, T7이 최종 확정해야 하는데 *"review-fix에서 하겠다"*고 미뤘다. **두 리뷰어가 독립적으로 같은 지점을 잡았다**(spec은 acceptance 위반 BLOCKER, quality는 stale drift MAJOR). 그 줄 자신이 *"표를 갱신하는 task가 이 줄도 함께 고친다(v1.186.0 전까지 실제로 어긋나 있었다)"*고 경고하고 있었고, `check-harness-consistency.py`는 **기계 대조 대상이 아니라 exit 0을 냈다**.
+  - **순서 판정도 리뷰가 정정했다** — *"review-fix로 미루는 것은 부적절하다. 입력이 전부 갖춰져 있고, `Depends on: T3·T5·T6`을 이 순서로 설계한 이유 자체가 T7이 pre-review 전에 최종값을 확정하는 것이다."* 그 의존을 건 사람이 나인데 목적을 스스로 미뤘다. 네 수치를 즉시 확정했다 — `164,596B`(105,863+58,733) · `plan-feature 96,072B` · `AGENTS.md +8,790B`.
+  - **절차 실수 1건**: 재리뷰 요청 시 spec에는 `0c28438`, quality에는 `e1d8fb2`를 전달해 **HEAD가 갈렸다**. spec 리뷰어가 스스로 두 커밋을 대조해 *"자기정합 개선이며 0c28438의 값을 무효화하지 않는다"*를 확인했다. **교훈: 재리뷰 요청 전에 HEAD를 한 번 고정하고 두 리뷰어에 같은 SHA를 준다.**
 ## Retry Ledger
 
 - **T3 · `[CONFLICT]` 1회** — 지점: `pjc-systematic-debugging/SKILL.md`의 9,000B 경계 이동으로 무엇이 유실됐는가. spec 2R M2(*"위키 참조 불릿이 새로 유실"*) ↔ quality 2R(*"그 줄은 BASE부터 예산 밖 — 1R 자기 정정"*). **메인 판정: quality 채택** — 근거는 `check-harness-consistency.py`의 `measure()`가 `edge = i + 1`(초과를 만든 행)이라 경계 행이 예산 밖 첫 행이라는 것, 그리고 안쪽 집합 차분 실측(새 유실 1줄). 같은 지점 2회가 아니므로 Halt 대상 아님.
