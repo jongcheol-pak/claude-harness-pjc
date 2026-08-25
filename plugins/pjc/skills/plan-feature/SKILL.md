@@ -296,7 +296,7 @@ plan-feature는 "여러 곳/여러 파일" 트리거로 발동되지만, **파�
 - 각 작업은 **독립 검증 가능 + 주 파일 5개 이내** 규모를 기준으로 나눈다(시간이 아니라 구조로 판단 — LLM 실행은 벽시계 시간이 일정치 않으므로 "몇 시간"보다 "독립 검증되는가·주 파일 몇 개인가"가 실질 기준이다). 주 파일이 5개를 크게 넘거나 독립 검증이 안 되면 task를 쪼갠다.
 - **각 task는 `T1`, `T2`, ... 형식으로 번호를 매긴다.** "Phase 1", "단계 1", "Step 1" 등 다른 명칭으로 작업을 나누지 않는다 — implement-task의 자율 루프가 `T<N>` 형식을 전제하며, "Phase"는 pjc 내부 단계(Phase P/I/V/D·F·G)와 혼동된다. 작업을 큰 묶음으로 그룹화하고 싶으면 task 번호는 유지한 채 주석으로만 묶는다 (예: `T1~T3 (데이터 계층)`).
 - 각 작업마다 acceptance criterion 1줄 명시
-- 의존 관계 표시
+- **의존 관계 표시 — 순서 의존만이 아니라 「전제 의존」까지 적는다.** ⓐ *이 task가 앞 task의 산출물을 전제하는가*(전제 의존) ⓑ *이 task의 변경이 뒤 task의 Files·acceptance를 무효화하는가*(역방향)를 함께 본다. **같은 자원을 여러 task가 갱신하면 그 사슬을 적는다** — 계수 앵커·기준선 표·버전 문자열처럼 **절대값을 기록하는 자리**는 각 task가 「자기 몫만」 반영해야 하는데, 어느 task가 어느 값에서 시작하는지 적지 않으면 이중 가산이나 덮어쓰기가 난다. (짝은 `plan-reviewer` **항목 18**이다 — 그쪽이 사후 검사하고 여기가 사전 기재한다.)
 - **각 task에 Type 분류 명시 (의무)** — implement-task가 fast-path 결정에 사용
 
 #### Task Type 분류 (필수)
@@ -502,6 +502,7 @@ ExitPlanMode로 plan.md 제시. 승인 시 `implement-task` 호출. **제시 전
 - [ ] 코드 작성 중 사용자에게 물을 결정 분기 0
 - [ ] **각 task가 `- [ ] T<N>. …` 체크박스 목록 항목으로 작성됨** (`### T1 …` 헤더 방식 아님 — 체크박스가 없으면 `require-task-checkbox` hook이 찾을 것을 못 찾아 **fail-open으로 통과**하고 Phase D의 구조적 게이트가 조용히 꺼진다. 형식 상세는 `references/plan-template.md` `## Tasks` 주석)
 - [ ] 각 task에 Type(A/B/C/D) 분류 명시
+- [ ] **task가 2개 이상이면 `Depends on`에 순서·전제 의존이 적혀 있고, 같은 자원을 갱신하는 task 사이의 값 사슬이 명시됨** (Step 5 「의존 관계 표시」 — `plan-reviewer` 항목 18의 짝. 1 task plan은 skip)
 - [ ] Design 필드 작성됨 — Type D 전 task + 신규 심볼 도입 Type C task (4요소, Step 5 Design 필드 규정)
 - [ ] 각 task에 Edge Cases 명시 (Type 게이트 6.5-A — Type A skip, B 빈/null·경계값, C/D 해당 카테고리)
 - [ ] 각 task에 Halt Forecast 명시 (Type 게이트 6.5-B — Type C/D 필수, A/B는 파괴적·의존성·외부 유발 시만)
