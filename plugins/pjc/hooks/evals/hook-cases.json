@@ -1538,6 +1538,20 @@
       "command": "X=/ ; rm -rf ${X}",
       "expect_exit": 0,
       "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "[델타 음성] 명령치환 대입 X=$(echo /) — 경고도 놓친다(대입값에 공백이 있어 대입으로 기록되지 않는다). 같은 명령의 [알려진 미탐] 케이스가 주장하는 경고 측 사실을 고정한다 (v1.199.0)",
+      "command": "X=$(echo /); rm -rf $X",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "pre-bash-dispatch.ps1",
+      "name": "[델타 음성] 변수 2단 전달 Y=$X — 경고는 대입 1단만 보므로 놓친다. 같은 명령의 [알려진 미탐] 케이스가 주장하는 경고 측 사실을 고정한다 (v1.199.0)",
+      "command": "X=/; Y=$X; rm -rf $Y",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
     }
   ]
 }
