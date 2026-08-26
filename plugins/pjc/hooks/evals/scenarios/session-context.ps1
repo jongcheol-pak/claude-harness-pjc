@@ -298,20 +298,29 @@ if (Test-HookSelected @('session-context')) {
     # **픽스처는 git 레포 하나로 전부 덮는다** — 31커밋을 한 번 만들어 두고 허브의
     #   synced_commit 을 HEAD~30 / HEAD~29 / HEAD 로 바꾸면 30 / 29 / 0 커밋 뒤처짐이 된다.
     #   케이스마다 레포를 새로 파면 골든 러너에 git 프로세스가 수십 회 더 붙는다.
+    # **git 게이트** — 이 묶음은 실제 레포 픽스처를 만들므로 git 이 없으면 통째로 건너뛴다.
+    #   `& git` 은 명령을 못 찾으면 종료 오류를 던지는데 러너의 시나리오 루프에는 catch 가 없어
+    #   그 예외가 스위트 전체를 중단시킨다(같은 이유로 `post-write-checks.ps1:138,181` 이
+    #   git 시나리오를 이 게이트로 감싼다. $gitOk 는 `eval-common.ps1:98` 의 top-level 정의라
+    #   필터 조합과 무관하게 항상 판정된다).
+    if ($gitOk) {
     $scRepo = Join-Path $work ("sc-wiki-repo-" + $suffix)
     New-Item -ItemType Directory $scRepo -Force | Out-Null
     # 격리 홈($isoV)에는 .gitconfig 가 없어 identity 를 인라인으로 준다 — 없으면 커밋이 선다
     #   (`scenarios/post-write-checks.ps1` 이 같은 형태를 쓴다).
+    # Pop-Location 을 finally 에 두는 이유: 중간에서 터지면 위치 스택이 어긋난 채 남아
+    #   뒤 시나리오가 엉뚱한 폴더에서 돈다.
     Push-Location $scRepo
-    & git init -q 2>$null
-    & git config user.email 't@t' 2>$null
-    & git config user.name 't' 2>$null
-    # 파일을 쓰지 않고 빈 커밋으로 수만 채운다 — 이 축이 재는 것은 커밋 «수» 뿐이다.
-    for ($i = 1; $i -le 31; $i++) { & git commit -q --allow-empty -m "c$i" 2>$null }
-    $scHeadSha    = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
-    $scSha30      = (& git rev-parse 'HEAD~30' 2>$null | Select-Object -First 1)
-    $scSha29      = (& git rev-parse 'HEAD~29' 2>$null | Select-Object -First 1)
-    Pop-Location
+    try {
+        & git init -q 2>$null
+        & git config user.email 't@t' 2>$null
+        & git config user.name 't' 2>$null
+        # 파일을 쓰지 않고 빈 커밋으로 수만 채운다 — 이 축이 재는 것은 커밋 «수» 뿐이다.
+        for ($i = 1; $i -le 31; $i++) { & git commit -q --allow-empty -m "c$i" 2>$null }
+        $scHeadSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
+        $scSha30   = (& git rev-parse 'HEAD~30' 2>$null | Select-Object -First 1)
+        $scSha29   = (& git rev-parse 'HEAD~29' 2>$null | Select-Object -First 1)
+    } finally { Pop-Location }
     # 게이팅 충족용 — 삽입은 `if ($vaultLine -and ($lines.Count -gt $cwdBaseCount))` 안에서만
     #   일어나므로, plan·AGENTS 가 없는 cwd 에서는 양성이 전건 FAIL 하고 음성은 공허하게 통과한다.
     #   이 마커는 SC36 의 순서 비교 대상이기도 하다.
@@ -374,8 +383,11 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: K-DRIFT 축 단독 발화 (SC33)" -R $r -ExpectExit 0 -ExpectContains '미반영 발견 1건'
     Assert-Case -Name "session-context: 잔량 단독이면 커밋 수치 미표기 (SC33b)" -R $r -ExpectExit 0 -ExpectNotContains '커밋 미반영'
 
-    # SC33c (델타 음성 — 3축 전부 미달): 커밋 0 · 13일 · 잔량 0 → 미발화.
-    #   **K-DRIFT 0 조건을 픽스처에 명시하지 않으면** 앞 케이스가 남긴 잔량 때문에 오탐한다.
+    # SC33c (델타 음성 — 3축 전부 미달): 커밋 0 · updated 오늘 · 잔량 0 → 미발화.
+    #   **세 축을 전부 이 자리에서 다시 세운다** — 앞 케이스가 남긴 상태(13일·잔량 1건)를
+    #   물려받으면 이 케이스가 무엇을 눌러 둔 것인지 읽는 쪽에서 알 수 없고, 경계값(13일)과
+    #   중복 커버리지가 되어 「임계에서 멀리 떨어진 값」이 검증되지 않는다.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadSha -DaysAgo 0
     Remove-Item -Force $scPendPath -ErrorAction SilentlyContinue
     $r = Invoke-ScRepoHook
     Assert-Case -Name "session-context: 3축 전부 미달 미발화 (SC33c)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
@@ -421,12 +433,13 @@ if (Test-HookSelected @('session-context')) {
     '{ "name": "pjc" }' | Set-Content -Encoding UTF8 (Join-Path $scHarnRepo 'plugins/pjc/.claude-plugin/plugin.json')
     @('# Guide', 'SC_STALE_HARNESS_MARKER') | Set-Content -Encoding UTF8 (Join-Path $scHarnRepo 'AGENTS.md')
     Push-Location $scHarnRepo
-    & git init -q 2>$null
-    & git config user.email 't@t' 2>$null
-    & git config user.name 't' 2>$null
-    & git commit -q --allow-empty -m 'base' 2>$null
-    $scHarnSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
-    Pop-Location
+    try {
+        & git init -q 2>$null
+        & git config user.email 't@t' 2>$null
+        & git config user.name 't' 2>$null
+        & git commit -q --allow-empty -m 'base' 2>$null
+        $scHarnSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
+    } finally { Pop-Location }
     # 큐 라인이 뜨려면 skill-feedback.md 가 있어야 한다(SC25 가 지운 뒤라 다시 만든다).
     "- [2026-07-22] [SKILL-IMPROVE] implement-task: 요지." | Set-Content -Encoding UTF8 (Join-Path $isoVault 'skill-feedback.md')
     Write-ScHub -Path (Join-Path $scHubDir 'scharn.md') -RepoPath $scHarnRepo -Sha $scHarnSha -DaysAgo 20 -Project 'SCHarn'
@@ -441,6 +454,7 @@ if (Test-HookSelected @('session-context')) {
     }
 
     Remove-Item -Recurse -Force $scRepo, $scHarnRepo -ErrorAction SilentlyContinue
+    }   # ---- git 게이트 끝 (SC32~SC36b)
 
     Remove-Item -Recurse -Force $isoV, $isoV2, $scHarn -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
