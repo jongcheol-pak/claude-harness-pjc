@@ -320,7 +320,11 @@ if (Test-HookSelected @('session-context')) {
         $scHeadSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
         $scSha30   = (& git rev-parse 'HEAD~30' 2>$null | Select-Object -First 1)
         $scSha29   = (& git rev-parse 'HEAD~29' 2>$null | Select-Object -First 1)
+        # SC37~SC37c 용 origin — 네트워크에 닿지 않는 `.invalid` TLD 를 쓴다(픽스처가 실수로
+        #   fetch 를 유발하지 않게). hook 은 로컬 config 만 읽으므로 실재할 필요가 없다.
+        & git remote add origin 'https://example.invalid/scwiki/repo.git' 2>$null
     } finally { Pop-Location }
+    $scRepoUrl = 'https://example.invalid/scwiki/repo.git'
     # 게이팅 충족용 — 삽입은 `if ($vaultLine -and ($lines.Count -gt $cwdBaseCount))` 안에서만
     #   일어나므로, plan·AGENTS 가 없는 cwd 에서는 양성이 전건 FAIL 하고 음성은 공허하게 통과한다.
     #   이 마커는 SC36 의 순서 비교 대상이기도 하다.
@@ -333,11 +337,14 @@ if (Test-HookSelected @('session-context')) {
 
     # 허브를 쓰는 지역 헬퍼 — 아래에서 아홉 번 넘게 부른다(값만 바뀌고 형태는 같다).
     #   $Sha 가 빈 문자열이면 synced_commit 줄 자체를 빼 「필드 부재」 상태를 만든다.
+    #   $RepoUrl 이 빈 문자열이면 repo_url 줄 자체를 빼 「구형 허브」(URL 축 이전) 상태를 만든다 —
+    #   SC32~SC36b 가 전부 그 상태이며, 그래서 그 케이스들은 URL 축이 아니라 **경로 축**으로 통과한다.
     function Write-ScHub {
-        param([string]$Path, [string]$RepoPath, [string]$Sha, [int]$DaysAgo, [string]$Project = 'SCWiki')
+        param([string]$Path, [string]$RepoPath, [string]$Sha, [int]$DaysAgo, [string]$Project = 'SCWiki', [string]$RepoUrl = '')
         $upd = (Get-Date).AddDays(-$DaysAgo).ToString('yyyy-MM-dd')
         $lines = @('---', 'type: project', "project: $Project", "updated: $upd")
         if ($Sha) { $lines += "synced_commit: $Sha" }
+        if ($RepoUrl) { $lines += "repo_url: `"$RepoUrl`"" }
         $lines += @('---', '', "# $Project", '', '## 레포 정보', ('- **경로**: `' + ($RepoPath -replace '\\', '/') + '`'))
         $lines | Set-Content -Encoding UTF8 $Path
     }
@@ -456,8 +463,63 @@ if (Test-HookSelected @('session-context')) {
         $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36b 순서 위반 (exit=$($r.code), vault=$iVault2, queue=$iQueue, stale=$iStale2)" })
     }
 
-    Remove-Item -Recurse -Force $scRepo, $scHarnRepo -ErrorAction SilentlyContinue
-    }   # ---- git 게이트 끝 (SC32~SC36b)
+    # SC37~SC37d: 허브 매칭의 **URL 축** (v1.206.0 T3).
+    #   위 SC32~SC36b 는 허브에 repo_url 이 없어 전부 **경로 축**으로 통과한다 — 그것이 축②
+    #   (구형 허브 폴백)의 실증이고, 아래 넷이 축①과 그 경계를 덮는다.
+    #   **양성만 늘리면 「URL 을 본다」는 근거가 안 된다** — SC37b(경로가 맞는데도 URL 이 달라
+    #   미발화)가 이 묶음의 델타 음성이며, 그것이 없으면 경로로 통과한 것과 구분되지 않는다.
+    # 두 신규 cwd 에도 게이팅 마커를 둔다 — 라인 삽입은 `$lines.Count -gt $cwdBaseCount` 안에서만
+    #   일어나므로(위 SC32 준비의 같은 이유) AGENTS.md 가 없으면 양성 케이스가 전건 FAIL 한다.
+    $scSubDir = Join-Path $scRepo 'sub/deep'
+    New-Item -ItemType Directory $scSubDir -Force | Out-Null
+    @('# Guide', 'SC_URL_SUB_MARKER') | Set-Content -Encoding UTF8 (Join-Path $scSubDir 'AGENTS.md')
+    # origin 없는 둘째 픽스처 — SC37c 전용이다. 하나로 덮을 수 없는 이유는 SC37·SC37b 가
+    #   origin 있는 레포를 요구하고 SC37c 는 없는 레포를 요구하기 때문이다(레포 추가는 여기 1개까지).
+    $scRepoNoRemote = Join-Path $work ("sc-wiki-noremote-" + $suffix)
+    New-Item -ItemType Directory $scRepoNoRemote -Force | Out-Null
+    Push-Location $scRepoNoRemote
+    try {
+        & git init -q 2>$null
+        & git config user.email 't@t' 2>$null
+        & git config user.name 't' 2>$null
+        & git commit -q --allow-empty -m 'base' 2>$null
+    } finally { Pop-Location }
+    @('# Guide', 'SC_URL_NOREMOTE_MARKER') | Set-Content -Encoding UTF8 (Join-Path $scRepoNoRemote 'AGENTS.md')
+
+    # SC37 (양성 — URL 축 단독): repo_url 일치 · **경로는 엉뚱한 값**.
+    #   경로가 틀렸는데도 발화한다는 것이 「URL 로 골랐다」의 유일한 직접 증거다.
+    Write-ScHub -Path $scHubPath -RepoPath (Join-Path $work 'sc-not-this-path') -Sha $scSha30 -DaysAgo 0 -RepoUrl $scRepoUrl
+    Remove-Item -Force $scPendPath -ErrorAction SilentlyContinue
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: URL 축 발화 — 경로 불일치여도 매칭 (SC37)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
+
+    # SC37a (양성 — 정규화): 허브 값에 `.git` 없음 + 대문자 + 후행 슬래시.
+    #   소문자화·`.git` 제거·TrimEnd('/') 셋이 다 살아 있어야 통과한다.
+    Write-ScHub -Path $scHubPath -RepoPath (Join-Path $work 'sc-not-this-path') -Sha $scSha30 -DaysAgo 0 -RepoUrl 'HTTPS://Example.INVALID/scwiki/Repo/'
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: URL 정규화(대소문자·.git·슬래시) (SC37a)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
+
+    # SC37b (델타 음성 — 이 묶음의 핵심): repo_url 이 **다른 레포** · 경로는 **일치**.
+    #   URL 이 있으면 경로로 되짚지 않으므로 미발화여야 한다. 되짚는 구현이면 여기서 발화해 FAIL.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha30 -DaysAgo 0 -RepoUrl 'https://example.invalid/other/repo.git'
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: URL 불일치면 경로가 맞아도 미발화 (SC37b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
+
+    # SC37c (양성 — cwd 에 origin 없음 → URL 축 off): 허브에 repo_url 이 있어도 경로로 판정한다.
+    #   이 케이스가 없으면 「remote 없는 로컬 전용 레포가 조용히 침묵하는」 형태를 아무도 못 잡는다.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepoNoRemote -Sha '' -DaysAgo 15 -RepoUrl $scRepoUrl
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scRepoNoRemote } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: cwd origin 부재면 URL 축 off·경로로 발화 (SC37c)" -R $r -ExpectExit 0 -ExpectContains '15일째 미반영'
+
+    # SC37d (양성 — 하위 폴더 cwd): `git -C` 가 상위를 찾으므로 레포 안 어디서 열어도 매칭된다.
+    #   경로 축은 **동일 경로만** 보므로 하위 폴더에서는 매칭되지 않는다 — 그래서 이 케이스는
+    #   URL 축이 실제로 범위를 넓혔다는 증거다(대장 `[2026-08-26]` 항목이 지적하던 공백).
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha30 -DaysAgo 0 -RepoUrl $scRepoUrl
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scSubDir } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 하위 폴더 cwd 도 URL 로 매칭 (SC37d)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
+
+    Remove-Item -Recurse -Force $scRepo, $scHarnRepo, $scRepoNoRemote -ErrorAction SilentlyContinue
+    }   # ---- git 게이트 끝 (SC32~SC37d)
 
     Remove-Item -Recurse -Force $isoV, $isoV2, $scHarn -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
