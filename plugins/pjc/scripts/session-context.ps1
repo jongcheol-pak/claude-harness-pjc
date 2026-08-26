@@ -158,6 +158,7 @@ try {
         #   격리가 새고 실 사용자 홈을 읽을 수 있다.
         $vaultLine = $null
         $feedbackLine = $null              # 스킬 개선 큐 잔량 (하네스 레포 세션에서만 — 아래)
+        $staleLine = $null                 # 위키 뒤처짐 (프로젝트를 가리지 않는다 — 아래)
         $vaultInsertAt = $lines.Count      # AGENTS 라인보다 앞 위치를 미리 기록(전문이 길어 뒤에 붙으면 묻힌다)
         $userHome = [string]$env:USERPROFILE
         if (-not [string]::IsNullOrWhiteSpace($userHome)) {
@@ -191,10 +192,113 @@ try {
                                         if ($fbMatch.Success) { $fbDates += $fbMatch.Groups[1].Value }
                                     }
                                     if ($fbDates.Count -gt 0) {
-                                        $fbOldest = ($fbDates | Sort-Object)[0]
+                                        # @() 로 감싸는 것이 요점이다 — 항목이 **1건이면** 파이프 결과가
+                                        #   배열이 아니라 스칼라 문자열이라 [0] 이 「첫 글자」('2')를 준다.
+                                        #   그러면 아래 ParseExact 가 터지고 바깥 catch 가 삼켜 큐 라인이
+                                        #   조용히 사라진다(2건 이상일 때만 동작해 오래 드러나지 않았다).
+                                        $fbOldest = @($fbDates | Sort-Object)[0]
                                         $fbAge = [int]([math]::Floor(((Get-Date).Date - [datetime]::ParseExact($fbOldest, 'yyyy-MM-dd', $null)).TotalDays))
                                         $feedbackLine = "[pjc 세션 컨텍스트] 스킬 개선 큐(skill-feedback.md): 대기 $($fbDates.Count)건 / 최고령 ${fbAge}일 — plan-feature Step 1이 할 일 후보로 조회합니다."
                                     }
+                                }
+                            }
+                        } catch {}
+
+                        # ---- 위키 뒤처짐 알림 (프로젝트를 가리지 않는다) ----
+                        # 왜: 위키가 밀렸다는 신호(`[K-DRIFT]` 큐·lint INFO)는 **위키 세션에서만** 보여,
+                        #   정작 그 프로젝트에서 작업하는 세션에는 닿지 않는다 — 알림이 받아야 할 사람에게
+                        #   가지 않는 순환이다(실측: MOA 181커밋·Maid 104커밋이 그렇게 방치됐다).
+                        #   절차 K 3도 같은 값을 재지만 **스킬이 발동한 세션에서만**이고, 그 결과는 내부
+                        #   판정(서술을 낡은 것으로 취급)에만 쓰여 사용자 화면에는 뜨지 않는다.
+                        # 허브는 **vault 쪽에서 역방향으로** 찾는다 — AGENTS.md의 '## 위키' 절을 읽는 설계면
+                        #   그 절이 없는 프로젝트가 통째로 빠지는데, 실측상 가장 뒤처진 MOA가 그 경우다.
+                        # cwd 매칭은 **동일 경로만** 본다(상위 탐색 없음) — 하네스 판정과 같은 기준이다.
+                        #   prefix로 넓히면 참고용 clone·하위 워크트리가 남의 허브에 붙는다.
+                        # 발화는 OR 3축(커밋 30 · 경과일 14 · K-DRIFT 1건). 뒤처짐 축이 둘 다 미달이면
+                        #   그 수치를 빼고 잔량만 싣는다 — "0커밋 미반영"은 사실이 아니라 잡음이다.
+                        # 전 구간 try/catch fail-open: 허브 무매치·synced_commit 부재·git 부재·파싱 실패는
+                        #   조용히 통과한다(이 파일의 다른 경로와 같은 원칙 — 세션 시작을 막지 않는다).
+                        try {
+                            $hubDir = Join-Path $vaultPath '20_projects'
+                            if (Test-Path -LiteralPath $hubDir -PathType Container) {
+                                $cwdNorm = ($cwd -replace '\\', '/').TrimEnd('/')
+                                # Depth 1 = `20_projects/<카테고리>/<프로젝트>.md` 까지. 그 아래 feature 파일
+                                #   (`.../<프로젝트>/feat-*.md`)은 허브가 아니라 대상에서 자연히 빠진다.
+                                foreach ($hubFile in (Get-ChildItem -LiteralPath $hubDir -Filter '*.md' -File -Recurse -Depth 1 -ErrorAction SilentlyContinue)) {
+                                    $hubText = $null
+                                    try { $hubText = Get-Content -LiteralPath $hubFile.FullName -Raw -Encoding UTF8 } catch { continue }
+                                    if (-not $hubText) { continue }
+                                    $pathMatch = [regex]::Match($hubText, '(?m)^- \*\*경로\*\*:\s*`([^`]+)`')
+                                    if (-not $pathMatch.Success) { continue }
+                                    if ((($pathMatch.Groups[1].Value -replace '\\', '/').TrimEnd('/')) -ine $cwdNorm) { continue }
+
+                                    # ---- 이 허브가 현재 레포다 ----
+                                    $projName = ''
+                                    $projMatch = [regex]::Match($hubText, '(?m)^project:\s*"?([^"\r\n]+?)"?\s*$')
+                                    if ($projMatch.Success) { $projName = $projMatch.Groups[1].Value }
+
+                                    # 축 1 — synced_commit 이후 커밋 수(read-only 조회).
+                                    $behind = -1
+                                    $syncedSha = ''
+                                    $shaMatch = [regex]::Match($hubText, '(?m)^synced_commit:\s*(\S+)')
+                                    if ($shaMatch.Success) {
+                                        $syncedSha = $shaMatch.Groups[1].Value
+                                        # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부
+                                        #   프로세스를 부르므로(고아 회수) 그 값이 이 호출의 결과라는 보장이 없다.
+                                        #   실패하면 git 은 숫자를 내지 않으므로 **출력 형태 자체가 판정**이다.
+                                        # **이 호출만 따로 감싸는 이유**: git 이 PATH 에 없으면 `&` 호출이
+                                        #   CommandNotFoundException(종료 오류)을 던지는데, 바깥 catch 로 흘리면
+                                        #   경과일·K-DRIFT 축까지 통째로 죽는다. 커밋 축만 미발화되어야 한다
+                                        #   (레포가 아니거나 sha 가 이력에 없는 경우는 git 이 정상 실행돼 비-숫자만
+                                        #   내므로 예외가 아니고, 그래서 이 세 경우의 결과가 여기서 같아진다).
+                                        try {
+                                            $countRaw = (& git -C $cwd rev-list --count "$syncedSha..HEAD" 2>$null | Select-Object -First 1)
+                                            if ("$countRaw" -match '^\d+$') { $behind = [int]$countRaw }
+                                        } catch {}
+                                    }
+
+                                    # 축 2 — 허브 updated 로부터의 경과일.
+                                    $staleDays = -1
+                                    $updMatch = [regex]::Match($hubText, '(?m)^updated:\s*(\d{4}-\d{2}-\d{2})')
+                                    if ($updMatch.Success) {
+                                        try {
+                                            $updDate = [datetime]::ParseExact($updMatch.Groups[1].Value, 'yyyy-MM-dd', $null)
+                                            $staleDays = [int]([math]::Floor(((Get-Date).Date - $updDate).TotalDays))
+                                        } catch {}
+                                    }
+
+                                    # 축 3 — 이 프로젝트의 [K-DRIFT] 잔량. **대소문자를 무시**한다
+                                    #   (큐 라벨이 허브 project 값과 대소문자만 다를 수 있다).
+                                    $driftCount = 0
+                                    if ($projName) {
+                                        $pendPath = Join-Path $vaultPath 'pending.md'
+                                        if (Test-Path -LiteralPath $pendPath -PathType Leaf) {
+                                            $driftRx = '^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[K-DRIFT\]\s*' + [regex]::Escape($projName) + '\s*:'
+                                            foreach ($pendLine in (Get-Content -LiteralPath $pendPath -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+                                                if ($pendLine -imatch $driftRx) { $driftCount++ }
+                                            }
+                                        }
+                                    }
+
+                                    # **계산된 축만 문구에 싣는다.** 미계산 sentinel(-1)을 그대로 쓰면
+                                    #   "-1커밋 미반영"처럼 내부 값이 사용자에게 새어 나간다 — 한 축이
+                                    #   실패해도(synced_commit 부재 · sha 가 이력에 없음) 다른 축은 발화하므로
+                                    #   그 조합이 실제로 생긴다.
+                                    $behindKnown = ($behind -ge 0)
+                                    $daysKnown = ($staleDays -ge 0)
+                                    $behindHit = ($behindKnown -and ($behind -ge 30)) -or ($daysKnown -and ($staleDays -ge 14))
+                                    if ($behindHit -or ($driftCount -ge 1)) {
+                                        $label = if ($projName) { $projName } else { $hubFile.BaseName }
+                                        # 뒤처짐 축이 둘 다 미달이면 수치를 싣지 않는다 — 잔량만이 신호다.
+                                        $head = if ($behindHit) {
+                                            if ($behindKnown -and $daysKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha, ${staleDays}일 경과)" }
+                                            elseif ($behindKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha)" }
+                                            else { "$label 위키가 ${staleDays}일째 미반영" }
+                                        } else { "$label 위키 반영이 밀려 있습니다" }
+                                        $driftPart = if ($driftCount -ge 1) { " · 미반영 발견 ${driftCount}건([K-DRIFT])" } else { '' }
+                                        $staleLine = "[pjc 세션 컨텍스트] 위키 뒤처짐: ${head}${driftPart} — 기능 목록·아키텍처 서술은 지도로만 쓰고 코드를 1차 출처로 하세요. 반영하려면 `"위키 업데이트`"라고 하세요."
+                                    }
+                                    break   # 허브 하나면 족하다 — 같은 경로를 가리키는 둘째가 있어도 라인을 두 번 내지 않는다
                                 }
                             }
                         } catch {}
@@ -279,6 +383,12 @@ try {
             #   공유하며, vault 라인 없이 단독으로 나오지 않는다(큐는 vault 안에 있으므로).
             if ($feedbackLine) {
                 $lines.Insert([Math]::Min($vaultInsertAt + 1, $lines.Count), $feedbackLine)
+            }
+            # 뒤처짐 라인은 큐 라인 **다음**이다. 오프셋을 `+2`로 못박지 않는 이유: $feedbackLine 은
+            #   하네스 레포에서만 만들어져 다른 프로젝트에서는 항상 $null 이라, 고정하면 그 세션에서
+            #   클램프에 걸려 AGENTS.md 전문 뒤로 밀린다(전문이 길어 사실상 묻힌다).
+            if ($staleLine) {
+                $lines.Insert([Math]::Min($vaultInsertAt + 1 + [int][bool]$feedbackLine, $lines.Count), $staleLine)
             }
         }
     }

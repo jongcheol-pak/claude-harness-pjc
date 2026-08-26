@@ -289,6 +289,176 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarn } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 큐 파일 부재 시 미주입 (SC25)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
 
+
+    # SC32~SC36b: 위키 뒤처짐 알림 — cwd 에 대응하는 허브를 vault 에서 찾아 OR 3축
+    #   (커밋 30 · 경과일 14 · [K-DRIFT] 1건)으로 발화한다.
+    #   **축마다 단독 양성을 두는 것이 이 묶음의 요점이다** — 한 축만 양성으로 걸면 나머지
+    #   축이 죽어도(날짜 파싱 실패 fail-open · AND 오구현) 전건이 통과한다. 경계 케이스
+    #   (29/30커밋 · 13/14일)는 `-ge` ↔ `-gt` off-by-one 을 잡는 유일한 그물이다.
+    # **픽스처는 git 레포 하나로 전부 덮는다** — 31커밋을 한 번 만들어 두고 허브의
+    #   synced_commit 을 HEAD~30 / HEAD~29 / HEAD 로 바꾸면 30 / 29 / 0 커밋 뒤처짐이 된다.
+    #   케이스마다 레포를 새로 파면 골든 러너에 git 프로세스가 수십 회 더 붙는다.
+    # **git 게이트** — 이 묶음은 실제 레포 픽스처를 만들므로 git 이 없으면 통째로 건너뛴다.
+    #   `& git` 은 명령을 못 찾으면 종료 오류를 던지는데 러너의 시나리오 루프에는 catch 가 없어
+    #   그 예외가 스위트 전체를 중단시킨다(같은 이유로 `post-write-checks.ps1:138,181` 이
+    #   git 시나리오를 이 게이트로 감싼다. $gitOk 는 `eval-common.ps1:98` 의 top-level 정의라
+    #   필터 조합과 무관하게 항상 판정된다).
+    if ($gitOk) {
+    $scRepo = Join-Path $work ("sc-wiki-repo-" + $suffix)
+    New-Item -ItemType Directory $scRepo -Force | Out-Null
+    # 격리 홈($isoV)에는 .gitconfig 가 없어 identity 를 인라인으로 준다 — 없으면 커밋이 선다
+    #   (`scenarios/post-write-checks.ps1` 이 같은 형태를 쓴다).
+    # Pop-Location 을 finally 에 두는 이유: 중간에서 터지면 위치 스택이 어긋난 채 남아
+    #   뒤 시나리오가 엉뚱한 폴더에서 돈다.
+    Push-Location $scRepo
+    try {
+        & git init -q 2>$null
+        & git config user.email 't@t' 2>$null
+        & git config user.name 't' 2>$null
+        # 파일을 쓰지 않고 빈 커밋으로 수만 채운다 — 이 축이 재는 것은 커밋 «수» 뿐이다.
+        for ($i = 1; $i -le 31; $i++) { & git commit -q --allow-empty -m "c$i" 2>$null }
+        $scHeadSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
+        $scSha30   = (& git rev-parse 'HEAD~30' 2>$null | Select-Object -First 1)
+        $scSha29   = (& git rev-parse 'HEAD~29' 2>$null | Select-Object -First 1)
+    } finally { Pop-Location }
+    # 게이팅 충족용 — 삽입은 `if ($vaultLine -and ($lines.Count -gt $cwdBaseCount))` 안에서만
+    #   일어나므로, plan·AGENTS 가 없는 cwd 에서는 양성이 전건 FAIL 하고 음성은 공허하게 통과한다.
+    #   이 마커는 SC36 의 순서 비교 대상이기도 하다.
+    @('# Guide', 'SC_STALE_ORDER_MARKER 전문 주입 대상') | Set-Content -Encoding UTF8 (Join-Path $scRepo 'AGENTS.md')
+
+    $scHubDir = Join-Path $isoVault '20_projects/personal'
+    New-Item -ItemType Directory $scHubDir -Force | Out-Null
+    $scHubPath = Join-Path $scHubDir 'scwiki.md'
+    $scPendPath = Join-Path $isoVault 'pending.md'
+
+    # 허브를 쓰는 지역 헬퍼 — 아래에서 아홉 번 넘게 부른다(값만 바뀌고 형태는 같다).
+    #   $Sha 가 빈 문자열이면 synced_commit 줄 자체를 빼 「필드 부재」 상태를 만든다.
+    function Write-ScHub {
+        param([string]$Path, [string]$RepoPath, [string]$Sha, [int]$DaysAgo, [string]$Project = 'SCWiki')
+        $upd = (Get-Date).AddDays(-$DaysAgo).ToString('yyyy-MM-dd')
+        $lines = @('---', 'type: project', "project: $Project", "updated: $upd")
+        if ($Sha) { $lines += "synced_commit: $Sha" }
+        $lines += @('---', '', "# $Project", '', '## 레포 정보', ('- **경로**: `' + ($RepoPath -replace '\\', '/') + '`'))
+        $lines | Set-Content -Encoding UTF8 $Path
+    }
+    function Invoke-ScRepoHook { Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scRepo } | ConvertTo-Json -Compress) }
+
+    $env:USERPROFILE = $isoV
+
+    # SC32 (양성 — 커밋 축 단독): 30커밋 · updated 오늘 · K-DRIFT 0
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha30 -DaysAgo 0
+    Remove-Item -Force $scPendPath -ErrorAction SilentlyContinue
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 위키 뒤처짐 커밋 축 발화 (SC32)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
+    Assert-Case -Name "session-context: 뒤처짐 커밋 수 표기 (SC32b)" -R $r -ExpectExit 0 -ExpectContains '30커밋 미반영'
+
+    # SC32c (양성 — 일수 축 단독): 커밋 0 · updated 15일 전 · K-DRIFT 0.
+    #   이 케이스가 없으면 경과일 판정이 죽어도 나머지가 전부 통과한다.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadSha -DaysAgo 15
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 위키 뒤처짐 일수 축 단독 발화 (SC32c)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
+    Assert-Case -Name "session-context: 일수 축 경과일 표기 (SC32c2)" -R $r -ExpectExit 0 -ExpectContains '15일 경과'
+
+    # SC32d (경계 — 커밋 축): 정확히 30이면 발화, 29면 미발화(다른 축 미달).
+    #   `-ge` 를 `-gt` 로 바꾸면 앞이 깨지고, 임계를 낮추면 뒤가 깨진다.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha30 -DaysAgo 0
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 커밋 축 경계 30 발화 (SC32d)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha29 -DaysAgo 0
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 커밋 축 경계 29 미발화 (SC32d2)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
+
+    # SC32e (경계 — 일수 축): 정확히 14면 발화, 13이면 미발화. 커밋 축은 0으로 눌러 둔다.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadSha -DaysAgo 14
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 일수 축 경계 14 발화 (SC32e)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadSha -DaysAgo 13
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 일수 축 경계 13 미발화 (SC32e2)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
+
+    # SC33 (양성 — K-DRIFT 축 단독): 커밋·일수 둘 다 미달인데 잔량 1건 → 잔량만 실은 라인.
+    #   뒤처짐 수치를 싣지 않는 것이 이 축의 계약이다("0커밋 미반영"은 사실이 아니다).
+    "- [2026-08-01] [K-DRIFT] SCWiki: 무언가 어긋났다" | Set-Content -Encoding UTF8 $scPendPath
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: K-DRIFT 축 단독 발화 (SC33)" -R $r -ExpectExit 0 -ExpectContains '미반영 발견 1건'
+    Assert-Case -Name "session-context: 잔량 단독이면 커밋 수치 미표기 (SC33b)" -R $r -ExpectExit 0 -ExpectNotContains '커밋 미반영'
+    # 잔량 단독 문구 자체를 고정한다 — 이 문면을 재는 케이스가 없으면 바뀌어도 아무도 모른다
+    #   (F-7 m1: 종전 문구는 뒤에 붙는 부기와 "미반영 발견"이 겹쳐 같은 말이 한 줄에 두 번 나왔다).
+    Assert-Case -Name "session-context: 잔량 단독 문구 고정 (SC33d)" -R $r -ExpectExit 0 -ExpectContains '반영이 밀려'
+
+    # SC33c (델타 음성 — 3축 전부 미달): 커밋 0 · updated 오늘 · 잔량 0 → 미발화.
+    #   **세 축을 전부 이 자리에서 다시 세운다** — 앞 케이스가 남긴 상태(13일·잔량 1건)를
+    #   물려받으면 이 케이스가 무엇을 눌러 둔 것인지 읽는 쪽에서 알 수 없고, 경계값(13일)과
+    #   중복 커버리지가 되어 「임계에서 멀리 떨어진 값」이 검증되지 않는다.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadSha -DaysAgo 0
+    Remove-Item -Force $scPendPath -ErrorAction SilentlyContinue
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 3축 전부 미달 미발화 (SC33c)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
+
+    # SC34 (델타 음성): cwd 에 대응하는 허브가 없다 → 미발화(vault 라인은 유지).
+    Write-ScHub -Path $scHubPath -RepoPath (Join-Path $work 'sc-somewhere-else') -Sha $scSha30 -DaysAgo 30
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 허브 무매치 미발화 (SC34)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
+
+    # SC35 (델타 음성): synced_commit 필드 부재 + 일수 미달 + 잔량 0 → 미발화(fail-open).
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha '' -DaysAgo 0
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: synced_commit 부재 미발화 (SC35)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
+
+    # SC35b (양성 — 축 하나만 계산됨): synced_commit 부재(커밋 축 미계산) + 15일(일수 축 발화).
+    #   미계산 sentinel(-1)이 문구로 새면 "-1커밋 미반영"이 나온다 — 실측으로 재현된 결함이라
+    #   그 형태가 다시 나오지 않는지를 이 케이스가 고정한다.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha '' -DaysAgo 15
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 축 하나만 계산돼도 발화 (SC35b)" -R $r -ExpectExit 0 -ExpectContains '15일째 미반영'
+    Assert-Case -Name "session-context: 미계산 sentinel 미노출 (SC35b2)" -R $r -ExpectExit 0 -ExpectNotContains '-1커밋'
+
+    # SC36 (순서 — 비하네스 cwd): vault < 뒤처짐 < AGENTS 전문.
+    #   Assert-Case 는 순서를 못 보므로 IndexOf 로 직접 판정한다(SC22 와 같은 패턴).
+    #   비하네스라 $feedbackLine 이 $null 이고, 오프셋을 `+2` 로 못박았으면 여기서 밀려난다.
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha30 -DaysAgo 0
+    $r = Invoke-ScRepoHook
+    $iVault  = $r.out.IndexOf('위키 vault: 설정됨')
+    $iStale  = $r.out.IndexOf('위키 뒤처짐')
+    $iMarker = $r.out.IndexOf('SC_STALE_ORDER_MARKER')
+    if (($r.code -eq 0) -and ($iVault -ge 0) -and ($iStale -gt $iVault) -and ($iMarker -gt $iStale)) {
+        $script:results.Add(@{ ok = $true; line = "[PASS] session-context: 뒤처짐 라인이 vault 뒤·AGENTS 앞 (SC36)" })
+    } else {
+        $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36 순서 위반 (exit=$($r.code), vault=$iVault, stale=$iStale, agents=$iMarker)" })
+    }
+
+    # SC36b (순서 — 하네스 cwd, 큐 라인 동반): vault < 큐 < 뒤처짐.
+    #   **SC36 만으로는 $feedbackLine 이 항상 $null 인 구간만 돈다** — 오프셋 식의
+    #   `[int][bool]$feedbackLine == 1` 분기를 밟는 케이스가 여기뿐이라, `+1` 하드코딩
+    #   (큐 라인과 순서가 뒤바뀜)은 이 케이스가 없으면 아무도 못 잡는다.
+    $scHarnRepo = Join-Path $work ("sc-wiki-harness-" + $suffix)
+    New-Item -ItemType Directory -Path (Join-Path $scHarnRepo 'plugins/pjc/.claude-plugin') -Force | Out-Null
+    '{ "name": "pjc" }' | Set-Content -Encoding UTF8 (Join-Path $scHarnRepo 'plugins/pjc/.claude-plugin/plugin.json')
+    @('# Guide', 'SC_STALE_HARNESS_MARKER') | Set-Content -Encoding UTF8 (Join-Path $scHarnRepo 'AGENTS.md')
+    Push-Location $scHarnRepo
+    try {
+        & git init -q 2>$null
+        & git config user.email 't@t' 2>$null
+        & git config user.name 't' 2>$null
+        & git commit -q --allow-empty -m 'base' 2>$null
+        $scHarnSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
+    } finally { Pop-Location }
+    # 큐 라인이 뜨려면 skill-feedback.md 가 있어야 한다(SC25 가 지운 뒤라 다시 만든다).
+    "- [2026-07-22] [SKILL-IMPROVE] implement-task: 요지." | Set-Content -Encoding UTF8 (Join-Path $isoVault 'skill-feedback.md')
+    Write-ScHub -Path (Join-Path $scHubDir 'scharn.md') -RepoPath $scHarnRepo -Sha $scHarnSha -DaysAgo 20 -Project 'SCHarn'
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarnRepo } | ConvertTo-Json -Compress)
+    $iVault2 = $r.out.IndexOf('위키 vault: 설정됨')
+    $iQueue  = $r.out.IndexOf('스킬 개선 큐')
+    $iStale2 = $r.out.IndexOf('위키 뒤처짐')
+    if (($r.code -eq 0) -and ($iVault2 -ge 0) -and ($iQueue -gt $iVault2) -and ($iStale2 -gt $iQueue)) {
+        $script:results.Add(@{ ok = $true; line = "[PASS] session-context: 큐 라인 동반 시 뒤처짐이 그 뒤 (SC36b)" })
+    } else {
+        $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36b 순서 위반 (exit=$($r.code), vault=$iVault2, queue=$iQueue, stale=$iStale2)" })
+    }
+
+    Remove-Item -Recurse -Force $scRepo, $scHarnRepo -ErrorAction SilentlyContinue
+    }   # ---- git 게이트 끝 (SC32~SC36b)
+
     Remove-Item -Recurse -Force $isoV, $isoV2, $scHarn -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 
