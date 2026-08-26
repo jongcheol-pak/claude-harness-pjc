@@ -212,8 +212,19 @@ try {
                         #   판정(서술을 낡은 것으로 취급)에만 쓰여 사용자 화면에는 뜨지 않는다.
                         # 허브는 **vault 쪽에서 역방향으로** 찾는다 — AGENTS.md의 '## 위키' 절을 읽는 설계면
                         #   그 절이 없는 프로젝트가 통째로 빠지는데, 실측상 가장 뒤처진 MOA가 그 경우다.
-                        # cwd 매칭은 **동일 경로만** 본다(상위 탐색 없음) — 하네스 판정과 같은 기준이다.
-                        #   prefix로 넓히면 참고용 clone·하위 워크트리가 남의 허브에 붙는다.
+                        # 매칭 축은 둘이며 **URL 우선·경로 폴백**이다.
+                        #   ① `repo_url`(허브 frontmatter) ↔ cwd 의 `git remote get-url origin`.
+                        #      URL 은 PC·폴더명·개명 전부에 불변이라 vault 를 여러 PC 에서 공유해도 맞는다.
+                        #      **경로 축과 달리 레포 내 임의 위치에서 성립한다** — `git -C` 가 상위를 찾으므로
+                        #      하위 폴더 세션·같은 레포의 다른 clone·워크트리가 전부 이 허브에 매칭된다.
+                        #      그것이 의도다: 하위 폴더의 **별도** git 레포는 자기 origin 을 내므로 남의 허브에
+                        #      붙지 않는다(경로 prefix 확대가 일으키던 오탐과 성격이 다르다).
+                        #   ② `- **경로**:` ↔ cwd **동일 경로만**(상위 탐색 없음). 허브에 URL 이 없는 구형이거나
+                        #      cwd 가 git 레포가 아닐 때의 폴백이다. prefix 로 넓히지 않는 이유는 종전과 같다 —
+                        #      참고용 clone·하위 워크트리가 남의 허브에 붙는다.
+                        #   **cwd 의 URL 을 못 읽으면 URL 축을 통째로 끈다**(전 허브 경로 판정) — 그러지 않으면
+                        #   remote 없는 로컬 전용 레포에서 허브에 URL 이 있다는 이유만으로 건너뛰어져 알림이
+                        #   조용히 사라진다.
                         # 발화는 OR 3축(커밋 30 · 경과일 14 · K-DRIFT 1건). 뒤처짐 축이 둘 다 미달이면
                         #   그 수치를 빼고 잔량만 싣는다 — "0커밋 미반영"은 사실이 아니라 잡음이다.
                         # 전 구간 try/catch fail-open: 허브 무매치·synced_commit 부재·git 부재·파싱 실패는
@@ -222,15 +233,51 @@ try {
                             $hubDir = Join-Path $vaultPath '20_projects'
                             if (Test-Path -LiteralPath $hubDir -PathType Container) {
                                 $cwdNorm = ($cwd -replace '\\', '/').TrimEnd('/')
+                                # cwd 의 origin URL 은 **루프 밖에서 1회만** 읽는다 — 허브마다 부르면 git 이
+                                #   파일 수만큼 뜬다. `git` 이 PATH 에 없으면 `&` 호출이 종료 오류를 던지므로
+                                #   이 호출만 따로 감싼다(아래 rev-list 와 같은 선례) — 실패하면 빈 문자열이
+                                #   되어 URL 축이 꺼지고 경로 축만 남는다.
+                                # 정규화는 소문자화 + 후행 `.git` 제거 + 후행 `/` 제거(wiki-schema §2.2) —
+                                #   같은 레포라도 값을 어디서 얻었느냐에 따라 표기가 갈리기 때문이다.
+                                # **`scheme://…` 형태만 받는다**(https·git·ssh:// 등 포함 — 걸러지는 것은
+                                #   `://` 가 없는 scp 형 SSH `git@host:owner/repo.git` 하나다).
+                                #   그 형태를 받으면 허브의 https `repo_url` 과 영영 일치하지 않아, 경로로
+                                #   폴백하던 세션이 «불일치»로 판정돼 조용히 미발화가 된다(URL 이 있으면
+                                #   경로로 되짚지 않기 때문이다). 받지 않으면 $cwdUrl 이 비어 URL 축이
+                                #   꺼지고 경로 축이 그대로 산다. 형식 간 상호 변환은 실증 대상이 없어
+                                #   넣지 않았다(wiki-schema §2.2).
+                                $cwdUrl = ''
+                                try {
+                                    $urlRaw = (& git -C $cwd remote get-url origin 2>$null | Select-Object -First 1)
+                                    if ("$urlRaw" -match '^\S+://\S+$') {
+                                        $cwdUrl = ("$urlRaw".Trim().ToLowerInvariant() -replace '\.git$', '').TrimEnd('/')
+                                    }
+                                } catch {}
                                 # Depth 1 = `20_projects/<카테고리>/<프로젝트>.md` 까지. 그 아래 feature 파일
                                 #   (`.../<프로젝트>/feat-*.md`)은 허브가 아니라 대상에서 자연히 빠진다.
                                 foreach ($hubFile in (Get-ChildItem -LiteralPath $hubDir -Filter '*.md' -File -Recurse -Depth 1 -ErrorAction SilentlyContinue)) {
                                     $hubText = $null
                                     try { $hubText = Get-Content -LiteralPath $hubFile.FullName -Raw -Encoding UTF8 } catch { continue }
                                     if (-not $hubText) { continue }
-                                    $pathMatch = [regex]::Match($hubText, '(?m)^- \*\*경로\*\*:\s*`([^`]+)`')
-                                    if (-not $pathMatch.Success) { continue }
-                                    if ((($pathMatch.Groups[1].Value -replace '\\', '/').TrimEnd('/')) -ine $cwdNorm) { continue }
+
+                                    # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. 허브에 `repo_url` 이
+                                    #   있으면 **일치/불일치가 곧 결론**이고 경로로 되짚지 않는다(URL 이 더 강한
+                                    #   신호다). 허브에 없으면 아래 경로 축으로 내려간다.
+                                    $hubUrl = ''
+                                    if ($cwdUrl) {
+                                        $urlMatch = [regex]::Match($hubText, '(?m)^repo_url:\s*"?([^"\r\n]+?)"?\s*$')
+                                        if ($urlMatch.Success) {
+                                            $hubUrl = ($urlMatch.Groups[1].Value.Trim().ToLowerInvariant() -replace '\.git$', '').TrimEnd('/')
+                                        }
+                                    }
+                                    if ($hubUrl) {
+                                        if ($hubUrl -ne $cwdUrl) { continue }
+                                    } else {
+                                        # 축 ② 경로 — URL 축이 꺼졌거나 허브에 `repo_url` 이 없을 때.
+                                        $pathMatch = [regex]::Match($hubText, '(?m)^- \*\*경로\*\*:\s*`([^`]+)`')
+                                        if (-not $pathMatch.Success) { continue }
+                                        if ((($pathMatch.Groups[1].Value -replace '\\', '/').TrimEnd('/')) -ine $cwdNorm) { continue }
+                                    }
 
                                     # ---- 이 허브가 현재 레포다 ----
                                     $projName = ''
