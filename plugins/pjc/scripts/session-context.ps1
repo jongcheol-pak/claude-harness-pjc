@@ -242,8 +242,15 @@ try {
                                         # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부
                                         #   프로세스를 부르므로(고아 회수) 그 값이 이 호출의 결과라는 보장이 없다.
                                         #   실패하면 git 은 숫자를 내지 않으므로 **출력 형태 자체가 판정**이다.
-                                        $countRaw = (& git -C $cwd rev-list --count "$syncedSha..HEAD" 2>$null | Select-Object -First 1)
-                                        if ("$countRaw" -match '^\d+$') { $behind = [int]$countRaw }
+                                        # **이 호출만 따로 감싸는 이유**: git 이 PATH 에 없으면 `&` 호출이
+                                        #   CommandNotFoundException(종료 오류)을 던지는데, 바깥 catch 로 흘리면
+                                        #   경과일·K-DRIFT 축까지 통째로 죽는다. 커밋 축만 미발화되어야 한다
+                                        #   (레포가 아니거나 sha 가 이력에 없는 경우는 git 이 정상 실행돼 비-숫자만
+                                        #   내므로 예외가 아니고, 그래서 이 세 경우의 결과가 여기서 같아진다).
+                                        try {
+                                            $countRaw = (& git -C $cwd rev-list --count "$syncedSha..HEAD" 2>$null | Select-Object -First 1)
+                                            if ("$countRaw" -match '^\d+$') { $behind = [int]$countRaw }
+                                        } catch {}
                                     }
 
                                     # 축 2 — 허브 updated 로부터의 경과일.
@@ -269,11 +276,21 @@ try {
                                         }
                                     }
 
-                                    $behindHit = ($behind -ge 30) -or ($staleDays -ge 14)
+                                    # **계산된 축만 문구에 싣는다.** 미계산 sentinel(-1)을 그대로 쓰면
+                                    #   "-1커밋 미반영"처럼 내부 값이 사용자에게 새어 나간다 — 한 축이
+                                    #   실패해도(synced_commit 부재 · sha 가 이력에 없음) 다른 축은 발화하므로
+                                    #   그 조합이 실제로 생긴다.
+                                    $behindKnown = ($behind -ge 0)
+                                    $daysKnown = ($staleDays -ge 0)
+                                    $behindHit = ($behindKnown -and ($behind -ge 30)) -or ($daysKnown -and ($staleDays -ge 14))
                                     if ($behindHit -or ($driftCount -ge 1)) {
                                         $label = if ($projName) { $projName } else { $hubFile.BaseName }
                                         # 뒤처짐 축이 둘 다 미달이면 수치를 싣지 않는다 — 잔량만이 신호다.
-                                        $head = if ($behindHit) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha, ${staleDays}일 경과)" } else { "$label 위키에 미반영 발견이 남아 있습니다" }
+                                        $head = if ($behindHit) {
+                                            if ($behindKnown -and $daysKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha, ${staleDays}일 경과)" }
+                                            elseif ($behindKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha)" }
+                                            else { "$label 위키가 ${staleDays}일째 미반영" }
+                                        } else { "$label 위키에 미반영 발견이 남아 있습니다" }
                                         $driftPart = if ($driftCount -ge 1) { " · 미반영 발견 ${driftCount}건([K-DRIFT])" } else { '' }
                                         $staleLine = "[pjc 세션 컨텍스트] 위키 뒤처짐: ${head}${driftPart} — 기능 목록·아키텍처 서술은 지도로만 쓰고 코드를 1차 출처로 하세요. 반영하려면 `"위키 업데이트`"라고 하세요."
                                     }
