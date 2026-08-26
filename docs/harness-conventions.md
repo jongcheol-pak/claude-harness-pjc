@@ -214,7 +214,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 109,878 | 137,000 |
+| `docs/harness-conventions.md` | 110,671 | 137,000 |
 
 > **왜 예산 표와 나눴는가 — 「임계가 없다」가 아니라 「재는 것이 다르다」다.** 위 표가 재는 것은 **상시 로드**다: 스킬 본체는 발동만 해도 전문이 올라가고 `AGENTS.md`는 매 세션 주입된다. 이 표가 재는 것은 **조건부 참조** — `AGENTS.md`가 필요할 때 가리키는 문서라, 커져도 **그 절을 읽으러 들어온 세션만** 비용을 진다. 같은 표에 섞으면 **위 표가 상시 로드만 추적한다는 전제**가 깨지고, 그 표에서 파생되는 「메인 조합」 합산에 **상시 비용이 아닌 바이트가 섞인다**.
 >
@@ -351,6 +351,8 @@ task 1개가 통과하는 검증·리뷰 지점은 **19곳**이다 — Phase V�
 격리 USERPROFILE에서 hook 12종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context·session-end-cleanup)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
 
 ### 실행 모드 4종
+
+> **⚠ 아래 「명령」 열은 모드를 식별하는 이름이지 그대로 돌릴 명령이 아니다 — 실행 방법은 아래 「실행·대기 절차 (정본)」이 정본이다.** 전경 실행·`run_in_background`·`Start-Process` 리다이렉트는 그 절이 **이름으로 기각한 세 방법**이고, 각각 도구 시간 캡(10분)과 0바이트 출력으로 실패한다. **이 경고를 표 앞에 두는 이유**: 표의 명령이 그대로 실행 가능한 형태라 복사해 쓰기 쉬운데 정본 절차는 그 아래에 있어, 표만 읽고 착수하면 그 셋 중 하나를 고르게 된다(v1.204.0 회차가 실제로 셋을 전부 시도해 두 번 killed됐다 — AGENTS.md 가 이 절을 지목하는 경고를 이미 달아 두었는데도 그랬다).
 
 | 모드 | 명령 | 소요(실측 — 값마다 케이스 수 병기) | 용도 |
 |---|---|---|---|
