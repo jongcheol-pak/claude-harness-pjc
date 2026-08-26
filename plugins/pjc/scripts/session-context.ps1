@@ -192,7 +192,11 @@ try {
                                         if ($fbMatch.Success) { $fbDates += $fbMatch.Groups[1].Value }
                                     }
                                     if ($fbDates.Count -gt 0) {
-                                        $fbOldest = ($fbDates | Sort-Object)[0]
+                                        # @() 로 감싸는 것이 요점이다 — 항목이 **1건이면** 파이프 결과가
+                                        #   배열이 아니라 스칼라 문자열이라 [0] 이 「첫 글자」('2')를 준다.
+                                        #   그러면 아래 ParseExact 가 터지고 바깥 catch 가 삼켜 큐 라인이
+                                        #   조용히 사라진다(2건 이상일 때만 동작해 오래 드러나지 않았다).
+                                        $fbOldest = @($fbDates | Sort-Object)[0]
                                         $fbAge = [int]([math]::Floor(((Get-Date).Date - [datetime]::ParseExact($fbOldest, 'yyyy-MM-dd', $null)).TotalDays))
                                         $feedbackLine = "[pjc 세션 컨텍스트] 스킬 개선 큐(skill-feedback.md): 대기 $($fbDates.Count)건 / 최고령 ${fbAge}일 — plan-feature Step 1이 할 일 후보로 조회합니다."
                                     }
