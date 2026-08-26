@@ -476,28 +476,51 @@
       "fixture": "budget-critical",
       "expect_keywords": [
         "예산 임박: 10_sources/personal/src-near.md 1450/1800자 (81%, 여유 350자, type=source-stub)",
-        "예산 임박: 20_projects/personal/demo/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
-        "무효 항목 제거 → 주제별 하위 파일 분리 (§2.9)",
-        "예산 임박: log.md 5557/6000자 (93%, 여유 443자) — 다음 기록 전에 §8 롤오버 수행 (wiki-schema §8)"
+        "구역화 필요: 20_projects/personal/demo/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
+        "주제별 `## ` 헤딩으로 본문을 구역화하면 이후는 자동 처리된다 (wiki-schema §2.9 처방 ⓪)",
+        "이 타입에는 auto-split 처방이 없다"
       ],
       "expect_absent": [
         "예산 임박(분리 불가 판정 유지): 10_sources/personal/src-near.md",
-        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo/conventions.md"
+        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo/conventions.md",
+        "예산 임박: log.md"
       ],
-      "rationale": "§7-2 임박 단계(WARN) — 임박 판정의 OR 두 항을 각각 실증한다. src-near는 81%로 비율 조건(95%) 미충족이나 여유 350자<500이라 '잔여 조건'만으로 발화하고, conventions.md는 여유가 정확히 500자라 잔여 조건(< 500) 미충족이나 96%라 '비율 조건'만으로 발화한다 — 한 축만 구현하면 둘 중 하나가 반드시 빠진다. expect_absent는 elif 체인 확인: **budget_split 판정이 없는 파일은 「분리 불가 판정 유지」 INFO로 내려가지 않고 임박 WARN에서 멈춘다**(v1.177.0 전에는 같은 자리에서 '근접 INFO를 함께 내지 않는다'를 검사했는데, 근접 INFO가 폐지돼 그 가드가 무의미해졌다 — 새 구조의 등가 가드로 교체했다. 그냥 비우면 elif 체인 회귀를 잡을 수단이 이 픽스처에서 사라진다). 수리 경로가 정해진 타입(convention)에는 처방 힌트가 병기되는지도 함께 본다. **`log.md` 5,557자(93%·여유 443)는 `SPECIAL_BUDGET` 경로의 임박 분기 회귀다** — 이 경로에는 원래 임박 계층이 없어 근접 INFO만 있었고(v1.177.0 전), 근접을 폐지하면서 임박 분기를 신설했다. **이 케이스가 없으면 그 분기를 실행하는 케이스가 하나도 없다**(다른 예산 픽스처는 전부 일반 BUDGET 경로다). 잔여 조건(443<500)만으로 발화하므로 비율 조건(95%)만 구현해도 이 케이스가 FAIL한다."
+      "rationale": "§7-2 발동 판정의 **OR 두 항**과 **처방 가능 여부에 따른 신호 층위**를 한 픽스처에서 함께 잰다. OR 두 항: `src-near`는 81%로 비율 조건(95%) 미충족이나 여유 350자<500이라 「잔여 조건」만으로 발화하고, `conventions.md`는 여유가 정확히 500자라 잔여 조건(< 500) 미충족이나 96%라 「비율 조건」만으로 발화한다 — 한 축만 구현하면 둘 중 하나가 반드시 빠진다. **신호 층위**(v1.207.0): 같은 임박이어도 `--auto-split`이 처리할 수 있으면 침묵하고 아닐 때만 신호가 나므로, 이 픽스처의 두 파일은 각각 다른 이름의 신호를 받는다 — `src-near`(source-stub)는 **어느 처방도 없는 타입**이라 종전 「예산 임박」 WARN을 그대로 받고(ⓑ′), `conventions.md`는 `## ` 섹션이 0개라 사람이 구역화해야 하므로 「구역화 필요」 WARN을 받는다(ⓑ). **`log.md`가 expect_absent로 옮겨간 것이 이 회차의 반전이다** — 그 경로의 처방은 §8 월별 롤오버이고 `rollover_log`가 자동 수행하므로 임박에서 침묵한다(ⓐ). 초과 WARN은 그대로 남으므로 침묵 범위가 초과까지 번지지 않는지는 `log-guard`가 잰다. expect_absent의 「분리 불가 판정 유지」 두 줄은 elif 체인 확인이다 — budget_split 판정이 없는 파일이 억제 INFO로 내려가지 않는지 고정한다."
     },
     {
       "fixture": "budget-split-none",
       "expect_keywords": [
         "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo/conventions.md 11500/12000자 (96%, type=convention)",
-        "예산 임박: 20_projects/personal/demo2/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
+        "구역화 필요: 20_projects/personal/demo2/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
         "예산 임박(분리 불가 판정 유지): 40_guides/ui-ux/fence-split.md 5670/6000자 (94%, type=guide)"
       ],
       "expect_absent": [
-        "예산 임박: 20_projects/personal/demo/conventions.md",
+        "구역화 필요: 20_projects/personal/demo/conventions.md",
         "예산 임박: 40_guides/ui-ux/fence-split.md"
       ],
       "rationale": "「분리 불가 판정」(budget_split) 억제와 재판정 임계 — 두 파일은 문자 수·타입·예산이 모두 같고 budget_split_chars만 다르다(demo=11500=현재값 / demo2=10000). demo는 판정 시점 이내라 임박 WARN이 억제되고 「분리 불가 판정 유지」 INFO로 강등되며(expect_absent가 WARN 부재를, keyword가 INFO 발화를 각각 고정한다 — 두 문자열은 콜론 앞 괄호 유무로 갈려 부분 매칭이 겹치지 않는다), demo2는 10000*1.10=11000 < 11500이라 억제가 풀려 임박이 재발화한다. 억제를 영구 면제로 만들면 이 재발화가 사라져 '한 번 판정하면 초과까지 무신호'가 된다. 세 번째 파일 `fence-split.md`는 **펜스 제외 판정 타입(ui-ux guide)**의 회귀다 — 유효 문자 수 5,670/6,000(94%, 여유 330<500)이라 임박 조건을 충족하는데 억제로 「분리 불가 판정 유지」 INFO에 머문다. **이 케이스가 고정하는 것은 「코드가 `eff_chars`를 넘기는가」다** — 헬퍼에 파일 전체 `chars`를 넘기도록 바꾸면 이 파일만 임박 WARN을 내며 FAIL한다(다른 예산 픽스처는 전부 `eff==chars` 타입이라 그 변조를 잡지 못하는 유일한 판별자다). **반대로 페이지가 `budget_split_chars`에 잘못된 기준의 값(파일 전체 길이)을 적는 것은 이 케이스가 잡지 못한다** — lint은 기록값의 옳음을 검증하지 않기 때문이며, 그 공백은 Deferred 대장에 등재돼 있다."
+    },
+    {
+      "fixture": "budget-no-sections",
+      "expect_keywords": [
+        "구역화 필요: 20_projects/personal/demo/conventions.md 10180/12000자 (85%, 여유 1820자, type=convention)",
+        "auto-split이 옮길 경계가 없다"
+      ],
+      "expect_absent": [
+        "구역화 필요: 20_projects/personal/demo2/conventions.md",
+        "예산 임박: 20_projects/personal/demo2/conventions.md"
+      ],
+      "rationale": "§7-2 발동 ⓑ(구역화 필요)의 **양성 + 델타 음성**을 한 픽스처에 넣었다. 양성 `conventions.md`는 `## ` 섹션이 0개라 `--auto-split`이 옮길 경계가 없고, 그 상태는 lint이 아무리 돌아도 스스로 풀리지 않는다 — 사람이 주제별 헤딩을 넣어야 한다. **발화선이 근접(85%)인 것이 이 케이스의 핵심이다**: 구역화는 사람 판단이라 임박(95%)에서 알리면 그 사이 편집 한 번이 곧 초과가 된다. 임박에서만 내는 구현은 85%인 이 파일에 침묵해 FAIL한다. 델타 음성 `demo2/conventions.md`는 **같은 타입·더 큰 96%**인데 keep 밖 `## ` 섹션이 2개라 auto-split이 처리할 수 있고, 그래서 **어떤 신호도 나지 않는다**(ⓐ). 이 파일이 expect_absent에 있는 이유는 그것이 이 회차 변경의 본체이기 때문이다 — 「처방 가능 여부로 가른다」를 빼고 임계만으로 신호를 내던 구현은 96%인 이 파일에 WARN을 내며 FAIL한다. **별도 프로젝트로 둔 이유**: `conventions-{주제}.md`로 두면 §2.9 하위 문서로 읽혀 「하위 문서 목록 누락」 WARN이 따라붙고, 그것이 부재 가드를 오염시킨다(실측). 두 파일이 한 픽스처에 있어야 **크기가 아니라 구조가 신호를 가른다**는 것이 한 실행에서 대조된다."
+    },
+    {
+      "fixture": "budget-single-section",
+      "expect_keywords": [
+        "구역화 필요: 20_projects/personal/demo/conventions.md 11516/12000자 (96%, 여유 484자, type=convention)"
+      ],
+      "expect_absent": [
+        "예산 임박: 20_projects/personal/demo/conventions.md"
+      ],
+      "rationale": "**개수 근사로는 못 잡는 경계**를 고정한다. 이 `conventions.md`는 `## ` 섹션이 **정확히 1개**이고 그 섹션은 keep 밖이라, 판정을 「keep 밖 섹션이 1개 이상인가」로 근사한 구현은 처방 가능으로 보고 **침묵한다**. 그러나 `relocate_sections`의 실제 게이트는 `len(secs) >= 2`이므로 auto-split은 이 파일을 건드리지 않는다 — 하나뿐인 섹션을 옮기면 원본이 껍데기만 남기 때문이다(정지 가드). 즉 근사 구현에서는 **조용한데 처리도 안 되는** 파일이 되며, 그것이 이 회차가 술어를 `relocate_sections`에서 그대로 추출한 이유다. 섹션 0개짜리(`budget-no-sections`)는 이 경계를 잡지 못한다 — 그쪽은 어떤 근사로도 0이라 침묵 분기에 안 들어간다."
     },
     {
       "fixture": "backup-cleanup",
