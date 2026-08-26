@@ -1806,6 +1806,36 @@ def relocatable(rel, fm, text, nl):
     return _pick_relocatable(text, text, fm, typ, label, rel, nl, secmap, sub_rel) is not None
 
 
+
+def prescribable(rel, fm, text, nl):
+    """`--auto-split`이 이 파일에 **수행할 처방을 갖는가**(§7-2 발동 ⓐ/ⓑ 판정용).
+
+    `relocatable`만으로는 부족하다 — auto-split의 처방은 넷인데(§8 log 롤오버 · §2.8
+    decision-log 롤오버 · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리) 그 함수는 마지막
+    하나만 답한다. 앞 셋을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
+    사람에게 할 일이 없는 경고가 다시 쌓이고, 반대로 산문 술어만 참으로 두면
+    `source-stub`처럼 **어느 처방도 없는 타입이 조용해진다**(초과 전까지 무신호).
+
+    각 분기는 그 처방 함수의 **구조 게이트**를 그대로 본다. 예산 게이트(critical·억제)는
+    보지 않는다 — 여기서 답하는 것은 *"처방 경로가 있는가"*이지 *"지금 발동하는가"*가
+    아니다(80%에서 조용한 이유는 95%에 롤오버가 돌기 때문이지 처방이 없어서가 아니다)."""
+    typ = str(fm.get("type", "")).strip()
+    if rel in SPECIAL_BUDGET:
+        # log.md — `rollover_log`가 `## 최근 변경` 항목을 월 파일로 옮긴다.
+        sec = section(text, "최근 변경")
+        return bool(sec and _split_items(sec)[1])
+    if typ == "decision-log":
+        # `rollover_decisions` — 항목이 본문에 바로 오므로 세 조각으로 갈라 본다.
+        _h, body, _t = _decision_body_span(text)
+        return bool(body and _split_items(body)[1])
+    if typ == "project":
+        # `rollover_hub_changes` — **문자 예산과 별개 트리거**라 항목 수만 센다(§7-2 ⓑ).
+        #  5개 이하면 이 처방의 대상이 아니고, 그때 문자 쪽 처방은 아래 산문 분리다.
+        sec = section(text, "최근 주요 변경")
+        if sec and len(_split_items(sec)[1]) > HUB_CHANGES_KEEP:
+            return True
+    return relocatable(rel, fm, text, nl)
+
 def relocate_sections(ses):
     """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다(D2).
 
@@ -2388,7 +2418,7 @@ def main():
                 #  합성 + `budget_state`가 매 파일에 붙는다).
                 # 개행은 "\n" 고정 — 이 루프의 `text`는 위에서 LF로 정규화됐고,
                 #  헬퍼가 합성하는 하위 텍스트도 같은 기준으로 재야 길이 판정이 어긋나지 않는다.
-                can = relocatable(r, fm, text, "\n")
+                can = prescribable(r, fm, text, "\n")
                 if can:
                     # ⓐ auto-split이 처리할 수 있다 → **아무 신호도 내지 않는다.**
                     #  사람이 할 일이 없는데 「초과까지 몇 % 남았다」를 내면 그것은 소음이고,
@@ -2396,16 +2426,29 @@ def main():
                     pass
                 elif typ == "convention":
                     # ⓑ 옮길 경계가 없다 → 사람이 구역화해야 한다(§2.9 처방 ⓪).
-                    #  convention으로 한정하는 이유: project 허브·decision-log는 각자 §2.2·§2.8
-                    #  롤오버가 처방이고 「옮길 섹션 0」이 그 타입에서는 정상이다(ⓕ).
                     #  `critical`이 아니라 `near`부터 내는 이유: 구역화는 auto-split이 대신할 수
-                    #  없는 사람 판단이라, 95%에서 알리면 그 사이 편집이 곧 초과가 된다.
+                    #  없는 사람 판단이라, 95%에서 알리면 그 사이 편집 한 번이 곧 초과가 된다.
                     warn(f"구역화 필요: {r} {eff_chars}/{budget}자 "
                          f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ}) "
                          f"— auto-split이 옮길 경계가 없다(`## ` 섹션 0~1개). "
                          f"주제별 `## ` 헤딩으로 본문을 구역화하면 이후는 자동 처리된다 (wiki-schema §2.9 처방 ⓪)", r)
-                # 그 밖의 타입(project·decision-log·feature·concept·guide 등)은 여기서 침묵한다 —
-                #  각자의 롤오버 처방이 있거나 구역화가 그 타입의 수리 경로가 아니다.
+                elif st.critical:
+                    # ⓑ' 처방이 없는데 convention도 아니다 → **종전 임박 WARN을 그대로 낸다.**
+                    #  침묵은 「auto-split이 맡았다」는 뜻이지 「무시해도 된다」가 아니므로, 맡을
+                    #  주체가 없는 파일까지 조용해지면 초과 직전까지 아무도 모른다. 발화선을
+                    #  `critical`로 두는 것은 이 갈래가 v1.207.0 이전과 **완전히 같은 동작**이기
+                    #  때문이다(바뀐 것은 처방이 있는 파일이 여기서 빠졌다는 것뿐이다).
+                    np_hint = {
+                        "project": " — '최근 주요 변경'이 5개 이하라 §2.2 롤오버 대상이 아니다. 작업 규약을 conventions.md로 분리 (wiki-schema §2.9)",
+                        "decision-log": " — 옮길 항목을 찾지 못했다. §2.8 롤오버 대상 형식을 확인 (wiki-schema §2.8)",
+                    }.get(typ, "")
+                    if not np_hint:
+                        np_hint = (" — auto-split이 옮길 `## ` 경계가 없다. 주제별 헤딩으로 구역화 (wiki-schema §4)"
+                                   if typ in RELOCATE_TYPES
+                                   else " — 이 타입에는 auto-split 처방이 없다. 내용을 줄이거나 상위·하위로 옮겨야 한다 (wiki-schema §4)")
+                    warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
+                         f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
+                         f"{np_hint}", r)
             elif budget and st.critical and not is_lint_report(r):
                 # ⓒ L-4: 위 분기가 budget_split 억제로 건너뛴 파일이 여기로 내려온다.
                 #   침묵시키지 않는 이유: 억제를 영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어
