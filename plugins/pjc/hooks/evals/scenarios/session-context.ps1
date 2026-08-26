@@ -382,6 +382,9 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-ScRepoHook
     Assert-Case -Name "session-context: K-DRIFT 축 단독 발화 (SC33)" -R $r -ExpectExit 0 -ExpectContains '미반영 발견 1건'
     Assert-Case -Name "session-context: 잔량 단독이면 커밋 수치 미표기 (SC33b)" -R $r -ExpectExit 0 -ExpectNotContains '커밋 미반영'
+    # 잔량 단독 문구 자체를 고정한다 — 이 문면을 재는 케이스가 없으면 바뀌어도 아무도 모른다
+    #   (F-7 m1: 종전 문구는 뒤에 붙는 부기와 "미반영 발견"이 겹쳐 같은 말이 한 줄에 두 번 나왔다).
+    Assert-Case -Name "session-context: 잔량 단독 문구 고정 (SC33d)" -R $r -ExpectExit 0 -ExpectContains '반영이 밀려'
 
     # SC33c (델타 음성 — 3축 전부 미달): 커밋 0 · updated 오늘 · 잔량 0 → 미발화.
     #   **세 축을 전부 이 자리에서 다시 세운다** — 앞 케이스가 남긴 상태(13일·잔량 1건)를
