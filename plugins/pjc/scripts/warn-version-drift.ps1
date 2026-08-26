@@ -7,6 +7,8 @@
 #   임의 레포 오탐 방지), 레포 plugin.json 버전과 자기 설치본 버전($env:CLAUDE_PLUGIN_ROOT의
 #   plugin.json — 다중 버전 캐시·레거시 레이아웃과 무관하게 자기 자신이 곧 활성 설치본)을 비교한다.
 # 안전: 경고 hook이므로 모든 실패 경로는 조용히 exit 0 (fail-open — 세션 시작을 절대 막지 않는다).
+#   ⚠ v1.205.0부터 예외가 하나 있다 — **무응답 원격**은 조용한 exit 0이 아니라 hook timeout kill로 빠진다
+#   (아래 「릴리즈 누락 감지」 절이 그 경로와 실측을 적는다). 세션이 막히지는 않지만 최대 10초 지연된다.
 #   stdout은 SessionStart 규약상 세션 컨텍스트로 주입된다(exit 0).
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -37,7 +39,19 @@ try {
     # 판정 기준은 **워킹트리 버전이 아니라 push된 버전**이다 — 개발 중(버전만 올리고 작업 중)에는 태그가
     #   없는 것이 정상이라, 워킹트리로 판정하면 매 세션 오탐이 된다. origin/main에 올라간 plugin.json의
     #   버전에 해당하는 태그가 없을 때만 알린다(그 시점이 규약상 릴리즈 의무가 발생한 시점이다).
-    # 안전: git이 없거나 origin/main이 없거나(미push 레포) 어느 단계든 실패하면 조용히 통과(fail-open).
+    # 태그를 **두 소스**에서 본다 (v1.205.0) — 로컬 태그가 히트하면 거기서 끝내고, 없을 때만 원격을 조회한다.
+    #   로컬만 보던 종전 판정은 이 레포의 릴리즈 경로(`gh release create`)가 태그를 **원격에만** 만들기 때문에
+    #   규약을 지켜도 매 세션 발화했다(v1.203.0·v1.204.0 연속 실측). 순서를 로컬 우선으로 둔 것은 비용 때문이고
+    #   (히트 시 네트워크 0), 그 대가로 "로컬에만 만들고 push하지 않은 태그"는 릴리즈로 오인한다(감수한 미탐).
+    # 안전: git이 없거나 origin/main이 없거나(미push 레포) **원격 조회가 실패하거나**(remote 부재·네트워크 불가·
+    #   인증 실패) 어느 단계든 실패하면 조용히 통과(fail-open). 원격 조회는 3분기다 — exit 0 + 출력이면 태그 존재,
+    #   exit 0 + 빈 출력이면 태그 없음(발화), exit != 0이면 판정 불가(침묵). **출력 유무만으로는 「없음」과
+    #   「조회 실패」가 구분되지 않으므로 종료 코드가 판정에 필수다.**
+    #   ⚠ 단 **무응답 원격은 이 fail-open을 타지 않는다** — `ls-remote`에 실효 타임아웃을 걸 수단이 없어
+    #   (`http.connectTimeout`은 무시되는 것을 실측: 2,000ms 지정에 21,372ms) OS TCP 재시도 상한까지 매달리고,
+    #   그 상한은 hooks.json의 `timeout: 10`이 프로세스를 **강제 종료**하는 것이다(**설정값 기준 — kill 동작
+    #   자체는 미실증이다**. 재현하려면 hook에 지연을 심어야 해 v1.205.0 범위에서 재지 않았다). 세션은 막히지 않지만
+    #   경로가 「조용한 exit 0」이 아니라 kill이며, 그 대가로 세션 시작이 최대 10초 지연된다.
     # ⚠ 출력 문구의 변수는 `${pushedVer}`처럼 **중괄호 필수** — 한글 조사가 붙으면(`v$pushedVer가`)
     #   PowerShell이 `$pushedVer가`를 변수명으로 해석해 빈 값이 된다(이 검사 구현 중 실제로 밟았다).
     # 배치: **설치본 버전 판정보다 앞**이다 — 두 검사는 독립인데 뒤에 두면 `CLAUDE_PLUGIN_ROOT` 부재
@@ -55,7 +69,17 @@ try {
                 if (-not [string]::IsNullOrWhiteSpace($pushedVer)) {
                     $tag = & git tag -l "v$pushedVer" 2>$null
                     if ($LASTEXITCODE -eq 0 -and [string]::IsNullOrWhiteSpace(($tag -join ''))) {
-                        Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}가 없습니다 — 이 레포 규약은 '버전 업 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <full-sha> (short sha는 거부됩니다)."
+                        # 로컬에 없다 → 원격 확인. `2>$null` 필수 — 빼면 remote 부재 시 `fatal: 'origin' does not
+                        #   appear to be a git repository`가 stderr로 새어 나가 fail-open 침묵이 깨진다(위 두 git 호출과 같은 형태).
+                        # `GIT_TERMINAL_PROMPT=0`은 git의 **터미널** 자격증명 프롬프트만 억제한다 — Windows Git Credential
+                        #   Manager 같은 GUI 프롬프트는 막지 못하므로 완전한 보장이 아니다(그 경우의 상한은 아래 timeout).
+                        #   저장된 자격증명은 그대로 쓰이므로 private 레포도 조회된다(credential.helper를 비우면 그쪽이 막힌다).
+                        $env:GIT_TERMINAL_PROMPT = '0'
+                        $remoteTag = & git ls-remote --tags origin "v$pushedVer" 2>$null
+                        $remoteExit = $LASTEXITCODE   # 즉시 캡처 — 아래 문자열 연산이 값을 덮어쓰기 전에
+                        if ($remoteExit -eq 0 -and [string]::IsNullOrWhiteSpace(($remoteTag -join ''))) {
+                            Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '버전 업 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <full-sha> (short sha는 거부됩니다)."
+                        }
                     }
                 }
             }
