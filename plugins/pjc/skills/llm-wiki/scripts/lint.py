@@ -44,16 +44,21 @@ try:
 except Exception:
     pass
 
-# 임박 판정의 선행 게이트 — 자체 신호를 내지 않는 내부 임계다(v1.177.0에서 근접 INFO 폐지).
+# 임박 판정의 선행 게이트 — 자체 신호를 내지 않는 내부 임계였으나, v1.207.0부터
+#  **convention의 「구역화 필요」 WARN이 이 비율부터 난다**(§7-2 발동 ⓑ). 구역화는
+#  auto-split이 대신할 수 없는 사람 판단이라 임박까지 기다리면 늦기 때문이다.
 #  이 상수를 지우면 안 되는 이유: 임박은 `이 비율 이상 AND (비율 조건 OR 잔여 조건)`이라,
 #  선행 게이트가 빠지면 예산이 작은 타입(source-stub 1800)에서 72%짜리가 잔여 조건만으로 임박이 된다.
 BUDGET_NEAR_RATIO = 0.8
 
-# 예산 임박 임계 — 초과 전에 나는 유일한 신호다. 선행 게이트가 참인 파일 중 아래 둘 중 하나면 WARN.
+# 예산 임박 임계 — 선행 게이트가 참인 파일 중 아래 둘 중 하나면 이 계층에 든다.
 #  왜 두 축인가: 비율만 쓰면 여유 414자인 decision-log(93%)를 놓치고, 절대값만 쓰면 예산이 작은
 #  타입(source-stub 1800)에서 72%짜리가 임박이 된다. 선행 게이트 + OR 결합이 실측 분포를 정확히 가른다.
 #  왜 단일 단계인가: 80% INFO를 함께 내던 때는 여유 28자와 1,624자가 같은 줄로 나와 정작 급한 것이
-#  INFO 더미에 묻혔다(실측 INFO 99건 중 10건). 묻히는 층을 없애고 WARN 하나만 남긴다.
+#  INFO 더미에 묻혔다(실측 INFO 99건 중 10건). 묻히는 층을 없애고 하나만 남긴다.
+#  **v1.207.0부터 이 계층이 곧 WARN은 아니다** — auto-split이 실제로 옮길 수 있으면(`relocatable`)
+#  침묵하고, 옮길 경계가 없을 때만 신호가 난다(§7-2 발동 ⓐ/ⓑ). 사람이 할 일이 없는데
+#  「초과까지 몇 % 남았다」를 반복하는 것이 소음이었기 때문이다.
 BUDGET_CRITICAL_RATIO = 0.95
 BUDGET_CRITICAL_SLACK = 500
 
@@ -1753,6 +1758,54 @@ def _register_feature_rows(vault, rel, entries):
     return hub_rel, hub_text.replace(sec, sec.rstrip("\n") + "\n" + rows + "\n", 1)
 
 
+def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra_keep=()):
+    """이 상태에서 **실제로 옮길 수 있는 섹션**을 고른다. 없으면 None.
+
+    `relocate_sections`의 반복문 안에 있던 판정을 그대로 뽑은 것이며, 그 함수와
+    **예산 분기(§7-2 발동 ⓐ/ⓑ)가 이 하나를 공유**한다 -- 「신호를 낼지」와 「옮길지」가
+    다른 술어를 쓰면 *조용한데 처리도 안 되는* 파일이 생긴다(그것이 이 추출의 이유다).
+    개수 비교(`movable >= 1`)로 근사할 수 없다: 전체 섹션이 하나뿐이거나, 옮겨도 하위가
+    곧바로 발동하거나, 본문이 비어 있으면 후보가 없는데 개수만으로는 그것이 안 보인다."""
+    secs = _md_sections(cur)
+    # `extra_keep`은 **호출측이 이번 실행에서 이미 옮긴 섹션**이다 — 그것을 받지 않으면
+    #  옮긴 자리에 남은 헤딩+포인터가 다음 라운드에 다시 후보로 잡힌다(중복 이동).
+    keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(typ, ())) | set(extra_keep)
+    movable = [x for x in secs if x[0] not in keep]
+    # 섹션이 하나뿐이면 옮기지 않는다 -- 옮기면 원본이 껍데기만 남는다(정지 가드).
+    if len(secs) < 2 or not movable:
+        return None
+    # **옮겨도 하위가 곧바로 발동할 섹션은 후보에서 뺀다.** 그런 섹션을 옮기면 같은
+    #  크기의 파일이 하나 더 생길 뿐이고, 다음 실행이 그 하위를 또 쪼개 `-2-2`·`-2-2-2`로
+    #  끝없이 번진다(실측). 한 섹션은 더 쪼갤 수 없으므로 여기서 멈추는 것이 §7-2의
+    #  정지 가드다 -- 남는 신호는 실패가 아니라 「더 나눌 것이 없다」는 보고다.
+    for cand in sorted(movable, key=lambda x: x[2] - x[1], reverse=True):
+        c_title, c0, c1 = cand
+        c_body = cur[cur.index("\n", c0) + 1:c1]
+        if not c_body.strip():
+            continue
+        sub_text = _sub_page_text(text, fm, typ, c_title, c_body, label, rel, nl, secmap)
+        sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
+        if sst and (sst.critical or sst.over):
+            continue
+        return (cand, c_body, sub_text)
+    return None
+
+
+def relocatable(rel, fm, text, nl):
+    """auto-split이 이 파일에서 **실제로 옮길 수 있는가**(§7-2 발동 ⓐ/ⓑ 판정용).
+
+    하위 파일명은 예산 판정에 개입하지 않으므로(`budget_state`가 `rel`을 쓰는 곳은
+    `SPECIAL_BUDGET`·`BUDGET_ROLLOVER_TARGET` 조회뿐이다) 순번을 조회하지 않고 `-1`을
+    가정한다 -- vault 경로가 필요 없어 lint 검사 경로에서 그대로 부를 수 있다."""
+    typ = str(fm.get("type", "")).strip()
+    if typ not in RELOCATE_TYPES:
+        return False
+    label = fm.get("index_label", "").strip() or os.path.basename(rel)[:-len(".md")]
+    secmap = {ti: text[a:b] for ti, a, b in _md_sections(text)}
+    sub_rel = "%s-1.md" % rel[:-len(".md")]
+    return _pick_relocatable(text, text, fm, typ, label, rel, nl, secmap, sub_rel) is not None
+
+
 def relocate_sections(ses):
     """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다(D2).
 
@@ -1778,30 +1831,12 @@ def relocate_sections(ses):
         created, entries, moved = [], [], 0
         cur = text
         while True:
-            secs = _md_sections(cur)
-            # 섹션이 하나뿐이면 옮기지 않는다 — 옮기면 원본이 껍데기만 남는다(정지 가드).
-            movable = [s for s in secs if s[0] not in keep]
-            if len(secs) < 2 or not movable:
-                break
             n = _next_sub_index(ses.vault, rel) + len(created)
             sub_rel = "%s-%d.md" % (rel[:-len(".md")], n)
             sub_path = os.path.join(ses.vault, sub_rel.replace("/", os.sep))
-            # **옮겨도 하위가 곧바로 발동할 섹션은 후보에서 뺀다.** 그런 섹션을 옮기면 같은
-            #  크기의 파일이 하나 더 생길 뿐이고, 다음 실행이 그 하위를 또 쪼개 `-2-2`·`-2-2-2`로
-            #  끝없이 번진다(실측). 한 섹션은 더 쪼갤 수 없으므로 여기서 멈추는 것이 §7-2의
-            #  정지 가드다 -- 남는 신호는 실패가 아니라 「더 나눌 것이 없다」는 보고다.
-            pick = None
-            for cand in sorted(movable, key=lambda s: s[2] - s[1], reverse=True):
-                c_title, c0, c1 = cand
-                c_body = cur[cur.index("\n", c0) + 1:c1]
-                if not c_body.strip():
-                    continue
-                sub_text = _sub_page_text(text, fm, st.typ, c_title, c_body, label, rel, nl, secmap)
-                sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
-                if sst and (sst.critical or sst.over):
-                    continue
-                pick = (cand, c_body, sub_text)
-                break
+            # 판정은 `_pick_relocatable`이 하고 여기서는 그 결과만 쓴다 — 예산 분기(§7-2 발동)와
+            #  **같은 술어를 공유**하기 위해서다(둘이 갈리면 조용한데 처리도 안 되는 파일이 생긴다).
+            pick = _pick_relocatable(cur, text, fm, st.typ, label, rel, nl, secmap, sub_rel, keep)
             if pick is None:
                 break
             (title, s0, s1), body, sub_text = pick
@@ -2306,17 +2341,15 @@ def main():
         if r in SPECIAL_BUDGET:
             st = budget_state(r, fm, text)
             chars = st.chars
+            # v1.207.0 — 임박에서 침묵한다. 이 경로의 처방은 §8 월별 롤오버이고 그것은
+            #  `rollover_log`가 자동 수행하므로, 사람이 할 일이 없는 구간에서 「초과까지
+            #  몇 % 남았다」를 반복할 이유가 없다(§7-2 발동 ⓐ와 같은 취지 — 다만 이
+            #  경로는 산문 타입이 아니라 `relocatable`을 쓸 수 없어 처방 실재가 고정값이다).
+            #  **침묵은 임박까지다** — 위 `over` 분기의 WARN은 그대로 남는다(롤오버가
+            #  실패했거나 아직 안 돈 상태이므로 그때는 알려야 한다).
             if st.over:
                 warn(f"예산 초과: {r} {chars}/{st.budget}자 "
                      f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)", r)
-            elif st.critical:
-                # 이 경로에는 임박 계층이 없어 근접 INFO만 있었다 — 그것을 지우면 log.md는 초과 전
-                #  무신호가 되고, "임박 도달 시 소비 지점이 처방을 수행한다"는 규정이 이 타입에만
-                #  도달하지 못한다. 일반 예산 분기와 같은 임계·같은 OR 결합을 쓴다(새 임계 없음 —
-                #  판정은 budget_state 공용).
-                warn(f"예산 임박: {r} {chars}/{st.budget}자 "
-                     f"({chars / st.budget * 100:.0f}%, 여유 {st.budget - chars}자) "
-                     f"— 다음 기록 전에 §8 롤오버 수행 (wiki-schema §8)", r)
         elif not in_archive:
             # 판정은 budget_state 공용 — 조건을 여기 다시 쓰지 않는다(그 함수 docstring 참조).
             #  guide_kind 통제어휘 WARN은 예산 판정이 아니라 「값 위반 가시화」라 여기 남는다.
@@ -2343,30 +2376,38 @@ def main():
                 hint = {
                     "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)",
                     "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약은 conventions.md로 분리 (wiki-schema §2.2·§2.9)",
-                    "convention": " — 무효 항목 제거 → 주제별 하위 파일(conventions-{주제}.md) 분리 + '## 하위 문서' 목록 갱신 (wiki-schema §2.9)",
+                    "convention": " — 주제별 `## ` 헤딩으로 구역화 → 무효 항목 제거 → 주제별 하위 파일(conventions-{주제}.md) 분리 + '## 하위 문서' 목록 갱신 (wiki-schema §2.9)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{fence_note}){hint}", r)
-            elif budget and st.critical and not is_lint_report(r) and not st.suppressed:
-                # L-5: 초과 전에 나는 유일한 신호다. 80% INFO를 함께 내던 때는 여유 28자와 1,624자가
-                #   같은 줄로 나와 정작 급한 것이 INFO 더미에 묻혔고(실측: INFO 99건 중 10건이 그것이었고
-                #   그 상태로 방치돼 feature 하나가 여유 28자까지 왔다), 그래서 묻히는 층을 없앴다.
-                #   이 WARN을 소비하는 것은 lint 세션(F-2)·ingest(A-4·B-3)다. **처방을 수행하는
-                #   것은 `--auto-split`이고 그 세 지점은 호출·검증·보고만 한다**(§7-2 번복 —
-                #   경계를 스키마가 정한 `## ` 섹션·항목 단위로 고정하면 「무엇을 옮길지」가
-                #   크기·시간 순서로 결정돼 판단이 사라진다). 여기서 하는 일은 신호를 내는
-                #   것까지다(`--fix`는 여전히 참조 무결성 3종 한정이라 이 처방과 무관하다).
-                #   그 수행의 승인 여부는 절차 문서(F-2·A-4·B-3)가 정하며 이 스크립트가 규정하지 않는다.
-                #   억제(budget_split)가 걸리면 이 분기를 건너뛰어 아래 「분리 불가 판정 유지」 INFO로
-                #   강등된다 — 나눌 하위가 없는 페이지에 실행 불가능한 처방을 반복 요구하지 않기 위함이다.
-                crit_hint = {"project": " — '최근 주요 변경' 롤오버(§2.2·§8) 또는 작업 규약 conventions.md 분리(§2.9)",
-                             "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 (§2.8)",
-                             "convention": " — 무효 항목 제거 → 주제별 하위 파일 분리 (§2.9)"}.get(typ, "")
-                warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
-                     f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
-                     f"{crit_hint} — 다음 편집 전에 §4 처방 수행 (나눌 하위가 없으면 budget_split 판정)", r)
+            elif budget and st.near and not is_lint_report(r) and not st.suppressed:
+                # v1.207.0 — 임박 계층을 **처방 가능 여부**로 가른다(§7-2 발동 ⓐ/ⓑ).
+                #  판정 술어는 `relocatable`이며 그것은 `relocate_sections`가 실제로 쓰는
+                #  게이트를 그대로 뽑은 것이다 — 「신호를 낼지」와 「옮길지」가 다른 술어를
+                #  쓰면 *조용한데 처리도 안 되는* 파일이 생긴다.
+                #  성능: `near` 이상인 파일에만 호출한다(전 파일에 돌리면 하위 텍스트
+                #  합성 + `budget_state`가 매 파일에 붙는다).
+                # 개행은 "\n" 고정 — 이 루프의 `text`는 위에서 LF로 정규화됐고,
+                #  헬퍼가 합성하는 하위 텍스트도 같은 기준으로 재야 길이 판정이 어긋나지 않는다.
+                can = relocatable(r, fm, text, "\n")
+                if can:
+                    # ⓐ auto-split이 처리할 수 있다 → **아무 신호도 내지 않는다.**
+                    #  사람이 할 일이 없는데 「초과까지 몇 % 남았다」를 내면 그것은 소음이고,
+                    #  정작 사람 손이 필요한 ⓑ가 그 더미에 묻힌다(80% INFO를 폐지한 것과 같은 이유).
+                    pass
+                elif typ == "convention":
+                    # ⓑ 옮길 경계가 없다 → 사람이 구역화해야 한다(§2.9 처방 ⓪).
+                    #  convention으로 한정하는 이유: project 허브·decision-log는 각자 §2.2·§2.8
+                    #  롤오버가 처방이고 「옮길 섹션 0」이 그 타입에서는 정상이다(ⓕ).
+                    #  `critical`이 아니라 `near`부터 내는 이유: 구역화는 auto-split이 대신할 수
+                    #  없는 사람 판단이라, 95%에서 알리면 그 사이 편집이 곧 초과가 된다.
+                    warn(f"구역화 필요: {r} {eff_chars}/{budget}자 "
+                         f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ}) "
+                         f"— auto-split이 옮길 경계가 없다(`## ` 섹션 0~1개). "
+                         f"주제별 `## ` 헤딩으로 본문을 구역화하면 이후는 자동 처리된다 (wiki-schema §2.9 처방 ⓪)", r)
+                # 그 밖의 타입(project·decision-log·feature·concept·guide 등)은 여기서 침묵한다 —
+                #  각자의 롤오버 처방이 있거나 구역화가 그 타입의 수리 경로가 아니다.
             elif budget and st.critical and not is_lint_report(r):
-                # L-4: 위 임박 분기가 budget_split 억제로 건너뛴 파일이 여기로 내려온다(조건식은 임박과
-                #   동일하고 억제 여부만 다르다 — 선행 게이트만으로 잡으면 82%짜리가 「임박」으로 오표기된다).
+                # ⓒ L-4: 위 분기가 budget_split 억제로 건너뛴 파일이 여기로 내려온다.
                 #   침묵시키지 않는 이유: 억제를 영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어
                 #   판정 자체가 사각이 된다. 상태는 보이되 수리 의무는 없으므로 WARN이 아니라 INFO다.
                 infos.append(f"예산 임박(분리 불가 판정 유지): {r} {eff_chars}/{budget}자 "
