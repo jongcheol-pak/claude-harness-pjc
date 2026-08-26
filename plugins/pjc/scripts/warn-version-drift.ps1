@@ -37,7 +37,14 @@ try {
     # 판정 기준은 **워킹트리 버전이 아니라 push된 버전**이다 — 개발 중(버전만 올리고 작업 중)에는 태그가
     #   없는 것이 정상이라, 워킹트리로 판정하면 매 세션 오탐이 된다. origin/main에 올라간 plugin.json의
     #   버전에 해당하는 태그가 없을 때만 알린다(그 시점이 규약상 릴리즈 의무가 발생한 시점이다).
-    # 안전: git이 없거나 origin/main이 없거나(미push 레포) 어느 단계든 실패하면 조용히 통과(fail-open).
+    # 태그를 **두 소스**에서 본다 (v1.205.0) — 로컬 태그가 히트하면 거기서 끝내고, 없을 때만 원격을 조회한다.
+    #   로컬만 보던 종전 판정은 이 레포의 릴리즈 경로(`gh release create`)가 태그를 **원격에만** 만들기 때문에
+    #   규약을 지켜도 매 세션 발화했다(v1.203.0·v1.204.0 연속 실측). 순서를 로컬 우선으로 둔 것은 비용 때문이고
+    #   (히트 시 네트워크 0), 그 대가로 "로컬에만 만들고 push하지 않은 태그"는 릴리즈로 오인한다(감수한 미탐).
+    # 안전: git이 없거나 origin/main이 없거나(미push 레포) **원격 조회가 실패하거나**(remote 부재·네트워크 불가·
+    #   인증 실패) 어느 단계든 실패하면 조용히 통과(fail-open). 원격 조회는 3분기다 — exit 0 + 출력이면 태그 존재,
+    #   exit 0 + 빈 출력이면 태그 없음(발화), exit != 0이면 판정 불가(침묵). **출력 유무만으로는 「없음」과
+    #   「조회 실패」가 구분되지 않으므로 종료 코드가 판정에 필수다.**
     # ⚠ 출력 문구의 변수는 `${pushedVer}`처럼 **중괄호 필수** — 한글 조사가 붙으면(`v$pushedVer가`)
     #   PowerShell이 `$pushedVer가`를 변수명으로 해석해 빈 값이 된다(이 검사 구현 중 실제로 밟았다).
     # 배치: **설치본 버전 판정보다 앞**이다 — 두 검사는 독립인데 뒤에 두면 `CLAUDE_PLUGIN_ROOT` 부재
@@ -55,7 +62,16 @@ try {
                 if (-not [string]::IsNullOrWhiteSpace($pushedVer)) {
                     $tag = & git tag -l "v$pushedVer" 2>$null
                     if ($LASTEXITCODE -eq 0 -and [string]::IsNullOrWhiteSpace(($tag -join ''))) {
-                        Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}가 없습니다 — 이 레포 규약은 '버전 업 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <full-sha> (short sha는 거부됩니다)."
+                        # 로컬에 없다 → 원격 확인. `2>$null` 필수 — 빼면 remote 부재 시 `fatal: 'origin' does not
+                        #   appear to be a git repository`가 stderr로 새어 나가 fail-open 침묵이 깨진다(위 두 git 호출과 같은 형태).
+                        # `GIT_TERMINAL_PROMPT=0`은 자격증명 프롬프트에 hook이 매달리는 것을 막는다 — 저장된 자격증명은
+                        #   그대로 쓰이므로 private 레포도 조회된다(credential.helper를 비우면 그쪽이 막힌다).
+                        $env:GIT_TERMINAL_PROMPT = '0'
+                        $remoteTag = & git ls-remote --tags origin "v$pushedVer" 2>$null
+                        $remoteExit = $LASTEXITCODE   # 즉시 캡처 — 아래 문자열 연산이 값을 덮어쓰기 전에
+                        if ($remoteExit -eq 0 -and [string]::IsNullOrWhiteSpace(($remoteTag -join ''))) {
+                            Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '버전 업 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <full-sha> (short sha는 거부됩니다)."
+                        }
                     }
                 }
             }
