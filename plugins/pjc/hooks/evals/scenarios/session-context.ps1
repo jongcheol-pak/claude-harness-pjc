@@ -306,6 +306,8 @@ if (Test-HookSelected @('session-context')) {
     if ($gitOk) {
     $scRepo = Join-Path $work ("sc-wiki-repo-" + $suffix)
     New-Item -ItemType Directory $scRepo -Force | Out-Null
+    # 아래 remote add 와 SC37 계열 케이스가 공유하는 단일 출처 — 리터럴을 두 벌 두지 않는다.
+    $scRepoUrl = 'https://example.invalid/scwiki/repo.git'
     # 격리 홈($isoV)에는 .gitconfig 가 없어 identity 를 인라인으로 준다 — 없으면 커밋이 선다
     #   (`scenarios/post-write-checks.ps1` 이 같은 형태를 쓴다).
     # Pop-Location 을 finally 에 두는 이유: 중간에서 터지면 위치 스택이 어긋난 채 남아
@@ -320,11 +322,15 @@ if (Test-HookSelected @('session-context')) {
         $scHeadSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
         $scSha30   = (& git rev-parse 'HEAD~30' 2>$null | Select-Object -First 1)
         $scSha29   = (& git rev-parse 'HEAD~29' 2>$null | Select-Object -First 1)
-        # SC37~SC37c 용 origin — 네트워크에 닿지 않는 `.invalid` TLD 를 쓴다(픽스처가 실수로
-        #   fetch 를 유발하지 않게). hook 은 로컬 config 만 읽으므로 실재할 필요가 없다.
-        & git remote add origin 'https://example.invalid/scwiki/repo.git' 2>$null
+        # SC37·SC37a·SC37b·SC37d 용 origin (SC37c 는 제외 — 그 케이스는 «origin 이 없는» 상태를
+        #   재려고 아래에서 무-origin 픽스처를 따로 판다). 네트워크에 닿지 않는 `.invalid` TLD 를
+        #   쓴다(픽스처가 실수로 fetch 를 유발하지 않게). hook 은 로컬 config 만 읽으므로
+        #   실재할 필요가 없다.
+        # **값은 $scRepoUrl 하나만 쓴다** — 여기와 케이스 쪽에 리터럴을 두 벌 두면 한쪽만 고쳤을 때
+        #   URL 불일치로 SC37 계열이 조용히 깨진다(케이스는 «불일치 = 미발화»라 FAIL 이 아니라
+        #   양성이 사라지는 형태로 나타나 알아채기 어렵다).
+        & git remote add origin $scRepoUrl 2>$null
     } finally { Pop-Location }
-    $scRepoUrl = 'https://example.invalid/scwiki/repo.git'
     # 게이팅 충족용 — 삽입은 `if ($vaultLine -and ($lines.Count -gt $cwdBaseCount))` 안에서만
     #   일어나므로, plan·AGENTS 가 없는 cwd 에서는 양성이 전건 FAIL 하고 음성은 공허하게 통과한다.
     #   이 마커는 SC36 의 순서 비교 대상이기도 하다.
