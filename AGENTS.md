@@ -60,6 +60,7 @@
 - **`require-plan-for-write`는 게이트 3종**: ① plan 존재 ② plan 작성 ③ AGENTS.md bootstrap. ①②는 같은 정규식(`$planTaskRx`)을 공유하므로 **한쪽만 고치지 말 것**(차이가 곧 우회 경로).
 - **SKILL 문서 작성**: `plugins/pjc/skills/AUTHORING.md` 참조.
 - **README.md 갱신 규약**: 버전별 changelog 블록 기재 **금지** — 현재 기능 설명만 유지한다(제거된 기능 설명은 삭제). 버전 표기는 상단 1곳만 두고 릴리즈 시 `plugin.json`과 **함께** 갱신한다. 이력은 git 커밋이 정본이다.
+- **규약 개정 요청**: 요청이 이 레포 규약에 걸려도 「규약이 금지한다」로 작업을 제외·전환하지 않는다 — **현행 규약 안의 안**과 **규약을 함께 고치는 안**을 둘 다 제시한다. 정본은 `docs/harness-conventions.md`의 「규약 개정 요청의 취급」.
 
 ## 데이터 접근
 
