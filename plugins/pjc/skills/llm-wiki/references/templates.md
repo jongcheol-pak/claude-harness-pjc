@@ -51,6 +51,7 @@ origin: agent-synthesized | human-validated
 confidence: high | medium | low
 updated: YYYY-MM-DD
 synced_commit: <레포 커밋 sha — 선택. 위키가 레포의 어디까지 담았는지. 등록(A)·ingest(B) 시 HEAD로 기록. 미설정도 유효. git 아닌 레포면 줄째로 생략 — §2.2·§7-26>
+repo_url: "<remote origin URL — 선택. 프로젝트 식별의 1차 앵커. `git remote get-url origin` 출력 그대로. 등록(A-2 2)·ingest(B-2 1) 시 기록. 미설정도 유효. git 아니거나 remote 없으면 줄째로 생략 — §2.2>"
 tags: [project, 카테고리, 프로젝트태그]
 ---
 
