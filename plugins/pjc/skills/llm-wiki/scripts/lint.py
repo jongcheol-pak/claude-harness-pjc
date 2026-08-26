@@ -1807,33 +1807,45 @@ def relocatable(rel, fm, text, nl):
 
 
 
+def _rollover_movable(items, keep_min=1):
+    """`_rollover_items`가 이 목록에서 **실제로 옮길 것이 있는가**.
+
+    개수만 세면 틀린다 — 그 함수는 `keep_min`개를 반드시 남기고 **날짜 없는 블록은
+    이동 대상에서 뺀다**(어느 월 파일로 갈지 정할 수 없다). 그래서 항목이 하나뿐이거나
+    전부 날짜가 없으면 롤오버는 0건을 옮기는데, 개수 근사는 그것을 「처방 있음」으로 보고
+    침묵시킨다 — *조용한데 처리도 안 되는* 파일이 롤오버 쪽에서 다시 생기는 경로다."""
+    return len(items) > keep_min and any(d is not None for d, _b in items)
+
+
 def prescribable(rel, fm, text, nl):
     """`--auto-split`이 이 파일에 **수행할 처방을 갖는가**(§7-2 발동 ⓐ/ⓑ 판정용).
 
     `relocatable`만으로는 부족하다 — auto-split의 처방은 넷인데(§8 log 롤오버 · §2.8
     decision-log 롤오버 · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리) 그 함수는 마지막
-    하나만 답한다. 앞 셋을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
+    하나만 답한다. **이 함수가 판정하는 것은 그중 셋**이다 — log 롤오버는 호출부가 먼저
+    갈라 자기 분기에서 답하므로 여기 오지 않는다. 앞 셋을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
     사람에게 할 일이 없는 경고가 다시 쌓이고, 반대로 산문 술어만 참으로 두면
     `source-stub`처럼 **어느 처방도 없는 타입이 조용해진다**(초과 전까지 무신호).
 
     각 분기는 그 처방 함수의 **구조 게이트**를 그대로 본다. 예산 게이트(critical·억제)는
     보지 않는다 — 여기서 답하는 것은 *"처방 경로가 있는가"*이지 *"지금 발동하는가"*가
     아니다(80%에서 조용한 이유는 95%에 롤오버가 돌기 때문이지 처방이 없어서가 아니다)."""
+    # `log.md`(SPECIAL_BUDGET)는 여기 오지 않는다 — 호출부(:2371 부근)가 그 경로를 먼저
+    #  갈라 자기 분기에서 침묵을 결정한다. 여기 분기를 두면 도달하지 않는 죽은 코드다.
     typ = str(fm.get("type", "")).strip()
-    if rel in SPECIAL_BUDGET:
-        # log.md — `rollover_log`가 `## 최근 변경` 항목을 월 파일로 옮긴다.
-        sec = section(text, "최근 변경")
-        return bool(sec and _split_items(sec)[1])
     if typ == "decision-log":
         # `rollover_decisions` — 항목이 본문에 바로 오므로 세 조각으로 갈라 본다.
         _h, body, _t = _decision_body_span(text)
-        return bool(body and _split_items(body)[1])
+        return bool(body) and _rollover_movable(_split_items(body)[1])
     if typ == "project":
-        # `rollover_hub_changes` — **문자 예산과 별개 트리거**라 항목 수만 센다(§7-2 ⓑ).
+        # `rollover_hub_changes` — **문자 예산과 별개 트리거**라 항목 수만 본다(§7-2 ⓑ).
         #  5개 이하면 이 처방의 대상이 아니고, 그때 문자 쪽 처방은 아래 산문 분리다.
         sec = section(text, "최근 주요 변경")
-        if sec and len(_split_items(sec)[1]) > HUB_CHANGES_KEEP:
+        if sec and _rollover_movable(_split_items(sec)[1], HUB_CHANGES_KEEP):
             return True
+    # **술어 밖에 남는 것 둘** — `_prose_page_paths`가 `index*`를 제외하는 것(:1634 부근)과
+    #  `ses.claim`·`backup` 실패로 「하위 분리 건너뜀」이 나는 것은 **파일 구조가 아니라
+    #  실행 사정**이라 여기서 답하지 않는다. 다음 회차가 그것을 이 함수의 사각으로 오판하지 않게.
     return relocatable(rel, fm, text, nl)
 
 def relocate_sections(ses):

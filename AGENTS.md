@@ -34,7 +34,7 @@
   ```
   python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
   ```
-- **AGENTS.md 이관 골든** (`relocate-agents.py` 수정 시 필수 — 7케이스):
+- **AGENTS.md 이관 골든** (`relocate-agents.py` 수정 시 필수 — 14케이스):
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
