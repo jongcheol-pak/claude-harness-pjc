@@ -7,6 +7,8 @@
 #   임의 레포 오탐 방지), 레포 plugin.json 버전과 자기 설치본 버전($env:CLAUDE_PLUGIN_ROOT의
 #   plugin.json — 다중 버전 캐시·레거시 레이아웃과 무관하게 자기 자신이 곧 활성 설치본)을 비교한다.
 # 안전: 경고 hook이므로 모든 실패 경로는 조용히 exit 0 (fail-open — 세션 시작을 절대 막지 않는다).
+#   ⚠ v1.205.0부터 예외가 하나 있다 — **무응답 원격**은 조용한 exit 0이 아니라 hook timeout kill로 빠진다
+#   (아래 「릴리즈 누락 감지」 절이 그 경로와 실측을 적는다). 세션이 막히지는 않지만 최대 10초 지연된다.
 #   stdout은 SessionStart 규약상 세션 컨텍스트로 주입된다(exit 0).
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -47,7 +49,8 @@ try {
     #   「조회 실패」가 구분되지 않으므로 종료 코드가 판정에 필수다.**
     #   ⚠ 단 **무응답 원격은 이 fail-open을 타지 않는다** — `ls-remote`에 실효 타임아웃을 걸 수단이 없어
     #   (`http.connectTimeout`은 무시되는 것을 실측: 2,000ms 지정에 21,372ms) OS TCP 재시도 상한까지 매달리고,
-    #   그 상한은 hooks.json의 `timeout: 10`이 프로세스를 **강제 종료**하는 것이다. 세션은 막히지 않지만
+    #   그 상한은 hooks.json의 `timeout: 10`이 프로세스를 **강제 종료**하는 것이다(**설정값 기준 — kill 동작
+    #   자체는 미실증이다**. 재현하려면 hook에 지연을 심어야 해 v1.205.0 범위에서 재지 않았다). 세션은 막히지 않지만
     #   경로가 「조용한 exit 0」이 아니라 kill이며, 그 대가로 세션 시작이 최대 10초 지연된다.
     # ⚠ 출력 문구의 변수는 `${pushedVer}`처럼 **중괄호 필수** — 한글 조사가 붙으면(`v$pushedVer가`)
     #   PowerShell이 `$pushedVer가`를 변수명으로 해석해 빈 값이 된다(이 검사 구현 중 실제로 밟았다).

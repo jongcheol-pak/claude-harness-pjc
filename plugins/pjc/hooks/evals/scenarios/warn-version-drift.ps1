@@ -131,6 +131,10 @@ try {
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 로컬·원격 모두 태그 없음 → 릴리즈 누락 발화" -R $r -ExpectExit 0 -ExpectContains '릴리즈 누락'
         Assert-Case -Name "version-drift: 릴리즈 누락 문구에 버전 실림" -R $r -ExpectExit 0 -ExpectContains 'v3.4.5'
+        # 문면 고정 — v1.205.0이 판정 소스를 둘로 늘리며 문구를 「로컬·원격 어디에서도 찾지 못했다」로 좁혔다.
+        # 이 어서션이 없으면 문면이 옛 표현(「태그가 없습니다」)으로 되돌아가도 골든이 green이다.
+        # v1.204.0 F-7이 같은 형태를 지적해 SC33d(잔량 단독 문구 고정)를 더한 선례가 있다.
+        Assert-Case -Name "version-drift: 릴리즈 누락 문구가 두 소스를 밝힌다" -R $r -ExpectExit 0 -ExpectContains '로컬·원격'
 
         # 9) ② 로컬 태그만 생성(push하지 않음 — 원격에는 여전히 없다) → 무출력
         #    **원격 상태를 「없음」으로 못박는 것이 이 케이스의 전부다** — 원격에도 같은 태그가 있으면
