@@ -239,11 +239,13 @@ try {
                                 #   되어 URL 축이 꺼지고 경로 축만 남는다.
                                 # 정규화는 소문자화 + 후행 `.git` 제거 + 후행 `/` 제거(wiki-schema §2.2) —
                                 #   같은 레포라도 값을 어디서 얻었느냐에 따라 표기가 갈리기 때문이다.
-                                # **https 형태만 받는다** — SSH(`git@host:owner/repo.git`)를 받으면 허브의
-                                #   https `repo_url` 과 영영 일치하지 않아, 경로로 폴백하던 세션이 «불일치»로
-                                #   판정돼 조용히 미발화가 된다(URL 이 있으면 경로로 되짚지 않기 때문이다).
-                                #   받지 않으면 $cwdUrl 이 비어 URL 축이 꺼지고 경로 축이 그대로 산다.
-                                #   SSH↔https 상호 변환은 실증 대상이 없어 넣지 않았다(wiki-schema §2.2).
+                                # **`scheme://…` 형태만 받는다**(https·git·ssh:// 등 포함 — 걸러지는 것은
+                                #   `://` 가 없는 scp 형 SSH `git@host:owner/repo.git` 하나다).
+                                #   그 형태를 받으면 허브의 https `repo_url` 과 영영 일치하지 않아, 경로로
+                                #   폴백하던 세션이 «불일치»로 판정돼 조용히 미발화가 된다(URL 이 있으면
+                                #   경로로 되짚지 않기 때문이다). 받지 않으면 $cwdUrl 이 비어 URL 축이
+                                #   꺼지고 경로 축이 그대로 산다. 형식 간 상호 변환은 실증 대상이 없어
+                                #   넣지 않았다(wiki-schema §2.2).
                                 $cwdUrl = ''
                                 try {
                                     $urlRaw = (& git -C $cwd remote get-url origin 2>$null | Select-Object -First 1)
