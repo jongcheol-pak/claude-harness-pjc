@@ -190,7 +190,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 |---|---|---|---|---|
 | `AGENTS.md` | 9,236 | 95 | 91 |  |
 | `plugins/pjc/skills/implement-task/SKILL.md` | 107,240 | 635 | 66 | 117,000 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 99,410 | 530 | 83 | 106,000 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 103,088 | 536 | 83 | 106,000 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 59,859 | 195 | 81 | 65,000 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 27,320 | 357 | 137 | 31,000 |
 | `plugins/pjc/agents/plan-reviewer.md` | 58,025 | 473 | 79 | 60,000 |
@@ -231,7 +231,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 115,435 | 137,000 |
+| `docs/harness-conventions.md` | 115,436 | 137,000 |
 
 > **왜 예산 표와 나눴는가 — 「임계가 없다」가 아니라 「재는 것이 다르다」다.** 위 표가 재는 것은 **상시 로드**다: 스킬 본체는 발동만 해도 전문이 올라가고 `AGENTS.md`는 매 세션 주입된다. 이 표가 재는 것은 **조건부 참조** — `AGENTS.md`가 필요할 때 가리키는 문서라, 커져도 **그 절을 읽으러 들어온 세션만** 비용을 진다. 같은 표에 섞으면 **위 표가 상시 로드만 추적한다는 전제**가 깨지고, 그 표에서 파생되는 「메인 조합」 합산에 **상시 비용이 아닌 바이트가 섞인다**.
 >
