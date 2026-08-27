@@ -256,30 +256,17 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     #   task 형식 두 가지를 모두 인정한다 — ⓐ 템플릿 '- [ ] T1. 제목'(plan-template.md)
     #   ⓑ heading '### T1 — 제목' + 그 안의 '- [ ] **Type**'(실사용 plan 형식).
     #   한쪽만 잡으면 다른 형식으로 쓰인 plan에서 이 검사가 통째로 무발화한다.
-    #   plan 인정은 파일 수준 게이트로 한다 — docs/plans/에는 plan 아닌 문서(deferred.md)도 있다
-    #   (session-context.ps1:50-52와 같은 취지, 패턴만 두 형식으로 넓혔다).
+    #   plan 위치는 루트 하나다(v1.210.0) — 과거 회차 plan이 쌓인 디렉터리로 폴백하면 그 미완료분
+    #   때문에 무관한 세션이 차단된다(session-context.ps1과 동일 우선순위).
     $rxPlanAny  = '(?m)^\s*- \[[ /xX]\]\s*T\d+|^###\s*T\d+'
     $rxPlanOpen = '(?m)^\s*- \[[ /]\]\s*T\d+|^\s*- \[[ /]\]\s*\*\*Type\*\*'
 
     $loopPlanText = $null
     try {
-        $cwdNow = (Get-Location).Path
-        $rootPlan = Join-Path $cwdNow 'plan.md'
+        $rootPlan = Join-Path (Get-Location).Path 'plan.md'
         if (Test-Path -LiteralPath $rootPlan -PathType Leaf) {
-            # 루트 plan.md가 있으면 그것만 본다 — docs/plans/로 폴백하면 과거 plan의 미완료분으로
-            #   무관한 세션을 차단할 수 있다(session-context.ps1:53-58과 동일 우선순위).
             $t = Get-Content -LiteralPath $rootPlan -Raw -Encoding UTF8 -ErrorAction Stop
             if ($t -match $rxPlanAny) { $loopPlanText = $t }
-        } else {
-            $plansDir = Join-Path $cwdNow 'docs/plans'
-            if (Test-Path -LiteralPath $plansDir -PathType Container) {
-                foreach ($pf in @(Get-ChildItem -LiteralPath $plansDir -Filter '*.md' -File -ErrorAction SilentlyContinue |
-                        Sort-Object LastWriteTime -Descending | Select-Object -First 5)) {
-                    $t = $null
-                    try { $t = Get-Content -LiteralPath $pf.FullName -Raw -Encoding UTF8 } catch {}
-                    if ($t -and $t -match $rxPlanAny) { $loopPlanText = $t; break }
-                }
-            }
         }
     } catch { $loopPlanText = $null }   # 읽기 실패 → fail-open
 

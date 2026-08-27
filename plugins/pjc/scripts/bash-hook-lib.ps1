@@ -250,7 +250,7 @@ function Invoke-RequireTaskCheckbox {
         return New-HookResult -Block $false -Stderr @("[HARNESS] QUICK 모드: T$taskNum 체크박스 검사 우회")
     }
 
-    # 단일 plan 파일 상향 탐색(docs/plans 복수 plan은 판정 모호 — 제외).
+    # 단일 plan 파일 상향 탐색 — plan 위치는 루트 plan.md 하나다.
     $startDir = $null
     if ($data.cwd) { $startDir = $data.cwd }
     elseif ($env:CLAUDE_PROJECT_DIR) { $startDir = $env:CLAUDE_PROJECT_DIR }
