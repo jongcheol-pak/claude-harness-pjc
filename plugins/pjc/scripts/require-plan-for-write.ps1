@@ -108,9 +108,14 @@ if ($data.tool_name -eq 'Write' -and
 #   Write 자체가 통째 재작성이라 신규/기존을 가리지 않는다.
 #
 # 게이트의 축은 '도구'가 아니라 **체크박스를 새로 도입하는 행위**다 — Write만 막으면
-#   ① 체크박스 없는 docs/plans/*.md를 Write(통과) → ② Edit으로 체크박스 추가 → ③ 아래
-#   Test-PlanInDirectory가 plan으로 인정 = 스킬 0회로 게이트 ON, 이라는 2단계 우회가 성립한다.
+#   체크박스 없는 파일을 Write로 통과시킨 뒤 Edit으로 체크박스만 더하는 2단계 우회가 성립한다.
 #   그래서 Write(전부)와 '체크박스를 도입하는 Edit'을 같은 문으로 잠근다.
+#
+# ⚠ v1.210.0부터 `docs/plans/*.md`는 **존재 판정에 쓰이지 않는데도** 이 게이트의 대상으로 남는다.
+#   종전의 이유(그 파일이 plan 판정을 켜므로 급조를 막아야 한다)는 사라졌지만, 다른 이유가 남는다:
+#   그 디렉터리에 손으로 쓴 plan이 생기면 사용자가 그것을 루트 `plan.md`로 옮기거나 복사할 수 있고
+#   (그 순간 스킬 자산 전체를 우회한 plan이 판정을 켠다), plan 산출 경로가 스킬 하나로 유지되지 않는다.
+#   **게이트를 여기서 풀면 「plan은 스킬 경유가 정본」이 사실상 권고로 내려앉는다.**
 #
 # $planTaskRx는 **작성 게이트(②)** 가 쓴다 — plan 파일 Write·체크박스 도입 Edit을 판정하는 기준이다.
 #   (v1.210.0부터 plan **존재** 판정은 루트 단일계뿐이라 이 정규식을 쓰지 않는다.)
@@ -124,8 +129,7 @@ $planTaskRx = '(?m)^\s*([-*+]|\d+[.)])\s*\[[ /xX~-]\]'
 if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     $planFileName = [System.IO.Path]::GetFileName($targetPath)
     $isPlanFileName = ($planFileName -ieq 'plan.md')            # plan.md/PLAN.md — 경로 무관, 내용 무관
-    # 선행 구분자를 **선택**으로 둔다 — 상대 경로(`docs/plans/x.md`)가 무매치라 게이트와 판정이
-    #   비대칭이었다(게이트는 통과하는데 plan 판정은 안 켜지는 자리 = 곧 구멍).
+    # 선행 구분자를 **선택**으로 둔다 — 상대 경로(`docs/plans/x.md`)도 잡아야 게이트가 균일하다.
     $isInPlansDir = ($targetPath -match '(?i)(^|[\\/])docs[\\/]plans[\\/][^\\/]+\.md$')
 
     $planGateTarget = $false
@@ -135,8 +139,8 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     }
     if ($isPlanFileName -or $isInPlansDir) {
         # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다
-        #    (deferred.md 대장·brief 등 비 plan 문서를 오차단하지 않기 위함. 체크박스 없는 파일은
-        #     통과시켜도 Test-PlanInDirectory가 plan으로 인정하지 않으므로 게이트가 새지 않는다.)
+        #    (deferred.md 대장 등 비 plan 문서를 오차단하지 않기 위함. 체크박스 없는 파일은
+        #     그 자체로 plan이 아니므로 통과시켜도 무해하다 — 위 ⚠ 항목이 이 게이트를 남긴 이유다.)
         if ($data.tool_name -eq 'Write' -and $isInPlansDir) {
             if ([string]$data.tool_input.content -match $planTaskRx) { $planGateTarget = $true }
         }
@@ -427,8 +431,8 @@ function Test-PlanInDirectory {
         (Test-Path -LiteralPath (Join-Path $Dir 'docs/plan.md') -PathType Leaf)) {
         return $true
     }
-    # plan 위치는 루트 단일계뿐이다 (v1.210.0) — 종전엔 docs/plans/의 체크박스 plan도 인정했으나,
-    #   그 디렉터리에는 **완료된 과거 회차의 plan**이 쌓여 있어 새 작업에 plan이 없어도 판정이
+    # plan 위치는 루트 단일계뿐이다 (v1.210.0) — 종전엔 하위 plan 디렉터리의 체크박스 plan도
+    #   인정했으나, 거기엔 **완료된 과거 회차의 plan**이 쌓여 있어 새 작업에 plan이 없어도 판정이
     #   영구히 켜졌다(실측: 한 프로젝트 64개·다른 곳 51개). 게이트가 사실상 꺼진 상태였다.
     return $false
 }

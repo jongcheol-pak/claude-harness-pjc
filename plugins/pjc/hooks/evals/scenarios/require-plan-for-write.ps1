@@ -245,7 +245,9 @@ $pd2 = Join-Path $work 'proj-pd2'; New-Item -ItemType Directory (Join-Path $pd2 
 "# plan`n- [ ] T1: work" | Set-Content (Join-Path $pd2 'docs/plans/2026-07-13-a.md')
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd2 (Join-Path $pd2 'A.cs'))
 Assert-Case -Name "plan판정: docs/plans 체크박스 plan은 더 이상 판정을 켜지 않는다 (PD2, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '루트 plan.md 하나'
-# PD3 (델타 음성 ② — 해소): 같은 레포에 루트 plan.md를 만들면 즉시 통과. 차단이 막다른 길이 아님을 실증.
+# PD3 (해소 — 무회귀 성격): 같은 레포에 루트 plan.md를 만들면 즉시 통과. 차단이 막다른 길이 아님을 실증.
+#   구코드도 루트 plan.md를 폴백보다 먼저 봤으므로 이 케이스 자체는 변이에서 FAIL하지 않는다.
+#   그래도 필요하다 — PD2의 차단만 두면 「막혔다」는 알아도 「어떻게 푸는가」가 회귀로 고정되지 않는다.
 "# plan`n- [ ] T1: work" | Set-Content (Join-Path $pd2 'plan.md')
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd2 (Join-Path $pd2 'A.cs'))
 Assert-Case -Name "plan판정: 루트 plan.md를 만들면 차단이 풀린다 (PD3, 해소)" -R $r -ExpectExit 0
