@@ -356,12 +356,7 @@ Type D task 전부와 **신규 심볼(함수/클래스/컴포넌트)을 도입�
 
 ### Step 7. plan.md 작성
 
-**위치 결정** (AGENTS.md의 `Plan Location` 항목 우선):
-
-| 프로젝트 규모 | 권장 위치 |
-|---|---|
-| 작은 프로젝트, 단일 작업 | `<repo>/plan.md` (덮어쓰기) |
-| 큰 프로젝트, 여러 plan 누적 | `<repo>/docs/plans/<YYYY-MM-DD>-<slug>.md` |
+**위치는 `<repo>/plan.md` 하나다**(덮어쓰기) — 레포 크기·`AGENTS.md` 선언과 무관하며 판정할 것이 없다. `docs/plans/`에는 plan을 두지 않는다(그 디렉터리는 Deferred 대장 3파일 전용이고, hook의 plan 존재 판정도 루트 `plan.md`만 본다).
 
 **`## Investigation Log` 하위의 `### 전제 검증` 표를 채운다** (Type C/D task가 있는 plan은 의무 — 형식은 `references/plan-template.md`). 이 plan의 설계·acceptance가 **참으로 삼는 사실**을 뽑아 확인 근거와 짝짓는다(반증 근거의 한 소스가 Step 1 대장 ② 읽기다). Investigation Log는 "확인한 것"만 적어 **확인하지 않고 전제로 삼은 것이 문서에 아예 나타나지 않는데**, 그 공백이 구현 중 *"계획이 잘못됐다"*며 루프가 서는 주된 원인이다. 확인하지 못한 전제는 지우지 말고 `⚠ 미확인`으로 남기고, **성립을 좌우하는 것**(부정되면 task 자체가 성립 불가)은 `## Open Questions`로 올려 승인 전에 해소한다(Step 6.5 「확인 이연 금지」와 같은 축).
 

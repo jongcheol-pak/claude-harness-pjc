@@ -16,14 +16,11 @@ plan은 **구현자가 되묻지 않고 실행할 수 있으면 충분**하다. 
 
 길이가 필요해서 길어지는 것은 정상이다(요구가 크면 task도 많다). 줄여야 하는 것은 **같은 말의 반복**과 **결정에 쓰이지 않는 서술**이다. 판단 기준: *이 문단을 지우면 구현자가 무엇을 되묻게 되는가?* 답이 "아무것도"라면 지운다.
 
-## 위치 결정 가이드
+## 위치
 
-| 프로젝트 규모 | 권장 위치 |
-|---|---|
-| 작은 프로젝트, 단일 작업 | `<repo>/plan.md` (덮어쓰기 방식) |
-| 큰 프로젝트, 여러 plan 누적 | `<repo>/docs/plans/<YYYY-MM-DD>-<slug>.md` |
+**plan은 언제나 `<repo>/plan.md` 하나다**(덮어쓰기). 레포 크기·`AGENTS.md` 선언과 무관하게 이 위치를 쓴다 — 선택지가 없으므로 위치를 판정할 일이 없다.
 
-AGENTS.md에 `Plan Location: <plan.md | docs/plans/>`로 명시되어 있으면 그것을 따른다.
+`docs/plans/`에는 plan을 두지 않는다. 그 디렉터리가 담는 것은 **Deferred 대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`)이며, hook의 plan 존재 판정도 루트 `plan.md`만 본다.
 
 ## 작성 시 주의 — 민감 정보
 

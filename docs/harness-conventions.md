@@ -188,9 +188,9 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 | 상한 |
 |---|---|---|---|---|
-| `AGENTS.md` | 9,236 | 95 | 91 |  |
+| `AGENTS.md` | 9,334 | 96 | 90 |  |
 | `plugins/pjc/skills/implement-task/SKILL.md` | 107,198 | 635 | 66 | 117,000 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 102,866 | 533 | 83 | 106,000 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 102,883 | 528 | 83 | 106,000 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 59,859 | 195 | 81 | 65,000 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 27,320 | 357 | 137 | 31,000 |
 | `plugins/pjc/agents/plan-reviewer.md` | 57,695 | 473 | 79 | 60,000 |

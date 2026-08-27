@@ -89,19 +89,13 @@
 
 ## Plan Location
 
-`pjc:plan-feature`가 생성하는 `plan.md`의 위치 설정:
+`pjc:plan-feature`가 생성하는 `plan.md`는 **루트에 하나**다(덮어쓰기). 위치 선택지가 없으므로 이 절에 `Plan Location:` 줄을 두지 않는다.
 
 ```
-Plan Location: <plan.md | docs/plans/>
 PRD Location:  docs/prd.md (대규모 작업 시)
 ```
 
-| 값 | 동작 |
-|---|---|
-| `plan.md` | 단일 plan 파일 (덮어쓰기). 작은 프로젝트, 1회성 작업에 권장 |
-| `docs/plans/` | 날짜별 누적 (`docs/plans/<YYYY-MM-DD>-<slug>.md`). 큰 프로젝트, 히스토리 보존에 권장 |
-
-미설정 시 기본: `docs/plans/`가 이미 있으면 그것을, 없으면 `plan.md`.
+task가 많아 나눠야 하면 파일을 쪼개지 말고 **회차를 나눈다** — 이번 plan은 앞부분만 담고 뒤는 `## Deferred / Follow-up`으로 미룬 뒤, 그 회차를 끝내 커밋하고 다음 plan을 새로 쓴다.
 
 ## Skills & Agents (글로벌 plugin에서 자동 제공)
 
