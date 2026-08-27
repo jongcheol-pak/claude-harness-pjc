@@ -81,9 +81,10 @@
 ## Plan Location
 
 ```
-Plan Location: plan.md (덮어쓰기)
 PRD Location:  docs/prd.md · docs/prds/<YYYY-MM-DD>-<slug>.md
 ```
+
+- **plan은 루트 `plan.md` 하나**다(덮어쓰기). 위치 선택지가 없으므로 `Plan Location:` 선언을 두지 않는다.
 
 - **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — **작업의 영구 기록은 git 커밋**이고, 미처리 Deferred는 커밋되는 `docs/plans/deferred.md`가 담는다(v1.198.0부터 **대장은 셋** — 대기는 `deferred.md`, 기각 종결은 `deferred-closed.md`, 소진 batch 회고는 `deferred-history.md`. **계획 때 여는 것은 `deferred.md` 하나**이고 나머지 둘은 batch·차수 대조 때만 연다).
 - **소규모 후속 작업은 PRD에 닿는지 경량 확인만 하고**(plan-feature Step 1), 닿지 않으면 plan에 `**PRD**:` 줄을 두지 않는다 — Phase G 진입은 그 줄이 단일 신호다.

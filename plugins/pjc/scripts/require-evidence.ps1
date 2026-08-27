@@ -256,30 +256,17 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     #   task 형식 두 가지를 모두 인정한다 — ⓐ 템플릿 '- [ ] T1. 제목'(plan-template.md)
     #   ⓑ heading '### T1 — 제목' + 그 안의 '- [ ] **Type**'(실사용 plan 형식).
     #   한쪽만 잡으면 다른 형식으로 쓰인 plan에서 이 검사가 통째로 무발화한다.
-    #   plan 인정은 파일 수준 게이트로 한다 — docs/plans/에는 plan 아닌 문서(deferred.md)도 있다
-    #   (session-context.ps1:50-52와 같은 취지, 패턴만 두 형식으로 넓혔다).
+    #   plan 위치는 루트 하나다(v1.210.0) — 과거 회차 plan이 쌓인 디렉터리로 폴백하면 그 미완료분
+    #   때문에 무관한 세션이 차단된다(session-context.ps1과 동일 우선순위).
     $rxPlanAny  = '(?m)^\s*- \[[ /xX]\]\s*T\d+|^###\s*T\d+'
     $rxPlanOpen = '(?m)^\s*- \[[ /]\]\s*T\d+|^\s*- \[[ /]\]\s*\*\*Type\*\*'
 
     $loopPlanText = $null
     try {
-        $cwdNow = (Get-Location).Path
-        $rootPlan = Join-Path $cwdNow 'plan.md'
+        $rootPlan = Join-Path (Get-Location).Path 'plan.md'
         if (Test-Path -LiteralPath $rootPlan -PathType Leaf) {
-            # 루트 plan.md가 있으면 그것만 본다 — docs/plans/로 폴백하면 과거 plan의 미완료분으로
-            #   무관한 세션을 차단할 수 있다(session-context.ps1:53-58과 동일 우선순위).
             $t = Get-Content -LiteralPath $rootPlan -Raw -Encoding UTF8 -ErrorAction Stop
             if ($t -match $rxPlanAny) { $loopPlanText = $t }
-        } else {
-            $plansDir = Join-Path $cwdNow 'docs/plans'
-            if (Test-Path -LiteralPath $plansDir -PathType Container) {
-                foreach ($pf in @(Get-ChildItem -LiteralPath $plansDir -Filter '*.md' -File -ErrorAction SilentlyContinue |
-                        Sort-Object LastWriteTime -Descending | Select-Object -First 5)) {
-                    $t = $null
-                    try { $t = Get-Content -LiteralPath $pf.FullName -Raw -Encoding UTF8 } catch {}
-                    if ($t -and $t -match $rxPlanAny) { $loopPlanText = $t; break }
-                }
-            }
         }
     } catch { $loopPlanText = $null }   # 읽기 실패 → fail-open
 
@@ -321,8 +308,8 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     #   ②③④와 달리 **정상 진행 보고와 문면이 같다** — 차이는 "그 뒤에 도구 호출이 있었나"뿐인데,
     #   Stop hook이 도는 시점에는 그 부재가 이미 확정이라 문면만으로 판정해도 된다.
     #   `(?-i)`와 `\b`는 **필수다**: `-match`는 기본 case-insensitive라 이 둘이 없으면
-    #   `part1`·`test2`·`GPT5`·`checkpoint1`이 전부 T<N>으로 인정된다(실측). 이 레포는 분할 plan
-    #   `-part1/-part2`·`test*` 픽스처를 일상적으로 언급하므로 그대로 두면 정상 보고가 차단된다.
+    #   `part1`·`test2`·`GPT5`·`checkpoint1`이 전부 T<N>으로 인정된다(실측). 이 레포는
+    #   `test*` 픽스처·버전 문자열을 일상적으로 언급하므로 그대로 두면 정상 보고가 차단된다.
     #   **군더더기로 보고 지우지 말 것.**
     #   `.。!?…;` 배제는 근접 구간이 문장을 넘지 않게 한다 — 없으면 "T3은 아직 진행 중입니다!
     #   나머지는 다 끝났습니다"(T3는 미완료)까지 걸린다.

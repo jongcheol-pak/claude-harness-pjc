@@ -12,7 +12,7 @@ Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 �
 
 **REMOVED FR은 제외**: PRD에서 `~~취소선~~`/`REMOVED` 표시된 FR(또는 `## 폐기 이력` 섹션의 항목)은 이미 폐기된(코드에서 제거된) 기능이므로 대조 대상이 아니다 — 미충족이어도 BLOCKER가 아니며, 자율 루프가 이를 다시 구현하려 시도하지 않는다(삭제된 기능을 되살리는 거짓 재구현 차단). **active FR/NFR만** 아래 절차로 대조한다.
 
-**`이번 범위 외` FR도 제외**: 소규모 후속 plan이 `## PRD Coverage`에서 `이번 범위 외 (기구현/후속)`로 명시한 active Must FR은 이 plan의 대조 대상이 아니다(이전 세션에 이미 구현된 무관 FR — REMOVED와 동일 취급으로 거짓 미충족 보고·재구현 방지). **분할 plan(상단 `**다음/이전 plan**:` 표식)의 `⏭️ 다음 part` 행도 동일하게 제외한다**(그 FR은 다음 part의 Phase G 몫 — plan-feature Step 7.5 분할 분기). **단 마지막 part(`**이전 plan**:`만 있음)의 G-1은 `✅ 이전 part 기구현` 행을 제외하지 않고 포함해 전수 대조한다** — 충족 확인은 diff가 아니라 **전체 트리 기준**(이전 part 커밋이 이미 트리에 실재 — plan-completion-reviewer '분할 plan 인지'의 마지막 part 원칙과 동형). 즉 대조 대상은 **plan이 커버 대상으로 선언한 FR + `## PRD Coverage`에 범위 외·다음 part로 표시되지 않은 active FR**이다. (대규모 신규 작업은 범위 외 제외를 쓰지 않으므로 전수 대조 — plan-reviewer 12-a 남용 가드와 정합, 분할 시 전수는 두 part 합집합 기준.)
+**`이번 범위 외` FR도 제외**: 소규모 후속 plan이 `## PRD Coverage`에서 `이번 범위 외 (기구현/후속)`로 명시한 active Must FR은 이 plan의 대조 대상이 아니다(이전 세션에 이미 구현된 무관 FR — REMOVED와 동일 취급으로 거짓 미충족 보고·재구현 방지). **`이번 범위 외 (후속 회차)` 행도 동일하게 제외한다**(그 FR은 다음 회차 plan의 Phase G 몫). **단 앞 회차가 이미 커밋한 산출물에 의존하는 충족 확인은 diff가 아니라 전체 트리 기준**이다(앞 회차 커밋이 이미 트리에 실재 — plan-completion-reviewer '회차 범위 인지'와 동형). 즉 대조 대상은 **plan이 커버 대상으로 선언한 FR + `## PRD Coverage`에 범위 외로 표시되지 않은 active FR**이다. (대규모 신규 작업은 범위 외 제외를 쓰지 않으므로 전수 대조 — plan-reviewer 12-a 남용 가드와 정합.)
 
 active PRD의 각 FR/NFR에 대해:
 1. 해당 요구를 구현한 task와 commit이 존재하는가? (plan.md task의 FR 역참조 + git log)

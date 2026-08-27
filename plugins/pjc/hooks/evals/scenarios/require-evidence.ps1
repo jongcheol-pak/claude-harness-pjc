@@ -160,7 +160,7 @@ if ($gitOk) {
     Assert-Case -Name "evidence: 사용자가 중단 지시 → 미차단 (T3 음성·최우선 안전 조건)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
     # (L7) 음성 — `docs/plans/deferred.md`만 있는 저장소는 plan으로 인정하지 않는다.
-    #   대장에는 task 패턴(ⓐ·ⓑ)이 없으므로 파일 수준 게이트에서 탈락해야 한다.
+    #   v1.210.0부터 plan 탐색은 루트 `plan.md` 하나이므로 그 디렉터리는 애초에 후보가 아니다.
     $ev7 = Join-Path $work 'evrepo7'; New-Item -ItemType Directory $ev7 -Force | Out-Null
     Push-Location $ev7
     git init -q; git config user.email t@t; git config user.name t

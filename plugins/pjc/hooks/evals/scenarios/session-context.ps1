@@ -38,13 +38,14 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: plan/notes 없음 무출력 (SC3)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-    # SC4: 루트 plan 없음 → docs/plans/ 폴백 (체크박스 없는 deferred.md는 건너뜀 실증 — 더 최신이어도 비인식)
+    # SC4: 루트 plan 없음 → docs/plans/에 체크박스 plan이 있어도 주입하지 않는다 (v1.210.0 — 폴백 제거).
+    #   과거 회차 plan의 미완료분이 이번 세션의 상태로 주입되던 경로를 닫은 것이라, 기대는 '무출력'이다.
     $scDocs = Join-Path $work 'sc-docs'
     New-Item -ItemType Directory (Join-Path $scDocs 'docs/plans') -Force | Out-Null
     @('- [x] T1: a', '- [ ] T2: b') | Set-Content -Encoding UTF8 (Join-Path $scDocs 'docs/plans/2026-07-01-feature.md')
     '- [2026-07-10] deferred 항목 (T 체크박스 아님)' | Set-Content -Encoding UTF8 (Join-Path $scDocs 'docs/plans/deferred.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDocs } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: docs/plans 폴백 인식 (SC4)" -R $r -ExpectExit 0 -ExpectContains '2026-07-01-feature.md'
+    Assert-Case -Name "session-context: docs/plans 과거 plan은 주입하지 않는다 (SC4)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # SC5: task 체크박스 없는 plan.md(비 pjc 형식) → 카운트 오보 대신 존재 강등 문구
     $scNoT = Join-Path $work 'sc-not'; New-Item -ItemType Directory $scNoT -Force | Out-Null

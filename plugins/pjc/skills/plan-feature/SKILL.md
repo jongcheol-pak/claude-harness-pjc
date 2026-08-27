@@ -327,13 +327,12 @@ Type D task 전부와 **신규 심볼(함수/클래스/컴포넌트)을 도입�
 
 **PRD 복귀 게이트**: 분해 결과 task가 **10개 이상**인데 plan에 PRD 연결(`**PRD**:` 줄)이 없으면 — Step 0.5의 판정이 추정(예상 task 수) 기준이라 실분해와 어긋난 경우다 — Step 0.5로 돌아가 PRD를 먼저 작성한 뒤 계속한다(대규모 안전망(Phase G 재검증) 상실 방지).
 
-#### 긴 plan 분할 권고 (컨텍스트 관리)
+#### task가 많은 plan — 회차 분리 안내 (컨텍스트 관리)
 
-task가 **12개를 초과**하면 사용자에게 분할 여부를 묻는다. **제시 문안·A/B 비교·분할 시 규약은 `references/plan-template.md` 「(plan-feature Step 5) 긴 plan 분할 권고 — 제시 문안과 분할 규약」이 정본**이다.
+**plan은 언제나 루트 `plan.md` 하나다 — 파일을 나누지 않는다.** task가 **12개를 초과**하면 선택지를 안내한다. **제시 문안·회차 분리 규약은 `references/plan-template.md` 「(plan-feature Step 5) task가 많은 plan — 회차 분리 안내」가 정본**이다.
 
-- **task 수는 질문을 띄우는 조건일 뿐 분할 사유가 아니며, 기본값은 A(그대로 진행)** 다 — 단일 plan은 Progress Log + Phase Ledger + git log로 압축을 통과한다.
-- 분할이 유리한 경우는 **part1 결과가 part2 방향을 바꿀 여지가 있거나 두 덩어리의 경계가 자연스러울 때**뿐이다. 비용은 part 경계의 암묵지 유실과 Phase F/G 검증 분절이다.
-- **B를 택하면**: 각 part는 **T1부터 재번호**, `docs/plans/<날짜>-<slug>-part1/2.md`에 저장, 상호 포인터(`**다음/이전 plan**:`)와 Goal 범위 한정을 두고, **두 part 파일을 동시 작성**한다(Step 7.5의 합집합 전수 검증과 plan-reviewer 12-a가 그 존재를 전제한다).
+- **기본값은 A(그대로 진행)** 다 — 단일 plan은 Progress Log + Phase Ledger + git log로 압축을 통과한다.
+- **B(회차 분리)가 유리한 경우는 앞 결과가 뒤 설계를 바꿀 여지가 있을 때**다. 이번 plan은 앞부분만 담고 뒤는 `## Deferred / Follow-up`으로 미룬 뒤, **그 회차를 끝내 커밋하고 나서 다음 plan을 새로 쓴다** — 그래야 다음 계획이 앞 회차의 실제 결과를 반영한다.
 
 ### Step 6. Decision Points 발굴
 
@@ -357,14 +356,7 @@ task가 **12개를 초과**하면 사용자에게 분할 여부를 묻는다. **
 
 ### Step 7. plan.md 작성
 
-**위치 결정** (AGENTS.md의 `Plan Location` 항목 우선):
-
-| 프로젝트 규모 | 권장 위치 |
-|---|---|
-| 작은 프로젝트, 단일 작업 | `<repo>/plan.md` (덮어쓰기) |
-| 큰 프로젝트, 여러 plan 누적 | `<repo>/docs/plans/<YYYY-MM-DD>-<slug>.md` |
-
-단, plan을 분할하면(위 "긴 plan 분할 권고") 덮어쓰기 모드여도 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적 위치를 쓴다(두 part 충돌 방지).
+**위치는 `<repo>/plan.md` 하나다**(덮어쓰기) — 레포 크기·`AGENTS.md` 선언과 무관하며 판정할 것이 없다. `docs/plans/`에는 plan을 두지 않는다(그 디렉터리는 Deferred 대장 3파일 전용이고, hook의 plan 존재 판정도 루트 `plan.md`만 본다).
 
 **`## Investigation Log` 하위의 `### 전제 검증` 표를 채운다** (Type C/D task가 있는 plan은 의무 — 형식은 `references/plan-template.md`). 이 plan의 설계·acceptance가 **참으로 삼는 사실**을 뽑아 확인 근거와 짝짓는다(반증 근거의 한 소스가 Step 1 대장 ② 읽기다). Investigation Log는 "확인한 것"만 적어 **확인하지 않고 전제로 삼은 것이 문서에 아예 나타나지 않는데**, 그 공백이 구현 중 *"계획이 잘못됐다"*며 루프가 서는 주된 원인이다. 확인하지 못한 전제는 지우지 말고 `⚠ 미확인`으로 남기고, **성립을 좌우하는 것**(부정되면 task 자체가 성립 불가)은 `## Open Questions`로 올려 승인 전에 해소한다(Step 6.5 「확인 이연 금지」와 같은 축).
 
@@ -384,10 +376,10 @@ task가 **12개를 초과**하면 사용자에게 분할 여부를 묻는다. **
 PRD가 있으면 (Step 0.5에서 새로 작성했거나 Step 1에서 기존 PRD를 연결한 경우), plan이 PRD를 빠짐없이 반영하는지 **구현 전에** 확인한다. 여기서 일치시키면 Phase G(구현 후 재검증)에서 누락이 발견돼 재구현하는 비용을 막는다. (소규모 연결 plan도 이 표를 채운다 — Step 1에서 정한 커버 대상·범위 외 구분을 그대로 기록.)
 
 
-**매핑표 작성·일치 판정·분할 plan 합집합 규칙은 `references/prd-template.md` 「(plan-feature Step 7.5) PRD 커버리지 확인 절차」가 정본**이다. 판정선:
+**매핑표 작성·일치 판정 규칙은 `references/prd-template.md` 「(plan-feature Step 7.5) PRD 커버리지 확인 절차」가 정본**이다. 판정선:
 - 결과는 plan.md `## PRD Coverage` 표로 남긴다(Phase G가 이 표를 기준으로 재대조).
 - **커버 대상으로 선언한 Must FR에 대응 task가 없으면 누락**이다 — task를 추가해 일치시킨 뒤에만 구현에 들어간다.
-- **소규모 연결 plan**은 이번에 닿지 않은 active Must FR을 `이번 범위 외 (기구현/후속)`로 명시하고 대조에서 제외한다. **대규모 신규 작업은 이 제외를 쓰지 않고 전수 커버**한다(분할이면 **두 part 표의 합집합**이 전수).
+- **소규모 연결 plan**은 이번에 닿지 않은 active Must FR을 `이번 범위 외 (기구현/후속)`로 명시하고 대조에서 제외한다. **대규모 신규 작업은 이 제외를 쓰지 않고 전수 커버**한다.
 - Should/Could를 빼려면 **명시적 제외 사유**를 적는다(암묵 누락과 구분).
 
 ### Step 8. Open Questions 해결 — 일괄·완전 모드

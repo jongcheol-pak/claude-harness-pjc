@@ -230,22 +230,32 @@ Assert-Case -Name "plan게이트: 취소 체크박스 [-] 도입 Edit 차단 (PE
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# 메모`n- 항목 하나`n- [단순 대괄호] 링크 아님" $trPlanNo)
 Assert-Case -Name "plan게이트: 체크박스 아닌 대괄호 문서는 통과 (PE5, 오차단 0)" -R $r -ExpectExit 0
 
-# --- PD: plan 존재 판정 (docs/plans 디렉터리) ---
-# PD1: 체크박스 없는 .md만 있는 docs/plans → plan 판정 OFF → 코드 Write 차단 + 진단 문구
+# --- PD: plan 존재 판정 (루트 단일계 — v1.210.0) ---
+# 이 블록은 「plan 위치는 루트 plan.md 하나」로 좁힌 경계를 고정한다. PD2가 **새 차단의 발화**,
+#   PD3이 그 **해소**, PD4가 **정상 레포 무회귀**다 — 셋이 함께 있어야 오차단 0이 실증된다
+#   (차단만 확인하면 「막혔다」는 알지만 「풀린다」·「멀쩡한 레포는 그대로다」를 모른다).
+# PD1: docs/plans에 체크박스 없는 .md만 → 차단 + 진단 문구(위치가 루트 하나임을 알린다)
 $pd1 = Join-Path $work 'proj-pd1'; New-Item -ItemType Directory (Join-Path $pd1 'docs/plans') -Force | Out-Null
 "# 메모`n- [2026-07-10] 체크박스 아님" | Set-Content (Join-Path $pd1 'docs/plans/notes.md')
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd1 (Join-Path $pd1 'A.cs'))
-Assert-Case -Name "plan판정: docs/plans에 체크박스 plan 없으면 코드 Write 차단 (PD1)" -R $r -ExpectExit 2 -ExpectContains 'task 체크박스'
-# PD2: 체크박스 plan이 있으면 통과 (기존 동작 보존 — 강화가 정상 plan을 죽이지 않음)
+Assert-Case -Name "plan판정: docs/plans만 있고 루트 plan.md 없으면 차단 (PD1)" -R $r -ExpectExit 2 -ExpectContains '루트 plan.md 하나'
+# PD2 (델타 음성 ① — 새 경계의 발화): docs/plans에 체크박스 plan이 있어도 루트 plan.md가 없으면 차단.
+#   v1.210.0 이전에는 통과했다 — 완료된 과거 회차 plan이 게이트를 영구히 켜던 구멍이 여기였다.
 $pd2 = Join-Path $work 'proj-pd2'; New-Item -ItemType Directory (Join-Path $pd2 'docs/plans') -Force | Out-Null
 "# plan`n- [ ] T1: work" | Set-Content (Join-Path $pd2 'docs/plans/2026-07-13-a.md')
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd2 (Join-Path $pd2 'A.cs'))
-Assert-Case -Name "plan판정: docs/plans에 체크박스 plan 있으면 통과 (PD2)" -R $r -ExpectExit 0
-# PD3: '+' 불릿·ordered list 표기 plan도 인정 (표기 커버리지 부족으로 인한 오차단 방지)
-$pd3 = Join-Path $work 'proj-pd3'; New-Item -ItemType Directory (Join-Path $pd3 'docs/plans') -Force | Out-Null
-"# plan`n1. [ ] 첫 작업`n+ [ ] 둘째 작업" | Set-Content (Join-Path $pd3 'docs/plans/p.md')
-$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd3 (Join-Path $pd3 'A.cs'))
-Assert-Case -Name "plan판정: '+'/ordered 체크박스 표기 plan도 인정 — 오차단 없음 (PD3)" -R $r -ExpectExit 0
+Assert-Case -Name "plan판정: docs/plans 체크박스 plan은 더 이상 판정을 켜지 않는다 (PD2, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '루트 plan.md 하나'
+# PD3 (해소 — 무회귀 성격): 같은 레포에 루트 plan.md를 만들면 즉시 통과. 차단이 막다른 길이 아님을 실증.
+#   구코드도 루트 plan.md를 폴백보다 먼저 봤으므로 이 케이스 자체는 변이에서 FAIL하지 않는다.
+#   그래도 필요하다 — PD2의 차단만 두면 「막혔다」는 알아도 「어떻게 푸는가」가 회귀로 고정되지 않는다.
+"# plan`n- [ ] T1: work" | Set-Content (Join-Path $pd2 'plan.md')
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd2 (Join-Path $pd2 'A.cs'))
+Assert-Case -Name "plan판정: 루트 plan.md를 만들면 차단이 풀린다 (PD3, 해소)" -R $r -ExpectExit 0
+# PD4 (델타 음성 ③ — 무회귀): 루트 plan.md만 있는 정상 레포는 종전대로 통과 (오차단 0의 반대편).
+$pd4 = Join-Path $work 'proj-pd4'; New-Item -ItemType Directory $pd4 -Force | Out-Null
+"# plan`n- [ ] T1: work" | Set-Content (Join-Path $pd4 'plan.md')
+$r = Invoke-Hook 'require-plan-for-write.ps1' (New-WriteJson $pd4 (Join-Path $pd4 'A.cs'))
+Assert-Case -Name "plan판정: 루트 plan.md만 있는 정상 레포는 통과 (PD4, 무회귀)" -R $r -ExpectExit 0
 
 # --- TE: 시스템 임시 폴더 예외 분기 (두 게이트 공통 — 종전 스위트 사각) ---
 # 반드시 '흔적 없는' transcript를 주입한다 — 미주입이면 fail-open으로 exit 0이 되어

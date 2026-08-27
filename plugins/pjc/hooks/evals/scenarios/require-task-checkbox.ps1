@@ -17,7 +17,7 @@ $rtcIn = Join-Path $work 'rtc-inprog'; New-Item -ItemType Directory $rtcIn -Forc
 $rtcOk = Join-Path $work 'rtc-checked'; New-Item -ItemType Directory $rtcOk -Force | Out-Null
 "# plan`n- [x] T3. 검색 기능" | Set-Content (Join-Path $rtcOk 'plan.md')
 $rtcMulti = Join-Path $work 'rtc-multi/docs/plans'; New-Item -ItemType Directory $rtcMulti -Force | Out-Null
-"# part1`n- [ ] T3. x" | Set-Content (Join-Path $rtcMulti 'a-part1.md')
+"# 과거 회차 plan`n- [ ] T3. x" | Set-Content (Join-Path $rtcMulti '2026-07-01-a.md')
 
 $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 미완료 [ ] T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
@@ -28,7 +28,7 @@ Assert-Case -Name "rtc: 완료 [x] T3 커밋 통과(무출력)" -R $r -ExpectExi
 $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T99: 없는 task')
 Assert-Case -Name "rtc: plan에 없는 T번호 통과(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson (Join-Path $work 'rtc-multi') 'T3: x')
-Assert-Case -Name "rtc: docs/plans 복수만 존재 통과(판정 모호)" -R $r -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "rtc: docs/plans 과거 plan만 존재하면 통과(루트 plan.md 없음)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'require-task-checkbox.ps1' (New-CommitJson $rtcUn 'T1: 이미 완료된 task')
 Assert-Case -Name "rtc: [x] T1은 통과·[ ] T3 무관(첫 매치만 판정)" -R $r -ExpectExit 0 -ExpectSilent $true
 $rtcStar = Join-Path $work 'rtc-star'; New-Item -ItemType Directory $rtcStar -Force | Out-Null

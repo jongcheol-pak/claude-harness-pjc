@@ -1,6 +1,6 @@
 ﻿# PreToolUse hook - PowerShell 버전
 # 두 개의 독립된 게이트를 담는다:
-#   ① plan 존재 게이트 — 코드 Write/Edit 시 plan.md(또는 docs/plans/의 체크박스 plan)가 없으면 차단.
+#   ① plan 존재 게이트 — 코드 Write/Edit 시 루트 plan.md(PLAN.md·docs/plan.md 포함)가 없으면 차단.
 #   ② plan 작성 게이트 (v1.118.0) — plan.md/docs/plans/*.md 자체를 Write하거나 체크박스를 새로 도입하는
 #      Edit은 pjc:plan-feature(또는 implement-task) 발동 흔적 없이는 차단. 손으로 급조한 plan으로
 #      ①을 켜서 리뷰·영향분석을 통째로 우회하던 구멍을 막는다.
@@ -108,27 +108,28 @@ if ($data.tool_name -eq 'Write' -and
 #   Write 자체가 통째 재작성이라 신규/기존을 가리지 않는다.
 #
 # 게이트의 축은 '도구'가 아니라 **체크박스를 새로 도입하는 행위**다 — Write만 막으면
-#   ① 체크박스 없는 docs/plans/*.md를 Write(통과) → ② Edit으로 체크박스 추가 → ③ 아래
-#   Test-PlanInDirectory가 plan으로 인정 = 스킬 0회로 게이트 ON, 이라는 2단계 우회가 성립한다.
+#   체크박스 없는 파일을 Write로 통과시킨 뒤 Edit으로 체크박스만 더하는 2단계 우회가 성립한다.
 #   그래서 Write(전부)와 '체크박스를 도입하는 Edit'을 같은 문으로 잠근다.
 #
-# $planTaskRx는 이 게이트와 Test-PlanInDirectory가 **공유**한다 — 두 기준이 갈리면 그 차이가 곧 구멍이다
-#   (게이트는 통과하는데 plan 판정은 켜지는 파일이 생긴다). `-`·`*`·`+` 불릿과 ordered list(`1.`/`1)`),
-#   `[x]`/`[X]`/`[/]`를 모두 인정한다: 좁게 잡으면 표기를 바꾼 급조 plan이 게이트를 빠져나가고,
-#   동시에 정상 plan이 "plan 아님"으로 판정돼 그 프로젝트의 코드 Write가 전면 차단된다(오차단).
-# `-`(취소)·`~`도 인정한다 — 그 표기만 쓰는 외부 레포는 종전에 `docs/plans/`가 있어도 plan 판정이
-#   꺼져 **코드 Write가 전면 차단**됐다(v1.118.0 F-7 m3). 확장 대상을 이 둘로 한정하는 이유는
-#   임의 문자(`[^\]]`)를 허용하면 체크박스가 아닌 문서를 plan으로 오판해 게이트가 잘못 켜지기 때문이다.
-# ⚠ 이 확장은 방향이 둘이다 — plan **존재** 판정에서는 차단 완화지만, plan 파일 Write·체크박스 도입
-#   Edit을 막는 **작성 게이트에서는 차단이 넓어진다**(그 표기를 쓰던 문서가 새로 게이트 대상이 된다).
+# ⚠ v1.210.0부터 `docs/plans/*.md`는 **존재 판정에 쓰이지 않는데도** 이 게이트의 대상으로 남는다.
+#   종전의 이유(그 파일이 plan 판정을 켜므로 급조를 막아야 한다)는 사라졌지만, 다른 이유가 남는다:
+#   그 디렉터리에 손으로 쓴 plan이 생기면 사용자가 그것을 루트 `plan.md`로 옮기거나 복사할 수 있고
+#   (그 순간 스킬 자산 전체를 우회한 plan이 판정을 켠다), plan 산출 경로가 스킬 하나로 유지되지 않는다.
+#   **게이트를 여기서 풀면 「plan은 스킬 경유가 정본」이 사실상 권고로 내려앉는다.**
+#
+# $planTaskRx는 **작성 게이트(②)** 가 쓴다 — plan 파일 Write·체크박스 도입 Edit을 판정하는 기준이다.
+#   (v1.210.0부터 plan **존재** 판정은 루트 단일계뿐이라 이 정규식을 쓰지 않는다.)
+#   `-`·`*`·`+` 불릿과 ordered list(`1.`/`1)`), `[x]`/`[X]`/`[/]`를 모두 인정한다 — 좁게 잡으면
+#   표기를 바꾼 급조 plan이 게이트를 빠져나간다.
+# `-`(취소)·`~`도 인정한다. 확장 대상을 이 둘로 한정하는 이유는 임의 문자(`[^\]]`)를 허용하면
+#   체크박스가 아닌 문서를 plan으로 오판해 게이트가 잘못 켜지기 때문이다.
 # 이 줄은 .md 무조건 허용($alwaysAllowedExts)보다 반드시 앞에 있어야 한다 — 뒤면 plan.md가 먼저 통과한다.
 $planTaskRx = '(?m)^\s*([-*+]|\d+[.)])\s*\[[ /xX~-]\]'
 
 if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     $planFileName = [System.IO.Path]::GetFileName($targetPath)
     $isPlanFileName = ($planFileName -ieq 'plan.md')            # plan.md/PLAN.md — 경로 무관, 내용 무관
-    # 선행 구분자를 **선택**으로 둔다 — 상대 경로(`docs/plans/x.md`)가 무매치라 게이트와 판정이
-    #   비대칭이었다(게이트는 통과하는데 plan 판정은 안 켜지는 자리 = 곧 구멍).
+    # 선행 구분자를 **선택**으로 둔다 — 상대 경로(`docs/plans/x.md`)도 잡아야 게이트가 균일하다.
     $isInPlansDir = ($targetPath -match '(?i)(^|[\\/])docs[\\/]plans[\\/][^\\/]+\.md$')
 
     $planGateTarget = $false
@@ -138,8 +139,8 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     }
     if ($isPlanFileName -or $isInPlansDir) {
         # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다
-        #    (deferred.md 대장·brief 등 비 plan 문서를 오차단하지 않기 위함. 체크박스 없는 파일은
-        #     통과시켜도 Test-PlanInDirectory가 plan으로 인정하지 않으므로 게이트가 새지 않는다.)
+        #    (deferred.md 대장 등 비 plan 문서를 오차단하지 않기 위함. 체크박스 없는 파일은
+        #     그 자체로 plan이 아니므로 통과시켜도 무해하다 — 위 ⚠ 항목이 이 게이트를 남긴 이유다.)
         if ($data.tool_name -eq 'Write' -and $isInPlansDir) {
             if ([string]$data.tool_input.content -match $planTaskRx) { $planGateTarget = $true }
         }
@@ -420,26 +421,6 @@ if (-not $projectRoot) {
 # ---- plan 존재 확인 (다중 시작점에서 거슬러 올라가며 검색) ----
 # Claude Code가 보낸 cwd가 부정확하거나 작업이 서브디렉터리에서 일어나도
 # 부모 어딘가에 plan.md가 있으면 인식하도록 한다.
-# docs/plans/ 하위에 '실제 plan'(task 체크박스가 있는 .md)이 1개라도 있는가 (v1.118.0).
-# 종전엔 디렉터리 존재만으로 plan 있음으로 판정했다 — 그러면 체크박스 없는 .md 하나를 거기 쓰는 것만으로
-#   (위 게이트가 의도적으로 허용하는 파일이다) 디렉터리가 생겨 이후 모든 코드 Write가 plan 없이 통과했다.
-#   즉 게이트를 우회해 plan 판정을 켜는 경로였다. 판정 기준을 게이트와 같은 $planTaskRx로 맞춰 그 틈을 없앤다.
-# 비용: 이 함수는 코드 Write마다 검색 시작점(최대 4)×상향 8단계로 반복 호출되므로 무제한 정독은
-#   hook 지연이 된다 → 최신 수정순 10개까지만, Select-String -Quiet로 매치 즉시 중단한다.
-#   상한 밖에만 plan이 있으면 미검출되어 차단되지만(fail-closed), 그 경우 아래 차단 메시지가 사유를
-#   알려주므로 사용자가 진단할 수 있다(진단 불가능한 fail-closed는 안전측이 아니다).
-function Test-PlansDirHasPlan {
-    param([string]$PlansDir)
-    try {
-        $files = @(Get-ChildItem -LiteralPath $PlansDir -Filter '*.md' -File -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending | Select-Object -First 10)
-        foreach ($f in $files) {
-            if (Select-String -LiteralPath $f.FullName -Quiet -Pattern $script:planTaskRx) { return $true }
-        }
-    } catch { }
-    return $false
-}
-
 function Test-PlanInDirectory {
     param([string]$Dir)
     if ([string]::IsNullOrEmpty($Dir)) { return $false }
@@ -450,11 +431,9 @@ function Test-PlanInDirectory {
         (Test-Path -LiteralPath (Join-Path $Dir 'docs/plan.md') -PathType Leaf)) {
         return $true
     }
-    # docs/plans/는 디렉터리 존재가 아니라 '체크박스 plan 실재'로 판정한다.
-    $plansDir = Join-Path $Dir 'docs/plans'
-    if (Test-Path -LiteralPath $plansDir -PathType Container) {
-        return (Test-PlansDirHasPlan -PlansDir $plansDir)
-    }
+    # plan 위치는 루트 단일계뿐이다 (v1.210.0) — 종전엔 하위 plan 디렉터리의 체크박스 plan도
+    #   인정했으나, 거기엔 **완료된 과거 회차의 plan**이 쌓여 있어 새 작업에 plan이 없어도 판정이
+    #   영구히 켜졌다(실측: 한 프로젝트 64개·다른 곳 51개). 게이트가 사실상 꺼진 상태였다.
     return $false
 }
 
@@ -498,8 +477,7 @@ if ($foundIn) {
     # plan은 존재하지만 task 체크박스가 전부 [x](미완료 0)면 '완료된 옛 plan'에 기대는 변경일 수 있고,
     # 체크박스가 아예 0개면 '빈/플레이스홀더 plan'(내용 없는 plan.md로 게이트 무력화)일 수 있다
     # → 둘 다 plan-feature로 계획 작성/갱신 권유 (차단 아님).
-    # 단일 plan 파일(plan.md/PLAN.md/docs/plan.md)만 판정한다. docs/plans 디렉터리(복수 plan)는
-    # 어느 것이 이번 작업인지 모호하므로 경고하지 않는다(오탐 방지).
+    # 판정 대상은 plan.md/PLAN.md/docs/plan.md — plan 위치가 루트 하나이므로 후보도 이 셋뿐이다.
     $planFile = $null
     foreach ($cand in @('plan.md', 'PLAN.md', 'docs/plan.md')) {
         $pf = Join-Path $foundIn $cand
@@ -554,7 +532,7 @@ if ($foundIn) {
                 if (Test-WarnOnce -Kind 'H3') {
                     $warnMsg = "[HARNESS] 이 plan.md에 task 체크박스(- [ ] / - [x])가 하나도 없습니다 — 빈/플레이스홀더 plan일 수 있습니다. " +
                                "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. plan-feature로 실제 task를 작성하세요. " +
-                               "(단 이 plan.md가 분할 plan 포인터·스텁이면 실제 task는 docs/plans/ 하위 plan에 있으니 무시하세요. 이 경고는 세션당 1회)"
+                               "(이 경고는 세션당 1회)"
                     [Console]::Error.WriteLine($warnMsg)
                     Write-RpEvent 'warn' 'H3: 빈/플레이스홀더 plan'
                     $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5
@@ -578,17 +556,16 @@ foreach ($s in $searchStarts) {
     [Console]::Error.WriteLine("  - $s")
 }
 [Console]::Error.WriteLine("찾는 위치 (각 시작점에서 부모로 최대 8단계):")
-[Console]::Error.WriteLine("  - plan.md, PLAN.md, docs/plan.md, docs/plans/")
+[Console]::Error.WriteLine("  - plan.md, PLAN.md, docs/plan.md")
 [Console]::Error.WriteLine("위 위치 어디에도 plan이 없습니다.")
 
-# 진단 분기(v1.118.0): docs/plans/는 있는데 체크박스 plan이 없어 판정이 꺼진 경우, "plan이 없다"는
-#   메시지만 보면 사용자는 눈앞에 .md가 보이는데 없다는 말을 듣게 되어 원인을 알 수 없다.
-#   fail-closed는 진단 가능할 때만 안전측이므로 사유를 명시한다.
-$plansDirDiag = Join-Path $projectRoot 'docs/plans'
-if (Test-Path -LiteralPath $plansDirDiag -PathType Container) {
+# 진단 분기(v1.210.0): 과거 회차 plan이 쌓인 디렉터리를 보고 "plan이 있는데 왜 막지"라고 여길 수
+#   있으므로, plan 위치가 루트 하나임을 명시한다. fail-closed는 진단 가능할 때만 안전측이다.
+$legacyPlansDir = Join-Path $projectRoot 'docs/plans'
+if (Test-Path -LiteralPath $legacyPlansDir -PathType Container) {
     [Console]::Error.WriteLine("")
-    [Console]::Error.WriteLine("※ docs/plans/ 디렉터리는 있으나, task 체크박스(- [ ] / - [x])가 있는 plan 파일이 없습니다")
-    [Console]::Error.WriteLine("   (최신 수정순 10개 검사). 체크박스가 없는 문서(대장·메모 등)는 plan으로 인식하지 않습니다.")
+    [Console]::Error.WriteLine("※ plan 위치는 루트 plan.md 하나입니다 — docs/plans/ 의 날짜별 파일은 완료된")
+    [Console]::Error.WriteLine("   과거 회차의 기록이라 plan 판정에 쓰이지 않습니다(그 디렉터리는 Deferred 대장 전용).")
 }
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("해결 방법:")
@@ -602,7 +579,7 @@ if (Test-Path -LiteralPath $plansDirDiag -PathType Container) {
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("  3) plan.md 위치 확인:")
 [Console]::Error.WriteLine("     루트의 plan.md 파일 위치와 검색 시작점이 다른 경로일 수 있습니다.")
-[Console]::Error.WriteLine("     모노레포라면 작업 디렉터리 위쪽에 plan.md 또는 docs/plans/ 가 있어야 합니다.")
+[Console]::Error.WriteLine("     모노레포라면 작업 디렉터리 위쪽에 plan.md 가 있어야 합니다.")
 
 Write-RpEvent 'block' 'plan 없음 차단'
 exit 2

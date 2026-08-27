@@ -8,8 +8,7 @@
 #   여기에 더해 **미완료 task가 있는 plan을 찾은 경우에만** 재읽기 대상 경로를 못박는다:
 #   스킬은 압축 후 앞 5,000토큰만 재부착되고 동일 스킬 재invoke는 "이미 로드됨"만 반환해
 #   복구되지 않으므로, "재확인하라"는 지시만으로는 무엇을 읽을지가 비어 있다.
-# 어떻게: stdin(SessionStart JSON)의 cwd에서 plan(루트 plan.md 우선, 없으면 docs/plans/ 최신
-#   수정 5개 중 task 체크박스가 있는 파일 — 글로벌 CLAUDE.md의 확인 순서와 동일)을 찾아
+# 어떻게: stdin(SessionStart JSON)의 cwd에서 plan(루트 plan.md — 위치는 이 하나다)을 찾아
 #   미완료 task 수를 stdout으로 출력한다(SessionStart 규약: stdout=컨텍스트
 #   주입, exit 0). 추가로 프로젝트 루트 AGENTS.md가 있으면 전문(16KB 초과 시 목차+Read 지시)을
 #   함께 주입한다 — AGENTS.md는 에이전트용 가이드라 plan이 없어도 존재하면 주입한다.
@@ -53,30 +52,15 @@ try {
         #   요약 직후 세션에도 vault 라인이 붙는다).
         $cwdBaseCount = $lines.Count
 
-        # ---- plan 탐색: 루트 plan.md 우선 → docs/plans/ 폴백 ----
-        # docs/plans/에는 plan이 아닌 파일(deferred.md 등)도 있으므로 task 체크박스(- [ ] T<N>)가
-        # 있는 파일만 plan으로 인정한다. 최신 수정 5개만 검사(세션 시작 지연 상한).
+        # ---- plan 탐색: 루트 plan.md 하나 ----
+        # plan 위치는 루트 단일계다(v1.210.0) — 과거 회차 plan이 쌓인 디렉터리로 폴백하면
+        # 그 미완료분이 이번 세션의 상태로 주입된다.
         $rootPlan = Join-Path $cwd 'plan.md'
         $planPath = $null
         $planLabel = $null
         if (Test-Path -LiteralPath $rootPlan -PathType Leaf) {
             $planPath = $rootPlan
             $planLabel = 'plan.md'
-        } else {
-            $plansDir = Join-Path $cwd 'docs/plans'
-            if (Test-Path -LiteralPath $plansDir -PathType Container) {
-                $cand = @(Get-ChildItem -LiteralPath $plansDir -Filter '*.md' -File -ErrorAction SilentlyContinue |
-                    Sort-Object LastWriteTime -Descending | Select-Object -First 5)
-                foreach ($f in $cand) {
-                    $t = $null
-                    try { $t = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8 } catch {}
-                    if ($t -and $t -match '(?m)^- \[[ /x]\] T\d+') {
-                        $planPath = $f.FullName
-                        $planLabel = 'docs/plans/' + $f.Name
-                        break
-                    }
-                }
-            }
         }
 
         if ($planPath) {

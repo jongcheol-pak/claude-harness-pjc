@@ -103,12 +103,11 @@
 ## Plan Location
 
 ```
-Plan Location: <plan.md | docs/plans/>   ← 하나만 남기세요
 PRD Location:  docs/prd.md (대규모 작업 시. 누적은 docs/prds/<YYYY-MM-DD>-<slug>.md)
 ```
 
-- `plan.md` = 단일 파일 덮어쓰기(작은 프로젝트) / `docs/plans/` = `<YYYY-MM-DD>-<slug>.md` 날짜별 누적(히스토리 보존)
-- 미설정 시 기본: `docs/plans/`가 이미 있으면 그것, 없으면 `plan.md`
+- **plan은 루트 `plan.md` 하나**다(덮어쓰기). 위치 선택지가 없으므로 이 절에 `Plan Location:` 줄을 두지 않는다.
+- task가 많아 나눠야 하면 파일을 쪼개지 말고 **회차를 나눈다** — 이번 plan은 앞부분만 담고 뒤는 `## Deferred / Follow-up`으로 미룬 뒤, 그 회차를 끝내 커밋하고 다음 plan을 새로 쓴다.
 
 ## 추가 정보
 - 타깃 OS/TFM: Stack 섹션의 TFM과 동일하게 유지 (예: `net10.0-windows10.0.22621.0` — 실제 값은 csproj의 `TargetFramework`를 따른다)
