@@ -110,18 +110,22 @@ try {
             }
         }
 
-        # ---- 계획 세션의 압축 리마인더 (plan이 없거나 task 0개) ----
+        # ---- 계획 세션의 압축 리마인더 (plan이 없거나 · task 0개 · task가 전부 완료) ----
         # 위 블록은 `if ($planPath)` 안이라 **진행 중 plan이 있는 세션**만 닿는다. 계획을 세우던 중
         #   압축되면 plan이 아직 없거나 task 체크박스가 0개라 그 지시를 못 받는데, `plan-feature`도
-        #   본체가 앞 5,000토큰 밖으로 밀리는 것은 같다(경계 83행 / 전체 521행) — Step 4 영향 범위,
+        #   본체가 앞 5,000토큰 밖으로 밀리는 것은 같다(경계 83행 / 전체 530행) — Step 4 영향 범위,
         #   Step 5 작업 분해, Step 9 리뷰 게이트가 통째로 요약에 뭉개진 채 계획이 이어진다.
+        # **`$open -eq 0`(전부 완료)도 대상이다.** 위 블록의 compact 재읽기 지시는 `$open -gt 0`
+        #   분기에만 있고 「전부 완료」 분기(`else`)에는 없어서, **완료된 plan이 남은 채 새 계획을
+        #   세우는 세션**은 두 분기 사이로 빠져 아무 재읽기 지시도 받지 못했다. 회차를 마치면 plan.md는
+        #   task가 전부 [x]인 채 남고 다음 계획 세션이 그 위에서 시작하므로 이 상태가 오히려 흔하다.
         # 스킬 판정은 하지 않는다: 어느 스킬이 활성인지 알 방법이 없고 추측하면 틀린 파일을 지목한다.
         #   plan 상태로만 분기하는 것은 위 블록과 같은 축이다.
         # ⚠ plan도 AGENTS.md도 없는 **비 pjc 프로젝트에는 붙이지 않는다** — 위 `:16` 주석의 무출력
         #   규칙과 같은 취지다. 이 리마인더는 「계획을 세우던 중이었다면」이라 대상이 pjc 워크플로인데,
         #   무관한 폴더의 압축 세션에까지 뜨면 그냥 노이즈다(AGENTS.md 경로는 아래에서 다시 쓰지만
         #   여기서는 존재 판정만 필요해 직접 Test-Path 한다).
-        if ($source -eq 'compact' -and (-not $planPath -or $all -eq 0) -and ($planPath -or (Test-Path -LiteralPath (Join-Path $cwd 'AGENTS.md')))) {
+        if ($source -eq 'compact' -and (-not $planPath -or $all -eq 0 -or $open -eq 0) -and ($planPath -or (Test-Path -LiteralPath (Join-Path $cwd 'AGENTS.md')))) {
             $lines.Add("[pjc 세션 컨텍스트] 계획을 세우던 중이었다면 — plan-feature/SKILL.md를 Read로 재확인하세요(스킬 재invoke로는 복구되지 않습니다). 영향 범위 조사·작업 분해·리뷰 게이트가 앞 5,000토큰 밖이라 요약으로 뭉개집니다.")
             # 이 줄은 compact 리마인더라 **vault 게이팅 신호가 아니다** — 기존 리마인더(위 source 판정
             #   블록)가 $cwdBaseCount 산정 *이전*에 추가돼 자연히 제외되는 것과 같은 취지다. 여기는

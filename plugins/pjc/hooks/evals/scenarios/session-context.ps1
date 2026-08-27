@@ -156,7 +156,11 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact plan 없음 경로 미지정 (SC15)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains 'halt-conditions'
 
-    # SC16: compact + 전 task 완료 → 경로 지정 없음. 재개할 루프가 없으면 재읽기를 유도하지 않는다.
+    # SC16: compact + 전 task 완료 → **implement-task 3경로**는 지정하지 않는다. 재개할 루프가 없으면
+    #   그 세 파일을 읽힐 이유가 없다(이 케이스가 재는 것은 그 미주입이고 그 판정은 불변이다).
+    #   ⚠ v1.208.0부터 이 상태에도 **계획 재읽기 지시**(plan-feature/SKILL.md)는 나간다 — 완료된 plan이
+    #   남은 채 새 계획을 세우는 세션이 두 분기 사이로 빠지던 사각을 닫았다(아래 SC38). assert가
+    #   'halt-conditions' 부재만 보므로 이 케이스는 그대로 유효하다.
     $scDone = Join-Path $work 'sc-done'; New-Item -ItemType Directory $scDone -Force | Out-Null
     @('# Plan', '- [x] T1: done', '- [x] T2: done') | Set-Content -Encoding UTF8 (Join-Path $scDone 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scDone } | ConvertTo-Json -Compress)
@@ -211,6 +215,19 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scNoT } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + task 0개 plan에도 계획 지시 (SC31)" -R $r -ExpectExit 0 -ExpectContains 'plan-feature/SKILL.md'
     Assert-Case -Name "session-context: 계획 지시가 vault 신호를 삼키지 않음 (SC31b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
+
+    # SC38/SC38b (v1.208.0 — 완료 plan 사각): compact + task가 **전부 완료**된 plan. 종전에는
+    #   위 `$open -gt 0` 분기(implement-task 3경로)에도, 아래 계획 리마인더(`-not $planPath -or $all -eq 0`)
+    #   에도 걸리지 않아 **아무 재읽기 지시도 나가지 않았다.** 회차를 마치면 plan.md는 task가 전부 [x]인
+    #   채 남고 다음 계획 세션이 그 위에서 시작하므로 이 상태가 오히려 흔하다.
+    #   ⚠ SC16이 같은 상태를 쓰지만 **vault 설정 구간 밖**이라 SC38b(vault 신호 유지)를 잴 수 없다 —
+    #     SC31b와 같은 배치 제약이며, 여기 두어야 $cwdBaseCount 회귀가 실제로 검사된다.
+    $scDone2 = Join-Path $work 'sc-done2'; New-Item -ItemType Directory $scDone2 -Force | Out-Null
+    @('# Plan', '- [x] T1: done', '- [x] T2: done') | Set-Content -Encoding UTF8 (Join-Path $scDone2 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scDone2 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact + 전 task 완료 plan에도 계획 지시 (SC38)" -R $r -ExpectExit 0 -ExpectContains 'plan-feature/SKILL.md'
+    Assert-Case -Name "session-context: 완료 plan 계획 지시가 vault 신호를 삼키지 않음 (SC38b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
+    Assert-Case -Name "session-context: 완료 plan엔 implement-task 3경로 미주입 (SC38c)" -R $r -ExpectExit 0 -ExpectNotContains 'references/halt-conditions.md'
 
     # SC22 (델타): AGENTS.md만 있고 plan 없는 cwd → vault 라인이 주입되고 AGENTS 라인보다 **앞**에 온다.
     #   ① 게이팅을 AGENTS 진입 전 시점에 판정하면 이 케이스가 억제된다(과억제 검출).
