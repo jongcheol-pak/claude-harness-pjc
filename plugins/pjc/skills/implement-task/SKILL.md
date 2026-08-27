@@ -467,7 +467,7 @@ T<N>: <한 줄 요약>
 Type: <A/B/C/D>
 Build: <명령> → OK
 Tests: <X/Y passed>
-Review: spec OK (prefilter: <PASS/ESCALATE→C격상> — Type B만, 그 외 필드 생략), quality <OK/SKIPPED> <(재리뷰를 생략·축소했으면 그 판정 근거 — 증분 재리뷰 표)> · 전수 <N자리 → 수정 N · 잔존 0 | N/A(자리 1)>
+Review: spec OK (prefilter: <PASS/ESCALATE→C격상> — Type B만, 그 외 필드 생략), quality <OK/SKIPPED> <(재리뷰를 생략·축소했으면 그 판정 근거 — 증분 재리뷰 표)> · 전수 <N자리(범위: <경로 글롭> — plan 자신 <포함|제외>) → 수정 N · 잔존 0 | N/A(자리 1)>
 Caller-recheck: <확인한 심볼 수>개 심볼, 누락 0
 Self-honesty: PASS
 ```
