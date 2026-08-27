@@ -189,14 +189,14 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | 파일 | 파일 바이트 | 행 | 9,000B 경계 행 | 상한 |
 |---|---|---|---|---|
 | `AGENTS.md` | 9,236 | 95 | 91 |  |
-| `plugins/pjc/skills/implement-task/SKILL.md` | 107,240 | 635 | 66 | 117,000 |
-| `plugins/pjc/skills/plan-feature/SKILL.md` | 103,344 | 536 | 83 | 106,000 |
+| `plugins/pjc/skills/implement-task/SKILL.md` | 107,198 | 635 | 66 | 117,000 |
+| `plugins/pjc/skills/plan-feature/SKILL.md` | 102,866 | 533 | 83 | 106,000 |
 | `plugins/pjc/skills/llm-wiki/SKILL.md` | 59,859 | 195 | 81 | 65,000 |
 | `plugins/pjc/skills/pjc-systematic-debugging/SKILL.md` | 27,320 | 357 | 137 | 31,000 |
-| `plugins/pjc/agents/plan-reviewer.md` | 58,025 | 473 | 79 | 60,000 |
+| `plugins/pjc/agents/plan-reviewer.md` | 57,695 | 473 | 79 | 60,000 |
 | `plugins/pjc/agents/spec-compliance-reviewer.md` | 31,223 | 310 | 104 | 35,000 |
 | `plugins/pjc/agents/code-quality-reviewer.md` | 33,826 | 285 | 79 | 38,000 |
-| `plugins/pjc/agents/plan-completion-reviewer.md` | 29,628 | 324 | 86 | 33,000 |
+| `plugins/pjc/agents/plan-completion-reviewer.md` | 28,777 | 324 | 96 | 33,000 |
 
 ## rationale 이관 임계 (본체 → `references/` 이동 판정)
 

@@ -554,7 +554,7 @@ if ($foundIn) {
                 if (Test-WarnOnce -Kind 'H3') {
                     $warnMsg = "[HARNESS] 이 plan.md에 task 체크박스(- [ ] / - [x])가 하나도 없습니다 — 빈/플레이스홀더 plan일 수 있습니다. " +
                                "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. plan-feature로 실제 task를 작성하세요. " +
-                               "(단 이 plan.md가 분할 plan 포인터·스텁이면 실제 task는 docs/plans/ 하위 plan에 있으니 무시하세요. 이 경고는 세션당 1회)"
+                               "(이 경고는 세션당 1회)"
                     [Console]::Error.WriteLine($warnMsg)
                     Write-RpEvent 'warn' 'H3: 빈/플레이스홀더 plan'
                     $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $warnMsg } } | ConvertTo-Json -Compress -Depth 5

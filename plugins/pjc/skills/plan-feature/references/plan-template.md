@@ -25,8 +25,6 @@ plan은 **구현자가 되묻지 않고 실행할 수 있으면 충분**하다. 
 
 AGENTS.md에 `Plan Location: <plan.md | docs/plans/>`로 명시되어 있으면 그것을 따른다.
 
-**예외 — plan 분할 시**: 긴 plan을 2개로 분할하면(plan-feature "긴 plan 분할 권고") `Plan Location: plan.md`(덮어쓰기)여도 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md`에 둔다 — 분할은 복수 파일이라 단일 plan.md를 덮어쓸 수 없다(두 part가 충돌). 시작 part 식별: part1 = `**다음 plan**:` 있고 `**이전 plan**:` 없음 / part2 = 그 반대. 자동 plan 해소(인자 생략)는 복수 파일에서 모호하므로 각 part 경로를 명시해 `pjc:implement-task`를 호출한다.
-
 ## 작성 시 주의 — 민감 정보
 
 plan.md는 **git에 commit되어 영구 보존**된다.
@@ -51,15 +49,6 @@ plan.md는 **git에 commit되어 영구 보존**된다.
      컨텍스트 압축·새 세션에서도 plan.md만 읽으면 PRD 존재를 알 수 있어야 한다. -->
 **PRD**: <docs/prd.md 경로 — PRD 없으면 이 줄 자체를 생략>
 
-<!-- plan을 2개로 분할한 경우(plan-feature "긴 plan 분할 권고")만 아래 분할 포인터 줄을 둔다(단일 plan이면 생략):
-     - 첫 plan(part1): **다음 plan**: <part2 경로>
-     - 둘째 plan(part2): **이전 plan**: <part1 경로>
-     plan-completion-reviewer가 이 표식으로 분할 plan임을 인지해 Goal을 "이 plan 범위"로 해석한다(전체 미완성을 BLOCKER로 보지 않음).
-     동기화 주의: part2 경로는 이 줄·아래 ## Deferred·## Next Steps 3곳에 나타난다 — 경로를 바꾸면 세 곳을 함께 고친다.
-     핸드오프: 이전 part의 implement-task가 완료 시 이 포인터 줄 아래에 `## 이전 part 핸드오프` 섹션(함정·기각된
-     접근·검증 지름길, 5줄 상한)을 append할 수 있다 — 계획 단계에서 미리 만들지 않는다(구현 세션 산출물). -->
-**다음 plan**: <분할 첫 part(part1)면 part2 경로 — 분할 아니거나 마지막 part면 이 줄 생략(part2는 대신 **이전 plan**: 사용)>
-
 ## 요구 이해
 <!-- 승인 게이트를 통과한 "요구 오해"는 이후 어느 단계도 잡지 못한다(구현 후 plan-completion-reviewer 항목 2.5가
      "요구 이해 ↔ 산출물 커버"는 사후 대조하지만, 이해 자체가 옳은지는 여전히 사용자만 판정).
@@ -74,17 +63,10 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 
 ## Goal
 <한 문장 — 사용자 관점>
-<!-- 분할 plan이면: 위 Goal은 "이 plan 범위(이 part가 담당하는 부분)"만 한 문장으로 쓰고, 바로 아래에
-     **전체 목표**: <분할 전 전체 기능 한 문장> 줄을 둔다.
-     reviewer는 분할 표식(**다음/이전 plan**:)이 있으면 Goal 충족을 "이 plan 범위" 기준으로 판정한다(전체 미완성을 BLOCKER로 안 봄). -->
 
 
 ## PRD Coverage
 <!-- PRD 있을 때만. plan-feature Step 7.5에서 작성. Phase G가 이 표로 재대조. -->
-<!-- 분할 plan이면(상단 다음/이전 plan 표식): 이 part 몫 FR만 커버 대상으로 넣고, 다른 part 몫
-     active Must FR은 아래 분할 행 형식으로 명시한다(Step 7.5 분할 분기 — 두 part 합집합이 전수).
-     예: | FR-3 | Must | (part2 담당) | ⏭️ 다음 part |
-         | FR-1 | Must | (part1 기구현) | ✅ 이전 part 기구현 | -->
 | PRD ID | 우선순위 | 대응 task | 상태 |
 |--------|---------|----------|------|
 | FR-1 | Must | T1 | ✅ 커버 |
@@ -100,8 +82,6 @@ plan.md는 **git에 commit되어 영구 보존**된다.
      (대장은 셋 — 대기는 deferred.md, 기각 종결은 deferred-closed.md, batch 회고는 deferred-history.md.
       등재는 언제나 deferred.md 하나다)
      (implement-task F-6.5 규정 — plan 교체 시 유실 방지, plan-feature Step 1이 다음 계획 때 조회).
-     분할 plan의 첫 part(part1)면: "**다음 분할 plan**: <part2 경로> — T1~ (전체의 후반부, 미실행)"을
-     반드시 여기 기록해 둘째 plan 실행을 잊지 않게 한다(동기화: 상단 **다음 plan**:·## Next Steps와 같은 경로).
      **자기 유발 결함은 이 섹션에 적을 수 없다**(`implement-task` 규칙 4-1) — 구현 중 자기 변경이 유발한 문제(회귀·깨진 호출부·어긋난
      문서/규약)는 같은 루프에서 고치거나 범위를 넘으면 Halt한다(implement-task 규칙 4-1). -->
 - <이번엔 제외, 향후 별도 plan으로 진행할 작업>
@@ -316,29 +296,25 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 <!-- - 권장 다음 액션: T7부터 implement-task 재개 -->
 <!-- - 또는: 모든 task 완료, PR 생성 후 공식 /code-review 호출 -->
 <!-- - Suggested skills: pjc:implement-task / 공식 /code-review / /security-review -->
-<!-- 분할 plan의 첫 part(part1) 완료 시: "남은 분할 plan: <part2 경로> — pjc:implement-task로 별도 실행" 라인 포함(동기화: 상단 **다음 plan**:·## Deferred와 같은 경로). -->
 
 ## Open Questions
 - [ ] Q1: <질문> (사용자 답변 후 plan 갱신)
 ```
 
-## (plan-feature Step 5) 긴 plan 분할 권고 — 제시 문안과 분할 규약
+## (plan-feature Step 5) task가 많은 plan — 회차 분리 안내
 
-task가 **12개를 초과**하면 사용자에게 분할 여부를 묻는다. **task 수는 질문을 띄우는 조건일 뿐 분할 사유가 아니며, 기본값은 A다** — 수 기준을 쓰는 이유는 세면 끝나 판정이 세션마다 흔들리지 않기 때문이고(결합도 같은 주관 기준은 같은 plan에 다른 답을 낸다), 분할이 맞는지는 아래 B 조건으로 사용자가 판단한다.
+**plan은 언제나 루트 `plan.md` 하나다.** task가 많다고 파일을 나누지 않는다 — 단일 plan은 컨텍스트가 압축돼도 `Progress Log` + `Phase Ledger` + `git log` 기반 완료 판정으로 재개가 보장된다.
+
+task가 **12개를 초과**하면 사용자에게 이렇게 안내한다(질문이 아니라 선택지 제시 — 기본값은 그대로 진행이다):
 
 ```
-이 plan은 <N>개 task로 큽니다. 분할 여부를 선택해 주세요.
+이 plan은 <N>개 task로 큽니다.
 
-A) 그대로 진행 (기본) — 단일 plan은 컨텍스트가 압축돼도 이어집니다:
-   Progress Log + Phase Ledger + git log 기반 완료 판정으로 재개가 보장됩니다.
-B) 2개 plan으로 분할 (앞부분 / 뒷부분)
-   → part1 결과를 보고 part2 방향을 바꿀 여지가 있거나,
-     두 덩어리의 경계가 자연스러울 때만 유리합니다.
-     비용: part 경계에서 앞 세션의 암묵지가 유실되고(핸드오프 섹션으로도
-     열화 회수), Phase F/G 완결 검증이 part별로 분절됩니다.
-   → 첫 plan(part1) 완료 후 둘째 plan(part2) 별도 실행
+A) 그대로 진행 (기본) — 단일 plan은 컨텍스트가 압축돼도 이어집니다.
+B) 범위를 줄여 이번 회차를 짧게 — 뒷부분은 이번 plan에서 빼
+   `## Deferred / Follow-up`에 남기고, 이번 회차를 끝내 커밋한 뒤
+   그 결과를 보고 다음 plan을 새로 씁니다.
+   → 앞 결과가 뒤 설계를 바꿀 여지가 있을 때 유리합니다.
 ```
 
-사용자가 A를 택하면 그대로 진행하되, implement-task가 Progress Log를 적극 활용.
-
-**B(분할) 선택 시 규약** (드문 경로 — 둘째 plan 망각·번호 충돌·절반 구현 오판 방지): 각 분할 plan은 **T1부터 재번호**(독립 실행 — implement-task "첫 실행 T1" 전제와 정합), 저장은 `docs/plans/<YYYY-MM-DD>-<slug>-part1.md`/`-part2.md` 누적(`Plan Location: plan.md` 덮어쓰기여도 override), 상호 포인터(`**다음 plan**:`/`**이전 plan**:` — implement-task(분할 plan 호출)·plan-completion-reviewer·plan-reviewer(항목 12-a의 PRD Coverage 분할 스코프)가 이 표식으로 분할을 인지)와 Goal 범위 한정(`**전체 목표**:` 별도 줄 + Deferred/Next Steps에 다음 part 상기), 시작 part는 경로 명시 호출. **분할 시 두 part plan 파일을 동시 작성한다** — Step 7.5의 합집합 전수 검증과 plan-reviewer 12-a의 "다음 part 대응 task 실재" 확인이 두 파일의 존재를 전제하므로, part2를 나중에 쓰면 이 검증들이 성립하지 않는다. **전체 규약·템플릿(위치 가이드·분할 포인터·Goal 범위)은 이 파일의 해당 절이 정본이다.**
+**B(회차 분리)를 택하면**: 이번 plan은 앞부분 task만 담고, 뒤로 미루는 것은 `## Deferred / Follow-up`에 적는다. **파일을 새로 만들지 않는다** — 다음 회차는 이 `plan.md`를 교체해 쓰며, 미처리 Deferred는 `docs/plans/deferred.md` 대장이 받는다(implement-task F-6.5). 이 방식은 다음 계획이 앞 회차의 **실제 결과**를 반영할 수 있다는 점에서, 두 파일을 미리 다 써 두는 것보다 낫다.

@@ -20,7 +20,7 @@ disallowedTools: Write, Edit, NotebookEdit
 각 task의 acceptance만 보는 `spec-compliance-reviewer`와 달리,
 이 subagent는 **plan의 Goal · 통합 시나리오 · 회귀 위험**을 본다.
 
-**plan.md 상단에 `**PRD**: <경로>` 줄이 있으면 한 단계 더**: 그 줄이 가리키는 PRD를 읽어, plan.md가 PRD의 **active** FR/NFR을 빠뜨리지 않았는지 전수 대조한다 (Phase G의 G-1). **`~~취소선~~`/`REMOVED` 표시되거나 `## 폐기 이력` 섹션에 있는 FR은 제외한다**(이미 폐기된 기능 — 미충족으로 보고하지 않음, 자율 루프의 거짓 재구현 유발 방지). **또한 plan의 `## PRD Coverage`에 `이번 범위 외 (기구현/후속)`로 명시된 active Must FR도 대조 제외한다**(소규모 후속 plan이 이전 세션에 이미 구현한 무관 FR을 이 plan에서 재구현하도록 강요하지 않기 위함 — REMOVED와 동일 취급, plan-reviewer 12-a·Phase G G-1과 정합). **분할 plan(아래 '분할 plan 인지')의 `⏭️ 다음 part` 행도 대조 제외한다**(그 FR은 다음 part 몫). **단 마지막 part(`**이전 plan**:`만 있음)에서는 `✅ 이전 part 기구현` 행을 제외하지 않고 포함해 전수 대조한다** — 이전 part FR의 충족 확인은 diff(BASE..HEAD)가 아니라 **전체 트리 기준**이다(이전 part 커밋이 트리에 실재 — '분할 plan 인지'의 마지막 part 전체 트리 원칙과 동형). active 요구 중 매칭되는 task/commit이 없는 항목은 우선순위(Must/Should/Could)와 함께 BLOCKER(Must) / MAJOR(Should) / MINOR(Could)로 보고한다. **`**PRD**:` 줄이 없으면 PRD 대조를 하지 않는다** — `docs/prd.md`·`docs/prds/`에 PRD 파일이 있어도 줄이 없으면 이 작업과 무관한(과거·다른 작업의) PRD일 수 있으므로 끌어오지 않는다(무관 PRD를 미충족으로 오인한 거짓 BLOCKER 방지).
+**plan.md 상단에 `**PRD**: <경로>` 줄이 있으면 한 단계 더**: 그 줄이 가리키는 PRD를 읽어, plan.md가 PRD의 **active** FR/NFR을 빠뜨리지 않았는지 전수 대조한다 (Phase G의 G-1). **`~~취소선~~`/`REMOVED` 표시되거나 `## 폐기 이력` 섹션에 있는 FR은 제외한다**(이미 폐기된 기능 — 미충족으로 보고하지 않음, 자율 루프의 거짓 재구현 유발 방지). **또한 plan의 `## PRD Coverage`에 `이번 범위 외 (기구현/후속)`로 명시된 active Must FR도 대조 제외한다**(소규모 후속 plan이 이전 세션에 이미 구현한 무관 FR을 이 plan에서 재구현하도록 강요하지 않기 위함 — REMOVED와 동일 취급, plan-reviewer 12-a·Phase G G-1과 정합). **`이번 범위 외 (후속 회차)` 행도 같은 이유로 대조 제외한다**(다음 회차 plan이 커버 대상으로 받는다). active 요구 중 매칭되는 task/commit이 없는 항목은 우선순위(Must/Should/Could)와 함께 BLOCKER(Must) / MAJOR(Should) / MINOR(Could)로 보고한다. **`**PRD**:` 줄이 없으면 PRD 대조를 하지 않는다** — `docs/prd.md`·`docs/prds/`에 PRD 파일이 있어도 줄이 없으면 이 작업과 무관한(과거·다른 작업의) PRD일 수 있으므로 끌어오지 않는다(무관 PRD를 미충족으로 오인한 거짓 BLOCKER 방지).
 
 ## 실행 예산 (검토 전에 먼저 읽는다)
 
@@ -62,7 +62,7 @@ disallowedTools: Write, Edit, NotebookEdit
 
 plan.md의 `## Goal` 한 문장이 실제 구현으로 달성되었는가:
 
-> **분할 plan 인지 (먼저 확인)**: plan.md 상단에 `**이전 plan**:` 또는 `**다음 plan**:` 표식이 있으면 이 plan은 더 큰 기능을 2개로 나눈 **분할 plan의 한 part**다(plan-feature "긴 plan 분할"). 이때 Goal 충족은 plan.md `## Goal`(= 이 plan 범위)을 기준으로 판정하고, `**전체 목표**:` 줄의 전체 기능이 아직 미완성인 것을 **BLOCKER로 보지 않는다**(분할은 의도된 절반 구현 — 나머지는 다른 part가 담당). 단 `**다음 plan**:`이 없고 `**이전 plan**:`만 있는 **마지막 분할 plan**에서는 `**전체 목표**:`의 통합 동작까지 확인하되, **이때 전체 통합은 diff(BASE..HEAD)가 아니라 전체 트리 빌드/통합 테스트로 확인**한다(마지막 part의 diff엔 앞 part 컴포넌트가 없어 diff 기반 Goal 판정은 거짓 BLOCKER를 낳는다). PRD 연결 plan이면 마지막 part의 FR/NFR 전수 대조(위 PRD 대조 규정 — `✅ 이전 part 기구현` 행 포함)도 같은 전체 트리 원칙을 따른다.
+> **회차 범위 인지 (먼저 확인)**: plan은 **언제나 루트 `plan.md` 하나**이며 그 `## Goal`이 이 회차의 범위다. plan이 `## Deferred / Follow-up`으로 뒤를 미뤘으면(회차 분리) 그 미룬 몫이 아직 미완성인 것을 **BLOCKER로 보지 않는다** — 다음 회차가 담당한다. **단 앞 회차가 이미 커밋한 산출물에 의존하는 판정은 diff(BASE..HEAD)가 아니라 전체 트리 기준으로 한다**(앞 회차 커밋이 트리에 실재하므로 diff만 보면 거짓 BLOCKER가 난다).
 
 - [ ] Goal 문장을 사용자 관점에서 재해석
 - [ ] 그 결과를 얻기 위해 필요한 모든 컴포넌트가 diff에 있는가
