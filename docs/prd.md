@@ -30,6 +30,7 @@ pjc 하니스는 Opus 4.x 세대를 전제로 "더 꼼꼼히 시키는" 방향�
 | FR-13 | `implement-task` frontmatter에 자율 루프에서 **질문 도구를 제거하는 필드를 도입**한다 | Should | frontmatter에 `disallowed-tools: AskUserQuestion`이 존재하고, 스킬 본문에 **"이 필드는 미검증 — 기존 문서 규칙이 여전히 1차 방어선"** 이 명시되며, 실동작 스모크 테스트가 `## Deferred / Follow-up`에 등재된다 (2026-07-29 2차 정정: frontmatter 변경은 워킹트리에만 생기고 실행되는 것은 설치본이라 실동작 검증에 push→update가 필요한데 push는 위임 불가 — 자율 루프 안에서 수행할 수 없음이 확인됨. 미지원이어도 필드는 무시될 뿐이라 무회귀) (2026-07-30 실증: 설치본에서 스킬 로드 후 `AskUserQuestion` 호출이 거부됨을 확인 — 본문의 "미검증" 서술은 실측 결과로 정정했고, "1차 방어선은 문서 규칙"이라는 취지는 해제 규칙(사용자의 다음 메시지에서 풀림) 때문에 그대로 유지된다) |
 | FR-14 | `AUTHORING.md`의 **description 한도·frontmatter 필드 목록**이 현행 Claude Code 사양과 일치한다 | Must | 공식 문서 기준값과 문서 기재값 항목별 대조표 |
 | FR-15 | `README.md`·`AGENTS.md`에 **Opus 5 리뷰어 요구 버전**(Claude Code v2.1.219+)이 명시된다 | Should | 두 파일에 버전 명시 문장 존재 |
+| FR-16 | plan의 `## Deferred / Follow-up` 항목이 **대장 등재 판정 상태를 기계 판독 가능한 형식으로 담고**, 세션 시작 시 그중 **미판정 건수**를 기계가 세어 주입한다 | Must | ⓐ hook 골든: 미판정 항목이 있는 plan → 출력에 미판정 건수 포함 / 미판정 0건 → 미포함(델타 음성) / 기존 plan 상태 라인 무회귀 ⓑ `plan-template.md`와 `phase-f-detail.md` F-6.5에 마커 3종(`[등재]`·`[미등재:<게이트>]`·`[미판정]`) 규정이 존재하고 둘이 갈리지 않음 ⓒ `implement-task` Phase Ledger에 F-6.5 대장 반영 결과를 1줄 남기는 규정 존재 |
 
 우선순위: Must(없으면 미완성) / Should(중요하나 1차 후 가능) / Could(여유 시)
 
