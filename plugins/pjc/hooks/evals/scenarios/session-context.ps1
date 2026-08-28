@@ -251,6 +251,92 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: 완료 plan 계획 지시가 vault 신호를 삼키지 않음 (SC38b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
     Assert-Case -Name "session-context: 완료 plan엔 implement-task 3경로 미주입 (SC38c)" -R $r -ExpectExit 0 -ExpectNotContains 'references/halt-conditions.md'
 
+    # SC40~SC40i: plan `## Deferred / Follow-up`의 **미판정 건수 주입** (v1.214.0 T3).
+    #   plan.md는 gitignore + 다음 회차 교체라, 대장(docs/plans/deferred.md)으로 옮기지 못한 항목은
+    #   회차와 함께 사라진다. task 체크박스는 위 케이스들이 재지만 Deferred는 아무도 세지 않았다.
+    #   마커 3종([등재]/[미등재:<게이트 기호>]/[미판정] — 형식 정본은 phase-f-detail.md F-6.5)이
+    #   그 상태를 기계 판독 가능하게 만들고, hook이 **미판정만** 센다.
+    #   ⚠ 대조 문자열은 부기 리터럴 'Deferred 미판정'이다 — 숫자만 재면 문면이 바뀌어도 통과한다.
+    $scDefBase = Join-Path $work 'sc-def'
+
+    # SC40 (양성): 미판정 2건 → 건수가 실린다. 기본형.
+    $scDef1 = Join-Path $scDefBase 'unjudged'; New-Item -ItemType Directory $scDef1 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [미판정] **A**', '- [미판정] **B**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef1 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef1 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: Deferred 미판정 건수 주입 (SC40)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 2건'
+
+    # SC40b (델타 음성): 전부 판정됨([등재]/[미등재:기호]) → 부기 미발화.
+    #   이 케이스가 없으면 "항상 부기"로 바꿔도 나머지가 전부 통과한다.
+    $scDef2 = Join-Path $scDefBase 'judged'; New-Item -ItemType Directory $scDef2 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [등재] **A**', '- [미등재:ⓓ] **B**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef2 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef2 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 전부 판정된 Deferred는 부기 미발화 (SC40b)" -R $r -ExpectExit 0 -ExpectContains '미완료 1' -ExpectNotContains 'Deferred 미판정'
+
+    # SC40c (델타 음성): `## Deferred / Follow-up` 절 자체가 없는 plan → 부기 미발화·오류 없음.
+    #   기존 픽스처 대부분이 이 형태라 무회귀의 근거이기도 하다.
+    $scDef3 = Join-Path $scDefBase 'nosection'; New-Item -ItemType Directory $scDef3 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo') | Set-Content -Encoding UTF8 (Join-Path $scDef3 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef3 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: Deferred 절 부재면 부기 미발화 (SC40c)" -R $r -ExpectExit 0 -ExpectContains '미완료 1' -ExpectNotContains 'Deferred 미판정'
+
+    # SC40d (양성 — 혼재 계수): 3건 중 1건만 [등재], 2건은 마커 없음 → **2건**으로 센다.
+    #   이것이 "이관 도중 압축된" 실제 형태다. "plan에 마커가 하나라도 있으면 폴백을 끈다"로
+    #   구현하면 이 케이스만 FAIL한다(D3이 막으려는 형태).
+    $scDef4 = Join-Path $scDefBase 'mixed'; New-Item -ItemType Directory $scDef4 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [등재] **A**', '- **B**', '- **C**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef4 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef4 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 마커 혼재 plan은 마커 없는 항목만 계수 (SC40d)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 2건'
+
+    # SC40e (폴백 고정): 마커가 전무한 구형 plan → 전 항목을 미판정으로 센다.
+    #   마커 도입 전 plan이 조용히 0건으로 빠지지 않게 하는 축.
+    $scDef5 = Join-Path $scDefBase 'legacy'; New-Item -ItemType Directory $scDef5 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- **A**', '- **B**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef5 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef5 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 마커 전무한 구형 plan은 전 항목 미판정 (SC40e)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 2건'
+
+    # SC40f (회귀 고정): task 전부 완료 + 미판정 있음 → `전부 완료` 라인과 건수가 **함께** 나온다.
+    #   위 SC38 계열 픽스처는 Deferred 절이 없어 이 조합을 재지 못한다. 회차를 마친 plan이
+    #   미이관 항목을 남긴 채 다음 세션으로 넘어가는 것이 이 회차가 막으려는 바로 그 상태다.
+    $scDef6 = Join-Path $scDefBase 'done-unjudged'; New-Item -ItemType Directory $scDef6 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [x] T1. done', '', '## Deferred / Follow-up', '- [미판정] **A**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef6 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef6 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 전부 완료 plan에도 미판정 건수 (SC40f)" -R $r -ExpectExit 0 -ExpectContains '전부 완료'
+    Assert-Case -Name "session-context: 전부 완료 + 미판정 동시 표기 (SC40f2)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
+
+    # SC40g (델타 음성 — placeholder): 템플릿 기본값(`- <이번엔 제외…>`)만 있는 절 → 부기 미발화.
+    #   **갓 만든 모든 plan의 기본 상태**라, 꺾쇠 제외를 빠뜨리면 미판정 1건이 상시 오발화한다.
+    #   T2 리뷰 1R이 실제로 이 결함을 재현으로 잡았다(마커 그룹이 필수라 치환 불발).
+    $scDef7 = Join-Path $scDefBase 'placeholder'; New-Item -ItemType Directory $scDef7 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- <이번엔 제외, 향후 별도 plan으로 진행할 작업>', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef7 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef7 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 템플릿 placeholder는 미판정으로 세지 않는다 (SC40g)" -R $r -ExpectExit 0 -ExpectContains '미완료 1' -ExpectNotContains 'Deferred 미판정'
+
+    # SC40h (양성 — 기호 없는 미등재): `- [미등재] …`(게이트 기호 없음)는 **미판정으로 센다**.
+    #   사유 없는 미등재는 게이트 ⓕ가 막으려는 「근거 미지목」과 같은 형태다. 이 케이스가 없으면
+    #   구현자가 `[미등재]` 접두만 보고 제외해도 전건 green이다.
+    #   ⚠ 둘째 항목이 **같은 줄 뒤쪽에 대괄호를 담는다** — 기호 정규식을 `.+`로 쓰면 `.`이 `]`도 먹어
+    #     그 항목이 판정된 것으로 빠진다(F-7 2R m3). `[^\]]+`여야 이 픽스처가 2건으로 세어진다.
+    $scDef8 = Join-Path $scDefBase 'no-gate'; New-Item -ItemType Directory $scDef8 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [미등재] **A**', '- [미등재:] **B** 참고 [ref]', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef8 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef8 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 기호 없는 미등재는 미판정으로 계수 (SC40h)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 2건'
+
+    # SC40i (양성 — 절이 파일 마지막): `## Deferred / Follow-up` 뒤에 다른 절이 없어 종료 앵커가
+    #   없는 plan → 건수 정상 산출. 구간 추출이 종료 앵커를 못 찾아 **조용히 0건**이 되는 형태는
+    #   이 회차가 막으려는 실패(미판정이 있는데 부기가 안 나감)와 같다.
+    $scDef9 = Join-Path $scDefBase 'last-section'; New-Item -ItemType Directory $scDef9 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [미판정] **A**') | Set-Content -Encoding UTF8 (Join-Path $scDef9 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef9 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: Deferred 절이 파일 마지막이어도 계수 (SC40i)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
+
+    # SC40j (문면 고정 — E안): compact 리마인더에 「아직 plan.md에 적지 않은 발견을 지금 적으라」
+    #   1구가 실린다. **대조 문자열은 기존 리마인더에 없는 신규 어휘**여야 한다 — 기존 '요약 직후'로
+    #   재면 이 1구가 지워져도 통과한다. 같은 공백을 F-7이 두 번 지적해 사후 추가한 선례가 있다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scDef1 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 리마인더에 미기록 발견 지시 (SC40j)" -R $r -ExpectExit 0 -ExpectContains '아직 plan.md에 적지 않은'
+
+    Remove-Item -Recurse -Force $scDefBase -ErrorAction SilentlyContinue
+
     # SC22 (델타): AGENTS.md만 있고 plan 없는 cwd → vault 라인이 주입되고 AGENTS 라인보다 **앞**에 온다.
     #   ① 게이팅을 AGENTS 진입 전 시점에 판정하면 이 케이스가 억제된다(과억제 검출).
     #   ② 순서 단정은 Assert-Case로 불가하다 — ExpectContains가 [regex]::Escape를 거쳐 전후 관계를 비교할 수단이 없으므로

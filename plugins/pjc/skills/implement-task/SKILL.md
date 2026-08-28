@@ -599,6 +599,7 @@ Self-honesty: PASS
 **F-7**은 `plan-completion-reviewer`(Opus) **동기 호출**(`recovery.md` 「Subagent 호출 규약」) — 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
 
 **Phase Ledger 갱신**: 통과 시 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를, PRD 연결 plan은 추가로 `Phase G 통과 (Must 100%)`를 기록한다 — 재개 시 Phase F(F-7 Opus) 중복 실행을 막고 새 세션의 완료 판정 신호가 된다. **같은 지점에서 F-6.5의 「회차 서사 커밋」을 1회 만든다**(규정 본문은 `references/phase-f-detail.md` F-6.5 ⓒ·ⓓ·ⓕ — 명령·시점·재진입 규칙이 거기 있다). **단 PRD 연결 plan의 서사 커밋 지점은 여기가 아니라 Phase G의 G-4**다(G-2 재루프가 뒤에 오기 때문 — `references/phase-g-detail.md` G-4)(재개 진입의 Phase Ledger 판정 · phase-g-detail G-4).
+- **같은 자리에 F-6.5의 대장 반영 결과도 1줄 남긴다** — `F-6.5 대장 반영: 등재 N / 미등재 M`. plan.md는 gitignore + 다음 회차 교체라, 이 기록이 없으면 **압축·재개 후 그 회차가 Deferred를 실제로 이관했는지 판정할 수단이 없다**(`## Retry Ledger`가 재시도 카운터를 압축 생존시키는 것과 같은 축). 형식·기록 시점은 `references/phase-f-detail.md` F-6.5 「Phase Ledger에 반영 결과를 남긴다」가 정본.
 
 ## Phase G — 요구 재검증 (PRD 있을 때만)
 
