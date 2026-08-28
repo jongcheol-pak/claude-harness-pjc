@@ -1,6 +1,6 @@
 ---
 name: explorer
-description: Explores codebase, finds files, traces symbols without polluting main context. Called by plan-feature during context gathering. Read-only, fast.
+description: Explores codebase, finds files, traces symbols without polluting main context. Called by pjc skills for read-only locating fan-out (planning context gathering, finalize scans, debugging investigation). Read-only, fast.
 tools: Read, Grep, Glob, Bash, LSP
 disallowedTools: Write, Edit, NotebookEdit
 model: haiku

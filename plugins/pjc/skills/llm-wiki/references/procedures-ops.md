@@ -2,8 +2,8 @@
 
 > 이 파일은 `llm-wiki` SKILL.md의 절차 본문이다(컨텍스트 예산 지연 로드 분할 — 본체의 절차 목차 라우팅 표에서 연결).
 > **본체 SKILL.md의 §0 시작 절차·공통 사전 준수 사항을 먼저 적용한 뒤** 이 파일의 절차를 수행한다.
-> **위키 파일을 생성·수정하는 경우에만 `references/wiki-ops-rules.md`도 함께 Read한다**(F-2 승인 후 수정, G 4~5 파일백·question 생성, H, L 복구, M 큐 소비) — 백업 누적 금지·log 월별 롤오버·병렬 분업·lint 실행 폴백·지침 자동 갱신·파일 네이밍·파일 예산·예산 단계 신호가 그 파일에 있다. **읽기만 하는 경로(G 1~3 조회 후 답변으로 종료)에서는 Read하지 않는다** — 코드 세션이 쓰기 규칙을 로드하지 않게 하는 것이 v1.180.0 T8 분리의 목적이다.
-> 수록: F. Lint(건강 검진) / G. Query(위키 질문) / H. 지침 자동 갱신 / L. 복구(백업 되돌리기) / M. 큐 소비(경량).
+> **위키 파일을 생성·수정하는 경우에만 `references/wiki-ops-rules.md`도 함께 Read한다**(F-2 승인 후 수정, G 4~5 파일백·question 생성, H, L 복구, M 큐 소비) — 백업 누적 금지·log 월별 롤오버·병렬 분업·lint 실행 폴백·스킬 어긋남 큐잉·파일 네이밍·파일 예산·예산 단계 신호가 그 파일에 있다. **읽기만 하는 경로(G 1~3 조회 후 답변으로 종료)에서는 Read하지 않는다** — 코드 세션이 쓰기 규칙을 로드하지 않게 하는 것이 v1.180.0 T8 분리의 목적이다.
+> 수록: F. Lint(건강 검진) / G. Query(위키 질문) / H. 스킬 어긋남 큐잉 / L. 복구(백업 되돌리기) / M. 큐 소비(경량).
 > **쓰기 완료 전 체크리스트**: 이 파일의 절차가 위키 파일을 생성·수정하는 경우(F-2 승인 후 수정, G 4~5 파일백·question 생성, L 복구, M 큐 소비), 작업 완료 전 `references/procedures-content.md`의 "## 체크리스트 (작업 완료 전)" 절만 **부분 Read**(Grep/offset)해 점검한다 — 콘텐츠 절차 전문까지 정독할 필요 없다.
 
 ### F. Lint (건강 검진)
@@ -76,7 +76,7 @@
 4. **파일백**: 답이 위키에 없던 유용한 종합이면 → 사용자에게 "이 답을 위키에 페이지로 저장할까요?" 제안(§2.5 생성 조건 충족 시 `30_knowledge/patterns/` concept, 아니면 관련 feature/guide 보강).
 5. 모순 발견 시 `30_knowledge/questions/q-{날짜}-{설명}.md` 생성. 생성 시 `index.md` 미해결 질문에 등록(schema §2.7·§7-23).
 
-### H. 지침 자동 갱신
+### H. 스킬 어긋남 큐잉
 
 위키 작업(A~J·L·M) 중 이 스킬·규칙 번들과 실제 위키가 어긋난 것을 발견하면, **번들 파일을 무승인으로 직접 수정하지 않고** vault 루트 **`skill-feedback.md`**의 `[SKILL-IMPROVE]` 큐에 기록한 뒤 사용자에게 보고한다(**기록 게이트 3조건은 절차 K 5-1이 정본** — 셋을 충족하지 않으면 큐에 넣지 않는다)(절차 K 5-1(본체 SKILL.md)·B-1 0(`references/procedures-content.md`)). 이유:
 - ① 이 스킬 파일들(`SKILL.md`·`references/procedures-content.md`·`references/procedures-ops.md`·`references/wiki-schema.md`·`scripts/lint.py`·`references/templates.md`)은 **플러그인 번들**이라 플러그인 업데이트로 덮어써져 자동 갱신분이 유실된다(config.json `_note` 참조 — 실제 설정을 사용자 홈에 두는 이유와 동일).
