@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기 · 잔류 절 동기 · batch 차수 수열 · 추출 앵커 도달성.
+r"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기 · 잔류 절 동기 · batch 차수 수열 · 추출 앵커 도달성 · 복제 리터럴 동기 · 파생 수치 동기.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -58,6 +58,24 @@
      모른다. 앵커는 hook에서 파싱한다(`$agentsMaxBytes`와 같은 이유 — 여기 박으면 정본이
      둘이 된다). **못 잡는 것**: 종료 앵커의 오타로 인한 0건과 의도된 EOF 절(그 절이 파일
      마지막이라 종료 앵커가 없는 경우)의 구분(v1.212.0 T3).
+  ⑰ 복제 리터럴 동기 — Deferred 등재 판정 **마커 3종**(`[등재]`·`[미등재:<게이트 기호>]`·
+     `[미판정]`)과 **Ledger 기록 문장**(`F-6.5 대장 반영: 등재 N / 미등재 M`)이 복제 6파일에서
+     갈리지 않았는가. v1.214.0이 정본을 `phase-f-detail.md` 한 곳에 두고 나머지에는 리터럴 +
+     포인터만 남겼지만 리터럴 자체는 여러 파일에 살고, 그 회차에서 실제로 한 번 갈렸다
+     (`<기호>` ↔ `<게이트 기호>` — 수동 대조로 잡았다). **추출 규칙은 파일마다 다르다** —
+     특히 두 `.ps1`은 서로 반대다(hook은 정규식 리터럴 안·주석 제외 / 골든 시나리오는 주석).
+     **무엇까지만 견디는가**: hook 쪽은 정규식 전체가 아니라 **여는 대괄호 직전까지의 리터럴
+     접두**를 뽑으므로, 문자 클래스 내용만 바꾸는 재서식(`[^\]]+` → `[^\]]{1,}`)은 통과하지만
+     **`.+`·`(?:…)`처럼 대괄호가 사라지는 재서식은 접두가 달라져 FAIL한다**(오탐이 아니라
+     보수적 실패다 — 실측으로 확인). **정말 못 잡는 것**: 접두가 같은 채 정규식 *의미*만 바뀌는
+     경우(골든 SC40h·SC40i의 담당)와 6파일이 같은 방향으로 함께 틀리는 경우.
+  ⑱ 파생 수치 동기 — 「문서 로드 예산 기준선」 서문의 **「메인 컨텍스트」 블록**이 아래 표에서
+     **옮겨 적은** 여섯 수치(합계 · 그 성분 2 · `plan-feature` · `AGENTS.md` · 리뷰어 범위)가
+     표와 갈리지 않았는가. 그 블록은 *"표를 갱신하는 task가 이 줄들도 함께 고친다"*는 규칙을
+     스스로 달고 있지만 **기계 대조 밖이라 규칙만으로는 지켜지지 않았다** — v1.186.0에 이어
+     v1.214.0 F-7이 같은 드리프트를 두 번째로 잡았다. **성분 2개가 핵심이다**: 근거가
+     *"합계는 재산출했다고 커밋에 적혀 있는데 성분이 낡았다"*는 형태라 합계만 보면 놓친다.
+     **못 잡는 것**: 표 자신이 실측과 어긋나는 것(축 ①의 몫)과 이 블록 밖의 인용.
 
 왜 하드코딩하지 않는가: 검사 대상 목록·기대값을 코드에 박으면 문서가 바뀌어도 검사가 낡는다.
 모든 기대값은 문서에서 파싱하며, 앵커를 못 찾으면 통과가 아니라 `[ANCHOR FAIL]`(exit 2)이다 —
@@ -433,6 +451,207 @@ def check_batch_trigger_sync():
         issues.append("착수 조건 동기 판정일 도출 문장 — 두 파일의 문면이 다르다"
                       "(공통 리터럴은 완전 일치여야 한다 — 근거절은 대조 대상이 아니다)")
     checked += 1
+    return issues, checked
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑰ 복제 리터럴 동기 (Deferred 마커 3종 · Ledger 기록 문장)
+# ─────────────────────────────────────────────────────────────
+def check_clone_literal_sync():
+    r"""Deferred 등재 판정 마커 3종과 Ledger 기록 문장이 복제 6파일에서 갈리지 않았는지 대조한다.
+
+    v1.214.0이 `phase-f-detail.md` F-6.5를 형식 정본으로 두고 나머지에는 리터럴 + 포인터만
+    남겨 복제 표면을 최소화했으나 **리터럴 자체는 여전히 6파일에 산다**. 그 회차에서 실제로
+    한 번 갈렸고(T1 초안의 `<기호>` ↔ `<게이트 기호>` — 수동 대조로 잡았다), 이 축을 세운
+    시점에도 `docs/prd.md`가 `<게이트>`로 어긋난 채 남아 있었다(v1.215.0 T1이 정정).
+
+    **추출 규칙은 파일마다 다르다 — 두 `.ps1`의 규칙이 서로 반대다.**
+      · md 4파일 — 각자의 앵커 줄에서 대괄호 마커를 뽑는다. 감싸는 백틱과 접두 `- `는
+        파일마다 정당하게 다르므로 대조에 넣지 않는다(표기 차이에 FAIL하지 않게).
+      · `scripts/session-context.ps1` — **`-match '^- \[…` 정규식 리터럴 안**에서만 토큰을
+        뽑고 **주석 줄은 제외**한다. 그 파일 주석이 같은 토큰을 담고 있어, 파일 전수 검색으로
+        두면 정규식을 고쳐도 주석이 토큰을 공급해 **공허 통과**한다(계획 리뷰 1R M3).
+      · `hooks/evals/scenarios/session-context.ps1` — **주석의 마커 이름 3종**을 뽑는다(위와
+        반대다). 픽스처 값(`- [미등재:ⓓ]` 등)은 기호가 채워진 실례라 대조하지 않는다 —
+        그 값의 옳음은 골든 자신이 잰다.
+
+    **어디까지 견디는가 (실측)**: hook 쪽 추출은 **여는 대괄호 직전까지의 리터럴 접두**를
+    뽑는다. 그래서 `[^\]]+` → `[^\]]{1,}`처럼 **문자 클래스를 유지하는** 재서식은 접두가
+    `미등재:` 그대로라 통과하지만, **`.+`·`(?:…)`처럼 대괄호가 사라지면** 접두가 `미등재:.+`·
+    `미등재:(?:`가 되어 **FAIL한다** — 정당한 재서식을 막는 셈이나 방향이 보수적(놓치는 쪽이
+    아니라 세우는 쪽)이라 그대로 둔다. 넓히려면 주석 제외 게이트를 다시 설계해야 한다.
+
+    **정말 못 잡는 것 (담당 경계)**: ⓐ **접두가 같은 채 정규식 의미만 바뀌는 경우** — 예컨대
+    문자 클래스 안을 넓히는 변경(그 회귀는 골든 SC40h·SC40i가 잡는다). ⓑ 6파일이
+    **같은 방향으로 함께 틀리는 경우**(축 ⑬과 달리 정본을 기준으로 삼으므로 정본이 틀리면
+    나머지가 정본을 따라가도 통과한다 — 사람·리뷰어의 몫이다).
+
+    **`docs/plans/deferred.md`는 같은 리터럴을 담지만 대조 대상이 아니다** — 그 항목은 회차
+    종결 시 삭제되는 **이력 서술**이라, 대조에 넣으면 정본을 개정할 때마다 과거 기록을 고쳐
+    이력이 훼손된다(축 ⑧⑨가 날짜 접두 아카이브 plan을 제외하는 것과 같은 축).
+
+    **갱신 주체**: 마커 규정이나 Ledger 문면을 고치는 task가 아래 6파일을 **같은 커밋에서**
+    함께 고친다. 정본만 고치면 이 축이 나머지 5파일을 불일치로 낸다.
+    """
+    p = lambda *parts: os.path.join(ROOT, *parts)
+    canon_p = p("plugins", "pjc", "skills", "implement-task", "references", "phase-f-detail.md")
+    canon = read(canon_p)
+    # 아래 두 대조(마커·Ledger)가 같은 파일을 보므로 경로를 한 번만 구성한다 —
+    # 두 곳에서 따로 조립하면 한쪽만 고칠 때 조용히 갈린다(T1 quality S1).
+    plan_tpl_p = p("plugins", "pjc", "skills", "plan-feature", "references", "plan-template.md")
+
+    # ── ⓐ 마커 3종 이름 (정본: F-6.5 마커 표의 데이터 행)
+    canon_markers = set(re.findall(r"^\s*\| `- \[([^\]]+)\]` \|", canon, re.M))
+    if len(canon_markers) != 3:
+        die("복제 리터럴 동기 — 정본(phase-f-detail.md F-6.5)에서 마커 표 3행을 찾지 못함 "
+            "(찾은 것: %s). 표 형식이 바뀌었는지 확인" % sorted(canon_markers))
+
+    # 복제 파일별 (표시명, 경로, 앵커 정규식, 마커 추출 정규식).
+    # 앵커를 파일마다 따로 두는 이유는 위 docstring 「추출 규칙은 파일마다 다르다」다 —
+    # 공통 정규식으로 뭉치면 골든 픽스처의 기호 채운 실례까지 빨려 들어온다.
+    marker_clones = (
+        ("plan-template.md", plan_tpl_p,
+         r"접두 마커로 담는다", r"`- \[([^\]]+)\]`"),
+        ("docs/prd.md",
+         p("docs", "prd.md"),
+         r"마커 3종\(", r"`\[([^\]]+)\]`"),
+        ("hooks/evals/scenarios/session-context.ps1",
+         p("plugins", "pjc", "hooks", "evals", "scenarios", "session-context.ps1"),
+         r"마커 3종\(", r"\[([^\]]+)\]"),
+    )
+
+    issues, checked = [], 0
+    for label, path, anchor_rx, marker_rx in marker_clones:
+        txt = read(path)
+        lines = [l for l in txt.split("\n") if re.search(anchor_rx, l)]
+        if not lines:
+            die("복제 리터럴 동기 — %s 에서 마커 앵커(%s)를 찾지 못함(문면이 바뀌었는지 확인)"
+                % (label, anchor_rx))
+        got = set()
+        for l in lines:
+            got.update(re.findall(marker_rx, l))
+        if got != canon_markers:
+            issues.append("복제 리터럴 동기 마커 %s — 정본 %s / 사본 %s"
+                          % (label, sorted(canon_markers), sorted(got)))
+        checked += 1
+
+    # ── ⓑ hook 정규식 토큰 (주석 제외 — 정규식 리터럴 안에서만 뽑는다)
+    hook_p = p("plugins", "pjc", "scripts", "session-context.ps1")
+    hook_lines = [l for l in read(hook_p).split("\n") if not l.lstrip().startswith("#")]
+    hook_tokens = set()
+    for l in hook_lines:
+        hook_tokens.update(re.findall(r"-match '\^- \\\[([^\\\[\]]+)", l))
+    if not hook_tokens:
+        die("복제 리터럴 동기 — session-context.ps1 의 `-match '^- \\[…` 정규식 리터럴을 "
+            "찾지 못함(주석 줄은 대상이 아니다 — hook 계수 로직이 바뀌었는지 확인)")
+    # hook은 미판정을 리터럴로 세지 않는다(잔여로 센다). 그래서 「집합 일치」가 아니라
+    # 「hook 토큰이 정본 마커에서 파생 가능한가」를 본다 — 사본 ⊆ 정본 관계다.
+    canon_prefixes = set()
+    for m in canon_markers:
+        canon_prefixes.add(m)
+        if ":" in m:
+            canon_prefixes.add(m.split(":", 1)[0] + ":")
+    orphan = hook_tokens - canon_prefixes
+    if orphan:
+        issues.append("복제 리터럴 동기 hook 토큰 — 정본 마커에서 파생되지 않는 %s "
+                      "(정본: %s · session-context.ps1 의 미판정 계수 정규식)"
+                      % (sorted(orphan), sorted(canon_markers)))
+    checked += 1
+
+    # ── ⓒ Ledger 기록 문장 (3파일 완전 일치 — 감싸는 백틱/작은따옴표는 제외)
+    ledger_rx = r"(F-6\.5 대장 반영: [^`'\n]+?)(?=[`'])"
+    m = re.search(ledger_rx, canon)
+    if not m:
+        die("복제 리터럴 동기 — 정본에서 Ledger 기록 문장(`F-6.5 대장 반영: …`)을 찾지 못함")
+    canon_ledger = m.group(1)
+    for label, path in (
+        ("plan-template.md", plan_tpl_p),
+        ("implement-task/SKILL.md",
+         p("plugins", "pjc", "skills", "implement-task", "SKILL.md")),
+    ):
+        mm = re.search(ledger_rx, read(path))
+        if not mm:
+            die("복제 리터럴 동기 — %s 에서 Ledger 기록 문장을 찾지 못함(문면이 바뀌었는지 확인)"
+                % label)
+        if mm.group(1) != canon_ledger:
+            issues.append("복제 리터럴 동기 Ledger 문장 %s — 정본 %r / 사본 %r"
+                          % (label, canon_ledger, mm.group(1)))
+        checked += 1
+
+    return issues, checked
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑱ 파생 수치 동기 (「문서 로드 예산 기준선」 표 → 「메인 컨텍스트」 블록)
+# ─────────────────────────────────────────────────────────────
+def check_derived_figures(conv):
+    r"""「메인 컨텍스트」 블록이 예산 표에서 **옮겨 적은** 수치가 표와 갈리지 않았는지 대조한다.
+
+    그 블록(「문서 로드 예산 기준선」 서문의 3행 중첩 표)은 아래 표의 값을 손으로 옮겨
+    적고서 *"표를 갱신하는 task가 이 줄들도 함께 고친다"*는 규칙을 스스로 달고 있는데,
+    **그 줄들이 기계 대조 밖이라 규칙만으로는 지켜지지 않았다** — v1.186.0에 이어 v1.214.0
+    F-7이 같은 드리프트를 두 번째로 잡았고, 이 축을 세운 시점에도 「상시 추가」의 `+9,672B`가
+    표의 `AGENTS.md 9,950`과 어긋난 채 남아 있었다(v1.215.0 T2가 그 축의 첫 검출로 정정).
+
+    **여섯 자리를 잰다.** ① 「메인」 합계 ②③ **그 합의 성분 두 개** ④ `plan-feature`
+    ⑤ 「상시 추가」(`AGENTS.md`) ⑥ 「리뷰어」 범위(리뷰어 행들의 min ~ max).
+    **성분 ②③이 핵심이다** — 대장이 기록한 근거가 *"합계는 재산출했다고 커밋에 적혀 있는데
+    성분이 낡은 채 남았다"*는 형태라, 합계만 대조하면 이 축이 자기 착수 근거를 못 잡는다.
+
+    **앵커는 행이 아니라 구(句) 단위다.** 대조 대상 넷과 **제외 대상 인용 두 개**가
+    「메인」 행의 **같은 셀 안에** 함께 있어 행 단위로는 가를 수 없다. 제외 대상은
+    `29,628 ~ 58,025`(과거 상태 서술)와 그에 딸린 `(실측 28,777 ~ 57,695)`(그 서술의 대조값)
+    이며 — **낡음을 기록하는 문장의 일부라 최신값으로 갱신되면 기록이 훼손된다** — 각 앵커가
+    표 셀 경계(`| … |`)나 고유 어구를 물어 그 둘에 닿지 않는다.
+
+    **무엇을 못 잡는가**: ⓐ **표 자신이 실측과 어긋나는 것**(축 ①의 몫이다 — 이 축은 표를
+    기준으로 삼으므로 표가 낡으면 블록도 함께 낡은 채 통과한다) ⓑ 이 블록 **밖에서** 표 값을
+    인용하는 자리(대조 범위를 이 블록으로 한정했다 — 넓히려면 앵커를 추가한다).
+    """
+    sec = section(conv, r"^## 문서 로드 예산 기준선", label="문서 로드 예산 기준선")
+    # 행 정규식은 축 ①(check_doc_budget)과 같은 5열 형식이다 — 같은 표를 읽지만 판정 축이
+    # 달라(그쪽은 "표가 낡았나", 이쪽은 "옮겨 적은 값이 갈렸나") 함수를 나눴다.
+    rows = [(m[0], m[1]) for m in re.findall(
+        r"^\| `([^`]+)` \| ([\d,]+) \| (\d+) \| (\d+) \| ([\d,]*) \|$", sec, re.M)]
+    if not rows:
+        die("파생 수치 동기 — 「문서 로드 예산 기준선」 표에서 데이터 행을 추출하지 못함")
+    size = {path: int(b.replace(",", "")) for path, b in rows}
+
+    def need(key):
+        hit = [v for k, v in size.items() if k.endswith(key)]
+        if len(hit) != 1:
+            die("파생 수치 동기 — 표에서 %s 행을 유일하게 찾지 못함(찾은 수: %d)" % (key, len(hit)))
+        return hit[0]
+
+    impl_b = need("skills/implement-task/SKILL.md")
+    wiki_b = need("skills/llm-wiki/SKILL.md")
+    plan_b = need("skills/plan-feature/SKILL.md")
+    agents_b = need("AGENTS.md")
+    reviewers = [v for k, v in size.items() if "/agents/" in k]
+    if len(reviewers) < 2:
+        die("파생 수치 동기 — 표에서 리뷰어(`agents/`) 행을 2개 이상 찾지 못함")
+
+    # (라벨, 기재값 추출 정규식, 기대값 튜플). 각 앵커가 고유 어구·표 셀 경계를 물어
+    # 같은 셀 안의 「제외 대상 인용」 두 개에 닿지 않는다(docstring 「앵커는 구 단위」).
+    checks = (
+        ("메인 합계", r"\*\*최대 ([\d,]+)B\*\*", (impl_b + wiki_b,)),
+        ("메인 합계 성분", r"\(([\d,]+) \+ ([\d,]+) — 아래 표의 실측 합\)", (impl_b, wiki_b)),
+        ("plan-feature", r"`plan-feature` ([\d,]+)B가 더해진다", (plan_b,)),
+        ("상시 추가(AGENTS.md)", r"\| \*\*\+([\d,]+)B\*\* \|", (agents_b,)),
+        ("리뷰어 범위", r"\| ([\d,]+) ~ ([\d,]+)B \|", (min(reviewers), max(reviewers))),
+    )
+
+    issues, checked = [], 0
+    for label, rx, want in checks:
+        m = re.search(rx, conv)
+        if not m:
+            die("파생 수치 동기 — 「메인 컨텍스트」 블록에서 %s 문면을 찾지 못함"
+                "(그 블록의 표기가 바뀌었는지 확인)" % label)
+        got = tuple(int(g.replace(",", "")) for g in m.groups())
+        if got != want:
+            issues.append("파생 수치 동기 %s — 블록 %s / 표에서 파생한 기대값 %s"
+                          % (label, got, want))
+        checked += len(want)
     return issues, checked
 
 
@@ -1062,6 +1281,8 @@ def main():
         ("잔류 절 동기", check_keep_sections_sync()),
         ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
         ("추출 앵커 도달성", check_compact_anchors()),
+        ("복제 리터럴 동기", check_clone_literal_sync()),
+        ("파생 수치 동기", check_derived_figures(conv)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
