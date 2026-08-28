@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기 · 잔류 절 동기 · batch 차수 수열.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기 · 잔류 절 동기 · batch 차수 수열 · 추출 앵커 도달성.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -51,6 +51,13 @@
      단서라 중복되면 계산이 갈린다. v1.195.0이 이미 있는 `10차`에 같은 이름을 얹었는데
      이 대조기가 통과시켰고 F-7 리뷰어가 잡았다. **못 잡는 것**: 차수는 맞는데 그 안의
      「정리 직후 N건」이 틀린 경우(값의 옳음은 이 축의 대상이 아니다).
+  ⑯ 추출 앵커 도달성 — compact 직후 주입(`session-context.ps1`의 `Get-SkillSection`)이
+     잘라 오는 절의 헤딩이 대상 스킬 문서에 정확히 1건 있는가. 주입 텍스트를 복제하지 않고
+     원문을 앵커로 자르는 설계라 정본은 하나로 남지만, **스킬 편집 회차가 헤딩 문구를 바꾸면
+     hook이 조용히 폴백해 주입이 사라진다** — 그 상실은 압축된 세션에서만 드러나 아무도
+     모른다. 앵커는 hook에서 파싱한다(`$agentsMaxBytes`와 같은 이유 — 여기 박으면 정본이
+     둘이 된다). **못 잡는 것**: 종료 앵커의 오타로 인한 0건과 의도된 EOF 절(그 절이 파일
+     마지막이라 종료 앵커가 없는 경우)의 구분(v1.212.0 T3).
 
 왜 하드코딩하지 않는가: 검사 대상 목록·기대값을 코드에 박으면 문서가 바뀌어도 검사가 낡는다.
 모든 기대값은 문서에서 파싱하며, 앵커를 못 찾으면 통과가 아니라 `[ANCHOR FAIL]`(exit 2)이다 —
@@ -170,7 +177,7 @@ def check_doc_budget(conv):
     **읽는 표가 둘이다 (v1.200.0).** ⓐ 「문서 로드 예산 기준선」 — **상시 로드**되는 것
     (스킬 본체·리뷰어 정의·`AGENTS.md`)의 5열 표. ⓑ 「조건부 참조 문서 크기 임계」 —
     **조건부 참조 문서**(필요할 때만 열리는 것)의 3열 표. **같은 축에서 함께 읽고
-    `axes` 엔트리를 늘리지 않으므로 축 수는 12 불변**이다. 표를 나눈 이유는 재는 것이
+    `axes` 엔트리를 늘리지 않는다** — 표가 둘로 늘어도 이 축은 하나다. 표를 나눈 이유는 재는 것이
     다르기 때문이며(발동만 해도 올라가는 양 vs 그 절을 읽으러 온 세션만 무는 비용),
     한 표에 섞으면 ⓐ의 정의와 거기서 파생되는 「메인 조합」 합산이 깨진다.
 
@@ -246,7 +253,7 @@ def check_doc_budget(conv):
                                  real[0] - AGENTS_TARGET_BYTES, detail))
 
     # ── 두 번째 표: 「조건부 참조 문서 크기 임계」 (v1.200.0)
-    # 같은 축에서 함께 읽는다 — `axes` 엔트리를 늘리지 않으므로 축 수는 12 불변이다.
+    # 같은 축에서 함께 읽는다 — `axes` 엔트리를 늘리지 않는다(표가 둘이어도 이 축은 하나).
     # **표를 나눈 이유는 재는 것이 다르기 때문**이다: 위 표는 상시 로드(발동만 해도 올라가는 양),
     #   이 표는 조건부 참조(그 절을 읽으러 온 세션만 무는 비용). 한 표에 섞으면 위 표의 정의와
     #   거기서 파생되는 「메인 조합」 합산이 함께 깨진다(근거는 그 절의 서문).
@@ -950,6 +957,63 @@ def check_keep_sections_sync():
     return issues, len(doc_names | code_names)
 
 
+# ─────────────────────────────────────────────────────────────
+# ⑯ 추출 앵커 도달성 (`session-context.ps1` ↔ 스킬 문서 헤딩)
+# ─────────────────────────────────────────────────────────────
+def check_compact_anchors():
+    """compact 직후 주입이 잘라 오는 절의 헤딩이 대상 문서에 실재하는지 대조한다.
+
+    v1.212.0의 `Get-SkillSection`은 주입 텍스트를 복제하지 않고 스킬 문서 원문을 헤딩
+    앵커로 잘라 온다 — 정본이 하나로 유지되는 대신, **스킬 편집 회차가 헤딩 문구를 바꾸면
+    hook은 조용히 `$null`을 반환하고 폴백해 주입이 사라진다.** 그 상실은 압축된 세션에서만
+    드러나므로 아무도 모른 채 지나간다. 그래서 앵커를 hook에서 **파싱해** 대조한다 —
+    `$agentsMaxBytes`를 hook에서 읽는 것과 같은 이유로, 값을 여기 박으면 정본이 둘이 된다.
+
+    헤딩이 0건이면 추출이 실패하고, 2건 이상이면 어느 쪽을 잡을지 불확정이라 둘 다 FAIL이다.
+
+    **`section()`을 재사용하지 않는 이유**: 그 헬퍼는 못 찾으면 `die()`로 **exit 2**를 내는데
+    이 축은 0건을 **exit 1 불일치**로 보고해야 하고, 첫 매치만 잘라내므로 **2건 이상을 아예
+    재지 못한다**. 두 요구가 그 헬퍼와 양립하지 않아 줄 수를 직접 센다.
+
+    **못 잡는 것 셋**: ⓐ 종료 앵커의 **오타로 인한 0건**과 **의도된 EOF 절**(절이 파일
+    마지막이라 종료 앵커가 없는 경우)을 구분하지 못한다 — hook이 후자를 정상으로 처리하므로
+    0건을 통과로 두었고, 그래서 전자가 이 축을 그대로 지나간다. ⓑ **정규식에 매칭되지 않는
+    형태로 쓰인 호출**(줄바꿈 분할·변수 경로)은 집계에서 빠진 채 통과한다 — 매칭이 **전무하면**
+    아래 `die()`가 잡지만, 하나라도 맞으면 나머지의 부재는 드러나지 않는다. ⓒ 절이
+    `$sectionMaxBytes`(20,000B)를 넘어 폴백하는 경로는 **앵커가 멀쩡하므로 이 축이 통과시킨다**
+    — 그 경로에는 아직 관측 수단이 없다(대장 「주입 예산 상한·임박 경고」).
+    """
+    hook = os.path.join(ROOT, "plugins", "pjc", "scripts", "session-context.ps1")
+    txt = read(hook)
+    calls = re.findall(
+        r"Get-SkillSection\s+-Path\s+\(Join-Path\s+\$skillsDir\s+'([^']+)'\)"
+        r"\s+-StartHeading\s+'([^']+)'\s+-StopHeading\s+'([^']+)'",
+        txt)
+    if not calls:
+        die("추출 앵커: `session-context.ps1`에서 Get-SkillSection 호출을 찾지 못함")
+
+    issues = []
+    checked = 0
+    for rel, start, stop in calls:
+        target = os.path.join(ROOT, "plugins", "pjc", "skills", *rel.split("/"))
+        if not os.path.exists(target):
+            # 앵커 2개(시작·종료)를 잴 수 없게 된 것이므로 2를 더한다 —
+            #   1만 더하면 정상 경로와 집계 단위가 갈려 배너의 항목 수가 어긋난다.
+            issues.append("추출 앵커 — 대상 파일 없음: %s" % rel)
+            checked += 2
+            continue
+        lines = [l.rstrip() for l in read(target).split("\n")]
+        # 종료 앵커는 없어도 된다(절이 파일 마지막일 수 있다 — hook이 파일 끝까지로 본다).
+        #   시작 앵커만 필수이며, 있다면 그것도 유일해야 추출 구간이 확정된다.
+        for label, anchor, required in (("시작", start, True), ("종료", stop, False)):
+            n = lines.count(anchor)
+            if n != 1 and not (n == 0 and not required):
+                issues.append("추출 앵커 — %s의 %s 앵커가 %d건: %s"
+                              % (rel, label, n, anchor))
+            checked += 1
+    return issues, checked
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -997,6 +1061,7 @@ def main():
         # 새 축은 계속 **맨 뒤**에 붙인다(위와 같은 이유 — 서수 참조 보호).
         ("잔류 절 동기", check_keep_sections_sync()),
         ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
+        ("추출 앵커 도달성", check_compact_anchors()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:

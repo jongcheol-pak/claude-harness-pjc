@@ -132,6 +132,27 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 재읽기 경로 halt-conditions (SC14b)" -R $r -ExpectExit 0 -ExpectContains 'references/halt-conditions.md'
     Assert-Case -Name "session-context: compact 재읽기 경로 recovery (SC14c)" -R $r -ExpectExit 0 -ExpectContains 'references/recovery.md'
 
+    # SC39~SC39d: compact 직후 루프 제어 규칙 **내용 주입** (v1.212.0 T1).
+    #   경로만 지시하면 ① 실제로 읽었는지 검증할 장치가 없고 ② 지시한 3파일 합 약 172KB를 다시
+    #   읽는 것이 압축으로 확보한 여유를 도로 소진한다. 그래서 두 절의 원문을 잘라 함께 주입한다.
+    #   ⚠ 대조 문자열은 **주입 헤더 라벨에 없고 절 본문에만 있는 것**을 고른다 — 라벨에도 있는
+    #   문자열(예: '중단 조건 표')로 재면 절이 통째로 빠져도 라벨만으로 통과해 검사가 무력해진다.
+    #   $r은 위 SC14 호출(compact + $scProj) 결과를 그대로 쓴다.
+    # SC39 (양성): SKILL.md 「자율 루프의 절대 규칙」 절이 실려 온다.
+    Assert-Case -Name "session-context: compact 루프 규칙 절 주입 (SC39)" -R $r -ExpectExit 0 -ExpectContains 'task 사이에 사용자에게 묻지 않는다'
+    # SC39b (양성): halt-conditions 「중단 조건 표」~「위임 경계」 절이 실려 온다.
+    #   두 절을 각각 재는 이유 — 한쪽만 걸면 나머지가 빠져도 전건 통과한다.
+    Assert-Case -Name "session-context: compact Halt 조건 절 주입 (SC39b)" -R $r -ExpectExit 0 -ExpectContains '위임 경계 (4분류'
+    # SC39d (발췌 표기): 주입분이 전문이 아니라 발췌임을 밝힌다 — 없으면 모델이 이것을 전문으로
+    #   오인해 "나머지는 없다"고 판단할 수 있다.
+    Assert-Case -Name "session-context: 주입분에 원문 발췌 표기 (SC39d)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌'
+
+    # SC39c (델타 음성): startup에는 주입하지 않는다 — 압축 전용 보완이라 매 세션 14KB를 얹으면
+    #   그 자체가 예산 낭비다. 이 케이스가 없으면 "항상 주입"으로 바꿔도 위 셋이 전부 통과한다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: startup엔 루프 규칙 미주입 (SC39c)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains 'task 사이에 사용자에게 묻지 않는다'
+    # $r을 되돌리지 않는다 — 이어지는 SC28·SC29가 각각 자기 $r을 새로 만든다(불필요한 hook 실행 방지).
+
     # SC28/SC29: 계획 세션의 압축 리마인더 (v1.198.0 T8).
     #   SC14 계열은 `if ($planPath)` 안이라 **진행 중 plan이 있는 세션**만 닿는다. 계획을 세우던 중
     #   압축되면 plan이 없거나 task가 0개라 그 지시를 못 받는데, plan-feature도 본체가 앞 5,000토큰

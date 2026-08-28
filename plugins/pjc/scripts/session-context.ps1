@@ -29,6 +29,34 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 #   출력 계약이 깨진다(헬퍼도 자기완결적으로 막지만 삽입 위치로 한 겹 더 막는다).
 try { . (Join-Path $PSScriptRoot 'orphan-process-cleanup.ps1'); $null = Invoke-OrphanProcessCleanup -Hook 'session-context' } catch {}
 
+# [절 추출] 스킬 문서에서 지정 헤딩 사이를 잘라 낸다 — compact 직후 루프 제어 규칙 주입용.
+#   왜 원문을 자르는가: 주입 텍스트를 여기 복제하면 정본이 둘이 되어 스킬을 고칠 때 갈린다.
+#   앵커가 사라지면 주입이 조용히 폴백해 아무도 모르므로, `check-harness-consistency.py`가
+#   「추출 앵커 도달성」 축으로 아래 앵커 리터럴을 파싱해 대상 파일과 기계 대조한다(v1.212.0 신설).
+#   반환: 절 텍스트 / 실패(파일 부재·시작 앵커 미발견·과대)면 $null → 호출부는 종전 Read 지시로 폴백.
+$sectionMaxBytes = 20000   # 추출 결과 상한 — 대상 절이 예상 밖으로 커졌을 때 주입이 세션을 잠식하는 것을 막는다
+function Get-SkillSection {
+    param([string]$Path, [string]$StartHeading, [string]$StopHeading)
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+        $raw = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+        if ([string]::IsNullOrEmpty($raw)) { return $null }
+        # 헤딩 비교는 TrimEnd() 후 완전 일치 — 부분 일치를 쓰면 `###`가 같은 이름의 `##`를 먼저 문다.
+        $lines = $raw -split "`r?`n"
+        $startIdx = -1; $stopIdx = $lines.Count
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            $t = $lines[$i].TrimEnd()
+            if ($startIdx -lt 0) { if ($t -eq $StartHeading) { $startIdx = $i } }
+            elseif ($t -eq $StopHeading) { $stopIdx = $i; break }
+        }
+        if ($startIdx -lt 0) { return $null }
+        # 종료 앵커가 없으면 파일 끝까지 — 대상 절이 파일 마지막일 수 있다(에러가 아니다).
+        $text = ($lines[$startIdx..($stopIdx - 1)] -join "`n").TrimEnd()
+        if ([System.Text.Encoding]::UTF8.GetByteCount($text) -gt $sectionMaxBytes) { return $null }
+        return $text
+    } catch { return $null }
+}
+
 try {
     # ---- 입력 파싱 (cwd·source) ----
     $raw = [Console]::In.ReadToEnd()
@@ -82,7 +110,24 @@ try {
                         #   깨진다. 대신 Phase와 무관하게 늘 필요한 루프 제어 3종만 고정 지정하고,
                         #   Phase 특화 reference는 스킬 본문의 지시에 맡긴다.
                         if ($source -eq 'compact') {
-                            $lines.Add("[pjc 세션 컨텍스트] 진행 중 plan이 있습니다 — 스킬 재invoke로는 복구되지 않으니 다음을 Read로 재확인하세요: implement-task/SKILL.md · implement-task/references/halt-conditions.md · implement-task/references/recovery.md. 진행 중인 Phase가 참조하는 reference 파일도 함께 읽으세요.")
+                            # ⚠ 3경로 리터럴(implement-task/SKILL.md · references/halt-conditions.md · references/recovery.md)을
+                            #   보존한다 — 골든 SC14·SC14b·SC14c가 각각을 ExpectContains로 재고 있어, 문면을 다듬다
+                            #   경로 하나라도 빠지면 즉시 FAIL한다. 조정 대상은 경로를 감싸는 서술뿐이다.
+                            $lines.Add("[pjc 세션 컨텍스트] 진행 중 plan이 있습니다 — 아래에 루프 제어 규칙 원문을 함께 주입했으니 그 두 절은 다시 읽지 않아도 됩니다. 그 밖의 Phase 절차·복구 규약이 필요하면 Read로 확인하세요(스킬 재invoke로는 복구되지 않습니다): implement-task/SKILL.md · implement-task/references/halt-conditions.md · implement-task/references/recovery.md. 진행 중인 Phase가 참조하는 reference 파일도 함께 읽으세요.")
+
+                            # 경로만 지시하면 ① 실제로 읽었는지 검증할 장치가 없고 ② 세 파일 합 약 172KB를
+                            #   다시 읽는 것은 압축으로 확보한 여유를 도로 소진한다. 그래서 루프 제어에 필요한
+                            #   두 절만 원문에서 잘라 넣는다(약 14KB). Phase 절차·복구 규약은 여전히 파일에 있다.
+                            # 추출 실패는 조용히 건너뛴다 — 위 Read 지시가 그대로 남아 폴백이 성립한다.
+                            $skillsDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills'
+                            $secRules = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/SKILL.md') -StartHeading '### 🚨 자율 루프의 절대 규칙' -StopHeading '### 🧠 컨텍스트 관리 (장시간 작업 대비)'
+                            if ($secRules) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/SKILL.md 「자율 루프의 절대 규칙」)`n$secRules") }
+                            # 종료 앵커가 「"사소한 문제"…」인 것은 그 직전 절(「컨텍스트 한계는 Halt 사유가 아니다」)을
+                            #   **포함하기 위해서**다 — 압축 직후에 가장 필요한 규칙이 *"컨텍스트가 과밀해도 멈추거나
+                            #   새 세션을 묻지 않는다"* 인데, 그 절을 종료 앵커로 삼으면 배타적으로 잘려 빠진다.
+                            #   회차 동기가 「compact 후 루프가 멈춘다」인데 정작 그 답이 주입 밖에 남던 것을 F-7이 잡았다.
+                            $secHalt = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/references/halt-conditions.md') -StartHeading '## 중단 조건 표' -StopHeading '## "사소한 문제"는 중단 사유가 아니다'
+                            if ($secHalt) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/references/halt-conditions.md 「중단 조건 표」·「위임 경계」·「컨텍스트 한계는 Halt 사유가 아니다」)`n$secHalt") }
                         }
                     } else {
                         $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 전부 완료 — 새 작업이면 plan 교체 전 Deferred/Follow-up 잔여 항목을 확인하세요.")
