@@ -170,7 +170,7 @@ def check_doc_budget(conv):
     **읽는 표가 둘이다 (v1.200.0).** ⓐ 「문서 로드 예산 기준선」 — **상시 로드**되는 것
     (스킬 본체·리뷰어 정의·`AGENTS.md`)의 5열 표. ⓑ 「조건부 참조 문서 크기 임계」 —
     **조건부 참조 문서**(필요할 때만 열리는 것)의 3열 표. **같은 축에서 함께 읽고
-    `axes` 엔트리를 늘리지 않으므로 축 수는 12 불변**이다. 표를 나눈 이유는 재는 것이
+    `axes` 엔트리를 늘리지 않는다** — 표가 둘로 늘어도 이 축은 하나다. 표를 나눈 이유는 재는 것이
     다르기 때문이며(발동만 해도 올라가는 양 vs 그 절을 읽으러 온 세션만 무는 비용),
     한 표에 섞으면 ⓐ의 정의와 거기서 파생되는 「메인 조합」 합산이 깨진다.
 
@@ -246,7 +246,7 @@ def check_doc_budget(conv):
                                  real[0] - AGENTS_TARGET_BYTES, detail))
 
     # ── 두 번째 표: 「조건부 참조 문서 크기 임계」 (v1.200.0)
-    # 같은 축에서 함께 읽는다 — `axes` 엔트리를 늘리지 않으므로 축 수는 12 불변이다.
+    # 같은 축에서 함께 읽는다 — `axes` 엔트리를 늘리지 않는다(표가 둘이어도 이 축은 하나).
     # **표를 나눈 이유는 재는 것이 다르기 때문**이다: 위 표는 상시 로드(발동만 해도 올라가는 양),
     #   이 표는 조건부 참조(그 절을 읽으러 온 세션만 무는 비용). 한 표에 섞으면 위 표의 정의와
     #   거기서 파생되는 「메인 조합」 합산이 함께 깨진다(근거는 그 절의 서문).
@@ -950,6 +950,49 @@ def check_keep_sections_sync():
     return issues, len(doc_names | code_names)
 
 
+# ─────────────────────────────────────────────────────────────
+# ⑮ 추출 앵커 도달성 (`session-context.ps1` ↔ 스킬 문서 헤딩)
+# ─────────────────────────────────────────────────────────────
+def check_compact_anchors():
+    """compact 직후 주입이 잘라 오는 절의 헤딩이 대상 문서에 실재하는지 대조한다.
+
+    v1.212.0의 `Get-SkillSection`은 주입 텍스트를 복제하지 않고 스킬 문서 원문을 헤딩
+    앵커로 잘라 온다 — 정본이 하나로 유지되는 대신, **스킬 편집 회차가 헤딩 문구를 바꾸면
+    hook은 조용히 `$null`을 반환하고 폴백해 주입이 사라진다.** 그 상실은 압축된 세션에서만
+    드러나므로 아무도 모른 채 지나간다. 그래서 앵커를 hook에서 **파싱해** 대조한다 —
+    `$agentsMaxBytes`를 hook에서 읽는 것과 같은 이유로, 값을 여기 박으면 정본이 둘이 된다.
+
+    헤딩이 0건이면 추출이 실패하고, 2건 이상이면 어느 쪽을 잡을지 불확정이라 둘 다 FAIL이다.
+    """
+    hook = os.path.join(ROOT, "plugins", "pjc", "scripts", "session-context.ps1")
+    txt = read(hook)
+    calls = re.findall(
+        r"Get-SkillSection\s+-Path\s+\(Join-Path\s+\$skillsDir\s+'([^']+)'\)"
+        r"\s+-StartHeading\s+'([^']+)'\s+-StopHeading\s+'([^']+)'",
+        txt)
+    if not calls:
+        die("추출 앵커: `session-context.ps1`에서 Get-SkillSection 호출을 찾지 못함")
+
+    issues = []
+    checked = 0
+    for rel, start, stop in calls:
+        target = os.path.join(ROOT, "plugins", "pjc", "skills", *rel.split("/"))
+        if not os.path.exists(target):
+            issues.append("추출 앵커 — 대상 파일 없음: %s" % rel)
+            checked += 1
+            continue
+        lines = [l.rstrip() for l in read(target).split("\n")]
+        # 종료 앵커는 없어도 된다(절이 파일 마지막일 수 있다 — hook이 파일 끝까지로 본다).
+        #   시작 앵커만 필수이며, 있다면 그것도 유일해야 추출 구간이 확정된다.
+        for label, anchor, required in (("시작", start, True), ("종료", stop, False)):
+            n = lines.count(anchor)
+            if n != 1 and not (n == 0 and not required):
+                issues.append("추출 앵커 — %s의 %s 앵커가 %d건: %s"
+                              % (rel, label, n, anchor))
+            checked += 1
+    return issues, checked
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -997,6 +1040,7 @@ def main():
         # 새 축은 계속 **맨 뒤**에 붙인다(위와 같은 이유 — 서수 참조 보호).
         ("잔류 절 동기", check_keep_sections_sync()),
         ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
+        ("추출 앵커 도달성", check_compact_anchors()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
