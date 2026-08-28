@@ -314,8 +314,10 @@ if (Test-HookSelected @('session-context')) {
     # SC40h (양성 — 기호 없는 미등재): `- [미등재] …`(게이트 기호 없음)는 **미판정으로 센다**.
     #   사유 없는 미등재는 게이트 ⓕ가 막으려는 「근거 미지목」과 같은 형태다. 이 케이스가 없으면
     #   구현자가 `[미등재]` 접두만 보고 제외해도 전건 green이다.
+    #   ⚠ 둘째 항목이 **같은 줄 뒤쪽에 대괄호를 담는다** — 기호 정규식을 `.+`로 쓰면 `.`이 `]`도 먹어
+    #     그 항목이 판정된 것으로 빠진다(F-7 2R m3). `[^\]]+`여야 이 픽스처가 2건으로 세어진다.
     $scDef8 = Join-Path $scDefBase 'no-gate'; New-Item -ItemType Directory $scDef8 -Force | Out-Null
-    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [미등재] **A**', '- [미등재:] **B**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef8 'plan.md')
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [미등재] **A**', '- [미등재:] **B** 참고 [ref]', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef8 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef8 } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 기호 없는 미등재는 미판정으로 계수 (SC40h)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 2건'
 
