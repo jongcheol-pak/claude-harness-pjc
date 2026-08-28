@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기 · 잔류 절 동기 · batch 차수 수열 · 추출 앵커 도달성.
+"""하니스 전역 정합 셀프체크 — 문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 포인터 도달성 · 마커 목록 · 개념 정본 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 착수 조건 동기 · 잔류 절 동기 · batch 차수 수열 · 추출 앵커 도달성 · 복제 리터럴 동기.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -51,6 +51,14 @@
      단서라 중복되면 계산이 갈린다. v1.195.0이 이미 있는 `10차`에 같은 이름을 얹었는데
      이 대조기가 통과시켰고 F-7 리뷰어가 잡았다. **못 잡는 것**: 차수는 맞는데 그 안의
      「정리 직후 N건」이 틀린 경우(값의 옳음은 이 축의 대상이 아니다).
+  ⑰ 복제 리터럴 동기 — Deferred 등재 판정 **마커 3종**(`[등재]`·`[미등재:<게이트 기호>]`·
+     `[미판정]`)과 **Ledger 기록 문장**(`F-6.5 대장 반영: 등재 N / 미등재 M`)이 복제 6파일에서
+     갈리지 않았는가. v1.214.0이 정본을 `phase-f-detail.md` 한 곳에 두고 나머지에는 리터럴 +
+     포인터만 남겼지만 리터럴 자체는 여러 파일에 살고, 그 회차에서 실제로 한 번 갈렸다
+     (`<기호>` ↔ `<게이트 기호>` — 수동 대조로 잡았다). **추출 규칙은 파일마다 다르다** —
+     특히 두 `.ps1`은 서로 반대다(hook은 정규식 리터럴 안·주석 제외 / 골든 시나리오는 주석).
+     **못 잡는 것**: hook 정규식의 *의미* 변화(토큰만 본다 — 골든 SC40h·SC40i의 담당)와
+     6파일이 같은 방향으로 함께 틀리는 경우.
   ⑯ 추출 앵커 도달성 — compact 직후 주입(`session-context.ps1`의 `Get-SkillSection`)이
      잘라 오는 절의 헤딩이 대상 스킬 문서에 정확히 1건 있는가. 주입 텍스트를 복제하지 않고
      원문을 앵커로 자르는 설계라 정본은 하나로 남지만, **스킬 편집 회차가 헤딩 문구를 바꾸면
@@ -433,6 +441,126 @@ def check_batch_trigger_sync():
         issues.append("착수 조건 동기 판정일 도출 문장 — 두 파일의 문면이 다르다"
                       "(공통 리터럴은 완전 일치여야 한다 — 근거절은 대조 대상이 아니다)")
     checked += 1
+    return issues, checked
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑰ 복제 리터럴 동기 (Deferred 마커 3종 · Ledger 기록 문장)
+# ─────────────────────────────────────────────────────────────
+def check_clone_literal_sync():
+    r"""Deferred 등재 판정 마커 3종과 Ledger 기록 문장이 복제 6파일에서 갈리지 않았는지 대조한다.
+
+    v1.214.0이 `phase-f-detail.md` F-6.5를 형식 정본으로 두고 나머지에는 리터럴 + 포인터만
+    남겨 복제 표면을 최소화했으나 **리터럴 자체는 여전히 6파일에 산다**. 그 회차에서 실제로
+    한 번 갈렸고(T1 초안의 `<기호>` ↔ `<게이트 기호>` — 수동 대조로 잡았다), 이 축을 세운
+    시점에도 `docs/prd.md`가 `<게이트>`로 어긋난 채 남아 있었다(v1.215.0 T1이 정정).
+
+    **추출 규칙은 파일마다 다르다 — 두 `.ps1`의 규칙이 서로 반대다.**
+      · md 4파일 — 각자의 앵커 줄에서 대괄호 마커를 뽑는다. 감싸는 백틱과 접두 `- `는
+        파일마다 정당하게 다르므로 대조에 넣지 않는다(표기 차이에 FAIL하지 않게).
+      · `scripts/session-context.ps1` — **`-match '^- \[…` 정규식 리터럴 안**에서만 토큰을
+        뽑고 **주석 줄은 제외**한다. 그 파일 주석이 같은 토큰을 담고 있어, 파일 전수 검색으로
+        두면 정규식을 고쳐도 주석이 토큰을 공급해 **공허 통과**한다(계획 리뷰 1R M3).
+      · `hooks/evals/scenarios/session-context.ps1` — **주석의 마커 이름 3종**을 뽑는다(위와
+        반대다). 픽스처 값(`- [미등재:ⓓ]` 등)은 기호가 채워진 실례라 대조하지 않는다 —
+        그 값의 옳음은 골든 자신이 잰다.
+
+    **못 잡는 것 (담당 경계)**: ⓐ hook 정규식의 **의미** 변화 — `[^\]]+`를 `.+`로 바꿔도
+    토큰 `미등재:`는 그대로라 통과한다(그 회귀는 골든 SC40h·SC40i가 잡는다). ⓑ 6파일이
+    **같은 방향으로 함께 틀리는 경우**(축 ⑬과 달리 정본을 기준으로 삼으므로 정본이 틀리면
+    나머지가 정본을 따라가도 통과한다 — 사람·리뷰어의 몫이다).
+
+    **`docs/plans/deferred.md`는 같은 리터럴을 담지만 대조 대상이 아니다** — 그 항목은 회차
+    종결 시 삭제되는 **이력 서술**이라, 대조에 넣으면 정본을 개정할 때마다 과거 기록을 고쳐
+    이력이 훼손된다(축 ⑧⑨가 날짜 접두 아카이브 plan을 제외하는 것과 같은 축).
+
+    **갱신 주체**: 마커 규정이나 Ledger 문면을 고치는 task가 아래 6파일을 **같은 커밋에서**
+    함께 고친다. 정본만 고치면 이 축이 나머지 5파일을 불일치로 낸다.
+    """
+    p = lambda *parts: os.path.join(ROOT, *parts)
+    canon_p = p("plugins", "pjc", "skills", "implement-task", "references", "phase-f-detail.md")
+    canon = read(canon_p)
+
+    # ── ⓐ 마커 3종 이름 (정본: F-6.5 마커 표의 데이터 행)
+    canon_markers = set(re.findall(r"^\s*\| `- \[([^\]]+)\]` \|", canon, re.M))
+    if len(canon_markers) != 3:
+        die("복제 리터럴 동기 — 정본(phase-f-detail.md F-6.5)에서 마커 표 3행을 찾지 못함 "
+            "(찾은 것: %s). 표 형식이 바뀌었는지 확인" % sorted(canon_markers))
+
+    # 복제 파일별 (표시명, 경로, 앵커 정규식, 마커 추출 정규식).
+    # 앵커를 파일마다 따로 두는 이유는 위 docstring 「추출 규칙은 파일마다 다르다」다 —
+    # 공통 정규식으로 뭉치면 골든 픽스처의 기호 채운 실례까지 빨려 들어온다.
+    marker_clones = (
+        ("plan-template.md",
+         p("plugins", "pjc", "skills", "plan-feature", "references", "plan-template.md"),
+         r"접두 마커로 담는다", r"`- \[([^\]]+)\]`"),
+        ("docs/prd.md",
+         p("docs", "prd.md"),
+         r"마커 3종\(", r"`\[([^\]]+)\]`"),
+        ("hooks/evals/scenarios/session-context.ps1",
+         p("plugins", "pjc", "hooks", "evals", "scenarios", "session-context.ps1"),
+         r"마커 3종\(", r"\[([^\]]+)\]"),
+    )
+
+    issues, checked = [], 0
+    for label, path, anchor_rx, marker_rx in marker_clones:
+        txt = read(path)
+        lines = [l for l in txt.split("\n") if re.search(anchor_rx, l)]
+        if not lines:
+            die("복제 리터럴 동기 — %s 에서 마커 앵커(%s)를 찾지 못함(문면이 바뀌었는지 확인)"
+                % (label, anchor_rx))
+        got = set()
+        for l in lines:
+            got.update(re.findall(marker_rx, l))
+        if got != canon_markers:
+            issues.append("복제 리터럴 동기 마커 %s — 정본 %s / 사본 %s"
+                          % (label, sorted(canon_markers), sorted(got)))
+        checked += 1
+
+    # ── ⓑ hook 정규식 토큰 (주석 제외 — 정규식 리터럴 안에서만 뽑는다)
+    hook_p = p("plugins", "pjc", "scripts", "session-context.ps1")
+    hook_lines = [l for l in read(hook_p).split("\n") if not l.lstrip().startswith("#")]
+    hook_tokens = set()
+    for l in hook_lines:
+        hook_tokens.update(re.findall(r"-match '\^- \\\[([^\\\[\]]+)", l))
+    if not hook_tokens:
+        die("복제 리터럴 동기 — session-context.ps1 의 `-match '^- \\[…` 정규식 리터럴을 "
+            "찾지 못함(주석 줄은 대상이 아니다 — hook 계수 로직이 바뀌었는지 확인)")
+    # hook은 미판정을 리터럴로 세지 않는다(잔여로 센다). 그래서 「집합 일치」가 아니라
+    # 「hook 토큰이 정본 마커에서 파생 가능한가」를 본다 — 사본 ⊆ 정본 관계다.
+    canon_prefixes = set()
+    for m in canon_markers:
+        canon_prefixes.add(m)
+        if ":" in m:
+            canon_prefixes.add(m.split(":", 1)[0] + ":")
+    orphan = hook_tokens - canon_prefixes
+    if orphan:
+        issues.append("복제 리터럴 동기 hook 토큰 — 정본 마커에서 파생되지 않는 %s "
+                      "(정본: %s · session-context.ps1 의 미판정 계수 정규식)"
+                      % (sorted(orphan), sorted(canon_markers)))
+    checked += 1
+
+    # ── ⓒ Ledger 기록 문장 (3파일 완전 일치 — 감싸는 백틱/작은따옴표는 제외)
+    ledger_rx = r"(F-6\.5 대장 반영: [^`'\n]+?)(?=[`'])"
+    m = re.search(ledger_rx, canon)
+    if not m:
+        die("복제 리터럴 동기 — 정본에서 Ledger 기록 문장(`F-6.5 대장 반영: …`)을 찾지 못함")
+    canon_ledger = m.group(1)
+    for label, path in (
+        ("plan-template.md",
+         p("plugins", "pjc", "skills", "plan-feature", "references", "plan-template.md")),
+        ("implement-task/SKILL.md",
+         p("plugins", "pjc", "skills", "implement-task", "SKILL.md")),
+    ):
+        mm = re.search(ledger_rx, read(path))
+        if not mm:
+            die("복제 리터럴 동기 — %s 에서 Ledger 기록 문장을 찾지 못함(문면이 바뀌었는지 확인)"
+                % label)
+        if mm.group(1) != canon_ledger:
+            issues.append("복제 리터럴 동기 Ledger 문장 %s — 정본 %r / 사본 %r"
+                          % (label, canon_ledger, mm.group(1)))
+        checked += 1
+
     return issues, checked
 
 
@@ -1062,6 +1190,7 @@ def main():
         ("잔류 절 동기", check_keep_sections_sync()),
         ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
         ("추출 앵커 도달성", check_compact_anchors()),
+        ("복제 리터럴 동기", check_clone_literal_sync()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
