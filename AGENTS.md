@@ -58,6 +58,7 @@
 - **파일 크기**: 분할은 줄 수가 아니라 책임·읽기 부담으로 판정(`implement-task` 규칙 8의 네 질문이 정본).
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단은 둘 — ① **`exit 2`**: `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox`·`guard-agents-content` + `warn-commit-secrets`(조건부) ② **stdout JSON + `exit 0`**: `require-evidence`(조건부, Stop hook 전용). **두 조건부의 세부 조건·스캔 범위는 `docs/harness-conventions.md`가 정본** — hook 수정 전 반드시 읽을 것. **우회 변수는 둘이며 서로 대체되지 않는다**: `CLAUDE_HARNESS_QUICK`(require-evidence·require-plan-for-write·guard-agents-content) / `CLAUDE_HARNESS_ALLOW_SECRET`(warn-commit-secrets 전용).
 - **`require-plan-for-write`는 게이트 3종**: ① plan 존재 ② plan 작성 ③ AGENTS.md bootstrap. ①②는 같은 정규식(`$planTaskRx`)을 공유하므로 **한쪽만 고치지 말 것**(차이가 곧 우회 경로).
+- **⚠ `llm-wiki`의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md`의 vault 예외를 함께 확인**한다 — 검사기가 잡지 못한다(repo 밖). 필수 결합 2건·판정 기준은 `docs/harness-conventions.md`의 「llm-wiki ↔ 글로벌 지침 결합 (동반 수정 판정)」이 정본.
 - **SKILL 문서 작성**: `plugins/pjc/skills/AUTHORING.md` 참조.
 - **README.md 갱신 규약**: 버전별 changelog 블록 기재 **금지** — 현재 기능 설명만 유지한다(제거된 기능 설명은 삭제). 버전 표기는 상단 1곳만 두고 릴리즈 시 `plugin.json`과 **함께** 갱신한다. 이력은 git 커밋이 정본이다.
 - **규약 개정 요청**: 요청이 이 레포 규약에 걸려도 「규약이 금지한다」로 작업을 제외·전환하지 않는다 — **현행 규약 안의 안**과 **규약을 함께 고치는 안**을 둘 다 제시한다. 정본은 `docs/harness-conventions.md`의 「규약 개정 요청의 취급」.
