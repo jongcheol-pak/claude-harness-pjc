@@ -122,8 +122,12 @@ try {
                             $skillsDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills'
                             $secRules = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/SKILL.md') -StartHeading '### 🚨 자율 루프의 절대 규칙' -StopHeading '### 🧠 컨텍스트 관리 (장시간 작업 대비)'
                             if ($secRules) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/SKILL.md 「자율 루프의 절대 규칙」)`n$secRules") }
-                            $secHalt = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/references/halt-conditions.md') -StartHeading '## 중단 조건 표' -StopHeading '## 컨텍스트 한계는 Halt 사유가 아니다 (압축 통과)'
-                            if ($secHalt) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/references/halt-conditions.md 「중단 조건 표」·「위임 경계」)`n$secHalt") }
+                            # 종료 앵커가 「"사소한 문제"…」인 것은 그 직전 절(「컨텍스트 한계는 Halt 사유가 아니다」)을
+                            #   **포함하기 위해서**다 — 압축 직후에 가장 필요한 규칙이 *"컨텍스트가 과밀해도 멈추거나
+                            #   새 세션을 묻지 않는다"* 인데, 그 절을 종료 앵커로 삼으면 배타적으로 잘려 빠진다.
+                            #   회차 동기가 「compact 후 루프가 멈춘다」인데 정작 그 답이 주입 밖에 남던 것을 F-7이 잡았다.
+                            $secHalt = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/references/halt-conditions.md') -StartHeading '## 중단 조건 표' -StopHeading '## "사소한 문제"는 중단 사유가 아니다'
+                            if ($secHalt) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/references/halt-conditions.md 「중단 조건 표」·「위임 경계」·「컨텍스트 한계는 Halt 사유가 아니다」)`n$secHalt") }
                         }
                     } else {
                         $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 전부 완료 — 새 작업이면 plan 교체 전 Deferred/Follow-up 잔여 항목을 확인하세요.")
