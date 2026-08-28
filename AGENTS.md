@@ -38,7 +38,7 @@
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
-- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`) 수정 시 필수 — 열두 축(「예산 기준선」 축은 표의 `상한` 열도 잰다), **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`) 수정 시 필수 — 열세 축(「예산 기준선」 축은 표의 `상한` 열도 잰다), **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python plugins/pjc/evals/check-harness-consistency.py
   ```
