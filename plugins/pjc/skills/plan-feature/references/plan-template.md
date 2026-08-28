@@ -281,7 +281,7 @@ plan.md는 **git에 commit되어 영구 보존**된다.
 <!-- implement-task가 Phase 진행 위치를 기록 (압축/재개 시 Phase F/G 중복 실행 방지). 계획 단계에서는 비움.
      형식 예: 'Phase F 통과 (HEAD abc123)' → PRD plan은 이어서 'Phase G 통과 (Must 100%)' 또는
      'Phase G 재루프 N회차'. 새 세션 plan-feature Step 0.2가 'Phase G 통과' 마커로 PRD plan의 완료를 판정한다.
-     같은 자리에 F-6.5의 대장 반영 결과도 1줄 남긴다 — 'F-6.5 대장 반영: 등재 N / 게이트 제외 M'.
+     같은 자리에 F-6.5의 대장 반영 결과도 1줄 남긴다 — 'F-6.5 대장 반영: 등재 N / 미등재 M'.
      (형식·시점 정본은 implement-task references/phase-f-detail.md의 F-6.5 「Phase Ledger에 반영 결과를 남긴다」) -->
 
 ## Retry Ledger
