@@ -70,7 +70,7 @@ try {
 
     # ---- compact 리마인더 (plan 유무 무관) ----
     if ($source -eq 'compact') {
-        $lines.Add("[pjc 세션 컨텍스트] 컨텍스트 요약 직후입니다 — 진행 중이던 작업이 있으면 plan.md의 현재 task와 활성 스킬(implement-task 등)의 Halt 조건·승인 게이트·커밋 프로토콜을 요약 기억에 의존하지 말고 SKILL 문서·plan.md 원문에서 재확인하세요.")
+        $lines.Add("[pjc 세션 컨텍스트] 컨텍스트 요약 직후입니다 — 진행 중이던 작업이 있으면 plan.md의 현재 task와 활성 스킬(implement-task 등)의 Halt 조건·승인 게이트·커밋 프로토콜을 요약 기억에 의존하지 말고 SKILL 문서·plan.md 원문에서 재확인하세요. 그리고 **아직 plan.md에 적지 않은** 발견(이연할 항목·확인된 사실)이 요약 전에 있었다면 지금 plan.md에 적으세요 — 대화에만 있던 것은 요약을 지나면 근거 없이 사라집니다.")
     }
 
     if (-not [string]::IsNullOrWhiteSpace($cwd) -and (Test-Path -LiteralPath $cwd -PathType Container)) {
@@ -98,9 +98,39 @@ try {
                 # task 라인만 카운트 (pjc plan 규약: "- [x] T1: ..." — 통과 체크리스트 등 다른 체크박스 제외)
                 $all = [regex]::Matches($planText, '(?m)^- \[[ /x]\] T\d+').Count
                 $open = [regex]::Matches($planText, '(?m)^- \[[ /]\] T\d+').Count
+
+                # ---- Deferred 미판정 계수 (task 체크박스와 별개 축) ----
+                # 왜: plan.md는 gitignore + 다음 회차 교체라, `## Deferred / Follow-up` 항목이 대장
+                #   (docs/plans/deferred.md)으로 옮겨지기 전에 회차가 끝나면 통째로 사라진다. task는
+                #   위 두 정규식이 세지만 Deferred는 아무도 세지 않아, "task 전부 완료" 옆에 미이관
+                #   항목이 남아도 완료로 흘러갔다. 마커 규정(F-6.5 「판정 결과를 plan 항목에 마커로
+                #   남긴다」)이 그 상태를 기계 판독 가능하게 만들고 여기가 그것을 센다.
+                # **판정은 plan 단위가 아니라 항목 단위다** — "마커가 하나도 없을 때만 폴백"으로 두면
+                #   **마커 혼재 상태**(일부만 [등재], 나머지는 마커 없음 = 이관 도중 압축된 실제 형태)에서
+                #   폴백이 안 걸리고 [미판정] 리터럴도 0건이라 부기가 조용히 사라진다.
+                # 세는 것은 미판정뿐이다 — 이미 판정된 항목까지 매 세션 알리면 같은 수가 늘 떠 신호가
+                #   무뎌진다(대장 [2026-08-03] 「늘 '해당 없음'으로 채워지면 형식만 남는다」와 같은 축).
+                $defUnjudged = 0
+                $defMatch = [regex]::Match($planText, '(?ms)^## Deferred / Follow-up\s*?$(.*?)(?=^## |\z)')
+                if ($defMatch.Success) {
+                    foreach ($defLine in ($defMatch.Groups[1].Value -split "`r?`n")) {
+                        if ($defLine -notmatch '^- ') { continue }
+                        # 마커가 있으면 벗겨 낸 뒤 본문을 본다 — placeholder에 마커를 달아 둔 plan도
+                        #   같은 판정을 받게 하기 위함이다(템플릿은 마커를 달지 않지만 손으로 달 수 있다).
+                        if (($defLine -replace '^- \[[^\]]*\]\s*', '') -match '^<') { continue }   # 템플릿 placeholder
+                        if ($defLine -match '^- \[등재\]') { continue }
+                        # `.+`가 기호 1자 이상을 요구하므로 사유 없는 `[미등재]`·`[미등재:]`는 걸리지
+                        #   않고 미판정으로 센다 — 사유 없는 미등재는 게이트 ⓕ가 막으려는 형태다.
+                        if ($defLine -match '^- \[미등재:.+\]') { continue }
+                        $defUnjudged++
+                    }
+                }
+                # 기존 라인 **뒤에** 붙인다 — 앞에 끼우면 `미완료 2`·`전부 완료`·`존재`를 부분문자열로
+                #   재는 기존 골든 7건이 살아남더라도 사람이 읽는 순서가 뒤집힌다.
+                $defNote = if ($defUnjudged -gt 0) { " · **Deferred 미판정 ${defUnjudged}건** — 대장(docs/plans/deferred.md) 등재 판정이 남아 있습니다(F-6.5)." } else { "" }
                 if ($all -gt 0) {
                     if ($open -gt 0) {
-                        $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 중 미완료 ${open}개 — 작업 시작 전 plan.md 진행 상태를 확인하세요.")
+                        $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 중 미완료 ${open}개 — 작업 시작 전 plan.md 진행 상태를 확인하세요.${defNote}")
                         # 압축 직후 + 미완료 task = 자율 루프가 규칙을 잃은 채 재개될 최위험 조합.
                         #   스킬은 auto-compact 후 앞 5,000토큰만 재부착되므로 뒷부분(Phase 절차·Halt
                         #   조건·재시도 카운터)이 통째로 빠지는데, 동일 스킬 재invoke는 "이미 로드됨"만
@@ -130,11 +160,11 @@ try {
                             if ($secHalt) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/references/halt-conditions.md 「중단 조건 표」·「위임 경계」·「컨텍스트 한계는 Halt 사유가 아니다」)`n$secHalt") }
                         }
                     } else {
-                        $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 전부 완료 — 새 작업이면 plan 교체 전 Deferred/Follow-up 잔여 항목을 확인하세요.")
+                        $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 전부 완료 — 새 작업이면 plan 교체 전 Deferred/Follow-up 잔여 항목을 확인하세요.${defNote}")
                     }
                 } else {
                     # task 체크박스가 없는 plan.md(비 pjc 형식) — 카운트 오보 대신 존재만 알림
-                    $lines.Add("[pjc 세션 컨텍스트] ${planLabel} 존재 — 작업 시작 전 진행 상태를 확인하세요.")
+                    $lines.Add("[pjc 세션 컨텍스트] ${planLabel} 존재 — 작업 시작 전 진행 상태를 확인하세요.${defNote}")
                 }
             }
         }
