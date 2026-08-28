@@ -31,7 +31,7 @@ description: >
 | E. 지식 페이지 관리 | `references/procedures-content.md` |
 | F. Lint (건강 검진) | `references/procedures-ops.md` |
 | G. Query (위키 질문) | `references/procedures-ops.md` |
-| H. 지침 자동 갱신 | `references/procedures-ops.md` |
+| H. 스킬 어긋남 큐잉 | `references/procedures-ops.md` |
 | I. 가이드/레시피 작성 | `references/procedures-content.md` |
 | J. 빈 위키 부트스트랩 | `references/wiki-ops-rules.md` |
 | K. 작업 참조 (코드 작업 세션 read-only 조회) | (이 문서) |
