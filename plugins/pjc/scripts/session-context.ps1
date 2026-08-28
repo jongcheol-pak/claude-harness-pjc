@@ -31,8 +31,8 @@ try { . (Join-Path $PSScriptRoot 'orphan-process-cleanup.ps1'); $null = Invoke-O
 
 # [절 추출] 스킬 문서에서 지정 헤딩 사이를 잘라 낸다 — compact 직후 루프 제어 규칙 주입용.
 #   왜 원문을 자르는가: 주입 텍스트를 여기 복제하면 정본이 둘이 되어 스킬을 고칠 때 갈린다.
-#   앵커가 사라지면 조용히 폴백하므로 `check-harness-consistency.py`의 「추출 앵커 도달성」 축이
-#   그 계약을 기계 대조한다(값을 코드에 박지 않는 이유는 $agentsMaxBytes와 같다).
+#   앵커가 사라지면 주입이 조용히 폴백해 아무도 모르므로, `check-harness-consistency.py`가
+#   「추출 앵커 도달성」 축으로 아래 앵커 리터럴을 파싱해 대상 파일과 기계 대조한다(v1.212.0 신설).
 #   반환: 절 텍스트 / 실패(파일 부재·시작 앵커 미발견·과대)면 $null → 호출부는 종전 Read 지시로 폴백.
 $sectionMaxBytes = 20000   # 추출 결과 상한 — 대상 절이 예상 밖으로 커졌을 때 주입이 세션을 잠식하는 것을 막는다
 function Get-SkillSection {
@@ -118,24 +118,12 @@ try {
                             # 경로만 지시하면 ① 실제로 읽었는지 검증할 장치가 없고 ② 세 파일 합 약 172KB를
                             #   다시 읽는 것은 압축으로 확보한 여유를 도로 소진한다. 그래서 루프 제어에 필요한
                             #   두 절만 원문에서 잘라 넣는다(약 14KB). Phase 절차·복구 규약은 여전히 파일에 있다.
+                            # 추출 실패는 조용히 건너뛴다 — 위 Read 지시가 그대로 남아 폴백이 성립한다.
                             $skillsDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills'
-                            $injectTargets = @(
-                                @{ Path = Join-Path $skillsDir 'implement-task/SKILL.md'
-                                   Start = '### 🚨 자율 루프의 절대 규칙'
-                                   Stop  = '### 🧠 컨텍스트 관리 (장시간 작업 대비)'
-                                   Label = 'implement-task/SKILL.md 「자율 루프의 절대 규칙」' }
-                                @{ Path = Join-Path $skillsDir 'implement-task/references/halt-conditions.md'
-                                   Start = '## 중단 조건 표'
-                                   Stop  = '## 컨텍스트 한계는 Halt 사유가 아니다 (압축 통과)'
-                                   Label = 'implement-task/references/halt-conditions.md 「중단 조건 표」·「위임 경계」' }
-                            )
-                            foreach ($t in $injectTargets) {
-                                $sec = Get-SkillSection -Path $t.Path -StartHeading $t.Start -StopHeading $t.Stop
-                                # 추출 실패는 조용히 건너뛴다 — 위 Read 지시가 그대로 남아 폴백이 성립한다.
-                                if ($sec) {
-                                    $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — $($t.Label))`n$sec")
-                                }
-                            }
+                            $secRules = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/SKILL.md') -StartHeading '### 🚨 자율 루프의 절대 규칙' -StopHeading '### 🧠 컨텍스트 관리 (장시간 작업 대비)'
+                            if ($secRules) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/SKILL.md 「자율 루프의 절대 규칙」)`n$secRules") }
+                            $secHalt = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/references/halt-conditions.md') -StartHeading '## 중단 조건 표' -StopHeading '## 컨텍스트 한계는 Halt 사유가 아니다 (압축 통과)'
+                            if ($secHalt) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/references/halt-conditions.md 「중단 조건 표」·「위임 경계」)`n$secHalt") }
                         }
                     } else {
                         $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 전부 완료 — 새 작업이면 plan 교체 전 Deferred/Follow-up 잔여 항목을 확인하세요.")
