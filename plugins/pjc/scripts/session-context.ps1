@@ -115,9 +115,12 @@ try {
                 if ($defMatch.Success) {
                     foreach ($defLine in ($defMatch.Groups[1].Value -split "`r?`n")) {
                         if ($defLine -notmatch '^- ') { continue }
-                        # 마커가 있으면 벗겨 낸 뒤 본문을 본다 — placeholder에 마커를 달아 둔 plan도
-                        #   같은 판정을 받게 하기 위함이다(템플릿은 마커를 달지 않지만 손으로 달 수 있다).
-                        if (($defLine -replace '^- \[[^\]]*\]\s*', '') -match '^<') { continue }   # 템플릿 placeholder
+                        # `- ` 접두와 **있으면** 마커까지 벗겨 낸 뒤 본문을 본다 — 마커 그룹이
+                        #   `(?:...)?`로 옵셔널이어야 한다. 필수로 두면 **마커 없는 placeholder**
+                        #   (템플릿 기본값 `- <이번엔 제외…>`)에서 치환이 통째로 불발해 문자열이
+                        #   `- <…>` 그대로 남고 `^<`가 영영 거짓이 된다 — 갓 만든 모든 plan에서
+                        #   미판정 1건이 상시 오발화한다(T2 spec 리뷰 1R B1이 재현으로 잡은 결함).
+                        if (($defLine -replace '^- (?:\[[^\]]*\]\s*)?', '') -match '^<') { continue }   # 템플릿 placeholder
                         if ($defLine -match '^- \[등재\]') { continue }
                         # `.+`가 기호 1자 이상을 요구하므로 사유 없는 `[미등재]`·`[미등재:]`는 걸리지
                         #   않고 미판정으로 센다 — 사유 없는 미등재는 게이트 ⓕ가 막으려는 형태다.
