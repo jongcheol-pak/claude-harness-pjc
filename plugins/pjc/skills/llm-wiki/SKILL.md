@@ -39,7 +39,7 @@ description: >
 | M. 큐 소비 (경량) | `references/procedures-ops.md` |
 | 체크리스트 (작업 완료 전) | `references/procedures-content.md` |
 
-> **지연 로드 규칙 (필수)**: 절차를 수행할 때는 **해당 위치의 파일을 먼저 Read**한다. 파일을 읽지 않고 이 표의 절차 이름만 보고 작업을 진행하지 않는다 — 각 절차에는 생략하면 안 되는 필수 단계·사용자 게이트(pending 큐 소비, recipe 승격 확인, 삭제 확인 등)가 있다. **대형 참조 파일(`procedures-content.md`·`wiki-schema.md`)은 단일 Read에 다 담기지 않으므로 offset 분할로 해당 절차 구간 전체를 읽는다 — 첫 페이지만 읽고 로드를 마쳤다고 판정하지 않는다**(PARTIAL 경고가 뜨면 남은 구간을 이어 읽는다).
+> **지연 로드 규칙 (필수)**: 절차를 수행할 때는 **해당 위치의 파일을 먼저 Read**한다. 파일을 읽지 않고 이 표의 절차 이름만 보고 작업을 진행하지 않는다 — 각 절차에는 생략하면 안 되는 필수 단계·사용자 게이트(pending 큐 소비, recipe 승격 확인, 삭제 확인 등)가 있다. **대형 참조 파일(`procedures-content.md`·`wiki-schema.md`)은 단일 Read에 다 담기지 않으므로 offset 분할로 해당 절차 구간 전체를 읽는다 — 첫 페이지만 읽고 로드를 마쳤다고 판정하지 않는다**(남은 구간이 있으면 offset을 늘려 이어 읽는다).
 >
 > **예산 처방은 세션이 손으로 옮기지 않는다** — `python "<skill>/scripts/lint.py" "<vault>" --auto-split`을 호출하고 결과를 검증·보고한다(§7-2 번복 · §4 분할 수행 절차 1·5·6번). 그 호출 지점은 F-2(lint)·A-4(등록)·B-3(ingest) 셋이다.
 >
