@@ -487,6 +487,9 @@ def check_clone_literal_sync():
     p = lambda *parts: os.path.join(ROOT, *parts)
     canon_p = p("plugins", "pjc", "skills", "implement-task", "references", "phase-f-detail.md")
     canon = read(canon_p)
+    # 아래 두 대조(마커·Ledger)가 같은 파일을 보므로 경로를 한 번만 구성한다 —
+    # 두 곳에서 따로 조립하면 한쪽만 고칠 때 조용히 갈린다(T1 quality S1).
+    plan_tpl_p = p("plugins", "pjc", "skills", "plan-feature", "references", "plan-template.md")
 
     # ── ⓐ 마커 3종 이름 (정본: F-6.5 마커 표의 데이터 행)
     canon_markers = set(re.findall(r"^\s*\| `- \[([^\]]+)\]` \|", canon, re.M))
@@ -498,8 +501,7 @@ def check_clone_literal_sync():
     # 앵커를 파일마다 따로 두는 이유는 위 docstring 「추출 규칙은 파일마다 다르다」다 —
     # 공통 정규식으로 뭉치면 골든 픽스처의 기호 채운 실례까지 빨려 들어온다.
     marker_clones = (
-        ("plan-template.md",
-         p("plugins", "pjc", "skills", "plan-feature", "references", "plan-template.md"),
+        ("plan-template.md", plan_tpl_p,
          r"접두 마커로 담는다", r"`- \[([^\]]+)\]`"),
         ("docs/prd.md",
          p("docs", "prd.md"),
@@ -554,8 +556,7 @@ def check_clone_literal_sync():
         die("복제 리터럴 동기 — 정본에서 Ledger 기록 문장(`F-6.5 대장 반영: …`)을 찾지 못함")
     canon_ledger = m.group(1)
     for label, path in (
-        ("plan-template.md",
-         p("plugins", "pjc", "skills", "plan-feature", "references", "plan-template.md")),
+        ("plan-template.md", plan_tpl_p),
         ("implement-task/SKILL.md",
          p("plugins", "pjc", "skills", "implement-task", "SKILL.md")),
     ):
