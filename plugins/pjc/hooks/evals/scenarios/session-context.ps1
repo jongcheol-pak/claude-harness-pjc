@@ -210,7 +210,10 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 조회 절차 주입 (SC43)" -R $r -ExpectExit 0 -ExpectContains '확인했더니 없음'
     # SC43b (발췌 표기 — **범위까지** 밝힌다): 절 전체가 아니라 K 1~2만 왔음을 받는 쪽이 알아야
     #   K 3~4를 그 파일에서 마저 읽는다. 기존 주입 4건이 전부 「」로 범위를 밝히는 관례와 같다.
-    Assert-Case -Name "session-context: 조회 절차 주입에 범위 표기 (SC43b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/SKILL.md 「절차 K 1~2」'
+    #   ⚠ 접두부가 아니라 **라벨 전문**을 잰다 — 꼬리(`· K 3~4와 K 5 포인터는 그 파일을 Read`)가
+    #   이 회차가 K 3~4를 주입에서 뺀 대가를 받는 쪽에 알리는 **유일한 런타임 장치**라, 접두부만
+    #   재면 그 꼬리가 지워져도 전건 통과한다(F-7 1R M2).
+    Assert-Case -Name "session-context: 조회 절차 주입에 범위 표기 (SC43b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/SKILL.md 「절차 K 1~2」 · K 3~4와 K 5 포인터는 그 파일을 Read'
     # SC43f (경계 계약): 추출이 **K 2까지** 닿는다 — 종료 앵커가 K 2 앞으로 밀리면 FAIL.
     #   SC43은 K 1 본문만 보므로 그 회귀를 못 잡는다(SC42f와 같은 이유).
     Assert-Case -Name "session-context: 조회 절차 주입이 K 2까지 포함 (SC43f)" -R $r -ExpectExit 0 -ExpectContains '범용 패턴'
