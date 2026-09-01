@@ -78,7 +78,7 @@
 
 ### H. 스킬 어긋남 큐잉
 
-위키 작업(A~J·L·M) 중 이 스킬·규칙 번들과 실제 위키가 어긋난 것을 발견하면, **번들 파일을 무승인으로 직접 수정하지 않고** vault 루트 **`skill-feedback.md`**의 `[SKILL-IMPROVE]` 큐에 기록한 뒤 사용자에게 보고한다(**기록 게이트 3조건은 절차 K 5-1이 정본** — 셋을 충족하지 않으면 큐에 넣지 않는다)(절차 K 5-1(본체 SKILL.md)·B-1 0(`references/procedures-content.md`)). 이유:
+위키 작업(A~J·L·M) 중 이 스킬·규칙 번들과 실제 위키가 어긋난 것을 발견하면, **번들 파일을 무승인으로 직접 수정하지 않고** vault 루트 **`skill-feedback.md`**의 `[SKILL-IMPROVE]` 큐에 기록한 뒤 사용자에게 보고한다(**기록 게이트 3조건은 절차 K 5-1이 정본** — 셋을 충족하지 않으면 큐에 넣지 않는다)(절차 K 5-1(`references/queue-rules.md`)·B-1 0(`references/procedures-content.md`)). 이유:
 - ① 이 스킬 파일들(`SKILL.md`·`references/procedures-content.md`·`references/procedures-ops.md`·`references/wiki-schema.md`·`scripts/lint.py`·`references/templates.md`)은 **플러그인 번들**이라 플러그인 업데이트로 덮어써져 자동 갱신분이 유실된다(config.json `_note` 참조 — 실제 설정을 사용자 홈에 두는 이유와 동일).
 - ② 세션이 규약을 위반해 만든 산출물이 '실제 위키 상태'가 되고, H가 그 위반에 맞춰 규칙을 재작성하면 규약이 점진 침식된다(**자기정당화 루프** — H가 규칙 위반을 규칙으로 승격시키는 경로).
 
