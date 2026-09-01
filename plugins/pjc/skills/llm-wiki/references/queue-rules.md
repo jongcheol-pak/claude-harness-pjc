@@ -60,6 +60,7 @@
 - **트리거**: 근본원인 확정(수정·검증 후) 시점 1회 — `pjc:pjc-systematic-debugging` 세션이 이 시점에 emit한다(상시 감시 아님).
 - **대응 페이지 부재**: 아직 해법 recipe/feature가 위키에 없으면 `{대응 페이지}`를 비워 큐잉하고, 소비 세션이 게이트 ③(해법 페이지 실존) 미충족으로 보류한다(recipe 선행 또는 question).
 - 중복 억제·프로젝트명 정본·잔량 경고·vault 폴백(질문 금지)·하네스 레포 예외(큐 대신 plan.md 직접 기록)는 5-2와 동일하게 적용한다.
+
 ### K 6. 쓰기 예외 · 보고 문구
 
 **이 절차 K에서는** `log.md` 기록도 하지 않는다(위키 상태 무변경 원칙). **쓰기 예외는 둘뿐이다** — ① **이 절차 K의 큐 1줄 append** — 대상 파일은 **둘**이다: `pending.md`(위 5의 `[K-DRIFT]`·5-2의 `[DECISION]`·5-3의 `[PROJECT-FACT]`·5-4의 `[K-MISS]`·5-5의 `[SYMPTOM]` 공용)와 **`skill-feedback.md`**(5-1의 `[SKILL-IMPROVE]` 전용) ② **`pjc:implement-task` F-6.5가 호출하는 절차 M의 큐 자동 소비**(대상 프로젝트의 `[DECISION]`·`[PROJECT-FACT]`를 `decisions.md`·`conventions.md`에 반영 — 정본은 `references/procedures-ops.md`의 「M. 큐 소비 (경량)」, 그 절이 보류 8종·백업·동시성 제약을 규정한다. ②가 도는 세션은 `log.md`도 남긴다). **①에서는** 루트 큐 파일 append로 예외를 최소화하며 본문 페이지·인덱스·log가 계속 무변경이고, 그 밖의 위키 수정(ingest·본문 편집·index 갱신)은 여전히 위키 세션 전용이다.

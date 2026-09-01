@@ -47,7 +47,7 @@ description: >
 > - WRONG: 라우팅 표만 보고 B(ingest)를 수행 → pending 큐 소비(B-1 0)·망라 재대조(B-1a)·recipe 게이트(A-3a) 등 필수 단계 생략
 > - RIGHT: `references/procedures-content.md`를 Read한 뒤 B-1부터 순서대로 수행
 >
-> **본체 = §0 + 공통 사전 준수 사항 + 절차 K + Wikilink 형식.** 쓰기 세션 전용 규칙은 `references/wiki-ops-rules.md`로 분리했다 — **쓰기 절차(A~F·I·M)는 그 파일도 함께 Read한다.** 단 「비 git vault 사전 백업」은 본체에 남아 있다(절차 M이 코드 세션에서 요구).
+> **본체 = §0 + 공통 사전 준수 사항 + 절차 K 1~4(조회) + Wikilink 형식.** 절차 K 5~6(큐 기록 규약)은 `references/queue-rules.md`로 분리했다 — 배치 시점에만 읽는다. 쓰기 세션 전용 규칙은 `references/wiki-ops-rules.md`로 분리했다 — **쓰기 절차(A~F·I·M)는 그 파일도 함께 Read한다.** 단 「비 git vault 사전 백업」은 본체에 남아 있다(절차 M이 코드 세션에서 요구).
 
 ## 0. 시작 절차 (모든 작업 전 1회 실행)
 
@@ -139,7 +139,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
    - **검색어 한/영 양방향 시도**: 위키 콘텐츠는 한글이지만 **파일명·frontmatter 키·코드 식별자는 영문**이다(예: `feat-install.md`, `feat-login.md`). 한글 개념어로 grep해 못 찾으면 영문도 시도한다 — 설치↔install, 로그인↔login, 설정↔settings, 결제↔payment, 검색↔search 등. 한 방향만 시도하고 "없다"고 단정하지 않는다. index.md 기능별 인덱스의 한글 설명은 한글이 잘 매칭되지만, 파일명·식별자까지 닿으려면 영문 검색이 필요하다. (등록 시 A-3 규칙대로 인덱스 행에 한/영이 양방향 병기돼 있으면 어느 쪽으로 검색하든 인덱스 한 줄에서 잡힌다.)
    - **무매칭 = 사실대로 보고(합성 금지)**: 양방향 검색 후에도 관련 feature/recipe/guide가 없으면 "관련 위키 자료 없음"을 그대로 밝히고 **코드를 1차 출처로 진행**한다. 위키에 자료가 있는 것처럼 지어내지 않는다 (WRONG: 무매칭인데 "위키에 ~가 있다"고 합성 → RIGHT: "관련 위키 자료 없음 — 코드로 진행"). 이 지식이 작업에 실제 필요했던 것이면 **K 5-4(`references/queue-rules.md`)가 규정하는 `[K-MISS]` 큐잉도 수행**한다(미스가 곧 수요 신호 — 기록 없이 넘기면 위키가 같은 공백을 반복한다).
 4. `origin`/`confidence`/`(미검증)` 표기를 신뢰도 판단에 반영한다 — `(미검증)`·`confidence: low` 서술은 코드로 재확인 후 사용한다.
-5~6. **큐 기록 규약(`[K-DRIFT]`·`[SKILL-IMPROVE]`·`[DECISION]`·`[PROJECT-FACT]`·`[K-MISS]`·`[SYMPTOM]`)과 쓰기 예외·보고 문구** — **정본은 `references/queue-rules.md`의 「K 5~6. 큐 기록 규약」이다.** **배치 시점(plan 승인·구현 종료)에는 그 파일을 Read한다** — 큐 형식·트리거·입도 기준·중복 억제·vault 폴백이 전부 거기 있고, 라벨만 알고 형식을 지어내면 소비 세션이 그 줄을 파싱하지 못한다. 조회 절차(K 1~4)만 쓰는 세션은 읽지 않아도 된다.
+5. **큐 기록 규약 — K 5~6(`[K-DRIFT]`·`[SKILL-IMPROVE]`·`[DECISION]`·`[PROJECT-FACT]`·`[K-MISS]`·`[SYMPTOM]`)과 쓰기 예외·보고 문구** — **정본은 `references/queue-rules.md`의 「K 5~6. 큐 기록 규약」이다.** **배치 시점(plan 승인·구현 종료)에는 그 파일을 Read한다** — 큐 형식·트리거·입도 기준·중복 억제·vault 폴백이 전부 거기 있고, 라벨만 알고 형식을 지어내면 소비 세션이 그 줄을 파싱하지 못한다. 조회 절차(K 1~4)만 쓰는 세션은 읽지 않아도 된다.
 ## Wikilink 형식
 - 명시적 경로 필수: `[[경로/파일명|한글 표시이름]]`. 존재하지 않는 파일 링크 금지.
 - **실제 파일 경로 = `<vault>/` + 링크 대상 + `.md`** — 확장자는 링크에 적지 않는다(적혀 있어도 유효).
