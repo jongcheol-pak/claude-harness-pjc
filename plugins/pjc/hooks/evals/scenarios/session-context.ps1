@@ -168,6 +168,22 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + 미완료 task엔 계획 지시 없음 (SC29)" -R $r -ExpectExit 0 -ExpectNotContains 'plan-feature/SKILL.md'
 
+    # SC41~SC41e: 계획 세션에도 **절 원문 주입** (v1.217.0). SC41e는 vault 구간 안에 있다.
+    #   SC28이 고정한 것은 경로 지시(`plan-feature/SKILL.md` 문자열)뿐이라, 주입을 지워도 그대로 통과한다.
+    #   SC39 계열이 구현 세션에서 양성·델타 음성·발췌 표기를 나눠 건 것과 같은 구조로 넷을 건다.
+    # SC41 (양성): compact + plan 없음 → 절대 규칙 **본문 문자열**이 실려 온다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 계획 규칙 절 주입 (SC41)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다'
+    # SC41b (발췌 표기): 주입분이 전문이 아니라 발췌임을 밝힌다 — 없으면 모델이 이것을 전문으로 오인한다(SC39d와 같은 이유).
+    Assert-Case -Name "session-context: 계획 주입에 발췌 표기 (SC41b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — plan-feature/SKILL.md'
+    # SC41c (델타 음성): startup엔 주입하지 않는다 — 압축 전용 보완이라 매 세션 얹으면 예산 낭비다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: startup엔 계획 규칙 미주입 (SC41c)" -R $r -ExpectExit 0 -ExpectNotContains '증상 우회는 plan의 해결책이 될 수 없다'
+    # SC41d (델타 음성): compact + 미완료 task 세션엔 계획 주입이 새지 않는다.
+    #   ⚠ 대조 문자열은 **주입 본문**이어야 한다 — `plan-feature/SKILL.md`로 걸면 SC29와 완전히 같아 새 회귀를 못 잡는다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '증상 우회는 plan의 해결책이 될 수 없다'
+
     # SC30 (델타 음성): compact + plan도 AGENTS.md도 없는 비 pjc 폴더 → 계획 지시 미발화.
     #   리마인더 대상이 pjc 워크플로라 무관한 폴더에 뜨면 노이즈다(`:16` 무출력 규칙과 같은 취지).
     #   기존 SC15·SC23이 같은 빈 픽스처를 쓰지만 각각 다른 문자열만 assert해 이 회귀를 못 잡는다.
@@ -227,6 +243,20 @@ if (Test-HookSelected @('session-context')) {
     #   리마인더는 cwd 블록 밖에서 append되므로 게이팅 신호가 아니다 — $lines.Count -gt 0 판정을 이 케이스가 검출한다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 리마인더는 vault 게이팅 신호 아님 (SC23)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains '위키 vault'
+
+    # SC41e (회귀 고정 — v1.217.0): 계획 규칙 **주입**의 `$cwdBaseCount` 짝 증가.
+    #   이 분기는 「$lines.Add 1회 = $cwdBaseCount++ 1회」가 짝인데, 주입을 넣고 기준선을 올리지
+    #   않으면 `$lines.Count -gt $cwdBaseCount`가 참이 되어 **vault 라인이 새로 붙는다**.
+    #   ⚠ 픽스처의 AGENTS.md는 **0바이트여야 한다** — 분기 조건은 `Test-Path`로 존재만 보지만
+    #   주입 블록은 `$agentsInfo.Length -gt 0`이라(session-context.ps1:474) 내용이 있으면
+    #   AGENTS 라인이 먼저 들어가 그 자체가 정당한 vault 신호가 되고 델타가 0이 된다.
+    #   (v1.217.0이 내용 있는 픽스처로 시도해 FAIL을 보고 「원리상 불가」로 오판했다가 F-7이 잡았다.)
+    #   SC23은 계획 분기가 아예 발화하지 않는 빈 cwd이고 SC31b는 plan 라인이 이미 정당한 신호라,
+    #   **둘 다 이 짝 증가를 잡지 못한다**.
+    $scEmptyAg = Join-Path $work 'sc-empty-agents'; New-Item -ItemType Directory $scEmptyAg -Force | Out-Null
+    New-Item -ItemType File -Path (Join-Path $scEmptyAg 'AGENTS.md') -Force | Out-Null
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmptyAg } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다' -ExpectNotContains '위키 vault'
 
     # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
     #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.

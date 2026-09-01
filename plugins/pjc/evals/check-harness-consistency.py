@@ -1194,13 +1194,14 @@ def check_compact_anchors():
     이 축은 0건을 **exit 1 불일치**로 보고해야 하고, 첫 매치만 잘라내므로 **2건 이상을 아예
     재지 못한다**. 두 요구가 그 헬퍼와 양립하지 않아 줄 수를 직접 센다.
 
-    **못 잡는 것 셋**: ⓐ 종료 앵커의 **오타로 인한 0건**과 **의도된 EOF 절**(절이 파일
+    **못 잡는 것 둘** (ⓒ는 v1.217.0에서 닫혔다 — 아래): ⓐ 종료 앵커의 **오타로 인한 0건**과 **의도된 EOF 절**(절이 파일
     마지막이라 종료 앵커가 없는 경우)을 구분하지 못한다 — hook이 후자를 정상으로 처리하므로
     0건을 통과로 두었고, 그래서 전자가 이 축을 그대로 지나간다. ⓑ **정규식에 매칭되지 않는
     형태로 쓰인 호출**(줄바꿈 분할·변수 경로)은 집계에서 빠진 채 통과한다 — 매칭이 **전무하면**
-    아래 `die()`가 잡지만, 하나라도 맞으면 나머지의 부재는 드러나지 않는다. ⓒ 절이
-    `$sectionMaxBytes`(20,000B)를 넘어 폴백하는 경로는 **앵커가 멀쩡하므로 이 축이 통과시킨다**
-    — 그 경로에는 아직 관측 수단이 없다(대장 「주입 예산 상한·임박 경고」).
+    아래 `die()`가 잡지만, 하나라도 맞으면 나머지의 부재는 드러나지 않는다. ⓒ였던 「크기 초과 폴백을 아무도 못 본다」는 v1.217.0에서 닫혔다 —
+    아래 크기 판정이 추출 구간을 실제로 재어 `$sectionMaxBytes` 대비 초과·임박(80%)을 보고한다.
+    **단위는 hook과 같게 LF 조인 UTF-8**이다(hook은 CRLF를 LF로 정규화한 뒤 재므로, 원문을
+    그대로 재면 줄 수만큼 바이트가 더해져 임박 시점이 갈린다).
     """
     hook = os.path.join(ROOT, "plugins", "pjc", "scripts", "session-context.ps1")
     txt = read(hook)
@@ -1210,6 +1211,13 @@ def check_compact_anchors():
         txt)
     if not calls:
         die("추출 앵커: `session-context.ps1`에서 Get-SkillSection 호출을 찾지 못함")
+
+    # 상한은 hook에서 파싱한다 — 값을 여기 박으면 정본이 둘이 되고 한쪽만 고칠 때 갈린다
+    #   (`$agentsMaxBytes`를 hook에서 읽는 것과 같은 이유).
+    m_cap = re.search(r"\$sectionMaxBytes\s*=\s*(\d+)", txt)
+    if not m_cap:
+        die("추출 앵커: `session-context.ps1`에서 $sectionMaxBytes 를 찾지 못함")
+    cap = int(m_cap.group(1))
 
     issues = []
     checked = 0
@@ -1221,7 +1229,11 @@ def check_compact_anchors():
             issues.append("추출 앵커 — 대상 파일 없음: %s" % rel)
             checked += 2
             continue
-        lines = [l.rstrip() for l in read(target).split("\n")]
+        raw = read(target).split("\n")
+        # 앵커 대조는 줄별 rstrip 한 사본으로, **크기 계산은 원본으로** 한다 —
+        #   hook은 줄을 트림하지 않고 조인한 뒤 전체에 TrimEnd 1회만 적용하므로(session-context.ps1:54),
+        #   같은 리스트를 재사용하면 줄 끝 공백만큼 값이 갈린다.
+        lines = [l.rstrip() for l in raw]
         # 종료 앵커는 없어도 된다(절이 파일 마지막일 수 있다 — hook이 파일 끝까지로 본다).
         #   시작 앵커만 필수이며, 있다면 그것도 유일해야 추출 구간이 확정된다.
         for label, anchor, required in (("시작", start, True), ("종료", stop, False)):
@@ -1229,6 +1241,23 @@ def check_compact_anchors():
             if n != 1 and not (n == 0 and not required):
                 issues.append("추출 앵커 — %s의 %s 앵커가 %d건: %s"
                               % (rel, label, n, anchor))
+            checked += 1
+        # 크기 판정 — 앵커가 멀쩡해도 구간이 상한을 넘으면 hook이 $null 을 반환해 주입이
+        #   **조용히 사라진다**. 앵커 축만으로는 그 상태가 통과하므로 여기서 함께 잰다.
+        si = lines.index(start) if start in lines else -1
+        if si >= 0:
+            ei = len(lines)
+            for j in range(si + 1, len(lines)):
+                if lines[j] == stop:
+                    ei = j
+                    break
+            size = len(chr(10).join(raw[si:ei]).rstrip().encode("utf-8"))
+            if size > cap:
+                issues.append("추출 크기 — %s 「%s」 %d B > 상한 %d B (주입이 조용히 사라진다)"
+                              % (rel, start, size, cap))
+            elif size >= cap * 0.8:
+                issues.append("추출 크기 — %s 「%s」 %d B, 상한 %d B의 80%% 도달 (절을 줄이거나 상한 재검토)"
+                              % (rel, start, size, cap))
             checked += 1
     return issues, checked
 
