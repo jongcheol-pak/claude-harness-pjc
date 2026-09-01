@@ -244,6 +244,14 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 리마인더는 vault 게이팅 신호 아님 (SC23)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains '위키 vault'
 
+    # SC41e (회귀 고정 — v1.217.0): 계획 규칙 **주입**도 vault 게이팅 신호가 아니다.
+    #   이 분기는 「$lines.Add 1회 = $cwdBaseCount++ 1회」가 짝인데, 주입을 넣으며 기준선을
+    #   올리지 않으면 `$lines.Count -gt $cwdBaseCount`가 성립해 **AGENTS.md만 있는 압축 세션에
+    #   vault 라인이 새로 붙는다**. SC23은 리마인더 1줄만 있던 시절의 픽스처라 이 조합을 못 잡는다
+    #   — 주입까지 들어간 상태에서 여전히 미발화인지 재는 것이 이 케이스다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다' -ExpectNotContains '위키 vault'
+
     # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
     #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
     #   계획 지시 줄이 $cwdBaseCount를 전체 재설정하면(`= $lines.Count`) 그 앞의 「plan 존재」 신호까지

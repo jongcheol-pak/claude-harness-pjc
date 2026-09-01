@@ -1194,7 +1194,7 @@ def check_compact_anchors():
     이 축은 0건을 **exit 1 불일치**로 보고해야 하고, 첫 매치만 잘라내므로 **2건 이상을 아예
     재지 못한다**. 두 요구가 그 헬퍼와 양립하지 않아 줄 수를 직접 센다.
 
-    **못 잡는 것 셋**: ⓐ 종료 앵커의 **오타로 인한 0건**과 **의도된 EOF 절**(절이 파일
+    **못 잡는 것 둘** (ⓒ는 v1.217.0에서 닫혔다 — 아래): ⓐ 종료 앵커의 **오타로 인한 0건**과 **의도된 EOF 절**(절이 파일
     마지막이라 종료 앵커가 없는 경우)을 구분하지 못한다 — hook이 후자를 정상으로 처리하므로
     0건을 통과로 두었고, 그래서 전자가 이 축을 그대로 지나간다. ⓑ **정규식에 매칭되지 않는
     형태로 쓰인 호출**(줄바꿈 분할·변수 경로)은 집계에서 빠진 채 통과한다 — 매칭이 **전무하면**
@@ -1229,7 +1229,11 @@ def check_compact_anchors():
             issues.append("추출 앵커 — 대상 파일 없음: %s" % rel)
             checked += 2
             continue
-        lines = [l.rstrip() for l in read(target).split("\n")]
+        raw = read(target).split("\n")
+        # 앵커 대조는 줄별 rstrip 한 사본으로, **크기 계산은 원본으로** 한다 —
+        #   hook은 줄을 트림하지 않고 조인한 뒤 전체에 TrimEnd 1회만 적용하므로(session-context.ps1:54),
+        #   같은 리스트를 재사용하면 줄 끝 공백만큼 값이 갈린다.
+        lines = [l.rstrip() for l in raw]
         # 종료 앵커는 없어도 된다(절이 파일 마지막일 수 있다 — hook이 파일 끝까지로 본다).
         #   시작 앵커만 필수이며, 있다면 그것도 유일해야 추출 구간이 확정된다.
         for label, anchor, required in (("시작", start, True), ("종료", stop, False)):
@@ -1247,7 +1251,7 @@ def check_compact_anchors():
                 if lines[j] == stop:
                     ei = j
                     break
-            size = len(chr(10).join(lines[si:ei]).encode("utf-8"))
+            size = len(chr(10).join(raw[si:ei]).rstrip().encode("utf-8"))
             if size > cap:
                 issues.append("추출 크기 — %s 「%s」 %d B > 상한 %d B (주입이 조용히 사라진다)"
                               % (rel, start, size, cap))
