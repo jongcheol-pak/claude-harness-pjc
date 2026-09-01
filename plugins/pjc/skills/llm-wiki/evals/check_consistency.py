@@ -404,7 +404,7 @@ def check_prose_pointers(skill_text, schema_text):
     보수적 스코프(오탐 방지): 파일명 AND 라벨이 '인접'(의·따옴표·괄호·대시로 직접 연결)할 때만
     검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 5-1(references/queue-rules.md)·
     B-1 0(references/procedures-content.md)`처럼 서로 다른 귀속이 한 줄에 있어도 B만 content로
-    대조하고 K는 (procedures-*.md가 아니라 SKILL.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
+    대조하고 K는 (procedures-*.md가 아니라 references/queue-rules.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
     — 하위라벨(B-1 0의 '1 0')까지 검증하진 않는다(재분할 파일 오귀속 포착이 목적).
     반환: (불일치 목록, 대조 항목 수)."""
     letter_file = build_letter_file_map()
