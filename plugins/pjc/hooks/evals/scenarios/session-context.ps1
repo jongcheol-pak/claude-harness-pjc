@@ -168,6 +168,22 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + 미완료 task엔 계획 지시 없음 (SC29)" -R $r -ExpectExit 0 -ExpectNotContains 'plan-feature/SKILL.md'
 
+    # SC41~SC41e: 계획 세션에도 **절 원문 주입** (v1.217.0).
+    #   SC28이 고정한 것은 경로 지시(`plan-feature/SKILL.md` 문자열)뿐이라, 주입을 지워도 그대로 통과한다.
+    #   SC39 계열이 구현 세션에서 양성·델타 음성·발췌 표기를 나눠 건 것과 같은 구조로 넷을 건다.
+    # SC41 (양성): compact + plan 없음 → 절대 규칙 **본문 문자열**이 실려 온다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 계획 규칙 절 주입 (SC41)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다'
+    # SC41b (발췌 표기): 주입분이 전문이 아니라 발췌임을 밝힌다 — 없으면 모델이 이것을 전문으로 오인한다(SC39d와 같은 이유).
+    Assert-Case -Name "session-context: 계획 주입에 발췌 표기 (SC41b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — plan-feature/SKILL.md'
+    # SC41c (델타 음성): startup엔 주입하지 않는다 — 압축 전용 보완이라 매 세션 얹으면 예산 낭비다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: startup엔 계획 규칙 미주입 (SC41c)" -R $r -ExpectExit 0 -ExpectNotContains '증상 우회는 plan의 해결책이 될 수 없다'
+    # SC41d (델타 음성): compact + 미완료 task 세션엔 계획 주입이 새지 않는다.
+    #   ⚠ 대조 문자열은 **주입 본문**이어야 한다 — `plan-feature/SKILL.md`로 걸면 SC29와 완전히 같아 새 회귀를 못 잡는다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '증상 우회는 plan의 해결책이 될 수 없다'
+
     # SC30 (델타 음성): compact + plan도 AGENTS.md도 없는 비 pjc 폴더 → 계획 지시 미발화.
     #   리마인더 대상이 pjc 워크플로라 무관한 폴더에 뜨면 노이즈다(`:16` 무출력 규칙과 같은 취지).
     #   기존 SC15·SC23이 같은 빈 픽스처를 쓰지만 각각 다른 문자열만 assert해 이 회귀를 못 잡는다.

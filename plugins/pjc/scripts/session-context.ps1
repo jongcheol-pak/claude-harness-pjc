@@ -91,6 +91,13 @@ try {
             $planLabel = 'plan.md'
         }
 
+        # 압축 직후 절 원문 주입이 쓰는 스킬 폴더 — **구현 세션 분기와 계획 세션 분기가 배타적**이라(뒤쪽
+        #   `-not $planPath -or $all -eq 0 -or $open -eq 0`) 어느 한쪽 안에서 대입하면 다른 쪽에서 $null이 되고,
+        #   Join-Path가 파라미터 바인딩 오류를 내 바깥 try의 catch에 잡혀 **hook 출력이 통째로 사라진다**.
+        #   그래서 양 분기 위에서 한 번만 정한다. 변수명은 바꾸지 않는다 — check-harness-consistency.py의
+        #   「추출 앵커 도달성」 축이 `Join-Path $skillsDir '...'` 리터럴로 호출을 수집한다.
+        $skillsDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills'
+
         if ($planPath) {
             $planText = $null
             try { $planText = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 } catch {}
@@ -154,7 +161,6 @@ try {
                             #   다시 읽는 것은 압축으로 확보한 여유를 도로 소진한다. 그래서 루프 제어에 필요한
                             #   두 절만 원문에서 잘라 넣는다(약 14KB). Phase 절차·복구 규약은 여전히 파일에 있다.
                             # 추출 실패는 조용히 건너뛴다 — 위 Read 지시가 그대로 남아 폴백이 성립한다.
-                            $skillsDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills'
                             $secRules = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/SKILL.md') -StartHeading '### 🚨 자율 루프의 절대 규칙' -StopHeading '### 🧠 컨텍스트 관리 (장시간 작업 대비)'
                             if ($secRules) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/SKILL.md 「자율 루프의 절대 규칙」)`n$secRules") }
                             # 종료 앵커가 「"사소한 문제"…」인 것은 그 직전 절(「컨텍스트 한계는 Halt 사유가 아니다」)을
@@ -200,6 +206,21 @@ try {
             #   먼저 들어가는데 그것은 실제 plan이 있다는 신호라 vault 라인이 붙어야 한다. 전체 재설정하면
             #   그 세션만 compact에서 vault가 조용히 빠진다(startup에서는 붙는데 — 소스별 비일관).
             $cwdBaseCount++
+
+            # 경로만 지시하면 구현 세션에서와 같은 문제가 남는다 — 읽었는지 검증할 수 없고, 그 파일이
+            #   100KB급이라 다시 읽는 것이 압축으로 확보한 여유를 도로 쓴다. 계획 판단이 처음부터
+            #   틀어지는 것을 막는 것은 절대 규칙이므로 그 절만 원문으로 넣는다(실측 9,963B).
+            #   Step 4·5·9는 계획 중반에 필요해 그때 Read해도 늦지 않아 대상이 아니다.
+            # 추출 실패는 조용히 건너뛴다 — 위 경로 지시가 그대로 남아 폴백이 성립한다(구현 세션과 같은 설계).
+            $secPlanRules = Get-SkillSection -Path (Join-Path $skillsDir 'plan-feature/SKILL.md') -StartHeading '## 절대 규칙 (Hard Rules)' -StopHeading '## 실행 단계'
+            if ($secPlanRules) {
+                $lines.Add("[pjc 세션 컨텍스트] 압축 직후 계획 규칙 (원문 발췌 — plan-feature/SKILL.md 「절대 규칙」)`n$secPlanRules")
+                # 위 리마인더와 같은 이유로 기준선을 함께 올린다 — 이 분기는 「줄 1개 추가 = 기준선 1 증가」가
+                #   짝이라, 두 번째 Add를 넣고 올리지 않으면 `$lines.Count -gt $cwdBaseCount`가 성립해
+                #   plan 없이 AGENTS.md만 있는 압축 세션에 vault 라인이 새로 붙는다.
+                #   주입은 $null 폴백이 있으므로 **성공했을 때만** 올린다.
+                $cwdBaseCount++
+            }
         }
 
         # ---- 위키 vault 설정 상태 판정 (라인 생성만 — 주입은 아래 수집 종료 후) ----

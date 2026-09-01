@@ -1198,9 +1198,10 @@ def check_compact_anchors():
     마지막이라 종료 앵커가 없는 경우)을 구분하지 못한다 — hook이 후자를 정상으로 처리하므로
     0건을 통과로 두었고, 그래서 전자가 이 축을 그대로 지나간다. ⓑ **정규식에 매칭되지 않는
     형태로 쓰인 호출**(줄바꿈 분할·변수 경로)은 집계에서 빠진 채 통과한다 — 매칭이 **전무하면**
-    아래 `die()`가 잡지만, 하나라도 맞으면 나머지의 부재는 드러나지 않는다. ⓒ 절이
-    `$sectionMaxBytes`(20,000B)를 넘어 폴백하는 경로는 **앵커가 멀쩡하므로 이 축이 통과시킨다**
-    — 그 경로에는 아직 관측 수단이 없다(대장 「주입 예산 상한·임박 경고」).
+    아래 `die()`가 잡지만, 하나라도 맞으면 나머지의 부재는 드러나지 않는다. ⓒ였던 「크기 초과 폴백을 아무도 못 본다」는 v1.217.0에서 닫혔다 —
+    아래 크기 판정이 추출 구간을 실제로 재어 `$sectionMaxBytes` 대비 초과·임박(80%)을 보고한다.
+    **단위는 hook과 같게 LF 조인 UTF-8**이다(hook은 CRLF를 LF로 정규화한 뒤 재므로, 원문을
+    그대로 재면 줄 수만큼 바이트가 더해져 임박 시점이 갈린다).
     """
     hook = os.path.join(ROOT, "plugins", "pjc", "scripts", "session-context.ps1")
     txt = read(hook)
@@ -1210,6 +1211,13 @@ def check_compact_anchors():
         txt)
     if not calls:
         die("추출 앵커: `session-context.ps1`에서 Get-SkillSection 호출을 찾지 못함")
+
+    # 상한은 hook에서 파싱한다 — 값을 여기 박으면 정본이 둘이 되고 한쪽만 고칠 때 갈린다
+    #   (`$agentsMaxBytes`를 hook에서 읽는 것과 같은 이유).
+    m_cap = re.search(r"\$sectionMaxBytes\s*=\s*(\d+)", txt)
+    if not m_cap:
+        die("추출 앵커: `session-context.ps1`에서 $sectionMaxBytes 를 찾지 못함")
+    cap = int(m_cap.group(1))
 
     issues = []
     checked = 0
@@ -1229,6 +1237,23 @@ def check_compact_anchors():
             if n != 1 and not (n == 0 and not required):
                 issues.append("추출 앵커 — %s의 %s 앵커가 %d건: %s"
                               % (rel, label, n, anchor))
+            checked += 1
+        # 크기 판정 — 앵커가 멀쩡해도 구간이 상한을 넘으면 hook이 $null 을 반환해 주입이
+        #   **조용히 사라진다**. 앵커 축만으로는 그 상태가 통과하므로 여기서 함께 잰다.
+        si = lines.index(start) if start in lines else -1
+        if si >= 0:
+            ei = len(lines)
+            for j in range(si + 1, len(lines)):
+                if lines[j] == stop:
+                    ei = j
+                    break
+            size = len(chr(10).join(lines[si:ei]).encode("utf-8"))
+            if size > cap:
+                issues.append("추출 크기 — %s 「%s」 %d B > 상한 %d B (주입이 조용히 사라진다)"
+                              % (rel, start, size, cap))
+            elif size >= cap * 0.8:
+                issues.append("추출 크기 — %s 「%s」 %d B, 상한 %d B의 80%% 도달 (절을 줄이거나 상한 재검토)"
+                              % (rel, start, size, cap))
             checked += 1
     return issues, checked
 
