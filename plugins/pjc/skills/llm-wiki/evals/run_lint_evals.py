@@ -46,6 +46,16 @@ LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
 FIXTURES_DIR = os.path.join(EVALS_DIR, "fixtures")
 CASES_JSON = os.path.join(EVALS_DIR, "lint-cases.json")
 
+# 픽스처 기준일 — lint의 시간 기반 판정(신선도 60·90일 · 미래 날짜 · 백업 30일 정리)이
+#  **실행 날짜와 무관하게** 같은 결과를 내도록 고정한다. 픽스처의 updated는 커밋된 고정값이라
+#  실제 today로 재면 시간이 지나며 기대 결과가 조용히 뒤집힌다(2026-09에 `orphan-lint-report`가
+#  60일 축으로 실제 FAIL했다 — `updated: 2026-07-02`가 픽스처 전체에 210건이다).
+#  **안전 구간은 2026-08-21 ~ 2026-08-30**이다: 하한은 픽스처 frontmatter `updated`의 최댓값
+#  (그보다 이르면 「미래 날짜」 ERR 오탐), 상한은 `2026-07-02`+60일이 2026-08-31부터 발화하므로
+#  그 하루 전. 이 구간 밖으로 옮기면 다른 케이스가 깨지므로 픽스처에 새 날짜를 넣을 때
+#  이 구간을 함께 확인할 것.
+FIXTURE_TODAY = "2026-08-27"
+
 
 def run_lint(vault_path, extra_args=None):
     """lint.py를 subprocess로 실행하고 (stdout, returncode, stderr)를 반환한다.
@@ -54,6 +64,9 @@ def run_lint(vault_path, extra_args=None):
     proc = subprocess.run(
         [sys.executable, LINT_PY, vault_path] + (extra_args or []),
         capture_output=True, text=True, encoding="utf-8",
+        # 기준일을 고정해 넘긴다(FIXTURE_TODAY 주석 참조). 바깥 환경에 이미 값이 있어도 덮는다 —
+        #  골든 결과가 호출자의 환경에 좌우되면 재현성이 없다.
+        env={**os.environ, "LLM_WIKI_TODAY": FIXTURE_TODAY},
     )
     return proc.stdout, proc.returncode, proc.stderr
 
@@ -82,13 +95,14 @@ def prepare_placeholder_vault(fixture_dir):
 
 def prepare_backup_cleanup_vault(fixture_dir):
     """fixture를 임시 복사하고 90_archive/backup/ 아래에 날짜 폴더 8종을 만든다(§8 정리 골든).
-    **날짜를 fixture에 체크인할 수 없어서** 여기서 만든다 — 오늘·어제·31일 전 판정은 실행 시점
-    기준 상대값이라, 고정 날짜를 커밋하면 시간이 지나며 기대 결과가 조용히 뒤집힌다.
+    **날짜를 fixture에 체크인할 수 없어서** 여기서 만든다 — 오늘·어제·31일 전 판정은 기준일에
+    대한 상대값이라 폴더명을 그대로 커밋할 수 없다. 기준일은 `FIXTURE_TODAY`이며 lint에 주입하는
+    값과 **같아야 한다** — 갈리면 여기서 만든 폴더의 경과일이 lint의 판정과 어긋나 이 케이스가 깨진다.
     반환: (정리용 임시 루트, vault 경로, {케이스 토큰: 실제 폴더명} 매핑)."""
     tmp = tempfile.mkdtemp(prefix="lint-eval-backup-")
     dest = os.path.join(tmp, os.path.basename(fixture_dir))
     shutil.copytree(fixture_dir, dest)
-    today = datetime.date.today()
+    today = datetime.date.fromisoformat(FIXTURE_TODAY)
     d1 = (today - datetime.timedelta(days=1)).isoformat()
     d31 = (today - datetime.timedelta(days=31)).isoformat()
     names = {
@@ -536,8 +550,15 @@ def check_case(case):
             with open(lp, encoding="utf-8-sig") as fh:
                 lt = fh.read()
             m = re.search(r"(?ms)^##\s*최근 변경\b.*?(?=^##\s|\Z)", lt)
+            # lint가 `--auto-split` 수행 기록으로 append한 `- [기준일] [SCHEMA] …` 줄은 뺀다
+            #  — 이 판정이 재는 것은 **롤오버 방향**(무엇이 남고 무엇이 옮겨졌나)이지 lint 자신의
+            #  실행 기록이 아니다. 줄 단위로 거른다(정규식에 부정 전방탐색을 넣으면 나중에 다른
+            #  대괄호 태그가 생겼을 때 조용히 어긋난다).
+            sec_lines = [ln for ln in (m.group(0) if m else "").split("\n")
+                         if "[SCHEMA]" not in ln]
             kept_months = sorted({d[:7] for d in
-                                  re.findall(r"(?m)^- \[(\d{4}-\d{2}-\d{2})\]", m.group(0) if m else "")})
+                                  re.findall(r"(?m)^- \[(\d{4}-\d{2}-\d{2})\]",
+                                             "\n".join(sec_lines))})
             arch_months = sorted(os.path.basename(f)[:-3] for f in
                                  glob.glob(os.path.join(dest, "90_archive", "log", "*.md")))
             if want_kept is not None and kept_months != want_kept:
