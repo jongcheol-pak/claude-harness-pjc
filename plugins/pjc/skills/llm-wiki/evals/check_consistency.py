@@ -80,6 +80,8 @@ SKILL_DIR = os.path.dirname(EVALS_DIR)
 SKILL_MD = os.path.join(SKILL_DIR, "SKILL.md")
 SCHEMA_MD = os.path.join(SKILL_DIR, "references", "wiki-schema.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
+# 절차 K 5~6(큐 기록 규약)은 v1.218.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 3건의 귀속이 함께 옮겨간다.
+QUEUE_RULES_MD = os.path.join(SKILL_DIR, "references", "queue-rules.md")
 # 쓰기 세션 전용 규칙(파일 예산·예산 단계 신호·네이밍·J 부트스트랩)이 SKILL.md에서 분리된 자리(v1.180.0 T8).
 #  코드 세션(절차 K)이 로드하지 않도록 뺀 것이라 예산 표·예산 단계 파싱도 이 파일을 본다.
 OPS_RULES_MD = os.path.join(SKILL_DIR, "references", "wiki-ops-rules.md")
@@ -400,7 +402,7 @@ def check_prose_pointers(skill_text, schema_text):
     안 걸려 차기 재분할 시 조용히 재발한다(회귀 가드 공백).
 
     보수적 스코프(오탐 방지): 파일명 AND 라벨이 '인접'(의·따옴표·괄호·대시로 직접 연결)할 때만
-    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 5-1(본체 SKILL.md)·
+    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 5-1(references/queue-rules.md)·
     B-1 0(references/procedures-content.md)`처럼 서로 다른 귀속이 한 줄에 있어도 B만 content로
     대조하고 K는 (procedures-*.md가 아니라 SKILL.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
     — 하위라벨(B-1 0의 '1 0')까지 검증하진 않는다(재분할 파일 오귀속 포착이 목적).
@@ -863,9 +865,9 @@ TRIGGER_ALLOWLIST = [
     (CONTENT_MD, ["> **축소 조건 (소규모 갱신)**", "14일을 넘거나 변경 파일이 5개를 초과하면"], "변경 파일 5개 초과 = 개수 조건, 예산 무관"),
     (SKILL_MD, ['**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "프로젝트 경계를 넘는 지식이라"], "절차 K 조회 순서 — 「경계를 넘는 지식」"),
     (SKILL_MD, ["**무매칭 = 사실대로 보고(합성 금지)**", "기록 없이 넘기면 위키가"], "「기록 없이 넘기면」 — 큐 기록 규약"),
-    (SKILL_MD, ["- **잔량·체류 경고**: append 시 둘 중", "잔량이 **15건** 초과 ⓑ", "등록일이 30일 초과**"], "skill-feedback 큐 잔량·체류 임계"),
-    (SKILL_MD, ["- **입도 기준(필수 — 노이즈 방지)**", "사소한 결정으로 넘치면"], "[DECISION] 큐 입도 — 「범위를 넘는」"),
-    (SKILL_MD, ["- **잔량 경고**: append 시 `pending.md`", "**20건**을 넘으면"], "pending 큐 잔량 임계"),
+    (QUEUE_RULES_MD, ["- **잔량·체류 경고**: append 시 둘 중", "잔량이 **15건** 초과 ⓑ", "등록일이 30일 초과**"], "skill-feedback 큐 잔량·체류 임계"),
+    (QUEUE_RULES_MD, ["- **입도 기준(필수 — 노이즈 방지)**", "사소한 결정으로 넘치면"], "[DECISION] 큐 입도 — 「범위를 넘는」"),
+    (QUEUE_RULES_MD, ["- **잔량 경고**: append 시 `pending.md`", "**20건**을 넘으면"], "pending 큐 잔량 임계"),
     (LINT_PY, "#   기존 `[^\\n]*`는 줄바꿈을 못 넘어", "펜스 정규식 구현 주석 — 예산 무관"),
     (LINT_PY, "#  **수용된 한계**: 접두가 15자를 넘는 위반", "큐 형식 접두 길이 — 예산 무관"),
     (LINT_PY, "「뒷부분」으로 넘어가고 롤오버 대상에서",
