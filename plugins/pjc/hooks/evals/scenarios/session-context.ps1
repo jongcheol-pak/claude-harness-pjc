@@ -202,6 +202,25 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미완료 task 세션엔 큐 규약 미주입 (SC42d)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
 
+    # SC43~SC43f: 계획 세션에 **위키 조회 절차(K 1~2) 원문 주입** (v1.218.0 후속).
+    #   절 전체(20,323B)는 $sectionMaxBytes 초과라 K 3 앞 헤딩을 종료 앵커로 삼아 앞부분만 자른다.
+    #   SC42 계열과 같은 분기에서 돌지만 대상 문서·구간이 달라 따로 건다.
+    # SC43 (양성): compact + plan 없음 → K 1 **본문 문자열**이 실려 온다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 조회 절차 주입 (SC43)" -R $r -ExpectExit 0 -ExpectContains '확인했더니 없음'
+    # SC43b (발췌 표기 — **범위까지** 밝힌다): 절 전체가 아니라 K 1~2만 왔음을 받는 쪽이 알아야
+    #   K 3~4를 그 파일에서 마저 읽는다. 기존 주입 4건이 전부 「」로 범위를 밝히는 관례와 같다.
+    Assert-Case -Name "session-context: 조회 절차 주입에 범위 표기 (SC43b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/SKILL.md 「절차 K 1~2」'
+    # SC43f (경계 계약): 추출이 **K 2까지** 닿는다 — 종료 앵커가 K 2 앞으로 밀리면 FAIL.
+    #   SC43은 K 1 본문만 보므로 그 회귀를 못 잡는다(SC42f와 같은 이유).
+    Assert-Case -Name "session-context: 조회 절차 주입이 K 2까지 포함 (SC43f)" -R $r -ExpectExit 0 -ExpectContains '범용 패턴'
+    # SC43c (델타 음성): startup엔 주입하지 않는다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: startup엔 조회 절차 미주입 (SC43c)" -R $r -ExpectExit 0 -ExpectNotContains '확인했더니 없음'
+    # SC43d (델타 음성): compact + 미완료 task 세션엔 새지 않는다.
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 미완료 task 세션엔 조회 절차 미주입 (SC43d)" -R $r -ExpectExit 0 -ExpectNotContains '확인했더니 없음'
+
     # SC30 (델타 음성): compact + plan도 AGENTS.md도 없는 비 pjc 폴더 → 계획 지시 미발화.
     #   리마인더 대상이 pjc 워크플로라 무관한 폴더에 뜨면 노이즈다(`:16` 무출력 규칙과 같은 취지).
     #   기존 SC15·SC23이 같은 빈 픽스처를 쓰지만 각각 다른 문자열만 assert해 이 회귀를 못 잡는다.
@@ -279,6 +298,9 @@ if (Test-HookSelected @('session-context')) {
     #   주입이 둘로 늘었으므로 `$cwdBaseCount++`도 둘이어야 한다 — 한 쪽만 올리면
     #   그 세션에 vault 라인이 새로 붙는다(SC41e가 고정한 것과 같은 형태의 회귀).
     Assert-Case -Name "session-context: 큐 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고' -ExpectNotContains '위키 vault'
+    # SC43e (회귀 고정): 조회 절차 **주입**도 같은 짝을 지킨다 — 주입이 셋으로 늘었으므로
+    #   `$cwdBaseCount++`도 셋이어야 한다. 하나만 빠뜨리면 그 세션에 vault 라인이 새로 붙는다.
+    Assert-Case -Name "session-context: 조회 절차 주입도 vault 게이팅 신호 아님 (SC43e)" -R $r -ExpectExit 0 -ExpectContains '확인했더니 없음' -ExpectNotContains '위키 vault'
 
     # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
     #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
