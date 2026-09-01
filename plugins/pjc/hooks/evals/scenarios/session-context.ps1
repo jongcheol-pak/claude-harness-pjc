@@ -281,6 +281,9 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 리마인더는 vault 게이팅 신호 아님 (SC23)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains '위키 vault'
 
+    # ⚠ 대조 문자열은 `위키 vault: 설정`이다 — `위키 vault`만 쓰면 **주입 본문**이 문다.
+    #   절차 K 1(SKILL.md:108)이 `[pjc 세션 컨텍스트] 위키 vault: …` 라인을 **예시로 인용**하는데,
+    #   v1.218.0 후속이 그 구간을 주입 대상으로 만들면서 세 케이스가 한꺼번에 FAIL했다(실측).
     # SC41e (회귀 고정 — v1.217.0): 계획 규칙 **주입**의 `$cwdBaseCount` 짝 증가.
     #   이 분기는 「$lines.Add 1회 = $cwdBaseCount++ 1회」가 짝인데, 주입을 넣고 기준선을 올리지
     #   않으면 `$lines.Count -gt $cwdBaseCount`가 참이 되어 **vault 라인이 새로 붙는다**.
@@ -293,14 +296,14 @@ if (Test-HookSelected @('session-context')) {
     $scEmptyAg = Join-Path $work 'sc-empty-agents'; New-Item -ItemType Directory $scEmptyAg -Force | Out-Null
     New-Item -ItemType File -Path (Join-Path $scEmptyAg 'AGENTS.md') -Force | Out-Null
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmptyAg } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다' -ExpectNotContains '위키 vault'
+    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다' -ExpectNotContains '위키 vault: 설정'
     # SC42e (회귀 고정 — v1.218.0): 큐 규약 **주입**도 같은 짝을 지킨다.
     #   주입이 둘로 늘었으므로 `$cwdBaseCount++`도 둘이어야 한다 — 한 쪽만 올리면
     #   그 세션에 vault 라인이 새로 붙는다(SC41e가 고정한 것과 같은 형태의 회귀).
-    Assert-Case -Name "session-context: 큐 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고' -ExpectNotContains '위키 vault'
+    Assert-Case -Name "session-context: 큐 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고' -ExpectNotContains '위키 vault: 설정'
     # SC43e (회귀 고정): 조회 절차 **주입**도 같은 짝을 지킨다 — 주입이 셋으로 늘었으므로
     #   `$cwdBaseCount++`도 셋이어야 한다. 하나만 빠뜨리면 그 세션에 vault 라인이 새로 붙는다.
-    Assert-Case -Name "session-context: 조회 절차 주입도 vault 게이팅 신호 아님 (SC43e)" -R $r -ExpectExit 0 -ExpectContains '확인했더니 없음' -ExpectNotContains '위키 vault'
+    Assert-Case -Name "session-context: 조회 절차 주입도 vault 게이팅 신호 아님 (SC43e)" -R $r -ExpectExit 0 -ExpectContains '확인했더니 없음' -ExpectNotContains '위키 vault: 설정'
 
     # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
     #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
