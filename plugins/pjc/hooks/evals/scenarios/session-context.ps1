@@ -168,7 +168,7 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + 미완료 task엔 계획 지시 없음 (SC29)" -R $r -ExpectExit 0 -ExpectNotContains 'plan-feature/SKILL.md'
 
-    # SC41~SC41e: 계획 세션에도 **절 원문 주입** (v1.217.0).
+    # SC41~SC41d: 계획 세션에도 **절 원문 주입** (v1.217.0).
     #   SC28이 고정한 것은 경로 지시(`plan-feature/SKILL.md` 문자열)뿐이라, 주입을 지워도 그대로 통과한다.
     #   SC39 계열이 구현 세션에서 양성·델타 음성·발췌 표기를 나눠 건 것과 같은 구조로 넷을 건다.
     # SC41 (양성): compact + plan 없음 → 절대 규칙 **본문 문자열**이 실려 온다.
@@ -244,13 +244,13 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 리마인더는 vault 게이팅 신호 아님 (SC23)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains '위키 vault'
 
-    # SC41e (회귀 고정 — v1.217.0): 계획 규칙 **주입**도 vault 게이팅 신호가 아니다.
-    #   이 분기는 「$lines.Add 1회 = $cwdBaseCount++ 1회」가 짝인데, 주입을 넣으며 기준선을
-    #   올리지 않으면 `$lines.Count -gt $cwdBaseCount`가 성립해 **AGENTS.md만 있는 압축 세션에
-    #   vault 라인이 새로 붙는다**. SC23은 리마인더 1줄만 있던 시절의 픽스처라 이 조합을 못 잡는다
-    #   — 주입까지 들어간 상태에서 여전히 미발화인지 재는 것이 이 케이스다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다' -ExpectNotContains '위키 vault'
+    # SC41e는 만들지 않는다 — **원리상 골든으로 잴 수 없는 축**임을 실측으로 확인했다(v1.217.0).
+    #   계획 세션 분기가 발화하려면 `$planPath` 또는 `AGENTS.md`가 있어야 하는데, 둘 중 무엇이든
+    #   있으면 **그 자체가 정당한 vault 신호**다(AGENTS.md 주입은 `$cwdBaseCount` 산정 뒤에 일어난다).
+    #   그래서 「주입을 넣었는데 vault가 새는가」를 분리해 재는 픽스처가 존재하지 않는다 —
+    #   AGENTS.md만 둔 픽스처는 **주입 이전에도** vault 라인이 뜨므로 델타가 0이다(실측 FAIL로 확인).
+    #   `$cwdBaseCount` 짝 증가 자체는 SC23(리마인더)·SC31b(계획 지시가 vault를 삼키지 않음)가
+    #   양방향으로 이미 고정하고 있고, 주입 블록의 1:1 페어링은 코드 대조로 확인했다.
 
     # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
     #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
