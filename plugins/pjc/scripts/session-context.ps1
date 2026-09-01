@@ -221,6 +221,20 @@ try {
                 #   주입은 $null 폴백이 있으므로 **성공했을 때만** 올린다.
                 $cwdBaseCount++
             }
+
+            # 같은 분기에서 큐 기록 규약도 넣는다 — 계획 세션의 배치 시점(Step 10 승인 직후)에
+            #   `[DECISION]`·`[PROJECT-FACT]` 큐잉 형식이 필요한데, plan-feature Step 10은 그 절차를
+            #   **가리키기만 하고 llm-wiki를 발동하지 않아** 압축되면 형식이 손에 남지 않는다.
+            #   구현 세션을 대상에서 뺀 이유: F-6.5 ⓒ가 `pjc:llm-wiki`를 Skill 도구로 재발동해
+            #   복구 경로가 이미 있다(그쪽은 주입 없이도 규약이 손에 들어온다).
+            #   대상이 K 5-2~5-3인 것은 그 둘만 배치 시점 규약이기 때문이고, K 5 전체(19,869B)나
+            #   조회 절차(K 1~4)는 $sectionMaxBytes 의 80% 선을 넘어 크기 축이 경고를 낸다.
+            $secQueueRules = Get-SkillSection -Path (Join-Path $skillsDir 'llm-wiki/references/queue-rules.md') -StartHeading '### K 5-2. 결정 큐잉 ([DECISION])' -StopHeading '### K 5-4. 미스 큐잉 ([K-MISS])'
+            if ($secQueueRules) {
+                $lines.Add("[pjc 세션 컨텍스트] 압축 직후 큐 기록 규약 (원문 발췌 — llm-wiki/references/queue-rules.md 「K 5-2~5-3」)`n$secQueueRules")
+                # 위 주입과 같은 짝 — 줄 1개 추가 = 기준선 1 증가(SC41e가 고정한 계약).
+                $cwdBaseCount++
+            }
         }
 
         # ---- 위키 vault 설정 상태 판정 (라인 생성만 — 주입은 아래 수집 종료 후) ----
