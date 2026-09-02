@@ -876,9 +876,9 @@ def check_pointer_reachability():
     for src in _md_files():
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
         # 과거 plan·로컬 노트는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
-        # 판정을 `_ARCHIVED_PLAN_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
+        # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
         # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
-        if _ARCHIVED_PLAN_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
+        if _ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
             continue
         text = open(src, encoding="utf-8").read()
         for ref_path, sec_name in pat.findall(text):
@@ -1058,8 +1058,11 @@ def check_batch_number_sequence(hist):
 # 제외 정책 — ⓐ 픽스처는 **의도적으로 깨뜨린** 파일이라 검사 대상이 되면 축이 상시 실패한다
 #  ⓑ `docs/plans/YYYY-MM-DD-*.md`는 과거 회차의 이력 자산이고 그 시점의 사실이라 고치지 않는다
 #  (`deferred.md`는 살아 있는 자산이라 **제외하지 않는다** — 가장 활발히 편집되는 문서다)
+#  ⓑ-2 `docs/.agents-presplit/`도 같은 이유로 제외한다 — 이관 전 문서 사본이라 **고칠 수 없고**,
+#  그 안의 포인터·표기를 검사하면 남은 유일한 처방이 「아카이브를 고치는 것」이 되어 그 시점의
+#  기록이 아니게 된다(v1.223.0 — 종전에는 이 관례가 plan에만 코드화돼 문서 아카이브가 빠져 있었다).
 #  ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
-_ARCHIVED_PLAN_RX = re.compile(r"^docs/plans/\d{4}-\d{2}-\d{2}-")
+_ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
 _LOCAL_ONLY = {"plan.md", "notes.md"}
 _INLINE_CODE_RX = re.compile(r"`[^`\n]*`")
 
@@ -1068,7 +1071,7 @@ def _scan_scope():
     """문서 표기 축의 대상을 `(경로, 레포 상대경로)`로 낸다 (위 제외 정책 적용)."""
     for path in _md_files():
         rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
-        if "/fixtures/" in rel or _ARCHIVED_PLAN_RX.match(rel) or rel in _LOCAL_ONLY:
+        if "/fixtures/" in rel or _ARCHIVED_RX.match(rel) or rel in _LOCAL_ONLY:
             continue
         yield path, rel
 
