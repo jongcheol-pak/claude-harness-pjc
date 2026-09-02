@@ -33,6 +33,8 @@
 범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
       (커밋 '수'만 셈). 어느 쪽도 코드 내용은 해석하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
+환경변수: LLM_WIKI_TODAY(ISO 날짜) — 시간 기반 판정의 「오늘」을 고정한다(_today 참조).
+          골든 러너 전용 경로이며 일반 실행에는 설정하지 않는다.
 규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3~§4·이 파일 3중 동기화).
 """
@@ -43,6 +45,21 @@ try:
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:
     pass
+
+# 시간 기반 판정(신선도 60·90일 · 미래 날짜 · 백업 30일 정리)의 「오늘」. 골든 픽스처는 날짜가
+#  고정 커밋돼 있어 실제 today로 재면 시간이 지나며 기대 결과가 조용히 뒤집힌다(2026-09에
+#  `orphan-lint-report`가 60일 축으로 실제 FAIL했다) — 러너가 이 환경변수로 기준일을 고정한다.
+#  **일반 실행에는 설정하지 않는다** — 미설정이면 종전과 동일하게 실제 오늘을 쓴다.
+def _today():
+    raw = (os.environ.get("LLM_WIKI_TODAY") or "").strip()
+    if raw:
+        try:
+            return datetime.date.fromisoformat(raw)
+        except ValueError:
+            # 조용히 폴백하지 않는다 — 오타 하나로 골든이 다시 날짜를 타게 되면 원인 추적이 어렵다.
+            print("[TODAY-INVALID] LLM_WIKI_TODAY=%r 파싱 실패 — 실제 오늘로 진행한다" % raw,
+                  file=sys.stderr)
+    return datetime.date.today()
 
 # 임박 판정의 선행 게이트 — 자체 신호를 내지 않는 내부 임계였으나, v1.207.0부터
 #  **convention의 「구역화 필요」 WARN이 이 비율부터 난다**(§7-2 발동 ⓑ). 구역화는
@@ -1052,7 +1069,7 @@ class SplitSession:
         self.dry_run = dry_run
         self.backup_dir = os.path.join(
             vault, "90_archive", "backup",
-            datetime.date.today().isoformat() + "-presplit")
+            _today().isoformat() + "-presplit")
         self.backed_up = set()
         self.claimed = set()   # 이번 실행에서 어느 처방이 이미 맡은 파일 — claim() 참조
         self.current_claims = set()   # **지금 도는 처방이** 맡은 것 — 격리·계약 강제의 단위
@@ -1140,7 +1157,7 @@ class SplitSession:
     def log_line(self, kind, target, created):
         """§4 절차 7번 기록 1줄. 형식은 그 절이 정본이다."""
         made = "·".join(created) if created else "(신설 없음)"
-        return (f"- [{datetime.date.today().isoformat()}] [SCHEMA] {kind} — "
+        return (f"- [{_today().isoformat()}] [SCHEMA] {kind} — "
                 f"{target}: {made}. (사유: 임계 초과)")
 
 
@@ -1971,7 +1988,7 @@ def auto_split(vault, dry_run):
     반환: 종료 코드(0 정상 / 1 처방 실패)."""
     ses = SplitSession(vault, dry_run)
     if not dry_run:
-        cleaned, cleanup_failed = cleanup_backups(vault, datetime.date.today())
+        cleaned, cleanup_failed = cleanup_backups(vault, _today())
         if cleaned:
             print(f"백업 정리: {cleaned}건 제거 (§8 30일)")
         for f in cleanup_failed:
@@ -2041,7 +2058,7 @@ def apply_fixes(vault):
     **백업 정리는 새 백업을 만들기 전에 1회 수행한다**(cleanup_backups — §8 누적 금지·30일 정리).
       순서가 중요하다: 나중에 하면 방금 만든 오늘 백업을 지울 판정을 다시 하게 된다.
     플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변(정리도 여기서만 일어난다)."""
-    today = datetime.date.today()
+    today = _today()
     cleaned, cleanup_failed = cleanup_backups(vault, today)
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
@@ -2271,7 +2288,7 @@ def main():
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     existing = {rel(p)[:-3] for p in md}  # 확장자 제거한 상대경로 집합
     existing_cf = {e.casefold() for e in existing}  # L-1: 대소문자 무시 비교용(Windows/Obsidian 정합)
-    today = datetime.date.today()
+    today = _today()
 
     errors, warns, infos = [], [], []
 
