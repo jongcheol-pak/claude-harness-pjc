@@ -82,6 +82,9 @@ SCHEMA_MD = os.path.join(SKILL_DIR, "references", "wiki-schema.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
 # 절차 K 5~6(큐 기록 규약)은 v1.218.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 3건의 귀속이 함께 옮겨간다.
 QUEUE_RULES_MD = os.path.join(SKILL_DIR, "references", "queue-rules.md")
+# 절차 K 1~5(조회)는 v1.220.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 2건의 귀속이 함께 옮겨간다.
+#  축 ⑪ 스캔 대상은 `_trigger_scan_scope()`의 `references/*.md` 글롭이 자동으로 잡으므로 경로를 손으로 더하지 않는다.
+LOOKUP_RULES_MD = os.path.join(SKILL_DIR, "references", "lookup-rules.md")
 # 쓰기 세션 전용 규칙(파일 예산·예산 단계 신호·네이밍·J 부트스트랩)이 SKILL.md에서 분리된 자리(v1.180.0 T8).
 #  코드 세션(절차 K)이 로드하지 않도록 뺀 것이라 예산 표·예산 단계 파싱도 이 파일을 본다.
 OPS_RULES_MD = os.path.join(SKILL_DIR, "references", "wiki-ops-rules.md")
@@ -863,8 +866,8 @@ TRIGGER_ALLOWLIST = [
     (CONTENT_MD, ["그 파일은 프로젝트 단위 규약", "프로젝트·스택을 넘는 일반 패턴", "절차 I(가이드/레시피)로 넘긴다"], "「스택을 넘는 일반 패턴」 — 귀속 판정이지 예산 아님"),
     (CONTENT_MD, ["5. **델타 신뢰도 점검**", "**30일 초과**면"], "허브 `updated` 30일 초과 = 신선도 축"),
     (CONTENT_MD, ["> **축소 조건 (소규모 갱신)**", "14일을 넘거나 변경 파일이 5개를 초과하면"], "변경 파일 5개 초과 = 개수 조건, 예산 무관"),
-    (SKILL_MD, ['**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "프로젝트 경계를 넘는 지식이라"], "절차 K 조회 순서 — 「경계를 넘는 지식」"),
-    (SKILL_MD, ["**무매칭 = 사실대로 보고(합성 금지)**", "기록 없이 넘기면 위키가"], "「기록 없이 넘기면」 — 큐 기록 규약"),
+    (LOOKUP_RULES_MD, ['**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "프로젝트 경계를 넘는 지식이라"], "절차 K 조회 순서 — 「경계를 넘는 지식」"),
+    (LOOKUP_RULES_MD, ["**무매칭 = 사실대로 보고(합성 금지)**", "기록 없이 넘기면 위키가"], "「기록 없이 넘기면」 — 큐 기록 규약"),
     (QUEUE_RULES_MD, ["- **잔량·체류 경고**: append 시 둘 중", "잔량이 **15건** 초과 ⓑ", "등록일이 30일 초과**"], "skill-feedback 큐 잔량·체류 임계"),
     (QUEUE_RULES_MD, ["- **입도 기준(필수 — 노이즈 방지)**", "사소한 결정으로 넘치면"], "[DECISION] 큐 입도 — 「범위를 넘는」"),
     (QUEUE_RULES_MD, ["- **잔량 경고**: append 시 `pending.md`", "**20건**을 넘으면"], "pending 큐 잔량 임계"),
