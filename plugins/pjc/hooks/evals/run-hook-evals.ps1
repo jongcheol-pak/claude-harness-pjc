@@ -273,7 +273,7 @@ foreach ($g in $scenarioGroups) {
         Start-Sleep -Milliseconds 400
     }
     # 출력 리다이렉트는 쓰지 않는다 — `-RedirectStandardOutput` + `-NoNewWindow` 조합이 정상 종료에도
-    # 0바이트 파일을 남기는 것이 이 환경에서 실측됐다(`docs/harness-conventions.md` 「골든 러너 운용」).
+    # 0바이트 파일을 남기는 것이 이 환경에서 실측됐다(`docs/golden-runner.md` 「골든 러너 운용」).
     # 진단이 필요한 정보는
     # 자식이 판정 파일에 직접 쓰므로(예외도 FAIL 레코드로 기록) stdout을 신뢰하지 않는다.
     $proc = Start-Process pwsh -ArgumentList $argList -PassThru -WindowStyle Hidden

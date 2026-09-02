@@ -25,12 +25,12 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  **⚠ 이대로 실행하면 완주하지 않는다** — 도구 시간 캡(10분)을 넘어 killed된다. **분리 프로세스 + 래퍼 + `Monitor` 폴링**이 정본 절차이며 `docs/harness-conventions.md` 「골든 러너 운용 (실행·대기·판정)」을 읽지 않고 돌리면 "환경상 실행 불가"로 F-2를 갈음하게 된다.
+  **⚠ 이대로 실행하면 완주하지 않는다** — 도구 시간 캡(10분)을 넘어 killed된다. **분리 프로세스 + 래퍼 + `Monitor` 폴링**이 정본 절차이며 `docs/golden-runner.md` 「골든 러너 운용 (실행·대기·판정)」을 읽지 않고 돌리면 "환경상 실행 불가"로 F-2를 갈음하게 된다.
 - **llm-wiki 상수·배치 정합 셀프체크** (SKILL.md 예산표·라우팅 표·`references/procedures-*.md`·`wiki-schema` §2/§3/§4/§7/§8/§11/§12·목차·`templates.md`·`lint.py` 상수 수정 시 필수):
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
-- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수 — 101케이스, 약 45초. `--auto-split` 26케이스가 같은 실행에 포함):
+- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수 — 102케이스, 약 45초. `--auto-split` 26케이스가 같은 실행에 포함):
   ```
   python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
   ```
