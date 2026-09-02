@@ -735,7 +735,7 @@ if (Test-HookSelected @('session-context')) {
     Remove-Item -Recurse -Force $scRepo, $scHarnRepo, $scRepoNoRemote -ErrorAction SilentlyContinue
     }   # ---- git 게이트 끝 (SC32~SC37d)
 
-    # SC44~SC44i: Deferred 대장(docs/plans/deferred.md) 최고령 「마지막 판정일」 주입 (v1.221.0 T1).
+    # SC44~SC44n: Deferred 대장(docs/plans/deferred.md) 최고령 「마지막 판정일」 주입 (v1.221.0 T1).
     #   착수 조건 축 ②의 값이 손계산이라 같은 오산이 2회 났다(v1.188.0 부기 형식 미인식 /
     #   v1.219.0·v1.220.0 항목 내 최신 스탬프 미인식). hook이 그 값을 계산해 알린다.
     #   ⚠ **기대는 날짜부로 잰다** — 일수는 매일 늘어 픽스처 골든이 다음 날 깨진다.
@@ -846,6 +846,15 @@ if (Test-HookSelected @('session-context')) {
         Set-Content -Encoding UTF8 $scLedFile
     $r = & $scLedInvoke
     Assert-Case -Name "session-context: 유효 판정일 0건이면 미주입 (SC44m)" -R $r -ExpectExit 0 -ExpectNotContains 'Deferred 대장'
+
+    # SC44n (구조 줄 흡수 방지 — F-7 M1): `## 대기`에는 항목 뒤에 **앵커 줄**(`**▶ …`)과
+    #   **인용 블록**(`> …`)이 온다. 그것을 직전 항목의 본문으로 흡수하면 거기 적힌 날짜가
+    #   그 항목의 판정일로 밀려 올라가 최고령이 실제보다 최신이 된다(batch가 늦게 열린다).
+    #   필터가 없으면 A의 판정일이 2026-08-05로 밀려 최고령이 (2026-07-01)이 되어 FAIL.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-06-01] **A**', '**▶ 현행 잔량**: 대기 2 (2026-08-05 실측 2건)', '> 카운트 기준 인용 (2026-08-05 실측)', '- [2026-07-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 앵커·인용 블록은 항목 본문이 아니다 (SC44n)" -R $r -ExpectExit 0 -ExpectContains '(2026-06-01)'
 
     Remove-Item -Recurse -Force $scLed, $scLedNoHarn -ErrorAction SilentlyContinue
 

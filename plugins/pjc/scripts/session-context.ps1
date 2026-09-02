@@ -216,6 +216,13 @@ try {
                     #   그 축이 조용히 죽는다 — 현행 대장의 실물은 전부 ⓑ다.
                     $ledgerVnPrefixRx = [regex]'^- \[\d{4}-\d{2}-\d{2}, '
                     $ledgerVnTailRx = [regex]'\(v\d+\.\d+\.\d+[^)]*해소\)'
+                    # 항목이 아닌 **구조 줄** — 앵커(`**▶ …`)와 인용 블록(`> …`). 대장은 첫 항목 **뒤에**
+                    #   이 둘이 오는 배치라, 본문으로 흡수하면 거기 적힌 날짜(카운트 기준의 실측 부기 등)가
+                    #   그 항목의 판정일로 잡혀 **최고령이 실제보다 최신**이 된다 — 본문 인용 날짜를 막은 것과
+                    #   같은 방향의 결함이고(batch가 늦게 열린다), 그쪽은 항목 안이라 형식 한정으로 막히지만
+                    #   이쪽은 애초에 어떤 항목의 본문도 아니라 별도 필터가 필요하다.
+                    #   하위 불릿(`  - …`)은 항목의 일부이므로 제외하지 않는다.
+                    $ledgerStructRx = [regex]'^\s*(?:>|\*\*▶)'
                     $ledgerToday = (Get-Date).Date
 
                     $ledgerItems = New-Object System.Collections.Generic.List[string]
@@ -224,7 +231,7 @@ try {
                         if ($ledgerItemRx.IsMatch($ledgerLine)) {
                             if ($null -ne $ledgerCur) { $ledgerItems.Add($ledgerCur) }
                             $ledgerCur = $ledgerLine
-                        } elseif ($null -ne $ledgerCur) {
+                        } elseif ($null -ne $ledgerCur -and -not $ledgerStructRx.IsMatch($ledgerLine)) {
                             $ledgerCur = $ledgerCur + "`n" + $ledgerLine
                         }
                     }
