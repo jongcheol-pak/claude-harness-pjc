@@ -656,7 +656,7 @@ def check_derived_figures(conv):
 
 
 # ─────────────────────────────────────────────────────────────
-# ⑫ 개념 정본 유일성 (리포트 전용 — main 편입은 T11)
+# ⑫ 개념 정본 유일성 (v1.179.0 T11에서 main() 편입 — exit code에 영향을 준다)
 # ─────────────────────────────────────────────────────────────
 def _concept_table(conv):
     """「개념 정본 유일성 (축 ⑫ 기준표)」 표의 데이터 행을 파싱한다.
@@ -827,7 +827,7 @@ def check_pointer_reachability():
     # 12자 창만으로 위 오탐은 이미 걸러진다(그 문장은 경로에서 「」까지 12자를 훨씬 넘는다).
     pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,60})」")
     heading_cache = {}
-    issues, checked, skipped = [], 0, []
+    issues, checked, skipped, exempt = [], 0, [], []
 
     def anchors_of(path):
         """도달 대상 = 헤딩 ∪ 굵은 텍스트.
@@ -850,6 +850,18 @@ def check_pointer_reachability():
             hs.update(b.strip() for b in re.findall(r"\*\*([^*\n]{2,80})\*\*", txt))
             heading_cache[path] = hs
         return heading_cache[path]
+
+    # 해석하지 않기로 **선언한** 포인터. 「못 찾았다」와 「볼 수 없다」를 같은 줄에 섞으면
+    #   그 줄이 무의미해지므로 갈라 둔다(전자는 사람이 봐야 할 잠재 결함, 후자는 정상).
+    #   ⓐ 레포 밖 대상(위키 vault 페이지) — 이 검사기는 vault를 스캔하지 않는다.
+    #   ⓑ 산문 속 언급 — 포인터가 아니라 문장 안에서 파일을 거론한 것이라 대상이 특정되지 않는다.
+    #   **경로 문자열이 아니라 (출처, 참조) 쌍으로 적는다** — 같은 이름이 다른 자리에서 진짜
+    #   포인터로 쓰이면 그것은 계속 검사돼야 하기 때문이다.
+    POINTER_EXEMPT = {
+        ("docs/plans/deferred.md", "feat-safety-hooks-advisory.md"),
+        ("docs/plans/deferred.md", "maid/feat-app-shell.md"),
+        ("docs/plans/deferred-closed.md", "SKILL.md"),
+    }
 
     # 부분 경로(`implement-task/SKILL.md`처럼 repo 루트 기준이 아닌 표기)를 해석하기 위한 색인.
     # 이 repo의 문서는 같은 파일을 전체 경로·부분 경로 두 방식으로 가리키며, 부분 표기를
@@ -880,12 +892,36 @@ def check_pointer_reachability():
                 hits = by_suffix.get(ref_path, [])
                 if len(hits) == 1:
                     target = hits[0]
+            if target is None and "/" not in ref_path:
+                # **같은 스킬 폴더 기준 해석.** `references/` 안의 문서가 자기 스킬의 `SKILL.md`를
+                #   이름만으로 가리키는 표기가 흔한데, `dirname(src)`는 `references/`라 위 ②가
+                #   실패하고 동명 파일이 스킬마다 있어 접미 색인(③)도 후보 다수로 포기한다.
+                #   출처에서 위로 거슬러 `skills/<name>/` 경계를 찾아 그 폴더에서만 찾으면
+                #   후보가 하나로 확정된다(추측이 아니라 소속으로 정해진다).
+                #   **한계 — 이 해석은 「자기 스킬」로만 귀속시킨다.** 다른 스킬의 파일을 이름만으로
+                #   가리키는 표기가 생기면 **틀린 파일에 조용히 매칭**될 수 있다(못 찾아 issues로
+                #   뜨는 것보다 나쁘다). 현재 레포의 실사용 2건은 둘 다 자기 스킬 자기참조라
+                #   무해하지만, 그런 표기가 생기면 `by_suffix`처럼 후보 다수 시 포기하도록 좁혀야 한다.
+                skill_dir = os.path.dirname(src)
+                while True:
+                    up = os.path.dirname(skill_dir)
+                    if not up or up == skill_dir:
+                        break
+                    if os.path.basename(up) == "skills":
+                        skill_cand = os.path.join(skill_dir, ref_path)
+                        if os.path.exists(skill_cand):
+                            target = skill_cand
+                        break
+                    skill_dir = up
             if target is None:
                 # 경로 표기가 다양해(상대·부분 경로) 해석 실패를 곧바로 결함으로 보면 오탐이 크다.
                 # 다만 **조용히 넘기지는 않는다** — 파일이 실제로 삭제·이동된 경우가 가장 심한
                 # 포인터 끊김인데 그것까지 침묵하면 이 축의 존재 이유가 사라진다. 건수를 노출해
                 # 사람이 검토할 신호를 남긴다.
-                skipped.append("%s → `%s`" % (rel_src, ref_path))
+                if (rel_src, ref_path) in POINTER_EXEMPT:
+                    exempt.append("%s → `%s`" % (rel_src, ref_path))
+                else:
+                    skipped.append("%s → `%s`" % (rel_src, ref_path))
                 continue
             hs = anchors_of(target)
             if hs is None:
@@ -897,9 +933,16 @@ def check_pointer_reachability():
                               % (rel_src, ref_path, sec_name))
     if checked == 0:
         die("포인터 도달성: 검사 대상 포인터를 하나도 찾지 못함 (패턴이 낡았는지 확인)")
+    if exempt:
+        print("[NOTE] 포인터 %d건은 **검사 비대상으로 선언**됨(레포 밖 대상·산문 언급) — %s"
+              % (len(exempt), " / ".join(exempt)))
     if skipped:
-        print("[NOTE] 포인터 %d건은 대상 파일 경로를 해석하지 못해 검사에서 제외됨 — %s"
-              % (len(skipped), " / ".join(skipped[:5]) + (" …" if len(skipped) > 5 else "")))
+        # 선언되지 않은 해석 실패는 「미검사인 채 통과」다 — 파일이 실제로 삭제·이동된 경우가
+        #   그 형태로 숨으므로, 건수만 흘리지 않고 **불일치로 올려** 사람이 판정하게 한다.
+        #   정당한 것으로 판명되면 POINTER_EXEMPT에 (출처, 참조) 쌍으로 등재해 닫는다.
+        issues.append("포인터 해석 실패 %d건 (선언되지 않음 — 삭제·이동됐거나 표기가 낡았을 수 있다. "
+                      "정당하면 POINTER_EXEMPT에 등재할 것): %s"
+                      % (len(skipped), " / ".join(skipped[:5]) + (" …" if len(skipped) > 5 else "")))
     return issues, checked
 
 

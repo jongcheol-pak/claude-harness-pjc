@@ -1919,16 +1919,17 @@ def relocate_sections(ses):
 
         # 이전 회차에 나온 형제 하위도 함께 등재한다 — 이번 것만 넣으면 재분할할 때마다
         #  목록이 최신 하나로 갈리고 옛 하위가 조회 경로 밖에 남는다(§7-30ⓔ가 잡는 그 상태를
-        #  자동 경로가 스스로 만들게 된다). 판정은 ⓔ와 같은 신호를 쓴다 — 순번 접두 + 이
-        #  파일을 가리키는 복귀 링크.
+        #  자동 경로가 스스로 만들게 된다). 판정은 ⓔ와 같은 신호를 쓴다 — **이 파일을 가리키는
+        #  복귀 링크**(순번 접두는 요구하지 않는다: 수기 하위가 그 요구에서 통째로 빠졌다).
         already = set(wikilink_targets(section(cur, "하위 문서") or ""))
         made = {c[1] for c in created}
         siblings = []
         for f in sorted(glob.glob(os.path.join(
                 glob.escape(ses.vault), rel[:-len(".md")].replace("/", os.sep) + "-*.md"))):
             srel = os.path.relpath(f, ses.vault).replace("\\", "/")
-            if not re.match(r"^.+-\d+$", srel[:-len(".md")]):
-                continue      # 글롭은 숫자가 아닌 접미도 잡는다 — ⓔ와 같은 신호로 좁힌다
+            # 순번 접두를 요구하지 않는다 — ⓔ가 복귀 링크 단일 신호로 바뀌었으므로 여기도 맞춘다.
+            #  두 자리가 갈리면 「경고는 나는데 자동 수정은 못 하는」 구간이 생긴다(수기 하위가
+            #  정확히 그 자리였다). 아래 복귀 링크 대조가 소속 판정을 대신한다.
             if srel in made or srel[:-len(".md")] in already:
                 continue
             stext, _sb, _sn = _read_page(f)
@@ -3026,22 +3027,25 @@ def main():
     # ⓔ 자동 분할 하위(`{stem}-{n}.md`) ↔ 진입 파일 `## 하위 문서` 양방향 + 포인터 도달성.
     #  ⓑ·ⓓ는 타입이 정해진 두 경로(convention·guide)만 보는데, `--auto-split`은 feature·project·
     #  entity·concept에도 하위를 만든다 — 그 산출물이 목록 밖에 남으면 조회가 닿지 못한다.
-    #  **판정 신호를 둘 다 요구한다**: 파일명 순번 접두(자동 경로가 항상 지키는 규약)와 복귀 링크.
-    #  하나만 쓰면 ⓓ가 겪은 오탐(같은 폴더의 무관한 페이지)이나 미탐(수기 하위)이 생긴다.
+    #  **판정 신호는 복귀 링크 하나이고, 상위도 그 링크에서 도출한다.**
+    #  종전에는 파일명 순번 접두(`{stem}-{n}`)를 함께 요구했는데, 그러면 **순번이 없는 수기 하위가
+    #  통째로 미탐**이었다(그 사실을 이 주석이 스스로 인정하고 있었다). 복귀 링크는 그 파일이
+    #  **스스로 「나는 X의 하위다」라고 선언한 것**이라 접두보다 강한 신호이며, 상위를 이름 규칙으로
+    #  추측하지 않고 링크가 가리키는 문서로 확정하므로 ⓓ가 겪은 오탐(같은 폴더의 무관한 페이지 —
+    #  그런 페이지에는 복귀 링크가 없다)도 그대로 막힌다.
     #  **ⓑ·ⓓ가 이미 보는 타입은 제외**해 같은 쌍을 두 번 지적하지 않는다.
     for r, (fm, typ, text) in pages.items():
         if r.startswith("90_archive/") or typ in ("convention", "guide"):
             continue
-        m = re.match(r"^(.+)-(\d+)$", r[:-3])
-        if not m:
-            continue
-        parent = m.group(1) + ".md"
         back = SUBDOC_BACK_RX.search(text)
-        if parent not in pages or not back:
-            continue          # 복귀 링크가 없으면 자동 분할 하위가 아니다(수기 순번 파일 오탐 방지)
+        if not back:
+            continue          # 복귀 링크가 없으면 분리해 나온 하위가 아니다(독립 페이지 오탐 방지)
         bt = back.group(1)
-        if (bt if bt.endswith(".md") else bt + ".md") != parent:
-            continue          # 다른 문서를 상위로 가리킨다 — 이 진입 파일이 판정할 대상이 아니다
+        parent = bt if bt.endswith(".md") else bt + ".md"
+        if parent not in pages or parent == r or parent.startswith("90_archive/"):
+            continue          # 상위가 실재하지 않거나·자기 자신이거나·**아카이브**다.
+                              #  아카이브 상위를 배제하는 이유는 ⓐ·ⓑ와 같다 — §8이 수정을 막아 둔
+                              #  자리에 등재를 요구하면 고칠 수 없는 WARN이 영구히 남는다.
         listed = {x[:-3] if x.endswith(".md") else x
                   for x in wikilink_targets(section(pages[parent][2], "하위 문서") or "")}
         if r[:-3] not in listed:
