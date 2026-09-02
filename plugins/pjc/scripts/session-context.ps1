@@ -180,6 +180,89 @@ try {
             }
         }
 
+        # ---- Deferred 대장 최고령 「마지막 판정일」 (하네스 레포 세션에서만) ----
+        # 왜: 소진 batch 착수 조건 축 ②(최고령 > 30일)가 전적으로 손계산이었고 **같은 오산이 2회** 났다
+        #   — v1.188.0은 날짜 접두 부기를 못 읽어 하루 전 판정된 항목을 39일로 봤고, v1.219.0·v1.220.0은
+        #   항목 안의 **최신** 스탬프를 못 읽어 34일을 보고했다(실측 14일). check-harness-consistency.py는
+        #   두 문서의 문면 동기만 대조하고 **값 자체를 재는 축이 없어** 손계산이 틀려도 전 축이 통과한다.
+        #   오산이 난 자리가 계획 세션(plan-feature Step 1 ③)이라 검사기로는 늦다 — 세션 시작에 기계가 준다.
+        # 판정 규칙(정본: implement-task references/phase-f-detail.md ⓪): 항목마다 「재확인 표기·부기 형식·
+        #   등록일 중 가장 최신 날짜」를 정하고 그 **최솟값**이 최고령이다.
+        # **파싱 단위는 「항목」이지 「줄」이 아니다** — 대장에는 하위 불릿이 실재하고, 거기에만 최신 스탬프가
+        #   붙은 항목이 생기면 줄 단위는 판정일을 **과소평가**해 축 ②를 일찍 연다(v1.188.0 오산과 같은 방향).
+        # 날짜 인식을 **여는 기호 직후**(`[` 또는 `(`)로 한정하는 이유: 본문에 인용된 날짜가 섞이면 그 항목의
+        #   최댓값이 밀려 올라가 최고령 후보에서 영구히 빠진다(실측: 축 ② 예정일 2026-09-18을 본문에 적은 항목).
+        #   **키워드 목록으로 잡지 않는다** — 새 부기 형태를 원리상 놓친다(실측: 「실적 계측」이 목록에 없어
+        #   판정 부기 하나를 놓쳤다. 이번 회차가 겨냥한 실패 유형이 바로 그것이다).
+        # 미래 날짜를 후보에서 빼는 것은 위 인용 방어의 짝이다(괄호 안에 예정일이 적히는 경우).
+        # ⚠ `-match '^- \[…'` 형태를 쓰지 않는다 — check-harness-consistency.py의 「복제 리터럴 동기」 축이
+        #   그 리터럴에서 마커 토큰을 뽑아 대조하므로, 날짜 정규식이 거기 걸리면 orphan으로 exit 1이 난다.
+        # 하네스 레포 판정은 cwd 아래 plugin.json 존재이며 **상위 탐색을 하지 않는다**(아래 큐 라인과 같은 기준).
+        # 전 구간 try/catch — 대장 읽기 실패가 세션 시작을 막지 않는다(fail-open).
+        try {
+            $ledgerPluginJson = Join-Path $cwd 'plugins/pjc/.claude-plugin/plugin.json'
+            $ledgerPath = Join-Path $cwd 'docs/plans/deferred.md'
+            if ((Test-Path -LiteralPath $ledgerPluginJson -PathType Leaf) -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+                $ledgerText = Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8
+                # 종료 앵커 `^## `는 현재 대장에 `## 대기` 하나뿐이라 실질적으로 `\z`로 끝난다.
+                #   그래도 두는 이유는 `## 종결` 같은 절이 다시 생길 때를 대비한 것이고(v1.198.0 이전엔 실재),
+                #   주제 그룹 헤딩은 `### `라 여기 걸리지 않아 그대로 스캔된다.
+                $ledgerWait = [regex]::Match($ledgerText, '(?ms)^## 대기\s*?$(.*?)(?=^## |\z)')
+                if ($ledgerWait.Success) {
+                    $ledgerItemRx = [regex]'^- \[\d{4}-\d{2}-\d{2}'
+                    $ledgerDateRx = [regex]'[\[(](\d{4}-\d{2}-\d{2})'
+                    # vN 부기는 **형식이 둘**이다 — ⓐ 날짜 접두(정본 ⓪이 예시하는 형태) ⓑ 제목 뒤 괄호
+                    #   (v1.185.0 T2가 「부기를 제목 뒤로」 옮기는 관례를 세운 뒤의 현행 형태). 한쪽만 보면
+                    #   그 축이 조용히 죽는다 — 현행 대장의 실물은 전부 ⓑ다.
+                    $ledgerVnPrefixRx = [regex]'^- \[\d{4}-\d{2}-\d{2}, '
+                    $ledgerVnTailRx = [regex]'\(v\d+\.\d+\.\d+[^)]*해소\)'
+                    $ledgerToday = (Get-Date).Date
+
+                    $ledgerItems = New-Object System.Collections.Generic.List[string]
+                    $ledgerCur = $null
+                    foreach ($ledgerLine in ($ledgerWait.Groups[1].Value -split "`r?`n")) {
+                        if ($ledgerItemRx.IsMatch($ledgerLine)) {
+                            if ($null -ne $ledgerCur) { $ledgerItems.Add($ledgerCur) }
+                            $ledgerCur = $ledgerLine
+                        } elseif ($null -ne $ledgerCur) {
+                            $ledgerCur = $ledgerCur + "`n" + $ledgerLine
+                        }
+                    }
+                    if ($null -ne $ledgerCur) { $ledgerItems.Add($ledgerCur) }
+
+                    $ledgerJudged = @()
+                    $ledgerVnCount = 0
+                    foreach ($ledgerItem in $ledgerItems) {
+                        $ledgerBest = $null
+                        foreach ($ledgerHit in $ledgerDateRx.Matches($ledgerItem)) {
+                            $ledgerDate = $null
+                            # 형식은 맞지만 의미가 무효인 문자열(2026-13-45 등)은 그 날짜만 건너뛴다 —
+                            #   항목 자체를 버리면 그 항목이 최고령 후보에서 통째로 빠진다.
+                            try { $ledgerDate = [datetime]::ParseExact($ledgerHit.Groups[1].Value, 'yyyy-MM-dd', $null) } catch { continue }
+                            if ($ledgerDate -gt $ledgerToday) { continue }
+                            if ($null -eq $ledgerBest -or $ledgerDate -gt $ledgerBest) { $ledgerBest = $ledgerDate }
+                        }
+                        if ($null -ne $ledgerBest) { $ledgerJudged += $ledgerBest }
+                        $ledgerHead = ($ledgerItem -split "`n")[0]
+                        if ($ledgerVnPrefixRx.IsMatch($ledgerHead) -or $ledgerVnTailRx.IsMatch($ledgerHead)) { $ledgerVnCount++ }
+                    }
+
+                    if ($ledgerItems.Count -gt 0 -and $ledgerJudged.Count -gt 0) {
+                        # @() 로 감싸는 것이 요점이다 — 항목이 **1건이면** 파이프 결과가 배열이 아니라
+                        #   스칼라라 [0] 이 엉뚱한 값을 준다(아래 스킬 개선 큐 라인이 같은 사고를 겪었다).
+                        $ledgerOldest = @($ledgerJudged | Sort-Object)[0]
+                        $ledgerAge = [int][math]::Floor(($ledgerToday - $ledgerOldest).TotalDays)
+                        $ledgerVnNote = if ($ledgerVnCount -gt 0) { " (단 vN 부기 ${ledgerVnCount}건은 릴리즈 날짜를 반영하지 않았습니다 — 손계산 확인 필요.)" } else { "" }
+                        $lines.Add("[pjc 세션 컨텍스트] Deferred 대장: 대기 $($ledgerItems.Count)건 / 최고령 ${ledgerAge}일($($ledgerOldest.ToString('yyyy-MM-dd'))) — 축 ② 임계 30일.${ledgerVnNote}")
+                        # 이 라인은 **vault 게이팅 신호가 아니다** — 하네스 레포에는 plan·AGENTS.md가 있어
+                        #   이미 게이팅을 통과하지만, 둘 다 없는 상태에서 이 라인만으로 vault 라인이 새지
+                        #   않게 짝을 맞춘다(위 계획 세션 주입 4곳과 같은 처리).
+                        $cwdBaseCount++
+                    }
+                }
+            }
+        } catch {}
+
         # ---- 계획 세션의 압축 리마인더 (plan이 없거나 · task 0개 · task가 전부 완료) ----
         # 위 블록은 `if ($planPath)` 안이라 **진행 중 plan이 있는 세션**만 닿는다. 계획을 세우던 중
         #   압축되면 plan이 아직 없거나 task 체크박스가 0개라 그 지시를 못 받는데, `plan-feature`도
