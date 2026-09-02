@@ -295,7 +295,7 @@ git commit -m "checkpoint: T<N> pre-review"
 **Task Type 판정**: plan이 Type을 명시하면 그것을 따른다. **plan에 Type이 없으면 메인이 diff 예상 규모로 B/C/D를 1줄로 판정해 plan.md 해당 task에 기입**한다(예: "단일 파일·caller 없음 → B", "다중 파일·시그니처 변경 → D"). 규모를 가늠하기 어렵거나 판정이 애매하면 **D로 간주**(안전 우선 — 무거운 쪽). **단 순수 값 치환은 예외 — 애매해도 B**: 색상·치수·간격·폰트 등 리터럴/디자인 토큰 값만 바꾸고 로직·조건·구조·시그니처 변화가 0인 task는 **파일·개수와 무관하게 Type B**로 기입한다(값만 바뀌어 위험이 낮고 화면에서 즉시 검출 — plan-feature Trivial Bypass 순수 값 치환 예외와 동일 기준). '애매하면 D' 상향은 로직·구조 변화 가능성이 있을 때의 안전 규칙이라 순수 값 치환에는 적용하지 않는다. 값 변경이 조건·레이아웃 구조·계산식 도입을 동반하면 순수 치환이 아니므로 이 예외 밖이다.
 **V-4(PostToolUse hook)는 자동 실행** — 모든 Type에서 작동 (UTF-8 + impact-warn).
 **V-9(시각 충실도·참조 정합)는 Type과 무관하게 조건부** — plan에 `## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있는 디자인 정합·화면 이식 작업일 때만 수행 (없으면 모든 Type에서 생략).
-**V-5·V-6 병렬** — Type C/D에서 V-5(compliance)·V-6(quality)는 동일 BASE/HEAD에 병렬 호출하고, 둘 다 OK일 때만 진행한다 (상세는 V-5). 여기서 병렬은 **동기 호출** 2개를 한 메시지에 함께 보내는 것이며, 결과 수신 전에 다음 단계로 가지 않는다(`recovery.md` 「Subagent 호출 규약」).
+**V-5·V-6 병렬** — Type C/D에서 V-5(compliance)·V-6(quality)는 동일 BASE/HEAD에 병렬 호출하고, 둘 다 OK일 때만 진행한다 (상세는 V-5). 여기서 병렬은 **수신 확인 호출** 2개를 한 메시지에 함께 보내는 것이며, 결과 수신 전에 다음 단계로 가지 않는다(`recovery.md` 「Subagent 호출 규약」).
 
 #### Type A 빌드 판단
 - 순수 문서·주석·README·`.gitignore` 등 **빌드에 영향 없는 파일** → V-1도 skip, V-8만.
@@ -330,7 +330,7 @@ git commit -m "checkpoint: T<N> pre-review"
 **정상 경로와 실패 4분기 모두 `references/recovery.md` 「Subagent 호출 규약 (공통) — 수신 확인 게이트」·「Reviewer 호출 실패 대응 (과부하·도구 불가·거절·빈 응답) — 모든 subagent 호출 공통」이 정본**이다(등급별 대체 매트릭스·의무 3종 포함).
 
 **판정선 넷**:
-- **모든 subagent 호출은 수신 확인 게이트를 거친다** **결과를 받아 판정한 뒤에만** 다음 단계로 간다. "한 turn 동시 호출"은 병렬이지 비동기가 아니다 — 호출 도구 기본값이 백그라운드라 명시하지 않으면 결과 없이 루프가 전진한다. **규약 정본은 `references/recovery.md` 「Subagent 호출 규약」**이며 아래 각 호출 지점은 그것을 적용할 뿐이다.
+- **모든 subagent 호출은 수신 확인 게이트를 거친다** — **결과를 받아 판정한 뒤에만** 다음 단계로 간다. "한 turn 동시 호출"은 병렬이지 비동기가 아니다 — 호출 도구 기본값이 백그라운드라 명시하지 않으면 결과 없이 루프가 전진한다. **규약 정본은 `references/recovery.md` 「Subagent 호출 규약」**이며 아래 각 호출 지점은 그것을 적용할 뿐이다.
 - **실패는 네 갈래다.** **A 과부하(529)**: 재시도 2회 후 등급별 분기(Opus는 Sonnet 대체 가능·깊이 저하 명시 의무 / **Sonnet은 Haiku 대체 금지** — 사용자 선택 / Haiku는 재시도만). **B 도구 불가**: 재시도가 무의미하므로 정의 파일의 판정 항목을 체크리스트로 대조 + 의무 3종. **C 거절**: 재시도 대신 범위를 좁혀 1회 재의뢰, 그래도 거절이면 B 절차에 사유를 "거절 — 미검토 범위"로 적는다. **D 빈 응답**(호출·도구 호출은 성공했는데 최종 텍스트가 비어 옴): 같은 에이전트에 **판정문만 1회 재요청**(조사가 그 컨텍스트에 남아 있어 추가 도구 호출 0으로 즉답), 그래도 비면 B로 수렴.
 - **대체·생략은 항상 명시한다 — 조용한 대체 금지.** **거절은 통과가 아니다**(문제 삼지 않은 게 아니라 보지 않은 것).
 - **세션 정책상 "사용자 요청 없는 에이전트 호출 금지"는 B가 아니다** — 스킬 발동이 곧 그 요청이므로 묻지도 강등하지도 않고 정상 호출한다.
@@ -342,7 +342,7 @@ git commit -m "checkpoint: T<N> pre-review"
 
 Task Type에 따라 다른 흐름:
 
-**Type B**: `spec-prefilter` (Haiku) 먼저 호출 (BASE_SHA·HEAD_SHA는 Type C/D와 동일 — HEAD_SHA = Phase V 서두의 **pre-review 커밋** SHA. prefilter도 그 diff를 본다. 나머지 전달물은 spec-prefilter 입력 계약대로 — acceptance 1줄·task Files 목록·AGENTS.md 위치). **동기 호출**(`recovery.md` 「Subagent 호출 규약」) — PASS/ESCALATE 판정을 받아야 아래 분기가 정해지므로 결과 수신 전 진행 금지(ESCALATE 격상 경로의 재호출도 같다).
+**Type B**: `spec-prefilter` (Haiku) 먼저 호출 (BASE_SHA·HEAD_SHA는 Type C/D와 동일 — HEAD_SHA = Phase V 서두의 **pre-review 커밋** SHA. prefilter도 그 diff를 본다. 나머지 전달물은 spec-prefilter 입력 계약대로 — acceptance 1줄·task Files 목록·AGENTS.md 위치). **수신 확인 호출**(`recovery.md` 「Subagent 호출 규약」) — PASS/ESCALATE 판정을 받아야 아래 분기가 정해지므로 결과 수신 전 진행 금지(ESCALATE 격상 경로의 재호출도 같다).
 - PASS → V-5 완료, **V-7(축소)·V-8 진행** (Type B는 V-6 생략 — Sonnet 호출 안 함. Fast-Path 표와 일치).
 - ESCALATE → **해당 task를 Type C로 격상**한다: plan.md의 그 task Type 라인을 `C (B→격상: prefilter ESCALATE)`로 갱신하고(기존 plan 부분 갱신 — 격상 흔적이 재개 세션의 C 처리 신호가 된다), 이후를 **Type C 기준으로 수행** — V-5(compliance)·V-6(quality)를 병렬 호출하고 V-3·V-7도 전체 수행한다(이미 통과한 V-1·V-2는 재실행 불필요. 왜 사유 불문 전건 격상인지는 `references/rationale.md`). 결과 처리는 아래 Type C/D와 동일.
 
@@ -359,10 +359,10 @@ Task Type에 따라 다른 흐름:
 - **재리뷰 시 `| 라운드 | 지적 | 심각도 | 반영 방식 |` 4열 이력 표를 전달한다 (의무).** 없으면 리뷰어가 이전 판정을 알 수 없어 **같은 지점이 라운드마다 뒤집히는 진동**이 생긴다. 첫 호출에는 전달하지 않는다(이력이 없다).
 - **`[CONFLICT]`와 `incomplete`는 Verdict가 OK여도 통과가 아니다.** 전자는 메인이 채택/유지를 판정해 `## Retry Ledger`에 기록한 뒤에만(같은 지점 2회면 Halt), 후자는 미검토분을 직접 대조하거나 재호출해 해소한 뒤에만 다음 단계로 간다. **조용히 통과시키면 리뷰어의 정직한 보고가 무의미해진다**(해소 경로의 정본은 `references/recovery.md` 「리뷰 결과 처리」).
 - **지적 이의는 근거 있는 반증만 허용된다.** 파일:라인 인용으로 사실 오류를 반증해 같은 리뷰어를 재호출하되, **재호출에도 같은 지적이 유지되면 수용하거나 Halt**한다(반박의 끝을 보장). 근거 없는 묵살은 금지이며, 이 반증 재호출은 수정 사이클 카운터에 포함된다.
-- **동일 BLOCKER/MAJOR가 2회 연속이면 Phase I 복귀 전에 `auto-debug pass`를 1회 태운다 (task당 1회).** 같은 지적을 두 번 고쳤는데도 남았다면 세 번째 수정도 **이미 두 번 빗나간 가정을 물려받은 채** 하게 된다 — `root-cause-analyzer`를 동기 호출해 오염되지 않은 컨텍스트의 진단서(원인 + 근거 위치 + 기각된 가설)를 받고 그것을 입력으로 고친다. **2회 시점 자체는 Halt 지점이 아니며, auto-debug는 어떤 Halt 카운터도 증감시키지 않는다**(진단 후 재리뷰에서 같은 지적이면 그때가 3회째). **발동 조건·전달물 5종·호출 실패 처리(B 분기 미적용)·계수 규칙 3줄·Retry Ledger 기록 형식은 `references/recovery.md` 「auto-debug pass (동일 BLOCKER 2회 — Halt 직전 구제)」가 정본.**
+- **동일 BLOCKER/MAJOR가 2회 연속이면 Phase I 복귀 전에 `auto-debug pass`를 1회 태운다 (task당 1회).** 같은 지적을 두 번 고쳤는데도 남았다면 세 번째 수정도 **이미 두 번 빗나간 가정을 물려받은 채** 하게 된다 — `root-cause-analyzer`를 수신 확인 호출로 불러 오염되지 않은 컨텍스트의 진단서(원인 + 근거 위치 + 기각된 가설)를 받고 그것을 입력으로 고친다. **2회 시점 자체는 Halt 지점이 아니며, auto-debug는 어떤 Halt 카운터도 증감시키지 않는다**(진단 후 재리뷰에서 같은 지적이면 그때가 3회째). **발동 조건·전달물 5종·호출 실패 처리(B 분기 미적용)·계수 규칙 3줄·Retry Ledger 기록 형식은 `references/recovery.md` 「auto-debug pass (동일 BLOCKER 2회 — Halt 직전 구제)」가 정본.**
 
 ### V-6. Code Quality Review (subagent, Type C/D 항상) — V-5와 병렬 수행
-- `code-quality-reviewer` subagent 호출 (위 V-5에서 **병렬로 함께 호출**). 자체 검토 금지 — **예외는 호출 자체가 불가한 환경뿐이며 그때는 "Reviewer 호출 실패 대응" B 분기**(체크리스트 대체 + 의무 3종). 호출은 V-5와 함께 **동기 호출**(`recovery.md` 「Subagent 호출 규약」).
+- `code-quality-reviewer` subagent 호출 (위 V-5에서 **병렬로 함께 호출**). 자체 검토 금지 — **예외는 호출 자체가 불가한 환경뿐이며 그때는 "Reviewer 호출 실패 대응" B 분기**(체크리스트 대체 + 의무 3종). 호출은 V-5와 함께 **수신 확인 호출**(`recovery.md` 「Subagent 호출 규약」).
 - **호출 프롬프트 주입 4축(판정문 요구·Bash 쓰기 금지·조사 산출물 위치·러너 직접 실행 금지)은 V-5의 공통 규정("(V-5·V-6 공통)" 표기 불릿들)을 그대로 적용한다** — 문면·근거·금지 대상 예시 전부 V-5가 정본이다(V-6은 항상 V-5와 병렬 호출이라 그 문면이 같은 자리에서 함께 읽힌다 — 여기 재서술하면 한쪽만 고쳐질 때 갈린다).
 - 검토 기준: DDD, 환각, 한글 주석, 파일 응집도(판정은 규칙 8의 네 질문), UTF-8, 보안, 동시성, 사용자 노출 UI 문구 친화성(항목 I — diff에 화면 표시 문구가 있을 때).
 - 결과 처리: V-5와 통합 — 둘 중 하나라도 BLOCKER/MAJOR면 수정 후 재실행하되 **범위는 V-5의 증분 재리뷰 표**를 따른다(③이면 둘 다 전량, ②면 해당 파일만, ①이면 생략). 둘 다 OK일 때만 진행하며, `[CONFLICT]`가 있으면 그것을 소비한 뒤에만 통과로 본다.
@@ -428,7 +428,7 @@ plan에 **`## 시각 요소 분해` 섹션(Step 2.5 산출물)이 있을 때만*
 - 같은 task에서 **리뷰 지적(BLOCKER/MAJOR) 수정 사이클 누적 5회** → Halt (매번 다른 지적으로 도는 무한 수정 루프 방지).
 - 한 task에서 **빌드·수정 사이클 10회 이상** 반복하고도 미완 → Halt (무한 그라인딩). 위 두 캡(리뷰 지적 한정)과 아래 "빌드 5회 연속 실패"(원인 미상 한정) 캡이 **모두 못 잡는** 시나리오 — 원인은 매번 알지만 끝나지 않는 그라인딩 — 를 이 상한이 유일하게 잡는다.
 - 같은 지점에 리뷰어 **`[CONFLICT]` 2회** → Halt (V-5의 `[CONFLICT]` 수신 절차 — 새 상한 값이 아니라 checkpoint 복구와 같은 2).
-- **동일 BLOCKER/MAJOR 2회 연속 → `auto-debug pass` 1회**(Halt가 아니라 그 직전 구제 — `root-cause-analyzer` 동기 호출로 fresh context 진단만 받는다). **어떤 Halt 카운터도 증감시키지 않고** 자체 상한 `1/1`만 가지므로 **위 상한들의 도달 시점은 그대로다.** 정본 `references/recovery.md` 「auto-debug pass (동일 BLOCKER 2회 — Halt 직전 구제)」.
+- **동일 BLOCKER/MAJOR 2회 연속 → `auto-debug pass` 1회**(Halt가 아니라 그 직전 구제 — `root-cause-analyzer` 수신 확인 호출로 fresh context 진단만 받는다). **어떤 Halt 카운터도 증감시키지 않고** 자체 상한 `1/1`만 가지므로 **위 상한들의 도달 시점은 그대로다.** 정본 `references/recovery.md` 「auto-debug pass (동일 BLOCKER 2회 — Halt 직전 구제)」.
 - 이 넷(위 Halt 트리거 넷 — **바로 위 auto-debug는 Halt가 아니라 구제라 여기 포함되지 않는다**) + 나머지 카운터(checkpoint 복구 2회·빌드 5회 연속 실패), **카운터 영속화**(plan.md `## Retry Ledger`에 기록해 auto-compact·재개에서 그 값부터 이어 셈 — G5), 상세 복구 절차는 모두 `references/recovery.md`에 일원화(단일 출처).
 
 ## Phase D — Done
@@ -596,7 +596,7 @@ Self-honesty: PASS
 
 **생략·축소를 타지 않는 것 둘** — ① **F-6.5**(README 갱신 + 회차 서사 커밋)는 코드 변경이 있었으면 항상 수행한다(누락 빈발 지점). 이때 구현 중 **새로 생긴** `## Deferred / Follow-up`·`## Out of Scope`는 `[DECISION]` 큐에, 확인된 **작업 규약·함정 사실**은 `[PROJECT-FACT]` 큐에 1줄씩 기록하고, **같은 절이 규정하는 「큐 자동 소비」로 그 두 큐를 소비한다**(대상 프로젝트 한정 · 최종 보고 직전 1회 · 보류 8종은 큐 유지 — 상세는 `references/phase-f-detail.md`의 「F-6.5. 문서 갱신 (README) + 회차 서사 커밋」. 큐잉 규정 정본은 `pjc:llm-wiki` 절차 K 5-2·5-3, vault 없으면 그 규약의 폴백). ② **F-8**은 plan에 `## 시각 요소 분해`가 있으면 항상 수행하고 위치는 **완료 선언 직전**이다(PRD 연결 plan은 Phase G 통과 후 — 재루프가 시각 요소를 다시 바꿀 수 있어 선언 직전 1회로 모은다). V-9가 인계한 `⏳ 미확인`이 하나라도 남으면 **완료 선언을 보류하고 Halt**한다.
 
-**F-7**은 `plan-completion-reviewer`(Opus) **동기 호출**(`recovery.md` 「Subagent 호출 규약」) — 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
+**F-7**은 `plan-completion-reviewer`(Opus) **수신 확인 호출**(`recovery.md` 「Subagent 호출 규약」) — 결과를 받아 판정한 뒤에만 완료 선언으로 간다.
 
 **Phase Ledger 갱신**: 통과 시 plan.md `## Phase Ledger`에 `Phase F 통과 (HEAD <sha>)`를, PRD 연결 plan은 추가로 `Phase G 통과 (Must 100%)`를 기록한다 — 재개 시 Phase F(F-7 Opus) 중복 실행을 막고 새 세션의 완료 판정 신호가 된다. **같은 지점에서 F-6.5의 「회차 서사 커밋」을 1회 만든다**(규정 본문은 `references/phase-f-detail.md` F-6.5 ⓒ·ⓓ·ⓕ — 명령·시점·재진입 규칙이 거기 있다). **단 PRD 연결 plan의 서사 커밋 지점은 여기가 아니라 Phase G의 G-4**다(G-2 재루프가 뒤에 오기 때문 — `references/phase-g-detail.md` G-4)(재개 진입의 Phase Ledger 판정 · phase-g-detail G-4).
 - **같은 자리에 F-6.5의 대장 반영 결과도 1줄 남긴다** — `F-6.5 대장 반영: 등재 N / 미등재 M`. plan.md는 gitignore + 다음 회차 교체라, 이 기록이 없으면 **압축·재개 후 그 회차가 Deferred를 실제로 이관했는지 판정할 수단이 없다**(`## Retry Ledger`가 재시도 카운터를 압축 생존시키는 것과 같은 축). 형식·기록 시점은 `references/phase-f-detail.md` F-6.5 「Phase Ledger에 반영 결과를 남긴다」가 정본.
@@ -625,7 +625,7 @@ Phase F는 "plan.md에 적힌 것"을 검증한다. Phase G는 한 단계 위 �
 ## 참조 문서
 
 - 중단 조건 + 보고 양식: `references/halt-conditions.md`
-- 복구 메커니즘 + Reviewer 호출 실패 대응(과부하 529·도구 불가·거절·빈 응답) 매트릭스: `references/recovery.md` — **subagent 동기 호출 규약**(정상 경로)도 이 파일이 정본이다.
+- 복구 메커니즘 + Reviewer 호출 실패 대응(과부하 529·도구 불가·거절·빈 응답) 매트릭스: `references/recovery.md` — **subagent 수신 확인 규약**(정상 경로)도 이 파일이 정본이다.
 - 안티패턴 표: `references/antipatterns.md`
 - 저빈도 상세(빌드/테스트 fallback 표 · UI 문구 · 검증 스크립트 Windows 보안): `references/authoring-detail.md`
 - Phase F 상세: `references/phase-f-detail.md`
