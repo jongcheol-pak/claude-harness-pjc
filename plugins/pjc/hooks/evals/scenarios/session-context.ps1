@@ -833,6 +833,20 @@ if (Test-HookSelected @('session-context')) {
     $r = & $scLedInvoke
     Assert-Case -Name "session-context: 대장 라인은 vault 게이팅 신호 아님 (SC44k)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 대장' -ExpectNotContains '위키 vault: 설정'
 
+    # SC44l (방어 경로 — 무효 날짜): 형식은 맞지만 의미가 무효인 문자열이 섞여도 **그 날짜만**
+    #   건너뛰고 항목은 살아남는다. 항목째로 버리면 그 항목이 최고령 후보에서 통째로 빠진다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A** (2026-13-45 무효)', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 무효 날짜는 그것만 건너뛴다 (SC44l)" -R $r -ExpectExit 0 -ExpectContains '(2026-05-01)'
+
+    # SC44m (방어 경로 — 전건 무효): 쓸 수 있는 날짜가 하나도 없으면 라인을 내지 않는다.
+    #   억제 분기가 없으면 빈 배열에 [0] 인덱싱이 걸려 라인이 깨진 값으로 나가거나 catch로 사라진다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2099-01-01] **A** 미래만 있는 항목') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 유효 판정일 0건이면 미주입 (SC44m)" -R $r -ExpectExit 0 -ExpectNotContains 'Deferred 대장'
+
     Remove-Item -Recurse -Force $scLed, $scLedNoHarn -ErrorAction SilentlyContinue
 
     Remove-Item -Recurse -Force $isoV, $isoV2, $scHarn -ErrorAction SilentlyContinue
