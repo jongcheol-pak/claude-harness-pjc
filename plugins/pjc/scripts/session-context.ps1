@@ -236,20 +236,17 @@ try {
                 $cwdBaseCount++
             }
 
-            # 조회 절차도 넣는다 — 압축된 계획 세션이 위키를 다시 조회할 때 vault 판정 게이트와
-            #   인덱스 조회 순서가 손에 없으면 "미설정"을 확인 없이 단정하거나 조회 순서를 지어낸다.
-            #   대상이 K 1~2까지인 이유: 절 전체(K 1~5 포인터, 20,323B)는 $sectionMaxBytes 를 넘어
-            #   $null 로 사라지고, K 3부터 넣으면 그 크기가 된다. 종료 앵커를 K 3 앞 헤딩으로 두어
-            #   K 1~2(15,402B, 상한의 77%)만 자른다.
-            # ⚠ 그래서 K 3(페이지 Read·무매칭 합성 금지·한/영 양방향)·K 4(신뢰도 표기)는 주입되지
-            #   않고 크기 축의 감시 대상도 아니다 — 라벨에 그 사실을 적어 세션이 모른 채 조회하지
-            #   않게 한다(주입은 절 전체가 아니라는 것을 받는 쪽이 알아야 한다).
-            $secLookup = Get-SkillSection -Path (Join-Path $skillsDir 'llm-wiki/SKILL.md') -StartHeading '### K. 작업 참조 (코드 작업 세션 read-only 조회)' -StopHeading '#### K 3~4 · K 5 포인터'
-            if ($secLookup) {
-                $lines.Add("[pjc 세션 컨텍스트] 압축 직후 위키 조회 절차 (원문 발췌 — llm-wiki/SKILL.md 「절차 K 1~2」 · K 3~4와 K 5 포인터는 그 파일을 Read)`n$secLookup")
-                # 위 둘과 같은 짝 — 주입 성공 시에만 기준선을 올린다.
-                $cwdBaseCount++
-            }
+            # 조회 절차는 원문을 싣지 않고 경로만 가리킨다(v1.220.0) — 절차 K가
+            #   `references/lookup-rules.md`로 분리돼 그 파일 하나만 Read하면 K 1~5가 완결된다.
+            #   종전엔 K 1~2 원문 15,402B를 실었는데 둘 다 문제였다: ⓐ 이 분기는 「계획 세션일
+            #   것 같다」는 추정이라 위키를 열 일이 없는 세션까지 대상이었고 ⓑ 상한 때문에 K 3~4가
+            #   잘려 나가 주입이 Read를 대체하지도 못했다. 경로는 단일 인자로 준다 — 세그먼트를
+            #   나눠 넘기면 Windows에서 백슬래시가 돼 경로 리터럴을 재는 골든이 깨진다.
+            $lookupPath = Join-Path $skillsDir 'llm-wiki/references/lookup-rules.md'
+            $lines.Add("[pjc 세션 컨텍스트] 위키 조회 절차: $lookupPath — 위키를 참조하기 전에 이 파일을 Read하세요(절차 K 1~5 전체). vault 판정 게이트가 그 안에 있습니다.")
+            # 위 둘과 같은 짝 — 라인이 하나 늘었으므로 기준선도 하나 올린다.
+            #   주입과 달리 추출 실패 분기가 없어 무조건 올린다.
+            $cwdBaseCount++
         }
 
         # ---- 위키 vault 설정 상태 판정 (라인 생성만 — 주입은 아래 수집 종료 후) ----
