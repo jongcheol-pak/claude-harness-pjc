@@ -202,27 +202,30 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미완료 task 세션엔 큐 규약 미주입 (SC42d)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
 
-    # SC43~SC43f: 계획 세션에 **위키 조회 절차(K 1~2) 원문 주입** (v1.218.0 후속).
-    #   절 전체(20,323B)는 $sectionMaxBytes 초과라 K 3 앞 헤딩을 종료 앵커로 삼아 앞부분만 자른다.
-    #   SC42 계열과 같은 분기에서 돌지만 대상 문서·구간이 달라 따로 건다.
-    # SC43 (양성): compact + plan 없음 → K 1 **본문 문자열**이 실려 온다.
+    # SC43~SC43f: 계획 세션에 **위키 조회 절차 경로 지시** (v1.220.0 — 원문 주입에서 전환).
+    #   절차 K가 `references/lookup-rules.md`로 분리돼 그 파일 하나로 완결되므로, 15,402B를 싣는
+    #   대신 경로 1줄만 준다. 세 어서션이 재는 축도 함께 바뀌었다 — 종전의 「발췌 표기」·「추출
+    #   경계」는 주입이 없어져 소멸했고, 그 자리를 「경로 정확성」·「행동 지시」가 잇는다.
+    # SC43 (양성): compact + plan 없음 → 경로 지시 라인이 실려 온다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact 조회 절차 주입 (SC43)" -R $r -ExpectExit 0 -ExpectContains '확인했더니 없음'
-    # SC43b (발췌 표기 — **범위까지** 밝힌다): 절 전체가 아니라 K 1~2만 왔음을 받는 쪽이 알아야
-    #   K 3~4를 그 파일에서 마저 읽는다. 기존 주입 4건이 전부 「」로 범위를 밝히는 관례와 같다.
-    #   ⚠ 접두부가 아니라 **라벨 전문**을 잰다 — 꼬리(`· K 3~4와 K 5 포인터는 그 파일을 Read`)가
-    #   이 회차가 K 3~4를 주입에서 뺀 대가를 받는 쪽에 알리는 **유일한 런타임 장치**라, 접두부만
-    #   재면 그 꼬리가 지워져도 전건 통과한다(F-7 1R M2).
-    Assert-Case -Name "session-context: 조회 절차 주입에 범위 표기 (SC43b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/SKILL.md 「절차 K 1~2」 · K 3~4와 K 5 포인터는 그 파일을 Read'
-    # SC43f (경계 계약): 추출이 **K 2까지** 닿는다 — 종료 앵커가 K 2 앞으로 밀리면 FAIL.
-    #   SC43은 K 1 본문만 보므로 그 회귀를 못 잡는다(SC42f와 같은 이유).
-    Assert-Case -Name "session-context: 조회 절차 주입이 K 2까지 포함 (SC43f)" -R $r -ExpectExit 0 -ExpectContains '범용 패턴'
-    # SC43c (델타 음성): startup엔 주입하지 않는다.
+    Assert-Case -Name "session-context: compact 조회 절차 경로 지시 (SC43)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
+    # SC43b (**경로 정확성**): 라인이 있는 것만으로는 부족하다 — 경로가 틀리면 세션이 그 파일을
+    #   못 읽어 조회 절차가 통째로 사라지는데, SC43은 접두 라벨만 보므로 그 회귀를 못 잡는다.
+    #   ⚠ 슬래시 표기를 그대로 잰다 — **`Join-Path`는 단일 인자여도 구분자를 백슬래시로
+    #   정규화한다**(2026-09-02 실측 — 이 어서션이 첫 실행에서 그것을 FAIL로 잡았다). 그래서 hook은
+    #   보간("$skillsDir/llm-wiki/...")으로 뒤쪽 세그먼트를 슬래시로 고정한다 — 그것이 계약이다.
+    Assert-Case -Name "session-context: 조회 절차 경로가 정확한가 (SC43b)" -R $r -ExpectExit 0 -ExpectContains 'llm-wiki/references/lookup-rules.md'
+    # SC43f (**행동 지시**): 경로만 주고 무엇을 하라는지 없으면 세션이 읽지 않는다 — vault 라인에
+    #   행동 지시 축을 건 SC18c·SC18d와 같은 형태다. 그 꼬리가 지워져도 SC43·SC43b는 통과한다.
+    Assert-Case -Name "session-context: 조회 절차 지시에 행동 문구 (SC43f)" -R $r -ExpectExit 0 -ExpectContains 'vault 판정 게이트가 그 안에 있습니다'
+    # SC43c (델타 음성): startup엔 넣지 않는다 — 압축 전용 보완이라 매 세션 얹으면 예산 낭비다.
+    #   ⚠ 대조 문자열은 **새 라인의 것**이어야 한다 — 옛 문자열(K 1 본문)로 두면 주입이 사라진
+    #   지금은 어떤 출력에도 없어 이 케이스가 항상 통과하고 델타 음성 축이 조용히 죽는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: startup엔 조회 절차 미주입 (SC43c)" -R $r -ExpectExit 0 -ExpectNotContains '확인했더니 없음'
+    Assert-Case -Name "session-context: startup엔 조회 절차 미주입 (SC43c)" -R $r -ExpectExit 0 -ExpectNotContains '위키 조회 절차:'
     # SC43d (델타 음성): compact + 미완료 task 세션엔 새지 않는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 미완료 task 세션엔 조회 절차 미주입 (SC43d)" -R $r -ExpectExit 0 -ExpectNotContains '확인했더니 없음'
+    Assert-Case -Name "session-context: 미완료 task 세션엔 조회 절차 미주입 (SC43d)" -R $r -ExpectExit 0 -ExpectNotContains '위키 조회 절차:'
 
     # SC30 (델타 음성): compact + plan도 AGENTS.md도 없는 비 pjc 폴더 → 계획 지시 미발화.
     #   리마인더 대상이 pjc 워크플로라 무관한 폴더에 뜨면 노이즈다(`:16` 무출력 규칙과 같은 취지).
@@ -304,9 +307,9 @@ if (Test-HookSelected @('session-context')) {
     #   주입이 둘로 늘었으므로 `$cwdBaseCount++`도 둘이어야 한다 — 한 쪽만 올리면
     #   그 세션에 vault 라인이 새로 붙는다(SC41e가 고정한 것과 같은 형태의 회귀).
     Assert-Case -Name "session-context: 큐 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고' -ExpectNotContains '위키 vault: 설정'
-    # SC43e (회귀 고정): 조회 절차 **주입**도 같은 짝을 지킨다 — 주입이 셋으로 늘었으므로
-    #   `$cwdBaseCount++`도 셋이어야 한다. 하나만 빠뜨리면 그 세션에 vault 라인이 새로 붙는다.
-    Assert-Case -Name "session-context: 조회 절차 주입도 vault 게이팅 신호 아님 (SC43e)" -R $r -ExpectExit 0 -ExpectContains '확인했더니 없음' -ExpectNotContains '위키 vault: 설정'
+    # SC43e (회귀 고정): 경로 지시 라인도 같은 짝을 지킨다 — 라인이 셋이므로 `$cwdBaseCount++`도
+    #   셋이어야 한다. 하나만 빠뜨리면 그 세션에 vault 라인이 새로 붙는다.
+    Assert-Case -Name "session-context: 조회 절차 지시도 vault 게이팅 신호 아님 (SC43e)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:' -ExpectNotContains '위키 vault: 설정'
 
     # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
     #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
