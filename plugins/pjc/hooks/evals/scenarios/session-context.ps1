@@ -211,8 +211,9 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 조회 절차 경로 지시 (SC43)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
     # SC43b (**경로 정확성**): 라인이 있는 것만으로는 부족하다 — 경로가 틀리면 세션이 그 파일을
     #   못 읽어 조회 절차가 통째로 사라지는데, SC43은 접두 라벨만 보므로 그 회귀를 못 잡는다.
-    #   ⚠ 슬래시 표기를 그대로 잰다 — hook이 `Join-Path`에 세그먼트를 나눠 넘기면 Windows에서
-    #   백슬래시가 되어 이 어서션이 FAIL한다(단일 인자로 주는 것이 계약이다).
+    #   ⚠ 슬래시 표기를 그대로 잰다 — **`Join-Path`는 단일 인자여도 구분자를 백슬래시로
+    #   정규화한다**(2026-09-02 실측 — 이 어서션이 첫 실행에서 그것을 FAIL로 잡았다). 그래서 hook은
+    #   보간("$skillsDir/llm-wiki/...")으로 뒤쪽 세그먼트를 슬래시로 고정한다 — 그것이 계약이다.
     Assert-Case -Name "session-context: 조회 절차 경로가 정확한가 (SC43b)" -R $r -ExpectExit 0 -ExpectContains 'llm-wiki/references/lookup-rules.md'
     # SC43f (**행동 지시**): 경로만 주고 무엇을 하라는지 없으면 세션이 읽지 않는다 — vault 라인에
     #   행동 지시 축을 건 SC18c·SC18d와 같은 형태다. 그 꼬리가 지워져도 SC43·SC43b는 통과한다.
