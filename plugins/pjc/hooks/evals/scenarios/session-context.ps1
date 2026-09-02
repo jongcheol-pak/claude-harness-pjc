@@ -735,6 +735,129 @@ if (Test-HookSelected @('session-context')) {
     Remove-Item -Recurse -Force $scRepo, $scHarnRepo, $scRepoNoRemote -ErrorAction SilentlyContinue
     }   # ---- git 게이트 끝 (SC32~SC37d)
 
+    # SC44~SC44n: Deferred 대장(docs/plans/deferred.md) 최고령 「마지막 판정일」 주입 (v1.221.0 T1).
+    #   착수 조건 축 ②의 값이 손계산이라 같은 오산이 2회 났다(v1.188.0 부기 형식 미인식 /
+    #   v1.219.0·v1.220.0 항목 내 최신 스탬프 미인식). hook이 그 값을 계산해 알린다.
+    #   ⚠ **기대는 날짜부로 잰다** — 일수는 매일 늘어 픽스처 골든이 다음 날 깨진다.
+    #   ⚠ 각 축은 **단독으로 무엇을 검출하는지**가 달라야 한다 — 한 픽스처가 두 규칙을 함께 태우면
+    #     둘 중 하나만 살아도 통과해 어느 회귀도 못 잡는다(ⓒ 형식 한정 / ⓓ 미래 배제를 가른 이유).
+    $scLed = Join-Path $work ("sc-ledger-" + $suffix)
+    New-Item -ItemType Directory -Path (Join-Path $scLed 'plugins/pjc/.claude-plugin') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $scLed 'docs/plans') -Force | Out-Null
+    '{ "name": "pjc" }' | Set-Content -Encoding UTF8 (Join-Path $scLed 'plugins/pjc/.claude-plugin/plugin.json')
+    $scLedFile = Join-Path $scLed 'docs/plans/deferred.md'
+    $scLedInvoke = { Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scLed } | ConvertTo-Json -Compress) }
+
+    # SC44 (양성): 대기 3건 → 라인이 나오고 건수가 실린다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A**', '- [2026-06-01] **B**', '- [2026-07-01] **C**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: Deferred 대장 최고령 주입 (SC44)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 대장: 대기 3건'
+
+    # SC44b (값 정확성 — 항목별 **최신** 스탬프): 등록일보다 재확인 표기가 최신이면 그쪽을 취한다.
+    #   첫 스탬프를 취하는 회귀(v1.219.0 오산의 형태)면 (2026-01-01)이 나와 FAIL한다.
+    #   **항목이 1건인 픽스처다** — 스칼라 반환 함정(@() 래핑 누락)을 실제로 태운다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-01-01] **A** (2026-06-01 재확인: 유지 — 근거)') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 항목별 최신 스탬프를 판정일로 (SC44b)" -R $r -ExpectExit 0 -ExpectContains '(2026-06-01)'
+
+    # SC44c (형식 한정 — 단독 검출): 괄호 **밖** 과거 날짜는 판정일이 아니다.
+    #   형식 한정이 풀리면 A의 판정일이 2026-07-01로 밀려 최고령이 (2026-06-01)이 되어 FAIL.
+    #   ⚠ 미래 날짜를 쓰지 않는다 — 그러면 미래 배제(SC44d)만으로도 통과해 이 축이 죽는다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A** — 본문에 2026-07-01 을 인용한다', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 괄호 밖 인용 날짜는 판정일 아님 (SC44c)" -R $r -ExpectExit 0 -ExpectContains '(2026-05-01)'
+
+    # SC44d (미래 배제 — 단독 검출): 괄호 **안** 미래 날짜는 후보에서 뺀다.
+    #   형식 한정은 이 날짜를 통과시키므로, 미래 배제가 없으면 A가 2099로 밀려 (2026-06-01) FAIL.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A** (2099-01-01 예정)', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 괄호 안 미래 날짜는 후보 제외 (SC44d)" -R $r -ExpectExit 0 -ExpectContains '(2026-05-01)'
+
+    # SC44e (최솟값 선택): 판정일이 서로 다른 3항목에서 **가장 오래된** 것을 고른다.
+    #   max/min을 뒤집거나 첫 항목만 보는 회귀를 잡는다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-07-01] **A**', '- [2026-03-01] **B**', '- [2026-05-01] **C**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 항목별 최댓값들의 최솟값 (SC44e)" -R $r -ExpectExit 0 -ExpectContains '(2026-03-01)'
+
+    # SC44f (항목 단위 묶기): 최신 스탬프가 **하위 불릿에만** 있는 항목.
+    #   줄 단위로 되돌아가면 A의 판정일이 2026-05-01로 과소평가돼 (2026-05-01) FAIL.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A**', '  - **(2026-08-01 재확인: 유지)** 하위 불릿', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 하위 불릿도 같은 항목으로 묶는다 (SC44f)" -R $r -ExpectExit 0 -ExpectContains '(2026-06-01)'
+
+    # SC44g (vN 부기 양성 — 접두 형식): 정본 ⓪이 예시하는 `[등록일, **vN…**]`.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01, **v1.147.0에서 부분 해소**] **A**', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: vN 부기(접두 형식) 표시 (SC44g)" -R $r -ExpectExit 0 -ExpectContains 'vN 부기 1건'
+
+    # SC44g2 (vN 부기 양성 — 제목 뒤 형식): v1.185.0 T2가 세운 현행 관례. **실물은 전부 이 형태다.**
+    #   접두 형식만 보는 구현이면 0건이 되어 이 케이스가 FAIL한다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A** (v1.147.0에서 부분 해소) — 본문', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: vN 부기(제목 뒤 형식) 표시 (SC44g2)" -R $r -ExpectExit 0 -ExpectContains 'vN 부기 1건'
+
+    # SC44h (vN 부기 델타 음성): 그 형식이 없으면 부기가 붙지 않는다.
+    #   이 케이스가 없으면 「항상 부기」로 바꿔도 나머지가 전부 통과한다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A**', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: vN 부기 없으면 미표시 (SC44h)" -R $r -ExpectExit 0 -ExpectNotContains 'vN 부기'
+
+    # SC44i (델타 음성 — 비하네스 cwd): plugin.json 없이 대장만 있으면 미주입.
+    #   게이팅이 풀리면 대장을 가진 모든 프로젝트에 이 라인이 뜬다.
+    $scLedNoHarn = Join-Path $work ("sc-ledger-noharn-" + $suffix)
+    New-Item -ItemType Directory -Path (Join-Path $scLedNoHarn 'docs/plans') -Force | Out-Null
+    'x' | Set-Content -Encoding UTF8 (Join-Path $scLedNoHarn 'AGENTS.md')
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A**') |
+        Set-Content -Encoding UTF8 (Join-Path $scLedNoHarn 'docs/plans/deferred.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scLedNoHarn } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 비하네스 cwd는 대장 라인 미주입 (SC44i)" -R $r -ExpectExit 0 -ExpectNotContains 'Deferred 대장'
+
+    # SC44j (델타 음성 — 대장 부재): 하네스 cwd인데 대장이 없으면 라인만 미주입(fail-open).
+    Remove-Item -Force $scLedFile -ErrorAction SilentlyContinue
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 대장 부재 시 미주입 (SC44j)" -R $r -ExpectExit 0 -ExpectNotContains 'Deferred 대장'
+
+    # SC44k (짝 계약): 이 라인은 vault 게이팅 신호가 아니다 — plan·AGENTS.md가 **둘 다 없는**
+    #   픽스처에서 대장 라인만 나와도 vault 라인이 새면 안 된다($cwdBaseCount++ 누락 검출).
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A**') | Set-Content -Encoding UTF8 $scLedFile
+    $env:USERPROFILE = $isoV
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 대장 라인은 vault 게이팅 신호 아님 (SC44k)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 대장' -ExpectNotContains '위키 vault: 설정'
+
+    # SC44l (방어 경로 — 무효 날짜): 형식은 맞지만 의미가 무효인 문자열이 섞여도 **그 날짜만**
+    #   건너뛰고 항목은 살아남는다. 항목째로 버리면 그 항목이 최고령 후보에서 통째로 빠진다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A** (2026-13-45 무효)', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 무효 날짜는 그것만 건너뛴다 (SC44l)" -R $r -ExpectExit 0 -ExpectContains '(2026-05-01)'
+
+    # SC44m (방어 경로 — 전건 무효): 쓸 수 있는 날짜가 하나도 없으면 라인을 내지 않는다.
+    #   억제 분기가 없으면 빈 배열에 [0] 인덱싱이 걸려 라인이 깨진 값으로 나가거나 catch로 사라진다.
+    @('# Deferred 대장', '', '## 대기', '', '- [2099-01-01] **A** 미래만 있는 항목') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 유효 판정일 0건이면 미주입 (SC44m)" -R $r -ExpectExit 0 -ExpectNotContains 'Deferred 대장'
+
+    # SC44n (구조 줄 흡수 방지 — F-7 M1): `## 대기`에는 항목 뒤에 **앵커 줄**(`**▶ …`)과
+    #   **인용 블록**(`> …`)이 온다. 그것을 직전 항목의 본문으로 흡수하면 거기 적힌 날짜가
+    #   그 항목의 판정일로 밀려 올라가 최고령이 실제보다 최신이 된다(batch가 늦게 열린다).
+    #   필터가 없으면 A의 판정일이 2026-08-05로 밀려 최고령이 (2026-07-01)이 되어 FAIL.
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-06-01] **A**', '**▶ 현행 잔량**: 대기 2 (2026-08-05 실측 2건)', '> 카운트 기준 인용 (2026-08-05 실측)', '- [2026-07-01] **B**') |
+        Set-Content -Encoding UTF8 $scLedFile
+    $r = & $scLedInvoke
+    Assert-Case -Name "session-context: 앵커·인용 블록은 항목 본문이 아니다 (SC44n)" -R $r -ExpectExit 0 -ExpectContains '(2026-06-01)'
+
+    Remove-Item -Recurse -Force $scLed, $scLedNoHarn -ErrorAction SilentlyContinue
+
     Remove-Item -Recurse -Force $isoV, $isoV2, $scHarn -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 
