@@ -240,9 +240,12 @@ try {
             #   `references/lookup-rules.md`로 분리돼 그 파일 하나만 Read하면 K 1~5가 완결된다.
             #   종전엔 K 1~2 원문 15,402B를 실었는데 둘 다 문제였다: ⓐ 이 분기는 「계획 세션일
             #   것 같다」는 추정이라 위키를 열 일이 없는 세션까지 대상이었고 ⓑ 상한 때문에 K 3~4가
-            #   잘려 나가 주입이 Read를 대체하지도 못했다. 경로는 단일 인자로 준다 — 세그먼트를
-            #   나눠 넘기면 Windows에서 백슬래시가 돼 경로 리터럴을 재는 골든이 깨진다.
-            $lookupPath = Join-Path $skillsDir 'llm-wiki/references/lookup-rules.md'
+            #   잘려 나가 주입이 Read를 대체하지도 못했다.
+            # ⚠ `Join-Path`를 쓰지 않는다 — 단일 인자로 줘도 구분자를 백슬래시로 정규화해
+            #   경로 리터럴을 재는 골든(SC43b)이 Windows에서만 깨진다(실측 2026-09-02).
+            #   보간으로 이어 붙여 뒤쪽 세그먼트를 슬래시로 고정한다 — Windows도 슬래시 경로를 인식하고,
+            #   그래야 그 계약이 OS에 안 매인다.
+            $lookupPath = "$skillsDir/llm-wiki/references/lookup-rules.md"
             $lines.Add("[pjc 세션 컨텍스트] 위키 조회 절차: $lookupPath — 위키를 참조하기 전에 이 파일을 Read하세요(절차 K 1~5 전체). vault 판정 게이트가 그 안에 있습니다.")
             # 위 둘과 같은 짝 — 라인이 하나 늘었으므로 기준선도 하나 올린다.
             #   주입과 달리 추출 실패 분기가 없어 무조건 올린다.
