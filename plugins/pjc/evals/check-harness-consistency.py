@@ -875,7 +875,7 @@ def check_pointer_reachability():
 
     for src in _md_files():
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
-        # 과거 plan·로컬 노트는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
+        # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
         # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
         # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
         if _ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
