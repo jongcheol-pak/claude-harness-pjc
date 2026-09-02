@@ -1262,6 +1262,16 @@
       "rationale": "**`90_archive/` 제외**(Edge Case). 동결 사본에는 목록이 없어도 정상이다 — 규약이 수정을 막아 둔 자리에 수리를 요구하면 고칠 수 없는 WARN이 영구히 남는다(§8의 「백업 파일이 WARN을 만들지 않는다」와 같은 계열). 여기 상위·하위 쌍은 목록 없이도 침묵해야 한다."
     },
     {
+      "fixture": "subdoc-manual",
+      "expect_keywords": [
+        "하위 문서 목록 누락: 20_projects/personal/demo/feat-thing.md의 '## 하위 문서'에 20_projects/personal/demo/feat-thing-detail.md"
+      ],
+      "expect_absent": [
+        "하위 문서 목록 깨짐"
+      ],
+      "rationale": "§7-30ⓔ **수기 하위의 미탐**을 닫는다. 종전 판정은 파일명 순번 접두(`{stem}-{n}`)와 복귀 링크를 **둘 다** 요구해, 순번이 없는 수기 하위(`feat-thing-detail.md`)가 첫 조건에서 통째로 빠졌다 — 그 미탐을 당시 주석이 스스로 인정하고 있었다. 지금은 **복귀 링크 하나가 판정 신호**이고 상위도 그 링크에서 도출한다: 복귀 링크는 그 파일이 스스로 「나는 X의 하위다」라고 선언한 것이라 접두보다 강한 신호이며, 상위를 이름 규칙으로 추측하지 않으므로 `subdoc-otherparent`가 잡던 오탐도 그대로 막힌다. **축을 하나만 싣는다** — 목록 자체는 정상이라 「깨짐」 축이 발화하지 않는다."
+    },
+    {
       "fixture": "prose-resplit-hub",
       "auto_split": true,
       "expect_keywords": [
