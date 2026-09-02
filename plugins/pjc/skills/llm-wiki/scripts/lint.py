@@ -3042,8 +3042,10 @@ def main():
             continue          # 복귀 링크가 없으면 분리해 나온 하위가 아니다(독립 페이지 오탐 방지)
         bt = back.group(1)
         parent = bt if bt.endswith(".md") else bt + ".md"
-        if parent not in pages or parent == r:
-            continue          # 상위가 실재하지 않거나 자기 자신을 가리킨다
+        if parent not in pages or parent == r or parent.startswith("90_archive/"):
+            continue          # 상위가 실재하지 않거나·자기 자신이거나·**아카이브**다.
+                              #  아카이브 상위를 배제하는 이유는 ⓐ·ⓑ와 같다 — §8이 수정을 막아 둔
+                              #  자리에 등재를 요구하면 고칠 수 없는 WARN이 영구히 남는다.
         listed = {x[:-3] if x.endswith(".md") else x
                   for x in wikilink_targets(section(pages[parent][2], "하위 문서") or "")}
         if r[:-3] not in listed:

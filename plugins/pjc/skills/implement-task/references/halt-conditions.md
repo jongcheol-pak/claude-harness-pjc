@@ -93,8 +93,11 @@
 - Last checkpoint: <commit hash>
 - Files touched: <목록>
 - Tests: <상태>
+- Deferred 인계: <plan `## Deferred / Follow-up`의 **미판정 항목**을 그대로 옮긴다 — 0건이면 이 줄을 쓰지 않는다>
 **Options for user**:
   A) <대안 1>
   B) <대안 2>
   C) plan.md 재작성 (plan-feature로 복귀)
 ```
+
+**`Deferred 인계` 줄을 두는 이유**: `plan.md`는 gitignore + 다음 회차 교체라, Halt로 끝나 F-6.5에 닿지 못하면 그 회차가 관측한 Deferred가 **대장에 오르지 못하고 통째로 사라진다**(`references/phase-f-detail.md` F-6.5 ⓔ). 서사는 확정되지 않았어도 항목 자체는 이미 관측된 사실이므로 보고에 실어 넘긴다. **0건이면 줄을 생략**한다 — 모든 Halt를 무겁게 만들지 않는다.
