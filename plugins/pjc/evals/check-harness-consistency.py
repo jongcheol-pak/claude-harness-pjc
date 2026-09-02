@@ -898,17 +898,21 @@ def check_pointer_reachability():
                 #   실패하고 동명 파일이 스킬마다 있어 접미 색인(③)도 후보 다수로 포기한다.
                 #   출처에서 위로 거슬러 `skills/<name>/` 경계를 찾아 그 폴더에서만 찾으면
                 #   후보가 하나로 확정된다(추측이 아니라 소속으로 정해진다).
-                _d = os.path.dirname(src)
+                #   **한계 — 이 해석은 「자기 스킬」로만 귀속시킨다.** 다른 스킬의 파일을 이름만으로
+                #   가리키는 표기가 생기면 **틀린 파일에 조용히 매칭**될 수 있다(못 찾아 issues로
+                #   뜨는 것보다 나쁘다). 현재 레포의 실사용 2건은 둘 다 자기 스킬 자기참조라
+                #   무해하지만, 그런 표기가 생기면 `by_suffix`처럼 후보 다수 시 포기하도록 좁혀야 한다.
+                skill_dir = os.path.dirname(src)
                 while True:
-                    _parent = os.path.dirname(_d)
-                    if not _parent or _parent == _d:
+                    up = os.path.dirname(skill_dir)
+                    if not up or up == skill_dir:
                         break
-                    if os.path.basename(_parent) == "skills":
-                        _cand = os.path.join(_d, ref_path)
-                        if os.path.exists(_cand):
-                            target = _cand
+                    if os.path.basename(up) == "skills":
+                        skill_cand = os.path.join(skill_dir, ref_path)
+                        if os.path.exists(skill_cand):
+                            target = skill_cand
                         break
-                    _d = _parent
+                    skill_dir = up
             if target is None:
                 # 경로 표기가 다양해(상대·부분 경로) 해석 실패를 곧바로 결함으로 보면 오탐이 크다.
                 # 다만 **조용히 넘기지는 않는다** — 파일이 실제로 삭제·이동된 경우가 가장 심한
