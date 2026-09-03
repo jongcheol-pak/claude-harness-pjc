@@ -135,14 +135,15 @@ function Get-OrphanProcessCandidates {
 function Invoke-OrphanProcessCleanup {
     <#
       회수 본체. 화면 출력 없음(안전 계약 ②) — 회수 사실은 hook-event-log에만 적재한다.
-        -Hook     적재할 hook 이름. 비면 report-hook-events가 엔트리를 버리므로 호출측이 반드시 준다.
+        -Hook     적재할 hook 이름. 비면 이벤트 로그의 hook 필드가 비어 어느 hook의 회수였는지
+                  사후에 가릴 수 없으므로 호출측이 반드시 준다(골든이 이 필드를 고정한다).
         -Records  주면 수집을 건너뛰고 그 배열로 판정한다(골든 검증용 주입 seam).
         -DryRun   Stop-Process를 생략한다. 목 PID가 실재 프로세스와 겹칠 때 무관한 프로세스를
                   죽이는 것을 막는다. 이때 적재 rule을 분리해 실로그 오염도 막는다.
       반환: @{ Suppressed; Scanned; CimQueried; Killed; Unkillable; CpuSec }
     #>
     param(
-        [string]$Hook = 'orphan-process-cleanup',
+        [string]$Hook = 'session-end-cleanup-lib',
         [object[]]$Records = $null,
         [switch]$DryRun
     )

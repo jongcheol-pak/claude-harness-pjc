@@ -31,7 +31,7 @@ function Write-RpEvent {
     param([string]$Decision, [string]$Rule)
     try {
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
-            Write-HookEvent 'require-plan-for-write' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath)
+            Write-HookEvent 'guard-write' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath)
         }
     } catch {}
 }

@@ -42,7 +42,7 @@ $env:CLAUDE_HARNESS_NO_PROC_CLEANUP = '1'
 
 # ---- 격리 환경 구성 ----
 # 홈 격리($EvalIso)는 임시 폴더에 둬도 되지만, 시나리오 프로젝트($EvalWork)는 반드시 임시 폴더 '밖'이어야
-# 한다 — require-plan-for-write가 시스템 임시 폴더 하위를 무조건 통과시키므로(H3 의도된 완화),
+# 한다 — guard-write가 시스템 임시 폴더 하위를 무조건 통과시키므로(H3 의도된 완화),
 # 픽스처가 temp 안에 있으면 차단 시나리오 전체가 우회로 무력화된다. temp 판정은 prefix 비교라
 # 부모 폴더로 한 단계 감싸도 그 성질은 그대로다(`guard-write.ps1`의 tempRoot StartsWith).
 #
@@ -100,7 +100,7 @@ $pw = Join-Path $work 'pwproj'; New-Item -ItemType Directory $pw -Force | Out-Nu
 $vdCache = Join-Path $iso '.claude/plugins/cache/pjc-harness/pjc/1.0.0/scripts'      # §10 개조 차단·§11(d) 경로
 
 function New-WriteJson([string]$cwd, [string]$file, [string]$tool = 'Write', [hashtable]$extra = @{}, [hashtable]$top = @{}) {
-    # §2 require-plan·§2b protect-harness·§6 post-write 등 다수 섹션 공용
+    # §2 require-plan·§2b guard-harness·§6 post-write 등 다수 섹션 공용
     # $top: tool_input이 아니라 stdin JSON 최상위에 병합할 필드 (예: transcript_path — AGENTS 게이트)
     $ti = @{ file_path = $file; content = 'class A {}' } + $extra
     return ((@{ tool_name = $tool; cwd = $cwd; tool_input = $ti } + $top) | ConvertTo-Json -Compress)

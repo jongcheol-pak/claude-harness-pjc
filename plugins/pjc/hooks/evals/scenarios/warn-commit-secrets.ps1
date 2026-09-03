@@ -519,5 +519,5 @@ if ($gitOk) {
 } else {
     Write-Host "[SKIP] warn-commit-secrets 시나리오 (git 없음)"
 }
-}   # ---- §9 게이트 끝 (warn-commit-secrets·pre-bash-dispatch) ----
+}   # ---- §9 게이트 끝 (warn-commit-secrets·guard-bash) ----
 

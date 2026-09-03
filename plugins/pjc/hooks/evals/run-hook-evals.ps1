@@ -1,7 +1,7 @@
 ﻿# run-hook-evals.ps1 — pjc hook 골든 회귀 러너 (lint evals의 hook 판)
 #
 # 사용법: pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
-#   부분 실행(개발 반복 전용): ... run-hook-evals.ps1 -Filter block-destructive,require-plan-for-write
+#   부분 실행(개발 반복 전용): ... run-hook-evals.ps1 -Filter block-destructive,guard-write
 #   순차 실행(등가 대조·폴백):  ... run-hook-evals.ps1 -Sequential
 #   중단 후 이어하기:           ... run-hook-evals.ps1 -Resume
 #
@@ -63,7 +63,7 @@ $evalsDirTop = $PSScriptRoot
 # 이 목록의 순서가 곧 출력 순서다(분리 전 dot-source 순서를 그대로 보존한다 — 케이스 라인이
 # 종전과 같은 순서로 나와야 순차·병렬 등가 대조가 형식까지 일치한다).
 # 그룹이 둘 이상인 항목은 **같은 격리 홈을 공유해야 하는** 시나리오들이다:
-#   protect-harness-installed + hook-event-log — $vdCache 공유 + 후자가 홈의 이벤트 로그 적재를 관찰
+#   guard-harness-installed + hook-event-log — $vdCache 공유 + 후자가 홈의 이벤트 로그 적재를 관찰
 $scenarioGroups = @(
     @('stateless-1'),
     @('stateless-2'),
@@ -80,7 +80,7 @@ $scenarioGroups = @(
     @('post-write-checks'),
     @('warn-commit-secrets'),
     @('warn-version-drift'),
-    @('protect-harness-installed', 'hook-event-log'),
+    @('guard-harness-installed', 'hook-event-log'),
     @('session-context'),
     @('guard-harness-content'),
     @('session-end-cleanup')
@@ -192,7 +192,7 @@ if (-not $StateDir) {
 
 # ---- -Resume 상태의 유효 범위 각인 (거짓 green 차단) ----
 # **왜 필요한가**: 상태를 그룹명만으로 식별하면 `-Resume`이 **다른 조건에서 만든 판정을 재사용**한다.
-#   실측 사고: `-Filter "stateless,pre-bash-dispatch"` 로 2그룹만 돌린 뒤 **무필터 `-Resume`** 을 실행하자
+#   실측 사고: `-Filter "stateless,guard-bash"` 로 2그룹만 돌린 뒤 **무필터 `-Resume`** 을 실행하자
 #   12그룹을 전부 "완료"로 건너뛰고 `112/112 OK (FAIL 0)` exit 0을 냈다 — **419케이스가 조용히 빠졌는데
 #   부분 실행 경고조차 없어** 문서화된 판정 절차(EXIT 마커 + 결과 줄)로는 구분이 불가능했다.
 #   커밋이 달라진 경우도 같다: 커밋 A에서 완주 → 커밋 B에서 중단 → `-Resume`이면 A의 판정을 섞는다.
@@ -349,7 +349,7 @@ foreach ($g in $scenarioGroups) {
 
 # ---- 그룹 공유 임시 픽스처 정리 ----
 # `scenarios/guard-write.ps1`이 만드는 `<temp>\pjc-hook-evals\scratch`는 **의도적으로
-# 시스템 임시 폴더 하위**에 있다(require-plan-for-write가 temp 하위를 무조건 통과시키는 완화 경로를
+# 시스템 임시 폴더 하위**에 있다(guard-write가 temp 하위를 무조건 통과시키는 완화 경로를
 # 그 위치에서만 재현할 수 있다 — 부모 폴더로 감싸도 prefix 판정이라 그 성질은 유지된다). 그래서
 # 자식의 $EvalWork 하위로 옮길 수 없고, 자식은 자기 격리 폴더만 지우므로 **어느 쪽 책임에도
 # 걸리지 않는다** — 순차 경로에만 정리가 있어 병렬(기본값)에서 매 실행마다 남던 회귀를 여기서

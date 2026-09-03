@@ -1,9 +1,9 @@
-﻿# scenarios/guard-write.ps1 — require-plan-for-write 시나리오 (§2 plan 유무·trivial·temp·NotebookEdit + §2c 작성 게이트) (dot-source 전용, 단독 실행 금지)
+﻿# scenarios/guard-write.ps1 — guard-write 시나리오 (§2 plan 유무·trivial·temp·NotebookEdit + §2c 작성 게이트) (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
 # =====================================================================
-# 2) require-plan-for-write 시나리오 (plan 유무·trivial·temp·NotebookEdit)
+# 2) guard-write 시나리오 (plan 유무·trivial·temp·NotebookEdit)
 # =====================================================================
 # 섹션 게이트: 본문 재들여쓰기 없이 if 블록으로만 감싼다(디프 최소화 — 게이트 추가가 케이스
 # 내용 변경으로 보이지 않게). 이하 모든 섹션 게이트 동일.
@@ -146,7 +146,7 @@ Assert-Case -Name "guard-harness: 기존 AGENTS.md Write 통과 — 신규만 �
 $agentsSubDir = Join-Path $agentsProj 'sub';  New-Item -ItemType Directory $agentsSubDir -Force | Out-Null
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj (Join-Path $agentsSubDir 'AGENTS.md') -top @{ transcript_path = $trNo })
 Assert-Case -Name "guard-harness: 하위 폴더 AGENTS.md 신규도 차단 — 경로 무관 게이트 (AG6)" -R $r -ExpectExit 2 -ExpectContains 'bootstrap-agents-md'
-}   # ---- §2 게이트 끝 (require-plan-for-write) ----
+}   # ---- §2 게이트 끝 (guard-write) ----
 
 # =====================================================================
 # 2c) [v1.118.0] plan 작성 게이트 + plan 존재 판정 강화

@@ -25,7 +25,7 @@ function Get-EvalRoot {
       격리 폴더가 놓일 **베이스 경로**를 돌려준다(부모 폴더가 아니라 그 위 단계).
         Temp — 격리 홈·`-Resume` 상태·완화 경로 픽스처가 놓이는 시스템 임시 폴더.
         Work — 시나리오 작업 폴더가 놓이는 곳. **반드시 임시 폴더 '밖'이어야 한다** —
-               `require-plan-for-write`가 temp 하위를 무조건 통과시키므로(H3 의도된 완화)
+               `guard-write`가 temp 하위를 무조건 통과시키므로(H3 의도된 완화)
                픽스처가 temp 안에 있으면 차단 시나리오 전체가 우회로 무력화된다.
     #>
     param([Parameter(Mandatory = $true)][ValidateSet('Temp', 'Work')][string]$Base)

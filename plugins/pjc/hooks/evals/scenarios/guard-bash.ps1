@@ -25,7 +25,7 @@ Assert-Case -Name "guard-bash: guard-commit-secrets 부재 시 로드 가드 경
 # hook은 command 문자열 파싱 + plan 파일 Read만 하므로 git repo가 필요 없다.
 # 무상태 음성(비커밋·checkpoint·merge 등)은 hook-cases.json, 여기는 plan 상태 필요분.
 # 게이트 태그 2개: dispatch 동등성 블록이 이 섹션의 plan 픽스처($rtcUn·$rtcOk)를 재사용하므로
-# pre-bash-dispatch 필터에서도 섹션 전체를 실행한다(초과 실행 허용 원칙).
+# guard-bash 필터에서도 섹션 전체를 실행한다(초과 실행 허용 원칙).
 if (Test-HookSelected @('guard-bash')) {
 $rtcUn = Join-Path $work 'rtc-unchecked'; New-Item -ItemType Directory $rtcUn -Force | Out-Null
 "# plan`n- [ ] T3. 검색 기능`n- [x] T1. 완료분" | Set-Content (Join-Path $rtcUn 'plan.md')

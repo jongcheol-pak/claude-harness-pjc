@@ -267,11 +267,10 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 │   ├── skills/llm-wiki/scripts/lint.py  # 검사 + `--fix`(안전 3종) + `--build-index`(index.md 생성 구역 파생 · sub-index 생성) / migrate-index-labels.py  # index 라벨 역이관(1회성, 기본 dry-run)
 │   ├── scripts/*.ps1                # hook 구현 9 + dot-source 헬퍼 7. 진입점: block-destructive(Bash 파괴적 명령 — 독립 실행, 끌 수 없음) · guard-bash(외부작업·커밋 시크릿·task 체크박스·전역 탐색·위험값 대입을 한 프로세스에서) · guard-write(plan 게이트) · guard-harness(자기보호 + AGENTS.md 신규·내용 경계) · post-write-checks(인코딩·민감정보) · suggest-agents-record(기록 제안) · session-context(SessionStart 주입) · warn-version-drift(버전 드리프트) · session-end-cleanup(SessionEnd 회수). 헬퍼: guard-commit-secrets · secret-patterns · write-gate-trivial · session-wiki-signals · session-ledger-signal · session-end-cleanup-lib · hook-event-log. 판정 데이터·근거는 scripts/rules/(destructive.json · harness-hooks.json · write-gate.json + *-rationale.md)가 정본이다.
 │   ├── agents/*.md                  # reviewer subagent 정의
-│   └── skills/*/SKILL.md            # plan·implement 등 (+ references/·templates/)
+│   └── skills/*/SKILL.md            # plan·implement 등 (+ references/)
 ├── docs/
 │   ├── golden-runner.md             # hook 골든 러너 실행·대기·판정 정본 (v1.223.0 분리 — 조건부 참조)
 │   ├── harness-conventions.md       # 하니스 전역 규약 상세 (hook 차단·검증 매핑·문서 예산·리뷰어 각주의 정본)
-│   ├── prd.md
 │   └── plans/                       # 대장 3파일 (v1.198.0 분할)
 │       ├── deferred.md              #   `## 대기` — 계획 때 여는 유일한 파일 + 계수 앵커
 │       ├── deferred-closed.md       #   `## 종결` — 기각 종결분 (계수 축이 합산)

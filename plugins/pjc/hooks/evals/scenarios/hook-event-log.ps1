@@ -6,8 +6,8 @@
 # 11) hook 이벤트 로깅 (hook-event-log.ps1 — 적재·격리·시크릿 fail-closed)
 # =====================================================================
 # 로그는 격리 홈($iso)의 .claude/.state/hook-events/{YYYY-MM}.jsonl에 쓰인다.
-# 게이트 태그 4개: 이벤트 로깅 검증이 block-destructive(차단 적재)·pre-bash-dispatch(warn 적재)·
-# protect-harness(헬퍼 개조 차단)를 실행 수단으로 쓴다 — 그 hook들의 필터에서도 커버 유지.
+# 게이트 태그 4개: 이벤트 로깅 검증이 block-destructive(차단 적재)·guard-bash(warn 적재)·
+# guard-harness(헬퍼 개조 차단)를 실행 수단으로 쓴다 — 그 hook들의 필터에서도 커버 유지.
 if (Test-HookSelected @('hook-event-log', 'block-destructive', 'guard-bash', 'guard-harness')) {
 
 # (a) 쓰기 불가 격리 — 로그 경로가 막혀도 차단 동작은 정상 (별도 격리 홈에서 hook-events 자리를 파일로 선점).
@@ -44,10 +44,10 @@ if (($r.code -eq 0) -and ($evText2 -match '"hook":"warn-external-ops"') -and ($e
     $script:results.Add(@{ ok = $false; line = "[FAIL] event-log: 시크릿 fail-closed 위반 또는 warn 미적재 (exit=$($r.code))" })
 }
 
-# (d) protect-harness: 설치본 hook-event-log(헬퍼) 개조 차단 (이름 집합 합류 실증)
+# (d) guard-harness: 설치본 hook-event-log(헬퍼) 개조 차단 (이름 집합 합류 실증)
 $elTarget = (Join-Path $vdCache 'hook-event-log.ps1') -replace '\\', '/'
 $r = Invoke-Hook 'guard-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $elTarget; content = 'x' } } | ConvertTo-Json -Compress)
-Assert-Case -Name "protect-harness: 설치본 hook-event-log 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+Assert-Case -Name "guard-harness: 설치본 hook-event-log 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 }   # ---- §11 게이트 끝 (hook-event-log 외) ----
 # 12) report-hook-events 스모크는 v1.225.0에 삭제했다 — 그 수동 도구를 제거했기 때문이다.
 #    이벤트 집계는 jsonl 을 직접 읽으면 되고(파이썬 6줄), 전용 스크립트를 유지할 근거가 없었다.

@@ -23,7 +23,7 @@
 # hook 신설 시 여기에 함께 추가할 것(v1.96.0 warn-commit-secrets 누락이 v1.97.2에서 뒤늦게 합류한 전례).
 # secret-patterns는 hook이 아닌 dot-source 헬퍼지만, 설치본 개조 시 시크릿 경고 계층(post-write·
 # warn-commit-secrets)이 동일하게 무력화되는 등가 우회라 보호 대상에 포함한다.
-# orphan-process-cleanup도 같은 이유로 헬퍼이면서 보호 대상이다 — 회수 함수 모듈 하나를 개조하면
+# session-end-cleanup-lib도 같은 이유로 헬퍼이면서 보호 대상이다 — 회수 함수 모듈 하나를 개조하면
 # 그것을 dot-source하는 두 hook(session-context·session-end-cleanup)의 고아 프로세스
 # 회수가 한꺼번에 무력화된다(secret-patterns와 동형의 등가 우회).
 # 자기보호 대상 이름 집합은 `rules/harness-hooks.json`이 단일 정본이다 —

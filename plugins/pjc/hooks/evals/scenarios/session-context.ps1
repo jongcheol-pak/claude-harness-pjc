@@ -332,7 +332,8 @@ if (Test-HookSelected @('session-context')) {
     # SC40~SC40i: plan `## Deferred / Follow-up`의 **미판정 건수 주입** (v1.214.0 T3).
     #   plan.md는 gitignore + 다음 회차 교체라, 대장(docs/plans/deferred.md)으로 옮기지 못한 항목은
     #   회차와 함께 사라진다. task 체크박스는 위 케이스들이 재지만 Deferred는 아무도 세지 않았다.
-    #   마커 3종([등재]/[미등재:<게이트 기호>]/[미판정] — 형식 정본은 phase-f-detail.md F-6.5)이
+    #   마커 3종([등재]/[미등재:<사유>]/[미판정] — 형식 정본은
+    #   plan/references/plan-template.md 「Deferred / Follow-up」)이
     #   그 상태를 기계 판독 가능하게 만들고, hook이 **미판정만** 센다.
     #   ⚠ 대조 문자열은 부기 리터럴 'Deferred 미판정'이다 — 숫자만 재면 문면이 바뀌어도 통과한다.
     $scDefBase = Join-Path $work 'sc-def'

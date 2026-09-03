@@ -20,7 +20,7 @@ foreach ($c in $cases) {
     $caseNo++
     if (($caseNo % $shardCnt) -ne $shardIdx) { continue }
     # 무상태 케이스는 케이스 단위 필터: 개별 hook 선택 시 그 케이스, dispatch 에코는
-    # "그 hook 선택 또는 pre-bash-dispatch 선택" 시 실행(D10 — 에코만 따로 돌릴 수 있게).
+    # "그 hook 선택 또는 guard-bash 선택" 시 실행(D10 — 에코만 따로 돌릴 수 있게).
     $hookBase = ($c.hook -replace '\.ps1$', '').ToLowerInvariant()
     $isDispatchEchoTarget = (-not [bool]$c.pending_fix) -and
         ($c.hook -eq 'guard-bash.ps1')

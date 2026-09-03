@@ -24,18 +24,18 @@
 #   미수행된다(fail-open). 아래 로드 가드가 그 상태를 stderr로 가시화한다.
 ```
 
-## §2 bash-hook-lib.ps1 — Bash 계열 PreToolUse hook 3종의 검사 로직 공유 모듈
+## §2 guard-bash 헬퍼.ps1 — Bash 계열 PreToolUse hook 3종의 검사 로직 공유 모듈
 
 ```
-# bash-hook-lib.ps1 — Bash 계열 PreToolUse hook 3종의 검사 로직 공유 모듈 (dot-source 전용, hook 아님)
+# guard-bash 헬퍼.ps1 — Bash 계열 PreToolUse hook 3종의 검사 로직 공유 모듈 (dot-source 전용, hook 아님)
 #
 # warn-external-ops·require-task-checkbox·warn-commit-secrets의 검사 로직을 함수로 담아,
 #   ① 각 standalone 래퍼 스크립트(동일 파일명 유지 — 골든·격리 테스트용)
-#   ② 단일 pre-bash-dispatch.ps1 디스패처(도구 호출당 pwsh 콜드스타트 4→2)
+#   ② 단일 guard-bash.ps1 디스패처(도구 호출당 pwsh 콜드스타트 4→2)
 # 두 경로가 같은 함수를 호출하게 한다(동작 단일 출처 — 래퍼·디스패처가 갈라지지 않음).
 #
 # 위 3종 외에 **디스패처 전용 검사 2종**(warn-global-find·warn-dangerous-assignment)도 여기 담긴다 —
-#   대응하는 standalone 래퍼가 없고 pre-bash-dispatch가 유일한 실행 경로다(골든도 그 hook 이름으로 돈다).
+#   대응하는 standalone 래퍼가 없고 guard-bash가 유일한 실행 경로다(골든도 그 hook 이름으로 돈다).
 #
 # block-destructive.ps1은 이 모듈에 포함하지 않는다 — "끌 수 없는 마지막 방어선"이라 공유 모듈
 #   로드 실패에 결합시키지 않고 hooks.json 독립 엔트리로 직접 실행 유지(결정 B).

@@ -23,7 +23,7 @@
    명령치환·변수 간접 참조는 잡지 못한다 — 예: rm -rf $(echo /), X=/; rm -rf $X.
    문자열 평가를 하지 않는 정규식으로는 불가하며, 1차 방어선은 Claude Code 권한 시스템이다.
    (hook-cases.json에 '[알려진 미탐]' 케이스로 문서화 — 이 동작이 바뀌면 회귀로 검출됨.)
-   변수 간접 중 **같은 명령줄 대입**(X=/; rm -rf $X)은 pre-bash-dispatch의 warn-dangerous-assignment가
+   변수 간접 중 **같은 명령줄 대입**(X=/; rm -rf $X)은 guard-bash의 warn-dangerous-assignment가
    실행 전에 경고로 알린다 — 알림이지 차단이 아니며, 이 hook의 차단 범위는 그대로다.
 
  ⚠️ 이 hook은 항상 동작합니다 (끌 수 없음).

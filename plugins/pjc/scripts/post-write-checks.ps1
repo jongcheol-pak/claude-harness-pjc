@@ -14,7 +14,7 @@ try {
     $data = $inputJson | ConvertFrom-Json
     $file = $data.tool_input.path
     if (-not $file) { $file = $data.tool_input.file_path }
-    if (-not $file) { $file = $data.tool_input.notebook_path }   # NotebookEdit (require-plan-for-write와 동일 폴백 사슬)
+    if (-not $file) { $file = $data.tool_input.notebook_path }   # NotebookEdit (guard-write와 동일 폴백 사슬)
 } catch {
     exit 0
 }

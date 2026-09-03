@@ -2,7 +2,7 @@
 #
 # 사용법 (코디네이터가 호출한다 — 직접 실행도 가능):
 #   pwsh -NoProfile -ExecutionPolicy Bypass -File run-scenario.ps1 -Names stateless -OutJson <경로>
-#   pwsh ... -Names protect-harness-installed,hook-event-log -OutJson <경로>   # 같은 그룹 = 한 프로세스
+#   pwsh ... -Names guard-harness-installed,hook-event-log -OutJson <경로>   # 같은 그룹 = 한 프로세스
 #
 # 무엇을: `-Names`로 받은 시나리오 파일을 **자기 격리 홈·작업 폴더**에서 순차 dot-source한다.
 #   케이스 판정은 호출될 때마다 -OutJson에 JSON 라인으로 append되므로(증분 기록), 이 프로세스가
@@ -13,7 +13,7 @@
 #   종전대로 순차이고, 병렬은 시나리오 사이에서만 일어난다.
 #
 # 왜 그룹인가: 대부분의 시나리오는 $work 아래 자기 하위 디렉터리만 쓰므로 완전히 독립이지만,
-#   `protect-harness-installed`와 `hook-event-log`는 **$vdCache를 공유**하고 후자는 격리 홈의
+#   `guard-harness-installed`와 `hook-event-log`는 **$vdCache를 공유**하고 후자는 격리 홈의
 #   `.state/hook-events/*.jsonl` 적재를 관찰한다 — 두 시나리오를 같은 프로세스(=같은 홈)에 묶어
 #   분리 전과 동일한 관찰 조건을 유지한다.
 

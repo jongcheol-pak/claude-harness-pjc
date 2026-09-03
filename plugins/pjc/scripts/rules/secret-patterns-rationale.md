@@ -19,7 +19,7 @@
 # 함수 계약: 내용 문자열 → 매치된 시크릿 라벨 배열. 스캔 대상 판단(.env 스킵 등)·경고 문구는
 #   각 caller가 결정한다(이 함수는 "내용→매치"만).
 # caller 3곳(전부 라벨 배열만 소비 — 반환 계약을 바꾸면 셋을 함께 고쳐야 한다):
-#   post-write-checks.ps1(편집 시점 경고) · bash-hook-lib.ps1(커밋 시점) · hook-event-log.ps1(fail-closed 마스킹).
+#   post-write-checks.ps1(편집 시점 경고) · guard-bash 헬퍼.ps1(커밋 시점) · hook-event-log.ps1(fail-closed 마스킹).
 ```
 
 ## §2 고신뢰 라벨
