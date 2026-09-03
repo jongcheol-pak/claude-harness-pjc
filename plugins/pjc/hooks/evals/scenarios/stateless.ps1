@@ -10,12 +10,20 @@ if ($script:FilterSet) {
     Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:FilterSet -join ', ')) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
 }
 $cases = (Get-Content -LiteralPath $casesPath -Raw -Encoding UTF8 | ConvertFrom-Json).cases
+# 샤드 필터 — 러너가 `stateless-<N>` 그룹으로 나눠 부르면 그중 자기 몫만 돈다.
+#   나누는 이유는 이 그룹이 가장 커서 전체 wall-clock을 혼자 결정하기 때문이고,
+#   나눠도 되는 이유는 무상태라 케이스 간 순서 의존이 없기 때문이다.
+$shardIdx = if ($null -ne $script:ShardIndex) { [int]$script:ShardIndex } else { 0 }
+$shardCnt = if ($script:ShardCount -and [int]$script:ShardCount -gt 0) { [int]$script:ShardCount } else { 1 }
+$caseNo = -1
 foreach ($c in $cases) {
+    $caseNo++
+    if (($caseNo % $shardCnt) -ne $shardIdx) { continue }
     # 무상태 케이스는 케이스 단위 필터: 개별 hook 선택 시 그 케이스, dispatch 에코는
     # "그 hook 선택 또는 pre-bash-dispatch 선택" 시 실행(D10 — 에코만 따로 돌릴 수 있게).
     $hookBase = ($c.hook -replace '\.ps1$', '').ToLowerInvariant()
     $isDispatchEchoTarget = (-not [bool]$c.pending_fix) -and
-        ($c.hook -in @('guard-bash.ps1', 'guard-bash.ps1', 'guard-bash.ps1'))
+        ($c.hook -eq 'guard-bash.ps1')
     $runIndividual = Test-HookSelected @($hookBase)
     $runDispatchEcho = $isDispatchEchoTarget -and (Test-HookSelected @($hookBase, 'guard-bash'))
     if (-not ($runIndividual -or $runDispatchEcho)) { continue }

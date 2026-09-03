@@ -29,6 +29,7 @@ param(
 # -Names 정규화 — `pwsh -File`로 넘어온 `a,b`는 **단일 문자열**이다(PowerShell CLI가 콤마를
 # 나누지 않는다). 나누지 않으면 'a,b'라는 이름의 시나리오를 찾다가 "파일 없음"으로 실패한다 —
 # `-Filter "a,b"`가 매칭 0건으로 조용히 실패했던 것과 같은 형태이므로 같은 방식으로 푼다.
+. (Join-Path $PSScriptRoot 'filter-spec.ps1')
 $Names = @($Names | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 
 # eval-common.ps1이 읽는 입력 변수 (dot-source 전에 설정해야 한다)
@@ -44,7 +45,9 @@ $EvalHomeSuffix = (($Names -join '+') -replace '[^\w+-]', '') + '-' + [guid]::Ne
 $exitCode = 0
 try {
     foreach ($n in $Names) {
-        $path = Join-Path $evalsDir ('scenarios/' + $n + '.ps1')
+        $sh = Resolve-ScenarioShard $n
+        $script:ShardIndex = $sh.Index; $script:ShardCount = $sh.Count
+        $path = Join-Path $evalsDir ('scenarios/' + $sh.File + '.ps1')
         if (-not (Test-Path -LiteralPath $path)) {
             # 존재하지 않는 시나리오를 조용히 건너뛰면 "케이스 0건인데 통과"가 되므로 실패로 만든다.
             Add-EvalResult $false "[FAIL] run-scenario: 시나리오 파일 없음 — $n" "run-scenario:$n"

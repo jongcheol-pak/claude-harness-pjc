@@ -25,7 +25,7 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  **⚠ 이대로 실행하면 완주하지 않는다** — 도구 시간 캡(10분)을 넘어 killed된다. **분리 프로세스 + 래퍼 + `Monitor` 폴링**이 정본 절차이며 `docs/golden-runner.md` 「골든 러너 운용 (실행·대기·판정)」을 읽지 않고 돌리면 "환경상 실행 불가"로 F-2를 갈음하게 된다.
+  전경에서 그대로 돌아간다(v1.225.0 실측 422초 · 744케이스 — 무상태 그룹 샤딩으로 분리 실행 절차가 사라졌다). **완료는 시간이 아니라 `결과: N/N OK` 라인과 exit 0으로 판정한다.** 실행 전 `CLAUDE_HARNESS_QUICK`을 지울 것 — 남아 있으면 41건이 FAIL한다(`docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
 - **llm-wiki 상수·배치 정합 셀프체크** (SKILL.md 예산표·라우팅 표·`references/procedures-*.md`·`wiki-schema` §2/§3/§4/§7/§8/§11/§12·목차·`templates.md`·`lint.py` 상수 수정 시 필수):
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py

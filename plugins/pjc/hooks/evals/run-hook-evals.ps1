@@ -46,9 +46,10 @@ param(
     [switch]$Sequential,
     # 이전 실행의 완료된 그룹을 건너뛰고 남은 그룹만 실행
     [switch]$Resume,
-    # 동시에 띄울 자식 프로세스 상한. 기본 6 — 13 그룹을 한꺼번에 띄우면 CPU·디스크 경합으로
-    # 케이스당 시간이 늘어 총 시간이 오히려 나빠질 수 있어 상한을 둔다.
-    [int]$MaxParallel = 6,
+    # 동시에 띄울 자식 프로세스 상한. 기본은 **논리 코어 수의 절반**(최소 4·최대 12)이다 —
+    # 케이스마다 pwsh를 새로 띄우므로(케이스당 약 600ms 중 285ms가 콜드스타트) CPU가 놀면
+    # 그만큼 wall-clock이 길어지고, 코어 수를 넘겨 띄우면 경합으로 케이스당 시간이 늘어난다.
+    [int]$MaxParallel = [Math]::Max(4, [Math]::Min(12, [int]([Environment]::ProcessorCount / 2))),
     # 그룹별 판정 JSON을 둘 디렉터리. 기본은 임시 폴더 하위(실행 간 재사용 = -Resume의 입력).
     [string]$StateDir
 )
@@ -64,7 +65,14 @@ $evalsDirTop = $PSScriptRoot
 # 그룹이 둘 이상인 항목은 **같은 격리 홈을 공유해야 하는** 시나리오들이다:
 #   protect-harness-installed + hook-event-log — $vdCache 공유 + 후자가 홈의 이벤트 로그 적재를 관찰
 $scenarioGroups = @(
-    @('stateless'),
+    @('stateless-1'),
+    @('stateless-2'),
+    @('stateless-3'),
+    @('stateless-4'),
+    @('stateless-5'),
+    @('stateless-6'),
+    @('stateless-7'),
+    @('stateless-8'),
     @('guard-write'),
     @('guard-harness'),
     @('guard-bash'),
@@ -139,7 +147,12 @@ if ($Sequential) {
         foreach ($g in $scenarioGroups) {
             foreach ($n in $g) {
                 $script:EvalCurrentScenario = $n
-                . (Join-Path $evalsDirTop ('scenarios/' + $n + '.ps1'))
+                # 무상태 그룹은 `stateless-<N>` 이름으로 샤딩된다 — 그 313케이스가 한 자식에서
+                #   순차로 돌면 전체 wall-clock을 혼자 결정하기 때문이다(케이스당 약 600ms 실측).
+                #   상태가 없어 샤드끼리 간섭하지 않는다.
+                $sh = Resolve-ScenarioShard $n
+                $script:ShardIndex = $sh.Index; $script:ShardCount = $sh.Count
+                . (Join-Path $evalsDirTop ('scenarios/' + $sh.File + '.ps1'))
             }
         }
     } finally {
