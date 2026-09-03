@@ -3,10 +3,10 @@
   "cases": [
     {
       "hook": "block-destructive.ps1",
-      "name": "rm -rf / 차단",
+      "name": "rm -rf / 차단 (차단 사유 문구 고정)",
       "command": "rm -rf /",
       "expect_exit": 2,
-      "expect_contains": "BLOCKED"
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
     },
     {
       "hook": "block-destructive.ps1",

@@ -58,7 +58,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 변경 파일 패턴 | 필수 검증 |
 |---|---|
-| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 + **`python plugins/pjc/evals/check-harness-consistency.py`** — 축 「복제 리터럴 동기」가 `session-context.ps1`의 마커 정규식과 골든 시나리오의 마커 주석을 읽고, 축 「추출 앵커 도달성」이 같은 hook의 절 앵커를 읽는다. 그 파일만 고치는 task도 이 검사가 필요하다 |
+| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 + **`python plugins/pjc/hooks/evals/check-block-coverage.py`**(차단 경로마다 사유 문구를 재는 케이스가 있는가 — 없으면 그 경로는 코드를 지워도 green 이다) + **`python plugins/pjc/evals/check-harness-consistency.py`** — 축 「복제 리터럴 동기」가 `session-context.ps1`의 마커 정규식과 골든 시나리오의 마커 주석을 읽고, 축 「추출 앵커 도달성」이 같은 hook의 절 앵커를 읽는다. 그 파일만 고치는 task도 이 검사가 필요하다 |
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
 | `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든 26케이스**가 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint를 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (7케이스, 1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |

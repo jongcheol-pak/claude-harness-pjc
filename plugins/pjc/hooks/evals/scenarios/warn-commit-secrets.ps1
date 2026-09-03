@@ -179,7 +179,7 @@ if ($gitOk) {
     # (a) 자격증명 쌍(고신뢰) 스테이징 → 차단 + 회복 경로 2종 안내
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
-    Assert-Case -Name "commit-secrets: 자격증명 쌍 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    Assert-Case -Name "commit-secrets: 자격증명 쌍 커밋 차단(exit 2 — 차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '커밋될 변경에 자격증명으로 보이는 값이 있습니다'
     Assert-Case -Name "commit-secrets: 차단 메시지에 우회 변수 안내" -R $r -ExpectExit 2 -ExpectContains 'CLAUDE_HARNESS_ALLOW_SECRET'
     # 우회 변수는 세션 시작 전에만 설정 가능하다 — Bash 도구로 설정해도 hook에 전파되지 않는다(M8).
     Assert-Case -Name "commit-secrets: 차단 메시지에 세션 시작 전 설정 안내" -R $r -ExpectExit 2 -ExpectContains '시작 전 터미널'
@@ -458,7 +458,7 @@ if ($gitOk) {
     $cap50 = (($capNames | Select-Object -First 50) -join ' ')
 
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
-    Assert-Case -Name "commit-secrets: 캡 도달(추적 51개 나열) → 차단(T1 ⓐ-양성, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    Assert-Case -Name "commit-secrets: 캡 도달(추적 51개 나열) → 차단(T1 ⓐ-양성, exit 2 — 차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '커밋될 파일이 많아 시크릿 검사를 끝까지 하지 못했습니다'
     Assert-Case -Name "commit-secrets: 캡 차단 메시지가 시크릿이 아닌 상한을 사유로 든다(T1 ⓐ)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
     Assert-Case -Name "commit-secrets: 캡 차단 메시지에 우회 변수 안내(T1 ⓐ)" -R $r -ExpectExit 2 -ExpectContains 'CLAUDE_HARNESS_ALLOW_SECRET'
 

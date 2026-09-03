@@ -25,7 +25,7 @@ $agents = "$gacFwd/AGENTS.md"
 
 # ---- 차단 양성 (1) plan 진행 상태·세션 인계 서술 ----
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacWrite $agents "# A`n`n## 현재 진행 상태`n`n| 단계 | 상태 |`n|---|---|`n| M5 | 진행 중 |`n")
-Assert-Case -Name "guard-agents-content: 진행 상태 헤딩 차단" -R $r -ExpectExit 2 -ExpectContains '인계'
+Assert-Case -Name "guard-agents-content: 진행 상태 헤딩 차단" -R $r -ExpectExit 2 -ExpectContains 'AGENTS.md 에 plan 진행 상태·세션 인계 서술을 넣으려 합니다'
 
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacWrite $agents "# A`n`n**다음 작업**: T7 진행`n")
 Assert-Case -Name "guard-agents-content: '다음 작업' 볼드 제목 차단" -R $r -ExpectExit 2
@@ -36,7 +36,7 @@ Assert-Case -Name "guard-agents-content: '남긴 것/다음 회차' 인용 볼�
 # ---- 차단 양성 (2) 디렉터리 트리 블록 ----
 $tree = "# A`n`n``````" + "`n├── src/`n│   └── app/`n└── docs/`n" + "``````" + "`n"
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacWrite $agents $tree)
-Assert-Case -Name "guard-agents-content: 디렉터리 트리 차단" -R $r -ExpectExit 2 -ExpectContains '트리'
+Assert-Case -Name "guard-agents-content: 디렉터리 트리 차단" -R $r -ExpectExit 2 -ExpectContains 'AGENTS.md 에 디렉터리 트리를 넣으려 합니다'
 
 # Edit 도구 경로도 같은 판정 (new_string 검사)
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacEdit $agents "├── src/`n│   └── app/`n└── docs/`n")

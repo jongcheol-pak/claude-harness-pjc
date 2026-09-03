@@ -21,7 +21,7 @@ $starplan = Join-Path $work 'proj-star';  New-Item -ItemType Directory $starplan
 "# plan`n* [x] T1: done" | Set-Content (Join-Path $starplan 'plan.md')
 
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $noplan (Join-Path $noplan 'A.cs'))
-Assert-Case -Name "require-plan: plan 없이 .cs Write 차단" -R $r -ExpectExit 2
+Assert-Case -Name "guard-write: plan 없이 .cs Write 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $noplan (Join-Path $noplan 'x.md'))
 Assert-Case -Name "require-plan: plan 없이 .md 통과" -R $r -ExpectExit 0
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $withplan (Join-Path $withplan 'A.cs'))
@@ -132,7 +132,7 @@ $trRes = Join-Path $work 'tr-launch-result.jsonl'
 # AGENTS.md bootstrap 게이트는 v1.225.0에 guard-harness 로 옮겼다 — 그 hook 이 AGENTS.md 관심사를 담당한다.
 $agentsNew = Join-Path $agentsProj 'AGENTS.md'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trNo })
-Assert-Case -Name "guard-harness: AGENTS.md 신규 + 발동 흔적 없음 차단 (AG1)" -R $r -ExpectExit 2 -ExpectContains 'bootstrap-agents-md'
+Assert-Case -Name "guard-harness: AGENTS.md 신규 + 발동 흔적 없음 차단 (AG1 — 차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains 'AGENTS.md 신규 생성은 pjc:bootstrap-agents-md 스킬로만 합니다'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trIn })
 Assert-Case -Name "guard-harness: AGENTS.md 신규 + Skill input 흔적 통과 (AG2)" -R $r -ExpectExit 0
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trRes })
@@ -180,7 +180,7 @@ function New-PlanEditJson([string]$cwd, [string]$file, [string]$old, [string]$ne
 
 # --- PG: Write 축 ---
 $r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trPlanNo)
-Assert-Case -Name "plan게이트: plan.md 신규 Write + 흔적 없음 차단 (PG1)" -R $r -ExpectExit 2 -ExpectContains 'pjc:plan'
+Assert-Case -Name "plan게이트: plan.md 신규 Write + 흔적 없음 차단 (PG1 — 차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains 'plan 작성은 pjc:plan 스킬로만 합니다'
 $r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trPlanIn)
 Assert-Case -Name "plan게이트: plan.md Write + pjc:plan 흔적 통과 (PG2)" -R $r -ExpectExit 0
 $r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trImplRes)

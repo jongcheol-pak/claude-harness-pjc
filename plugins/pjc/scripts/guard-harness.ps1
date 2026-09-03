@@ -21,7 +21,7 @@ function Write-GacEvent {
     param([string]$Decision, [string]$Rule)
     try {
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
-            Write-HookEvent 'guard-agents-content' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath)
+            Write-HookEvent 'guard-harness' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath)
         }
     } catch {}
 }
@@ -67,7 +67,7 @@ if ($isHookScript -or $suspect83) {
     try {
         . (Join-Path $PSScriptRoot 'hook-event-log.ps1')
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
-            Write-HookEvent 'protect-harness' 'block' $why ([string]$targetPath)
+            Write-HookEvent 'guard-harness' 'block' $why ([string]$targetPath)
         }
     } catch {}
     exit 2

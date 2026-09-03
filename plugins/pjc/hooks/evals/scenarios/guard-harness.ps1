@@ -12,7 +12,7 @@ if (Test-HookSelected @('guard-harness')) {
 $ph = Join-Path $work 'ph'; New-Item -ItemType Directory $ph -Force | Out-Null
 $fakeInstall = Join-Path $ph '.claude/plugins/cache/pjc-harness/pjc/1.89.0'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/block-destructive.ps1'))
-Assert-Case -Name "protect-harness: 설치본 hook 스크립트 Write 차단" -R $r -ExpectExit 2
+Assert-Case -Name "guard-harness: 설치본 hook 스크립트 Write 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/hooks.json'))
 Assert-Case -Name "protect-harness: 설치본 hooks.json Write 차단" -R $r -ExpectExit 2
 $phEdit = @{ tool_name = 'Edit'; cwd = $ph; tool_input = @{ file_path = (Join-Path $fakeInstall 'scripts/guard-harness.ps1'); old_string = 'exit 0'; new_string = 'exit 0 # x' } } | ConvertTo-Json -Compress
