@@ -29,6 +29,7 @@ param(
 # -Names 정규화 — `pwsh -File`로 넘어온 `a,b`는 **단일 문자열**이다(PowerShell CLI가 콤마를
 # 나누지 않는다). 나누지 않으면 'a,b'라는 이름의 시나리오를 찾다가 "파일 없음"으로 실패한다 —
 # `-Filter "a,b"`가 매칭 0건으로 조용히 실패했던 것과 같은 형태이므로 같은 방식으로 푼다.
+. (Join-Path $PSScriptRoot 'filter-spec.ps1')
 $Names = @($Names | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 
 # eval-common.ps1이 읽는 입력 변수 (dot-source 전에 설정해야 한다)
@@ -44,7 +45,9 @@ $EvalHomeSuffix = (($Names -join '+') -replace '[^\w+-]', '') + '-' + [guid]::Ne
 $exitCode = 0
 try {
     foreach ($n in $Names) {
-        $path = Join-Path $evalsDir ('scenarios/' + $n + '.ps1')
+        $sh = Resolve-ScenarioShard $n
+        $script:ShardIndex = $sh.Index; $script:ShardCount = $sh.Count
+        $path = Join-Path $evalsDir ('scenarios/' + $sh.File + '.ps1')
         if (-not (Test-Path -LiteralPath $path)) {
             # 존재하지 않는 시나리오를 조용히 건너뛰면 "케이스 0건인데 통과"가 되므로 실패로 만든다.
             Add-EvalResult $false "[FAIL] run-scenario: 시나리오 파일 없음 — $n" "run-scenario:$n"
@@ -70,8 +73,8 @@ try {
 
 # ---- 완주 시 판정 전량 덤프 (증분 라인보다 우선하는 정본) ----
 # **왜 전량을 다시 쓰는가**: 증분 기록은 `Assert-Case` 경유분만 잡는데, 일부 시나리오는 그 헬퍼를
-#   쓰지 않고 `$results.Add(...)`를 **직접** 호출한다(`warn-commit-secrets.ps1`의 secret-patterns
-#   24건·dispatch 2건 · `session-context.ps1` SC22 · `hook-event-log.ps1` · `require-evidence.ps1`).
+#   쓰지 않고 `$results.Add(...)`를 **직접** 호출한다(`guard-bash.ps1`의 secret-patterns
+#   24건·dispatch 2건 · `session-context.ps1` SC22 · `hook-event-log.ps1`).
 #   Assert-Case만 후킹했을 때 그 **29건이 취합에서 조용히 빠져** 병렬 결과가 502/502 OK로 보였다
 #   (순차는 531/531 — 개수만 대조하면 통과로 읽히는 형태였고, 순차 대비 집합 등가 검사가 잡았다).
 #   여기서 $results 전량을 덤프하면 **어떤 경로로 누적된 판정이든 빠지지 않는다** — 앞으로 누가

@@ -13,10 +13,10 @@
 
 # 유효한 -Filter 이름(hook 기본명). 신규 hook을 골든에 추가하면 여기만 고친다.
 $script:GoldenFilterNames = @(
-    'block-destructive', 'protect-harness', 'require-plan-for-write', 'require-task-checkbox',
-    'post-write-checks', 'require-evidence', 'warn-external-ops', 'suggest-agents-record',
-    'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'session-context', 'hook-event-log',
-    'orphan-process-cleanup', 'session-end-cleanup', 'guard-agents-content'
+    'block-destructive', 'guard-harness', 'guard-write', 'guard-bash',
+    'post-write-checks', 'suggest-agents-record', 'warn-commit-secrets', 'warn-version-drift',
+    'session-context', 'hook-event-log', 'session-end-cleanup',
+    'protect-harness-installed'
 )
 
 function Get-NormalizedFilter {
@@ -44,4 +44,19 @@ function Write-UnknownFilterWarning {
             Write-Host "[WARN] 알 수 없는 필터 이름: '$f' (유효: $($script:GoldenFilterNames -join ', '))"
         }
     }
+}
+
+# ---- 무상태 그룹 샤딩 ----
+# `stateless` 313케이스가 한 자식에서 순차로 돌면 전체 wall-clock을 혼자 결정한다
+#   (케이스당 약 600ms 실측 — 그중 285ms가 pwsh 콜드스타트). 상태가 없어 케이스 간 순서
+#   의존이 없으므로 `stateless-<N>` 그룹으로 나눠 병렬로 돌린다.
+# **코디네이터와 자식이 같은 함수를 쓴다** — 한쪽만 고치면 자식이 없는 파일명을 찾아 FAIL한다.
+$script:GoldenShardCount = 8
+
+function Resolve-ScenarioShard {
+    param([string]$Name)
+    if ($Name -match '^stateless-(\d+)$') {
+        return @{ File = 'stateless'; Index = ([int]$Matches[1] - 1); Count = $script:GoldenShardCount }
+    }
+    return @{ File = $Name; Index = 0; Count = 1 }
 }

@@ -1,0 +1,174 @@
+{
+  "_note": "block-destructive.ps1의 판정 데이터. 스크립트는 로직만 담고 이 파일이 무엇을 차단하는지의 정본이다. rx 안의 {dangerTarget}은 로드 시 dangerTarget 값으로 치환된다.",
+  "dangerTarget": "(^|\\s)([\"']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\\S*)?|/home[\\\\/]+[^\\\\/\\s]+[\\\\/]\\.?\\*[\\\\/]?|/home([\\\\/]+[^\\\\/\\s]+)?[\\\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \\(x86\\))?|ProgramData)([\\\\/]\\S*)?|/\\.\\*[\\\\/]?|/[*/]?|([^\\s\"']*[\\\\/])?\\.\\.([\\\\/]+\\.\\.)+[\\\\/]?|~[\\\\/]\\.?\\*[\\\\/]?|~[\\\\/]?|\\$HOME[\\\\/]\\.?\\*[\\\\/]?|\\$HOME[\\\\/]?|\\$env:\\w+[\\\\/]\\.?\\*[\\\\/]?|\\$env:\\w+[\\\\/]?|\\*|\\.\\*|\\./\\*|\\./|\\.|[A-Za-z]:[\\\\/]+(Windows|Program Files( \\(x86\\))?|ProgramData)([\\\\/]\\S*)?|[A-Za-z]:[\\\\/]+Users[\\\\/]+[^\\\\/\\s]+[\\\\/]\\.?\\*[\\\\/]?|[A-Za-z]:[\\\\/]+Users([\\\\/]+[^\\\\/\\s]+)?[\\\\/]?|[A-Za-z]:[\\\\/]+\\*?)([\"']?)(\\s|$)",
+  "delCmdAlt": "rm|Remove-Item|ri|rmdir|rd|del|erase",
+  "findDangerRoot": "(?i)\\bfind\\s+(/\\S*|~\\S*|\\$HOME\\S*|\\$env:\\S*|[A-Za-z]:[\\\\/]\\S*)",
+  "enumSource": "(?i)(^|\\s|\\|)(Get-ChildItem|gci|ls|dir|find)\\b",
+  "delRecurseForce": "(?i)(-Recurse\\b|-Force\\b|--recursive\\b|--force\\b|(^|\\s)-[rfRF]+(\\s|$)|\\s/[sq]\\b)",
+  "patterns": [
+    {
+      "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+.*(--force|--force-with-lease)",
+      "why": "git push --force (git -c/-C 선행 옵션으로 우회 방지)"
+    },
+    {
+      "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+-f(\\s|$)",
+      "why": "git push -f (git -c/-C 선행 옵션으로 우회 방지)"
+    },
+    {
+      "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+\\S+\\s+\\+\\S",
+      "why": "git push <remote> +refspec (M4 — plus-refspec 강제 푸시. 예: git push origin +main, +HEAD:master. 히스토리 덮어씀)"
+    },
+    {
+      "rx": "git\\s+filter-branch",
+      "why": "히스토리 재작성"
+    },
+    {
+      "rx": "git\\s+filter-repo",
+      "why": "히스토리 재작성 (filter-branch 후속 도구)"
+    },
+    {
+      "rx": "git\\s+reflog\\s+expire",
+      "why": "reflog 만료 — 되돌릴 마지막 수단을 지운다"
+    },
+    {
+      "rx": "git\\s+clean\\s+(-[a-z]*f[a-z]*d|-[a-z]*d[a-z]*f|.*-f\\b.*-d\\b|.*-d\\b.*-f\\b)",
+      "why": "git clean -fd/-df/-f -d (untracked 영구 삭제)"
+    },
+    {
+      "rx": "gh\\s+repo\\s+delete",
+      "why": "GitHub 원격 저장소 영구 삭제 (외부·비가역)"
+    },
+    {
+      "rx": "DROP\\s+TABLE",
+      "why": "SQL — 테이블 삭제"
+    },
+    {
+      "rx": "DROP\\s+DATABASE",
+      "why": "DB 전체 삭제"
+    },
+    {
+      "rx": "DROP\\s+SCHEMA",
+      "why": "스키마 삭제"
+    },
+    {
+      "rx": "TRUNCATE\\s+TABLE",
+      "why": "테이블 전체 비우기"
+    },
+    {
+      "rx": "TRUNCATE\\s+(?!TABLE\\b)(?!-)",
+      "why": "TRUNCATE <table> (TABLE 키워드 생략형). (?!-)로 coreutils"
+    },
+    {
+      "rx": "DELETE\\s+FROM\\s+[^\\s;]+\\s*;",
+      "why": "DELETE FROM x; — WHERE 없는 전체 행 삭제"
+    },
+    {
+      "rx": "DELETE\\s+FROM\\s+[^\\s;]+\\s*$",
+      "why": "DELETE FROM x (문장 끝, WHERE 없음)"
+    },
+    {
+      "rx": "DELETE\\s+FROM\\s+\\w+\\s+WHERE\\s+1\\s*=\\s*1",
+      "why": "WHERE 1=1 = 사실상 전체 삭제"
+    },
+    {
+      "rx": "UPDATE\\s+\\w+\\s+SET\\b(?![^;]*\\bWHERE\\b)",
+      "why": "UPDATE x SET ... (WHERE 절 없음 — 전체 행 변조). \\bWHERE\\b로 값 속 \"nowhere\" 등 오탐 방지"
+    },
+    {
+      "rx": "UPDATE\\s+\\w+\\s+SET\\s+.*WHERE\\s+1\\s*=\\s*1",
+      "why": "UPDATE ... WHERE 1=1 = 전체 변조"
+    },
+    {
+      "rx": "\\.RemoveRange\\(",
+      "why": "EF Core 대량 삭제"
+    },
+    {
+      "rx": "ExecuteDelete(Async)?\\(",
+      "why": "EF Core 7+ 대량 삭제"
+    },
+    {
+      "rx": "\\.deleteMany\\(\\s*\\{?\\s*\\}?\\s*\\)",
+      "why": "Prisma/Mongo 조건 없는 대량 삭제"
+    },
+    {
+      "rx": "\\.delete_all\\b",
+      "why": "ActiveRecord/Django 전체 삭제"
+    },
+    {
+      "rx": "migrate\\s+reset",
+      "why": "prisma/이주 리셋 (데이터 손실)"
+    },
+    {
+      "rx": "db\\s+reset",
+      "why": "일부 ORM CLI"
+    },
+    {
+      "rx": "db\\s+push\\s+[^\\r\\n]*--force-reset",
+      "why": "prisma db push --force-reset — migrate reset과 등가 파괴(DB 초기화)인데"
+    },
+    {
+      "rx": "database\\s+drop",
+      "why": "dotnet ef database drop"
+    },
+    {
+      "rx": "mkfs\\.",
+      "why": "포맷"
+    },
+    {
+      "rx": "dd\\s+if=.*of=/dev/",
+      "why": "dd to device"
+    },
+    {
+      "rx": "Format-Volume",
+      "why": "볼륨 포맷"
+    },
+    {
+      "rx": "Clear-RecycleBin\\s+.*-Force",
+      "why": "휴지통 강제 비우기"
+    },
+    {
+      "rx": "^\\s*(sudo\\s+)?chmod\\b[^\\r\\n]*(\\s--recursive\\b|\\s-(?-i:[a-zA-Z]*R[a-zA-Z]*)(\\s|$))",
+      "why": "chmod 재귀"
+    },
+    {
+      "rx": "^\\s*(sudo\\s+)?chmod\\b[^\\r\\n]*\\s0?(777|666)\\b",
+      "why": "세계-쓰기 모드"
+    },
+    {
+      "rx": "^\\s*(sudo\\s+)?chmod\\b[^\\r\\n]*\\s[ugoa]*\\+[rwxXt]*s",
+      "why": "setuid/setgid 부여"
+    },
+    {
+      "rx": "^\\s*(sudo\\s+)?chmod\\b[^\\r\\n]*{dangerTarget}",
+      "why": "시스템·위험 루트 대상"
+    },
+    {
+      "rx": "^\\s*(sudo\\s+)?chown\\s",
+      "why": "POSIX 소유자 변경"
+    },
+    {
+      "rx": "^\\s*(sudo\\s+)?takeown\\b",
+      "why": "Windows 소유권 탈취"
+    },
+    {
+      "rx": "^\\s*Set-Acl\\b",
+      "why": "PowerShell ACL 변경"
+    },
+    {
+      "rx": "^\\s*icacls\\b.*(/grant|/deny|/remove|/setowner|/reset|/restore|/setintegritylevel|/inheritance:[red])",
+      "why": "Windows ACL 변경(조회형·/save 제외)"
+    },
+    {
+      "rx": "^\\s*attrib\\s+.*[+-][rhsa]",
+      "why": "파일 속성 변경(조회형 제외)"
+    },
+    {
+      "rx": "^\\s*(Add|Set)-MpPreference\\b.*Exclusion",
+      "why": "Defender 예외 추가/변경(보안 약화)"
+    },
+    {
+      "rx": "^\\s*netsh\\s+advfirewall\\s+.*\\b(set|add|delete|reset|import)\\b",
+      "why": "방화벽 설정 변경(show/dump/export 조회는 통과)"
+    }
+  ]
+}

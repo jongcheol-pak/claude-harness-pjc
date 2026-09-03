@@ -10,14 +10,22 @@ if ($script:FilterSet) {
     Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:FilterSet -join ', ')) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
 }
 $cases = (Get-Content -LiteralPath $casesPath -Raw -Encoding UTF8 | ConvertFrom-Json).cases
+# 샤드 필터 — 러너가 `stateless-<N>` 그룹으로 나눠 부르면 그중 자기 몫만 돈다.
+#   나누는 이유는 이 그룹이 가장 커서 전체 wall-clock을 혼자 결정하기 때문이고,
+#   나눠도 되는 이유는 무상태라 케이스 간 순서 의존이 없기 때문이다.
+$shardIdx = if ($null -ne $script:ShardIndex) { [int]$script:ShardIndex } else { 0 }
+$shardCnt = if ($script:ShardCount -and [int]$script:ShardCount -gt 0) { [int]$script:ShardCount } else { 1 }
+$caseNo = -1
 foreach ($c in $cases) {
+    $caseNo++
+    if (($caseNo % $shardCnt) -ne $shardIdx) { continue }
     # 무상태 케이스는 케이스 단위 필터: 개별 hook 선택 시 그 케이스, dispatch 에코는
     # "그 hook 선택 또는 pre-bash-dispatch 선택" 시 실행(D10 — 에코만 따로 돌릴 수 있게).
     $hookBase = ($c.hook -replace '\.ps1$', '').ToLowerInvariant()
     $isDispatchEchoTarget = (-not [bool]$c.pending_fix) -and
-        ($c.hook -in @('warn-external-ops.ps1', 'require-task-checkbox.ps1', 'warn-commit-secrets.ps1'))
+        ($c.hook -eq 'guard-bash.ps1')
     $runIndividual = Test-HookSelected @($hookBase)
-    $runDispatchEcho = $isDispatchEchoTarget -and (Test-HookSelected @($hookBase, 'pre-bash-dispatch'))
+    $runDispatchEcho = $isDispatchEchoTarget -and (Test-HookSelected @($hookBase, 'guard-bash'))
     if (-not ($runIndividual -or $runDispatchEcho)) { continue }
 
     $json = @{ tool_name = 'Bash'; tool_input = @{ command = $c.command } } | ConvertTo-Json -Compress
@@ -31,7 +39,7 @@ foreach ($c in $cases) {
             -PendingFix ([bool]$c.pending_fix)
     }
 
-    # [v1.99.0 T6] 디스패처 전수 동등성 — 3 hook의 stateless 케이스를 pre-bash-dispatch.ps1에도
+    # [v1.99.0 T6] 디스패처 전수 동등성 — 3 hook의 stateless 케이스를 guard-bash.ps1에도
     #   같은 stdin으로 재공급해 개별 hook 경유와 일치하는지 실증(프로덕션 배선이 디스패처이므로
     #   대표 선별이 아닌 전수). block-destructive는 디스패처 무포함이라 제외.
     #   디스패처는 3 hook을 합산하므로 출력은 개별 hook의 상위집합이다 — 동등성 판정은
@@ -43,7 +51,7 @@ foreach ($c in $cases) {
     #   `expect_not_contains`도 개별 전용이다 — 디스패처는 3 hook 합산이라 같은 문자열이
     #   다른 hook의 출력에서 정당하게 나올 수 있어, 상위집합에 「없어야 한다」를 걸면 오판한다.
     if ($runDispatchEcho) {
-        $rd = Invoke-Hook 'pre-bash-dispatch.ps1' $json
+        $rd = Invoke-Hook 'guard-bash.ps1' $json
         Assert-Case -Name "dispatch=$($c.hook): $($c.name)" -R $rd `
             -ExpectExit ([int]$c.expect_exit) `
             -ExpectContains ([string]$c.expect_contains)

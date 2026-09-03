@@ -17,7 +17,7 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 try { $null = [Console]::In.ReadToEnd() } catch {}
 
 try {
-    . (Join-Path $PSScriptRoot 'orphan-process-cleanup.ps1')
+    . (Join-Path $PSScriptRoot 'session-end-cleanup-lib.ps1')
     $null = Invoke-OrphanProcessCleanup -Hook 'session-end-cleanup'
 } catch {}
 
