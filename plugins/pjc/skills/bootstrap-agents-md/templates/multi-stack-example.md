@@ -14,7 +14,7 @@
 
 - **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
 - 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
-- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan-feature` Step 1 소관).
+- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan` Step 1 소관).
 
 # A. WinUI 3 / .NET 예시
 
@@ -89,7 +89,7 @@
 
 ## Plan Location
 
-`pjc:plan-feature`가 생성하는 `plan.md`는 **루트에 하나**다(덮어쓰기). 위치 선택지가 없으므로 이 절에 `Plan Location:` 줄을 두지 않는다.
+`pjc:plan`가 생성하는 `plan.md`는 **루트에 하나**다(덮어쓰기). 위치 선택지가 없으므로 이 절에 `Plan Location:` 줄을 두지 않는다.
 
 ```
 PRD Location:  docs/prd.md (대규모 작업 시)
@@ -101,14 +101,14 @@ task가 많아 나눠야 하면 파일을 쪼개지 말고 **회차를 나눈다
 
 이 프로젝트는 글로벌 harness의 다음 워크플로를 따릅니다:
 
-1. **계획 단계**: `pjc:plan-feature` — `plan.md` 작성
-2. **구현 단계**: `pjc:implement-task` — PIV 루프 + 2단계 리뷰
+1. **계획 단계**: `pjc:plan` — `plan.md` 작성
+2. **구현 단계**: `pjc:implement` — PIV 루프 + 2단계 리뷰
 3. **디버깅**: `pjc:pjc-systematic-debugging` — 4-phase 근본 원인 분석
 4. **MVVM (WinUI 3 / WPF / MAUI)**: `pjc:add-viewmodel` — CommunityToolkit.Mvvm 기반, Android에는 적용되지 않음
 5. **DDD/Clean (양쪽 적용 가능)**: `pjc:add-domain-service` — Domain/Application 서비스 추가
 
 > Android의 경우 `pjc:add-viewmodel`은 비대상입니다(CommunityToolkit.Mvvm 기반 WinUI/WPF/MAUI 코드를 생성하므로 Android Jetpack과 맞지 않음). 사용하지 마세요.
-> Android ViewModel 추가는 `pjc:implement-task`로 직접 작성합니다.
+> Android ViewModel 추가는 `pjc:implement`로 직접 작성합니다.
 
 글로벌 위치: `%USERPROFILE%\.claude\plugins\pjc-harness\plugins\pjc\skills\<name>\SKILL.md`
 

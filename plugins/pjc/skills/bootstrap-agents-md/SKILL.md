@@ -1,6 +1,6 @@
 ---
 name: bootstrap-agents-md
-description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by plan-feature when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". 파일 이름을 대지 않고 목적만 말하는 요청도 이 스킬이다 — 빌드·실행·테스트 방법이나 프로젝트 규약을 정리한 문서를 새로 만들어 달라는 요청이 여기 해당한다. 그 경우에도 산출물은 AGENTS.md이며 README·ONBOARDING 등 다른 이름의 문서를 새로 만들지 않는다. Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from one of 9 stack templates (plus generic/multi-stack). If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README. An existing CLAUDE.md does NOT block it — that file is Claude-only and usually gitignored, while AGENTS.md is committed and read by other agents.
+description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by pjc:plan when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". 파일 이름을 대지 않고 목적만 말하는 요청도 이 스킬이다 — 빌드·실행·테스트 방법이나 프로젝트 규약을 정리한 문서를 새로 만들어 달라는 요청이 여기 해당한다. 그 경우에도 산출물은 AGENTS.md이며 README·ONBOARDING 등 다른 이름의 문서를 새로 만들지 않는다. Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from one of 9 stack templates (plus generic/multi-stack). If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README. An existing CLAUDE.md does NOT block it — that file is Claude-only and usually gitignored, while AGENTS.md is committed and read by other agents.
 argument-hint: "(자동)"
 ---
 
@@ -13,10 +13,10 @@ argument-hint: "(자동)"
 
 | 시점 | 호출 방식 |
 |---|---|
-| `plan-feature` Step 1에서 AGENTS.md 부재 감지 | 자동 호출 |
+| `pjc:plan` Step 1에서 AGENTS.md 부재 감지 | 자동 호출 |
 | 사용자 직접 호출 | `/pjc:bootstrap-agents-md` |
 
-생성 후 plan-feature가 그 `AGENTS.md`를 읽고 정상 진행.
+생성 후 `pjc:plan`이 그 `AGENTS.md`를 읽고 정상 진행.
 
 ## 절대 규칙
 
@@ -35,7 +35,7 @@ argument-hint: "(자동)"
 ```powershell
 Test-Path AGENTS.md
 ```
-True면 → 즉시 종료, plan-feature로 복귀(절대 규칙 2 — 덮어쓰기 금지).
+True면 → 즉시 종료, `pjc:plan`으로 복귀(절대 규칙 2 — 덮어쓰기 금지).
 
 **`CLAUDE.md` 존재는 종료 조건이 아니다.** 두 파일은 역할이 다르다 — `CLAUDE.md`는 Claude 전용이고
 `AGENTS.md`는 다른 에이전트(Codex·Gemini 등)도 읽는 공용 가이드다(환경에 따라 `CLAUDE.md`가 전역
@@ -173,11 +173,11 @@ if ($detected -contains 'dotnet') {
 
 #### Case A-2 — 위키 포인터 절 처리 (전 Case 공통, 저장 전)
 
-템플릿의 `## 위키` 절은 **자리만 있고 경로는 비어 있다**. 이 스킬은 위키에 등록하지 않는다 — 등록은 `pjc:plan-feature` Step 1 소관이고, 여기서 등록까지 하면 두 스킬 사이에 순서 의존이 생긴다.
+템플릿의 `## 위키` 절은 **자리만 있고 경로는 비어 있다**. 이 스킬은 위키에 등록하지 않는다 — 등록은 `pjc:plan` Step 1 소관이고, 여기서 등록까지 하면 두 스킬 사이에 순서 의존이 생긴다.
 
 1. **vault 판정**: `pjc:llm-wiki` 절차 K 1의 판정 게이트를 그대로 쓴다(`~/.claude/llm-wiki-config.json` · SessionStart 주입 라인). **확인 없이 "미설정"으로 단정하지 않는다.**
 2. **vault 있음** → 절을 그대로 둔다(경로는 `<프로젝트명>` placeholder 유지). 이미 등록된 프로젝트면 그 허브 경로를 채운다.
-3. **vault 없음·경로 부재** → `## 위키` 절을 **생성물에서 제거**한다(없는 곳을 가리키는 포인터를 남기면 다음 세션이 그것을 찾다 실패한다). 제거한 생성물을 Step 4 미리보기에 그대로 싣고, **Step 5 저장 완료 후** 1줄 보고한다: *"위키 vault가 없어 `## 위키` 절은 넣지 않았습니다 — 위키에 등록되면 이 경로가 채워집니다(등록은 `pjc:plan-feature` Step 1 소관)."*
+3. **vault 없음·경로 부재** → `## 위키` 절을 **생성물에서 제거**한다(없는 곳을 가리키는 포인터를 남기면 다음 세션이 그것을 찾다 실패한다). 제거한 생성물을 Step 4 미리보기에 그대로 싣고, **Step 5 저장 완료 후** 1줄 보고한다: *"위키 vault가 없어 `## 위키` 절은 넣지 않았습니다 — 위키에 등록되면 이 경로가 채워집니다(등록은 `pjc:plan` Step 1 소관)."*
 
 #### Case B — 표식 알지만 template 없음
 
@@ -254,11 +254,11 @@ D 선택 시 `multi-stack-example.md`를 참고하여 3개 섹션 모두 작성.
 
 아키텍처에 답하지 않고 `[Y]`를 택하면 **그 항목은 빈 칸으로 저장**한다(추측 채움 금지).
 
-### Step 5. 저장 + plan-feature로 복귀
+### Step 5. 저장 + `pjc:plan`으로 복귀
 
-`Y` → `./AGENTS.md`에 저장 → "AGENTS.md 생성 완료" 보고 → plan-feature 계속.
+`Y` → `./AGENTS.md`에 저장 → "AGENTS.md 생성 완료" 보고 → `pjc:plan` 계속.
 `E` → 사용자 수정 사항 반영 → 다시 보여주기.
-`N` → 종료. plan-feature는 추측 모드로 진행 (또는 사용자가 plan-feature 재호출).
+`N` → 종료. `pjc:plan`은 추측 모드로 진행 (또는 사용자가 `pjc:plan` 재호출).
 
 ## 출력 형식
 

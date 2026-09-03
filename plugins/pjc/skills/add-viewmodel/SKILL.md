@@ -1,6 +1,6 @@
 ---
 name: add-viewmodel
-description: This skill should be used when the user requests adding a new screen, dialog, page, window, or any UI component that needs a ViewModel in a WinUI 3 / WPF / MAUI project using CommunityToolkit.Mvvm. Triggers on phrases like "ViewModel 추가", "새 화면", "다이얼로그 추가", "페이지 만들기", "add screen/page/dialog/window". 화면이 앱 전역 상태(테마·언어·환경설정)를 다루더라도 요청 단위가 화면 하나면 이 스킬이며, 그 이유로 plan-feature에 넘기지 않는다 — 전역 기능이 들어간다는 것은 화면의 내용이지 요청 규모가 아니다. Generates ViewModel + View skeleton with proper MVVM bindings and DI registration. Do NOT trigger for non-XAML stacks (React/web, ASP.NET WebAPI controllers), simple UI text/label/style tweaks on an existing view, or debugging an existing ViewModel (use pjc-systematic-debugging). Android Jetpack ViewModel is out of scope.
+description: This skill should be used when the user requests adding a new screen, dialog, page, window, or any UI component that needs a ViewModel in a WinUI 3 / WPF / MAUI project using CommunityToolkit.Mvvm. Triggers on phrases like "ViewModel 추가", "새 화면", "다이얼로그 추가", "페이지 만들기", "add screen/page/dialog/window". 화면이 앱 전역 상태(테마·언어·환경설정)를 다루더라도 요청 단위가 화면 하나면 이 스킬이며, 그 이유로 `pjc:plan`에 넘기지 않는다 — 전역 기능이 들어간다는 것은 화면의 내용이지 요청 규모가 아니다. Generates ViewModel + View skeleton with proper MVVM bindings and DI registration. Do NOT trigger for non-XAML stacks (React/web, ASP.NET WebAPI controllers), simple UI text/label/style tweaks on an existing view, or debugging an existing ViewModel (use pjc-systematic-debugging). Android Jetpack ViewModel is out of scope.
 argument-hint: "<화면 이름 또는 목적>"
 ---
 
@@ -11,21 +11,21 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ## 호출 흐름
 
-이 skill은 **`pjc:implement-task`의 Phase I 안에서 호출**되거나, 사용자가 직접 `/pjc:add-viewmodel`로 호출할 수 있다.
+이 skill은 **`pjc:implement`의 Phase I 안에서 호출**되거나, 사용자가 직접 `/pjc:add-viewmodel`로 호출할 수 있다.
 
 | 호출 방식 | 흐름 |
 |---|---|
-| implement-task Phase I 안 | plan.md task가 "ViewModel 추가" 패턴이면 자동 호출. 이 skill이 boilerplate 생성 후 implement-task의 Phase V가 검증을 이어받음. |
+| `pjc:implement` 구현 단계 안 | plan.md task가 "ViewModel 추가" 패턴이면 자동 호출. 이 skill이 boilerplate 생성 후 `pjc:implement`의 검증이 이어받음. |
 | 사용자 직접 호출 | plan.md 없이 단독 사용. 단, `require-plan-for-write` hook이 차단할 수 있으므로 `$env:CLAUDE_HARNESS_QUICK = '1'` 필요. |
 
 이 skill의 **책임 범위**: ViewModel/View boilerplate, DI 등록, 기본 테스트 스켈레톤 생성까지.
-**책임 범위 밖**: 비즈니스 로직, 데이터 바인딩 상세, 통합 검증 — implement-task가 담당.
+**책임 범위 밖**: 비즈니스 로직, 데이터 바인딩 상세, 통합 검증 — `pjc:implement`가 담당.
 
-**Android의 Jetpack ViewModel은 비대상.** Android의 경우 implement-task가 직접 구현.
+**Android의 Jetpack ViewModel은 비대상.** Android의 경우 `pjc:implement`가 직접 구현.
 
 ## 사전 조건
 
-이 skill을 호출하기 전에 `plan-feature`로 다음이 결정되어 있어야 한다:
+이 skill을 호출하기 전에 `pjc:plan`로 다음이 결정되어 있어야 한다:
 
 - 화면 이름 (예: `Settings`, `UserDetail`)
 - 화면 종류 (Page / Window / UserControl / ContentDialog)
@@ -33,7 +33,7 @@ View + ViewModel 스켈레톤을 추가한다.
 - 상위 네비게이션과의 연결 방식
 - 필요한 의존성 서비스 (있다면)
 
-위 정보가 없으면 사용자에게 묻거나 `plan-feature`로 복귀.
+위 정보가 없으면 사용자에게 묻거나 `pjc:plan`로 복귀.
 
 ## 절대 규칙
 

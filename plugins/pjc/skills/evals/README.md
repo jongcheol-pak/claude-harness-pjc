@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 56건 (8스킬 × 최소 5건, `plan-feature`는 16건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 56건 (8스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
 | `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 | `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
 
@@ -76,7 +76,7 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 **`workspace`는 7종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
 - `no_plan` — AGENTS.md·소스만 있는 기본 프로젝트(Python 단일 스크립트).
-- `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `implement-task`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
+- `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `pjc:implement`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
 - `no_agents_md` — **AGENTS.md가 없는** 프로젝트. `bootstrap-agents-md`는 그 파일의 **부재**가 발동 조건이다.
 - `ddd_project` — Domain/Application/Infrastructure 레이어 + DDD를 명시한 AGENTS.md. `add-domain-service`용.
 - `xaml_project` — Views/ViewModels + WinUI·CommunityToolkit.Mvvm을 명시한 AGENTS.md. `add-viewmodel`용.

@@ -82,7 +82,7 @@
 - ① 이 스킬 파일들(`SKILL.md`·`references/procedures-content.md`·`references/procedures-ops.md`·`references/wiki-schema.md`·`scripts/lint.py`·`references/templates.md`)은 **플러그인 번들**이라 플러그인 업데이트로 덮어써져 자동 갱신분이 유실된다(config.json `_note` 참조 — 실제 설정을 사용자 홈에 두는 이유와 동일).
 - ② 세션이 규약을 위반해 만든 산출물이 '실제 위키 상태'가 되고, H가 그 위반에 맞춰 규칙을 재작성하면 규약이 점진 침식된다(**자기정당화 루프** — H가 규칙 위반을 규칙으로 승격시키는 경로).
 
-번들 수정이 실제로 필요하면 **하네스(플러그인) 레포 세션에서 plan-feature 절차로 승인받아** 진행한다(H-2 하단 "(참고)" 블록의 세 곳 동시 갱신 규칙은 그때 적용).
+번들 수정이 실제로 필요하면 **하네스(플러그인) 레포 세션에서 `pjc:plan` 절차로 승인받아** 진행한다(H-2 하단 "(참고)" 블록의 세 곳 동시 갱신 규칙은 그때 적용).
 
 #### H-1. 대상 조건 (불일치 신호 — 발견 시 큐잉 대상)
 1. 형식 불일치(frontmatter/본문 섹션/경로가 템플릿과 다름)
@@ -98,14 +98,14 @@
 2. 위키 실제 상태와 대조한다.
 3. 불일치를 발견하면 **`skill-feedback.md`**의 `[SKILL-IMPROVE]` 큐에 1줄 기록한다(형식·기록 게이트 3조건·중복 억제는 절차 K 5-1) + 이번 세션 보고에 포함한다. **번들 파일을 직접 수정하지 않는다.**
 
-> **(참고) 승인 후 하네스 레포에서 번들을 실제로 수정할 때의 규칙** — 위키 세션이 아니라 plan-feature 승인을 거친 하네스 세션에서 적용:
+> **(참고) 승인 후 하네스 레포에서 번들을 실제로 수정할 때의 규칙** — 위키 세션이 아니라 `pjc:plan` 승인을 거친 하네스 세션에서 적용:
 > - 규칙 번들 수정 시 frontmatter `version`을 올린다.
 > - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `references/wiki-ops-rules.md` 예산표, `wiki-schema.md` **§2.N 타입절(`- **예산**:` 줄)·§3~§4**, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/ARCHIVE_EXEMPT_TYPES/FRESHNESS_EXEMPT_TYPES/RELEASE_MARKER_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **예산 단계 임계·판정 어휘**(BUDGET_NEAR_RATIO/BUDGET_CRITICAL_RATIO/BUDGET_CRITICAL_SLACK/BUDGET_REJUDGE_MARGIN/BUDGET_SPLIT_VOCAB)는 `references/wiki-ops-rules.md`의 **「예산 단계 신호」 표**가 문서 측 정본이며 `check_consistency.py`가 그 표와 lint 상수를 기계 대조한다 — 산문(§7-2·§4)에는 수치를 복제하지 말고 상수명만 쓴다(복제하면 그 자리가 무가드로 남는다). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `references/procedures-ops.md` F-1(이 파일)에 동일 항목을 문서화한다.
 > - **이 동기 정합은 `python "<skill>/evals/check_consistency.py"`(인자 없음)로 기계 검증한다** — 세 곳(+§4 예산표·템플릿 주석·§7↔F-1 번호·**타입 열거 정합**)의 드리프트를 손 대조 대신 자동으로 잡는다. **타입 열거 정합**은 새 타입을 도입할 때 기존 타입이 산문으로 열거된 자리(§3 origin·confidence 통제어휘 서술 · §7-3 · §7-9 · §7-28 · §8 아카이브 예외 · §11 · 목차 §2 행 · 계층 태그 · `templates.md` 목차 · §12 description 권장/비대상)가 조용히 낡는 것을 막는다 — **새 타입을 만들면 이 자리들도 함께 갱신해야 exit 0이 된다.** 수동 3중 갱신에 의존하지 말고 번들 수정 후 반드시 돌린다(레포 루트 `AGENTS.md`가 지목하는 검증 매핑 표 — 표 본체는 `docs/harness-conventions.md` — 가 `llm-wiki/**` 수정 시 이 실행을 요구한다. 이 포인터는 그 게이트를 절차에서도 발견 가능하게 한다).
 
 #### H-3. 범위 제한 (SSOT 우선)
 - **SSOT 우선 판정**: 위키 실제 상태가 규칙과 다르면, 기본은 **규칙(SSOT)이 옳고 위키가 틀린 것**으로 본다 — 규칙을 위키에 맞추지 말고, 위키 콘텐츠를 규칙에 맞추거나(절차 B/F) 판단이 갈리면 사용자에게 확인한다. "위키가 이러니 규칙을 바꾸자"는 H-3 자기정당화 루프의 입구다.
-- **사용자 명시 개선 요청은 절차 H 아님**: 사용자가 스킬·규칙 개선을 직접 요청하면 그건 plan-feature 경로(하네스 레포)다 — 이 절차 H(위키 세션의 우연한 발견)와 구분한다.
+- **사용자 명시 개선 요청은 절차 H 아님**: 사용자가 스킬·규칙 개선을 직접 요청하면 그건 `pjc:plan` 경로(하네스 레포)다 — 이 절차 H(위키 세션의 우연한 발견)와 구분한다.
 - 예: 실제 파일에 `status` 필드가 흔히 쓰이면 `skill-feedback.md`의 [SKILL-IMPROVE] 큐에 "템플릿에 status 반영 검토"로 기록(O, 큐잉). 위키 세션이 템플릿·번들을 직접 편집(X). 아카이브 60일→30일 같은 설계 변경(X, 항상 사용자 승인).
 
 ### L. 복구 (백업 되돌리기)
@@ -121,7 +121,7 @@
 
 ### M. 큐 소비 (경량)
 
-**발동 경로는 둘이다.** ① **사용자 요청** — "큐 정리", "pending 정리/소비"(**`pending.md`·`skill-feedback.md` 두 파일이 모두 대상**이다 — 사용자가 한쪽 이름만 대도 잔량 보고는 둘 다 한다). ② **코드 세션 자동 호출** — `pjc:implement-task` Phase F-6.5가 구현 완료 후 이 절차를 발동한다(그 절이 발동 조건·시점을 규정한다). 풀 ingest(B)·풀 lint(F) 없이 **두 큐 파일(`pending.md`·`skill-feedback.md`)만 다루는** 경량 절차이며(단 **`skill-feedback.md`는 자동 경로에서 소비하지 않고 잔량 보고만** 한다 — 2-b), 잔량 경고(`pending.md` 20건 K 5-2 · `skill-feedback.md` 15건·30일 K 5-1)를 받고 정리만 원할 때 큐 5건 비우자고 26항목 점검을 도는 마찰을 없앤다.
+**발동 경로는 둘이다.** ① **사용자 요청** — "큐 정리", "pending 정리/소비"(**`pending.md`·`skill-feedback.md` 두 파일이 모두 대상**이다 — 사용자가 한쪽 이름만 대도 잔량 보고는 둘 다 한다). ② **코드 세션 자동 호출** — `pjc:implement` Phase F-6.5가 구현 완료 후 이 절차를 발동한다(그 절이 발동 조건·시점을 규정한다). 풀 ingest(B)·풀 lint(F) 없이 **두 큐 파일(`pending.md`·`skill-feedback.md`)만 다루는** 경량 절차이며(단 **`skill-feedback.md`는 자동 경로에서 소비하지 않고 잔량 보고만** 한다 — 2-b), 잔량 경고(`pending.md` 20건 K 5-2 · `skill-feedback.md` 15건·30일 K 5-1)를 받고 정리만 원할 때 큐 5건 비우자고 26항목 점검을 도는 마찰을 없앤다.
 
 > **왜 자동 경로가 생겼나**: 코드 세션은 `[DECISION]`·`[PROJECT-FACT]`를 **쌓기만** 하고 소비는 사용자가 위키 세션을 열어야만 일어났다. 그 세션이 열리지 않으면 큐가 무한히 자라고 잔량 경고만 반복된다 — 경고는 소비를 유발하지 못한다. 두 태그는 **사용자 발화가 직접 근거**라 레포 대조가 필요 없어(아래 3), 코드 세션이 스스로 소비할 수 있는 유일한 태그다.
 

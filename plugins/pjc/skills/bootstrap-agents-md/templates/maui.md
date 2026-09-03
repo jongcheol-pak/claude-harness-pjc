@@ -8,7 +8,7 @@
 
 - **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
 - 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
-- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan-feature` Step 1 소관).
+- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan` Step 1 소관).
 
 ## Build & Test
 - **타깃 프레임워크(TFM)**: `<TODO: net8.0-android;net8.0-ios;net8.0-maccatalyst;net8.0-windows10.0.19041.0 중 사용하는 것>`

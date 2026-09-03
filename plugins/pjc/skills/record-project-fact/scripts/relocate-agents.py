@@ -284,7 +284,7 @@ def verify_reachability(orig_path, dest_paths, declared_path=None):
     """ⓖ ④(원문 도달 대조)만 단독으로 돌린다. 반환: (종료 코드, 보고 줄 목록).
 
     **소급 정리가 쓰는 진입점이다.** 그 경로는 이 스크립트가 수행하지 않고 `plan.md`로 넘어가
-    `implement-task`가 실행하므로, 검증 단계에서 부를 수 있는 **명령**이 없으면 도달 대조가
+    `pjc:implement`가 실행하므로, 검증 단계에서 부를 수 있는 **명령**이 없으면 도달 대조가
     「걸어야 한다」는 서술로만 남는다(SKILL.md 「소급 정리」 절차 4가 이 명령을 acceptance로 넣게 한다).
 
     `relocate()` 경로와 달리 **삭제가 정상**이므로 `--declared`로 「의도적으로 지운 줄」을 받는다 —
