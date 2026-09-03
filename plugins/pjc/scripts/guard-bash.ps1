@@ -301,6 +301,7 @@ function Write-DispatchEvent {
     } catch {}
 }
 
+# 검사 5종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md`의 「§2 검사 5종을 한 프로세스에 담는 구조」
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md`의 「§8 순서: 원 hooks.json 순서에서 block-destructive」
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },

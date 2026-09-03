@@ -28,24 +28,32 @@
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
-두 경로가 그것을 dot-source 했는데, **지금은 경로가 하나뿐이라 공유 모듈이 필요 없다.**
+두 경로가 그것을 dot-source 했는데, **지금은 실행 경로가 하나뿐이라 그 이중화가 필요 없다.**
+dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래).
 
 현행 구조:
 
-- **검사 5종이 같은 파일의 함수다** — `Invoke-WarnExternalOps` · `Invoke-RequireTaskCheckbox` ·
-  `Invoke-WarnCommitSecrets` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
+- **검사 5종 중 4종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+  `Invoke-RequireTaskCheckbox` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
+  **`Invoke-WarnCommitSecrets` 하나만 `guard-commit-secrets.ps1` 에 있고 dot-source 한다** —
+  그 파일이 커밋 시점 검사 전체(스캔 캡·우회 변수·시크릿 패턴 연동)를 담아 크기가 따로 놀고,
+  분리해 두어야 골든이 그 파일만 단독 프로브할 수 있다. 로드 실패는 침묵하지 않는다 —
+  `guard-bash.ps1` 이 `Get-Command` 로 확인해 stderr 로 알린다(비차단 fail-open).
   파일 끝의 `$checks` 배열이 함수명 ↔ **rule 이름**을 짝지어 순서대로 부른다.
 - **rule 이름은 옛 hook 이름을 그대로 쓴다** — `warn-external-ops` 등 다섯은 hook 으로는
   사라졌지만 이벤트 로그·골든 필터가 그 이름으로 돌아 식별자로 살아 있다. **삭제 자산으로
   오인하지 말 것**(`plugins/pjc/evals/check-stale-refs.py` 의 DEAD 목록이 이 다섯을 뺀 이유).
 - **함수 계약**: 파싱된 `$data`(hook stdin JSON) → 결과 객체
   `@{ Block = [bool]; Stderr = [string[]]; Context = [string] }`.
-  `Block = $true` 는 `require-task-checkbox` 만 낼 수 있다(exit 2). 출력·exit 번역은
-  파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
+  **`Block = $true`(exit 2)를 내는 경로는 셋이다** — `require-task-checkbox` 1곳
+  (`guard-bash.ps1`) + `warn-commit-secrets` 2곳(`guard-commit-secrets.ps1` 의 시크릿 검출·
+  스캔 캡 초과). `check-block-coverage.py` 가 세는 「guard-bash 경로 1 · guard-commit-secrets
+  경로 2」가 그 셋이다. 나머지 3종은 경고 전용이라 `Block` 을 세우지 않는다.
+  출력·exit 번역은 파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
 - **한 검사의 예외는 나머지를 막지 않는다** — `foreach` 안에서 `try/catch` 로 격리하고
   안전측으로 통과시킨다. 다섯 중 하나가 깨져 전체가 침묵하는 것을 막는다.
-- **`New-HookResult` 는 dot-source 대상인 `guard-commit-secrets.ps1` 에 있다** — 그쪽이
-  이 생성기를 쓰므로 정의를 거기 두어야 그 파일 단독 dot-source(골든 프로브)가 성립한다.
+- **`New-HookResult` 생성기도 `guard-commit-secrets.ps1` 에 있다** — 그쪽이 이 생성기를
+  쓰므로 정의를 거기 두어야 그 파일 단독 dot-source(골든 프로브)가 성립한다.
 - **`block-destructive.ps1` 은 여기 합치지 않는다** — 「끌 수 없는 마지막 방어선」이라
   공유 로드 실패에 결합시키지 않고 `hooks.json` 독립 엔트리로 직접 실행한다(결정 B).
 

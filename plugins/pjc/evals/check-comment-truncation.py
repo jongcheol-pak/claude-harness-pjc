@@ -27,7 +27,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / 'plugins' / 'pjc' / 'scripts'
 RULES = SCRIPTS / 'rules'
 
-CITE_RX = re.compile(r'# (.*?) — 근거는 `rules/([a-z\-]+\.md)`의 「(§\d+ .*?)」')
+# 표제 안에 「」가 있으면 비탐욕 매칭이 거기서 끊긴다 — 줄 끝 앵커로 마지막 」까지 잡는다.
+#   끊긴 인용은 헤딩의 접두가 되어 축 B가 「접두 일치」로 약화된다(완료 재리뷰 MINOR 2ⓑ).
+CITE_RX = re.compile(r'# (.*?) — 근거는 `rules/([a-z\-]+\.md)`의 「(§\d+ .*)」\s*$')
 
 # 절단 판정: 이 길이 이상인데 종결부 없이 끝나면 캡에 눌린 것으로 본다.
 # 60이 관측된 캡이고, 그보다 짧게 끝난 표제는 원래 그 길이였다.
@@ -72,8 +74,11 @@ def main():
         if not p.exists():
             mismatch.append((name, n, sec, f'rationale 없음: rules/{rf}'))
             continue
-        if ('## ' + sec) not in p.read_text(encoding='utf-8'):
-            mismatch.append((name, n, sec, f'rules/{rf}에 대응 헤딩 없음'))
+        # 완전 일치 — `in` 은 접두만 같아도 통과해 잘린 인용을 녹색으로 만든다
+        heads = {ln.rstrip() for ln in p.read_text(encoding='utf-8').splitlines()
+                 if ln.startswith('## ')}
+        if ('## ' + sec) not in heads:
+            mismatch.append((name, n, sec, f'rules/{rf}에 완전히 같은 헤딩 없음'))
 
     print('== 잘린 주석 검사 (절단 · 주석↔rationale 헤딩 짝) ==')
     print(f'근거 인용 주석 {len(rows)}건 · 대상 스크립트 {len(list(SCRIPTS.glob("*.ps1")))}개')
