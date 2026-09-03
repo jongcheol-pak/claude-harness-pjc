@@ -3,7 +3,7 @@
   "cases": [
     {
       "id": "impl-pos-1",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "trigger",
       "workspace": "with_plan",
       "query": "plan.md 대로 구현 시작해줘",
@@ -11,7 +11,7 @@
     },
     {
       "id": "impl-pos-2",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "trigger",
       "workspace": "with_plan",
       "query": "이대로 진행해",
@@ -19,7 +19,7 @@
     },
     {
       "id": "impl-pos-3",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "trigger",
       "workspace": "with_plan",
       "query": "T2부터 계속",
@@ -27,7 +27,7 @@
     },
     {
       "id": "impl-pos-4",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "trigger",
       "workspace": "with_plan",
       "query": "승인. 계획대로 작업 진행해줘",
@@ -35,7 +35,7 @@
     },
     {
       "id": "impl-pos-5",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "trigger",
       "workspace": "with_plan",
       "query": "go",
@@ -43,15 +43,15 @@
     },
     {
       "id": "impl-neg-1",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "src/sample.py의 로깅 방식을 전체적으로 리팩토링해줘",
-      "why": "plan이 없음 — implement-task가 아니라 plan-feature 영역"
+      "why": "plan이 없음 — pjc:implement가 아니라 pjc:plan 영역"
     },
     {
       "id": "impl-neg-2",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "no-trigger",
       "workspace": "with_plan",
       "query": "plan.md에 지금 어떤 작업들이 적혀 있어?",
@@ -59,7 +59,7 @@
     },
     {
       "id": "impl-neg-3",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "README.md 첫 줄 오타 하나만 고쳐줘",
@@ -67,7 +67,7 @@
     },
     {
       "id": "impl-neg-4",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "no-trigger",
       "workspace": "with_plan",
       "query": "이 프로젝트 빌드 명령이 뭐야?",
@@ -75,15 +75,15 @@
     },
     {
       "id": "impl-neg-5",
-      "skill": "pjc:implement-task",
+      "skill": "pjc:implement",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "알림 기능을 새로 넣고 싶은데 계획부터 세워줘",
-      "why": "계획 수립 요청 — plan-feature가 맞다"
+      "why": "계획 수립 요청 — pjc:plan이 맞다"
     },
     {
       "id": "plan-pos-1",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "사용자 인증 기능을 추가하려는데 계획 세워줘",
@@ -91,7 +91,7 @@
     },
     {
       "id": "plan-pos-2",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "multi_file",
       "query": "이 프로젝트 에러 처리 방식을 여러 파일에 걸쳐 바꿔야 해",
@@ -99,7 +99,7 @@
     },
     {
       "id": "plan-pos-3",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "합계 결과를 CSV로 내보내는 기능 만들어줘",
@@ -107,7 +107,7 @@
     },
     {
       "id": "plan-pos-4",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "Build a small CLI tool that converts CSV files to JSON",
@@ -115,7 +115,7 @@
     },
     {
       "id": "plan-pos-5",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "sample.py를 클래스 구조로 리팩토링하고 테스트도 붙여줘",
@@ -123,7 +123,7 @@
     },
     {
       "id": "plan-neg-1",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "README.md의 오타 하나만 고쳐줘",
@@ -131,7 +131,7 @@
     },
     {
       "id": "plan-neg-2",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "sample.py의 로그 레벨 문자열을 INFO에서 DEBUG로 바꿔줘",
@@ -139,7 +139,7 @@
     },
     {
       "id": "plan-neg-3",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "sample.py가 무슨 일을 하는 코드인지 설명해줘",
@@ -147,15 +147,15 @@
     },
     {
       "id": "plan-neg-4",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "no-trigger",
       "workspace": "with_plan",
       "query": "T1 구현 진행해줘",
-      "why": "승인된 plan 존재 + 실행 지시 — implement-task로 라우팅돼야 한다"
+      "why": "승인된 plan 존재 + 실행 지시 — pjc:implement로 라우팅돼야 한다"
     },
     {
       "id": "plan-neg-5",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "sample.py 맨 위에 주석 한 줄만 달아줘",
@@ -163,7 +163,7 @@
     },
     {
       "id": "plan-pos-6",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "- 언어 변경시 메뉴 문구 변경 안되는 문제 수정\n- 화면 깜빡임 수정\n- 안내 문구 표시\n- 전체 문구 하드코딩 → 리소스 → 다국어 적용",
@@ -171,7 +171,7 @@
     },
     {
       "id": "plan-pos-7",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "메모장 앱 만들어줘",
@@ -179,7 +179,7 @@
     },
     {
       "id": "plan-pos-8",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "필요한 기능들을 검토해서 할 일 관리 도구를 만들어줘",
@@ -187,7 +187,7 @@
     },
     {
       "id": "plan-pos-9",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "로그 레벨 DEBUG로 낮추고, 합계가 음수면 0으로 처리하게 바꿔줘",
@@ -195,7 +195,7 @@
     },
     {
       "id": "plan-neg-6",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "이 코드 리뷰해줘",
@@ -203,7 +203,7 @@
     },
     {
       "id": "plan-neg-7",
-      "skill": "pjc:plan-feature",
+      "skill": "pjc:plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "설정 화면 카드 3개 padding 16px로, 제목 font-size 18px로, 포인트 색 #336699로 바꿔줘. 구조나 로직은 그대로 두고 값만.",
