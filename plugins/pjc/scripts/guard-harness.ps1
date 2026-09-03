@@ -41,13 +41,20 @@ try {
     $hookNames = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/harness-hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json).names
     $harnessHookName = ($hookNames -join '|')
 } catch {
-    [Console]::Error.WriteLine('guard-harness: rules/harness-hooks.json 로드 실패 — 자기보호 검사를 건너뜁니다.')
-    exit 0
+    # 이름 집합을 못 읽어도 **경로 축은 그대로 검사한다** — 이름 없이도 `hooks.json`과
+    #   `scripts/rules/*.json` 개조는 판정할 수 있고, 그 둘이 꺼지면 차단이 통째로 무력화된다.
+    #   종전에는 여기서 exit 0 으로 빠져 자기보호가 통째로 fail-open 이었다.
+    [Console]::Error.WriteLine('guard-harness: rules/harness-hooks.json 로드 실패 — 이름 기반 판정만 건너뜁니다(경로 축은 유지).')
+    $harnessHookName = '(?!)'
 }
 
-# (1) .claude/ 하위 설치본 hook 스크립트·hooks.json 개조
+# (1) .claude/ 하위 설치본 hook 스크립트·hooks.json·판정 데이터 개조
+#   `scripts/rules/*.json`이 대상인 이유: v1.225.0이 차단 패턴과 자기보호 이름 집합을 스크립트
+#   밖으로 내렸다. 그 파일을 고치면 차단이 통째로 꺼지는데 스크립트는 한 글자도 안 바뀐다 —
+#   보호면이 데이터로 옮겨간 만큼 보호 대상도 따라가야 한다.
 $isHookScript = ($norm -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$')) -or
-                ($norm -match '/\.claude/.*/hooks\.json$')
+                ($norm -match '/\.claude/.*/hooks\.json$') -or
+                ($norm -match '(?i)/\.claude/.*/scripts/rules/[^/]+\.json$')
 # 규칙 — 근거는 `rules/harness-guard-rationale.md`의 「§3 규칙」
 $has83 = ($norm -match '(?i)/CLAUDE~[0-9]+(/|$)')
 $suspect83 = $has83 -and

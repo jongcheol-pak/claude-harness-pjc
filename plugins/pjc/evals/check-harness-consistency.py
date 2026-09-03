@@ -28,6 +28,7 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
 잴 대상을 잃었다. 그 축들은 **같은 사실이 여러 문서에 복제된 구조**를 감시하던 것이고,
 새 구조는 `skills/DESIGN.md` 2절로 복제 자체를 금지해 감시할 대상이 없다.
 """
+import glob
 import os
 import re
 import sys
@@ -165,14 +166,19 @@ def check_pointer_reachability():
         for i in range(len(parts)):
             by_suffix.setdefault("/".join(parts[i:]), []).append(f)
 
-    for src in _md_files():
+    # hook 스크립트도 포인터 소스다 — v1.225.0에서 근거 주석을 `rules/*-rationale.md`로 내리며
+    #   `.ps1`이 그 문서의 절을 가리키게 됐는데, 이 축이 마크다운만 보아 **끊긴 포인터 46건이
+    #   exit 0으로 통과했다**(완료 리뷰가 잡았다). 소스에 스크립트를 더해 같은 결함을 막는다.
+    _ptr_sources = list(_md_files()) + sorted(glob.glob(os.path.join(ROOT, "plugins/pjc/scripts/*.ps1")))
+
+    for src in _ptr_sources:
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
         # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
         # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
         if _ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
             continue
-        text = open(src, encoding="utf-8").read()
+        text = open(src, encoding="utf-8-sig", errors="replace").read()
         for ref_path, sec_name in pat.findall(text):
             cand = [os.path.join(ROOT, ref_path.replace("/", os.sep)),
                     os.path.join(os.path.dirname(src), ref_path.replace("/", os.sep))]

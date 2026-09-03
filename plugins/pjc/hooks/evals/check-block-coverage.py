@@ -28,7 +28,7 @@ EVALS = ROOT / 'plugins' / 'pjc' / 'hooks' / 'evals'
 # 차단 사유 문구를 여는 마커 — 이 뒤 문면이 케이스가 대조할 수 있는 고유 문자열이다
 REASON_RX = re.compile(
     r'"(?:\[HARNESS\] )?(?:BLOCKED|\[차단\])[:\s]\s*([^"$]{6,60})'   # 직접 출력형
-    r'|Deny\s+"([^"$]{6,60})"'                                          # block-destructive 의 Deny 헬퍼
+    r'|Deny\s+"([^"]{6,120})"'                                          # block-destructive 의 Deny 헬퍼
     r'|\.Add\("(?:\[HARNESS\] )?BLOCKED[:\s]\s*([^"$]{6,60})"'         # $lines.Add 형
     r'|"\[HARNESS\] BLOCKED[:\s]\s*([^"]{6,120})"')                      # 배열 리터럴 형(보간 포함)
 
@@ -53,8 +53,15 @@ def block_paths():
             s = max(frags, key=len) if frags else ''
             if len(s) >= 6 and s not in reasons:
                 reasons.append(s)
+        # 차단 호출 수 — `Deny` 헬퍼를 쓰는 파일은 그 함수 정의 안의 `exit 2` 를 빼야 이중 계수가
+        #   되지 않는다(호출부는 `Deny "..."` 쪽이다).
+        calls = len(re.findall(r'(?m)^\s*exit 2\s*$', text)) + len(re.findall(r'(?m)^\s*Deny\s+"', text))
+        if re.search(r'(?m)^function Deny\b', text):
+            calls -= 1
         if reasons:
             out[f.stem] = reasons
+            if calls > len(reasons):
+                out.setdefault('_partial', []).append('%s (차단 호출 %d · 사유 추출 %d)' % (f.stem, calls, len(reasons)))
         else:
             # exit 2 를 내는데 사유를 못 뽑았다 — 조용히 빠지는 것이 이 검사기가 막으려던 실패다
             out.setdefault('_unparsed', []).append(f.stem)
@@ -102,6 +109,7 @@ def negative_by_hook(cases):
 def main():
     paths = block_paths()
     unparsed = paths.pop('_unparsed', [])
+    partial = paths.pop('_partial', [])
     gtext, cases = golden_text()
     negatives = negative_by_hook(cases)
 
@@ -138,7 +146,12 @@ def main():
         for u in unparsed:
             print('  %s' % u)
 
-    bad = len(missing_pos) + len(missing_neg) + len(unparsed)
+    if partial:
+        print('\n[WARN] 차단 호출 수보다 뽑은 사유가 적다 — 그 차이만큼 판정 밖이다:')
+        for q in partial:
+            print('  %s' % q)
+
+    bad = len(missing_pos) + len(missing_neg) + len(unparsed) + len(partial)
     print('\n결과: %s' % ('전건 충족' if bad == 0 else '미충족 %d건' % bad))
     return 1 if bad else 0
 

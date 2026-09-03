@@ -15,6 +15,20 @@ $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 
 Assert-Case -Name "guard-harness: 설치본 hook 스크립트 Write 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/hooks.json'))
 Assert-Case -Name "protect-harness: 설치본 hooks.json Write 차단" -R $r -ExpectExit 2
+
+# [v1.225.0] 판정 데이터 보호 — 차단 패턴·이름 집합이 스크립트 밖 JSON 으로 나갔으므로 그 파일도 대상이다.
+#   **양성 2 + 델타 음성 2** — 미탐 보완(차단 범위 확대)이라 새 경계가 실제로 발화하면서
+#   오차단 0 임을 함께 보인다(AGENTS.md DO NOT 의 예외 ② 조건).
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/rules/destructive.json'))
+Assert-Case -Name "guard-harness: 설치본 차단 패턴 데이터(rules/destructive.json) Write 차단" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/rules/harness-hooks.json'))
+Assert-Case -Name "guard-harness: 설치본 자기보호 이름 집합(rules/harness-hooks.json) Write 차단" -R $r -ExpectExit 2
+# 델타 음성 ① 개발 repo 의 같은 파일 — `.claude` 가 경로에 없으므로 통과해야 한다
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/pjc/scripts/rules/destructive.json'))
+Assert-Case -Name "guard-harness: 개발 repo 의 rules/*.json 은 통과 (델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+# 델타 음성 ② 설치본이라도 rules 밖 JSON 은 대상이 아니다
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/data/other.json'))
+Assert-Case -Name "guard-harness: 설치본이라도 rules 밖 JSON 은 통과 (델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 $phEdit = @{ tool_name = 'Edit'; cwd = $ph; tool_input = @{ file_path = (Join-Path $fakeInstall 'scripts/guard-harness.ps1'); old_string = 'exit 0'; new_string = 'exit 0 # x' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'guard-harness.ps1' $phEdit
 Assert-Case -Name "protect-harness: 자기 자신 Edit 차단 (self-protect)" -R $r -ExpectExit 2

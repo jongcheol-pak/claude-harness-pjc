@@ -81,17 +81,17 @@
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "find / xargs rm 차단",
+      "name": "find / xargs rm 차단 (차단 사유 문구 고정)",
       "command": "find / -name \"*.tmp\" | xargs rm",
       "expect_exit": 2,
-      "expect_contains": "BLOCKED"
+      "expect_contains": ", 드라이브 루트)를 find로 훑어 삭제(xargs rm / -exec rm / -delete) 감지"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "T3 Get-ChildItem C:\\ | Remove-Item -Force 차단",
+      "name": "T3 Get-ChildItem C:\\ | Remove-Item -Force 차단 (차단 사유 문구 고정)",
       "command": "Get-ChildItem C:\\ -Recurse | Remove-Item -Force",
       "expect_exit": 2,
-      "expect_contains": "BLOCKED"
+      "expect_contains": "위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지"
     },
     {
       "hook": "block-destructive.ps1",
@@ -161,10 +161,10 @@
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "DROP TABLE 차단",
+      "name": "DROP TABLE 차단 (차단 사유 문구 고정)",
       "command": "psql -c \"DROP TABLE users\"",
       "expect_exit": 2,
-      "expect_contains": "BLOCKED"
+      "expect_contains": "파괴적 명령 패턴 감지: '"
     },
     {
       "hook": "block-destructive.ps1",
@@ -833,7 +833,7 @@
       "name": "P1T1 열거 파이프 위험 루트 차단 유지 (. 제외가 약화 아님)",
       "command": "Get-ChildItem C:\\ -Recurse | Remove-Item -Force",
       "expect_exit": 2,
-      "expect_contains": "BLOCKED"
+      "expect_contains": "위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지"
     },
     {
       "hook": "block-destructive.ps1",

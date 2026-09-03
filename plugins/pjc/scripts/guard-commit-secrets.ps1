@@ -12,7 +12,7 @@ function Get-DiffHeadAdded {
            else { @(& git diff HEAD --unified=0 2>$null) }
     if ($LASTEXITCODE -ne 0) {
         $scope = if ($PathArgs.Count) { ($PathArgs -join ' ') } else { '전체' }
-        # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st — 근거는 `rules/commit-secrets-rationale.md`의 「§3 # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st」
+        # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st — 근거는 `rules/commit-secrets-rationale.md`의 「§3 ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트의 Warning 스트림 취급」
         if (-not $script:diffHeadFailNotified) {
             [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
                                        'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
