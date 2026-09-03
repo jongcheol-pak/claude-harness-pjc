@@ -27,7 +27,7 @@ function Get-SystemBootStamp {
 }
 
 function Get-UnkillableMarkers {
-    # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합. — 근거는 `rules/orphan-cleanup-rationale.md`의 「§5 # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합.」
+    # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합. — 근거는 `rules/orphan-cleanup-rationale.md`의 「§5 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합.」
     param([string]$BootStamp)
     $set = @{}
     $dir = Get-OrphanMarkerDir

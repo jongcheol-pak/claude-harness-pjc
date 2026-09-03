@@ -1,6 +1,6 @@
 ﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md`의 「§1 guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종 검사를 한 프로세스에서 수행」
 
-# 아래 검사 함수 5종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(구 `guard-bash 헬퍼.ps1` 주석을 옮긴 것).
+# 아래 검사 함수 5종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
 # 결과 객체 생성기 New-HookResult 는 아래 dot-source 대상(guard-commit-secrets.ps1)에 있다 —
 #   그쪽이 이 함수를 쓰므로 정의를 그 파일에 두어야 단독 dot-source(골든 프로브)가 성립한다.

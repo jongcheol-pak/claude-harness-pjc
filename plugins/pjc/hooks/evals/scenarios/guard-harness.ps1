@@ -65,12 +65,14 @@ $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 
 Assert-Case -Name "guard-harness: 설치본 warn-commit-secrets Write 차단 (v1.97.2 집합 합류)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/secret-patterns.ps1'))
 Assert-Case -Name "guard-harness: 설치본 secret-patterns 헬퍼 Write 차단 (v1.97.2 등가 우회 봉쇄)" -R $r -ExpectExit 2
-# [v1.99.0 T6] 디스패처·공유 lib 이름 집합 합류 — guard-bash(hook)·guard-bash 헬퍼(3 hook 검사 로직
-#   헬퍼, 개조 시 3 게이트 등가 무력화) 설치본 개조 차단. 집합 누락 재발 시 이 두 케이스가 잡는다.
+# [v1.99.0 T6] 디스패처·공유 lib 이름 집합 합류 — 개조 시 3 게이트가 등가로 무력화되는 자리다.
+#   당시 대상 pre-bash-dispatch(hook)·bash-hook-lib(검사 로직 헬퍼) 두 파일은 v1.225.0이 삭제했다
+#   — guard-bash.ps1 하나로 통폐합했고, 그래서 아래 두 케이스가 같은 파일을 재게 됐다.
+#   집합 누락 재발 시 이 두 케이스가 잡는다.
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/guard-bash.ps1'))
 Assert-Case -Name "guard-harness: 설치본 guard-bash Write 차단 (v1.99.0 T6 집합 합류)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/guard-bash.ps1'))
-Assert-Case -Name "guard-harness: 설치본 guard-bash 헬퍼 헬퍼 Write 차단 (v1.99.0 T6 등가 우회 봉쇄)" -R $r -ExpectExit 2
+Assert-Case -Name "guard-harness: 설치본 guard-bash 공유 헬퍼 Write 차단 (v1.99.0 T6 등가 우회 봉쇄)" -R $r -ExpectExit 2
 
 # ---- [v1.181.0 T7] 한글 경로 실증 ----
 # v1.129.0 T2의 stdin UTF-8 수정으로 이 hook도 한글이 든 보호 경로를 비로소 정확히 매치하게 됐는데,

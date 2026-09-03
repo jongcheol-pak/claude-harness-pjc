@@ -16,14 +16,14 @@ function Get-HighConfidenceSecretLabels {
 function Test-CredentialPairToken {
     param([string]$id, [string]$pw)
 
-    # 플레이스홀더는 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§4 # 플레이스홀더는 자격증명이 아니다」
+    # 플레이스홀더는 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§4 플레이스홀더는 자격증명이 아니다」
     $placeholder = '^(xxx+|\*+|your[-_]|fake|example|dummy|sample|changeme$|test$|testing)'
     foreach ($t in @($id, $pw)) {
         if ($t -match "(?i)$placeholder") { return $false }
         if ($t -match '^<.*>$') { return $false }
     }
 
-    # 경로·URL·파일명·버전은 자격증명이 아니다. 확장자를 열거하면 목록 밖 — 근거는 `rules/secret-patterns-rationale.md`의 「§5 # 경로·URL·파일명·버전은 자격증명이 아니다. 확장자를 열거하면 목록 밖」
+    # 경로·URL·파일명·버전은 자격증명이 아니다. 확장자를 열거하면 목록 밖 — 근거는 `rules/secret-patterns-rationale.md`의 「§5 경로·URL·파일명·버전은 자격증명이 아니다. 확장자를 열거하면 목록 밖」
     foreach ($t in @($id, $pw)) {
         if ($t -match '/') { return $false }                      # 경로·라우트
         if ($t -match '(?i)\.[a-z]{2,5}$') { return $false }       # 파일명(config.yml, appsettings.json …)
@@ -35,13 +35,13 @@ function Test-CredentialPairToken {
     if ($pw.Length -lt 6) { return $false }
     if ($pw -notmatch '[\d#$%!@^&*+=?~]') { return $false }
 
-    # 값이 아니라 **참조**면 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§6 # 값이 아니라 **참조**면 자격증명이 아니다」
+    # 값이 아니라 **참조**면 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§6 값이 아니라 **참조**면 자격증명이 아니다」
     if ($pw -match '^\$' -or $pw -match '^%[\w.]+%$') { return $false }              # $env:X · ${X} · $X · %X%
     if ($pw -match '(?i)^(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\()') { return $false }
     if ($pw -match '^[A-Za-z][\w-]*(:[A-Za-z][\w-]*)+$') { return $false }           # 설정 키 경로(appsettings:Db:Pwd)
     if ($pw -match '(?i)^(환경변수|없음|미설정|\.env)') { return $false }            # 값 대신 안내를 적은 자리
 
-    # 상태·에러코드 열거는 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§7 # 상태·에러코드 열거는 자격증명이 아니다」
+    # 상태·에러코드 열거는 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§7 상태·에러코드 열거는 자격증명이 아니다」
     if ($pw -match '^[\d._-]+$') { return $false }
     if ($pw -match '(?i)^(err(or)?|code|status|state|stat|ret|rc|exit|level|step|phase|type|kind|mode|grade|rank|tier|http|active|inactive|pending|enabled?|disabled?|success|fail(ed|ure)?|warn(ing)?|timeout|unknown)[._-]?\d+$') { return $false }
 
@@ -55,14 +55,14 @@ function Get-SecretMatches {
     $found = New-Object System.Collections.Generic.List[string]
     if ([string]::IsNullOrEmpty($content)) { return @() }
 
-    # 실제 '값' 패턴만 잡고 단순 언급 — 근거는 `rules/secret-patterns-rationale.md`의 「§8 # 실제 '값' 패턴만 잡고 단순 언급」
+    # 실제 '값' 패턴만 잡고 단순 언급 — 근거는 `rules/secret-patterns-rationale.md`의 「§8 실제 '값' 패턴만 잡고 단순 언급」
     $secretPatterns = @(
         @{ rx = '(?i)(password|passwd|pwd)\s*[:=]\s*["'']?(?!(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\(|string\b|str\b|int\b|bool\b|char\b|secure(string)?\b|none\b|null\b|nil\b|true\b|false\b))[^\s"''<>{}$]{3,}'; label = 'password 값' },
         # 한글 키워드 (v1.119.0) — 종전엔 영문 password 계열만 봐서 "비밀번호: <값>"이 통째로 미탐이었다.
         #   환경변수 이름만 적으라는 이 hook의 권고를 따른 문장("비밀번호: 환경변수 X로 지정")은 제외한다.
         @{ rx = '(?i)(비밀번호|패스워드|암호)\s*[:=]\s*["''`]?(?!(환경변수|없음|미설정|변경|설정|\$env|os\.|process\.env|Environment\.|<))[^\s"''`<>{}$]{3,}'; label = 'password 값' },
         @{ rx = '(?i)(api[_-]?key|apikey|access[_-]?token|secret[_-]?key|auth[_-]?token|client[_-]?secret)\s*[:=]\s*["'']?[A-Za-z0-9_\-]{8,}'; label = 'API key/token 값' },
-        # 중간 키·`User Id` 공백 표기 수용 — 근거는 `rules/secret-patterns-rationale.md`의 「§9 # 중간 키·`User Id` 공백 표기 수용」
+        # 중간 키·`User Id` 공백 표기 수용 — 근거는 `rules/secret-patterns-rationale.md`의 「§9 중간 키·`User Id` 공백 표기 수용」
         @{ rx = '(?i)(Server|Data Source)[ \t]*=[^;\r\n]+;(?:[^;\r\n]*;)*[ \t]*(User[ \t]*Id|User|Uid|Password|Pwd)[ \t]*='; label = 'DB 연결 문자열' },
         @{ rx = '(?i)(mongodb(\+srv)?|postgres|postgresql|mysql|redis|amqp)://[^\s]+:[^\s]+@'; label = 'DB/서비스 URI 인증정보' },
         @{ rx = '-----BEGIN [A-Z ]*PRIVATE KEY-----'; label = '개인키' },
@@ -71,7 +71,7 @@ function Get-SecretMatches {
     )
     foreach ($sp in $secretPatterns) {
         if ($content -match $sp.rx) {
-            # IP는 전체 매치를 순회한다 — 근거는 `rules/secret-patterns-rationale.md`의 「§10 # IP는 전체 매치를 순회한다」
+            # IP는 전체 매치를 순회한다 — 근거는 `rules/secret-patterns-rationale.md`의 「§10 IP는 전체 매치를 순회한다」
             if ($sp.label -eq 'IP 주소') {
                 $pubHit = $false; $privHit = $false
                 foreach ($ipm in [regex]::Matches($content, $sp.rx)) {
@@ -89,13 +89,13 @@ function Get-SecretMatches {
         }
     }
 
-    # ---- 자격증명 쌍 — 근거는 `rules/secret-patterns-rationale.md`의 「§11 # ---- 자격증명 쌍」
+    # ---- 자격증명 쌍 — 근거는 `rules/secret-patterns-rationale.md`의 「§11 ---- 자격증명 쌍」
     $pairKwCore  = '(?:(?:\b(?:admin|account|credentials?|login|username|ID/PW)\b)|계정|아이디|로그인|사용자명)'
     $pairKeyword = "($pairKwCore)[^\r\n:]{0,40}:\s*"
     $pairQuoted   = $pairKeyword + '(["''`])([A-Za-z0-9._-]{3,32})\2\s*/\s*(["''`])([^\s"''`]{6,64})\4'
     $pairUnquoted = $pairKeyword + '([A-Za-z0-9._-]{3,32})\s*/\s*([A-Za-z0-9._\-#$%!@^&*+=?~]{6,64})'
 
-    # 줄 분리형·마크다운 표 — 근거는 `rules/secret-patterns-rationale.md`의 「§12 # 줄 분리형·마크다운 표」
+    # 줄 분리형·마크다운 표 — 근거는 `rules/secret-patterns-rationale.md`의 「§12 줄 분리형·마크다운 표」
     $pairPwKw  = '(?:\b(?:password|passwd|pwd)\b|비밀번호|패스워드)'
     $pairSplit = $pairKwCore + '[ \t*`]{0,4}[:|][ \t]*(["''`])([A-Za-z0-9._-]{3,32})\1[^\r\n]*\r?\n[ \t|>*`-]{0,6}' + $pairPwKw + '[ \t*`]{0,4}[:|][ \t]*(["''`])([^\s"''`]{6,64})\3'
 

@@ -24,30 +24,30 @@
 #   미수행된다(fail-open). 아래 로드 가드가 그 상태를 stderr로 가시화한다.
 ```
 
-## §2 guard-bash 헬퍼.ps1 — Bash 계열 PreToolUse hook 3종의 검사 로직 공유 모듈
+## §2 검사 5종을 한 프로세스에 담는 구조
 
-```
-# guard-bash 헬퍼.ps1 — Bash 계열 PreToolUse hook 3종의 검사 로직 공유 모듈 (dot-source 전용, hook 아님)
-#
-# warn-external-ops·require-task-checkbox·warn-commit-secrets의 검사 로직을 함수로 담아,
-#   ① 각 standalone 래퍼 스크립트(동일 파일명 유지 — 골든·격리 테스트용)
-#   ② 단일 guard-bash.ps1 디스패처(도구 호출당 pwsh 콜드스타트 4→2)
-# 두 경로가 같은 함수를 호출하게 한다(동작 단일 출처 — 래퍼·디스패처가 갈라지지 않음).
-#
-# 위 3종 외에 **디스패처 전용 검사 2종**(warn-global-find·warn-dangerous-assignment)도 여기 담긴다 —
-#   대응하는 standalone 래퍼가 없고 guard-bash가 유일한 실행 경로다(골든도 그 hook 이름으로 돈다).
-#
-# block-destructive.ps1은 이 모듈에 포함하지 않는다 — "끌 수 없는 마지막 방어선"이라 공유 모듈
-#   로드 실패에 결합시키지 않고 hooks.json 독립 엔트리로 직접 실행 유지(결정 B).
-#
-# 함수 계약: 파싱된 $data(hook stdin JSON) → 결과 객체
-#   @{ Block = [bool];        # true면 도구 차단(exit 2). require-task-checkbox만 true 가능.
-#      Stderr = [string[]];   # 사용자 가시성 경고/차단 사유 줄들(없으면 빈 배열).
-#      Context = [string] }   # 모델 전달용 additionalContext(없으면 $null).
-#   출력·exit는 각 caller(래퍼/디스패처)가 결과를 번역해 수행한다(이 함수는 "판정→결과"만).
-#
-# 이 파일은 stdin을 읽지 않고 함수 정의만 한다(실행 부작용 없음) — validate.ps1 $knownHelpers에 등록.
-```
+v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
+종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
+두 경로가 그것을 dot-source 했는데, **지금은 경로가 하나뿐이라 공유 모듈이 필요 없다.**
+
+현행 구조:
+
+- **검사 5종이 같은 파일의 함수다** — `Invoke-WarnExternalOps` · `Invoke-RequireTaskCheckbox` ·
+  `Invoke-WarnCommitSecrets` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
+  파일 끝의 `$checks` 배열이 함수명 ↔ **rule 이름**을 짝지어 순서대로 부른다.
+- **rule 이름은 옛 hook 이름을 그대로 쓴다** — `warn-external-ops` 등 다섯은 hook 으로는
+  사라졌지만 이벤트 로그·골든 필터가 그 이름으로 돌아 식별자로 살아 있다. **삭제 자산으로
+  오인하지 말 것**(`plugins/pjc/evals/check-stale-refs.py` 의 DEAD 목록이 이 다섯을 뺀 이유).
+- **함수 계약**: 파싱된 `$data`(hook stdin JSON) → 결과 객체
+  `@{ Block = [bool]; Stderr = [string[]]; Context = [string] }`.
+  `Block = $true` 는 `require-task-checkbox` 만 낼 수 있다(exit 2). 출력·exit 번역은
+  파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
+- **한 검사의 예외는 나머지를 막지 않는다** — `foreach` 안에서 `try/catch` 로 격리하고
+  안전측으로 통과시킨다. 다섯 중 하나가 깨져 전체가 침묵하는 것을 막는다.
+- **`New-HookResult` 는 dot-source 대상인 `guard-commit-secrets.ps1` 에 있다** — 그쪽이
+  이 생성기를 쓰므로 정의를 거기 두어야 그 파일 단독 dot-source(골든 프로브)가 성립한다.
+- **`block-destructive.ps1` 은 여기 합치지 않는다** — 「끌 수 없는 마지막 방어선」이라
+  공유 로드 실패에 결합시키지 않고 `hooks.json` 독립 엔트리로 직접 실행한다(결정 B).
 
 ## §3 warn-global-find: 루트 전역 탐색 경고
 

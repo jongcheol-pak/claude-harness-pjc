@@ -139,10 +139,10 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             }
         }
 
-        # ---- 민감 정보 검사 — 근거는 `rules/post-write-rationale.md`의 「§7 # ---- 민감 정보 검사」
+        # ---- 민감 정보 검사 — 근거는 `rules/post-write-rationale.md`의 「§7 ---- 민감 정보 검사」
         $skipSecretScan = $file -match '\.(env|env\..*)$' -or $file -match '(^|[\\/])\.git[\\/]'
         if ((-not $skipSecretScan) -and $raw) {
-            # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 — 근거는 `rules/post-write-rationale.md`의 「§8 # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만」
+            # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 — 근거는 `rules/post-write-rationale.md`의 「§8 ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만」
             $scanText = $raw
             try {
                 $fileDir = Split-Path -Parent $file
@@ -190,7 +190,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR
         }
 
-        # 코드 파일만 검사 — 근거는 `rules/post-write-rationale.md`의 「§11 # 코드 파일만 검사」
+        # 코드 파일만 검사 — 근거는 `rules/post-write-rationale.md`의 「§11 코드 파일만 검사」
         $codeExtsImpact = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift', '.vb', '.xaml', '.razor', '.vue', '.svelte', '.sql')
         $extImpact = [System.IO.Path]::GetExtension($file).ToLower()
 
@@ -229,7 +229,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             $m = [regex]::Match($line, $pattern)
                             if ($m.Success) {
                                 $sym = $m.Groups['sym'].Value
-                                # 너무 짧거나 일반적인 이름은 제외 — 근거는 `rules/post-write-rationale.md`의 「§12 # 너무 짧거나 일반적인 이름은 제외」
+                                # 너무 짧거나 일반적인 이름은 제외 — 근거는 `rules/post-write-rationale.md`의 「§12 너무 짧거나 일반적인 이름은 제외」
                                 if ($sym.Length -ge 4 -and
                                     $sym -notmatch '^(?i)(get|set|is|has|name|type|data|text|value|item|key|count|index|result|state|status|title|content|message)$') {
                                     [void]$symbols.Add($sym)
@@ -276,7 +276,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             }
 
                             if ($callers.Count -gt 0) {
-                                # 세션·파일·심볼당 1회 — 근거는 `rules/post-write-rationale.md`의 「§13 # 세션·파일·심볼당 1회」
+                                # 세션·파일·심볼당 1회 — 근거는 `rules/post-write-rationale.md`의 「§13 세션·파일·심볼당 1회」
                                 if (-not (Test-WarnOnce ('impact|' + $normalizedFile + '|' + $sym))) { continue }
                                 # 매치 상한 (v1.98.0): 참조 30건 초과는 흔한 이름/광범위 심볼 — caller 나열이
                                 #   무관 파일 다독을 유도하므로 나열 대신 요약 1줄만 남긴다.

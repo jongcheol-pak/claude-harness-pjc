@@ -113,7 +113,7 @@ public sealed partial class <Name>ViewModel : ObservableObject
 
 #### WinUI 3 Page 또는 Window (WPF는 아래 주석 참조)
 
-XAML(`<Name>Page.xaml`) — `<Page x:Class="<ProjectNamespace>.Views.<Name>Page">` 안에 `<Grid Padding="16" RowDefinitions="Auto,*">`를 두고, 헤더는 `TextBlock` + `Text="{x:Bind ViewModel.Title, Mode=OneWay}"` + `Style="{StaticResource TitleTextBlockStyle}"`, 본문은 `ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"`로 시작한다.
+XAML(`<Name>Page.xaml`) — `<Page x:Class="<ProjectNamespace>.Views.<Name>Page">` 에 표준 namespace 4개(`xmlns`·`xmlns:x`·`xmlns:d`·`xmlns:mc` + `mc:Ignorable="d"`)를 선언하고 그 안에 `<Grid Padding="16" RowDefinitions="Auto,*">`를 두고, 헤더는 `TextBlock` + `Text="{x:Bind ViewModel.Title, Mode=OneWay}"` + `Style="{StaticResource TitleTextBlockStyle}"`, 본문은 `ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"`로 시작한다.
 
 > **WPF 차이**: WPF에는 `x:Bind`·`ProgressRing`·`TitleTextBlockStyle`이 없다. WPF View는 `{Binding Title}`(DataContext에 VM 주입), `ProgressRing` 대신 `ProgressBar IsIndeterminate="True"`, namespace는 `System.Windows.Controls.Page`, Style은 프로젝트/WPF-UI 리소스를 사용한다. 또한 WPF는 **`Grid`의 `RowDefinitions="Auto,*"` 축약 문법과 `Grid Padding`을 지원하지 않는다** — `<Grid.RowDefinitions>`를 전개해 `<RowDefinition Height="Auto"/><RowDefinition Height="*"/>`로 쓰고, `Padding` 대신 자식 요소에 `Margin`을 준다(또는 Grid를 `Border Padding`으로 감싼다).
 

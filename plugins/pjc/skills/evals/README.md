@@ -133,7 +133,7 @@ python compare_evals.py <before.json> <after.json>
 
 ## 비용
 
-`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(56건 → 112세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(58건 → 116세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
 
 ## 실행 함정 (2026-09-03 실측)
 

@@ -3,21 +3,21 @@
 function Get-LedgerSignal {
     param([string]$cwd)
     $ledgerLine = $null
-            # ---- Deferred 대장 최고령 「마지막 판정일」 — 근거는 `rules/session-context-rationale.md`의 「§12 # ---- Deferred 대장 최고령 「마지막 판정일」」
+            # ---- Deferred 대장 최고령 「마지막 판정일」 — 근거는 `rules/session-context-rationale.md`의 「§12 ---- Deferred 대장 최고령 「마지막 판정일」」
             try {
                 $ledgerPluginJson = Join-Path $cwd 'plugins/pjc/.claude-plugin/plugin.json'
                 $ledgerPath = Join-Path $cwd 'docs/plans/deferred.md'
                 if ((Test-Path -LiteralPath $ledgerPluginJson -PathType Leaf) -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
                     $ledgerText = Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8
-                    # 종료 앵커 `^## `는 현재 대장에 `## 대기` 하나뿐이라 실질적으로 `\z`로 끝난다. — 근거는 `rules/session-context-rationale.md`의 「§13 # 종료 앵커 `^## `는 현재 대장에 `## 대기` 하나뿐이라 실질적으로 `\z`로 끝난다.」
+                    # 종료 앵커 `^## `는 현재 대장에 `## 대기` 하나뿐이라 실질적으로 `\z`로 끝난다. — 근거는 `rules/session-context-rationale.md`의 「§13 종료 앵커 `^## `는 현재 대장에 `## 대기` 하나뿐이라 실질적으로 `\z`로 끝난다.」
                     $ledgerWait = [regex]::Match($ledgerText, '(?ms)^## 대기\s*?$(.*?)(?=^## |\z)')
                     if ($ledgerWait.Success) {
                         $ledgerItemRx = [regex]'^- \[\d{4}-\d{2}-\d{2}'
                         $ledgerDateRx = [regex]'[\[(](\d{4}-\d{2}-\d{2})'
-                        # vN 부기는 형식이 둘이다 — ⓐ 날짜 접두 — 근거는 `rules/session-context-rationale.md`의 「§14 # vN 부기는 형식이 둘이다 — ⓐ 날짜 접두」
+                        # vN 부기는 형식이 둘이다 — ⓐ 날짜 접두 — 근거는 `rules/session-context-rationale.md`의 「§14 vN 부기는 형식이 둘이다 — ⓐ 날짜 접두」
                         $ledgerVnPrefixRx = [regex]'^- \[\d{4}-\d{2}-\d{2}, '
                         $ledgerVnTailRx = [regex]'\(v\d+\.\d+\.\d+[^)]*해소\)'
-                        # 항목이 아닌 구조 줄 — 앵커 — 근거는 `rules/session-context-rationale.md`의 「§15 # 항목이 아닌 구조 줄 — 앵커」
+                        # 항목이 아닌 구조 줄 — 앵커 — 근거는 `rules/session-context-rationale.md`의 「§15 항목이 아닌 구조 줄 — 앵커」
                         $ledgerStructRx = [regex]'^\s*(?:>|\*\*▶)'
                         $ledgerToday = (Get-Date).Date
 

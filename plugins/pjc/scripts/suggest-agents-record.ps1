@@ -53,7 +53,7 @@ $hits = New-Object System.Collections.Generic.List[object]
 foreach ($cat in $categories) {
     $m = [regex]::Match($cmdScan, $cat.rx)
     if ($m.Success) {
-        # 토큰 정규화: 옵션 — 근거는 `rules/suggest-record-rationale.md`의 「§5 # 토큰 정규화: 옵션」
+        # 토큰 정규화: 옵션 — 근거는 `rules/suggest-record-rationale.md`의 「§5 토큰 정규화: 옵션」
         $tokParts = ($m.Value.Trim() -split '\s+') | Where-Object { $_ -and ($_ -notmatch '^[-/]') -and ($_ -notmatch '=') }
         $tok = ($tokParts -join ' ')
         if (-not $tok) { $tok = $m.Value.Trim() }

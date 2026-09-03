@@ -21,7 +21,7 @@ try {
     if (-not (Test-Path -LiteralPath $repoPluginJson)) { exit 0 }
     if (-not (Test-Path -LiteralPath $repoMarketJson)) { exit 0 }
 
-    # ---- 릴리즈 누락 감지 — 근거는 `rules/version-drift-rationale.md`의 「§2 # ---- 릴리즈 누락 감지」
+    # ---- 릴리즈 누락 감지 — 근거는 `rules/version-drift-rationale.md`의 「§2 ---- 릴리즈 누락 감지」
     try {
         Push-Location -LiteralPath $cwd
         try {
