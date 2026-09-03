@@ -6,7 +6,7 @@
 #   Stop hook 피드백 경로는 셋: exit 2(=종료 차단 + stderr를 모델에 전달) /
 #   stdout JSON(decision=block → 종료 차단 + reason을 모델에 전달, 또는 additionalContext →
 #   종료 안 막고 컨텍스트 주입) / exit 0 + stderr(=비차단, 사용자 transcript용, 모델엔 미전달).
-#   이 hook은 implement-task 종료뿐 아니라 '모든' 종료 시도(일반 대화·질문 답변 후 포함)에
+#   이 hook은 구현 종료뿐 아니라 '모든' 종료 시도(일반 대화·질문 답변 후 포함)에
 #   발동하므로, **검사 1~3처럼 조건이 넓은 것**을 차단으로 바꾸면 무관한 종료까지 막는다.
 #   따라서 1~3은 의도적으로 exit 0 + stderr 소프트 리마인더로 둔다(사용자가 transcript에서
 #   보고 판단; 모델 강제는 안 함). **이 셋을 차단으로 바꾸지 말 것.**
@@ -149,7 +149,7 @@ $firstLine = ($lastMsg -split "`n")[0].Trim()
 # 1. checkpoint만 있고 후속 커밋 없음
 if ($firstLine -match '^checkpoint:' -and (Test-EvWarnOnce 'checkpoint')) {
     [Console]::Error.WriteLine("STOP WARNING: 마지막 커밋이 checkpoint입니다 - task가 완료되지 않았을 수 있습니다.")
-    [Console]::Error.WriteLine("implement-task의 Phase D를 완료하지 않은 채 종료하려 합니다.")
+    [Console]::Error.WriteLine("구현 task를 완료하지 않은 채 종료하려 합니다.")
     [Console]::Error.WriteLine("정말 종료할 거면 사용자에게 현재 상태를 보고하세요.")
     Write-ReEvent 'checkpoint 미완료 종료'
 }
@@ -230,7 +230,7 @@ if ($porcelain) {
 }
 
 # ---- 4. 자율 루프 미완료 정지 차단 (v1.148.0, ③④ 확대 v1.149.0, ⑤ 확대 v1.150.0) — 이 hook에서 유일한 차단 경로 ----
-# implement-task 자율 루프가 미완료 상태로 멈추는 것을 되돌린다. 정지 4유형을 잡는다:
+# 자율 루프가 미완료 상태로 멈추는 것을 되돌린다. 정지 4유형을 잡는다:
 #   ② 진행 예고만 남기고 turn 종료 — "여기까지 진행 상황을 정리 합니다. 계속 T5부터 이어서
 #      진행하겠습니다." 질문이 아니라 평서문이라 "묻지 않는다" 규칙은 지킨 것처럼 보이지만,
 #      도구 호출 없이 텍스트만 내면 turn이 끝나 결과는 확인 요청과 같은 루프 정지다.
@@ -243,7 +243,7 @@ if ($porcelain) {
 #      않아 규칙을 어긴 흔적이 없어 보이지만, 도구 호출 없이 텍스트만 내면 결과는 ②와 같다.
 #      **정상 진행 보고와 문면이 같은 유일한 유형**이라 억제 신호를 함께 둔다(아래 $rxUserAsk).
 # [문구 정본] 아래 $rxAdvance(②)·$rxHandoff(③)·$rxManualAsk(④)·$rxProgressOnly(⑤)가 잡는 문구의
-#   정본은 implement-task/SKILL.md "🚫 금지 표현" ②③④⑤ 네 절이다. 그 목록을 고치면 여기도 함께
+#   정본은 implement/SKILL.md 「진행 중 사용자와의 소통」이다. 그 절을 고치면 여기도 함께
 #   고친다 — 갈리면 규칙에 없는 것을 잡거나 잡아야 할 것을 놓친다(골든 L12가 SKILL.md에서
 #   문구를 읽어 주입하므로 드리프트는 테스트 FAIL로 드러난다).
 # [조건 AND] 하나라도 불충족이면 통과. 판정에 필요한 정보를 못 얻으면 전부 fail-open(통과).
@@ -332,7 +332,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
     #           ③④는 **질문 형태를 띠는 것이 곧 위반**이라 Weak를 인정하면 검사가 성립하지 않는다
     #           (물음표 하나로 영구 fail-open 되던 것이 이 확대 이전의 상태다).
     #   Weak를 버리는 대신 정당 개입 지점에는 Strong 마커를 문면으로 부여했다(SKILL.md 마커 규약)
-    #   — Phase 0 사전 승인 확인·외부 작업 승인·리뷰 인프라 선택·plan-feature 세션 확인 등.
+    #   — Phase 0 사전 승인 확인·외부 작업 승인·리뷰 인프라 선택·계획 세션 확인 등.
     #   ⏸는 **VS16(U+FE0F)을 선택적으로** 잡는다 — 파일에 `⏸️`로 쓰면 U+23F8+U+FE0F 2문자
     #   시퀀스가 되어, 모델이 VS16 없이 `⏸`만 출력하면 미매치다(실측). ⛔·🎉는 단일 코드포인트라
     #   이 문제가 없고 ⏸만 구조적으로 좁다. Weak를 ③④⑤에서 없앤 뒤로는 **마커가 유일한 방어**라,
@@ -399,8 +399,8 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                 #   -Quiet는 첫 매치에서 멈추므로 전량 로드가 아니다
                 #   (require-plan-for-write.ps1:79-81의 발동 흔적 판정과 같은 관례).
                 $loopSkill = [bool](Select-String -LiteralPath $tpL -Quiet -Pattern @(
-                        '"skill"\s*:\s*"pjc:implement-task"',
-                        'Launching skill: pjc:implement-task'))
+                        '"skill"\s*:\s*"pjc:implement"',
+                        'Launching skill: pjc:implement'))
                 # 조건 ⑤·④폴백은 '직전' 발화를 찾는 것이라 tail이 맞다(전 파일 역순 파싱은 비용이 크다).
                 # tail 6000 (v1.154.0 — 종전 3000). 실측 최대 2817줄로 상한의 94%까지 차 있었고,
                 #   창을 넘으면 루프 시작 지점이 밖으로 밀려 $userFound·게이트를 함께 잃는다
@@ -466,7 +466,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     #   (Edit 11 · Write 10 · Bash 8 · Agent 2 · PowerShell 1). **그 32건도 전부 tool_use
                     #   동반**이라 "tool_use 동반 요구"로는 하나도 걸러지지 않는다(초안 D6의 오판 —
                     #   "83건 전건 tool_use 동반"이라는 참인 관측을 "83건이 전부 발동"이라는 거짓 전제와
-                    #   묶었다). 골든 픽스처 자체가 `"name":"Skill"`과 `"skill":"pjc:implement-task"`를
+                    #   묶었다). 골든 픽스처 자체가 `"name":"Skill"`과 `"skill":"pjc:implement"`를
                     #   한 줄 문자열로 담으므로, **어떤 원시 패턴을 쓰든 그 파일을 편집하는 순간 재현된다.**
                     #   그래서 후보 줄만 파싱해 **tool_use 블록의 name·input을 구조로 확인**한다.
                     #   평문 `Launching skill:` 패턴은 제거했다 — assistant 쪽은 **전수가 오점화**였고
@@ -477,7 +477,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     #   어긋난다(리뷰 M1). 상한 초과는 **점화하지 않음** = 폴백(4정규식)으로 내려가는
                     #   미탐 방향이라 이 hook의 fail-open 원칙과 맞다. 실측은 세션당 수십 건이다.
                     if ($isAsst -and -not $userFound -and $gateParsed -lt 200 -and
-                        $ln -match '"skill"\s*:\s*"pjc:implement-task"') {
+                        $ln -match '"skill"\s*:\s*"pjc:implement"') {
                         $gateParsed++
                         try {
                             $gateObj = $ln | ConvertFrom-Json
@@ -485,7 +485,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                             if ($null -eq $gateContent) { $gateContent = $gateObj.content }
                             foreach ($gateBlk in @($gateContent)) {
                                 if ($gateBlk.type -eq 'tool_use' -and $gateBlk.name -eq 'Skill' -and
-                                    $gateBlk.input.skill -eq 'pjc:implement-task') {
+                                    $gateBlk.input.skill -eq 'pjc:implement') {
                                     $loopActiveAfterUser = $true
                                     break
                                 }
@@ -517,7 +517,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                     if ($isUser -and -not $userFound) {
                         $userFound = $true
                         # 사용자가 스스로 루프를 끝내거나 범위를 한정했으면 정상 종료다.
-                        #   'T<N>만'은 '재개 진입'이 명시적으로 허용하는 단일 task 실행(정본: implement-task references/recovery.md).
+                        #   'T<N>만'은 '재개 진입'이 명시적으로 허용하는 단일 task 실행(정본: implement/SKILL.md 「재개」).
                         #   세션 전환 어휘(v1.149.0): **사용자가 먼저** 새 세션·/clear를 꺼낸 대화에서
                         #   그 응답을 ③으로 차단하면, 이 검사에서 가장 위험한 오작동인 "사용자 의사
                         #   무시"가 된다. 유형 구분 없는 공통 조건이라 ②에도 함께 적용되는데, 그것도
@@ -572,7 +572,7 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
 
     if ($loopOpen -and $loopSkill -and $stopKind -and $userFound -and (-not $userStop)) {
 
-        # 조건 ② 교차 확인: 체크박스는 갱신 누락이 가능한 최약 신호다('재개 진입' 정본: references/recovery.md —
+        # 조건 ② 교차 확인: 체크박스는 갱신 누락이 가능한 최약 신호다('재개' 정본: implement/SKILL.md —
         #   "세 신호가 어긋나면 git log를 신뢰"). 미완료로 표시된 task 중 완료 커밋(T<N>:)이
         #   없는 것이 하나라도 있어야 실제 미완료로 본다. 조회는 200건으로 상한(hook 10초 타임아웃).
         $openNums = New-Object System.Collections.Generic.List[string]
@@ -617,21 +617,21 @@ if ($data.stop_hook_active -ne $true -and $env:CLAUDE_HARNESS_QUICK -ne '1') {
                 $reasonTail = ' 정말 멈춰야 하는 상황이면 Halt 보고 형식(## 작업 중단)으로 사유를 적으십시오.'
                 switch ($stopKind) {
                     'handoff' {
-                        $reasonBody = '마지막 응답이 세션 전환·컨텍스트 우려 제안으로 끝났습니다 - implement-task 금지 표현 3에 해당합니다. 컨텍스트 한계는 Halt 사유가 아닙니다. 지금 할 일은 압축 통과입니다(컨텍스트 관리 규칙 4): 현재 task를 Phase V/D까지 끝내고 plan.md에 Progress Log/Next Steps/다음 task 시작점을 기록한 뒤, 사용자 보고 없이 같은 turn의 다음 도구 호출로 계속하십시오. 새 세션 권유는 루프 시작 전에만, 그것도 답을 기다리지 않는 공시로 합니다.'
+                        $reasonBody = '마지막 응답이 세션 전환·컨텍스트 우려 제안으로 끝났습니다 - 자율 루프 금지 표현 3에 해당합니다. 컨텍스트 한계는 Halt 사유가 아닙니다. 지금 할 일은 압축 통과입니다(컨텍스트 관리 규칙 4): 현재 task를 Phase V/D까지 끝내고 plan.md에 Progress Log/Next Steps/다음 task 시작점을 기록한 뒤, 사용자 보고 없이 같은 turn의 다음 도구 호출로 계속하십시오. 새 세션 권유는 루프 시작 전에만, 그것도 답을 기다리지 않는 공시로 합니다.'
                     }
                     'manual' {
-                        $reasonBody = '마지막 응답이 사용자에게 실행·확인을 요청하며 끝났습니다 - implement-task 금지 표현 4에 해당합니다. 기계 검증(빌드/테스트/정적 검사)으로 확인되는 것은 직접 실행하십시오. 기계로 확인할 수 없는 것(화면 표시/조작감 등)은 멈추지 말고 plan에 HUMAN-VERIFY로 표기해 최종 보고로 넘기고 다음 단계를 계속하십시오.'
+                        $reasonBody = '마지막 응답이 사용자에게 실행·확인을 요청하며 끝났습니다 - 자율 루프 금지 표현 4에 해당합니다. 기계 검증(빌드/테스트/정적 검사)으로 확인되는 것은 직접 실행하십시오. 기계로 확인할 수 없는 것(화면 표시/조작감 등)은 멈추지 말고 plan에 HUMAN-VERIFY로 표기해 최종 보고로 넘기고 다음 단계를 계속하십시오.'
                     }
                     'progress' {
-                        $reasonBody = '마지막 응답이 진행 상황 요약으로 끝났습니다 - implement-task 금지 표현 5에 해당합니다. 완료 사실만 서술해 규칙을 어긴 흔적이 없어 보이지만, 도구 호출 없이 텍스트만 내면 turn이 끝나 결과는 같은 루프 정지입니다. 한 줄 진행 마커는 같은 turn의 다음 도구 호출과 한 묶음일 때만 씁니다. 지금 다음 단계를 도구 호출로 시작하고, 남길 진행 상세는 대화가 아니라 plan.md의 Progress Log에 쓰십시오.'
+                        $reasonBody = '마지막 응답이 진행 상황 요약으로 끝났습니다 - 금지 표현 5에 해당합니다. 완료 사실만 서술해 규칙을 어긴 흔적이 없어 보이지만, 도구 호출 없이 텍스트만 내면 turn이 끝나 결과는 같은 루프 정지입니다. 한 줄 진행 마커는 같은 turn의 다음 도구 호출과 한 묶음일 때만 씁니다. 지금 다음 단계를 도구 호출로 시작하고, 남길 진행 상세는 대화가 아니라 plan.md의 Progress Log에 쓰십시오.'
                     }
                     'active' {
                         # 문면으로 유형을 특정하지 않은 경우 - 원인을 "형태"로 알린다.
                         #   여기서 특정 금지 표현을 지목하면 모델이 그 어휘만 피하고 같은 정지를 반복한다.
-                        $reasonBody = '마지막 응답이 도구 호출 없이 끝났습니다 - 자율 루프가 도는 중에는 어떤 문면이든 텍스트만 내고 turn을 끝내면 결과는 루프 정지입니다(implement-task 금지 표현 2와 5의 형태 기준 - 목록에 없는 표현이어도 동일합니다). 지금 다음 단계를 도구 호출로 시작하고, 남길 진행 상세는 대화가 아니라 plan.md의 Progress Log에 쓰십시오. 컨텍스트가 찼다면 그것은 멈출 사유가 아니라 압축을 통과할 사유입니다(컨텍스트 관리 규칙 4).'
+                        $reasonBody = '마지막 응답이 도구 호출 없이 끝났습니다 - 자율 루프가 도는 중에는 어떤 문면이든 텍스트만 내고 turn을 끝내면 결과는 루프 정지입니다(pjc:implement 금지 표현 2와 5의 형태 기준 - 목록에 없는 표현이어도 동일합니다). 지금 다음 단계를 도구 호출로 시작하고, 남길 진행 상세는 대화가 아니라 plan.md의 Progress Log에 쓰십시오. 컨텍스트가 찼다면 그것은 멈출 사유가 아니라 압축을 통과할 사유입니다(컨텍스트 관리 규칙 4).'
                     }
                     default {
-                        $reasonBody = '마지막 응답이 진행 예고로 끝났습니다 - implement-task 금지 표현 2(예고를 마지막 말로 남기고 turn을 끝내지 말 것)에 해당합니다. 지금 다음 task의 Phase P를 시작하세요(Read/grep 등 도구 호출로 이어갈 것). 상태 기록이 필요하면 대화에 요약을 출력하지 말고 plan.md에 쓰십시오.'
+                        $reasonBody = '마지막 응답이 진행 예고로 끝났습니다 - 자율 루프 금지 표현 2(예고를 마지막 말로 남기고 turn을 끝내지 말 것)에 해당합니다. 지금 다음 task의 Phase P를 시작하세요(Read/grep 등 도구 호출로 이어갈 것). 상태 기록이 필요하면 대화에 요약을 출력하지 말고 plan.md에 쓰십시오.'
                     }
                 }
                 $reasonText = $reasonHead + $reasonBody + $reasonTail

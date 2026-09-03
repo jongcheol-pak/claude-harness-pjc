@@ -2,7 +2,7 @@
 # 두 개의 독립된 게이트를 담는다:
 #   ① plan 존재 게이트 — 코드 Write/Edit 시 루트 plan.md(PLAN.md·docs/plan.md 포함)가 없으면 차단.
 #   ② plan 작성 게이트 (v1.118.0) — plan.md/docs/plans/*.md 자체를 Write하거나 체크박스를 새로 도입하는
-#      Edit은 pjc:plan-feature(또는 implement-task) 발동 흔적 없이는 차단. 손으로 급조한 plan으로
+#      Edit은 pjc:plan(또는 pjc:implement) 발동 흔적 없이는 차단. 손으로 급조한 plan으로
 #      ①을 켜서 리뷰·영향분석을 통째로 우회하던 구멍을 막는다.
 #   (+ AGENTS.md bootstrap 게이트 — 신규 생성은 pjc:bootstrap-agents-md 경유만 허용.)
 # 문서/설정 파일은 항상 허용.
@@ -101,7 +101,7 @@ if ($data.tool_name -eq 'Write' -and
 }
 
 # ---- plan 작성 게이트 (v1.118.0) ----
-# plan은 pjc:plan-feature 경유가 정본 경로다(적대적 plan-reviewer 검토·영향 범위 전수 조사·Type 분류·
+# plan은 pjc:plan 경유가 정본 경로다(plan-reviewer 검토·영향 범위 실측·
 #   사전 승인 항목). 스킬을 거치지 않고 손으로 급조한 plan 하나로 그 자산이 통째로 우회되던 구멍을 막는다.
 #   AGENTS bootstrap 게이트와 동형(transcript 흔적 판정·fail-open·temp 예외·QUICK 우회)이나, 조건이 다르다:
 #   AGENTS.md는 기존 파일 편집이 정당 경로(record-project-fact)라 '신규 생성'만 게이트하지만, plan은
@@ -177,7 +177,7 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     }
 
     if ($planGateTarget) {
-        # 발동 흔적 판정 — plan-feature(정본 경로) 또는 implement-task(승인된 plan이 있어야 발동하는
+        # 발동 흔적 판정 — pjc:plan(정본 경로) 또는 pjc:implement(승인된 plan이 있어야 발동하는
         #   스킬이라 허용해도 우회로가 되지 않는다. 자율 루프가 예상 못 한 Write에서 차단되면 Halt 비용이
         #   크므로 안전 마진으로 허용). llm-wiki 등 plan 없이 발동 가능한 스킬은 넣지 않는다 —
         #   넣으면 "그 스킬을 켜서 게이트를 우회"하는 경로가 열린다.
@@ -189,19 +189,19 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
         } else {
             try {
                 $planSkillLaunched = [bool](Select-String -LiteralPath $tpp -Quiet -Pattern @(
-                    '"skill"\s*:\s*"pjc:plan-feature"',
-                    'Launching skill: pjc:plan-feature',
-                    '"skill"\s*:\s*"pjc:implement-task"',
-                    'Launching skill: pjc:implement-task'))
+                    '"skill"\s*:\s*"pjc:plan"',
+                    'Launching skill: pjc:plan',
+                    '"skill"\s*:\s*"pjc:implement"',
+                    'Launching skill: pjc:implement'))
             } catch { $planSkillLaunched = $true }
         }
         if (-not $planSkillLaunched) {
-            [Console]::Error.WriteLine("[HARNESS] BLOCKED: plan 작성은 pjc:plan-feature 스킬로만 합니다.")
+            [Console]::Error.WriteLine("[HARNESS] BLOCKED: plan 작성은 pjc:plan 스킬로만 합니다.")
             [Console]::Error.WriteLine("")
             [Console]::Error.WriteLine("직접 작성은 적대적 plan-reviewer 검토·영향 범위 전수 조사·Type 분류·사전 승인 항목을 통째로 우회합니다.")
             [Console]::Error.WriteLine("")
             [Console]::Error.WriteLine("해결 방법:")
-            [Console]::Error.WriteLine("  1) Skill 도구로 pjc:plan-feature 호출 → 조사·검토·사용자 승인 후 plan 작성")
+            [Console]::Error.WriteLine("  1) Skill 도구로 pjc:plan 호출 → 조사·검토·사용자 승인 후 plan 작성")
             [Console]::Error.WriteLine("  2) 기존 plan의 부분 갱신(체크박스 [ ]->[x], Progress Log·Deferred 기록)은 이 게이트의 대상이 아닙니다")
             [Console]::Error.WriteLine("     — 체크박스를 '새로 도입'하는 편집만 막습니다.")
             [Console]::Error.WriteLine("  3) 긴급 우회는 사용자만 가능 (Claude Code 시작 전 터미널에서):")
@@ -329,9 +329,9 @@ if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
                             $newStr -match '(?m)\b(public|private|protected|internal|static)\s+[\w<>\[\],\s]+\s+\w+\s*\(' -or
                             $newStr -match '(?m)\b(def|func|fun|function)\s+\w+\s*\('
 
-        # 순수 값 치환 감지 (plan-feature Trivial Bypass "순수 값 치환"과 정합):
+        # 순수 값 치환 감지 (pjc:plan 「이 스킬을 건너뛰는 경우」의 값 치환과 정합):
         # 색상·치수·간격·폰트 크기 등 리터럴 '값'만 바뀌고 식별자·구조·키워드는 동일하면
-        # 줄 수·글자 수에 무관하게 trivial로 통과한다(plan-feature는 값이 3개든 10개든 trivial로 봄).
+        # 줄 수·글자 수에 무관하게 trivial로 통과한다(pjc:plan은 값이 3개든 10개든 trivial로 봄).
         # old/new에서 hex 색상·숫자(+CSS/XAML 단위)를 토큰으로 정규화한 뒤 동일하면 값만 바뀐 것.
         # @media 신설·레이아웃 방향(flex→grid)·계산식(calc/var) 도입은 텍스트 구조가 바뀌어
         # 정규화 후에도 달라지므로 자동 제외된다.
@@ -360,7 +360,7 @@ if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
             $why = if ($isPureValueSwap) { '순수 값 치환(리터럴만 변경, 구조 동일)' } else { '<=3줄, 새 정의 없음' }
             # M7: 소스 파일의 3줄 이하 통과 중 상수·수치·로직 변경(타임아웃·한계·포트 등)은 plan 없이 새므로
             #   impact-warn(사후 caller 검출)에 더해 검토 권장을 상기한다(차단 아님).
-            $extra = if ($isSourceCode) { ' 소스의 상수·수치·로직 변경이면 plan-feature 검토를 권장합니다.' } else { '' }
+            $extra = if ($isSourceCode) { ' 소스의 상수·수치·로직 변경이면 pjc:plan 검토를 권장합니다.' } else { '' }
             [Console]::Error.WriteLine("[HARNESS] Trivial edit ($why): plan 검사 우회. 영향은 impact-warn hook이 검증합니다.$extra")
             exit 0
         }
@@ -476,7 +476,7 @@ if ($foundIn) {
     # ---- 완료된/빈 plan 비차단 경고 (G4 + H3) ----
     # plan은 존재하지만 task 체크박스가 전부 [x](미완료 0)면 '완료된 옛 plan'에 기대는 변경일 수 있고,
     # 체크박스가 아예 0개면 '빈/플레이스홀더 plan'(내용 없는 plan.md로 게이트 무력화)일 수 있다
-    # → 둘 다 plan-feature로 계획 작성/갱신 권유 (차단 아님).
+    # → 둘 다 pjc:plan으로 계획 작성/갱신 권유 (차단 아님).
     # 판정 대상은 plan.md/PLAN.md/docs/plan.md — plan 위치가 루트 하나이므로 후보도 이 셋뿐이다.
     $planFile = $null
     foreach ($cand in @('plan.md', 'PLAN.md', 'docs/plan.md')) {
@@ -519,7 +519,7 @@ if ($foundIn) {
                 if (Test-WarnOnce -Kind 'G4') {
                     $warnMsg = "[HARNESS] 이 plan은 완료된 것으로 보입니다 (task 체크박스 ${done}개 전부 [x], 미완료 0). " +
                                "이번 코드 변경이 이 완료된 plan의 범위 내 후속 작업(리뷰 지적 수정·마무리·문서 갱신 등)이면 새 plan 없이 그대로 진행하세요. " +
-                               "완료된 plan과 무관한 '새 작업'일 때만 plan-feature로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다. (이 경고는 세션당 1회)"
+                               "완료된 plan과 무관한 '새 작업'일 때만 pjc:plan으로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다. (이 경고는 세션당 1회)"
                     [Console]::Error.WriteLine($warnMsg)
                     Write-RpEvent 'warn' 'G4: 완료된 plan으로 새 변경'
                     # PreToolUse additionalContext로 모델에 전달 (exit 0 비차단)
@@ -531,7 +531,7 @@ if ($foundIn) {
                 #   0바이트·골격만 있는 plan.md 하나로 게이트를 무력화하는 약점을 가시화한다(비차단).
                 if (Test-WarnOnce -Kind 'H3') {
                     $warnMsg = "[HARNESS] 이 plan.md에 task 체크박스(- [ ] / - [x])가 하나도 없습니다 — 빈/플레이스홀더 plan일 수 있습니다. " +
-                               "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. plan-feature로 실제 task를 작성하세요. " +
+                               "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. pjc:plan으로 실제 task를 작성하세요. " +
                                "(이 경고는 세션당 1회)"
                     [Console]::Error.WriteLine($warnMsg)
                     Write-RpEvent 'warn' 'H3: 빈/플레이스홀더 plan'
@@ -569,8 +569,8 @@ if (Test-Path -LiteralPath $legacyPlansDir -PathType Container) {
 }
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("해결 방법:")
-[Console]::Error.WriteLine("  1) plan-feature skill 호출:")
-[Console]::Error.WriteLine("     사용자에게 '계획 작성해줘' 라고 요청하거나 /plan-feature <설명>")
+[Console]::Error.WriteLine("  1) pjc:plan skill 호출:")
+[Console]::Error.WriteLine("     사용자에게 '계획 작성해줘' 라고 요청하거나 /pjc:plan <설명>")
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("  2) 긴급 1줄 수정 우회 — 사용자만 설정 가능 (Claude Code 시작 전 터미널에서):")
 [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")

@@ -7,8 +7,8 @@
 #
 # ⚠️ 한계: 이 hook은 **Bash 도구로 실행되는 명령**만 검사한다.
 #   ORM 대량 삭제 코드(예: RemoveRange, deleteMany)를 소스 파일에 '작성'만 하는 경우는
-#   Write/Edit 도구라 여기서 안 잡힌다. 그런 코드는 plan-feature 승인 게이트 +
-#   code-quality-reviewer가 검토한다 (CLAUDE.md "DB 데이터 삭제는 승인 필수" 참조).
+#   Write/Edit 도구라 여기서 안 잡힌다. 그런 코드는 pjc:plan 승인 게이트 +
+#   완료 리뷰가 검토한다 (CLAUDE.md "DB 데이터 삭제는 승인 필수" 참조).
 #
 # ⚠️ 한계 (정규식 접근의 본질적 미탐 — 의도된 트레이드오프):
 #   명령치환·변수 간접 참조는 잡지 못한다 — 예: rm -rf $(echo /), X=/; rm -rf $X.

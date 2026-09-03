@@ -1,6 +1,6 @@
 ﻿# PreToolUse hook (얇은 래퍼) - PowerShell 버전
 # git commit이 'T<N>:' 완료 커밋인데 plan의 해당 task 체크박스가 아직 [ ]/[/]면 차단(exit 2).
-# implement-task Phase D 규약("체크박스 [x] 갱신 → commit")을 구조로 강제한다.
+# 구현 완료 커밋 규약("체크박스 [x] 갱신 → commit")을 구조로 강제한다.
 #
 # 검사 로직은 bash-hook-lib.ps1의 Invoke-RequireTaskCheckbox로 이관됐다(pre-bash-dispatch.ps1과
 #   동일 함수 공유). 이 파일은 stdin 파싱 + 함수 호출 + 결과 번역(stderr/exit)만 한다.
