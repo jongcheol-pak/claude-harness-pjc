@@ -81,7 +81,12 @@ def scan_ledger():
             cur += '\n' + line
     if cur:
         items.append(cur)
-    hit = [x for x in items if RX.search(x)]
+    def live(item):
+        # 트리 경로와 같은 규칙 — 버전 태그 + 제거·개명 동사가 같은 줄에 있으면 이력이다
+        return [l for l in item.splitlines()
+                if RX.search(l) and not (HISTORY_RX.search(l) and HISTORY_VERB_RX.search(l))]
+
+    hit = [x for x in items if live(x)]
     print(f'== 대장 `## 대기` 삭제 자산 참조 ==\n대기 {len(items)}건 · 참조 {len(hit)}건')
     for x in hit:
         print(f'  {x.split(chr(10))[0][:110]}')
