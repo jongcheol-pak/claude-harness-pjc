@@ -45,6 +45,7 @@
 Set-Content -LiteralPath $out -Value ("START " + (Get-Date -Format 'HH:mm:ss')) -Encoding utf8NoBOM
 Set-Location -LiteralPath $repo
 $env:CLAUDE_HARNESS_ALLOW_SECRET = $null    # 러너도 내부에서 해제하지만 래퍼에서도 지운다(이중 방어)
+$env:CLAUDE_HARNESS_QUICK = $null           # ⚠ 아래 「우회 변수 오염」 참조 — 이 줄이 없으면 76건이 FAIL한다
 & pwsh -NoProfile -ExecutionPolicy Bypass -File $runner *>> $out
 Add-Content -LiteralPath $out -Value ("EXIT=" + $LASTEXITCODE + " END " + (Get-Date -Format 'HH:mm:ss'))
 ```
@@ -58,6 +59,33 @@ Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File
 - **기동 후 `EXIT=` 마커를 볼 때까지 검사 대상 파일을 편집하지 않는다.** 러너는 시작 시점의 파일을 읽어 케이스를 도는데, 도중에 hook 스크립트나 시나리오를 고치면 **FAIL이 나왔을 때 그것이 「내 수정이 만든 실제 결함」인지 「러너가 옛 파일과 새 파일을 섞어 읽은 경합」인지 갈린다** — 그 판정에 부분 실행 재현이 필요해지고, 부분 실행은 `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」에 걸려 판정 근거로 쓸 수도 없다(v1.217.0에서 실제로 골든 실행 중 `session-context.ps1`을 편집해 이 왕복을 치렀다). **대기 시간이 아깝다면 검사 대상이 아닌 파일**(다른 스킬 문서·`plan.md` 등)**을 만지고, 검사 대상은 `EXIT=`를 본 뒤에 손댄다.**
 - **판정은 ASCII `EXIT=`로 한다**(한글 `결과:` 아님) — `*>>`는 코드페이지를 타 한글이 깨진다. 결과 라인은 완료 후 `Get-Content -Encoding UTF8`로 읽는다.
 - **러너는 판정을 끝에 일괄 출력**하므로 실행 중 파일은 START 마커 + 헤더뿐이다 — **"파일이 안 자란다 = 멈췄다"가 아니다.** 진행은 `Get-Process`로 PID 생존을 본다.
+
+### ⚠ 우회 변수 오염 — 래퍼에서 `CLAUDE_HARNESS_QUICK`을 반드시 지울 것
+
+**환경에 `CLAUDE_HARNESS_QUICK=1`이 남아 있으면 골든은 돌긴 하는데 76건이 FAIL한다.** 그 변수는 `require-evidence`·`require-plan-for-write`·`guard-agents-content`를 통째로 우회시키므로, 「차단 기대」 케이스가 전부 통과(exit 0)해 FAIL로 잡힌다. 2026-09-03 실측 분포: `require-evidence` 35 · `require-plan-for-write` 26 · `require-task-checkbox` 9 · `guard-agents-content` 6.
+
+- **증상이 「내 수정이 hook을 깨뜨렸다」로 보인다** — FAIL 케이스명이 전부 *"→ 차단 (양성)"* 이라 진짜 회귀와 구분되지 않는다. **구분 기준은 분포다**: FAIL이 저 넷에만 몰려 있고 다른 그룹이 전건 통과면 회귀가 아니라 오염이다.
+- **어떻게 들어오는가**: `plan.md`를 직접 쓰려고 사용자가 세션 시작 전에 그 변수를 설정하면 Claude가 띄운 래퍼 프로세스가 그것을 **상속**한다. 종전 래퍼는 `ALLOW_SECRET`만 지웠다.
+- **판정**: 출력 첫 줄들에 `QUICK=[] ALLOW=[]`가 찍히는지 본다(위 래퍼가 남긴다). 값이 있으면 그 실행은 무효다.
+- **`Remove-Item Env:\...`를 쓰지 말 것** — PowerShell 도구의 경로 보호가 `'D:\Personal'`로 오차단한다(`docs/harness-conventions.md` 「검증 배치의 `Remove-Item` 오차단」과 같은 자리). `$env:X = $null`만으로 제거된다.
+
+### ⚠ 코디네이터가 취합 전에 죽으면 state 에서 직접 집계한다
+
+**`EXIT=`가 안 찍혔는데 격리 `state\<접미>\*.jsonl` 14개가 모두 최근 시각으로 남아 있으면 러너는 완주한 것이다** — 코디네이터가 판정을 끝에 일괄 출력하므로 그 직전에 죽으면 화면 결과만 사라진다(2026-09-03 실측: 그룹 14개가 전부 기록됐고 마지막이 09분 뒤에 끝났는데 출력 파일은 48바이트에서 멈췄다).
+
+그 경우 jsonl 을 직접 집계한다 — 각 줄이 한 케이스의 판정이다:
+
+```python
+import json, glob, collections
+tot = collections.Counter()
+for f in glob.glob(r'<state>\<접미>\*.jsonl'):
+    for line in open(f, encoding='utf-8'):
+        if line.strip():
+            o = json.loads(line); tot[str(o.get('status')).upper()] += 1
+print(tot)
+```
+
+**단 이 집계는 「그룹이 전부 기록됐는가」를 먼저 확인해야 유효하다** — 일부 그룹의 jsonl 이 없으면 그만큼이 조용히 빠진 채 개수만 맞아 보인다(위 「커버리지 판정」과 같은 함정).
 
 ### 커버리지 판정 — 개수만 보지 말 것
 
