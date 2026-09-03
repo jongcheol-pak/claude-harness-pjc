@@ -14,6 +14,8 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 - **자율 루프 안에서는 중간 업데이트도 내지 않는다** — 사용자가 개입할 지점이 없는 구간의 서술은 결정에 쓰이지 않으면서 컨텍스트를 소모해 후반 task의 품질을 떨어뜨린다. 남길 것은 `plan.md`에 쓰고, 사용자가 알아야 할 것은 최종 보고에 모은다.
 - **화면에 내는 것은 task당 한 줄이다** — `T<N> 시작 — <무엇을>`. 그 줄은 같은 turn의 다음 도구 호출과 한 묶음이어야 한다. 줄만 내고 turn을 끝내면 거기서 루프가 멈춘다.
 
+- **루프를 멈추는 네 형태와 그 문구 목록은 `references/loop-stop-patterns.md`에 있다** — `require-evidence` hook이 그 파일을 읽어 자기 정규식과 대조하므로 그 목록이 문서·코드 공통의 정본이다.
+
 ## 작업 범위
 
 > Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
@@ -67,13 +69,13 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 최종 리뷰 (4번 통과 후 1회)
 
-- **`completion-reviewer` 서브에이전트를 호출한다.** 전달: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로.
+- **`completion-reviewer` 서브에이전트를 호출한다** — 회차 전체를 계획과 대조하는 것은 각 task를 지나온 쪽이 보기 어려운 각도다. 전달: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로.
 - **결과를 받아 판정한 뒤에 완료 선언으로 간다** — 호출만 하고 다음으로 넘어가면 리뷰가 없는 것과 같다.
-- **BLOCKER·MAJOR는 고치고 다시 호출한다. MINOR는 `## Deferred / Follow-up`에 적고 진행한다.**
+- **BLOCKER·MAJOR는 고치고 다시 호출한다. MINOR는 `## Deferred / Follow-up`에 적고 진행한다** — 완료를 막는 것과 다음으로 미룰 수 있는 것을 섞으면 어느 쪽도 처리되지 않는다.
 - **같은 BLOCKER가 3회 연속이면 멈춘다** — 중단 조건 2번(동일 원인 3회 실패)에 해당한다.
 - **리뷰어가 호출되지 않는 환경이면 그 사실을 최종 보고에 적고 진행한다** — 리뷰 부재를 통과로 적지 않는다.
 - **plan 승인이 이 호출의 승인이다** — 리뷰 지점에서 사용자에게 묻지 않는다.
-- **검증하지 못했으면 "완료"가 아니라 "미검증"으로 적는다.**
+- **검증하지 못했으면 "완료"가 아니라 "미검증"으로 적는다** — 둘을 같은 말로 적으면 사용자가 확인할 자리를 잃는다.
 - **빌드 성공을 동작 확인으로 단정하지 않는다** — 화면 표시·조작감은 `HUMAN-VERIFY`다.
 
 ### 실패 처리
@@ -85,7 +87,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 - **task 완료마다 로컬 작업 브랜치에 커밋한다** — 제목은 `T<N>: <무엇을>`, 본문에 무엇을·왜·검증 결과를 적는다. 이 커밋은 plan 승인에 포함되므로 다시 묻지 않는다.
 - **push·병합·태그·릴리즈는 포함되지 않는다** — 전부 별도 승인이다.
-- **커밋 전에 diff에 시크릿·임시 파일이 없는지 확인한다.**
+- **커밋 전에 diff에 시크릿·임시 파일이 없는지 확인한다** — 커밋된 시크릿은 이력에 남아 회수가 어렵다.
 
 ## 재개
 

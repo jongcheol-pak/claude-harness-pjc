@@ -207,16 +207,16 @@ if ($gitOk) {
     $r = Invoke-Hook 'require-evidence.ps1' $capJson
     Assert-Case -Name "evidence: 차단 상한 4회차 → 미차단 (T3 상한 실증)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
-    # (L12) 문서↔코드 동일성 대조 — SKILL.md 금지 표현 ②③④⑤ **네 절**의 문구 목록을 파일에서
+    # (L12) 문서↔코드 동일성 대조 — loop-stop-patterns.md 의 ②③④⑤ **네 절** 문구 목록을 파일에서
     #   읽어 각 문구가 실제로 차단을 유발하는지 확인한다.
-    #   여기서 문구를 하드코딩하면 안 된다: SKILL.md가 정본이므로 그쪽이 바뀌었는데 hook의
+    #   여기서 문구를 하드코딩하면 안 된다: 그 파일이 정본이므로 그쪽이 바뀌었는데 hook의
     #   정규식($rxAdvance·$rxHandoff·$rxManualAsk·$rxProgressOnly)이 안 따라가면 "규칙에 있는데 안 잡히는"
     #   상태가 되는데, 하드코딩 사본은 그 드리프트를 영원히 못 본다(사본이 낡은 채로 계속 green).
-    #   어느 절이든 추출이 0건이면 그 자체가 FAIL이라 SKILL.md 구조 변경도 신호로 잡힌다.
-    $skillMdPath = Join-Path $pluginRoot 'skills/implement/SKILL.md'
+    #   어느 절이든 추출이 0건이면 그 자체가 FAIL이라 문서 구조 변경도 신호로 잡힌다.
+    $skillMdPath = Join-Path $pluginRoot 'skills/implement/references/loop-stop-patterns.md'
     $skillTxt = ''
     try { $skillTxt = Get-Content -LiteralPath $skillMdPath -Raw -Encoding UTF8 } catch {}
-    # 절 헤더 리터럴은 SKILL.md가 정본이며 여기가 추종한다(T1이 고정한 문자열).
+    # 절 헤더 리터럴은 loop-stop-patterns.md 가 정본이며 여기가 추종한다.
     # key는 세션 id 조립용 **ASCII** 식별자다 — 절 헤더의 원 문자(②③④⑤)를 쓰면 안 된다:
     #   hook이 session_id를 `[^\w.-]` → `_`로 정규화하는데 이 넷은 전부 `\w`가 아니라
     #   네 절이 모두 같은 id(`lpP_1`…)로 뭉개진다. 그러면 차단 3회 상한 카운터를 공유해
@@ -236,7 +236,7 @@ if ($gitOk) {
             }
         } catch {}
         if ($phraseList.Count -eq 0) {
-            $script:results.Add(@{ ok = $false; line = "[FAIL] evidence: SKILL.md 금지 표현 $($sec.label) 문구 추출 실패 (T3 문서<->코드 대조 - 목록 구조가 바뀌었는지 확인)" })
+            $script:results.Add(@{ ok = $false; line = "[FAIL] evidence: loop-stop-patterns $($sec.label) 문구 추출 실패 (T3 문서<->코드 대조 - 목록 구조가 바뀌었는지 확인)" })
             continue
         }
         $phIdx = 0
@@ -248,7 +248,7 @@ if ($gitOk) {
             #   재사용하면 4번째 케이스부터 상한에 걸려 거짓 FAIL이 난다(위 key 주석 참조).
             $sid = 'lpP' + $sec.key + $phIdx
             $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = $sid; transcript_path = $loopTr; last_assistant_message = $probe } | ConvertTo-Json -Compress)
-            Assert-Case -Name "evidence: SKILL.md $($sec.label) 문구 $phIdx/$($phraseList.Count) '$probe' → 차단 (T3 문서<->코드 동일성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+            Assert-Case -Name "evidence: loop-stop $($sec.label) 문구 $phIdx/$($phraseList.Count) '$probe' → 차단 (T3 문서<->코드 동일성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
         }
     }
 
