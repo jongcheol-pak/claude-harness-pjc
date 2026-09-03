@@ -27,7 +27,7 @@
 #   빠졌다는 사실은 드러나야 한다**(이 repo가 반복 등재한 "조용한 fail-open" 계열).
 ```
 
-## §3 # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st
+# §3 ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 st
 
 ```
         # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **stdout(fd 1)** 에

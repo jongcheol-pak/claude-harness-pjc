@@ -30,7 +30,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/require-plan-for-write.ps1\"; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-write.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
@@ -41,18 +41,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-harness.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-agents-content.ps1\"; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-harness.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]

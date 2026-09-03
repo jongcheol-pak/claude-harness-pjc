@@ -8,7 +8,7 @@
 ```
 # guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종 검사를 한 프로세스에서 수행
 #
-# 담당 조항(정본: `plugins/pjc/skills/DESIGN.md` 「hook이 강제하는 것」):
+# 담당 조항(정본: `plugins/pjc/skills/DESIGN.md`의 hook 담당 조항 표):
 #   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신.
 #   부수 경고 둘(전역 탐색·위험값 대입)은 대응하는 독립 hook이 없고 이 파일이 유일한 실행 경로다.
 #

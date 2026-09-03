@@ -66,8 +66,8 @@ $evalsDirTop = $PSScriptRoot
 $scenarioGroups = @(
     @('stateless'),
     @('orphan-process-cleanup'),
-    @('require-plan-for-write'),
-    @('protect-harness'),
+    @('guard-write'),
+    @('guard-harness'),
     @('guard-bash'),
     @('suggest-agents-record'),
     @('post-write-checks'),
@@ -75,7 +75,7 @@ $scenarioGroups = @(
     @('warn-version-drift'),
     @('protect-harness-installed', 'hook-event-log'),
     @('session-context'),
-    @('guard-agents-content')
+    @('guard-harness-content')
 )
 
 Write-Host "== pjc hook 골든 회귀 =="
@@ -335,7 +335,7 @@ foreach ($g in $scenarioGroups) {
 }
 
 # ---- 그룹 공유 임시 픽스처 정리 ----
-# `scenarios/require-plan-for-write.ps1`이 만드는 `<temp>\pjc-hook-evals\scratch`는 **의도적으로
+# `scenarios/guard-write.ps1`이 만드는 `<temp>\pjc-hook-evals\scratch`는 **의도적으로
 # 시스템 임시 폴더 하위**에 있다(require-plan-for-write가 temp 하위를 무조건 통과시키는 완화 경로를
 # 그 위치에서만 재현할 수 있다 — 부모 폴더로 감싸도 prefix 판정이라 그 성질은 유지된다). 그래서
 # 자식의 $EvalWork 하위로 옮길 수 없고, 자식은 자기 격리 폴더만 지우므로 **어느 쪽 책임에도

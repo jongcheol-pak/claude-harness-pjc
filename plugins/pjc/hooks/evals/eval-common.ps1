@@ -44,7 +44,7 @@ $env:CLAUDE_HARNESS_NO_PROC_CLEANUP = '1'
 # 홈 격리($EvalIso)는 임시 폴더에 둬도 되지만, 시나리오 프로젝트($EvalWork)는 반드시 임시 폴더 '밖'이어야
 # 한다 — require-plan-for-write가 시스템 임시 폴더 하위를 무조건 통과시키므로(H3 의도된 완화),
 # 픽스처가 temp 안에 있으면 차단 시나리오 전체가 우회로 무력화된다. temp 판정은 prefix 비교라
-# 부모 폴더로 한 단계 감싸도 그 성질은 그대로다(`require-plan-for-write.ps1`의 tempRoot StartsWith).
+# 부모 폴더로 한 단계 감싸도 그 성질은 그대로다(`guard-write.ps1`의 tempRoot StartsWith).
 #
 # 실행마다 만드는 폴더는 `<베이스>\pjc-hook-evals\run\<접미>` 아래로 모은다 — 최상위에 평면으로
 # 흩어지면 중단된 실행의 잔여물이 사용자 눈에 그대로 쌓인다(2026-08-20 실측 80개·9.7MB).

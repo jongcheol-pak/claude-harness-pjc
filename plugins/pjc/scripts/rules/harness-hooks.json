@@ -1,0 +1,20 @@
+{
+  "_note": "하니스 자기보호 대상 이름 집합. guard-harness(차단)와 post-write-checks(탐지)가 같은 값을 써야 대칭이 성립하므로 여기가 단일 정본이다. 목록은 plugins/pjc/scripts/*.ps1 전량이며, 스크립트를 더하거나 지우면 여기도 함께 고친다.",
+  "names": [
+    "block-destructive",
+    "guard-bash",
+    "guard-commit-secrets",
+    "guard-harness",
+    "guard-write",
+    "hook-event-log",
+    "orphan-process-cleanup",
+    "post-write-checks",
+    "report-hook-events",
+    "secret-patterns",
+    "session-context",
+    "session-end-cleanup",
+    "suggest-agents-record",
+    "warn-version-drift",
+    "write-gate-trivial"
+  ]
+}

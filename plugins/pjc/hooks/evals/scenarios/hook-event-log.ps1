@@ -8,7 +8,7 @@
 # 로그는 격리 홈($iso)의 .claude/.state/hook-events/{YYYY-MM}.jsonl에 쓰인다.
 # 게이트 태그 4개: 이벤트 로깅 검증이 block-destructive(차단 적재)·pre-bash-dispatch(warn 적재)·
 # protect-harness(헬퍼 개조 차단)를 실행 수단으로 쓴다 — 그 hook들의 필터에서도 커버 유지.
-if (Test-HookSelected @('hook-event-log', 'block-destructive', 'guard-bash', 'protect-harness')) {
+if (Test-HookSelected @('hook-event-log', 'block-destructive', 'guard-bash', 'guard-harness')) {
 
 # (a) 쓰기 불가 격리 — 로그 경로가 막혀도 차단 동작은 정상 (별도 격리 홈에서 hook-events 자리를 파일로 선점).
 #     ※ (b)보다 먼저: $iso에는 앞 섹션들의 경고 로깅으로 이미 디렉터리가 생겨 있을 수 있어 새 홈을 쓴다.
@@ -46,7 +46,7 @@ if (($r.code -eq 0) -and ($evText2 -match '"hook":"warn-external-ops"') -and ($e
 
 # (d) protect-harness: 설치본 hook-event-log(헬퍼) 개조 차단 (이름 집합 합류 실증)
 $elTarget = (Join-Path $vdCache 'hook-event-log.ps1') -replace '\\', '/'
-$r = Invoke-Hook 'protect-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $elTarget; content = 'x' } } | ConvertTo-Json -Compress)
+$r = Invoke-Hook 'guard-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $elTarget; content = 'x' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "protect-harness: 설치본 hook-event-log 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 }   # ---- §11 게이트 끝 (hook-event-log 외) ----
 
