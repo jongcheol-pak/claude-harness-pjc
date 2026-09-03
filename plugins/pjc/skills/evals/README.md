@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 56건 (8스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 58건 (8스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
 | `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 | `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
 

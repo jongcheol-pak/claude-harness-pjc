@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성.
+r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -21,6 +21,9 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
   ⑥ 추출 앵커 도달성 — `session-context.ps1`이 압축 직후 잘라 오는 절의 헤딩이 대상 문서에
      실재하고 크기 상한 안인가. 헤딩이 바뀌면 hook은 조용히 폴백해 주입이 사라지고, 그 상실은
      압축된 세션에서만 드러나 아무도 모른 채 지나간다.
+  ⑦ 문서 예산      — `DESIGN.md` 4절 표의 상한을 실측 파일 크기와 대조한다. v1.226.0 착수 시점에
+     스킬 5종 중 4종이 12,000 B 상한을 최대 2.02배 초과한 채였는데, 크기를 재는 축이 하나도
+     없어 조용히 통과했다. 예산이 문서에만 있고 기계는 보지 않는 상태였다.
 
 **축을 지운 이력 (v1.224.0)**: 구 `plan-feature`·`implement-task`와 그 references, 리뷰어 6종이
 제거되면서 그것을 대상으로 하던 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 ·
@@ -531,6 +534,66 @@ def check_compact_anchors():
     return issues, checked
 
 
+
+DESIGN_MD = os.path.join(ROOT, "plugins", "pjc", "skills", "DESIGN.md")
+
+# 예산 축이 보는 대상 — `DESIGN.md` 4절 표의 「대상」 열 리터럴 → 실제 파일 glob.
+#   표를 정본으로 읽어 값을 여기 박지 않는다. 대상 매핑만 여기 두는 이유는 표가 사람이 읽는
+#   이름("단일 `references/*.md`")을 쓰고 그것이 glob 과 1:1이 아니기 때문이다.
+BUDGET_TARGETS = [
+    ("`SKILL.md`", ["plugins/pjc/skills/*/SKILL.md"]),
+    ("단일 `references/*.md`", ["plugins/pjc/skills/*/references/*.md"]),
+    ("에이전트 정의 `agents/*.md`", ["plugins/pjc/agents/*.md"]),
+    ("가이드 문서 (`DESIGN.md`·`AUTHORING.md`)",
+     ["plugins/pjc/skills/DESIGN.md", "plugins/pjc/skills/AUTHORING.md"]),
+    ("hook 스크립트 `scripts/*.ps1`", ["plugins/pjc/scripts/*.ps1"]),
+]
+
+# `llm-wiki` 트리는 예산 축의 대상이 아니다 — 회차 1~3이 Out of Scope 로 두었고(그 스킬은
+#   vault 운영 절차 전체를 담아 다른 스킬과 성격이 다르다), 실측 9파일이 상한을 넘는다
+#   (`wiki-schema.md` 192,698 B 등). **면제이지 통과가 아니다** — 감량은 대장의
+#   「분리된 `lookup-rules.md` 의 문면 감량」 항목이 추적한다. 면제를 여기 명시해 두지
+#   않으면 다음 회차가 「왜 통과하는가」를 코드에서 되짚어야 한다.
+BUDGET_EXEMPT_PREFIX = ("plugins/pjc/skills/llm-wiki/",)
+BUDGET_EXEMPT = set()
+
+
+def check_doc_budget():
+    """⑦ 문서 예산 — `DESIGN.md` 4절 표의 상한을 실측 파일 크기와 대조한다.
+
+    왜 필요한가: v1.226.0 착수 시점에 스킬 5종 중 4종이 그 표의 12,000 B 를 최대 2.02배
+    초과한 채였는데 **크기를 재는 축이 하나도 없어 조용히 통과**했다. 예산은 문서에만
+    있고 기계는 보지 않는 상태였다.
+
+    표를 파싱해 값을 읽는다 — 상한을 코드에 박으면 정본이 둘이 되고 한쪽만 고쳐진다.
+    """
+    text = read(DESIGN_MD)
+    body = section(text, r"^## 4\. 문서 예산", label="DESIGN.md 「4. 문서 예산」")
+    limits = {}
+    for m in re.finditer(r"^\| (.+?) \| \*\*([\d,]+) B\*\* \|", body, re.M):
+        limits[m.group(1).strip()] = int(m.group(2).replace(",", ""))
+    if not limits:
+        die("[ANCHOR FAIL] DESIGN.md 4절 표에서 상한을 하나도 읽지 못했다 — 표 형식이 바뀌었다")
+
+    issues, n = [], 0
+    for label, globs in BUDGET_TARGETS:
+        if label not in limits:
+            issues.append("예산 표에 「%s」 행이 없다 — BUDGET_TARGETS 와 표가 갈렸다" % label)
+            continue
+        cap = limits[label]
+        for g in globs:
+            for path in sorted(glob.glob(os.path.join(ROOT, g))):
+                rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+                if rel in BUDGET_EXEMPT or rel.startswith(BUDGET_EXEMPT_PREFIX):
+                    continue
+                n += 1
+                size = os.path.getsize(path)
+                if size > cap:
+                    issues.append("문서 예산 초과: %s %d B > 상한 %d B (「%s」)"
+                                  % (rel, size, cap, label))
+    return issues, n
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -557,6 +620,7 @@ def main():
         ("한 줄 문장 중복", check_line_dup()),
         ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
         ("추출 앵커 도달성", check_compact_anchors()),
+        ("문서 예산", check_doc_budget()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:

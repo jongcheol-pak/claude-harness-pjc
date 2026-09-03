@@ -42,9 +42,19 @@
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
-- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`)·`session-context.ps1`의 절 추출 앵커 수정 시 필수 — 여섯 축, **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`)·`session-context.ps1`의 절 추출 앵커·**`skills/**`·`agents/*.md`·`scripts/*.ps1`의 크기** 수정 시 필수 — 일곱 축, **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python plugins/pjc/evals/check-harness-consistency.py
+  ```
+
+- **잘린 주석 검사** (`scripts/*.ps1`·`scripts/rules/*-rationale.md` 수정 시 필수 — 근거 인용 주석의 절단과 rationale 헤딩 짝 2축):
+  ```
+  python plugins/pjc/evals/check-comment-truncation.py
+  ```
+
+- **삭제 자산 참조 검사** (`plugins/**`·`docs/*.md` 수정 시 필수 — 회차 1·2가 없앤 21개 이름이 살아 있는 자산에 남았는가. `--ledger` 는 대장 `## 대기` 를 본다):
+  ```
+  python plugins/pjc/evals/check-stale-refs.py
   ```
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 검사하므로 워킹트리 변경은 재설치 후에만 반영된다.
 - **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 경로 보호가 오차단한다.

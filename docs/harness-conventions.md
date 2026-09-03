@@ -58,19 +58,19 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 변경 파일 패턴 | 필수 검증 |
 |---|---|
-| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 + **`python plugins/pjc/hooks/evals/check-block-coverage.py`**(차단 경로마다 사유 문구를 재는 케이스가 있는가 — 없으면 그 경로는 코드를 지워도 green 이다) + **`python plugins/pjc/evals/check-harness-consistency.py`** — 축 「복제 리터럴 동기」가 `session-context.ps1`의 마커 정규식과 골든 시나리오의 마커 주석을 읽고, 축 「추출 앵커 도달성」이 같은 hook의 절 앵커를 읽는다. 그 파일만 고치는 task도 이 검사가 필요하다 |
+| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 + **`python plugins/pjc/hooks/evals/check-block-coverage.py`**(차단 경로마다 사유 문구를 재는 케이스가 있는가 — 없으면 그 경로는 코드를 지워도 green 이다) + **`python plugins/pjc/evals/check-harness-consistency.py`** — 축 「복제 리터럴 동기」가 `session-context.ps1`의 마커 정규식과 골든 시나리오의 마커 주석을 읽고, 축 「추출 앵커 도달성」이 같은 hook의 절 앵커를 읽는다. 그 파일만 고치는 task도 이 검사가 필요하다 | + **`python plugins/pjc/evals/check-comment-truncation.py`**(근거 인용 주석이 단어 중간에서 잘렸는가 · rationale 헤딩과 짝이 맞는가 — v1.225.0이 34곳을 남겼다)
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
 | `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든 26케이스**가 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint를 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (7케이스, 1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |
 | `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「문서 로드 예산 기준선」·「조건부 참조 문서 크기 임계」·「리뷰어 4종 공통 규약」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
-| 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — 기본값. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 |
+| 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — 기본값. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 | 여기에 **`python plugins/pjc/evals/check-stale-refs.py`**를 함께 돌린다 — 회차 1·2가 없앤 21개 이름이 살아 있는 자산에 남았는지 본다(실행에 영향이 없어 골든이 못 잡는 축이다).
 | `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·Phase F-2에 포함하지 않는다**(실제 모델 호출이라 비용이 크다) |
 
 ## 조건부 참조 문서 크기 임계
 
-> **기계 대조 대상이다.** `plugins/pjc/evals/check-harness-consistency.py`가 이 표를 파싱해 **기록값 == 실측**과 **실측 <= 상한** 둘 다 대조한다. 위 「문서 로드 예산 기준선」과 **같은 축(「예산 기준선」)에서 함께 읽으며 `axes` 엔트리를 늘리지 않는다** — 표가 둘이어도 이 축은 하나다. 두 표는 *"문서가 얼마나 커졌나"*라는 같은 질문의 두 대상이라 축을 나눌 이유가 없다.
+> **기계 대조 대상이다.** `plugins/pjc/evals/check-harness-consistency.py`가 이 표를 파싱해 **기록값 == 실측**과 **실측 <= 상한** 둘 다 대조한다. **별개로 `plugins/pjc/skills/DESIGN.md` 4절의 예산 표는 같은 검사기의 「문서 예산」 축(v1.226.0 신설)이 본다** — 그 축은 상한만 보고 기록값 열이 없다(파일마다 값을 적지 않는다). 위 「문서 로드 예산 기준선」과 **같은 축(「예산 기준선」)에서 함께 읽으며 `axes` 엔트리를 늘리지 않는다** — 표가 둘이어도 이 축은 하나다. 두 표는 *"문서가 얼마나 커졌나"*라는 같은 질문의 두 대상이라 축을 나눌 이유가 없다.
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
