@@ -8,7 +8,7 @@
 
 ### 검사 대상
 
-격리 USERPROFILE에서 hook 12종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·require-evidence·warn-commit-secrets·warn-version-drift·session-context·session-end-cleanup)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
+격리 USERPROFILE에서 hook 11종(block-destructive·protect-harness·warn-external-ops·require-plan-for-write·require-task-checkbox·suggest-agents-record·post-write-checks·warn-commit-secrets·warn-version-drift·session-context·session-end-cleanup)을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
 
 ### 실행 모드 4종
 
@@ -62,7 +62,7 @@ Start-Process pwsh -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File
 
 ### ⚠ 우회 변수 오염 — 래퍼에서 `CLAUDE_HARNESS_QUICK`을 반드시 지울 것
 
-**환경에 `CLAUDE_HARNESS_QUICK=1`이 남아 있으면 골든은 돌긴 하는데 76건이 FAIL한다.** 그 변수는 `require-evidence`·`require-plan-for-write`·`guard-agents-content`를 통째로 우회시키므로, 「차단 기대」 케이스가 전부 통과(exit 0)해 FAIL로 잡힌다. 2026-09-03 실측 분포: `require-evidence` 35 · `require-plan-for-write` 26 · `require-task-checkbox` 9 · `guard-agents-content` 6.
+**환경에 `CLAUDE_HARNESS_QUICK=1`이 남아 있으면 골든은 돌긴 하는데 76건이 FAIL한다.** 그 변수는 `require-plan-for-write`·`guard-agents-content`를 통째로 우회시키므로, 「차단 기대」 케이스가 전부 통과(exit 0)해 FAIL로 잡힌다. 2026-09-03 실측 분포(v1.225.0의 `require-evidence` 제거 전): `require-evidence` 35 · `require-plan-for-write` 26 · `require-task-checkbox` 9 · `guard-agents-content` 6 — 앞 항목이 사라져 **현행 FAIL 예상은 41건**이다.
 
 - **증상이 「내 수정이 hook을 깨뜨렸다」로 보인다** — FAIL 케이스명이 전부 *"→ 차단 (양성)"* 이라 진짜 회귀와 구분되지 않는다. **구분 기준은 분포다**: FAIL이 저 넷에만 몰려 있고 다른 그룹이 전건 통과면 회귀가 아니라 오염이다.
 - **어떻게 들어오는가**: `plan.md`를 직접 쓰려고 사용자가 세션 시작 전에 그 변수를 설정하면 Claude가 띄운 래퍼 프로세스가 그것을 **상속**한다. 종전 래퍼는 `ALLOW_SECRET`만 지웠다.

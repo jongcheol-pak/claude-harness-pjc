@@ -147,7 +147,7 @@ foreach ($a in $actualAgents) {
 Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
-$hooks = @('block-destructive.ps1', 'protect-harness.ps1', 'require-plan-for-write.ps1', 'require-task-checkbox.ps1', 'post-write-checks.ps1', 'require-evidence.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1', 'warn-commit-secrets.ps1', 'pre-bash-dispatch.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'guard-agents-content.ps1')
+$hooks = @('block-destructive.ps1', 'protect-harness.ps1', 'require-plan-for-write.ps1', 'require-task-checkbox.ps1', 'post-write-checks.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1', 'warn-commit-secrets.ps1', 'pre-bash-dispatch.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'guard-agents-content.ps1')
 # hook 아닌 스크립트(미등록 탐지 경고 제외) — dot-source 헬퍼: secret-patterns(패턴)·bash-hook-lib(Bash hook
 #   3종 검사 로직 — pre-bash-dispatch 디스패처와 warn-external-ops·require-task-checkbox·warn-commit-secrets
 #   래퍼가 공유)·hook-event-log(이벤트 적재)·orphan-process-cleanup(고아 콘솔 프로세스 회수 — Stop·

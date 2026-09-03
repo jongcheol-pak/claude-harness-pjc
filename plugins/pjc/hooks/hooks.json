@@ -118,18 +118,6 @@
           }
         ]
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/require-evidence.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10
-          }
-        ]
-      }
     ]
   }
 }

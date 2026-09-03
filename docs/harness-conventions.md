@@ -24,85 +24,9 @@
 ## 출력 형태
 
 - **경고**: `exit 0` 비차단 + stderr + additionalContext.
-- **차단**은 두 형태다.
-  - ① **`exit 2`** — `block-destructive` · `protect-harness` · `require-plan-for-write` · `require-task-checkbox` · `guard-agents-content`, 그리고 **`warn-commit-secrets`(조건부)**.
-  - ② **`stdout JSON`(`{"decision":"block","reason":…}`) + `exit 0`** — **`require-evidence`(조건부)**.
+- **차단**은 **`exit 2`** 한 형태다 — `block-destructive` · `protect-harness` · `require-plan-for-write` · `require-task-checkbox` · `guard-agents-content`, 그리고 **`warn-commit-secrets`(조건부)**.
 
-②는 Stop hook 전용 형태로, 종료를 막고 `reason`을 모델에 전달해 루프를 잇는다. PreToolUse의 `exit 2`와 목적이 다르다 — 도구 호출을 막는 게 아니라 *종료를 되돌린다*.
-
-## `require-evidence`의 조건부란
-
-검사 1~3(checkpoint · 증거 없음 · 미커밋)은 **비차단 경고**이고, **검사 4(자율 루프 미완료 정지)만** 차단한다. 차단은 **6조건 AND**를 모두 만족할 때만이다:
-
-1. 미완료 task 존재
-2. `pjc:implement` 발동 흔적
-3. **정지 판정** — **루프 활성**(마지막 사용자 발화 이후 스킬이 재발동됨)이면 **문면과 무관하게 참**, **비활성**이면 정지 문구 4유형 중 하나가 positive 매치 (아래 참조)
-4. 정당 정지 신호 없음 (아래 2층 분류)
-5. **사용자가 중단·한정을 지시하지 않음** — ⑤에는 여기에 **질문 답변 억제**가 더 붙는다: 마지막 사용자 발화가 질문·조회 요청(`$rxUserAsk`)이면 ⑤ 판정을 무효화한다. 단 **마지막 사용자 발화 *이후*에 `pjc:implement` 발동 엔트리가 있으면**(=루프가 지금 도는 중) 그 억제를 적용하지 않는다(`$loopActiveAfterUser`). 이 게이트가 없으면 루프 중 "마지막 user 텍스트"가 시작 지시로 고정돼(tool_result는 user에서 제외) 억제가 전 구간 상수 참이 되고 ⑤가 영구 무발화한다.
-6. 차단 3회 미만
-
-**판정 불가는 전부 fail-open**이다. 우회는 `CLAUDE_HARNESS_QUICK=1`.
-
-### 조건 3 — 루프 활성 화이트리스트 + 정지 문구 4유형(폴백)
-
-**루프 활성이면 문면을 보지 않는다 (v1.154.0).** 판정 신호는 `$loopActiveAfterUser` — 역순 스캔에서 **마지막 사용자 발화 이후**에 `pjc:implement` 발동 엔트리(`"type":"tool_use"` 동반)를 만나면 참이며, 이는 "자율 루프가 지금 도는 중"을 뜻한다. 그 구간에서 Stop hook이 돌았다는 것 자체가 **"도구 호출 없이 텍스트만 내고 turn을 끝냈다"는 확정 사실**이므로 무슨 말을 했는지는 판정에 필요 없다(아래 ⑤ 문단이 쓰던 논리를 전 유형으로 일반화한 것). 이때 통과 근거는 **Strong 마커뿐이다**(조건 4).
-
-- **왜 문면 목록으로는 수렴하지 않는가**: 4정규식은 관측된 문구를 사후에 목록화하는 방식이라 같은 의도를 다른 어휘로 쓰면 그대로 샌다. 실제로 *"T9~T13을 진행했습니다. 컨텍스트가 상당히 차서 여기서 상황을 정리해 보고합니다."* 가 **4유형 전부를 빗나갔다**(실측) — `여기까지`≠`여기서`, 물결표 범위에 `부터/까지` 없음, ③ⓐ에 '컨텍스트' 명사 없음(오차단 방지로 의도적 제외), ⑤ 완료 어휘에 "진행했다" 없음. 한국어 어미·조사 조합은 사실상 무한하다.
-- **4정규식은 폴백으로 남는다** — 루프가 도는 중이 아닐 때(루프 종료 후 일반 대화·사용자 개입 후 재개 구간)는 종전대로 문면으로 판정한다. 지우면 그 구간의 방어가 0이 되고 골든 L12의 문서↔코드 대조도 성립하지 않는다.
-- **이미 4정규식이 유형을 특정했으면 그 유형을 유지한다**(`-and -not $stopKind`) — reason이 더 구체적이기 때문이다.
-- **게이트는 원시 문자열이 아니라 구조로 판정한다** — 후보 줄(발동 리터럴 보유)만 파싱해 `content[]`에 **`type=tool_use` ∧ `name=Skill` ∧ `input.skill=pjc:implement`인 블록**이 실재할 때만 점화한다. 파싱 실패는 미점화(fail-open).
-  - **왜 원시 매치로는 안 되는가**: 이 레포는 발동 리터럴을 **도구 input에 실어 나른다** — hook·골든·plan을 Edit/Write/Bash로 편집·검색할 때마다 그렇다. 전 세션 실측에서 리터럴을 가진 assistant 엔트리 중 **32건이 그 형태**였고(Edit 11 · Write 10 · Bash 8 · Agent 2 · PowerShell 1) **전부 `tool_use` 동반**이라, 한때 시도한 "tool_use 동반 요구"로는 하나도 걸러지지 않았다. 게다가 **골든 픽스처 자체가 `"name":"Skill"`과 `"skill":"pjc:implement"`를 한 줄 문자열로 담으므로**, 어떤 원시 패턴을 쓰든 그 파일을 편집하는 순간 재현된다.
-  - **평문 `Launching skill: …` 패턴은 게이트에서 쓰지 않는다** — assistant 엔트리에 있던 그 형태는 **전수가 오점화**였고(진짜 발동은 전부 위 JSON 구조), tool_result 쪽은 `$isAsst` 한정이 이미 배제한다. 즉 제거해도 미탐이 없다.
-  - 전환 전에는 이 오점화가 ⑤ 억제 해제(미탐 방향)로만 나타나 수용 가능했지만, **화이트리스트 전환 후에는 게이트가 곧 차단 신호**라 루프가 끝난 뒤의 일반 대화까지 차단된다.
-- **적용 범위는 `pjc:implement` 루프다** — 두 신호(`$loopSkill`·`$loopActiveAfterUser`)가 그 스킬의 발동 리터럴에만 반응하므로, 다른 스킬이 도는 중에는 게이트가 꺼져 폴백 경로가 적용된다.
-
-| 유형 | 무엇을 잡는가 | 정규식 |
-|---|---|---|
-| **②** 진행 예고 | 예고를 마지막 말로 남기고 turn을 끝냄 | `$rxAdvance` |
-| **③** 세션 전환·컨텍스트 우려 제안 | 컨텍스트를 사유로 새 세션·`/clear`를 권함 | `$rxHandoff` |
-| **④** 중간 수동 실행·확인 요청 | 기계로 되는 검증을 사용자에게 넘김 | `$rxManualAsk` |
-| **⑤** 순수 진행 요약으로 turn 종료 | task 번호 + 완료 어휘만 남기고 끝냄 | `$rxProgressOnly` |
-
-**문구 목록의 정본은 `implement/SKILL.md`의 「진행 중 사용자와의 소통」 절**이고 정규식이 그것을 추종한다. 골든 L12가 그 절들을 파일에서 읽어 hook에 주입하므로 드리프트는 테스트 FAIL로 드러난다.
-
-**유형 판정은 조기 반환하지 않는다** — ②의 어휘가 매치됐더라도 아래 Weak 때문에 ② 판정이 거짓이면 ③→④→⑤를 이어서 평가한다. 안 그러면 ②어휘+③어휘+물음표가 섞인 문장이 ②에서 통과 판정을 받고 ③ 검사에 닿지 못해 새어 나간다.
-
-**⑤만 정상 보고와 문면이 같다.** ②③④는 예고·전환 제안·위임처럼 의도가 어휘에 박혀 있지만, ⑤의 "T3 완료. 빌드 통과."는 **정상 진행 보고와 글자 그대로 동일**하다 — 차이는 "그 뒤에 도구 호출이 있었나"뿐이고 Stop hook 시점엔 그 부재가 확정이라 문면만으로 판정한다. 대신 오차단 표면이 넓어 조건 5에 억제를 하나 더 둔다. 정규식이 `(?-i)`·`\b`·문장부호 배제를 쓰는 이유도 이것이다(없으면 `part1`·`test2`·`GPT5`가 전부 `T<N>`으로 인정된다 — 실측).
-
-### 조건 4 — 정당 정지 신호 2층
-
-| 층 | 내용 | 적용 |
-|---|---|---|
-| **Strong** | `⛔` · `🎉` · `⏸️` · `중단 보고` · `Halt` | **전 유형에 통과** |
-| **Weak** | `?` · `승인` · `확인 요청` · `확인 부탁` · `선택해` | **②에만** 통과 근거 |
-
-두 층의 합집합은 v1.148.0의 단일 `$rxLegit`과 동일하다. **③④⑤에서 Weak를 인정하지 않는 이유**: ③④는 **질문 형태를 띠는 것이 곧 위반**이라 Weak를 통과 근거로 두면 물음표 하나로 영구 fail-open 되고(실제로 확대 이전이 그 상태였다), ⑤는 평서형이라 애초에 그 표지가 정당성의 근거가 되지 않는다. 그 결과 `T3 완료. 계속할까요?`(금지 표현 ①에도 해당하는 형태)는 ⑤로 **부수 차단**된다 — 의도된 확장이며 골든이 케이스로 고정한다.
-
-대신 **정당한 개입 지점에는 Strong 마커를 문면으로 부여**한다. **전수 목록 10곳(v1.154.0)** — Halt 보고(`## ⛔ 작업 중단`) · 최종 보고(`🎉`) · F-8 확인 게이트(`## ⏸️ 구현 완료 — 확인 대기`) · Phase 0 사전 승인 확인(`## ⏸️ 사전 승인 확인`) · 규칙 12 외부 작업 승인(`## ⏸️ 외부 작업 승인 요청`) · 리뷰 인프라 선택 요청(`## ⏸️ 리뷰 인프라 선택 요청`) · Phase G 재루프 한도 도달(`## ⛔ Phase G 재루프 한도 도달`) · **Phase G Should 갭 선택 요청**(`## ⏸️ Phase G Should 갭 선택 요청`) · **PRD 변경 제안**(`## ⏸️ PRD 변경 제안`) · 계획 세션 확인(`## ⏸️ 세션 확인`).
-
-**뒤의 둘은 v1.154.0에서 추가됐다** — Phase G의 사용자 개입 지점인데 마커가 없었고, **Must 갭 자율 재루프가 plan에 새 task를 추가하면 미완료 task가 생기므로** 바로 그 상태의 정지가 실제로 차단 대상이 된다. 화이트리스트 전환으로 **마커 부재가 곧 차단**이 됐으니 이 목록의 전수성이 오차단 방어의 1층 전부다.
-
-**hook은 어느 스킬이 말했는지 구분하지 못하므로**(세션에 루프 발동 흔적이 있는지만 본다) 이 규약은 `pjc:implement` 밖의 스킬에도 적용된다 — 다만 조건 3의 화이트리스트가 실제로 켜지는 것은 `pjc:implement` 루프가 도는 구간이고, 그 밖에서는 폴백(4정규식)이 적용된다. 새 개입 지점을 만들 때는 마커를 함께 준다.
-
-**이 목록이 전수 정본이고, `implement/SKILL.md`의 대응 절은 대표 예시만 둔다 — 새 지점이 생기면 여기만 고치면 된다.** 종전에는 그쪽도 전수를 나열해 두 목록이 갈릴 수 있었고, 실제로 v1.154.0 이전에 **정본 6곳 ↔ 사본 8곳으로 역전**돼 있었다(정본이 더 좁은 쪽이라 그 차이가 곧 오차단 경로였다). 두 문서의 갱신 지시가 서로 반대였던 것도 그 상태를 방치한 원인이다 — 그쪽은 *"한 곳만 고치면 되게 한다"*, 여기는 *"같이 고친다"*. 사본을 예시로 줄여 지시를 한 방향으로 통일했다.
-
-### 조건 5 — "사용자 발화"로 인정하는 것 (v1.151.0)
-
-조건 5가 읽는 **마지막 사용자 발화**는 transcript의 `type:"user"` 엔트리 중 아래를 **제외**한 텍스트다. 원칙은 하나다 — **시스템이 주입한 텍스트는 사용자 발화가 아니다.** 아래 목록은 그 원칙의 **현재 열거이지 닫힌 목록이 아니며**, 새로운 주입 형태가 관측되면 더한다.
-
-| 제외 대상 | 판정(원시 문자열) | 왜 |
-|---|---|---|
-| ① 도구 결과 | `"type":"tool_result"` 또는 `"tool_use_id"` | tool_result가 user 역할로 기록된다. 포함하면 마지막 user 텍스트가 늘 도구 결과가 되어 사용자가 "그만"이라 한 세션에서도 차단이 걸린다 |
-| ② 스킬 발동 페이로드 등 | `"isMeta":true` | SKILL.md 전문(약 41K자)이 이 형태의 순수 user 텍스트로 기록된다. 스킬 문서는 Halt·중단 조건을 논하므로 `중단`·`새 세션`이 본문에 있고, 그것이 조건 5를 켜서 **v1.148.0부터 스킬 발동 직후 구간의 ②③④⑤가 통째로 미발동**했다(8세션 실측: isMeta=true 20건 전부 시스템 주입, 사용자 발화 0건). 사용자의 슬래시 커맨드 원문(`<command-name>`)은 `isMeta=false`라 걸리지 않는다 — **사용자 의사는 보존된다** |
-| ③ subagent 완료 알림 | `"(content\|text)":"<task-notification>` | 알림도 user 엔트리이며 실측상 진짜 사용자 발화와 같은 규모다(8세션 45건 대 45건). 사용자가 "그만" 한 직후 알림이 도착하면 중단 지시가 가려진다. 판정을 **필드 시작 위치**로 하는 이유는 사용자가 그 리터럴을 *언급*한 발화까지 삼키지 않기 위함이다 |
-
-**②③만 제외하면 다른 fail-open이 열린다** — 스캔이 더 과거로 내려가 파싱 상한(200)을 소진하고 `$userFound`를 잃는다(실측 104개 시점). 그래서 **결과를 어차피 버리는 assistant 엔트리 파싱 2종**(`$needAsst`가 거짓일 때 / `"type":"text"`가 없을 때)을 함께 걷어낸다. 이 둘은 판정을 바꾸지 않는 순수 최적화이면서 위 제외의 **성립 조건**이다(적용 후 파싱 최댓값은 stdin 경로 1·폴백 87로, 종전 최대 175보다 낮다).
-
-> 구현 위치는 `require-evidence.ps1`의 역순 스캔 `[추출 원칙]` 주석 블록이다. **이 skip들을 "군더더기"로 보고 지우면 검사 4는 조용히 무발화 상태로 돌아간다.**
-
-**점검 수단** — 위 열거가 실 데이터와 어긋났는지는 `plugins/pjc/hooks/evals/check-transcript-assumptions.ps1`로 재확인한다(골든은 픽스처를 우리가 만들므로 스키마가 바뀌어도 green이라 이 축을 못 본다). 발동 건수 자체는 `plugins/pjc/scripts/report-hook-events.ps1`로 집계한다.
-
-**관측은 두 방향이다** — *fail-open*은 "차단 0이 계속되는가"(무발화)로, *오차단*은 "사용자가 중단을 지시한 직후에 차단이 찍혔는가"로 본다. 앞쪽은 이벤트 로그만으로 보이지만 뒤쪽은 로그에 맥락이 없어 실 transcript 대조가 필요하다.
+**종전에는 `stdout JSON`(`{"decision":"block","reason":…}`) + `exit 0`이라는 두 번째 형태가 있었다** — Stop hook 전용으로 종료를 막고 `reason`을 모델에 전달해 루프를 잇는 것이었고, v1.225.0이 그 hook(`require-evidence`)을 제거하면서 사용처가 사라졌다. 다시 필요해지면 이 형태가 유일한 수단이라는 것만 남긴다.
 
 ## 검증 명령 상세 (무엇을 대조하는가 · 함정)
 
@@ -134,8 +58,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 변경 파일 패턴 | 필수 검증 |
 |---|---|
-| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 (require-evidence 수정 시 `check-transcript-assumptions.ps1`) + **`python plugins/pjc/evals/check-harness-consistency.py`** — 축 「복제 리터럴 동기」가 `session-context.ps1`의 마커 정규식과 골든 시나리오의 마커 주석을 읽고, 축 「추출 앵커 도달성」이 같은 hook의 절 앵커를 읽는다. 그 파일만 고치는 task도 이 검사가 필요하다 |
-| `plugins/pjc/skills/implement/SKILL.md`의 **「진행 중 사용자와의 소통」 절** | **Hook 골든 회귀** — hook을 한 줄도 안 고쳐도 깨질 수 있다. `hooks/evals/scenarios/require-evidence.ps1:216`의 L12 블록이 **그 SKILL.md를 열어 문구 목록을 파싱**해 hook 정규식과 대조하기 때문이다(추출 0건이면 그 자체가 FAIL). 아래 「골든 부분 실행의 판정 자격」 예외를 plan에 미리 적었다면 `-Filter require-evidence`로 갈음 가능 |
+| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 + **`python plugins/pjc/evals/check-harness-consistency.py`** — 축 「복제 리터럴 동기」가 `session-context.ps1`의 마커 정규식과 골든 시나리오의 마커 주석을 읽고, 축 「추출 앵커 도달성」이 같은 hook의 절 앵커를 읽는다. 그 파일만 고치는 task도 이 검사가 필요하다 |
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
 | `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든 26케이스**가 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint를 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (7케이스, 1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |
@@ -151,9 +74,9 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 106,129 | 137,000 |
-| `docs/golden-runner.md` | 32,581 | 44,000 |
-| `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,321 | 37,000 |
+| `docs/harness-conventions.md` | 50,512 | 137,000 |
+| `docs/golden-runner.md` | 36,440 | 44,000 |
+| `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,241 | 37,000 |
 
 > **왜 예산 표와 나눴는가 — 「임계가 없다」가 아니라 「재는 것이 다르다」다.** 위 표가 재는 것은 **상시 로드**다: 스킬 본체는 발동만 해도 전문이 올라가고 `AGENTS.md`는 매 세션 주입된다. 이 표가 재는 것은 **조건부 참조** — `AGENTS.md`가 필요할 때 가리키는 문서라, 커져도 **그 절을 읽으러 들어온 세션만** 비용을 진다. 같은 표에 섞으면 **위 표가 상시 로드만 추적한다는 전제**가 깨지고, 그 표에서 파생되는 「메인 조합」 합산에 **상시 비용이 아닌 바이트가 섞인다**.
 >
@@ -342,7 +265,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop/SessionStart/SessionEnd 배선
 │   ├── skills/llm-wiki/scripts/lint.py  # 검사 + `--fix`(안전 3종) + `--build-index`(index.md 생성 구역 파생 · sub-index 생성) / migrate-index-labels.py  # index 라벨 역이관(1회성, 기본 dry-run)
-│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·require-evidence·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(버전 드리프트 경고)·session-end-cleanup(SessionEnd — 고아 콘솔 프로세스 회수)·session-context(SessionStart **startup|resume|clear|compact|fork** — fork 세션도 주입 대상이다, plan 상태 + **위키 vault 설정 상태**(설정+실재 / 경로 부재만 1줄 주입, 미설정은 무출력 — **목적 둘**: ① 절차 K의 "미설정" 오판정 차단 ② **허브 직행 지시**(AGENTS.md `## 위키`가 지목한 허브를 먼저 Read + 글로벌 절 포인터 — 스킬을 발동하지 않는 세션에는 절차 K를 부르는 주체가 없어 이 라인이 유일한 신호다. 판정 규칙은 글로벌 지침이 정본이라 복제하지 않는다). 게이팅은 cwd 수집 라인 기준이고 compact 리마인더는 신호가 아니다) + **compact 직후 루프 제어 규칙 원문 주입**(`source=compact` + 미완료 task일 때만 — `implement/SKILL.md` 「자율 루프」 절) + AGENTS.md 전문 주입(**16KB 초과 시 목차 폴백** · **95%/여유 500B 임박 시 전문 주입 + 경고 1구** — 해소는 `pjc:record-project-fact` Step 5, 정본 `docs/harness-conventions.md` 「AGENTS.md 주입 상한 관리」) + **위키 뒤처짐 1줄**(허브 `synced_commit` 이후 커밋 수·`updated` 경과일·`[K-DRIFT]` 잔량 OR 3축 — 30/14/1) — compact 포함)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log·orphan-process-cleanup(고아 more.com·find.exe 회수 — Stop·SessionStart·SessionEnd가 호출) — 차단/경고 이벤트를 `~/.claude/.state/hook-events/`에 jsonl 적재, hook 아님) + 수동 도구 report-hook-events(이벤트 집계 리포트, 읽기 전용, hook 아님)(아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets·warn-global-find를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용). hooks.json command는 스크립트를 hook 셸에서 직접 실행한다(엔트리당 outer+inner 2프로세스 → outer 1프로세스. 실행 셸은 Claude Code가 powershell로 해석하며 실측상 pwsh 우선 — 크로스플랫폼 hook 디버깅 시 이 해석 규칙을 먼저 본다).
+│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(버전 드리프트 경고)·session-end-cleanup(SessionEnd — 고아 콘솔 프로세스 회수)·session-context(SessionStart **startup|resume|clear|compact|fork** — fork 세션도 주입 대상이다, plan 상태 + **위키 vault 설정 상태**(설정+실재 / 경로 부재만 1줄 주입, 미설정은 무출력 — **목적 둘**: ① 절차 K의 "미설정" 오판정 차단 ② **허브 직행 지시**(AGENTS.md `## 위키`가 지목한 허브를 먼저 Read + 글로벌 절 포인터 — 스킬을 발동하지 않는 세션에는 절차 K를 부르는 주체가 없어 이 라인이 유일한 신호다. 판정 규칙은 글로벌 지침이 정본이라 복제하지 않는다). 게이팅은 cwd 수집 라인 기준이고 compact 리마인더는 신호가 아니다) + **compact 직후 루프 제어 규칙 원문 주입**(`source=compact` + 미완료 task일 때만 — `implement/SKILL.md` 「자율 루프」 절) + AGENTS.md 전문 주입(**16KB 초과 시 목차 폴백** · **95%/여유 500B 임박 시 전문 주입 + 경고 1구** — 해소는 `pjc:record-project-fact` Step 5, 정본 `docs/harness-conventions.md` 「AGENTS.md 주입 상한 관리」) + **위키 뒤처짐 1줄**(허브 `synced_commit` 이후 커밋 수·`updated` 경과일·`[K-DRIFT]` 잔량 OR 3축 — 30/14/1) — compact 포함)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log·orphan-process-cleanup(고아 more.com·find.exe 회수 — SessionStart·SessionEnd가 호출) — 차단/경고 이벤트를 `~/.claude/.state/hook-events/`에 jsonl 적재, hook 아님) + 수동 도구 report-hook-events(이벤트 집계 리포트, 읽기 전용, hook 아님)(아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets·warn-global-find를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용). hooks.json command는 스크립트를 hook 셸에서 직접 실행한다(엔트리당 outer+inner 2프로세스 → outer 1프로세스. 실행 셸은 Claude Code가 powershell로 해석하며 실측상 pwsh 우선 — 크로스플랫폼 hook 디버깅 시 이 해석 규칙을 먼저 본다).
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan·implement 등 (+ references/·templates/)
 ├── docs/

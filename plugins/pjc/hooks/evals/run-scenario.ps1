@@ -71,7 +71,7 @@ try {
 # ---- 완주 시 판정 전량 덤프 (증분 라인보다 우선하는 정본) ----
 # **왜 전량을 다시 쓰는가**: 증분 기록은 `Assert-Case` 경유분만 잡는데, 일부 시나리오는 그 헬퍼를
 #   쓰지 않고 `$results.Add(...)`를 **직접** 호출한다(`warn-commit-secrets.ps1`의 secret-patterns
-#   24건·dispatch 2건 · `session-context.ps1` SC22 · `hook-event-log.ps1` · `require-evidence.ps1`).
+#   24건·dispatch 2건 · `session-context.ps1` SC22 · `hook-event-log.ps1`).
 #   Assert-Case만 후킹했을 때 그 **29건이 취합에서 조용히 빠져** 병렬 결과가 502/502 OK로 보였다
 #   (순차는 531/531 — 개수만 대조하면 통과로 읽히는 형태였고, 순차 대비 집합 등가 검사가 잡았다).
 #   여기서 $results 전량을 덤프하면 **어떤 경로로 누적된 판정이든 빠지지 않는다** — 앞으로 누가

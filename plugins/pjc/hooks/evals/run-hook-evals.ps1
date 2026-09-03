@@ -69,7 +69,6 @@ $scenarioGroups = @(
     @('require-plan-for-write'),
     @('protect-harness'),
     @('pre-bash-dispatch'),
-    @('require-evidence'),
     @('suggest-agents-record'),
     @('post-write-checks'),
     @('require-task-checkbox'),
