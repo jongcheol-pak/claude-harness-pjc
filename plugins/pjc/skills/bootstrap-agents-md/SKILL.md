@@ -1,161 +1,84 @@
 ---
 name: bootstrap-agents-md
-description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by pjc:plan when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". 파일 이름을 대지 않고 목적만 말하는 요청도 이 스킬이다 — 빌드·실행·테스트 방법이나 프로젝트 규약을 정리한 문서를 새로 만들어 달라는 요청이 여기 해당한다. 그 경우에도 산출물은 AGENTS.md이며 README·ONBOARDING 등 다른 이름의 문서를 새로 만들지 않는다. Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from one of 9 stack templates (plus generic/multi-stack). If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README. An existing CLAUDE.md does NOT block it — that file is Claude-only and usually gitignored, while AGENTS.md is committed and read by other agents.
+description: This skill should be used when starting work on a project that has no AGENTS.md file, to generate one. Triggered automatically by pjc:plan when AGENTS.md is missing, manually with "/pjc:bootstrap-agents-md", or when the user asks to create a project agent guide - e.g. "AGENTS.md 만들어줘", "프로젝트 가이드 문서 자동으로 만들어줘", "Claude가 이 프로젝트 컨벤션을 알게 해줘". 파일 이름을 대지 않고 목적만 말하는 요청도 이 스킬이다 — 빌드·실행·테스트 방법이나 프로젝트 규약을 정리한 문서를 새로 만들어 달라는 요청이 여기 해당한다. 그 경우에도 산출물은 AGENTS.md이며 README·ONBOARDING 등 다른 이름의 문서를 새로 만들지 않는다. Detects project stack from marker files (.csproj, package.json, pyproject.toml, go.mod, Cargo.toml, etc.) and generates a minimal AGENTS.md from the canonical section list in AGENTS-BOUNDARY.md. If stack is unknown, asks the user. Do NOT trigger when an AGENTS.md already exists, when only editing/adding a line to an existing AGENTS.md, or for writing a README. An existing CLAUDE.md does NOT block it — that file is Claude-only and usually gitignored, while AGENTS.md is committed and read by other agents.
 argument-hint: "(자동)"
 ---
 
 # Bootstrap AGENTS.md
 
-프로젝트 루트에 `AGENTS.md`가 없을 때, 표식 파일을 감지하여 적절한 template으로
-초기 `AGENTS.md`를 생성한다.
-
-## 호출 흐름
-
-| 시점 | 호출 방식 |
-|---|---|
-| `pjc:plan` Step 1에서 AGENTS.md 부재 감지 | 자동 호출 |
-| 사용자 직접 호출 | `/pjc:bootstrap-agents-md` |
-
-생성 후 `pjc:plan`이 그 `AGENTS.md`를 읽고 정상 진행.
+`AGENTS.md`가 없는 프로젝트에서 표식 파일로 스택을 감지해 초기 `AGENTS.md`를 만든다. `pjc:plan` Step 1이 부재를 감지하면 자동 호출되고, 생성 후 그 스킬이 결과를 읽고 계속한다.
 
 ## 절대 규칙
 
-1. **사용자 확인 없이 저장 금지.** 생성한 내용을 보여주고 명시적 승인 받음.
-2. **기존 AGENTS.md 덮어쓰기 금지.** 있으면 즉시 종료. **판정 대상은 `AGENTS.md`뿐이다** — `CLAUDE.md`가 있어도 진행한다(Step 1의 근거).
-3. **빈 칸은 빈 칸으로 유지.** 모르는 정보를 추측해 채우지 않음.
-4. **다중 stack 발견 시 사용자에게 선택 요청.**
-5. **AGENTS.md 신규 생성은 이 스킬 절차로만.** 스킬을 발동하지 않은 직접 Write는 `require-plan-for-write` hook의 bootstrap 게이트가 차단한다 — 차단되면 정상 경로는 이 스킬을 Skill 도구로 호출하는 것이며, 게이트를 우회할 다른 쓰기 경로를 찾지 않는다.
-6. **프로젝트 정보 절을 만들지 않는다.** 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**는 **위키가 정본**이므로 생성물에 `## Stack`·`## Repository Structure` 같은 절을 새로 만들지 않는다(템플릿에도 없다). **무엇을 담고 무엇을 담지 않는지의 정본은 `plugins/pjc/skills/AGENTS-BOUNDARY.md`의 「AGENTS.md 내용 경계」다** — 이 스킬은 그 표를 재서술하지 않는다.
-7. **생성물에 설명을 길게 쓰지 않는다.** 서술 밀도 기준은 규칙 6이 가리키는 같은 절의 「서술 밀도 규칙」을 따른다 — 여기서 재서술하지 않는다.
+1. **사용자 확인 없이 저장하지 않는다** — 생성한 내용을 보여주고 명시적 승인을 받는다.
+2. **기존 `AGENTS.md`를 덮어쓰지 않는다** — 있으면 즉시 종료한다. **판정 대상은 `AGENTS.md`뿐이다**(`CLAUDE.md`가 있어도 진행한다 — 근거는 `references/bootstrap-rationale.md`).
+3. **모르는 값은 빈 칸으로 둔다** — 추측해 채우지 않는다.
+4. **다중 stack이면 사용자에게 고르게 한다.**
+5. **`AGENTS.md` 신규 생성은 이 스킬 절차로만 한다** — 스킬을 발동하지 않은 직접 Write는 `guard-harness` hook의 AGENTS.md bootstrap 게이트가 차단한다. 차단되면 정상 경로는 이 스킬을 Skill 도구로 호출하는 것이며, 게이트를 우회할 다른 쓰기 경로를 찾지 않는다.
+6. **절 구성의 정본은 `../AGENTS-BOUNDARY.md`다** — 무엇을 담고 무엇을 담지 않는지를 그 문서가 정한다. 이 스킬은 그 표를 재서술하지 않고, 아래 「생성물 골격」은 그 표에서 파생한 뼈대다.
+7. **생성물에 설명을 길게 쓰지 않는다** — 서술 밀도 기준도 규칙 6이 가리키는 같은 문서의 「서술 밀도 규칙」을 따른다.
 
 ## 실행 단계
 
-### Step 1. 기존 AGENTS.md 확인
+### Step 1. 기존 `AGENTS.md` 확인
 
-```powershell
-Test-Path AGENTS.md
-```
-True면 → 즉시 종료, `pjc:plan`으로 복귀(절대 규칙 2 — 덮어쓰기 금지).
+`AGENTS.md`가 있으면 즉시 종료하고 `pjc:plan`으로 복귀한다(절대 규칙 2).
 
-**`CLAUDE.md` 존재는 종료 조건이 아니다.** 두 파일은 역할이 다르다 — `CLAUDE.md`는 Claude 전용이고
-`AGENTS.md`는 다른 에이전트(Codex·Gemini 등)도 읽는 공용 가이드다(환경에 따라 `CLAUDE.md`가 전역
-`.gitignore` 대상이라 커밋조차 안 되는 경우가 있다 — 실측 1건). 종전처럼 `CLAUDE.md`가 있다고 종료하면
-**그 프로젝트는 AGENTS.md를 영영 만들 수 없고**(hook이 직접 Write를 막고 이 스킬이 유일 경로이므로),
-가이드가 한 PC에만 남는다. 실제로 LLM WIKI vault에서 이 봉쇄가 관측됐다(v1.190.0).
-- 다만 `CLAUDE.md`가 있으면 **그 내용을 먼저 읽고** 중복 서술을 피한다 — 같은 사실을 두 파일에 적으면
-  한쪽만 갱신될 때 갈린다. 겹치는 항목은 AGENTS.md에 두고 `CLAUDE.md`에는 포인터만 남기도록 제안한다.
+**`CLAUDE.md` 존재는 종료 조건이 아니다.** 다만 있으면 **먼저 읽고 중복 서술을 피한다** — 같은 사실을 두 파일에 적으면 한쪽만 갱신될 때 갈린다. 겹치는 항목은 `AGENTS.md`에 두고 `CLAUDE.md`에는 포인터만 남기도록 제안한다.
 
 ### Step 2. 표식 파일 감지
 
-다음 표 순서대로 검사 (위에서부터):
+**표 순서대로** 검사한다(위에서부터).
 
-| 표식 파일 (glob) | Stack | Template 파일 |
-|---|---|---|
-| `*.csproj`에 `<UseWinUI>true</UseWinUI>` 포함 | WinUI 3 | `winui3.md` |
-| `*.csproj`에 `<UseWPF>true</UseWPF>` 포함 (WinUI 아님) | WPF | `wpf.md` |
-| `*.csproj`에 `<UseMaui>true</UseMaui>` 포함 (WinUI/WPF 아님) | MAUI | `maui.md` |
-| `*.csproj`, `*.sln`, `*.slnx`, `*.fsproj` (WinUI/WPF/MAUI 아님) | .NET | `dotnet.md` |
-| `AndroidManifest.xml` **또는** `build.gradle*`에 `com.android.application/library` 플러그인 | Android | `android.md` |
-| `build.gradle*`/`settings.gradle*`만 (위 Android 표식 없음 — Spring Boot·JVM 라이브러리 등) | JVM (Gradle) | Case B → `generic.md` |
-| `package.json` + `tsconfig.json` 또는 `*.ts` 파일 | Node/TypeScript | `node-typescript.md` |
-| `package.json` (TS 없음) | Node/JavaScript | `node-typescript.md` (라벨만 변경) |
-| `pyproject.toml`, `setup.py`, `requirements*.txt` | Python | `python.md` |
-| `go.mod` | Go | `go.md` |
-| `Cargo.toml` | Rust | `rust.md` |
-| `pubspec.yaml` / `Package.swift` / `Gemfile` / `mix.exs` / `build.zig` / `pom.xml` | Flutter / Swift / Ruby / Elixir / Zig / Java(Maven) | Case B → `generic.md` |
+| 표식 | Stack |
+|---|---|
+| `*.csproj`에 `<UseWinUI>true</UseWinUI>` | WinUI 3 |
+| `*.csproj`에 `<UseWPF>true</UseWPF>` (WinUI 아님) | WPF |
+| `*.csproj`에 `<UseMaui>true</UseMaui>` (WinUI/WPF 아님) | MAUI |
+| `*.csproj`·`*.sln`·`*.slnx`·`*.fsproj` (위 셋 아님) | .NET |
+| `AndroidManifest.xml` **또는** `build.gradle*`에 `com.android.application/library` | Android |
+| `build.gradle*`·`settings.gradle*`만 (위 Android 표식 없음) | JVM (Gradle) → Case B |
+| `package.json` + `tsconfig.json`/`*.ts` | Node/TypeScript |
+| `package.json` (TS 없음) | Node/JavaScript |
+| `pyproject.toml`·`setup.py`·`requirements*.txt` | Python |
+| `go.mod` | Go |
+| `Cargo.toml` | Rust |
+| `pubspec.yaml`·`Package.swift`·`Gemfile`·`mix.exs`·`build.zig`·`pom.xml` | Flutter/Swift/Ruby/Elixir/Zig/Java(Maven) → Case B |
 
-> Gradle 파일만으로는 Android로 판정하지 않는다 — `AndroidManifest.xml`이나 `com.android.*` 플러그인이 없는 순수 JVM Gradle 프로젝트(Spring Boot 등)를 `android.md`로 오탐하는 것을 막기 위함. Case B 표식(마지막 두 행)도 Step 2에서 함께 탐색해야 Case B 분기가 실제로 작동한다.
-
-**.NET UI 프레임워크 우선 판정**: `.csproj`가 있으면 그 안의 UI 플래그를 먼저 확인한다. `<UseWinUI>true</UseWinUI>`면 `winui3.md`, `<UseWPF>true</UseWPF>`(WinUI 아님)면 `wpf.md`, `<UseMaui>true</UseMaui>`(WinUI/WPF 아님)면 `maui.md`, 셋 다 없으면 `dotnet.md`. WinUI 3가 WPF보다 우선(WinUI 프로젝트도 드물게 UseWPF가 보일 수 있음).
-
-검색 명령 (PowerShell):
-```powershell
-# 의존성·산출물 디렉터리 제외 — 하위 node_modules의 package.json 등이 stack으로 오탐되는 것 방지
-$excludeDirs = '\\(node_modules|bin|obj|\.git|target|build|dist|out|\.venv|__pycache__|Pods|vendor)\\'
-# -Recurse -Depth 3: 표식이 루트가 아닌 하위(src/, 모듈 폴더 등)에 있어도 감지 (깊이 3 상한)
-function Find-Marker([string[]]$patterns) {
-    foreach ($p in $patterns) {
-        $hit = Get-ChildItem -Filter $p -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
-               Where-Object { $_.FullName -notmatch $excludeDirs } | Select-Object -First 1
-        if ($hit) { return $hit }
-    }
-    return $null
-}
-
-# [ordered]: 표 순서 보장 (@{}는 키 순서 비보장 — "표 순서대로 검사"가 실제로 지켜지게)
-$markers = [ordered]@{
-    'dotnet'          = @('*.csproj', '*.sln', '*.slnx', '*.fsproj')
-    'android'         = @('AndroidManifest.xml')   # Gradle 파일만으로는 Android 판정 금지 (아래 gradle-jvm 정제 참조)
-    'gradle-jvm'      = @('build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts')
-    'node-typescript' = @('package.json', 'tsconfig.json')
-    'python'          = @('pyproject.toml', 'setup.py', 'requirements*.txt')
-    'go'              = @('go.mod')
-    'rust'            = @('Cargo.toml')
-    # ↓ template 없는 기지 표식 — 발견 시 Case B로 라우팅
-    'flutter'         = @('pubspec.yaml')
-    'swift'           = @('Package.swift')
-    'ruby'            = @('Gemfile')
-    'elixir'          = @('mix.exs')
-    'zig'             = @('build.zig')
-    'java-maven'      = @('pom.xml')
-}
-$detected = @()
-foreach ($stack in $markers.Keys) {
-    if (Find-Marker $markers[$stack]) { $detected += $stack }
-}
-
-# gradle-jvm 정제: build.gradle에 com.android 플러그인이 있으면 android로 승격,
-# 없으면 순수 JVM(Gradle) 프로젝트 → Case B (Spring Boot 등을 android.md로 오탐하지 않음)
-if ($detected -contains 'gradle-jvm' -and $detected -notcontains 'android') {
-    $gradleContent = Get-ChildItem -Include 'build.gradle','build.gradle.kts' -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
-                     Where-Object { $_.FullName -notmatch $excludeDirs } |
-                     Get-Content -Raw -ErrorAction SilentlyContinue
-    if ($gradleContent | Select-String -Pattern 'com\.android\.(application|library)' -Quiet) {
-        $detected += 'android'
-    }
-}
-if ($detected -contains 'android') {
-    $detected = @($detected | Where-Object { $_ -ne 'gradle-jvm' })
-}
-
-# WinUI 3 / WPF / MAUI 우선 판정: csproj의 UI 플래그로 dotnet → winui3/wpf/maui 승격
-if ($detected -contains 'dotnet') {
-    $csprojContent = Get-ChildItem -Filter '*.csproj' -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
-                     Where-Object { $_.FullName -notmatch $excludeDirs } |
-                     Get-Content -Raw -ErrorAction SilentlyContinue
-    $isWinUI = $csprojContent | Select-String -Pattern '<UseWinUI>\s*true\s*</UseWinUI>' -Quiet
-    $isWPF   = $csprojContent | Select-String -Pattern '<UseWPF>\s*true\s*</UseWPF>' -Quiet
-    $isMaui  = $csprojContent | Select-String -Pattern '<UseMaui>\s*true\s*</UseMaui>' -Quiet
-    if ($isWinUI) {
-        $detected = @($detected | Where-Object { $_ -ne 'dotnet' }) + 'winui3'
-    } elseif ($isWPF) {
-        $detected = @($detected | Where-Object { $_ -ne 'dotnet' }) + 'wpf'
-    } elseif ($isMaui) {
-        $detected = @($detected | Where-Object { $_ -ne 'dotnet' }) + 'maui'
-    }
-}
-# flutter/swift/ruby/elixir/zig/java-maven/gradle-jvm 이 $detected에 있으면 → Case B로 진행
-```
+**감지 방법** — 표식을 **깊이 3까지** 탐색하고 `node_modules`·`bin`·`obj`·`.git`·`target`·`build`·`dist`·`out`·`.venv`·`__pycache__`·`Pods`·`vendor`를 제외한다. **Case B 행의 표식도 이 단계에서 함께 찾는다** — 안 찾으면 그 분기가 도달 불가가 된다. 위 표의 순서·조건이 곧 판정이며 그 근거는 `references/bootstrap-rationale.md` §4에 있다.
 
 ### Step 3. 결과 분기
 
-#### Case A — 단일 stack 매칭됨
+| Case | 조건 | 처리 |
+|---|---|---|
+| **A** | 단일 stack 매칭 | 「생성물 골격」으로 생성 + 자동 추론값 채움 |
+| **B** | 표식은 알지만 전용 추론이 없음 | 같은 골격 + 아래 추측치 매핑(「(추측)」 표시) |
+| **C** | 표식조차 없음 | 같은 골격을 빈 칸으로 두고 사용자에게 4가지 질문 |
+| **D** | 다중 stack (모노레포) | 사용자에게 주 stack을 묻고, 「모두」면 stack별 `## Build & Test`·`## Conventions`·`## DO NOT`를 반복 배치 |
 
-해당 `templates/<stack>.md` 복사 + 자동 추론 가능한 값 채움.
+**Case A 자동 추론값** — `*.sln` 파일명으로 솔루션 경로 · `app/build.gradle`의 namespace/minSdk/targetSdk · `package.json`의 `scripts`(build·test·dev·lint) · `pyproject.toml`의 `project.name`·pytest 설정 · `go.mod`의 module 경로 · `Cargo.toml`의 `package.name`·edition.
 
-자동 채울 수 있는 값:
-- **dotnet**: `*.sln` 파일명으로 솔루션 경로 추정
-- **android**: `app/build.gradle`에서 namespace/minSdk/targetSdk 추출
-- **node-typescript**: `package.json`의 `scripts` 분석 (build, test, dev, lint)
-- **python**: `pyproject.toml`의 project.name, tool.pytest 설정
-- **go**: `go.mod`의 module 경로
-- **rust**: `Cargo.toml`의 package.name, edition
+**Case B 추측치 매핑** (전부 「(추측)」 표시):
 
-#### Case A-1 — 아키텍처 확인 (템플릿 복사 후, 저장 전)
+```
+pubspec.yaml → Flutter | flutter build / flutter test
+Package.swift → Swift | swift build / swift test
+Gemfile      → Ruby | bundle install / bundle exec rspec
+mix.exs      → Elixir | mix compile / mix test
+build.zig    → Zig | zig build / zig build test
+pom.xml      → Java (Maven) | mvn compile / mvn test
+build.gradle* (Android 아님) → JVM (Gradle) | gradlew build / gradlew test
+```
 
-**템플릿의 아키텍처 항목은 선택형 빈 칸이다** — 값이 박혀 있지 않다(v1.119.0). 그대로 두면 Claude가 어디에 코드를 둘지 모르므로, Step 4의 [Y/E/N] 미리보기에 **이 질문을 함께 실어 사용자에게 확인한다** (질문 라운드를 새로 늘리지 않는다).
+**Case C 질문 4개** — ① 언어/플랫폼 ② Build 명령 ③ Test 명령 ④ 아키텍처·디렉터리 구조.
 
-1. **구조로 근거를 만든다**: 레이어 폴더(`Domain/`·`domain/`·`internal/domain/` 등)가 실재하는지 Glob으로 확인한다. 코드가 이미 있으면 그 구조가 곧 답이다.
+> 감지된 stack 라벨을 **`AGENTS.md`에 절로 적지 않는다**(절대 규칙 6) — 위키 허브의 `tech_stack`이 정본이다. 라벨은 어느 추론·추측치를 쓸지 고르는 데만 쓴다.
+
+#### Step 3-1. 아키텍처 확인 (저장 전)
+
+**추측해서 채우지 않는다.** Step 4의 `[Y/E/N]` 미리보기에 이 질문을 함께 실어 확인한다(질문 라운드를 새로 늘리지 않는다).
+
+1. **구조로 근거를 만든다** — 레이어 폴더(`Domain/`·`domain/`·`internal/domain/` 등)가 실재하는지 Glob으로 확인한다. 코드가 이미 있으면 그 구조가 답이다.
 2. **후보를 제시하고 고르게 한다**:
    ```
    아키텍처를 확인해 주세요 (AGENTS.md의 "어디에 코드를 둘지"를 결정합니다):
@@ -165,140 +88,85 @@ if ($detected -contains 'dotnet') {
 
    <감지된 구조가 있으면: "src/에 Domain/·Application/ 폴더가 보입니다 → A로 추정">
    ```
-3. **답을 못 얻으면 빈 칸으로 저장한다** — 추측해서 채우지 않는다(행동 원칙 "빈 칸 유지가 추측 채움보다 안전").
+3. **답을 못 얻으면 빈 칸으로 저장한다.**
 
-> 위 A/B/C는 **대표 명칭**이다. 실제로 채워 넣는 문구는 **그 stack 템플릿의 선택지 표현을 그대로 쓴다** — 예: go/rust는 A가 `Clean/Hexagonal`, rust의 B는 `계층형(단일 crate)`, android는 A가 `Clean Architecture`·B가 `계층형(단순 Repository)`. 템플릿에 없는 표현을 새로 만들지 않는다.
+> **왜 묻는가**는 `references/bootstrap-rationale.md`에 있다.
 
-> **왜 묻는가**: 종전 템플릿은 stack만 보고 "DDD + Clean"을 값으로 박았다. 그래서 도메인 규칙이 얇은 CRUD 앱도 AGENTS.md에는 DDD라고 적혔고, 실제 코드는 트랜잭션 스크립트인데 **선언만 DDD인 상태**가 됐다 — 리뷰어도 사람도 "지켜지고 있다"고 착각한다. **없는 레이어를 강요하는 것은 그 자체가 과한 추상화다.**
+#### Step 3-2. 위키 포인터 절 처리 (전 Case 공통, 저장 전)
 
-#### Case A-2 — 위키 포인터 절 처리 (전 Case 공통, 저장 전)
-
-템플릿의 `## 위키` 절은 **자리만 있고 경로는 비어 있다**. 이 스킬은 위키에 등록하지 않는다 — 등록은 `pjc:plan` Step 1 소관이고, 여기서 등록까지 하면 두 스킬 사이에 순서 의존이 생긴다.
+이 스킬은 **위키에 등록하지 않는다** — 등록은 `pjc:plan` Step 1 소관이고, 여기서 하면 두 스킬 사이에 순서 의존이 생긴다.
 
 1. **vault 판정**: `pjc:llm-wiki` 절차 K 1의 판정 게이트를 그대로 쓴다(`~/.claude/llm-wiki-config.json` · SessionStart 주입 라인). **확인 없이 "미설정"으로 단정하지 않는다.**
-2. **vault 있음** → 절을 그대로 둔다(경로는 `<프로젝트명>` placeholder 유지). 이미 등록된 프로젝트면 그 허브 경로를 채운다.
-3. **vault 없음·경로 부재** → `## 위키` 절을 **생성물에서 제거**한다(없는 곳을 가리키는 포인터를 남기면 다음 세션이 그것을 찾다 실패한다). 제거한 생성물을 Step 4 미리보기에 그대로 싣고, **Step 5 저장 완료 후** 1줄 보고한다: *"위키 vault가 없어 `## 위키` 절은 넣지 않았습니다 — 위키에 등록되면 이 경로가 채워집니다(등록은 `pjc:plan` Step 1 소관)."*
+2. **vault 있음** → 절을 두고 경로는 `<프로젝트명>` placeholder로 남긴다. 이미 등록된 프로젝트면 그 허브 경로를 채운다.
+3. **vault 없음** → `## 위키` 절을 **생성물에서 뺀다**(없는 곳을 가리키는 포인터는 다음 세션을 헤매게 한다). 뺀 생성물을 Step 4 미리보기에 그대로 싣고, **저장 후** 1줄 보고한다: *"위키 vault가 없어 `## 위키` 절은 넣지 않았습니다 — 등록되면 이 경로가 채워집니다(등록은 `pjc:plan` Step 1 소관)."*
 
-#### Case B — 표식 알지만 template 없음
-
-예: `pubspec.yaml` (Flutter), `Package.swift` (Swift), `Gemfile` (Ruby), `mix.exs` (Elixir), `pom.xml` (Java/Maven), Android 표식 없는 `build.gradle*` (JVM/Gradle)
-
-→ `templates/generic.md`로 복사 + 다음 정보로 채움:
-- Build/Test: 알려진 추측치 (있으면, 주석으로 "추측"임 표시)
-
-> 감지된 stack 라벨은 **AGENTS.md에 절로 적지 않는다**(절대 규칙 6) — 위키 허브의 `tech_stack`이 정본이다. 라벨은 어느 템플릿·추측치를 쓸지 고르는 데만 쓴다.
-
-추측치 매핑 (확신 없음 표시):
-```
-pubspec.yaml → "Flutter | flutter build / flutter test (추측)"
-Package.swift → "Swift | swift build / swift test (추측)"
-Gemfile      → "Ruby | bundle install / bundle exec rspec (추측)"
-mix.exs      → "Elixir | mix compile / mix test (추측)"
-build.zig    → "Zig | zig build / zig build test (추측)"
-pom.xml      → "Java (Maven) | mvn compile / mvn test (추측)"
-build.gradle* (Android 아님) → "JVM Java/Kotlin (Gradle) | gradlew build / gradlew test (추측)"
-```
-
-#### Case C — 표식조차 없음
-
-`generic.md` 복사. 모든 값 빈 칸. 사용자에게 4가지 질문:
-
-```
-프로젝트의 stack을 자동 감지하지 못했습니다.
-
-발견된 주요 파일:
-- <Get-ChildItem 결과 상위 10개>
-
-다음 4가지만 알려주세요:
-1. 언어/플랫폼은? (예: Flutter, Swift, Ruby, Elixir, Zig, ...)
-2. Build 명령은? (예: zig build)
-3. Test 명령은? (예: zig build test)
-4. 아키텍처/디렉터리 구조 간단히
-```
-
-답변을 받아 `generic.md`에 채움.
-
-#### Case D — 다중 stack 발견 (모노레포)
-
-```
-이 프로젝트에서 여러 stack을 발견했습니다:
-- .NET (src/Backend/Backend.csproj)
-- Node.js (frontend/package.json)
-- Python (scripts/pyproject.toml)
-
-어떤 작업을 주로 하실 건가요?
-A) .NET 위주 → dotnet 명령 기본
-B) Node.js 위주 → npm 명령 기본
-C) Python 위주 → pytest 등 기본
-D) 모두 → AGENTS.md에 3개 섹션 (큰 파일)
-```
-
-D 선택 시 `multi-stack-example.md`를 참고하여 3개 섹션 모두 작성.
-
-### Step 4. 생성된 AGENTS.md 사용자에게 보여주기
-
-```markdown
-다음 AGENTS.md를 생성했습니다. 검토하세요:
-
----
-<생성된 내용 전체>
----
-
-<Case A에서 아키텍처가 미확정이면 여기에 위 "아키텍처 확인" 질문(A/B/C)을 함께 제시>
-
-이대로 저장할까요?
-[Y] 그대로 저장 (아키텍처 질문에 답했으면 그 값으로 채워 저장)
-[E] 편집 후 저장 (어디를 수정할지 알려주세요)
-[N] 취소
-```
-
-아키텍처에 답하지 않고 `[Y]`를 택하면 **그 항목은 빈 칸으로 저장**한다(추측 채움 금지).
-
-### Step 5. 저장 + `pjc:plan`으로 복귀
-
-`Y` → `./AGENTS.md`에 저장 → "AGENTS.md 생성 완료" 보고 → `pjc:plan` 계속.
-`E` → 사용자 수정 사항 반영 → 다시 보여주기.
-`N` → 종료. `pjc:plan`은 추측 모드로 진행 (또는 사용자가 `pjc:plan` 재호출).
-
-## 출력 형식
+### Step 4. 미리보기와 승인
 
 ```markdown
 ## 🔧 bootstrap-agents-md
 
 **감지 결과**: <stack>
-**Template 사용**: <template 파일명>
-**자동 채움**:
-- Build 명령: <값>
-- Test 명령: <값>
-**확인 필요** (자동 추론 금지 — 사용자가 고름):
-- 아키텍처: <A) DDD/Clean · B) 계층형 · C) 기타 — 감지된 구조가 있으면 추정 근거 1줄>
-**비워둔 항목** (사용자 입력 필요):
-- <항목 1>
-- <항목 2>
+**자동 채움**: Build `<값>` · Test `<값>`
+**확인 필요**: 아키텍처 <A/B/C — 감지된 구조가 있으면 추정 근거 1줄>
+**비워둔 항목**: <항목들>
 
-<생성된 AGENTS.md 전체 미리보기>
+---
+<생성된 AGENTS.md 전체>
+---
 
-저장하시겠습니까? [Y/E/N]
+<아키텍처가 미확정이면 여기에 Step 3-1의 A/B/C 질문을 함께 제시>
+
+이대로 저장할까요?
+[Y] 그대로 저장   [E] 편집 후 저장 (어디를 고칠지)   [N] 취소
 ```
 
-## 행동 원칙
+`Y` → `./AGENTS.md` 저장 후 `pjc:plan` 계속 · `E` → 수정 반영 후 다시 보여준다 · `N` → 종료(`pjc:plan`은 추측 모드로 진행). **아키텍처에 답하지 않고 `[Y]`면 그 항목은 빈 칸으로 저장한다.**
 
-- **추측은 명시.** 확신 없는 값은 "(추측)" 또는 "<TODO>" 표시.
-- **사용자 시간 절약.** 자동으로 채울 수 있는 건 모두 채움.
-- **빈 칸 유지가 추측 채움보다 안전.** 사용자가 채우게 함.
-- **간결.** 사용자에게 보여주는 메시지는 핵심만.
+## 생성물 골격
 
-## Template 위치
+**절 구성과 각 절이 담는 것의 정본은 `../AGENTS-BOUNDARY.md`의 표다.** 아래는 그 표에서 파생한 뼈대이며, 스택이 달라도 이 구성은 같다.
 
-이 스킬 번들의 `templates/` 디렉터리 (`${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-agents-md/templates/`):
-- `winui3.md` — WinUI 3 (Windows App SDK). 프로젝트 생성/실행 실패 방지 규칙 + Gallery 디자인 + 다국어 규칙 포함
-- `wpf.md` — WPF + WPF-UI(Fluent). 패키지 설치·App.xaml 병합·FluentWindow·테마 규칙 포함
-- `maui.md` — .NET MAUI (멀티플랫폼). ContentPage·Shell·CommunityToolkit.Mvvm/Maui·MauiProgram DI 규칙 포함
-- `dotnet.md` — 일반 .NET (WinUI/WPF/MAUI 아님)
-- `android.md`
-- `node-typescript.md`
-- `python.md`
-- `go.md`
-- `rust.md`
-- `generic.md` — 매칭 실패 또는 알려지지 않은 stack용
-- `multi-stack-example.md` — 모노레포 참고용
+```markdown
+# AGENTS.md — Agent Guide
+
+## 위키
+- **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
+- 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다.
+  이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
+
+## Build & Test
+- **Build**: `<명령>`   - **Run (개발)**: `<명령>`   - **Test**: `<명령>`
+- **Lint/Format**: `<있으면>`   - **Clean**: `<있으면>`
+> ⚠️ Build/Test가 비면 `pjc:implement`의 검증이 무의미해진다.
+
+<검증 매핑 표 — 변경 파일 패턴 → 필수 검증. 축이 둘 이상일 때만 만든다>
+
+## 데이터 접근
+- **DB/스토어**: <없으면 "없음">
+- **접속**: <환경변수 **이름**만 — 실제 값 금지>
+
+## 산출물·파일 관리
+- **빌드 산출물** / **런타임 생성물** / **임시·캐시**: <경로만>
+
+## Conventions
+- **아키텍처**: <Step 3-1에서 확정한 1줄 — "어디에 코드를 둘지">
+- **인코딩** / **줄바꿈** / **주석 언어** / **이름 규칙** / **테스트 위치** / **포맷터**
+
+## DO NOT
+- 실제 IP·계정·비밀번호·토큰·DB 연결문자열을 코드·문서·plan에 기록 (환경변수 이름만)
+- 환경변수 파일(`.env*`)·secrets·인증서 커밋
+- 빌드 산출물 디렉터리 커밋
+- 검증 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass`
+- <그 밖 stack별 금지사항>
+
+```
+
+- **`## Plan Location`은 그 레포가 PRD를 쓸 때만 만든다**(경로만) — plan은 루트 `plan.md` 고정이라 `Plan Location:` 선언을 두지 않는다.
+- **`## Stack`·`## Repository Structure` 같은 프로젝트 정보 절을 만들지 않는다**(절대 규칙 6).
+- **스택 고유의 UI·디자인·마크업 규칙을 여기 넣지 않는다** — 그것은 위키 `conventions.md` 소관이다(근거는 `references/bootstrap-rationale.md`).
+
+## See also
+
+- `../AGENTS-BOUNDARY.md` — 절 구성·서술 밀도의 정본
+- `references/bootstrap-rationale.md` — 이 절차가 왜 이렇게 생겼는가
+- `pjc:record-project-fact` — 이미 있는 `AGENTS.md`에 사실을 더한다

@@ -212,30 +212,6 @@ if (Test-Path -LiteralPath $userSettings) {
 }
 Write-Host ""
 
-# 7. bootstrap-agents-md templates 디렉터리 (번들 내)
-Write-Host "7. bootstrap-agents-md templates 디렉터리" -ForegroundColor Yellow
-$templatesDir = Join-Path $pluginRoot "skills/bootstrap-agents-md/templates"
-if (Test-Path -LiteralPath $templatesDir) {
-    Write-Host "  [OK]   templates 디렉터리" -ForegroundColor Green
-    $script:pass++
-
-    $expectedTemplates = @('winui3.md', 'wpf.md', 'maui.md', 'dotnet.md', 'android.md', 'node-typescript.md', 'python.md', 'go.md', 'rust.md', 'generic.md')
-    foreach ($t in $expectedTemplates) {
-        $tPath = Join-Path $templatesDir $t
-        if (Test-Path -LiteralPath $tPath) {
-            Write-Host "  [OK]   template: $t" -ForegroundColor Green
-            $script:pass++
-        } else {
-            Write-Host "  [WARN] template 없음: $t" -ForegroundColor DarkYellow
-            $script:warnings += "template $t 누락 — bootstrap 시 해당 stack에 generic 사용"
-        }
-    }
-} else {
-    Write-Host "  [WARN] templates 디렉터리 없음" -ForegroundColor DarkYellow
-    $script:warnings += "skills\bootstrap-agents-md\templates 디렉터리 없음 — bootstrap-agents-md 동작 불가"
-}
-Write-Host ""
-
 # 결과 요약
 Write-Host "=== 검증 결과 ===" -ForegroundColor Cyan
 Write-Host "  PASS: $pass" -ForegroundColor Green
