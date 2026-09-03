@@ -112,7 +112,10 @@ def check_pointer_reachability():
     # `` `경로`의 **「앵커」** `` 볼드-랩 스타일이 **매치 자체에서 빠져 무음 누락**됐다
     # (정당한 포인터 2건이 `[NOTE]`에도 안 잡히고 사라졌다 — 검사 축소가 침묵으로 나타난 사례).
     # 12자 창만으로 위 오탐은 이미 걸러진다(그 문장은 경로에서 「」까지 12자를 훨씬 넘는다).
-    pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,60})」")
+    # 절 이름 상한이 60자였을 때 **기계 생성 포인터 16건이 매치 자체에서 빠졌다** — 근거를
+    #   `rules/*-rationale.md`로 내리며 붙은 `§N ` 접두 때문에 62~64자에 몰렸기 때문이다.
+    #   상한을 120자로 올리고 비교 전 양쪽을 strip 한다(후행 공백 차이로 갈리지 않게).
+    pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
     heading_cache = {}
     issues, checked, skipped, exempt = [], 0, [], []
 
@@ -225,8 +228,11 @@ def check_pointer_reachability():
             if hs is None:
                 continue
             checked += 1
-            # 전체 일치 또는 앵커가 그 이름으로 시작(부제·괄호 꼬리 허용)
-            if not any(h == sec_name or h.startswith(sec_name) for h in hs):
+            # 전체 일치 또는 앵커가 그 이름으로 시작(부제·괄호 꼬리 허용).
+            # 양쪽을 strip 하는 이유: 기계 생성 포인터는 절단 위치에 따라 후행 공백이 남는데
+            #   그것으로 갈리면 실질 도달 가능한 참조가 끊김으로 잡힌다.
+            _sn = sec_name.strip()
+            if not any(h.strip() == _sn or h.strip().startswith(_sn) for h in hs):
                 if rel_src not in POINTER_EXEMPT_SRC:
                     issues.append("포인터 끊김: %s → `%s` 「%s」 (대상에 그 헤딩 없음)"
                                   % (rel_src, ref_path, sec_name))

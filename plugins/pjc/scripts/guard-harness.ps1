@@ -63,7 +63,7 @@ $suspect83 = $has83 -and
 
 if ($isHookScript -or $suspect83) {
     $why = if ($isHookScript) {
-        '.claude/ 하위 설치본 하니스 hook 스크립트·hooks.json 개조'
+        '.claude/ 하위 설치본 하니스 hook 스크립트·hooks.json·판정 데이터(rules/*.json) 개조'
     } else {
         '8.3 단축명(CLAUDE~1)으로 설치본 하니스 hook 경로를 마스킹한 개조 시도'
     }
