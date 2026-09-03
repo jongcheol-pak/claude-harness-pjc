@@ -11,17 +11,9 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ## 호출 흐름
 
-이 skill은 **`pjc:implement`의 Phase I 안에서 호출**되거나, 사용자가 직접 `/pjc:add-viewmodel`로 호출할 수 있다.
+`pjc:implement`가 plan의 task에서 자동 호출하거나 사용자가 `/pjc:add-viewmodel`로 직접 호출한다. 직접 호출은 `guard-write` hook의 plan 게이트에 걸릴 수 있어 `$env:CLAUDE_HARNESS_QUICK = '1'`이 필요하다(커밋 시크릿 차단은 이 변수로 뚫리지 않는다 — `CLAUDE_HARNESS_ALLOW_SECRET`이 전용이다).
 
-| 호출 방식 | 흐름 |
-|---|---|
-| `pjc:implement` 구현 단계 안 | plan.md task가 "ViewModel 추가" 패턴이면 자동 호출. 이 skill이 boilerplate 생성 후 `pjc:implement`의 검증이 이어받음. |
-| 사용자 직접 호출 | plan.md 없이 단독 사용. 단, `require-plan-for-write` hook이 차단할 수 있으므로 `$env:CLAUDE_HARNESS_QUICK = '1'` 필요. |
-
-이 skill의 **책임 범위**: ViewModel/View boilerplate, DI 등록, 기본 테스트 스켈레톤 생성까지.
-**책임 범위 밖**: 비즈니스 로직, 데이터 바인딩 상세, 통합 검증 — `pjc:implement`가 담당.
-
-**Android의 Jetpack ViewModel은 비대상.** Android의 경우 `pjc:implement`가 직접 구현.
+**책임 범위**는 ViewModel/View boilerplate · DI 등록 · 기본 테스트 스켈레톤까지다. 비즈니스 로직·바인딩 상세·통합 검증은 `pjc:implement`가 담당한다. **Android의 Jetpack ViewModel은 비대상**이다.
 
 ## 사전 조건
 
@@ -42,7 +34,7 @@ View + ViewModel 스켈레톤을 추가한다.
 3. **DI 등록 누락 금지.** ViewModel은 반드시 `ConfigureServices`에 등록.
 4. **한글 주석.** XML 문서 주석 포함 모두 한글.
 5. **UTF-8 (BOM 없음).**
-6. **WinUI 3 프로젝트면 디자인·다국어 규칙 준수.** AGENTS.md(winui3 템플릿)의 디자인 규칙(토큰화, 폰트 미지정, 시스템 키 우선)과 다국어 규칙(문구는 `x:Uid`+`.resw`, 하드코딩 금지)을 따른다. 상세는 `docs/WINUI3-DESIGN-GUIDE.md`가 있으면 참조. View의 문구를 코드/XAML에 직접 쓰지 않는다.
+6. **WinUI 3 프로젝트면 그 프로젝트의 디자인·다국어 규칙을 따른다.** 정본은 위키 `conventions.md`(스택 고유 규약의 자리)이고, 레포에 `docs/WINUI3-DESIGN-GUIDE.md` 같은 상세 문서가 있으면 함께 본다. 규칙이 어디에도 없으면 **문구는 `x:Uid`+`.resw`로 빼고 하드코딩하지 않는다**는 최소선만 지킨다 — View의 문구를 코드·XAML에 직접 쓰지 않는다.
 
 ## 실행 단계
 
@@ -121,29 +113,7 @@ public sealed partial class <Name>ViewModel : ObservableObject
 
 #### WinUI 3 Page 또는 Window (WPF는 아래 주석 참조)
 
-XAML (`<Name>Page.xaml`):
-```xml
-<Page
-    x:Class="<ProjectNamespace>.Views.<Name>Page"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
-
-    <Grid Padding="16" RowDefinitions="Auto,*">
-        <!-- 헤더 -->
-        <TextBlock Grid.Row="0"
-                   Text="{x:Bind ViewModel.Title, Mode=OneWay}"
-                   Style="{StaticResource TitleTextBlockStyle}"/>
-
-        <!-- 본문 -->
-        <ProgressRing Grid.Row="1"
-                      IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
-                      HorizontalAlignment="Center"/>
-    </Grid>
-</Page>
-```
+XAML(`<Name>Page.xaml`) — `<Page x:Class="<ProjectNamespace>.Views.<Name>Page">` 안에 `<Grid Padding="16" RowDefinitions="Auto,*">`를 두고, 헤더는 `TextBlock` + `Text="{x:Bind ViewModel.Title, Mode=OneWay}"` + `Style="{StaticResource TitleTextBlockStyle}"`, 본문은 `ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"`로 시작한다.
 
 > **WPF 차이**: WPF에는 `x:Bind`·`ProgressRing`·`TitleTextBlockStyle`이 없다. WPF View는 `{Binding Title}`(DataContext에 VM 주입), `ProgressRing` 대신 `ProgressBar IsIndeterminate="True"`, namespace는 `System.Windows.Controls.Page`, Style은 프로젝트/WPF-UI 리소스를 사용한다. 또한 WPF는 **`Grid`의 `RowDefinitions="Auto,*"` 축약 문법과 `Grid Padding`을 지원하지 않는다** — `<Grid.RowDefinitions>`를 전개해 `<RowDefinition Height="Auto"/><RowDefinition Height="*"/>`로 쓰고, `Padding` 대신 자식 요소에 `Margin`을 준다(또는 Grid를 `Border Padding`으로 감싼다).
 
@@ -251,35 +221,11 @@ public class <Name>ViewModelTests
 
 ### A. ContentDialog (모달)
 
-`Page` 대신 `ContentDialog` 사용:
-
-```csharp
-public sealed partial class <Name>Dialog : ContentDialog
-{
-    public <Name>ViewModel ViewModel { get; }
-
-    public <Name>Dialog(<Name>ViewModel viewModel)
-    {
-        ViewModel = viewModel;
-        InitializeComponent();
-    }
-}
-```
-
-생성자 주입 가능 (DI에서 직접 해석).
+`Page` 대신 `ContentDialog`을 상속하고 **ViewModel을 생성자 주입**으로 받는다(DI에서 직접 해석).
 
 ### B. UserControl (재사용 부품)
 
-`ViewModel`을 외부(부모 View)에서 `DataContext`로 주입받는 형태. UserControl 내부에서는 상속된 `DataContext`에 `{Binding}`으로 바인딩하고, 자체적으로 `DataContext`를 덮어쓰지 않는다.
-
-```xml
-<UserControl ...>
-    <Grid>
-        <!-- 부모가 주입한 DataContext(ViewModel)에 {Binding}으로 접근 -->
-        ...
-    </Grid>
-</UserControl>
-```
+ViewModel을 **부모 View가 `DataContext`로 주입**한다. UserControl 내부는 상속된 `DataContext`에 `{Binding}`으로 접근하고 **자체적으로 `DataContext`를 덮어쓰지 않는다.**
 
 ### C. Settings / 영속화가 필요한 경우
 
@@ -304,7 +250,7 @@ public sealed partial class <Name>Dialog : ContentDialog
 다음 발견 시 사용자에게 보고하고 중지:
 
 - 기존 ViewModel이 다른 베이스 클래스(`BindableBase`, `ReactiveObject` 등)를 쓰고 있음
-- DI 컨테이너가 없거나, **ServiceLocator를 남용**하고 있음(제3자 Service Locator 라이브러리·전역 정적 컨테이너를 여기저기서 직접 뒤지는 안티패턴). 단 **`App.GetService<T>()` 같은 프로젝트 관례의 정적 헬퍼는 남용이 아니다** — WinUI 3 템플릿의 표준 패턴이므로 그대로 사용한다(생성자 주입이 기본이되, View 코드비하인드에서 VM을 얻는 App.GetService 관례는 허용). Halt는 "관례 없는 전역 로케이터 남용"에 한한다
+- DI 컨테이너가 없거나 **관례 없는 전역 Service Locator를 남용**하고 있음(제3자 로케이터 라이브러리·전역 정적 컨테이너를 여기저기서 직접 뒤지는 형태). **`App.GetService<T>()` 같은 프로젝트 관례의 정적 헬퍼는 남용이 아니다**(Step 3 말미 참조)
 - 네비게이션 패턴이 plan.md에 명시되지 않았고 코드베이스에서도 단일 패턴이 보이지 않음
 - View가 코드 생성기로 만들어지는 경우 (`*.Generated.*`)
 - **`CommunityToolkit.Mvvm` 패키지가 프로젝트에 없음** — `[ObservableProperty]`·`[RelayCommand]`·`ObservableObject`가 컴파일되지 않는다. 의존성 추가는 승인 필요이므로 임의로 추가하지 말고 사용자에게 확인(또는 plan에 패키지 추가를 명시)
