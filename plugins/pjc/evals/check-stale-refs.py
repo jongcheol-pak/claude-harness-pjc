@@ -55,7 +55,7 @@ EXCEPTIONS = [
 # 줄 단위 예외 — 이력 인용. **버전 태그와 제거·개명 동사가 같은 줄에 있어야** 한다.
 # 버전 태그만 보면 "v1.220.0의 recovery.md 규정을 따른다" 같은 살아 있는 참조까지 통과한다.
 HISTORY_RX = re.compile(r'v1\.\d{1,3}\.\d+')
-HISTORY_VERB_RX = re.compile(r'제거|삭제|폐기|지웠|지운|없앴|소멸|→\s*`?guard-|매핑은')
+HISTORY_VERB_RX = re.compile(r'제거|삭제|폐기|지웠|지운|없앴|소멸|합쳤|통폐합|개명|→\s*`?guard-|매핑은')
 HISTORY_WHY = ('회차 1·2의 제거·개명 이력 — 지우면 다음 세션이 옛 이름으로 검색했을 때 '
                '무엇으로 바뀌었는지 알 길이 없다')
 
@@ -83,8 +83,12 @@ def scan_ledger():
         items.append(cur)
     def live(item):
         # 트리 경로와 같은 규칙 — 버전 태그 + 제거·개명 동사가 같은 줄에 있으면 이력이다
+        # 이 검사기 자신을 논하는 줄도 면제한다 — DEAD 목록을 다루는 대장 항목은
+        #   그 이름을 적을 수밖에 없다. 트리 경로의 「검사기 자신」 예외와 같은 성격이다.
         return [l for l in item.splitlines()
-                if RX.search(l) and not (HISTORY_RX.search(l) and HISTORY_VERB_RX.search(l))]
+                if RX.search(l)
+                and 'check-stale-refs' not in l
+                and not (HISTORY_RX.search(l) and HISTORY_VERB_RX.search(l))]
 
     hit = [x for x in items if live(x)]
     print(f'== 대장 `## 대기` 삭제 자산 참조 ==\n대기 {len(items)}건 · 참조 {len(hit)}건')
