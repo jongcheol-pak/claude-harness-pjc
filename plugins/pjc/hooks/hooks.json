@@ -19,7 +19,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-bash-dispatch.ps1\"; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-bash.ps1\"; exit $LASTEXITCODE",
             "timeout": 15
           }
         ]

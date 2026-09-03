@@ -13,9 +13,9 @@
 
 # 유효한 -Filter 이름(hook 기본명). 신규 hook을 골든에 추가하면 여기만 고친다.
 $script:GoldenFilterNames = @(
-    'block-destructive', 'protect-harness', 'require-plan-for-write', 'require-task-checkbox',
-    'post-write-checks', 'warn-external-ops', 'suggest-agents-record',
-    'warn-commit-secrets', 'pre-bash-dispatch', 'warn-version-drift', 'session-context', 'hook-event-log',
+    'block-destructive', 'protect-harness', 'require-plan-for-write',
+    'post-write-checks', 'suggest-agents-record',
+    'guard-bash', 'warn-commit-secrets', 'warn-version-drift', 'session-context', 'hook-event-log',
     'orphan-process-cleanup', 'session-end-cleanup', 'guard-agents-content'
 )
 

@@ -1,4 +1,4 @@
-﻿# scenarios/warn-commit-secrets.ps1 — warn-commit-secrets 시나리오 (§9 — 라벨 판정·스캔 범위·등급별 차단) (dot-source 전용, 단독 실행 금지)
+﻿# scenarios/guard-bash.ps1 — warn-commit-secrets 시나리오 (§9 — 라벨 판정·스캔 범위·등급별 차단) (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
@@ -8,7 +8,7 @@
 # 무상태 음성(비커밋·--dry-run)은 스테이징 상태가 필요 없지만, 양성(스테이징 시크릿·-am)은 git 상태 필요.
 # 러너 파일 자체가 자사 시크릿 스캐너·post-write hook에 오탐되지 않게 가짜 값은 문자열 연결로 분리 기재.
 # 게이트 태그 2개: 내부 dispatch 동등성·고유 분기가 이 섹션의 $wcs git 상태를 공유(초과 실행 허용).
-if (Test-HookSelected @('warn-commit-secrets', 'pre-bash-dispatch')) {
+if (Test-HookSelected @('warn-commit-secrets', 'guard-bash')) {
 
 # ---- [v1.119.0] secret-patterns 라벨 판정 (함수 단위 — hook 실행 전 단계) ----
 # 실사고: README의 "관리자 계정: `<id>` / `<pw>`"가 종전 7패턴 어디에도 안 걸려 공개 커밋됐다.
@@ -130,16 +130,16 @@ if ($gitOk) {
 
     # 1) staged 시크릿 → 경고
     Push-Location $wcs; Set-Content secret.js $fakeApi; git add secret.js; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
     Assert-Case -Name "commit-secrets: staged 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
 
     # 2) --dry-run → 스킵(무출력)
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit --dry-run' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit --dry-run' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: --dry-run 스킵(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # 3) .env 스테이징 → 파일명 경고
     Push-Location $wcs; Set-Content .env 'v=1'; git add -f .env; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
     Assert-Case -Name "commit-secrets: .env 스테이징 경고" -R $r -ExpectExit 0 -ExpectContains '.env'
 
     # 4) 클린 스테이징(시크릿·.env 제거) → 무출력(음성)
@@ -148,20 +148,20 @@ if ($gitOk) {
     'clean=1' | Set-Content ok.txt; git add ok.txt; git commit -qm clean
     Pop-Location
     Push-Location $wcs; 'more=1' | Set-Content ok.txt; git add ok.txt; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
     Assert-Case -Name "commit-secrets: 클린 스테이징 무출력(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # 5) -am 자동 스테이징분(추적 파일 시크릿) → 경고
     Push-Location $wcs; git commit -qm ok2; Add-Content app.js $fakeApi; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -am update' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -am update' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: -am 자동스테이징 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
 
     # 6) 같은 미스테이징 변경 + -m(자동스테이징 아님) → 무출력(음성 — 메시지 속 -a 오탐 없음 포함)
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m update' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m update' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: -m 미스테이징 미탐(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # 7) git commit 아님 → 통과(무출력, fast path)
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: git commit 아님 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # ---- [v1.119.0] 고신뢰 라벨 커밋 차단 (exit 2) ----
@@ -178,7 +178,7 @@ if ($gitOk) {
 
     # (a) 자격증명 쌍(고신뢰) 스테이징 → 차단 + 회복 경로 2종 안내
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 자격증명 쌍 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     Assert-Case -Name "commit-secrets: 차단 메시지에 우회 변수 안내" -R $r -ExpectExit 2 -ExpectContains 'CLAUDE_HARNESS_ALLOW_SECRET'
     # 우회 변수는 세션 시작 전에만 설정 가능하다 — Bash 도구로 설정해도 hook에 전파되지 않는다(M8).
@@ -186,13 +186,13 @@ if ($gitOk) {
 
     # (b) QUICK=1이어도 차단 유지 — 안전 임계 게이트는 QUICK에 종속되지 않는다(M6).
     $env:CLAUDE_HARNESS_QUICK = '1'
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: QUICK=1이어도 자격증명 차단 유지" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     $env:CLAUDE_HARNESS_QUICK = $null
 
     # (c) 전용 escape hatch → 통과(경고). 오탐 시 사용자가 빠져나갈 문이 있어야 한다.
     $env:CLAUDE_HARNESS_ALLOW_SECRET = '1'
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: ALLOW_SECRET=1 우회(경고, exit 0)" -R $r -ExpectExit 0 -ExpectContains 'ALLOW_SECRET'
     $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
 
@@ -201,7 +201,7 @@ if ($gitOk) {
     git rm -q --cached README.md; Remove-Item README.md -Force
     Set-Content key.pem ('-----BEGIN RSA ' + 'PRIVATE KEY-----'); git add key.pem
     Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 개인키 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
     # (d2) DB 연결 문자열(고신뢰) → 차단. 고신뢰 4종 중 hook 레벨 실증이 빠지면 $highConf 필터
@@ -216,7 +216,7 @@ if ($gitOk) {
     $dbConn = 'Server' + '=' + 'prod-sql' + ';' + 'Pwd' + '=' + 'Zq7#mK21' + ';'
     Set-Content db.config $dbConn; git add db.config
     Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: DB 연결 문자열 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
     # (e) 저신뢰(비인용 자격증명 쌍) → 경고만. 차단 범위가 넓어지면 여기서 잡힌다.
@@ -224,7 +224,7 @@ if ($gitOk) {
     git rm -q --cached db.config; Remove-Item db.config -Force
     Set-Content notes.md ('계정: ' + 'ad' + 'min' + ' / ' + 'Zq7' + '#mK21'); git add notes.md
     Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 비인용 쌍은 경고만(exit 0)" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
 
     # (e2) IP 주소만(저신뢰) → 경고만. 오차단 0의 핵심 회귀 감시 — 차단 범위가 IP까지 넓어지면
@@ -233,7 +233,7 @@ if ($gitOk) {
     git rm -q --cached notes.md; Remove-Item notes.md -Force
     Set-Content hosts.md ('배포 서버 ' + '203.0' + '.113.5' + ' 접속'); git add hosts.md
     Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: IP 주소만은 경고만(exit 0, 오차단 0)" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
 
     # (f) 시크릿 제거 후 재커밋 → 통과. 차단이 막다른 골목이 아님을 실증한다.
@@ -241,7 +241,7 @@ if ($gitOk) {
     git rm -q --cached hosts.md; Remove-Item hosts.md -Force
     'clean=1' | Set-Content ok.txt; git add ok.txt
     Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 시크릿 제거 후 재커밋 통과(회복 가능)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # ---- [v1.119.0 F-7 B1] 선행 스테이징 경로 (untracked + 'git add' 한 호출) ----
@@ -256,31 +256,31 @@ if ($gitOk) {
     Pop-Location
 
     # (h) untracked + 'git add -A && git commit' 한 호출 → 차단
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A && git commit -m test' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: untracked + 'add -A && commit' 차단(exit 2, F-7 B1)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
     # (i) untracked + 'git add <파일> && git commit' → 차단 (경로 나열 형태)
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add README.md && git commit -m test' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add README.md && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: untracked + 'add <파일> && commit' 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
     # (j) 'git add'만 있고 commit 없음 → 무검사 통과 (기존 fast-path 유지)
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 'git add'만(commit 없음) 무검사 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # (j2) 'git add <디렉터리>' — 적대적 우회가 아니라 일상 형태다(`git add src/`). 파일이 아니라서
     #      스킵되면 디렉터리 한 단어로 게이트가 뚫린다(F-7 2회차 M1).
     Push-Location $wcsC; New-Item -ItemType Directory -Path 'docs' -Force | Out-Null; Set-Content 'docs/guide.md' $credLine; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add docs/ && git commit -m test' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add docs/ && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 'add <디렉터리>/ && commit' 차단(exit 2, F-7 M1)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
     # (j3) 'git add <글롭>' — 파일로 존재하지 않는 인자라 git에게 전개를 맡겨야 한다
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add docs/*.md && git commit -m test' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add docs/*.md && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 'add <글롭> && commit' 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     Push-Location $wcsC; Remove-Item 'docs' -Recurse -Force; Pop-Location
 
     # (k) 시크릿 없는 신규 파일 + 'add -A && commit' → 통과 (오차단 0 — 정상 신규 커밋을 막지 않는다)
     Push-Location $wcsC; Remove-Item README.md -Force; 'hello world' | Set-Content notes.md; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A && git commit -m test' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 시크릿 없는 신규 파일 'add -A && commit' 통과(오차단 0)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # ---- [v1.136.0] 경로 나열 Leaf 분기의 추적 인지 (T1 그물) ----
@@ -296,17 +296,17 @@ if ($gitOk) {
 
     # (n1) 추적 파일 + HEAD 픽스처 + 무해 추가 라인 → 무차단 (핵심 델타 — 이력 기존 내용 재신고 제거)
     Push-Location $wcsD; git checkout -q -- .; Add-Content fixtures.md '무해한 안내 라인 추가'; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add fixtures.md && git commit -m test' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add fixtures.md && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 추적 파일 HEAD 픽스처 + 무해 추가 라인 무차단(n1, v1.136.0)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # (n2) 추적 파일 + 추가 라인에 자격증명 쌍 → 차단 유지 (신규 유입 보호 그물)
     Push-Location $wcsD; git checkout -q -- .; Add-Content fixtures.md ('신규 유입: ' + $credLine); Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add fixtures.md && git commit -m test' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add fixtures.md && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 추적 파일 추가 라인 자격증명 차단(n2, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
     # (n3) ignored 파일 강제 add + 자격증명 → 차단 유지 (D1 (a) 근거 — untracked 전체 스캔 보존)
     Push-Location $wcsD; git checkout -q -- .; Set-Content ignored.txt $credLine; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add -f ignored.txt && git commit -m test' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add -f ignored.txt && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: ignored 강제 add 자격증명 차단(n3, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 
     # ---- [v1.182.0 T5] $autoStage 오판정 — `git add -A`가 보완 스캔을 두 번 돌리던 문제 ----
@@ -322,7 +322,7 @@ if ($gitOk) {
     $t5Probe = Join-Path $work 't5-autostage-probe.ps1'
     @(
         'param([string]$Cwd, [string]$Cmd)',
-        ('. ' + [char]39 + (Join-Path $scriptsDir 'bash-hook-lib.ps1') + [char]39),
+        ('. ' + [char]39 + (Join-Path $scriptsDir 'guard-commit-secrets.ps1') + [char]39),   # 함수 전용 파일을 읽는다 — hook 본체(guard-bash.ps1)를 dot-source하면 최상위 코드가 stdin을 무한 대기한다
         '$script:ghCalls = 0',
         'function Get-DiffHeadAdded { param([string[]]$PathArgs = @()) $script:ghCalls++; return @() }',
         '$null = Invoke-WarnCommitSecrets @{ cwd = $Cwd; tool_input = @{ command = $Cmd } }',
@@ -366,7 +366,7 @@ if ($gitOk) {
     Pop-Location
 
     # (h1) HEAD 없는 저장소에서도 신규 파일의 자격증명은 차단된다
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add -A && git commit -m init' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add -A && git commit -m init' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: HEAD 없는 저장소에서도 자격증명 차단(h1, diff HEAD 실패 폴백)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     # [v1.182.0 T6 ⓐ] stderr 한글 경고가 **깨지지 않고** 판정 대상에 담기는지 — 디코딩의 회귀 가드.
     #   종전에는 콘솔 코드페이지 탓에 이 문자열이 깨져 영문 앵커만 걸 수 있었다.
@@ -374,7 +374,7 @@ if ($gitOk) {
 
     # (h2) 같은 상태에서 무해한 내용이면 차단되지 않는다 — 폴백이 오차단을 만들지 않는다
     Push-Location $wcsE; Set-Content README.md @('# 프로젝트 소개', '설치 방법은 아래를 보세요.'); Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add -A && git commit -m init' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsE; tool_input = @{ command = 'git add -A && git commit -m init' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: HEAD 없는 저장소 무해 내용 무차단(h2, 폴백 오차단 0)" -R $r -ExpectExit 0
 
     # ---- [v1.182.0 T6 ⓑ] 폴백 경고의 1회 억제·리셋 ----
@@ -387,7 +387,7 @@ if ($gitOk) {
     $t6Probe = Join-Path $work 't6-notify-probe.ps1'
     @(
         'param([string]$Cwd, [int]$Calls = 1)',
-        ('. ' + [char]39 + (Join-Path $scriptsDir 'bash-hook-lib.ps1') + [char]39),
+        ('. ' + [char]39 + (Join-Path $scriptsDir 'guard-commit-secrets.ps1') + [char]39),   # 함수 전용 파일을 읽는다 — hook 본체(guard-bash.ps1)를 dot-source하면 최상위 코드가 stdin을 무한 대기한다
         '$sw = New-Object System.IO.StringWriter',
         '$prevErr = [Console]::Error',
         '[Console]::SetError($sw)',
@@ -415,7 +415,7 @@ if ($gitOk) {
 
     # (g) 디스패처 경유도 동일 차단 — lib 함수 공유라 두 경로가 갈리면 안 된다(D3).
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
-    $r = Invoke-Hook 'pre-bash-dispatch.ps1' $wcsBJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 디스패처 경유 자격증명 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     Push-Location $wcsB; git rm -q --cached README.md; Remove-Item README.md -Force; Pop-Location
 
@@ -423,17 +423,17 @@ if ($gitOk) {
     # 현재 $wcs 상태: app.js에 시크릿(-am 자동스테이징 대상), ok.txt 미스테이징. 명시 스테이징 시크릿을 다시 심는다.
     Push-Location $wcs; Set-Content secret2.js $fakeApi; git add secret2.js; Pop-Location
     # (a) commit-secrets 양성 → 디스패처 경유도 경고 유지
-    $r = Invoke-Hook 'pre-bash-dispatch.ps1' $wcsJson
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
     Assert-Case -Name "dispatch=commit-secrets: staged 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
     # (b) 디스패처 고유: block(rtc 미완료) + warn(commit-secrets) 동시 → block 우선 exit 2, warn 경고는 버림(D4)
     "# plan`n- [ ] T7. 미완료" | Set-Content (Join-Path $wcs 'plan.md')
-    $r = Invoke-Hook 'pre-bash-dispatch.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m "T7: 완료"' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m "T7: 완료"' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "dispatch: block(rtc)+warn(secret) 동시 → exit 2 차단 우선" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     if (($r.out -match 'COMMIT SECRET')) { $script:results.Add(@{ ok = $false; line = "[FAIL] dispatch: block 시 warn 경고 버림(D4) — COMMIT SECRET가 출력됨" }) }
     else { $script:results.Add(@{ ok = $true; line = "[PASS] dispatch: block 시 warn 경고 버림(D4 트레이드오프)" }) }
     Remove-Item (Join-Path $wcs 'plan.md') -Force -ErrorAction SilentlyContinue
     # (c) 디스패처 고유: warn 2개(external push + commit secret) 병합 → exit 0 + 두 keyword 모두
-    $r = Invoke-Hook 'pre-bash-dispatch.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m x && git push origin main' } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m x && git push origin main' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "dispatch: warn 2개 병합 (external) — exit 0" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
     if (($r.out -match 'COMMIT SECRET') -and ($r.out -match 'EXTERNAL OP')) { $script:results.Add(@{ ok = $true; line = "[PASS] dispatch: warn 2개(secret+external) additionalContext 병합" }) }
     else { $script:results.Add(@{ ok = $false; line = "[FAIL] dispatch: warn 병합 누락 | 출력: $(($r.out -split "`r?`n" | Select-Object -First 2) -join ' / ')" }) }
@@ -457,19 +457,19 @@ if ($gitOk) {
     $cap51 = ($capNames -join ' ')
     $cap50 = (($capNames | Select-Object -First 50) -join ' ')
 
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 캡 도달(추적 51개 나열) → 차단(T1 ⓐ-양성, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     Assert-Case -Name "commit-secrets: 캡 차단 메시지가 시크릿이 아닌 상한을 사유로 든다(T1 ⓐ)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
     Assert-Case -Name "commit-secrets: 캡 차단 메시지에 우회 변수 안내(T1 ⓐ)" -R $r -ExpectExit 2 -ExpectContains 'CLAUDE_HARNESS_ALLOW_SECRET'
 
     # ⓐ-음성 (델타 음성): 50개는 캡 미도달 — 경계가 실제로 발화하되 정상 커밋을 막지 않음을 실증.
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap50 && git commit -m x" } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap50 && git commit -m x" } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 추적 50개는 무차단(T1 ⓐ-음성, 경계값)" -R $r -ExpectExit 0
 
     # ⓐ 우회: ALLOW_SECRET=1이면 통과하되 **경고 문면이 캡 사유**여야 한다 —
     #   시크릿 검출 0건인데 "민감 정보 감지" 문면을 쓰면 사유를 잘못 가리킨다.
     $env:CLAUDE_HARNESS_ALLOW_SECRET = '1'
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 캡+ALLOW_SECRET=1 우회(T1, exit 0)" -R $r -ExpectExit 0 -ExpectContains '50개 상한'
     $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
 
@@ -477,7 +477,7 @@ if ($gitOk) {
     #   캡 판정을 조기 return 앞으로 올리면 이 케이스가 캡 문면으로 반환돼 깨진다(배치 고정).
     #   시크릿은 첫 50개 안에 있어야 검출된다(51번째는 스캔되지 않는다).
     Push-Location $wcsCapT; Set-Content $capNames[0] $credLine; Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 캡+시크릿 동시 → 자격증명 차단이 주 메시지(T1 ⓒ)" -R $r -ExpectExit 2 -ExpectContains '자격증명으로 보이는 값'
     Assert-Case -Name "commit-secrets: 캡+시크릿 동시 → 캡 사실도 함께 알림(T1 ⓒ)" -R $r -ExpectExit 2 -ExpectContains '전부가 아닐 수 있습니다'
 
@@ -485,7 +485,7 @@ if ($gitOk) {
     #   떨어진다. 그때도 캡 부기가 나가야 한다 — 없으면 사용자가 "나열된 것만 지우면 통과"로 오인하는데
     #   캡 밖의 파일은 애초에 검사되지 않았다(quality 1R M1).
     $env:CLAUDE_HARNESS_ALLOW_SECRET = '1'
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 캡+시크릿+우회 → 경고에도 캡 부기(T1 ⓓ, exit 0)" -R $r -ExpectExit 0 -ExpectContains '전부가 아닐 수 있습니다'
     $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
 
@@ -496,7 +496,7 @@ if ($gitOk) {
     git checkout -q -- $capNames[0]                        # ⓒ가 넣은 자격증명 되돌리기(고신뢰 제거)
     Set-Content $capNames[1] ('host = 10.' + '1.2.3')      # 저신뢰 IP 라벨
     Pop-Location
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapT; tool_input = @{ command = "git add $cap51 && git commit -m x" } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 캡 차단이 저신뢰 검출분을 삼키지 않는다(T1 ⓔ, exit 2)" -R $r -ExpectExit 2 -ExpectContains '확인 필요'
     if ($r.out -match '검출된 시크릿은 없') { $script:results.Add(@{ ok = $false; line = "[FAIL] commit-secrets: 저신뢰 검출이 있는데 '없음'으로 표기됨(T1 ⓔ)" }) }
     else { $script:results.Add(@{ ok = $true; line = "[PASS] commit-secrets: 저신뢰 검출 시 '없음' 고정 문구 미사용(T1 ⓔ)" }) }
@@ -509,12 +509,12 @@ if ($gitOk) {
     foreach ($n in $capNames) { 'v=1' | Set-Content $n }   # 51개 untracked
     Pop-Location
     $capUJson = @{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = 'git add -A && git commit -m x' } } | ConvertTo-Json -Compress
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $capUJson
+    $r = Invoke-Hook 'guard-bash.ps1' $capUJson
     Assert-Case -Name "commit-secrets: 캡 도달(untracked 51개, add -A) → 차단(T1 ⓑ-양성, exit 2)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
 
     # ⓑ-음성 (델타 음성): 하나를 지워 50개로 만들면 캡 미도달.
     Remove-Item (Join-Path $wcsCapU $capNames[50]) -Force
-    $r = Invoke-Hook 'warn-commit-secrets.ps1' $capUJson
+    $r = Invoke-Hook 'guard-bash.ps1' $capUJson
     Assert-Case -Name "commit-secrets: untracked 50개는 무차단(T1 ⓑ-음성, 경계값)" -R $r -ExpectExit 0
 } else {
     Write-Host "[SKIP] warn-commit-secrets 시나리오 (git 없음)"

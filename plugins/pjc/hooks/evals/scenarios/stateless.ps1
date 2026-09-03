@@ -15,9 +15,9 @@ foreach ($c in $cases) {
     # "그 hook 선택 또는 pre-bash-dispatch 선택" 시 실행(D10 — 에코만 따로 돌릴 수 있게).
     $hookBase = ($c.hook -replace '\.ps1$', '').ToLowerInvariant()
     $isDispatchEchoTarget = (-not [bool]$c.pending_fix) -and
-        ($c.hook -in @('warn-external-ops.ps1', 'require-task-checkbox.ps1', 'warn-commit-secrets.ps1'))
+        ($c.hook -in @('guard-bash.ps1', 'guard-bash.ps1', 'guard-bash.ps1'))
     $runIndividual = Test-HookSelected @($hookBase)
-    $runDispatchEcho = $isDispatchEchoTarget -and (Test-HookSelected @($hookBase, 'pre-bash-dispatch'))
+    $runDispatchEcho = $isDispatchEchoTarget -and (Test-HookSelected @($hookBase, 'guard-bash'))
     if (-not ($runIndividual -or $runDispatchEcho)) { continue }
 
     $json = @{ tool_name = 'Bash'; tool_input = @{ command = $c.command } } | ConvertTo-Json -Compress
@@ -31,7 +31,7 @@ foreach ($c in $cases) {
             -PendingFix ([bool]$c.pending_fix)
     }
 
-    # [v1.99.0 T6] 디스패처 전수 동등성 — 3 hook의 stateless 케이스를 pre-bash-dispatch.ps1에도
+    # [v1.99.0 T6] 디스패처 전수 동등성 — 3 hook의 stateless 케이스를 guard-bash.ps1에도
     #   같은 stdin으로 재공급해 개별 hook 경유와 일치하는지 실증(프로덕션 배선이 디스패처이므로
     #   대표 선별이 아닌 전수). block-destructive는 디스패처 무포함이라 제외.
     #   디스패처는 3 hook을 합산하므로 출력은 개별 hook의 상위집합이다 — 동등성 판정은
@@ -43,7 +43,7 @@ foreach ($c in $cases) {
     #   `expect_not_contains`도 개별 전용이다 — 디스패처는 3 hook 합산이라 같은 문자열이
     #   다른 hook의 출력에서 정당하게 나올 수 있어, 상위집합에 「없어야 한다」를 걸면 오판한다.
     if ($runDispatchEcho) {
-        $rd = Invoke-Hook 'pre-bash-dispatch.ps1' $json
+        $rd = Invoke-Hook 'guard-bash.ps1' $json
         Assert-Case -Name "dispatch=$($c.hook): $($c.name)" -R $rd `
             -ExpectExit ([int]$c.expect_exit) `
             -ExpectContains ([string]$c.expect_contains)
