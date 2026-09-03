@@ -1,4 +1,4 @@
-﻿# guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 — 근거는 `rules/write-gate-rationale.md`의 「§1 guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단」
+﻿# guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 (exit 2) — 근거는 `rules/write-gate-rationale.md`의 「§1 guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 (exit 2)」
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -163,7 +163,7 @@ try {
     if ($tempRoot -and $tpNorm.StartsWith($tempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) { exit 0 }
 } catch { }
 
-# docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한 — 근거는 `rules/write-gate-rationale.md`의 「§11 docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한」
+# docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다. — 근거는 `rules/write-gate-rationale.md`의 「§11 docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다.」
 if (-not $isExecAsset -and -not $isSourceCode -and (
         ($targetPath -match '[\\/]docs[\\/]') -or
         ($targetPath -match '[\\/]plans?[\\/]') -or

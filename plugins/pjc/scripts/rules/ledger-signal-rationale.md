@@ -3,7 +3,7 @@
 > `session-ledger-signal.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호
+## §1 session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호 (dot-source 전용, hook 아님)
 
 ```
 # session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호 (dot-source 전용, hook 아님)

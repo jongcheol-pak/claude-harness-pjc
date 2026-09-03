@@ -1,4 +1,4 @@
-﻿# session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호 — 근거는 `rules/ledger-signal-rationale.md`의 「§1 session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호」
+﻿# session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호 (dot-source 전용, hook 아님) — 근거는 `rules/ledger-signal-rationale.md`의 「§1 session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호 (dot-source 전용, hook 아님)」
 
 function Get-LedgerSignal {
     param([string]$cwd)
@@ -57,7 +57,7 @@ function Get-LedgerSignal {
                             $ledgerAge = [int][math]::Floor(($ledgerToday - $ledgerOldest).TotalDays)
                             $ledgerVnNote = if ($ledgerVnCount -gt 0) { " (단 vN 부기 ${ledgerVnCount}건은 릴리즈 날짜를 반영하지 않았습니다 — 손계산 확인 필요.)" } else { "" }
                             $ledgerLine = ("[pjc 세션 컨텍스트] Deferred 대장: 대기 $($ledgerItems.Count)건 / 최고령 ${ledgerAge}일($($ledgerOldest.ToString('yyyy-MM-dd'))) — 축 ② 임계 30일.${ledgerVnNote}")
-                            # 이 라인은 vault 게이팅 신호가 아니다 — 하네스 레포에는 plan·AGENTS.md가 있어 — 근거는 `rules/session-context-rationale.md`의 「§16 # 이 라인은 vault 게이팅 신호가 아니다 — 하네스 레포에는 plan·AGENTS.md가 있어」
+                            # 이 라인은 **vault 게이팅 신호가 아니다** — 근거는 `rules/session-context-rationale.md`의 「§16 이 라인은 **vault 게이팅 신호가 아니다**」
                             }
                     }
                 }

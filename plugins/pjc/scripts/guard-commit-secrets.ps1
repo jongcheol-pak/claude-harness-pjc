@@ -1,6 +1,6 @@
-﻿# guard-commit-secrets.ps1 — git commit 직전 스테이징 변경의 시크릿 검사 — 근거는 `rules/commit-secrets-rationale.md`의 「§1 guard-commit-secrets.ps1 — git commit 직전 스테이징 변경의 시크릿 검사」
+﻿# guard-commit-secrets.ps1 — git commit 직전 스테이징 변경의 시크릿 검사 (dot-source 전용, hook 아님) — 근거는 `rules/commit-secrets-rationale.md`의 「§1 guard-commit-secrets.ps1 — git commit 직전 스테이징 변경의 시크릿 검사 (dot-source 전용, hook 아님)」
 
-# warn-commit-secrets: git commit 직전 스테이징될 변경에서 시크릿 패턴 경고 — 근거는 `rules/commit-secrets-rationale.md`의 「§2 warn-commit-secrets: git commit 직전 스테이징될 변경에서 시크릿 패턴 경고」
+# warn-commit-secrets: git commit 직전 스테이징될 변경에서 시크릿 패턴 경고(비차단) — 근거는 `rules/commit-secrets-rationale.md`의 「§2 warn-commit-secrets: git commit 직전 스테이징될 변경에서 시크릿 패턴 경고(비차단)」
 function New-HookResult {
     param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null)
     return @{ Block = $Block; Stderr = $Stderr; Context = $Context }
@@ -12,7 +12,7 @@ function Get-DiffHeadAdded {
            else { @(& git diff HEAD --unified=0 2>$null) }
     if ($LASTEXITCODE -ne 0) {
         $scope = if ($PathArgs.Count) { ($PathArgs -join ' ') } else { '전체' }
-        # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st — 근거는 `rules/commit-secrets-rationale.md`의 「§3 ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트의 Warning 스트림 취급」
+        # ⚠ `Write-Warning`을 쓰지 않는다 — 근거는 `rules/commit-secrets-rationale.md`의 「§3 ⚠ `Write-Warning`을 쓰지 않는다」
         if (-not $script:diffHeadFailNotified) {
             [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
                                        'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
@@ -25,7 +25,7 @@ function Get-DiffHeadAdded {
 
 function Invoke-WarnCommitSecrets {
     param($data)
-    # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — hook 프로세스는 도구 호출당 새로 뜨지만 — 근거는 `rules/commit-secrets-rationale.md`의 「§4 # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — hook 프로세스는 도구 호출당 새로 뜨지만」
+    # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — 근거는 `rules/commit-secrets-rationale.md`의 「§4 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다」
     $script:diffHeadFailNotified = $false
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
@@ -68,7 +68,7 @@ function Invoke-WarnCommitSecrets {
         if ($addMatch.Success) {
             $addArgs = $addMatch.Groups[3].Value.Trim()
             $addTargets = @()
-            # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만 — 근거는 `rules/commit-secrets-rationale.md`의 「§8 # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만」
+            # 스캔 캡은 **추적 파일 분기와 공유한다** — 근거는 `rules/commit-secrets-rationale.md`의 「§8 스캔 캡은 **추적 파일 분기와 공유한다**」
             $scanned = 0
             $capNotified = $false
             if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
@@ -154,7 +154,7 @@ function Invoke-WarnCommitSecrets {
             $highConf = @($hits | Where-Object { $hcLabels -contains $_ } | Select-Object -Unique)
         }
 
-        # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-vie — 근거는 `rules/commit-secrets-rationale.md`의 「§14 # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-vie」
+        # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. — 근거는 `rules/commit-secrets-rationale.md`의 「§14 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다.」
         $allowSecret = ($env:CLAUDE_HARNESS_ALLOW_SECRET -eq '1')
 
         if ($highConf.Count -gt 0 -and -not $allowSecret) {
@@ -190,7 +190,7 @@ function Invoke-WarnCommitSecrets {
             $lines.Add("[HARNESS] BLOCKED: 커밋될 파일이 많아 시크릿 검사를 끝까지 하지 못했습니다.")
             $lines.Add("")
             $lines.Add("  - 스캔 대상 50개 상한에 도달해 초과분은 검사하지 않았습니다.")
-            # 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로 — 근거는 `rules/commit-secrets-rationale.md`의 「§16 # 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로」
+            # 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다 — 근거는 `rules/commit-secrets-rationale.md`의 「§16 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다」
             if ($hits.Count -eq 0) {
                 $lines.Add("  - 검사한 범위에서 검출된 시크릿은 없습니다.")
             } else {
@@ -227,7 +227,7 @@ function Invoke-WarnCommitSecrets {
         if ($allowSecret -and $highConf.Count -gt 0) {
             $lines.Add("  * CLAUDE_HARNESS_ALLOW_SECRET=1 — 자격증명 차단이 우회된 상태입니다.")
         }
-        # 캡 부기는 **이 경로에도** 필요하다 — `$hits`가 있고 우회가 켜져 있으면 위 두 차단 블록을 — 근거는 `rules/commit-secrets-rationale.md`의 「§17 # 캡 부기는 **이 경로에도** 필요하다 — `$hits`가 있고 우회가 켜져 있으면 위 두 차단 블록을」
+        # 캡 부기는 **이 경로에도** 필요하다 — 근거는 `rules/commit-secrets-rationale.md`의 「§17 캡 부기는 **이 경로에도** 필요하다」
         if ($capHit) {
             $lines.Add("  ! 스캔 대상 50개 상한에도 걸려 일부 파일은 아예 검사하지 못했습니다 — 위 목록이 전부가 아닐 수 있습니다.")
         }

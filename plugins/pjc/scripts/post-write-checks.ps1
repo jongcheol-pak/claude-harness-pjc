@@ -150,7 +150,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                     $null = & git -C $fileDir ls-files --error-unmatch -- $file 2>$null
                     if ($LASTEXITCODE -eq 0) {
                         $diffOut = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null)
-                        # diff 성공 여부를 반드시 확인한다: ls-files는 staged 파일이면 HEAD 없이도 — 근거는 `rules/post-write-rationale.md`의 「§9 # diff 성공 여부를 반드시 확인한다: ls-files는 staged 파일이면 HEAD 없이도」
+                        # diff 성공 여부를 반드시 확인한다 — 근거는 `rules/post-write-rationale.md`의 「§9 diff 성공 여부를 반드시 확인한다」
                         if ($LASTEXITCODE -eq 0) {
                             $added = @($diffOut |
                                 Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } |

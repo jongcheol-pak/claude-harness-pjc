@@ -44,7 +44,7 @@ function Get-WikiSignals {
                                 $hubDir = Join-Path $vaultPath '20_projects'
                                 if (Test-Path -LiteralPath $hubDir -PathType Container) {
                                     $cwdNorm = ($cwd -replace '\\', '/').TrimEnd('/')
-                                    # cwd 의 origin URL 은 루프 밖에서 1회만 읽는다 — 허브마다 부르면 git 이 — 근거는 `rules/session-context-rationale.md`의 「§27 # cwd 의 origin URL 은 루프 밖에서 1회만 읽는다 — 허브마다 부르면 git 이」
+                                    # cwd 의 origin URL 은 **루프 밖에서 1회만** 읽는다 — 근거는 `rules/session-context-rationale.md`의 「§27 cwd 의 origin URL 은 **루프 밖에서 1회만** 읽는다」
                                     $cwdUrl = ''
                                     try {
                                         $urlRaw = (& git -C $cwd remote get-url origin 2>$null | Select-Object -First 1)
@@ -59,7 +59,7 @@ function Get-WikiSignals {
                                         try { $hubText = Get-Content -LiteralPath $hubFile.FullName -Raw -Encoding UTF8 } catch { continue }
                                         if (-not $hubText) { continue }
 
-                                        # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. 허브에 `repo_url` 이 — 근거는 `rules/session-context-rationale.md`의 「§28 # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. 허브에 `repo_url` 이」
+                                        # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. — 근거는 `rules/session-context-rationale.md`의 「§28 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다.」
                                         $hubUrl = ''
                                         if ($cwdUrl) {
                                             $urlMatch = [regex]::Match($hubText, '(?m)^repo_url:\s*"?([^"\r\n]+?)"?\s*$')

@@ -3,7 +3,7 @@
 > `guard-harness.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 guard-harness.ps1 — PreToolUse hook: Write/Edit 대상이 하니스 자신·A
+## §1 guard-harness.ps1 — PreToolUse hook: Write/Edit 대상이 하니스 자신·AGENTS.md 경계를 침범하는지 검사
 
 ```
 # guard-harness.ps1 — PreToolUse hook: Write/Edit 대상이 하니스 자신·AGENTS.md 경계를 침범하는지 검사
@@ -16,7 +16,7 @@
 # 게이트 ②(AGENTS.md 경계)는 `CLAUDE_HARNESS_QUICK=1`로 우회된다.
 ```
 
-## §2 하니스 hook·공유 헬퍼 이름 집합 — post-write-checks.ps1 H2 의 $harnessHo
+## §2 하니스 hook·공유 헬퍼 이름 집합 — post-write-checks.ps1 H2 의 $harnessHookName 과 동일 유지(탐지↔차단 대칭).
 
 ```
 # 하니스 hook·공유 헬퍼 이름 집합 — post-write-checks.ps1 H2 의 $harnessHookName 과 동일 유지(탐지↔차단 대칭).

@@ -1,4 +1,4 @@
-﻿# warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트  — 근거는 `rules/version-drift-rationale.md`의 「§1 warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 」
+﻿# warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 경고 (비차단) — 근거는 `rules/version-drift-rationale.md`의 「§1 warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 경고 (비차단)」
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -25,7 +25,7 @@ try {
     try {
         Push-Location -LiteralPath $cwd
         try {
-            # `-join` 필수: git show는 줄 배열을 반환하는데, 배열을 그대로 ConvertFrom — 근거는 `rules/version-drift-rationale.md`의 「§3 # `-join` 필수: git show는 줄 배열을 반환하는데, 배열을 그대로 ConvertFrom」
+            # `-join` 필수 — git show는 **줄 배열**을 반환한다 — 근거는 `rules/version-drift-rationale.md`의 「§3 `-join` 필수 — git show는 **줄 배열**을 반환한다」
             $pushedJson = (& git show origin/main:plugins/pjc/.claude-plugin/plugin.json 2>$null) -join "`n"
             if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($pushedJson)) {
                 $pushedVer = $null
@@ -33,7 +33,7 @@ try {
                 if (-not [string]::IsNullOrWhiteSpace($pushedVer)) {
                     $tag = & git tag -l "v$pushedVer" 2>$null
                     if ($LASTEXITCODE -eq 0 -and [string]::IsNullOrWhiteSpace(($tag -join ''))) {
-                        # 로컬에 없다 → 원격 확인. `2>$null` 필수 — 빼면 remote 부재 시 `fatal: 'ori — 근거는 `rules/version-drift-rationale.md`의 「§4 # 로컬에 없다 → 원격 확인. `2>$null` 필수 — 빼면 remote 부재 시 `fatal: 'ori」
+                        # 로컬에 없다 → 원격 확인. — 근거는 `rules/version-drift-rationale.md`의 「§4 로컬에 없다 → 원격 확인.」
                         $env:GIT_TERMINAL_PROMPT = '0'
                         $remoteTag = & git ls-remote --tags origin "v$pushedVer" 2>$null
                         $remoteExit = $LASTEXITCODE   # 즉시 캡처 — 아래 문자열 연산이 값을 덮어쓰기 전에

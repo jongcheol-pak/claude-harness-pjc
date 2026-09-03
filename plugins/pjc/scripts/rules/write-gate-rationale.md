@@ -3,7 +3,7 @@
 > `guard-write.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단
+## §1 guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 (exit 2)
 
 ```
 # guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 (exit 2)
@@ -129,7 +129,7 @@
 # 파괴적 '실행'은 block-destructive가 별도 차단한다.
 ```
 
-## §11 docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한
+## §11 docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다.
 
 ```
 # docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다.

@@ -4,7 +4,7 @@
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 > (v1.225.0 T5 에서 이관 스크립트를 두 번 돌려 이 파일이 비었던 것을 회차 시작 커밋 `6bf0fe1` 의 원문으로 복원했다.)
 
-## §1 warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 
+## §1 warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 경고 (비차단)
 
 ```
 # warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 경고 (비차단)
@@ -50,7 +50,7 @@
     #   (설치본 없이 레포만 연 세션 등)에서 조기 exit에 막혀 도달하지 못한다(구현 중 실측).
 ```
 
-## §3 # `-join` 필수: git show는 줄 배열을 반환하는데, 배열을 그대로 ConvertFrom
+## §3 `-join` 필수 — git show는 **줄 배열**을 반환한다
 
 ```
             # `-join` 필수: git show는 **줄 배열**을 반환하는데, 배열을 그대로 ConvertFrom-Json에
@@ -58,7 +58,7 @@
             #   파싱을 시도해 실패한다(7은 누적 처리라 통과 — 런타임에 따라 결과가 갈리는 형태다).
 ```
 
-## §4 # 로컬에 없다 → 원격 확인. `2>$null` 필수 — 빼면 remote 부재 시 `fatal: 'ori
+## §4 로컬에 없다 → 원격 확인.
 
 ```
                         # 로컬에 없다 → 원격 확인. `2>$null` 필수 — 빼면 remote 부재 시 `fatal: 'origin' does not

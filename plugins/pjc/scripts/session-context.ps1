@@ -1,4 +1,4 @@
-﻿# session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.m — 근거는 `rules/session-context-rationale.md`의 「§1 session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.m」
+﻿# session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단) — 근거는 `rules/session-context-rationale.md`의 「§1 session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단)」
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -129,7 +129,7 @@ try {
             $secPlanRules = Get-SkillSection -Path (Join-Path $skillsDir 'plan/SKILL.md') -StartHeading '## Step 3. 영향 범위 실측' -StopHeading '## Step 4. 작업 분해'
             if ($secPlanRules) {
                 $lines.Add("[pjc 세션 컨텍스트] 압축 직후 계획 규칙 (원문 발췌 — plan/SKILL.md 「영향 범위 실측」)`n$secPlanRules")
-                # 위 리마인더와 같은 이유로 기준선을 함께 올린다 — 이 분기는 「줄 1개 추가 = 기준선 1 증가」가 — 근거는 `rules/session-context-rationale.md`의 「§20 # 위 리마인더와 같은 이유로 기준선을 함께 올린다 — 이 분기는 「줄 1개 추가 = 기준선 1 증가」가」
+                # 위 리마인더와 같은 이유로 기준선을 함께 올린다 — 근거는 `rules/session-context-rationale.md`의 「§20 위 리마인더와 같은 이유로 기준선을 함께 올린다」
                 $cwdBaseCount++
             }
 
@@ -208,7 +208,7 @@ try {
             if ($feedbackLine) {
                 $lines.Insert([Math]::Min($vaultInsertAt + 1, $lines.Count), $feedbackLine)
             }
-            # 뒤처짐 라인은 큐 라인 다음이다. 오프셋을 `+2`로 못박지 않는 이유: $feedbackLine — 근거는 `rules/session-context-rationale.md`의 「§35 # 뒤처짐 라인은 큐 라인 다음이다. 오프셋을 `+2`로 못박지 않는 이유: $feedbackLine」
+            # 뒤처짐 라인은 큐 라인 **다음**이다. — 근거는 `rules/session-context-rationale.md`의 「§35 뒤처짐 라인은 큐 라인 **다음**이다.」
             if ($staleLine) {
                 $lines.Insert([Math]::Min($vaultInsertAt + 1 + [int][bool]$feedbackLine, $lines.Count), $staleLine)
             }
