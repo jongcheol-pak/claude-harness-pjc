@@ -65,7 +65,6 @@ $evalsDirTop = $PSScriptRoot
 #   protect-harness-installed + hook-event-log — $vdCache 공유 + 후자가 홈의 이벤트 로그 적재를 관찰
 $scenarioGroups = @(
     @('stateless'),
-    @('orphan-process-cleanup'),
     @('guard-write'),
     @('guard-harness'),
     @('guard-bash'),
@@ -75,7 +74,8 @@ $scenarioGroups = @(
     @('warn-version-drift'),
     @('protect-harness-installed', 'hook-event-log'),
     @('session-context'),
-    @('guard-harness-content')
+    @('guard-harness-content'),
+    @('session-end-cleanup')
 )
 
 Write-Host "== pjc hook 골든 회귀 =="

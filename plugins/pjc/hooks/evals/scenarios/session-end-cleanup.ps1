@@ -1,4 +1,4 @@
-﻿# scenarios/orphan-process-cleanup.ps1 — 고아 콘솔 프로세스 회수 시나리오 (dot-source 전용, 단독 실행 금지)
+﻿# scenarios/session-end-cleanup-lib.ps1 — 고아 콘솔 프로세스 회수 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook)와 공유 변수($work·$iso)를 그대로 쓴다.
 #
 # 다른 시나리오와 다른 점: 이 시나리오는 hook에 stdin을 주입하는 대신 **헬퍼 함수를 직접 호출**한다.
@@ -6,11 +6,11 @@
 #   목 레코드로 닫히기 때문이다. **실제 프로세스를 만들지 않는다** — 프로세스는 격리 대상이 아니라
 #   스위트가 실기계 상태에 의존하는 순간 결정성이 깨진다(eval-common이 수집 경로를 억제하는 것과 같은 이유).
 #   SessionEnd hook만 stdin 주입으로 검증한다(그쪽은 hook 계약 확인이라 Invoke-Hook이 맞다).
-if (Test-HookSelected @('orphan-process-cleanup', 'session-end-cleanup')) {
+if (Test-HookSelected @('session-end-cleanup')) {
 
 # 경로는 eval-common이 계산해 둔 공유 변수를 쓴다 — 여기서 상대 순회로 재계산하면
 # 디렉터리 구조가 바뀔 때 이 시나리오만 조용히 깨진다(다른 시나리오도 $scriptsDir를 쓴다).
-. (Join-Path $scriptsDir 'orphan-process-cleanup.ps1')
+. (Join-Path $scriptsDir 'session-end-cleanup-lib.ps1')
 
 $opcNow = Get-Date
 $opcSid = (Get-Process -Id $PID).SessionId

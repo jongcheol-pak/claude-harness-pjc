@@ -1,4 +1,10 @@
-﻿# orphan-process-cleanup.ps1 — 고아 콘솔 프로세스 회수 (dot-source 전용, 로드 시 부작용 없음)
+﻿# session-end-cleanup-lib.ps1 — 고아 콘솔 프로세스 회수 함수 (dot-source 전용, 로드 시 부작용 없음)
+#
+# SessionEnd hook(`session-end-cleanup.ps1`)과 SessionStart hook(`session-context.ps1`)이 함께 쓴다 —
+#   SessionEnd 는 크래시·강제 종료 시 발화가 보장되지 않아 세션 시작에도 같은 회수를 돌린다.
+
+# ---- 고아 콘솔 프로세스 회수 헬퍼 (구 orphan-process-cleanup.ps1 흡수) ----
+# orphan-process-cleanup.ps1 — 고아 콘솔 프로세스 회수 (dot-source 전용, 로드 시 부작용 없음)
 #
 # 왜: Bash 도구의 시간 캡(10분)에 걸려 셸이 죽어도 그 자식 콘솔 프로세스는 함께 죽지 않는다
 #   (Windows는 부모 종료 시 자식을 따라 죽이지 않고, MSYS 셸 강제 종료 시 신호도 전파되지 않는다).

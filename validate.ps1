@@ -147,13 +147,13 @@ foreach ($a in $actualAgents) {
 Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
-$hooks = @('block-destructive.ps1', 'protect-harness.ps1', 'require-plan-for-write.ps1', 'require-task-checkbox.ps1', 'post-write-checks.ps1', 'warn-external-ops.ps1', 'suggest-agents-record.ps1', 'warn-commit-secrets.ps1', 'pre-bash-dispatch.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'guard-agents-content.ps1')
+$hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1')
 # hook 아닌 스크립트(미등록 탐지 경고 제외) — dot-source 헬퍼: secret-patterns(패턴)·bash-hook-lib(Bash hook
 #   3종 검사 로직 — pre-bash-dispatch 디스패처와 warn-external-ops·require-task-checkbox·warn-commit-secrets
 #   래퍼가 공유)·hook-event-log(이벤트 적재)·orphan-process-cleanup(고아 콘솔 프로세스 회수 — Stop·
-#   SessionStart·SessionEnd hook이 dot-source) / 수동 실행 도구: report-hook-events(이벤트 로그 집계
+#   SessionStart·SessionEnd hook이 dot-source)
 #   리포트).
-$knownHelpers = @('secret-patterns.ps1', 'bash-hook-lib.ps1', 'hook-event-log.ps1', 'report-hook-events.ps1', 'orphan-process-cleanup.ps1')
+$knownHelpers = @('secret-patterns.ps1', 'guard-commit-secrets.ps1', 'hook-event-log.ps1', 'write-gate-trivial.ps1', 'session-end-cleanup-lib.ps1', 'session-wiki-signals.ps1', 'session-ledger-signal.ps1')
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
     $hookPath = Join-Path $pluginRoot "scripts/$h"

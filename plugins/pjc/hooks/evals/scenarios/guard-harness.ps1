@@ -77,7 +77,7 @@ Assert-Case -Name "protect-harness: 한글 경로 개발 소스(캐시 밖) 통�
 # ⚠ 차단 범위 확대이므로 AGENTS.md `## DO NOT` ②가 **델타 음성으로 오차단 0 실증**을 요구한다.
 #   그래서 양성 3(리터럴 2 + 8.3 마스킹 1) 아래에 음성 3(개발 repo · 유사 이름 · 캐시 밖 8.3)을 둔다 —
 #   새 이름이 발화하는 자리가 셋이므로(리터럴 `.claude` 분기 · 8.3 분기 · 그 둘의 경계) 각각을 친다.
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/orphan-process-cleanup.ps1'))
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/session-end-cleanup-lib.ps1'))
 Assert-Case -Name "protect-harness: 설치본 orphan-process-cleanup 헬퍼 Write 차단 (T2 집합 합류)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/session-end-cleanup.ps1'))
 Assert-Case -Name "protect-harness: 설치본 session-end-cleanup Write 차단 (T2 집합 합류)" -R $r -ExpectExit 2
@@ -85,7 +85,7 @@ Assert-Case -Name "protect-harness: 설치본 session-end-cleanup Write 차단 (
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.187.0/scripts/session-end-cleanup.ps1")
 Assert-Case -Name "protect-harness: 8.3 마스킹 설치본 session-end-cleanup 차단 (T2 — 8.3 분기 확대 실증)" -R $r -ExpectExit 2 -ExpectContains '8.3'
 # 델타 음성 ⓐ 개발 repo 소스(.claude 세그먼트 없음) — 이번 회차 자신이 편집한 경로와 같은 형태다.
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/pjc/scripts/orphan-process-cleanup.ps1'))
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/pjc/scripts/session-end-cleanup-lib.ps1'))
 Assert-Case -Name "protect-harness: 개발 repo orphan-process-cleanup 통과 (T2 — 오차단 0 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 # 델타 음성 ⓑ 유사 이름 — 알터네이션 그룹 앞의 리터럴 '/'가 부분 매치를 막는지 실증한다.
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/my-session-end-cleanup.ps1'))
