@@ -1,6 +1,6 @@
 # AGENTS.md — Agent Guide
 
-> pjc 하니스 플러그인 repo. 컴파일 언어가 없어 표준 build/test가 없다 — 아래 **워킹트리 정적 검증**으로 `implement-task` V-1/V-2를 수행한다.
+> pjc 하니스 플러그인 repo. 컴파일 언어가 없어 표준 build/test가 없다 — 아래 **워킹트리 정적 검증**으로 `pjc:implement`의 빌드·테스트 단계를 수행한다.
 > **이 파일의 내용 경계**(무엇을 담고 무엇을 담지 않는가)는 `plugins/pjc/skills/AGENTS-BOUNDARY.md`의 「AGENTS.md 내용 경계」가 정본이다.
 
 ## 위키
@@ -38,7 +38,7 @@
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
-- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·예산 표·리뷰어 각주·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`) 수정 시 필수 — 열다섯 축(「예산 기준선」 축은 표의 `상한` 열도 잰다), **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`)·`session-context.ps1`의 절 추출 앵커 수정 시 필수 — 여섯 축, **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python plugins/pjc/evals/check-harness-consistency.py
   ```
@@ -55,11 +55,12 @@
 - **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i`도 `Edit` 도구도 파일 전체를 LF로 바꿀 수 있다** — blob이 정규화돼 **`git diff`에 안 나타나므로** 조용히 누적된다(v1.214.0 실측: `Edit`으로 1줄만 고친 `README.md`·`plugin.json`이 `w/lf`가 됐다). **판정은 `git ls-files --eol <파일>`**(미수정 파일과 대조 — 정상은 `w/crlf`), **복원은 python `newline=""`로 읽어 `\r\n`으로 다시 쓴다**.
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **명령 출력 예산**: 판정용 명령은 판정에 필요한 최소 형식으로 — `git status --porcelain`(clean이면 0B) · `git diff --stat` 선행 · `git blame -L` 범위 지정 · `gh`는 `--json <필드> --jq <표현식>`로 필드 지정. **단 `git log`는 `--oneline`으로 줄이지 않는다** — 커밋 본문이 F-4 스캔 대상이다. 실측 표·미채택 근거는 `docs/harness-conventions.md` 「명령 출력 예산」이 정본.
-- **파일 크기**: 분할은 줄 수가 아니라 책임·읽기 부담으로 판정(`implement-task` 규칙 8의 네 질문이 정본).
+- **파일 크기**: 문서 예산과 분할 판정은 `plugins/pjc/skills/DESIGN.md` 4절이 정본.
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단은 둘 — ① **`exit 2`**: `block-destructive`·`protect-harness`·`require-plan-for-write`·`require-task-checkbox`·`guard-agents-content` + `warn-commit-secrets`(조건부) ② **stdout JSON + `exit 0`**: `require-evidence`(조건부, Stop hook 전용). **두 조건부의 세부 조건·스캔 범위는 `docs/harness-conventions.md`가 정본** — hook 수정 전 반드시 읽을 것. **우회 변수는 둘이며 서로 대체되지 않는다**: `CLAUDE_HARNESS_QUICK`(require-evidence·require-plan-for-write·guard-agents-content) / `CLAUDE_HARNESS_ALLOW_SECRET`(warn-commit-secrets 전용).
 - **`require-plan-for-write`는 게이트 3종**: ① plan 존재 ② plan 작성 ③ AGENTS.md bootstrap. ①②는 같은 정규식(`$planTaskRx`)을 공유하므로 **한쪽만 고치지 말 것**(차이가 곧 우회 경로).
 - **⚠ `llm-wiki`의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md`의 vault 예외를 함께 확인**한다 — 검사기가 잡지 못한다(repo 밖). 필수 결합 2건·판정 기준은 `docs/harness-conventions.md`의 「llm-wiki ↔ 글로벌 지침 결합 (동반 수정 판정)」이 정본.
-- **SKILL 문서 작성**: `plugins/pjc/skills/AUTHORING.md` 참조.
+- **SKILL 문서 작성**: 형식은 `plugins/pjc/skills/AUTHORING.md`, **설계 원칙(규약 문면 형식·자기참조 금지·문서 예산)은 `plugins/pjc/skills/DESIGN.md`가 정본**이다.
+- **위키 연동**: 계획·구현이 위키를 언제 읽고 언제 쓰는지는 `plugins/pjc/skills/WIKI.md`가 정본.
 - **README.md 갱신 규약**: 버전별 changelog 블록 기재 **금지** — 현재 기능 설명만 유지한다(제거된 기능 설명은 삭제). 버전 표기는 상단 1곳만 두고 릴리즈 시 `plugin.json`과 **함께** 갱신한다. 이력은 git 커밋이 정본이다.
 - **규약 개정 요청**: 요청이 이 레포 규약에 걸려도 「규약이 금지한다」로 작업을 제외·전환하지 않는다 — **현행 규약 안의 안**과 **규약을 함께 고치는 안**을 둘 다 제시한다. 정본은 `docs/harness-conventions.md`의 「규약 개정 요청의 취급」.
 
@@ -81,16 +82,12 @@
 
 ## Plan Location
 
-```
-PRD Location:  docs/prd.md · docs/prds/<YYYY-MM-DD>-<slug>.md
-```
-
 - **plan은 루트 `plan.md` 하나**다(덮어쓰기). 위치 선택지가 없으므로 `Plan Location:` 선언을 두지 않는다.
 
 - **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — **작업의 영구 기록은 git 커밋**이고, 미처리 Deferred는 커밋되는 `docs/plans/deferred.md`가 담는다(v1.198.0부터 **대장은 셋** — 대기는 `deferred.md`, 기각 종결은 `deferred-closed.md`, 소진 batch 회고는 `deferred-history.md`. **계획 때 여는 것은 `deferred.md` 하나**이고 나머지 둘은 batch·차수 대조 때만 연다).
-- **소규모 후속 작업은 PRD에 닿는지 경량 확인만 하고**(plan-feature Step 1), 닿지 않으면 plan에 `**PRD**:` 줄을 두지 않는다 — Phase G 진입은 그 줄이 단일 신호다.
+- **PRD는 쓰지 않는다** — 요구는 `plan.md`의 `## 요구 이해`, 결정 이력은 위키 `decisions.md`, 미착수 항목은 `docs/plans/deferred.md`가 담는다. `docs/prds/` 3파일은 회차 3에서 이관·폐기 판정한다.
 
 ## OS/플랫폼
 
 - Windows 검증 · macOS/Linux 실험적(hooks는 pwsh 7 cross-platform 의도). 검증·배포는 Windows 기준.
-- **Claude Code**: 최소 v2.0 · **권장 v2.1.219+**(plan 리뷰어 2종의 `opus` 별칭 해소 기준).
+- **Claude Code**: 최소 v2.0 · **권장 v2.1.219+**(`completion-reviewer`의 `opus` 별칭 해소 기준).

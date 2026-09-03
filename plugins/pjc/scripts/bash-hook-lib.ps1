@@ -278,7 +278,7 @@ function Invoke-RequireTaskCheckbox {
         "plan 파일 : $planFile",
         "발견한 줄 : $foundLine",
         "",
-        "implement-task Phase D 규약: 완료 커밋 전에 해당 task 체크박스를 [x]로 갱신합니다.",
+        "구현 완료 커밋 규약: 완료 커밋 전에 해당 task 체크박스를 [x]로 갱신합니다.",
         "",
         "해결 방법:",
         "  1) plan의 해당 줄을 '- [x] T$taskNum ...'으로 갱신한 뒤 다시 commit",

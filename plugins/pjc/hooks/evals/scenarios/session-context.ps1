@@ -123,66 +123,61 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scFence } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 목차 폴백 코드 펜스 내 # 비오인 (SC13)" -R $r -ExpectExit 0 -ExpectContains '섹션:' -ExpectNotContains 'FENCE_MARKER'
 
-    # SC14~SC17: compact 재읽기 경로 지정 — 압축 후 스킬 뒷부분(Phase 절차·Halt 조건)이 유실되고
-    #   재invoke로는 복구되지 않으므로, 미완료 task가 있을 때만 Read 대상 3종을 못박는다.
-    #   3경로 리터럴을 골든이 고정한다 — 문구가 흔들려도 "무엇을 읽어야 하는지"는 남아야 한다.
-    # SC14: compact + 미완료 task 있는 plan → 고정 3경로 전부 주입
+    # SC14~SC17: compact 재읽기 경로 지정 — 압축 후 스킬 뒷부분이 유실되고
+    #   재invoke로는 복구되지 않으므로, 미완료 task가 있을 때만 Read 대상을 못박는다.
+    #   경로 리터럴을 골든이 고정한다 — 문구가 흔들려도 "무엇을 읽어야 하는지"는 남아야 한다.
+    # SC14: compact + 미완료 task 있는 plan → 경로 지시 주입
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact 재읽기 경로 SKILL.md (SC14)" -R $r -ExpectExit 0 -ExpectContains 'implement-task/SKILL.md'
-    Assert-Case -Name "session-context: compact 재읽기 경로 halt-conditions (SC14b)" -R $r -ExpectExit 0 -ExpectContains 'references/halt-conditions.md'
-    Assert-Case -Name "session-context: compact 재읽기 경로 recovery (SC14c)" -R $r -ExpectExit 0 -ExpectContains 'references/recovery.md'
+    Assert-Case -Name "session-context: compact 재읽기 경로 SKILL.md (SC14)" -R $r -ExpectExit 0 -ExpectContains 'implement/SKILL.md'
 
     # SC39~SC39d: compact 직후 루프 제어 규칙 **내용 주입** (v1.212.0 T1).
-    #   경로만 지시하면 ① 실제로 읽었는지 검증할 장치가 없고 ② 지시한 3파일 합 약 172KB를 다시
-    #   읽는 것이 압축으로 확보한 여유를 도로 소진한다. 그래서 두 절의 원문을 잘라 함께 주입한다.
+    #   경로만 지시하면 실제로 읽었는지 검증할 장치가 없다. 그래서 루프가 멈추는 것을 막는
+    #   절 하나의 원문을 잘라 함께 주입한다.
     #   ⚠ 대조 문자열은 **주입 헤더 라벨에 없고 절 본문에만 있는 것**을 고른다 — 라벨에도 있는
     #   문자열(예: '중단 조건 표')로 재면 절이 통째로 빠져도 라벨만으로 통과해 검사가 무력해진다.
     #   $r은 위 SC14 호출(compact + $scProj) 결과를 그대로 쓴다.
-    # SC39 (양성): SKILL.md 「자율 루프의 절대 규칙」 절이 실려 온다.
-    Assert-Case -Name "session-context: compact 루프 규칙 절 주입 (SC39)" -R $r -ExpectExit 0 -ExpectContains 'task 사이에 사용자에게 묻지 않는다'
-    # SC39b (양성): halt-conditions 「중단 조건 표」~「위임 경계」 절이 실려 온다.
-    #   두 절을 각각 재는 이유 — 한쪽만 걸면 나머지가 빠져도 전건 통과한다.
-    Assert-Case -Name "session-context: compact Halt 조건 절 주입 (SC39b)" -R $r -ExpectExit 0 -ExpectContains '위임 경계 (4분류'
+    # SC39 (양성): SKILL.md 「자율 루프」 절이 실려 온다.
+    Assert-Case -Name "session-context: compact 루프 규칙 절 주입 (SC39)" -R $r -ExpectExit 0 -ExpectContains 'task 사이에서 묻지 않는다'
     # SC39d (발췌 표기): 주입분이 전문이 아니라 발췌임을 밝힌다 — 없으면 모델이 이것을 전문으로
     #   오인해 "나머지는 없다"고 판단할 수 있다.
     Assert-Case -Name "session-context: 주입분에 원문 발췌 표기 (SC39d)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌'
 
-    # SC39c (델타 음성): startup에는 주입하지 않는다 — 압축 전용 보완이라 매 세션 14KB를 얹으면
+    # SC39c (델타 음성): startup에는 주입하지 않는다 — 압축 전용 보완이라 매 세션 그만큼을 얹으면
     #   그 자체가 예산 낭비다. 이 케이스가 없으면 "항상 주입"으로 바꿔도 위 셋이 전부 통과한다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: startup엔 루프 규칙 미주입 (SC39c)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains 'task 사이에 사용자에게 묻지 않는다'
+    Assert-Case -Name "session-context: startup엔 루프 규칙 미주입 (SC39c)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains 'task 사이에서 묻지 않는다'
     # $r을 되돌리지 않는다 — 이어지는 SC28·SC29가 각각 자기 $r을 새로 만든다(불필요한 hook 실행 방지).
 
     # SC28/SC29: 계획 세션의 압축 리마인더 (v1.198.0 T8).
     #   SC14 계열은 `if ($planPath)` 안이라 **진행 중 plan이 있는 세션**만 닿는다. 계획을 세우던 중
-    #   압축되면 plan이 없거나 task가 0개라 그 지시를 못 받는데, plan-feature도 본체가 앞 5,000토큰
+    #   압축되면 plan이 없거나 task가 0개라 그 지시를 못 받는데, pjc:plan도 본체가
     #   밖으로 밀리는 것은 같다. 두 케이스가 그 분기를 고정한다 — 양성 하나만 걸면 **델타 음성**이
     #   비어 "미완료 task 세션에도 계획 지시가 새는" 회귀를 못 잡는다.
     # SC28 (양성): compact + plan 없는 프로젝트 → 계획 재읽기 지시 발화
     $scPlanless = Join-Path $work 'sc-planless'; New-Item -ItemType Directory $scPlanless -Force | Out-Null
     '# Agent Guide' | Set-Content -Encoding UTF8 (Join-Path $scPlanless 'AGENTS.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact + plan 없음 → 계획 재읽기 지시 (SC28)" -R $r -ExpectExit 0 -ExpectContains 'plan-feature/SKILL.md'
+    Assert-Case -Name "session-context: compact + plan 없음 → 계획 재읽기 지시 (SC28)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md'
 
-    # SC29 (델타 음성): compact + 미완료 task 있는 plan → implement-task 지시만, 계획 지시는 미발화
+    # SC29 (델타 음성): compact + 미완료 task 있는 plan → 구현 지시만, 계획 지시는 미발화
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact + 미완료 task엔 계획 지시 없음 (SC29)" -R $r -ExpectExit 0 -ExpectNotContains 'plan-feature/SKILL.md'
+    Assert-Case -Name "session-context: compact + 미완료 task엔 계획 지시 없음 (SC29)" -R $r -ExpectExit 0 -ExpectNotContains 'plan/SKILL.md'
 
     # SC41~SC41e: 계획 세션에도 **절 원문 주입** (v1.217.0). SC41e는 vault 구간 안에 있다.
-    #   SC28이 고정한 것은 경로 지시(`plan-feature/SKILL.md` 문자열)뿐이라, 주입을 지워도 그대로 통과한다.
+    #   SC28이 고정한 것은 경로 지시(`plan/SKILL.md` 문자열)뿐이라, 주입을 지워도 그대로 통과한다.
     #   SC39 계열이 구현 세션에서 양성·델타 음성·발췌 표기를 나눠 건 것과 같은 구조로 넷을 건다.
-    # SC41 (양성): compact + plan 없음 → 절대 규칙 **본문 문자열**이 실려 온다.
+    # SC41 (양성): compact + plan 없음 → 실측 규칙 **본문 문자열**이 실려 온다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact 계획 규칙 절 주입 (SC41)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다'
+    Assert-Case -Name "session-context: compact 계획 규칙 절 주입 (SC41)" -R $r -ExpectExit 0 -ExpectContains '형식이 규칙을 대신한다'
     # SC41b (발췌 표기): 주입분이 전문이 아니라 발췌임을 밝힌다 — 없으면 모델이 이것을 전문으로 오인한다(SC39d와 같은 이유).
-    Assert-Case -Name "session-context: 계획 주입에 발췌 표기 (SC41b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — plan-feature/SKILL.md'
+    Assert-Case -Name "session-context: 계획 주입에 발췌 표기 (SC41b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — plan/SKILL.md'
     # SC41c (델타 음성): startup엔 주입하지 않는다 — 압축 전용 보완이라 매 세션 얹으면 예산 낭비다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: startup엔 계획 규칙 미주입 (SC41c)" -R $r -ExpectExit 0 -ExpectNotContains '증상 우회는 plan의 해결책이 될 수 없다'
+    Assert-Case -Name "session-context: startup엔 계획 규칙 미주입 (SC41c)" -R $r -ExpectExit 0 -ExpectNotContains '형식이 규칙을 대신한다'
     # SC41d (델타 음성): compact + 미완료 task 세션엔 계획 주입이 새지 않는다.
-    #   ⚠ 대조 문자열은 **주입 본문**이어야 한다 — `plan-feature/SKILL.md`로 걸면 SC29와 완전히 같아 새 회귀를 못 잡는다.
+    #   ⚠ 대조 문자열은 **주입 본문**이어야 한다 — `plan/SKILL.md`로 걸면 SC29와 완전히 같아 새 회귀를 못 잡는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '증상 우회는 plan의 해결책이 될 수 없다'
+    Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '형식이 규칙을 대신한다'
 
     # SC42~SC42f: 계획 세션에 **큐 기록 규약(K 5-2~5-3) 원문 주입** (v1.218.0).
     #   위 SC41 계열과 같은 분기에서 돌지만 대상 문서가 다르므로 따로 건다 —
@@ -231,21 +226,21 @@ if (Test-HookSelected @('session-context')) {
     #   리마인더 대상이 pjc 워크플로라 무관한 폴더에 뜨면 노이즈다(`:16` 무출력 규칙과 같은 취지).
     #   기존 SC15·SC23이 같은 빈 픽스처를 쓰지만 각각 다른 문자열만 assert해 이 회귀를 못 잡는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact + 비 pjc 폴더엔 계획 지시 없음 (SC30)" -R $r -ExpectExit 0 -ExpectNotContains 'plan-feature/SKILL.md'
+    Assert-Case -Name "session-context: compact + 비 pjc 폴더엔 계획 지시 없음 (SC30)" -R $r -ExpectExit 0 -ExpectNotContains 'plan/SKILL.md'
 
     # SC15: compact + plan 없음 → 기존 일반 리마인더만, 경로 지정 없음 (무회귀)
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact plan 없음 경로 미지정 (SC15)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains 'halt-conditions'
+    Assert-Case -Name "session-context: compact plan 없음 경로 미지정 (SC15)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains 'implement/SKILL.md'
 
-    # SC16: compact + 전 task 완료 → **implement-task 3경로**는 지정하지 않는다. 재개할 루프가 없으면
+    # SC16: compact + 전 task 완료 → **구현 경로**는 지정하지 않는다. 재개할 루프가 없으면
     #   그 세 파일을 읽힐 이유가 없다(이 케이스가 재는 것은 그 미주입이고 그 판정은 불변이다).
-    #   ⚠ v1.208.0부터 이 상태에도 **계획 재읽기 지시**(plan-feature/SKILL.md)는 나간다 — 완료된 plan이
+    #   ⚠ v1.208.0부터 이 상태에도 **계획 재읽기 지시**(plan/SKILL.md)는 나간다 — 완료된 plan이
     #   남은 채 새 계획을 세우는 세션이 두 분기 사이로 빠지던 사각을 닫았다(아래 SC38). assert가
-    #   'halt-conditions' 부재만 보므로 이 케이스는 그대로 유효하다.
+    #   구현 경로 부재만 보므로 이 케이스는 그대로 유효하다.
     $scDone = Join-Path $work 'sc-done'; New-Item -ItemType Directory $scDone -Force | Out-Null
     @('# Plan', '- [x] T1: done', '- [x] T2: done') | Set-Content -Encoding UTF8 (Join-Path $scDone 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scDone } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact 전 task 완료 경로 미지정 (SC16)" -R $r -ExpectExit 0 -ExpectContains '전부 완료' -ExpectNotContains 'halt-conditions'
+    Assert-Case -Name "session-context: compact 전 task 완료 경로 미지정 (SC16)" -R $r -ExpectExit 0 -ExpectContains '전부 완료' -ExpectNotContains 'implement/SKILL.md'
 
     # SC17: compact + 존재하지 않는 cwd → 기존 compact 문구는 그대로 나온다.
     #   이 라인이 cwd 검사 블록 밖에 있어야 성립하므로, 블록 안으로 옮기는 회귀를 골든이 막는다.
@@ -302,7 +297,7 @@ if (Test-HookSelected @('session-context')) {
     $scEmptyAg = Join-Path $work 'sc-empty-agents'; New-Item -ItemType Directory $scEmptyAg -Force | Out-Null
     New-Item -ItemType File -Path (Join-Path $scEmptyAg 'AGENTS.md') -Force | Out-Null
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmptyAg } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '증상 우회는 plan의 해결책이 될 수 없다' -ExpectNotContains '위키 vault: 설정'
+    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '형식이 규칙을 대신한다' -ExpectNotContains '위키 vault: 설정'
     # SC42e (회귀 고정 — v1.218.0): 큐 규약 **주입**도 같은 짝을 지킨다.
     #   주입이 둘로 늘었으므로 `$cwdBaseCount++`도 둘이어야 한다 — 한 쪽만 올리면
     #   그 세션에 vault 라인이 새로 붙는다(SC41e가 고정한 것과 같은 형태의 회귀).
@@ -318,11 +313,11 @@ if (Test-HookSelected @('session-context')) {
     #   ⚠ 이 두 케이스를 vault 설정($env:USERPROFILE = $isoV) **앞**에 두면 $vaultLine이 $null이라
     #     게이팅 로직 자체가 안 돌아 회귀를 못 잡는다(초안이 그 자리에 있었고 리뷰 2종이 각각 잡았다).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scNoT } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact + task 0개 plan에도 계획 지시 (SC31)" -R $r -ExpectExit 0 -ExpectContains 'plan-feature/SKILL.md'
+    Assert-Case -Name "session-context: compact + task 0개 plan에도 계획 지시 (SC31)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md'
     Assert-Case -Name "session-context: 계획 지시가 vault 신호를 삼키지 않음 (SC31b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
 
     # SC38/SC38b (v1.208.0 — 완료 plan 사각): compact + task가 **전부 완료**된 plan. 종전에는
-    #   위 `$open -gt 0` 분기(implement-task 3경로)에도, 아래 계획 리마인더(`-not $planPath -or $all -eq 0`)
+    #   위 `$open -gt 0` 분기(구현 경로 지시)에도, 아래 계획 리마인더(`-not $planPath -or $all -eq 0`)
     #   에도 걸리지 않아 **아무 재읽기 지시도 나가지 않았다.** 회차를 마치면 plan.md는 task가 전부 [x]인
     #   채 남고 다음 계획 세션이 그 위에서 시작하므로 이 상태가 오히려 흔하다.
     #   ⚠ SC16이 같은 상태를 쓰지만 **vault 설정 구간 밖**이라 SC38b(vault 신호 유지)를 잴 수 없다 —
@@ -330,9 +325,9 @@ if (Test-HookSelected @('session-context')) {
     $scDone2 = Join-Path $work 'sc-done2'; New-Item -ItemType Directory $scDone2 -Force | Out-Null
     @('# Plan', '- [x] T1: done', '- [x] T2: done') | Set-Content -Encoding UTF8 (Join-Path $scDone2 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scDone2 } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact + 전 task 완료 plan에도 계획 지시 (SC38)" -R $r -ExpectExit 0 -ExpectContains 'plan-feature/SKILL.md'
+    Assert-Case -Name "session-context: compact + 전 task 완료 plan에도 계획 지시 (SC38)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md'
     Assert-Case -Name "session-context: 완료 plan 계획 지시가 vault 신호를 삼키지 않음 (SC38b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
-    Assert-Case -Name "session-context: 완료 plan엔 implement-task 3경로 미주입 (SC38c)" -R $r -ExpectExit 0 -ExpectNotContains 'references/halt-conditions.md'
+    Assert-Case -Name "session-context: 완료 plan엔 구현 경로 미주입 (SC38c)" -R $r -ExpectExit 0 -ExpectNotContains 'implement/SKILL.md'
 
     # SC40~SC40i: plan `## Deferred / Follow-up`의 **미판정 건수 주입** (v1.214.0 T3).
     #   plan.md는 gitignore + 다음 회차 교체라, 대장(docs/plans/deferred.md)으로 옮기지 못한 항목은
@@ -461,14 +456,14 @@ if (Test-HookSelected @('session-context')) {
     #   구성은 SC18~SC23과 같은 원리다: 주입 1건(SC24) + 델타 3건(SC25 파일 부재·SC26 비하네스
     #   cwd 과다 주입·SC27 상위 탐색 금지). 통과만 확인하는 케이스는 게이팅을 고정하지 못한다.
     #   SC27이 특히 중요하다 — 상위 탐색을 넣으면 하네스 repo 하위 폴더에서 연 무관한 세션까지
-    #   하네스로 오판하는데, plan-feature Step 1도 같은 기준이라 둘이 함께 어긋난다.
+    #   하네스로 오판하는데, pjc:plan Step 1도 같은 기준이라 둘이 함께 어긋난다.
     $scHarn = Join-Path $work ("sc-harness-" + $suffix)
     New-Item -ItemType Directory -Path (Join-Path $scHarn 'plugins/pjc/.claude-plugin') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $scHarn 'sub') -Force | Out-Null
     '{ "name": "pjc" }' | Set-Content -Encoding UTF8 (Join-Path $scHarn 'plugins/pjc/.claude-plugin/plugin.json')
     "- [ ] T1. 미완료`n- [ ] T2. 미완료" | Set-Content -Encoding UTF8 (Join-Path $scHarn 'plan.md')
     "- [ ] T1. 미완료`n- [ ] T2. 미완료" | Set-Content -Encoding UTF8 (Join-Path $scHarn 'sub/plan.md')
-    "- [2026-07-22] [SKILL-IMPROVE] implement-task: 요지 1.`n- [2026-08-02] [SKILL-IMPROVE] plan-feature: 요지 2." |
+    "- [2026-07-22] [SKILL-IMPROVE] pjc:implement: 요지 1.`n- [2026-08-02] [SKILL-IMPROVE] pjc:plan: 요지 2." |
         Set-Content -Encoding UTF8 (Join-Path $isoVault 'skill-feedback.md')
     $env:USERPROFILE = $isoV
 
@@ -665,7 +660,7 @@ if (Test-HookSelected @('session-context')) {
         $scHarnSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
     } finally { Pop-Location }
     # 큐 라인이 뜨려면 skill-feedback.md 가 있어야 한다(SC25 가 지운 뒤라 다시 만든다).
-    "- [2026-07-22] [SKILL-IMPROVE] implement-task: 요지." | Set-Content -Encoding UTF8 (Join-Path $isoVault 'skill-feedback.md')
+    "- [2026-07-22] [SKILL-IMPROVE] pjc:implement: 요지." | Set-Content -Encoding UTF8 (Join-Path $isoVault 'skill-feedback.md')
     Write-ScHub -Path (Join-Path $scHubDir 'scharn.md') -RepoPath $scHarnRepo -Sha $scHarnSha -DaysAgo 20 -Project 'SCHarn'
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarnRepo } | ConvertTo-Json -Compress)
     $iVault2 = $r.out.IndexOf('위키 vault: 설정됨')

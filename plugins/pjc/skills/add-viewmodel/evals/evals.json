@@ -60,7 +60,7 @@
       "id": 10,
       "query": "Android Jetpack ViewModel 추가",
       "should_trigger": false,
-      "rationale": "Jetpack 비대상 — implement-task가 직접 구현(CommunityToolkit.Mvvm 아님)"
+      "rationale": "Jetpack 비대상 — pjc:implement가 직접 구현(CommunityToolkit.Mvvm 아님)"
     }
   ]
 }

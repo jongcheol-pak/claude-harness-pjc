@@ -8,14 +8,14 @@
     { "id": 5, "query": "위키에서 OO 어떻게 구현했는지 찾아줘", "should_trigger": true, "rationale": "query (절차 G)" },
     { "id": 6, "query": "변경분 위키에 반영해줘", "should_trigger": true, "rationale": "ingest (절차 B)" },
     { "id": 7, "query": "파이썬 리스트 컴프리헨션 설명해줘", "should_trigger": false, "rationale": "일반 질문 — 위키 무관" },
-    { "id": 8, "query": "이 버그 고쳐줘", "should_trigger": false, "rationale": "코드 수정 — implement-task/plan-feature 영역 (단 작업 전 K 참조는 plan-feature가 호출)" },
+    { "id": 8, "query": "이 버그 고쳐줘", "should_trigger": false, "rationale": "코드 수정 — pjc:implement/pjc:plan 영역 (단 작업 전 K 참조는 pjc:plan가 호출)" },
     { "id": 9, "query": "위키 되돌려줘, 어제 잘못 갱신했어", "should_trigger": true, "rationale": "복구 — 백업으로 되돌리기 (절차 L). description '위키 되돌려줘/복구' 트리거" },
     { "id": 10, "query": "이 프로젝트 위키에서 아카이브 상태로 바꿔줘", "should_trigger": true, "rationale": "상태 변경 (절차 D) — active→archived. description '상태 변경' 대상" },
     { "id": 11, "query": "이 프로젝트 위키에서 삭제해줘", "should_trigger": true, "rationale": "프로젝트 삭제 (절차 C). description '삭제' 대상" },
     { "id": 12, "query": "이 기능 예전에 왜 안 만들기로 했지? 위키에서 찾아줘", "should_trigger": true, "rationale": "결정 이력 타임라인 질의 — decisions.md 조회 (절차 G 2b/K 2)" },
     { "id": 13, "query": "위키 vault 경로를 다른 폴더로 바꿔줘", "should_trigger": true, "rationale": "vault 경로 설정 (절차 0-1) — '위키 폴더 변경/지정/설정' 요청" },
     { "id": 14, "query": "이 스크롤 버벅임 해결한 방법을 recipe로 위키에 넣어줘", "should_trigger": true, "rationale": "특정 기능/함정 recipe 추가 (절차 I) — 스택 폴더에 적재" },
-    { "id": 15, "query": "위키 관리하는 이 클래스 리팩토링해줘", "should_trigger": false, "rationale": "경계(오발동 함정) — 'wiki' 단어가 있으나 대상은 코드. 코드 리팩토링은 plan-feature/implement-task 영역, llm-wiki 아님" },
+    { "id": 15, "query": "위키 관리하는 이 클래스 리팩토링해줘", "should_trigger": false, "rationale": "경계(오발동 함정) — 'wiki' 단어가 있으나 대상은 코드. 코드 리팩토링은 pjc:plan/pjc:implement 영역, llm-wiki 아님" },
     { "id": 16, "query": "옵시디언 단축키 알려줘", "should_trigger": false, "rationale": "경계(오발동 함정) — 위키 도구(Obsidian) 언급이나 vault 운영과 무관한 일반 지식 질문" }
   ]
 }

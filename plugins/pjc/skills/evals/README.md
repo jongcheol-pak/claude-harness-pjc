@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 56건 (8스킬 × 최소 5건, `plan-feature`는 16건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 56건 (8스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
 | `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 | `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
 
@@ -76,7 +76,7 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 **`workspace`는 7종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
 - `no_plan` — AGENTS.md·소스만 있는 기본 프로젝트(Python 단일 스크립트).
-- `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `implement-task`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
+- `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `pjc:implement`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
 - `no_agents_md` — **AGENTS.md가 없는** 프로젝트. `bootstrap-agents-md`는 그 파일의 **부재**가 발동 조건이다.
 - `ddd_project` — Domain/Application/Infrastructure 레이어 + DDD를 명시한 AGENTS.md. `add-domain-service`용.
 - `xaml_project` — Views/ViewModels + WinUI·CommunityToolkit.Mvvm을 명시한 AGENTS.md. `add-viewmodel`용.
@@ -134,3 +134,9 @@ python compare_evals.py <before.json> <after.json>
 ## 비용
 
 `trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(56건 → 112세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
+
+## 실행 함정 (2026-09-03 실측)
+
+- **`trigger_eval.py`를 파일 리다이렉트로 돌리면 진행이 안 보인다** — python 이 stdout 을 블록 버퍼링해 케이스가 다 끝날 때까지 파일이 `START` 한 줄에서 자라지 않는다. **파일 mtime 으로 「정체」를 판정하면 오탐**이며(실측: 정상 실행 중인데 5분 무출력으로 정체 경보), 판정은 `python.exe` 프로세스 생존이나 `claude.exe --plugin-dir` 자식 존재로 한다. 진행을 보려면 래퍼에 `$env:PYTHONUNBUFFERED = '1'` 을 넣는다.
+- **설치·push 가 필요 없다** — 러너가 `claude --plugin-dir <워킹트리>` 로 스킬을 직접 로드하므로 워킹트리 변경이 그대로 측정된다. `init` 이벤트에서 pjc 로드를 단언하고 실패 시 exit 2 로 즉시 멈춘다.
+- **환경의 `CLAUDE_HARNESS_QUICK` 을 래퍼에서 지울 것** — hook 이 얽힌 케이스가 우회되면 측정이 교란된다(hook 골든의 같은 함정: `docs/golden-runner.md` 「⚠ 우회 변수 오염 — 래퍼에서 `CLAUDE_HARNESS_QUICK`을 반드시 지울 것」).

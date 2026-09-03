@@ -156,11 +156,11 @@ Assert-Case -Name "require-plan: 하위 폴더 AGENTS.md 신규도 차단 — �
 if (Test-HookSelected @('require-plan-for-write')) {
 # transcript 스텁 — §2의 3종은 bootstrap-agents-md 문자열이라 재사용 불가(스킬명이 다르면 매치 안 됨)
 $trPlanNo = Join-Path $work 'tr-plan-none.jsonl'
-'{"type":"assistant","text":"plan-feature 스킬 이야기만 하는 산문 언급"}' | Set-Content $trPlanNo
+'{"type":"assistant","text":"pjc:plan 스킬 이야기만 하는 산문 언급"}' | Set-Content $trPlanNo
 $trPlanIn = Join-Path $work 'tr-plan-input.jsonl'
-'{"type":"assistant","tool_use":{"name":"Skill","input":{"skill":"pjc:plan-feature"}}}' | Set-Content $trPlanIn
+'{"type":"assistant","tool_use":{"name":"Skill","input":{"skill":"pjc:plan"}}}' | Set-Content $trPlanIn
 $trImplRes = Join-Path $work 'tr-impl-result.jsonl'
-'{"type":"tool_result","content":"Launching skill: pjc:implement-task"}' | Set-Content $trImplRes
+'{"type":"tool_result","content":"Launching skill: pjc:implement"}' | Set-Content $trImplRes
 
 $pg = Join-Path $work 'proj-plangate'; New-Item -ItemType Directory $pg -Force | Out-Null
 $pgPlan = Join-Path $pg 'plan.md'
@@ -179,11 +179,11 @@ function New-PlanEditJson([string]$cwd, [string]$file, [string]$old, [string]$ne
 
 # --- PG: Write 축 ---
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trPlanNo)
-Assert-Case -Name "plan게이트: plan.md 신규 Write + 흔적 없음 차단 (PG1)" -R $r -ExpectExit 2 -ExpectContains 'plan-feature'
+Assert-Case -Name "plan게이트: plan.md 신규 Write + 흔적 없음 차단 (PG1)" -R $r -ExpectExit 2 -ExpectContains 'pjc:plan'
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trPlanIn)
-Assert-Case -Name "plan게이트: plan.md Write + plan-feature 흔적 통과 (PG2)" -R $r -ExpectExit 0
+Assert-Case -Name "plan게이트: plan.md Write + pjc:plan 흔적 통과 (PG2)" -R $r -ExpectExit 0
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trImplRes)
-Assert-Case -Name "plan게이트: plan.md Write + implement-task 흔적 통과 (PG3)" -R $r -ExpectExit 0
+Assert-Case -Name "plan게이트: plan.md Write + pjc:implement 흔적 통과 (PG3)" -R $r -ExpectExit 0
 # PG4: 기존 plan.md도 Write면 차단 (신규/기존 무관 — 통째 재작성이므로)
 "# 기존 plan`n- [x] T1: done" | Set-Content $pgPlan
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanWriteJson $pg $pgPlan "# 재작성`n- [ ] T1: y" $trPlanNo)
@@ -207,9 +207,9 @@ Assert-Case -Name "plan게이트: transcript 미제공 fail-open 통과 (PG9)" -
 $peFile = Join-Path $pgPlansDir 'sneak.md'
 "# 그냥 메모" | Set-Content $peFile
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# plan`n- [ ] T1: x" $trPlanNo)
-Assert-Case -Name "plan게이트: 체크박스 도입 Edit 차단 — 2단계 우회 (PE1)" -R $r -ExpectExit 2 -ExpectContains 'plan-feature'
+Assert-Case -Name "plan게이트: 체크박스 도입 Edit 차단 — 2단계 우회 (PE1)" -R $r -ExpectExit 2 -ExpectContains 'pjc:plan'
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# plan`n- [ ] T1: x" $trImplRes)
-Assert-Case -Name "plan게이트: 체크박스 도입 Edit + implement-task 흔적 통과 (PE2)" -R $r -ExpectExit 0
+Assert-Case -Name "plan게이트: 체크박스 도입 Edit + pjc:implement 흔적 통과 (PE2)" -R $r -ExpectExit 0
 # PE3: MultiEdit 순차 적용 우회 — edit#1이 도입, edit#2가 그 체크박스를 old로 참조.
 #   합산 판정이면 old에 체크박스가 섞여 통과했을 것(false-negative). edit 단위 판정이라 차단된다.
 $peMulti = @{ tool_name = 'MultiEdit'; cwd = $pg; transcript_path = $trPlanNo; tool_input = @{
@@ -226,7 +226,7 @@ Assert-Case -Name "plan게이트: MultiEdit 순차 적용 우회 차단 — edit
 #   확장 전 무매치였던 표기가 이제 새로 차단되는지(의도된 확대)와, 체크박스가 아닌 정상 문서가
 #   여전히 통과하는지(오차단 0)를 함께 건다 — 양성만 보면 경계가 어디까지 넓어졌는지 알 수 없다.
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# plan`n- [-] T1: 취소됨" $trPlanNo)
-Assert-Case -Name "plan게이트: 취소 체크박스 [-] 도입 Edit 차단 (PE4, v1.181.0 확장 델타)" -R $r -ExpectExit 2 -ExpectContains 'plan-feature'
+Assert-Case -Name "plan게이트: 취소 체크박스 [-] 도입 Edit 차단 (PE4, v1.181.0 확장 델타)" -R $r -ExpectExit 2 -ExpectContains 'pjc:plan'
 $r = Invoke-Hook 'require-plan-for-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메모' "# 메모`n- 항목 하나`n- [단순 대괄호] 링크 아님" $trPlanNo)
 Assert-Case -Name "plan게이트: 체크박스 아닌 대괄호 문서는 통과 (PE5, 오차단 0)" -R $r -ExpectExit 0
 

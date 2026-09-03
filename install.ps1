@@ -308,8 +308,8 @@ Write-Host "    /plugin list                    # pjc 확인" -ForegroundColor Y
 Write-Host "    /                               # /pjc: 시작 명령들 자동완성" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  주요 명령:" -ForegroundColor White
-Write-Host "    /pjc:plan-feature <설명>" -ForegroundColor Yellow
-Write-Host "    /pjc:implement-task <T번호>" -ForegroundColor Yellow
+Write-Host "    /pjc:plan <설명>" -ForegroundColor Yellow
+Write-Host "    /pjc:implement <T번호>" -ForegroundColor Yellow
 Write-Host "    /pjc:pjc-systematic-debugging <증상>" -ForegroundColor Yellow
 Write-Host ""
 

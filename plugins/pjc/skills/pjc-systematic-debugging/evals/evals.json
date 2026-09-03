@@ -42,13 +42,13 @@
       "id": 7,
       "query": "기능 하나 추가하고 싶어",
       "should_trigger": false,
-      "rationale": "신규 기능 — plan-feature 영역"
+      "rationale": "신규 기능 — pjc:plan 영역"
     },
     {
       "id": 8,
       "query": "이 코드를 더 깔끔하게 리팩토링하고 싶어",
       "should_trigger": false,
-      "rationale": "리팩토링 — plan-feature 영역"
+      "rationale": "리팩토링 — pjc:plan 영역"
     },
     {
       "id": 9,

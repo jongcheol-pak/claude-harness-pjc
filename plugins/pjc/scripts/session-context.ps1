@@ -3,7 +3,7 @@
 # 왜: ① 글로벌 CLAUDE.md의 "작업 시작 전 plan.md 확인" 규칙이 전적으로
 #   모델 자율에 맡겨져 있어 긴 세션·새 세션에서 누락되기 쉽다 — 세션 시작 시점에 기계가
 #   상태 요약 1~3줄을 주입해 규칙을 구조화한다(v1.112.0).
-#   ② 컨텍스트 요약(auto-compact) 직후는 자율 루프(implement-task)의 절차 규칙·plan 상태가
+#   ② 컨텍스트 요약(auto-compact) 직후는 자율 루프(pjc:implement)의 절차 규칙·plan 상태가
 #   요약으로 희석되는 최위험 지점 — source=compact일 때 재확인 리마인더를 추가 주입한다.
 #   여기에 더해 **미완료 task가 있는 plan을 찾은 경우에만** 재읽기 대상 경로를 못박는다:
 #   스킬은 압축 후 앞 5,000토큰만 재부착되고 동일 스킬 재invoke는 "이미 로드됨"만 반환해
@@ -70,7 +70,7 @@ try {
 
     # ---- compact 리마인더 (plan 유무 무관) ----
     if ($source -eq 'compact') {
-        $lines.Add("[pjc 세션 컨텍스트] 컨텍스트 요약 직후입니다 — 진행 중이던 작업이 있으면 plan.md의 현재 task와 활성 스킬(implement-task 등)의 Halt 조건·승인 게이트·커밋 프로토콜을 요약 기억에 의존하지 말고 SKILL 문서·plan.md 원문에서 재확인하세요. 그리고 **아직 plan.md에 적지 않은** 발견(이연할 항목·확인된 사실)이 요약 전에 있었다면 지금 plan.md에 적으세요 — 대화에만 있던 것은 요약을 지나면 근거 없이 사라집니다.")
+        $lines.Add("[pjc 세션 컨텍스트] 컨텍스트 요약 직후입니다 — 진행 중이던 작업이 있으면 plan.md의 현재 task와 활성 스킬(pjc:implement 등)의 중단 조건·승인 게이트·커밋 프로토콜을 요약 기억에 의존하지 말고 SKILL 문서·plan.md 원문에서 재확인하세요. 그리고 **아직 plan.md에 적지 않은** 발견(이연할 항목·확인된 사실)이 요약 전에 있었다면 지금 plan.md에 적으세요 — 대화에만 있던 것은 요약을 지나면 근거 없이 사라집니다.")
     }
 
     if (-not [string]::IsNullOrWhiteSpace($cwd) -and (Test-Path -LiteralPath $cwd -PathType Container)) {
@@ -152,23 +152,15 @@ try {
                         #   깨진다. 대신 Phase와 무관하게 늘 필요한 루프 제어 3종만 고정 지정하고,
                         #   Phase 특화 reference는 스킬 본문의 지시에 맡긴다.
                         if ($source -eq 'compact') {
-                            # ⚠ 3경로 리터럴(implement-task/SKILL.md · references/halt-conditions.md · references/recovery.md)을
-                            #   보존한다 — 골든 SC14·SC14b·SC14c가 각각을 ExpectContains로 재고 있어, 문면을 다듬다
-                            #   경로 하나라도 빠지면 즉시 FAIL한다. 조정 대상은 경로를 감싸는 서술뿐이다.
-                            $lines.Add("[pjc 세션 컨텍스트] 진행 중 plan이 있습니다 — 아래에 루프 제어 규칙 원문을 함께 주입했으니 그 두 절은 다시 읽지 않아도 됩니다. 그 밖의 Phase 절차·복구 규약이 필요하면 Read로 확인하세요(스킬 재invoke로는 복구되지 않습니다): implement-task/SKILL.md · implement-task/references/halt-conditions.md · implement-task/references/recovery.md. 진행 중인 Phase가 참조하는 reference 파일도 함께 읽으세요.")
+                            # ⚠ 경로 리터럴을 보존한다 — 골든이 ExpectContains로 재고 있어, 문면을 다듬다
+                            #   경로가 빠지면 즉시 FAIL한다. 조정 대상은 경로를 감싸는 서술뿐이다.
+                            $lines.Add("[pjc 세션 컨텍스트] 진행 중 plan이 있습니다 — 아래에 자율 루프 규칙 원문을 함께 주입했습니다. 그 밖의 절차가 필요하면 Read로 확인하세요(스킬 재invoke로는 복구되지 않습니다): implement/SKILL.md. 그 파일이 참조하는 WIKI.md도 필요하면 함께 읽으세요.")
 
-                            # 경로만 지시하면 ① 실제로 읽었는지 검증할 장치가 없고 ② 세 파일 합 약 172KB를
-                            #   다시 읽는 것은 압축으로 확보한 여유를 도로 소진한다. 그래서 루프 제어에 필요한
-                            #   두 절만 원문에서 잘라 넣는다(약 14KB). Phase 절차·복구 규약은 여전히 파일에 있다.
+                            # 경로만 지시하면 실제로 읽었는지 검증할 장치가 없다. 루프가 멈추는 것을 막는
+                            #   절 하나만 원문에서 잘라 넣는다 — 중단 조건과 「멈추지 않는 자리」가 그 안에 있다.
                             # 추출 실패는 조용히 건너뛴다 — 위 Read 지시가 그대로 남아 폴백이 성립한다.
-                            $secRules = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/SKILL.md') -StartHeading '### 🚨 자율 루프의 절대 규칙' -StopHeading '### 🧠 컨텍스트 관리 (장시간 작업 대비)'
-                            if ($secRules) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/SKILL.md 「자율 루프의 절대 규칙」)`n$secRules") }
-                            # 종료 앵커가 「"사소한 문제"…」인 것은 그 직전 절(「컨텍스트 한계는 Halt 사유가 아니다」)을
-                            #   **포함하기 위해서**다 — 압축 직후에 가장 필요한 규칙이 *"컨텍스트가 과밀해도 멈추거나
-                            #   새 세션을 묻지 않는다"* 인데, 그 절을 종료 앵커로 삼으면 배타적으로 잘려 빠진다.
-                            #   회차 동기가 「compact 후 루프가 멈춘다」인데 정작 그 답이 주입 밖에 남던 것을 F-7이 잡았다.
-                            $secHalt = Get-SkillSection -Path (Join-Path $skillsDir 'implement-task/references/halt-conditions.md') -StartHeading '## 중단 조건 표' -StopHeading '## "사소한 문제"는 중단 사유가 아니다'
-                            if ($secHalt) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement-task/references/halt-conditions.md 「중단 조건 표」·「위임 경계」·「컨텍스트 한계는 Halt 사유가 아니다」)`n$secHalt") }
+                            $secRules = Get-SkillSection -Path (Join-Path $skillsDir 'implement/SKILL.md') -StartHeading '## 자율 루프' -StopHeading '## 검증'
+                            if ($secRules) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement/SKILL.md 「자율 루프」)`n$secRules") }
                         }
                     } else {
                         $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 전부 완료 — 새 작업이면 plan 교체 전 Deferred/Follow-up 잔여 항목을 확인하세요.${defNote}")
@@ -185,8 +177,8 @@ try {
         #   — v1.188.0은 날짜 접두 부기를 못 읽어 하루 전 판정된 항목을 39일로 봤고, v1.219.0·v1.220.0은
         #   항목 안의 **최신** 스탬프를 못 읽어 34일을 보고했다(실측 14일). check-harness-consistency.py는
         #   두 문서의 문면 동기만 대조하고 **값 자체를 재는 축이 없어** 손계산이 틀려도 전 축이 통과한다.
-        #   오산이 난 자리가 계획 세션(plan-feature Step 1 ③)이라 검사기로는 늦다 — 세션 시작에 기계가 준다.
-        # 판정 규칙(정본: implement-task references/phase-f-detail.md ⓪): 항목마다 「재확인 표기·부기 형식·
+        #   오산이 난 자리가 계획 세션(pjc:plan Step 1)이라 검사기로는 늦다 — 세션 시작에 기계가 준다.
+        # 판정 규칙: 항목마다 「재확인 표기·부기 형식·
         #   등록일 중 가장 최신 날짜」를 정하고 그 **최솟값**이 최고령이다.
         # **파싱 단위는 「항목」이지 「줄」이 아니다** — 대장에는 하위 불릿이 실재하고, 거기에만 최신 스탬프가
         #   붙은 항목이 생기면 줄 단위는 판정일을 **과소평가**해 축 ②를 일찍 연다(v1.188.0 오산과 같은 방향).
@@ -272,7 +264,7 @@ try {
 
         # ---- 계획 세션의 압축 리마인더 (plan이 없거나 · task 0개 · task가 전부 완료) ----
         # 위 블록은 `if ($planPath)` 안이라 **진행 중 plan이 있는 세션**만 닿는다. 계획을 세우던 중
-        #   압축되면 plan이 아직 없거나 task 체크박스가 0개라 그 지시를 못 받는데, `plan-feature`도
+        #   압축되면 plan이 아직 없거나 task 체크박스가 0개라 그 지시를 못 받는데, `pjc:plan`도
         #   본체가 앞 5,000토큰 밖으로 밀리는 것은 같다(경계 82행 / 전체 526행 — 예산 표 실측) — Step 4 영향 범위,
         #   Step 5 작업 분해, Step 9 리뷰 게이트가 통째로 요약에 뭉개진 채 계획이 이어진다.
         # **`$open -eq 0`(전부 완료)도 대상이다.** 위 블록의 compact 재읽기 지시는 `$open -gt 0`
@@ -286,7 +278,7 @@ try {
         #   무관한 폴더의 압축 세션에까지 뜨면 그냥 노이즈다(AGENTS.md 경로는 아래에서 다시 쓰지만
         #   여기서는 존재 판정만 필요해 직접 Test-Path 한다).
         if ($source -eq 'compact' -and (-not $planPath -or $all -eq 0 -or $open -eq 0) -and ($planPath -or (Test-Path -LiteralPath (Join-Path $cwd 'AGENTS.md')))) {
-            $lines.Add("[pjc 세션 컨텍스트] 계획을 세우던 중이었다면 — plan-feature/SKILL.md를 Read로 재확인하세요(스킬 재invoke로는 복구되지 않습니다). 영향 범위 조사·작업 분해·리뷰 게이트가 앞 5,000토큰 밖이라 요약으로 뭉개집니다.")
+            $lines.Add("[pjc 세션 컨텍스트] 계획을 세우던 중이었다면 — plan/SKILL.md를 Read로 재확인하세요(스킬 재invoke로는 복구되지 않습니다). 인터뷰 절차·영향 범위 실측·작업 분해가 요약으로 뭉개집니다.")
             # 이 줄은 compact 리마인더라 **vault 게이팅 신호가 아니다** — 기존 리마인더(위 source 판정
             #   블록)가 $cwdBaseCount 산정 *이전*에 추가돼 자연히 제외되는 것과 같은 취지다. 여기는
             #   산정 이후라 기준선을 함께 올려야 한다. 안 올리면 plan도 AGENTS.md도 없는 프로젝트의
@@ -297,14 +289,12 @@ try {
             #   그 세션만 compact에서 vault가 조용히 빠진다(startup에서는 붙는데 — 소스별 비일관).
             $cwdBaseCount++
 
-            # 경로만 지시하면 구현 세션에서와 같은 문제가 남는다 — 읽었는지 검증할 수 없고, 그 파일이
-            #   100KB급이라 다시 읽는 것이 압축으로 확보한 여유를 도로 쓴다. 계획 판단이 처음부터
-            #   틀어지는 것을 막는 것은 절대 규칙이므로 그 절만 원문으로 넣는다(실측 9,963B).
-            #   Step 4·5·9는 계획 중반에 필요해 그때 Read해도 늦지 않아 대상이 아니다.
+            # 경로만 지시하면 읽었는지 검증할 수 없다. 계획이 추측으로 흐르는 것을 막는 절 하나만
+            #   원문으로 넣는다 — 실측 3열 표가 그 자리다. 인터뷰·분해는 계획 중반이라 그때 Read해도 늦지 않다.
             # 추출 실패는 조용히 건너뛴다 — 위 경로 지시가 그대로 남아 폴백이 성립한다(구현 세션과 같은 설계).
-            $secPlanRules = Get-SkillSection -Path (Join-Path $skillsDir 'plan-feature/SKILL.md') -StartHeading '## 절대 규칙 (Hard Rules)' -StopHeading '## 실행 단계'
+            $secPlanRules = Get-SkillSection -Path (Join-Path $skillsDir 'plan/SKILL.md') -StartHeading '## Step 3. 영향 범위 실측' -StopHeading '## Step 4. 작업 분해'
             if ($secPlanRules) {
-                $lines.Add("[pjc 세션 컨텍스트] 압축 직후 계획 규칙 (원문 발췌 — plan-feature/SKILL.md 「절대 규칙」)`n$secPlanRules")
+                $lines.Add("[pjc 세션 컨텍스트] 압축 직후 계획 규칙 (원문 발췌 — plan/SKILL.md 「영향 범위 실측」)`n$secPlanRules")
                 # 위 리마인더와 같은 이유로 기준선을 함께 올린다 — 이 분기는 「줄 1개 추가 = 기준선 1 증가」가
                 #   짝이라, 두 번째 Add를 넣고 올리지 않으면 `$lines.Count -gt $cwdBaseCount`가 성립해
                 #   plan 없이 AGENTS.md만 있는 압축 세션에 vault 라인이 새로 붙는다.
@@ -313,7 +303,7 @@ try {
             }
 
             # 같은 분기에서 큐 기록 규약도 넣는다 — 계획 세션의 배치 시점(Step 10 승인 직후)에
-            #   `[DECISION]`·`[PROJECT-FACT]` 큐잉 형식이 필요한데, plan-feature Step 10은 그 절차를
+            #   `[DECISION]`·`[PROJECT-FACT]` 큐잉 형식이 필요한데, pjc:plan Step 6은 그 절차를
             #   **가리키기만 하고 llm-wiki를 발동하지 않아** 압축되면 형식이 손에 남지 않는다.
             #   구현 세션을 대상에서 뺀 이유: F-6.5 ⓒ가 `pjc:llm-wiki`를 Skill 도구로 재발동해
             #   복구 경로가 이미 있다(그쪽은 주입 없이도 규약이 손에 들어온다).
@@ -348,7 +338,7 @@ try {
         #   (2026-07-30). 기계가 상태를 1줄 주입하면 그 추측 여지 자체가 사라진다 —
         #   AGENTS.md 전문 주입(아래)과 같은 구조의 해법이다.
         # 왜 ②(v1.197.0 추가): 절차 K는 **호출측이 그 절차를 수행할 때만** 돈다(v1.220.0부터 스킬 발동이 아니라
-        #   `lookup-rules.md` Read다 — plan-feature Step 1·implement-task
+        #   `lookup-rules.md` Read다 — pjc:plan Step 1·pjc:implement
         #   재개 진입·pjc-systematic-debugging 2-A). 그래서 **스킬을 발동하지 않는 세션**(trivial 수정·
         #   질문)은 프로젝트 맥락을 위키가 아니라 코드에서 다시 캐게 된다 — 허브 1개(실측 9,928자)면
         #   될 것을. 라인이 "참조 가능"(권유)이 아니라 **어디를 읽을지**를 말하게 해 그 경로를 메운다.
@@ -382,12 +372,12 @@ try {
 
                         # ---- 스킬 개선 큐 잔량 (하네스 레포 세션에서만) ----
                         # 왜: [SKILL-IMPROVE] 큐는 유입만 자동이고 착수 지점이 없어 12건이 최장 22일
-                        #   방치됐다. plan-feature Step 1이 계획할 때 조회하지만 **계획을 열지 않는
+                        #   방치됐다. pjc:plan Step 1이 계획할 때 조회하지만 **계획을 열지 않는
                         #   세션에서는 잔량이 보이지 않는다** — 이 1줄이 하네스 세션마다 그 사각을 메운다.
                         #   특히 체류(최고령)를 함께 내는 이유는 실제 증상이 잔량이 아니라 체류이기
                         #   때문이다(1건이어도 반년을 묵으면 그것이 이 채널의 실패다).
                         # 하네스 레포 판정은 cwd 아래 plugin.json 존재이며 **상위 탐색을 하지 않는다**
-                        #   — plan-feature Step 1과 같은 기준이어야 한다(갈리면 한쪽만 발화한다).
+                        #   — pjc:plan Step 1과 같은 기준이어야 한다(갈리면 한쪽만 발화한다).
                         # 본문은 주입하지 않는다(건수·최고령만) — 컨텍스트 예산 보호.
                         # 전 구간 try/catch로 감싼다: 큐 읽기 실패가 세션 시작을 막지 않게(fail-open).
                         try {
@@ -407,7 +397,7 @@ try {
                                         #   조용히 사라진다(2건 이상일 때만 동작해 오래 드러나지 않았다).
                                         $fbOldest = @($fbDates | Sort-Object)[0]
                                         $fbAge = [int]([math]::Floor(((Get-Date).Date - [datetime]::ParseExact($fbOldest, 'yyyy-MM-dd', $null)).TotalDays))
-                                        $feedbackLine = "[pjc 세션 컨텍스트] 스킬 개선 큐(skill-feedback.md): 대기 $($fbDates.Count)건 / 최고령 ${fbAge}일 — plan-feature Step 1이 할 일 후보로 조회합니다."
+                                        $feedbackLine = "[pjc 세션 컨텍스트] 스킬 개선 큐(skill-feedback.md): 대기 $($fbDates.Count)건 / 최고령 ${fbAge}일 — pjc:plan Step 1이 할 일 후보로 조회합니다."
                                     }
                                 }
                             }

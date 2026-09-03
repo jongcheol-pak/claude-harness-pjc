@@ -65,7 +65,7 @@ MAX_DIAG_TEXT = 300
 def build_workspace(kind, dest):
     """케이스가 실행될 최소 프로젝트를 dest에 만든다.
 
-    kind='with_plan'이면 미완료 task가 있는 plan.md를 둔다 — implement-task는 '승인된 plan이
+    kind='with_plan'이면 미완료 task가 있는 plan.md를 둔다 — pjc:implement는 '승인된 plan이
     이미 있을 때만' 발동하므로, plan 유무가 곧 트리거 조건의 일부다.
 
     kind='no_agents_md'면 AGENTS.md를 만들지 않는다 — bootstrap-agents-md는 **그 파일의 부재**가
@@ -243,7 +243,7 @@ def parse_events(lines):
     """stream-json 줄들에서 (init, 발동 스킬 목록, result, 도구 시퀀스, 최종 텍스트)를 뽑는다.
 
     첫 줄이 init이라고 가정하면 안 된다 — pjc hook이 있으면 hook_started가 먼저 온다.
-    플러그인 스킬은 네임스페이스 이름(`pjc:implement-task`)으로 등재되므로 그대로 수집한다.
+    플러그인 스킬은 네임스페이스 이름(`pjc:implement`)으로 등재되므로 그대로 수집한다.
 
     도구 시퀀스와 최종 텍스트는 **미발동 케이스의 원인 규명용**이다. 이것이 없으면 결과 JSON에
     "발동 안 함"만 남아 ⓐ 질의가 선행 대화를 전제해 모델이 되물은 것 ⓑ 픽스처와 전제가 어긋난 것

@@ -8,7 +8,7 @@
 
 - **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
 - 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
-- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan-feature` Step 1 소관).
+- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan` Step 1 소관).
 
 ## Build & Test
 - **가상환경 생성**: `python -m venv .venv` 또는 `uv venv` (poetry는 `poetry install` 시 자동 생성 — 활성화는 `poetry env activate`, `poetry shell`은 Poetry 2.x에서 제거됨)

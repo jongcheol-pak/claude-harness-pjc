@@ -11,21 +11,21 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 
 ## 호출 흐름
 
-이 skill은 **`pjc:implement-task`의 Phase I 안에서 호출**되거나, 사용자가 직접 `/pjc:add-domain-service`로 호출할 수 있다.
+이 skill은 **`pjc:implement`의 Phase I 안에서 호출**되거나, 사용자가 직접 `/pjc:add-domain-service`로 호출할 수 있다.
 
 | 호출 방식 | 흐름 |
 |---|---|
-| implement-task Phase I 안 | plan.md task가 "Domain Service 추가" 또는 "UseCase 추가" 패턴이면 자동 호출. 이 skill이 boilerplate 생성 후 implement-task의 Phase V가 검증을 이어받음. |
+| `pjc:implement` 구현 단계 안 | plan.md task가 "Domain Service 추가" 또는 "UseCase 추가" 패턴이면 자동 호출. 이 skill이 boilerplate 생성 후 `pjc:implement`의 검증이 검증을 이어받음. |
 | 사용자 직접 호출 | plan.md 없이 단독 사용 시 `$env:CLAUDE_HARNESS_QUICK = '1'` 필요. |
 
 이 skill의 **책임 범위**: 인터페이스 정의, 구현 skeleton, DI 등록, 단위 테스트 스캐폴드 + csproj 의존 방향 검증.
-**책임 범위 밖**: 구체 비즈니스 규칙 작성 — implement-task가 담당.
+**책임 범위 밖**: 구체 비즈니스 규칙 작성 — `pjc:implement`가 담당.
 
 이 skill은 **.NET 프로젝트를 기준**으로 한다. 다른 스택(Kotlin/Android 등)은 AGENTS.md 컨벤션을 우선하고, 아래 템플릿·검증은 .NET 기준의 개념적 참고로만 사용한다.
 
 ## 사전 조건
 
-`plan-feature`에서 다음이 결정되어 있어야 한다:
+`pjc:plan`에서 다음이 결정되어 있어야 한다:
 
 - 서비스 이름과 책임 (한 문장)
 - 레이어 (Domain Service vs Application Service)
@@ -34,7 +34,7 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 - 트랜잭션 경계 (있다면)
 - 도메인 이벤트 발행 여부
 
-미정 항목이 있으면 `plan-feature`로 복귀.
+미정 항목이 있으면 `pjc:plan`로 복귀.
 
 ## Domain vs Application — 어디에 둘 것인가
 

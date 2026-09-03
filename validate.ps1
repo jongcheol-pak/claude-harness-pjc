@@ -111,7 +111,7 @@ Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" |
 Write-Host ""
 
 # 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
-$skills = @('plan-feature', 'implement-task', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'bootstrap-agents-md', 'llm-wiki', 'record-project-fact')
+$skills = @('plan', 'implement', 'pjc-systematic-debugging', 'add-viewmodel', 'add-domain-service', 'bootstrap-agents-md', 'llm-wiki', 'record-project-fact')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"
@@ -130,7 +130,7 @@ foreach ($a in $actualSkills) {
 Write-Host ""
 
 # 4. Agents (expected 목록 존재 + 미등록 탐지)
-$agents = @('plan-reviewer', 'spec-compliance-reviewer', 'code-quality-reviewer', 'explorer', 'plan-completion-reviewer', 'spec-prefilter', 'root-cause-analyzer')
+$agents = @('plan-reviewer', 'completion-reviewer')
 Write-Host "4. Agents $($agents.Count)개" -ForegroundColor Yellow
 foreach ($a in $agents) {
     $agentPath = Join-Path $pluginRoot "agents/$a.md"
@@ -152,8 +152,8 @@ $hooks = @('block-destructive.ps1', 'protect-harness.ps1', 'require-plan-for-wri
 #   3종 검사 로직 — pre-bash-dispatch 디스패처와 warn-external-ops·require-task-checkbox·warn-commit-secrets
 #   래퍼가 공유)·hook-event-log(이벤트 적재)·orphan-process-cleanup(고아 콘솔 프로세스 회수 — Stop·
 #   SessionStart·SessionEnd hook이 dot-source) / 수동 실행 도구: report-hook-events(이벤트 로그 집계
-#   리포트)·report-reviewer-usage(spec-prefilter 판정 실적 집계 — 커밋 trailer를 읽는 읽기 전용 도구).
-$knownHelpers = @('secret-patterns.ps1', 'bash-hook-lib.ps1', 'hook-event-log.ps1', 'report-hook-events.ps1', 'report-reviewer-usage.ps1', 'orphan-process-cleanup.ps1')
+#   리포트).
+$knownHelpers = @('secret-patterns.ps1', 'bash-hook-lib.ps1', 'hook-event-log.ps1', 'report-hook-events.ps1', 'orphan-process-cleanup.ps1')
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
 foreach ($h in $hooks) {
     $hookPath = Join-Path $pluginRoot "scripts/$h"

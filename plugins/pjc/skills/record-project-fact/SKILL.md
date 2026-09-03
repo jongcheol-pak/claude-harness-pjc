@@ -1,6 +1,6 @@
 ---
 name: record-project-fact
-description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into an EXISTING AGENTS.md — on the suggest-agents-record hook's acceptance, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "빌드 명령 기록해줘", "DB 접근법 적어둬", "AGENTS.md에서 이 항목 빼줘". Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 넘었어", the hook's "주입 상한 임박") — Step 5 relocates oversized sections and leaves a pointer. Also for RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘", "소급 정리") — measures, judges each section's destination, and hands off to plan-feature instead of editing. Do NOT trigger for creating a new AGENTS.md (use bootstrap-agents-md) or code work (plan-feature/implement-task). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's verbatim relocation, which reports afterward. Retrofit is not exempt — it deletes, so the plan is approved first. Real secrets are forbidden — env var names only.
+description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into an EXISTING AGENTS.md — on the suggest-agents-record hook's acceptance, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "빌드 명령 기록해줘", "DB 접근법 적어둬", "AGENTS.md에서 이 항목 빼줘". Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 넘었어", the hook's "주입 상한 임박") — Step 5 relocates oversized sections and leaves a pointer. Also for RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘", "소급 정리") — measures, judges each section's destination, and hands off to pjc:plan instead of editing. Do NOT trigger for creating a new AGENTS.md (use bootstrap-agents-md) or code work (pjc:plan/pjc:implement). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's verbatim relocation, which reports afterward. Retrofit is not exempt — it deletes, so the plan is approved first. Real secrets are forbidden — env var names only.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
@@ -21,7 +21,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 | 사용자가 "AGENTS.md에서 이 항목 빼줘/제거" 등 (stale·오기록·시크릿 제거) | 이 스킬로 삭제 |
 | 사용자가 "AGENTS.md 정리해줘"·"새 경계로 맞춰줘" 등 | **소급 정리** — 정리안을 만들어 `plan.md`로 넘긴다(아래 절) |
 
-bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)와 **역할이 다르다** — 이 스킬은 **이미 있는 AGENTS.md에 사실을 누적**하는 전담이다.
+bootstrap-agents-md(최초 생성)·`pjc:plan`/`pjc:implement`(코드 작업)와 **역할이 다르다** — 이 스킬은 **이미 있는 AGENTS.md에 사실을 누적**하는 전담이다.
 
 ## 절대 규칙 (Hard Rules)
 
@@ -44,7 +44,7 @@ bootstrap-agents-md(최초 생성)·plan-feature/implement-task(코드 작업)�
 | 테스트·검증 명령 | `## Build & Test` | 기존 섹션 보강 |
 | DB 접근 방법 | `## 데이터 접근` | 없으면 `## Build & Test` **뒤에** 신설 |
 | 파일·산출물 관리 | `## 산출물·파일 관리` | 없으면 신설(`## Repository Structure`는 더 이상 만들지 않는다 — 금지 목록). **위치는 그 프로젝트 스택의 bootstrap 템플릿 순서를 따른다** — `## 데이터 접근` 앞뒤 어느 쪽인지가 스택마다 다르다(실측: UI 계열 **4종**은 산출물이 앞, **6종**은 데이터 접근이 앞, `multi-stack-example`은 두 절이 없다) |
-| 테스트 비대상 계층·의도된 제약 | `## Conventions` | 테스트를 **의도적으로 쓰지 않는 계층**(예: ViewModel·UI 바인딩 — 수동 확인으로 대체), 의도된 UX·기능 제약 등 **"빠뜨린 것이 아니라 그렇게 정한 것"**. 기록해두지 않으면 리뷰어가 "테스트 누락"으로 오판한다(spec-compliance-reviewer 테스트 예외가 이 표기를 근거로 삼는다) |
+| 테스트 비대상 계층·의도된 제약 | `## Conventions` | 테스트를 **의도적으로 쓰지 않는 계층**(예: ViewModel·UI 바인딩 — 수동 확인으로 대체), 의도된 UX·기능 제약 등 **"빠뜨린 것이 아니라 그렇게 정한 것"**. 기록해두지 않으면 리뷰어가 "테스트 누락"으로 오판한다(리뷰어의 테스트 예외 판정이 이 표기를 근거로 삼는다) |
 
 > 섹션 신설 위치는 **그 프로젝트 스택의 bootstrap 템플릿 순서**를 따른다 — 템플릿마다 다르므로 하나로 고정하지 않는다(해당 `templates/<stack>.md`의 절 순서를 보고 정한다). 섹션이 이미 있으면 그 안에 항목을 추가/갱신한다.
 
@@ -129,7 +129,7 @@ python "<skill>/scripts/relocate-agents.py" "<레포 루트>" [--dry-run]
 
 **발동** — 사용자가 `"AGENTS.md 정리해줘"`·`"새 경계로 맞춰줘"`·`"AGENTS.md가 너무 커졌어"`처럼 요청할 때. 상한 초과로 Step 5가 「이관 불가」를 낸 뒤 그 안내를 따라 들어오는 경우도 같다(새 경계에서 잔류 7종은 AGENTS.md 절의 거의 전부라 절 단위 이관으로는 해소되지 않는다).
 
-**산출물은 `plan.md`다 — 이 스킬이 직접 고치지 않는다.** 현황 측정·판정·정리안까지 만들고 `pjc:plan-feature`로 넘긴다. 실행은 `pjc:implement-task`가 한다. 그 이유 셋:
+**산출물은 `plan.md`다 — 이 스킬이 직접 고치지 않는다.** 현황 측정·판정·정리안까지 만들고 `pjc:plan`로 넘긴다. 실행은 `pjc:implement`가 한다. 그 이유 셋:
 
 - **삭제를 포함**한다 — 대량 수정·삭제는 승인 게이트가 필요하다(글로벌 지침 1단계).
 - **규모가 plan급이다** — 실측 표본(Maid)에서 손댄 것은 레포 8파일 + 위키 4쪽이고 그중 **신설**이 레포 문서 3건 + 위키 2쪽, 삭제가 74KB였다.
@@ -141,7 +141,7 @@ python "<skill>/scripts/relocate-agents.py" "<레포 루트>" [--dry-run]
 2. **절마다 목적지를 판정한다** — 위키 / 레포 상세 문서 / 삭제 / 잔류.
 3. **정리안을 표로 제시하고 승인받는다** — 절 · 현재 바이트 · 처리(위키/레포 문서/삭제/잔류) · **삭제면 정본 근거**.
    **근거 칸이 빈 삭제 항목이 하나라도 있으면 승인을 요청하지 않는다** — 그 항목의 정본을 먼저 실측하거나 삭제에서 뺀다.
-4. **`pjc:plan-feature`로 넘긴다** — 승인된 정리안이 그 plan의 입력이다. 그때 **아래 도달 대조 명령을 그 plan의 검증 단계 acceptance로 넣는다** — 「무손실 역대조를 건다」는 서술만 넘기면 실행자가 무엇을 돌릴지 몰라 대조가 통째로 빠진다.
+4. **`pjc:plan`로 넘긴다** — 승인된 정리안이 그 plan의 입력이다. 그때 **아래 도달 대조 명령을 그 plan의 검증 단계 acceptance로 넣는다** — 「무손실 역대조를 건다」는 서술만 넘기면 실행자가 무엇을 돌릴지 몰라 대조가 통째로 빠진다.
 
    ```
    python <스킬>/scripts/relocate-agents.py --verify-only <정리 전 원문> <정리 후 AGENTS.md> <이관처...> --declared <삭제 선언 파일>

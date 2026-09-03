@@ -48,7 +48,7 @@
       "id": 8,
       "query": "기능 추가하고 싶어",
       "should_trigger": false,
-      "rationale": "기능 작업 — plan-feature 영역"
+      "rationale": "기능 작업 — pjc:plan 영역"
     }
   ]
 }

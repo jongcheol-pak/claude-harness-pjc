@@ -8,7 +8,7 @@
 
 - **프로젝트 페이지**: `20_projects/<personal|work>/<프로젝트명>.md` (LLM WIKI vault)
 - 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
-- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan-feature` Step 1 소관).
+- 위키에 등록되면 이 경로가 채워진다(등록은 `pjc:plan` Step 1 소관).
 
 ## Build & Test
 - **Build**: `<빌드 명령>`
@@ -17,7 +17,7 @@
 - **Lint/Format**: `<있으면 명시>`
 - **Clean**: `<있으면 명시>`
 
-> ⚠️ Build/Test 명령이 비어있으면 `pjc:plan-feature`의 Verification Strategy가 무의미해집니다.
+> ⚠️ Build/Test 명령이 비어있으면 `pjc:plan`의 Verification Strategy가 무의미해집니다.
 > 최소한 위 두 줄은 반드시 채우세요.
 
 ## 데이터 접근
@@ -72,7 +72,7 @@ Claude가 효과적으로 작업하려면 위 항목 중 **최소 다음 4개**�
 
 1. ✅ **Build 명령** — V-1 빌드 검증의 기반
 2. ✅ **Test 명령** — V-2 테스트 검증의 기반  
-3. ✅ **아키텍처** — implement-task가 어디에 코드를 둘지 결정
+3. ✅ **아키텍처** — pjc:implement가 어디에 코드를 둘지 결정
 4. ✅ **파일 위치 컨벤션** — Files 목록 정확도
 
 나머지는 채우면 좋지만, 위 4개가 비어 있으면 plugin의 Phase V가 거의 무의미해집니다.

@@ -2816,7 +2816,7 @@ def main():
 
     # pending.md 미처리 잔량 집계 (절차 K 큐 — SKILL K-5/K 5-1/K 5-2/K 5-3/K 5-4/K 5-5/B-1 0): 잔량이 있으면 INFO로 알려
     #  다음 소비 세션이 소비하게 한다 (0건·파일 없음이면 생략). 소비 주체는 ingest/lint 세션이고,
-    #  [DECISION]·[PROJECT-FACT] 둘은 implement-task F-6.5의 큐 자동 소비(절차 M 자동 경로)도 소비 주체다
+    #  [DECISION]·[PROJECT-FACT] 둘은 구현 완료 시점의 큐 자동 소비(절차 M 자동 경로)도 소비 주체다
     #  — 자동 소비는 그 세션 대상 프로젝트분만 닿으므로 이 INFO가 0이 되지 않는 것은 정상. 태그별 분리 —
     #  [K-DRIFT]는 위키 세션이 반영 후 제거,
     #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비),
@@ -2829,7 +2829,7 @@ def main():
         # 태그 목록은 아래 잔량 집계와 형식 위반 검사가 공유한다 — 한쪽만 태그를 추가하면
         #  새 태그가 집계되지 않거나 위반 검출에서 빠져 조용히 사각지대가 생긴다(단일 출처).
         pend_tags = (("K-DRIFT", "K-DRIFT {n}건"),
-                     ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비, implement-task F-6.5는 대상 프로젝트분 자동 소비)"),
+                     ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비, 구현 완료 시점는 대상 프로젝트분 자동 소비)"),
                      ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — conventions.md 반영 대상(§2.9), 소비 주체·게이트는 DECISION 동형)"),
                      ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)"),
                      ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)"))
@@ -2890,7 +2890,7 @@ def main():
                 parts.append(label.format(n=n))
         if parts:
             infos.append("skill-feedback.md 미처리 잔량 — " + " / ".join(parts)
-                         + " — 하네스 레포 세션(plan-feature Step 1)이 할 일 후보로 조회, "
+                         + " — 하네스 레포 세션(pjc:plan Step 1)이 할 일 후보로 조회, "
                            "lint는 F-0 보고 후 F-2 승인 시 소비")
 
         # 선두 태그만 본다 — pending 블록과 동일 구조(접두 15자 제한·날짜 형식 판정, 위 주석이 근거).

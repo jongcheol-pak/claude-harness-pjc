@@ -97,10 +97,10 @@ if ($gitOk) {
     #   (AGENTS.md `## DO NOT`의 미탐 보완 조항이 요구하는 실증 형식).
     $loopMsg = '여기까지 진행 상황을 정리 합니다. 계속 T5부터 이어서 진행하겠습니다.'
     $loopBlock = '"decision":"block"'
-    # 정상 transcript: implement-task 발동 흔적 + 평범한 사용자 발화
+    # 정상 transcript: pjc:implement 발동 흔적 + 평범한 사용자 발화
     $loopTr = Join-Path $work 'tr-loop.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"진행"}}'
     ) | Set-Content -Encoding UTF8 $loopTr
 
@@ -153,7 +153,7 @@ if ($gitOk) {
     #   어시스턴트 발화만 보면 사용자가 멈추라고 한 세션에 루프 재개를 강요하게 된다.
     $loopTrStop = Join-Path $work 'tr-loop-stop.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"오늘은 그만 하자"}}'
     ) | Set-Content -Encoding UTF8 $loopTrStop
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp6'; transcript_path = $loopTrStop; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
@@ -175,7 +175,7 @@ if ($gitOk) {
     #   tool_result를 사용자 발화로 오인하면 이 조건이 항상 참이 되어 (L6)의 방어가 무너진다.
     $loopTrTool = Join-Path $work 'tr-loop-tool.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x1","content":"ok"}]}}'
     ) | Set-Content -Encoding UTF8 $loopTrTool
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp8'; transcript_path = $loopTrTool; last_assistant_message = $loopMsg } | ConvertTo-Json -Compress)
@@ -189,7 +189,7 @@ if ($gitOk) {
     #   중단 지시는 억제된다. 필드 미제공 환경에서 검사가 죽은 코드가 되지 않음을 고정한다.
     $loopTrFb = Join-Path $work 'tr-loop-fb.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"진행"}}',
         (New-TranscriptLine -Type assistant -Text $loopMsg)
     ) | Set-Content -Encoding UTF8 $loopTrFb
@@ -207,16 +207,16 @@ if ($gitOk) {
     $r = Invoke-Hook 'require-evidence.ps1' $capJson
     Assert-Case -Name "evidence: 차단 상한 4회차 → 미차단 (T3 상한 실증)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
-    # (L12) 문서↔코드 동일성 대조 — SKILL.md 금지 표현 ②③④⑤ **네 절**의 문구 목록을 파일에서
+    # (L12) 문서↔코드 동일성 대조 — loop-stop-patterns.md 의 ②③④⑤ **네 절** 문구 목록을 파일에서
     #   읽어 각 문구가 실제로 차단을 유발하는지 확인한다.
-    #   여기서 문구를 하드코딩하면 안 된다: SKILL.md가 정본이므로 그쪽이 바뀌었는데 hook의
+    #   여기서 문구를 하드코딩하면 안 된다: 그 파일이 정본이므로 그쪽이 바뀌었는데 hook의
     #   정규식($rxAdvance·$rxHandoff·$rxManualAsk·$rxProgressOnly)이 안 따라가면 "규칙에 있는데 안 잡히는"
     #   상태가 되는데, 하드코딩 사본은 그 드리프트를 영원히 못 본다(사본이 낡은 채로 계속 green).
-    #   어느 절이든 추출이 0건이면 그 자체가 FAIL이라 SKILL.md 구조 변경도 신호로 잡힌다.
-    $skillMdPath = Join-Path $pluginRoot 'skills/implement-task/SKILL.md'
+    #   어느 절이든 추출이 0건이면 그 자체가 FAIL이라 문서 구조 변경도 신호로 잡힌다.
+    $skillMdPath = Join-Path $pluginRoot 'skills/implement/references/loop-stop-patterns.md'
     $skillTxt = ''
     try { $skillTxt = Get-Content -LiteralPath $skillMdPath -Raw -Encoding UTF8 } catch {}
-    # 절 헤더 리터럴은 SKILL.md가 정본이며 여기가 추종한다(T1이 고정한 문자열).
+    # 절 헤더 리터럴은 loop-stop-patterns.md 가 정본이며 여기가 추종한다.
     # key는 세션 id 조립용 **ASCII** 식별자다 — 절 헤더의 원 문자(②③④⑤)를 쓰면 안 된다:
     #   hook이 session_id를 `[^\w.-]` → `_`로 정규화하는데 이 넷은 전부 `\w`가 아니라
     #   네 절이 모두 같은 id(`lpP_1`…)로 뭉개진다. 그러면 차단 3회 상한 카운터를 공유해
@@ -236,7 +236,7 @@ if ($gitOk) {
             }
         } catch {}
         if ($phraseList.Count -eq 0) {
-            $script:results.Add(@{ ok = $false; line = "[FAIL] evidence: SKILL.md 금지 표현 $($sec.label) 문구 추출 실패 (T3 문서<->코드 대조 - 목록 구조가 바뀌었는지 확인)" })
+            $script:results.Add(@{ ok = $false; line = "[FAIL] evidence: loop-stop-patterns $($sec.label) 문구 추출 실패 (T3 문서<->코드 대조 - 목록 구조가 바뀌었는지 확인)" })
             continue
         }
         $phIdx = 0
@@ -248,7 +248,7 @@ if ($gitOk) {
             #   재사용하면 4번째 케이스부터 상한에 걸려 거짓 FAIL이 난다(위 key 주석 참조).
             $sid = 'lpP' + $sec.key + $phIdx
             $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = $sid; transcript_path = $loopTr; last_assistant_message = $probe } | ConvertTo-Json -Compress)
-            Assert-Case -Name "evidence: SKILL.md $($sec.label) 문구 $phIdx/$($phraseList.Count) '$probe' → 차단 (T3 문서<->코드 동일성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
+            Assert-Case -Name "evidence: loop-stop $($sec.label) 문구 $phIdx/$($phraseList.Count) '$probe' → 차단 (T3 문서<->코드 동일성)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
         }
     }
 
@@ -258,7 +258,7 @@ if ($gitOk) {
     #   (실측: 이 repo transcript 최대 2817줄 = 상한의 94%).
     $loopTrBig = Join-Path $work 'tr-loop-big.jsonl'
     $bigLines = New-Object System.Collections.Generic.List[string]
-    [void]$bigLines.Add('{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}')
+    [void]$bigLines.Add('{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}')
     for ($bi = 0; $bi -lt 3200; $bi++) { [void]$bigLines.Add('{"type":"assistant","message":{"content":[{"type":"text","text":"filler"}]}}') }
     [void]$bigLines.Add('{"type":"user","message":{"content":"진행"}}')
     $bigLines | Set-Content -Encoding UTF8 $loopTrBig
@@ -300,7 +300,7 @@ if ($gitOk) {
     #   stdin 경로만 검증하면 ③④가 실환경에서 영구 무발화한 채 골든만 green이 된다(L10과 같은 취지).
     $loopTrHandoff = Join-Path $work 'tr-loop-handoff.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"진행"}}',
         (New-TranscriptLine -Type assistant -Text $realIncident)
     ) | Set-Content -Encoding UTF8 $loopTrHandoff
@@ -327,7 +327,7 @@ if ($gitOk) {
     foreach ($pair in @(
             @{ name = 'Phase 0 사전 승인 확인'; marker = '## ⏸️ 사전 승인 확인'; body = '사전 승인 항목을 한번 직접 확인해 주시겠어요?' },
             @{ name = '규칙 12 외부 작업 승인'; marker = '## ⏸️ 외부 작업 승인 요청'; body = '새 세션에서 릴리즈를 진행할지 알려주세요.' },
-            @{ name = 'plan-feature 세션 확인'; marker = '## ⏸️ 세션 확인'; body = '컨텍스트가 많이 찼습니다. 새 세션으로 옮길까요, 이대로 계속할지 알려주세요.' })) {
+            @{ name = '계획 세션 확인'; marker = '## ⏸️ 세션 확인'; body = '컨텍스트가 많이 찼습니다. 새 세션으로 옮길까요, 이대로 계속할지 알려주세요.' })) {
         $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase ($pair.marker + "`n" + $pair.body))
         Assert-Case -Name "evidence: $($pair.name) — Strong 마커 있음 → 미차단 (T3 음성·델타)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
         $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase $pair.body)
@@ -346,7 +346,7 @@ if ($gitOk) {
     #   이 검사에서 가장 위험한 오작동인 "사용자 의사 무시"를 ③에서도 막는 조건이다.
     $loopTrUserSess = Join-Path $work 'tr-loop-usersess.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"새 세션으로 옮기자"}}'
     ) | Set-Content -Encoding UTF8 $loopTrUserSess
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase '알겠습니다. 새 세션에서 이어가시면 같은 지점에서 재개됩니다.' $ev4 $loopTrUserSess)
@@ -360,7 +360,7 @@ if ($gitOk) {
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase '컨텍스트 관리 규칙에 따라 plan.md를 갱신했습니다. 이제 다음 작업자가 이어가시면 됩니다.')
     Assert-Case -Name "evidence: 규칙 4 수행 보고 → 미차단 (T3 음성·오차단 반례)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
 
-    # (L28) 음성 — **Strong 마커가 ④도 억제하는가**. 위 델타 3짝은 Phase 0·규칙 12·plan-feature를
+    # (L28) 음성 — **Strong 마커가 ④도 억제하는가**. 위 델타 3짝은 Phase 0·규칙 12·계획 세션 확인을
     #   다루므로 F-8 확인 게이트가 빠져 있었다. ③뿐 아니라 ④ 어휘에도 마커가 통하는지 고정한다.
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase "## ⏸️ 구현 완료 — 확인 대기`n화면 표시는 여기서 한번 직접 확인해 보시겠어요?")
     Assert-Case -Name "evidence: F-8 확인 게이트 마커 + ④ 어휘 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
@@ -386,7 +386,7 @@ if ($gitOk) {
     #   최악의 오작동이 된다 — userStop 어휘에 지연 표현을 넣어 막는다.
     $loopTrTomorrow = Join-Path $work 'tr-loop-tomorrow.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"오늘은 여기까지, 내일 하자"}}'
     ) | Set-Content -Encoding UTF8 $loopTrTomorrow
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase '알겠습니다. 남은 T4~T6은 새 세션에서 이어가시면 같은 지점부터 재개됩니다.' $ev4 $loopTrTomorrow)
@@ -421,7 +421,7 @@ if ($gitOk) {
     #   (L16과 같은 취지 — stdin 경로만 검증하면 ⑤가 실환경에서 영구 무발화한 채 골든만 green).
     $loopTrProg = Join-Path $work 'tr-loop-progress.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"진행"}}',
         '{"type":"assistant","message":{"content":[{"type":"text","text":"T3 완료. 변경 파일 3개, 빌드 통과."}]}}'
     ) | Set-Content -Encoding UTF8 $loopTrProg
@@ -466,7 +466,7 @@ if ($gitOk) {
     #   죽이지 않았음이 실증된다.
     $loopTrAsk = Join-Path $work 'tr-loop-ask.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"T3 어디까지 됐어?"}}'
     ) | Set-Content -Encoding UTF8 $loopTrAsk
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $loopTrAsk)
@@ -486,7 +486,7 @@ if ($gitOk) {
         $trGate = Join-Path $work ('tr-loop-gate-' + $gate.u.Length + '.jsonl')
         @(
             (New-TranscriptLine -Type user -Text $gate.u),
-            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}'
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}'
         ) | Set-Content -Encoding UTF8 $trGate
         $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $trGate)
         Assert-Case -Name "evidence: ⑤ 질문 어휘 재개 지시 + 루프 활성($($gate.n)) → 차단 (T3 양성·게이트 회귀)" -R $r -ExpectExit 0 -ExpectContains $loopBlock
@@ -498,14 +498,14 @@ if ($gitOk) {
     #   걸러져야 한다 — 한정을 빼면 이 케이스가 차단으로 red가 된다(**mutation 테스트로 실증**:
     #   $isAsst 조건만 제거한 사본에서 미차단→차단으로 뒤집히는 것을 확인했다).
     #   content는 **게이트 정규식에 실제로 매치되는 리터럴**이어야 한다 — 사람이 읽는 설명문
-    #   ("skill: pjc:implement-task 리터럴이 든 내용")으로 바꾸면 어느 패턴에도 안 닿아
+    #   ("skill: pjc:implement 리터럴이 든 내용")으로 바꾸면 어느 패턴에도 안 닿아
     #   한정을 제거해도 green인 always-pass 케이스가 된다(초안이 실제로 그랬고 리뷰가 잡았다).
     #   JSON 내부라 따옴표형(`"skill":"..."`)은 이스케이프로 깨지므로 `Launching skill:` 형태를 쓴다.
     $loopTrTR = Join-Path $work 'tr-loop-toolresult.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"T3 어디까지 됐어?"}}',
-        '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu1","content":"Launching skill: pjc:implement-task"}]}}'
+        '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu1","content":"Launching skill: pjc:implement"}]}}'
     ) | Set-Content -Encoding UTF8 $loopTrTR
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $loopTrTR)
     Assert-Case -Name "evidence: ⑤ tool_result 발동 리터럴은 게이트 미점화 → 미차단 (T3 음성)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
@@ -516,7 +516,7 @@ if ($gitOk) {
     #   보고되면 이 케이스가 판단 근거가 된다(그때 red로 바꿔 좁힌다).
     $loopTrOrder = Join-Path $work 'tr-loop-order.jsonl'
     @(
-        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}',
         '{"type":"user","message":{"content":"현재 상태 정리해봐"}}'
     ) | Set-Content -Encoding UTF8 $loopTrOrder
     $r = Invoke-Hook 'require-evidence.ps1' (New-LoopCase 'T3 완료. 빌드 통과.' $ev4 $loopTrOrder)
@@ -530,14 +530,14 @@ if ($gitOk) {
     # 검사 4 조건 5가 읽는 '마지막 사용자 발화'에서 시스템 주입 텍스트를 걸러내는가.
     # **픽스처 규약 2가지 — 어기면 케이스가 조용히 무의미해진다**:
     #   ⓐ 줄 순서: 스캔이 역순이라 **오염 엔트리가 진짜 발화보다 아래(=더 최근)** 에 와야 재현된다.
-    #   ⓑ 발동 흔적: 모든 픽스처에 `"skill":"pjc:implement-task"` 리터럴이 있어야 한다. 없으면
+    #   ⓑ 발동 흔적: 모든 픽스처에 `"skill":"pjc:implement"` 리터럴이 있어야 한다. 없으면
     #      조건 2($loopSkill)가 거짓이라 **무엇을 넣어도 미차단**이 되어, 음성은 always-pass로
     #      전락하고 양성의 red도 사라진다(L40 주석이 기록한 것과 같은 함정).
     # **진짜 델타는 G1·G2·G6·G7 넷**이고 G3·G4·G5는 무회귀 고정이다(델타로 세지 않는다).
     # red 실증은 skip별로 나뉜다 — ①(isMeta) 제거 → G1·G6 FAIL / ②(알림) 제거 → G2 FAIL /
     #   ③④(assistant 파싱) 제거 → G7 FAIL.
     $metaPayload = '{"type":"user","isMeta":true,"message":{"content":"Base directory for this skill. Halt Condition 중단 조건과 새 세션 권유 규칙을 담은 스킬 본문이다."}}'
-    $skillEntry  = '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement-task"}}]}}'
+    $skillEntry  = '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"pjc:implement"}}]}}'
     # 알림 본문은 $rxUserAsk·$userStop 어휘를 피한 중립 문면이어야 한다 — 물음표나 '중단'이 섞이면
     #   skip 제거 시에도 억제가 걸려 G2의 red가 조용히 사라진다.
     $notifEntry  = '{"type":"user","message":{"content":"<task-notification><task-id>b1</task-id><summary>Agent finished</summary></task-notification>"}}'
@@ -710,7 +710,7 @@ if ($gitOk) {
     $trQuote = Join-Path $work 'tr-active-quote.jsonl'
     @($skillEntry,
       '{"type":"user","message":{"content":"진행"}}',
-      '{"type":"assistant","message":{"content":[{"type":"text","text":"게이트는 Launching skill: pjc:implement-task 리터럴로 판정합니다"}]}}') |
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"게이트는 Launching skill: pjc:implement 리터럴로 판정합니다"}]}}') |
         Set-Content -Encoding UTF8 $trQuote
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154j'; transcript_path = $trQuote; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: 발동 리터럴 인용(tool_use 없음)은 게이트 미점화 → 미차단 (T4 음성·D6)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
@@ -726,13 +726,13 @@ if ($gitOk) {
     #   실제로 막았는지 구분되지 않는다(대장 [SKILL-IMPROVE] "케이스 하나가 축 하나만 검증하는가").
     #     L61-a **평문 패턴 제거** — 실 데이터의 32건이 이 형태다. 새 게이트는 평문을 후보로
     #             삼지 않으므로 **후보 진입 자체를 안 한다**(구조 판정까지 가지도 않는다).
-    #     L61-b **구조 판정** — 후보 필터(`"skill":"pjc:implement-task"`)에 **걸리는데도**
+    #     L61-b **구조 판정** — 후보 필터(`"skill":"pjc:implement"`)에 **걸리는데도**
     #             tool_use 블록의 `name`이 `Skill`이 아니라서 거부되는 경로. 이 축이 없으면
     #             `name -eq 'Skill'` 조건을 지워도 골든이 전부 green이다(리뷰 B1이 지적한 공백).
     $trToolInput = Join-Path $work 'tr-active-toolinput.jsonl'
     @($skillEntry,
       '{"type":"user","message":{"content":"진행"}}',
-      '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"scenarios/require-evidence.ps1","new_string":"Launching skill: pjc:implement-task"}}]}}') |
+      '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"scenarios/require-evidence.ps1","new_string":"Launching skill: pjc:implement"}}]}}') |
         Set-Content -Encoding UTF8 $trToolInput
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154k'; transcript_path = $trToolInput; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: 다른 도구 input의 평문 발동 리터럴 → 후보 미진입, 미차단 (T6 음성·D8-a)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
@@ -744,7 +744,7 @@ if ($gitOk) {
     $trFakeSkill = Join-Path $work 'tr-active-fakeskill.jsonl'
     @($skillEntry,
       '{"type":"user","message":{"content":"진행"}}',
-      '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"skill":"pjc:implement-task"}}]}}') |
+      '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"skill":"pjc:implement"}}]}}') |
         Set-Content -Encoding UTF8 $trFakeSkill
     $r = Invoke-Hook 'require-evidence.ps1' (@{ cwd = $ev4; session_id = 'lp154m'; transcript_path = $trFakeSkill; last_assistant_message = $incident154 } | ConvertTo-Json -Compress)
     Assert-Case -Name "evidence: Skill이 아닌 도구의 input.skill은 구조 판정이 거부 → 미차단 (T6 음성·D8-b)" -R $r -ExpectExit 0 -ExpectNotContains $loopBlock
