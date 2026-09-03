@@ -62,7 +62,7 @@ foreach ($cat in $categories) {
 }
 if ($hits.Count -eq 0) { exit 0 }
 
-# ---- 작업 디렉터리 결정 (cwd → CLAUDE_PROJECT_DIR → 현재 위치; require-evidence.ps1 L29-37과 동형) ----
+# ---- 작업 디렉터리 결정 (cwd → CLAUDE_PROJECT_DIR → 현재 위치; 다른 hook 들과 동형) ----
 $projDir = $null
 if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
     $projDir = $data.cwd

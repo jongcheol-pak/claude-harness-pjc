@@ -1,10 +1,4 @@
-﻿# session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호 (dot-source 전용, hook 아님)
-#
-# `session-context.ps1`이 dot-source해 호출한다. 별도 파일인 이유는 이 신호만 **대장 3파일을 파싱**하기
-#   때문이다 — 항목별 날짜 부기를 형식으로 인식하고 미래 날짜를 배제하는 판정이라 다른 신호와 입력이 다르다.
-#
-# 반환: 주입할 1줄 또는 $null. 호출부가 그 줄을 넣고 `$cwdBaseCount`를 올린다.
-# 근거는 `rules/session-context-rationale.md`의 대장 관련 절들.
+﻿# session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호 — 근거는 `rules/ledger-signal-rationale.md`의 「§1 session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호」
 
 function Get-LedgerSignal {
     param([string]$cwd)

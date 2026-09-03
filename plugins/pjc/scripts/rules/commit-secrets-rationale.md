@@ -12,7 +12,7 @@
 #   차단 메시지가 길어(해결 방법 4갈래) 다른 검사와 한 파일에 두면 읽고 고치기 어려워지기 때문이다.
 #
 # 조건부 차단이다 — 고신뢰 라벨(개인키·DB 연결 문자열·자격증명 쌍) 또는 스캔 캡 도달 시 exit 2.
-#   세부 조건·스캔 범위는 `docs/harness-conventions.md`의 「`warn-commit-secrets`의 조건부란」이 정본.
+#   세부 조건·스캔 범위는 `docs/harness-conventions.md`의 「`guard-commit-secrets`의 조건부란」이 정본.
 #   우회는 `CLAUDE_HARNESS_ALLOW_SECRET=1`이며 사용자만 설정한다.
 ```
 

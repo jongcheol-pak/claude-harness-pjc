@@ -24,7 +24,7 @@
 ## 출력 형태
 
 - **경고**: `exit 0` 비차단 + stderr + additionalContext.
-- **차단**은 **`exit 2`** 한 형태다 — `block-destructive` · `protect-harness` · `require-plan-for-write` · `require-task-checkbox` · `guard-agents-content`, 그리고 **`warn-commit-secrets`(조건부)**.
+- **차단**은 **`exit 2`** 한 형태다 — `block-destructive` · `protect-harness` · `require-plan-for-write` · `require-task-checkbox` · `guard-agents-content`, 그리고 **`guard-bash`의 커밋 시크릿 검사(조건부)**.
 
 **종전에는 `stdout JSON`(`{"decision":"block","reason":…}`) + `exit 0`이라는 두 번째 형태가 있었다** — Stop hook 전용으로 종료를 막고 `reason`을 모델에 전달해 루프를 잇는 것이었고, v1.225.0이 그 hook(`require-evidence`)을 제거하면서 사용처가 사라졌다. 다시 필요해지면 이 형태가 유일한 수단이라는 것만 남긴다.
 
@@ -74,8 +74,8 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 50,512 | 137,000 |
-| `docs/golden-runner.md` | 36,440 | 44,000 |
+| `docs/harness-conventions.md` | 49,091 | 137,000 |
+| `docs/golden-runner.md` | 33,527 | 44,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,241 | 37,000 |
 
 > **왜 예산 표와 나눴는가 — 「임계가 없다」가 아니라 「재는 것이 다르다」다.** 위 표가 재는 것은 **상시 로드**다: 스킬 본체는 발동만 해도 전문이 올라가고 `AGENTS.md`는 매 세션 주입된다. 이 표가 재는 것은 **조건부 참조** — `AGENTS.md`가 필요할 때 가리키는 문서라, 커져도 **그 절을 읽으러 들어온 세션만** 비용을 진다. 같은 표에 섞으면 **위 표가 상시 로드만 추적한다는 전제**가 깨지고, 그 표에서 파생되는 「메인 조합」 합산에 **상시 비용이 아닌 바이트가 섞인다**.
@@ -168,7 +168,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 지킬 것 둘 — ⓐ **그 예외를 plan에 미리 적는다**(승인 시점에 사용자가 보게 한다. 사후 합리화로 남기면 규약을 어긴 것과 구분되지 않는다) ⓑ **커밋 메시지 `Tests:` 줄에 범위를 명시한다**(예: `96/96 — 부분 실행, 전체는 T5에서`). 이 둘이 없으면 부분 실행 판정은 그냥 규약 위반이다. (v1.152.0 F-7 m1에서 확립 — 그 plan은 ⓑ만 지키고 ⓐ를 빠뜨렸다.)
 
-## `warn-commit-secrets`의 조건부란
+## `guard-commit-secrets`의 조건부란
 
 고신뢰 라벨만 차단하고 저신뢰 라벨은 경고다. **여기에 「검사하지 못한 경우」가 하나 더 있다** — 아래 「전수 검사 실패는 차단이다」.
 
@@ -265,7 +265,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop/SessionStart/SessionEnd 배선
 │   ├── skills/llm-wiki/scripts/lint.py  # 검사 + `--fix`(안전 3종) + `--build-index`(index.md 생성 구역 파생 · sub-index 생성) / migrate-index-labels.py  # index 라벨 역이관(1회성, 기본 dry-run)
-│   ├── scripts/*.ps1                # hook 구현(block-destructive·protect-harness·require-plan-for-write·require-task-checkbox·post-write-checks·warn-external-ops·suggest-agents-record·warn-commit-secrets·pre-bash-dispatch·warn-version-drift(버전 드리프트 경고)·session-end-cleanup(SessionEnd — 고아 콘솔 프로세스 회수)·session-context(SessionStart **startup|resume|clear|compact|fork** — fork 세션도 주입 대상이다, plan 상태 + **위키 vault 설정 상태**(설정+실재 / 경로 부재만 1줄 주입, 미설정은 무출력 — **목적 둘**: ① 절차 K의 "미설정" 오판정 차단 ② **허브 직행 지시**(AGENTS.md `## 위키`가 지목한 허브를 먼저 Read + 글로벌 절 포인터 — 스킬을 발동하지 않는 세션에는 절차 K를 부르는 주체가 없어 이 라인이 유일한 신호다. 판정 규칙은 글로벌 지침이 정본이라 복제하지 않는다). 게이팅은 cwd 수집 라인 기준이고 compact 리마인더는 신호가 아니다) + **compact 직후 루프 제어 규칙 원문 주입**(`source=compact` + 미완료 task일 때만 — `implement/SKILL.md` 「자율 루프」 절) + AGENTS.md 전문 주입(**16KB 초과 시 목차 폴백** · **95%/여유 500B 임박 시 전문 주입 + 경고 1구** — 해소는 `pjc:record-project-fact` Step 5, 정본 `docs/harness-conventions.md` 「AGENTS.md 주입 상한 관리」) + **위키 뒤처짐 1줄**(허브 `synced_commit` 이후 커밋 수·`updated` 경과일·`[K-DRIFT]` 잔량 OR 3축 — 30/14/1) — compact 포함)) + 공유 dot-source 헬퍼(secret-patterns·bash-hook-lib·hook-event-log·orphan-process-cleanup(고아 more.com·find.exe 회수 — SessionStart·SessionEnd가 호출) — 차단/경고 이벤트를 `~/.claude/.state/hook-events/`에 jsonl 적재, hook 아님) + 수동 도구 report-hook-events(이벤트 집계 리포트, 읽기 전용, hook 아님)(아님). Bash PreToolUse는 block-destructive(독립) + pre-bash-dispatch(warn-external-ops·require-task-checkbox·warn-commit-secrets·warn-global-find를 bash-hook-lib 함수로 in-process 실행 — pwsh 콜드스타트 4→2). 3 스크립트는 얇은 래퍼로 존치(골든·격리용). hooks.json command는 스크립트를 hook 셸에서 직접 실행한다(엔트리당 outer+inner 2프로세스 → outer 1프로세스. 실행 셸은 Claude Code가 powershell로 해석하며 실측상 pwsh 우선 — 크로스플랫폼 hook 디버깅 시 이 해석 규칙을 먼저 본다).
+│   ├── scripts/*.ps1                # hook 구현 9 + dot-source 헬퍼 7. 진입점: block-destructive(Bash 파괴적 명령 — 독립 실행, 끌 수 없음) · guard-bash(외부작업·커밋 시크릿·task 체크박스·전역 탐색·위험값 대입을 한 프로세스에서) · guard-write(plan 게이트) · guard-harness(자기보호 + AGENTS.md 신규·내용 경계) · post-write-checks(인코딩·민감정보) · suggest-agents-record(기록 제안) · session-context(SessionStart 주입) · warn-version-drift(버전 드리프트) · session-end-cleanup(SessionEnd 회수). 헬퍼: guard-commit-secrets · secret-patterns · write-gate-trivial · session-wiki-signals · session-ledger-signal · session-end-cleanup-lib · hook-event-log. 판정 데이터·근거는 scripts/rules/(destructive.json · harness-hooks.json · write-gate.json + *-rationale.md)가 정본이다.
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan·implement 등 (+ references/·templates/)
 ├── docs/

@@ -1,15 +1,4 @@
-﻿# hook-event-log.ps1 — 공유 이벤트 로깅 헬퍼 (dot-source 전용, hook 아님)
-#
-# 왜: hook 차단/경고 오탐은 발생 시점에만 데이터가 존재한다 — 회고 검토(v1.98.0, 발견 ~40건 수동 발굴)
-#   대신 이벤트를 로컬 jsonl로 적재해 다음 오탐 수정 라운드를 실측 기반으로 만든다.
-# 어디에: ~/.claude/.state/hook-events/{YYYY-MM}.jsonl (기존 .state 마커 패턴과 동일 계층,
-#   월별 파일 — 90일 초과 파일은 append 시 자동 정리).
-# 안전 계약 (절대 불변):
-#   ① 이 함수의 어떤 실패도 호출한 hook의 차단/경고 판정에 영향을 주지 않는다 — 전체 try/catch로
-#      삼키고, 호출측도 Get-Command 가드 + try/catch로 감싼다(로드 실패 = 로깅만 조용히 생략).
-#   ② 로그에 시크릿 평문을 남기지 않는다 — 명령 원문은 secret-patterns.ps1(단일 출처) 검사를
-#      통과할 때만 앞 200자를 기록하고, 시크릿 검출·판정 불가 시 cmd 필드 자체를 생략한다
-#      (fail-closed — Get-SecretMatches는 라벨만 반환하므로 값 치환 대신 생략이 안전하고 단순하다).
+﻿# hook-event-log.ps1 — 공유 이벤트 로깅 헬퍼 — 근거는 `rules/event-log-rationale.md`의 「§1 hook-event-log.ps1 — 공유 이벤트 로깅 헬퍼」
 
 function Write-HookEvent {
     param(
