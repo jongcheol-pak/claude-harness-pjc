@@ -119,33 +119,6 @@ if ((-not (Test-Path -LiteralPath $rpOldMk)) -and (Test-Path -LiteralPath $rpNew
     $script:results.Add(@{ ok = $false; line = "[FAIL] require-plan: .state TTL 청소 — 31일 마커 잔존=$(Test-Path -LiteralPath $rpOldMk) / 3일 마커 소실=$(-not (Test-Path -LiteralPath $rpNewMk))" })
 }
 
-# ---- [v1.111.0] AGENTS.md bootstrap 게이트 (신규 생성 + 스킬 미발동 차단, fail-open) ----
-$agentsProj = Join-Path $work 'proj-agents';  New-Item -ItemType Directory $agentsProj -Force | Out-Null
-# fixture transcript 3종 — 흔적 없음(산문 언급만: 언급만으로 통과되지 않음을 동시 실증) / Skill input 흔적 / tool result 흔적
-$trNo  = Join-Path $work 'tr-no-launch.jsonl'
-'{"type":"assistant","text":"bootstrap-agents-md 스킬 이야기만 하는 산문 언급"}' | Set-Content $trNo
-$trIn  = Join-Path $work 'tr-launch-input.jsonl'
-'{"type":"assistant","tool_use":{"name":"Skill","input":{"skill":"pjc:bootstrap-agents-md"}}}' | Set-Content $trIn
-$trRes = Join-Path $work 'tr-launch-result.jsonl'
-'{"type":"tool_result","content":"Launching skill: pjc:bootstrap-agents-md"}' | Set-Content $trRes
-
-# AGENTS.md bootstrap 게이트는 v1.225.0에 guard-harness 로 옮겼다 — 그 hook 이 AGENTS.md 관심사를 담당한다.
-$agentsNew = Join-Path $agentsProj 'AGENTS.md'
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trNo })
-Assert-Case -Name "guard-harness: AGENTS.md 신규 + 발동 흔적 없음 차단 (AG1 — 차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains 'AGENTS.md 신규 생성은 pjc:bootstrap-agents-md 스킬로만 합니다'
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trIn })
-Assert-Case -Name "guard-harness: AGENTS.md 신규 + Skill input 흔적 통과 (AG2)" -R $r -ExpectExit 0
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj $agentsNew -top @{ transcript_path = $trRes })
-Assert-Case -Name "guard-harness: AGENTS.md 신규 + Launching result 흔적 통과 (AG3)" -R $r -ExpectExit 0
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj $agentsNew)
-Assert-Case -Name "guard-harness: AGENTS.md 신규 + transcript 미제공 fail-open 통과 (AG4)" -R $r -ExpectExit 0
-$agentsExistDir = Join-Path $agentsProj 'existing';  New-Item -ItemType Directory $agentsExistDir -Force | Out-Null
-'# AGENTS.md' | Set-Content (Join-Path $agentsExistDir 'AGENTS.md')
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj (Join-Path $agentsExistDir 'AGENTS.md') -top @{ transcript_path = $trNo })
-Assert-Case -Name "guard-harness: 기존 AGENTS.md Write 통과 — 신규만 게이트 (AG5)" -R $r -ExpectExit 0
-$agentsSubDir = Join-Path $agentsProj 'sub';  New-Item -ItemType Directory $agentsSubDir -Force | Out-Null
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $agentsProj (Join-Path $agentsSubDir 'AGENTS.md') -top @{ transcript_path = $trNo })
-Assert-Case -Name "guard-harness: 하위 폴더 AGENTS.md 신규도 차단 — 경로 무관 게이트 (AG6)" -R $r -ExpectExit 2 -ExpectContains 'bootstrap-agents-md'
 }   # ---- §2 게이트 끝 (guard-write) ----
 
 # =====================================================================
@@ -155,7 +128,7 @@ Assert-Case -Name "guard-harness: 하위 폴더 AGENTS.md 신규도 차단 — �
 #   §2 픽스처에 의존하지 않고 자기 픽스처를 자기 안에서 만든다(-Filter 부분 실행에서 깨지지 않게).
 # =====================================================================
 if (Test-HookSelected @('guard-write')) {
-# transcript 스텁 — §2의 3종은 bootstrap-agents-md 문자열이라 재사용 불가(스킬명이 다르면 매치 안 됨)
+# transcript 스텁 — 발동 흔적 판정은 스킬명 문자열을 매치하므로 이 게이트 전용 스텁을 자기 안에서 만든다
 $trPlanNo = Join-Path $work 'tr-plan-none.jsonl'
 '{"type":"assistant","text":"pjc:plan 스킬 이야기만 하는 산문 언급"}' | Set-Content $trPlanNo
 $trPlanIn = Join-Path $work 'tr-plan-input.jsonl'

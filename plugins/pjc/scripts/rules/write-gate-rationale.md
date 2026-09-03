@@ -11,27 +11,11 @@
 # 담당 조항(정본: `plugins/pjc/skills/DESIGN.md`의 hook 담당 조항 표): E5 plan 게이트.
 #   plan 승인이 자율 루프의 위임장이므로, 그것 없이 코드가 바뀌면 무엇을 왜 바꿨는지의 근거가 없다.
 #
-# 게이트는 셋이다 — ① plan 존재 ② plan 작성(체크박스 형식) ③ AGENTS.md bootstrap.
-#   ①②는 같은 정규식(`$planTaskRx`)을 공유한다 — 한쪽만 고치면 그 차이가 곧 우회 경로다.
+# 게이트는 둘이다 — ① plan 존재 ② plan 작성(체크박스 형식).
+#   둘은 같은 정규식(`$planTaskRx`)을 공유한다 — 한쪽만 고치면 그 차이가 곧 우회 경로다.
 # 우회는 `CLAUDE_HARNESS_QUICK=1`이며 사용자만 설정한다.
 #
 # 하니스 자기보호·AGENTS.md 내용 경계는 이 파일이 아니라 `guard-harness.ps1`이 담당한다.
-```
-
-## §2 AGENTS.md bootstrap 게이트
-
-```
-# ---- AGENTS.md bootstrap 게이트 (v1.111.0) ----
-# AGENTS.md '신규 생성'은 pjc:bootstrap-agents-md 스킬 경유가 정본 경로다(스택 템플릿 + [Y/E/N] 사용자
-# 승인 게이트). 스킬 미발동 직접 Write는 그 자산·승인을 통째로 우회하므로 차단한다 — 아래 .md 무조건
-# 허용보다 먼저 판정해야 하므로 이 위치에 둔다.
-# 발동 판정: stdin JSON의 transcript_path에서 발동 흔적 2패턴 중 하나를 찾으면 통과 — ① Skill tool_use
-#   입력 `"skill":"pjc:bootstrap-agents-md"` ② tool result `Launching skill: pjc:bootstrap-agents-md`
-#   (실측 형태 — 산문 언급만으로는 매치되지 않음).
-# fail-open: transcript_path 부재·파일 없음·읽기 실패는 통과. 실환경 Claude Code는 항상 제공하므로
-#   실질 게이트는 유지되고, 골든 무상태 케이스·타 하니스·포맷 변화에서 오차단하지 않는다(파싱 실패
-#   통과 관례와 동일). 범위: Write + 파일 미존재(신규)만 — 기존 파일 Write/Edit는 정당 편집 경로
-#   (record-project-fact 등)라 게이트 비대상.
 ```
 
 ## §3 plan 작성 게이트
@@ -40,9 +24,8 @@
 # ---- plan 작성 게이트 (v1.118.0) ----
 # plan은 pjc:plan 경유가 정본 경로다(plan-reviewer 검토·영향 범위 실측·
 #   사전 승인 항목). 스킬을 거치지 않고 손으로 급조한 plan 하나로 그 자산이 통째로 우회되던 구멍을 막는다.
-#   AGENTS bootstrap 게이트와 동형(transcript 흔적 판정·fail-open·temp 예외·QUICK 우회)이나, 조건이 다르다:
-#   AGENTS.md는 기존 파일 편집이 정당 경로(record-project-fact)라 '신규 생성'만 게이트하지만, plan은
-#   Write 자체가 통째 재작성이라 신규/기존을 가리지 않는다.
+#   판정 수단은 transcript 흔적·fail-open·temp 예외·QUICK 우회다. **신규/기존을 가리지 않는다** —
+#   plan은 Write 자체가 통째 재작성이라 기존 파일 편집도 스킬 자산을 우회할 수 있다.
 #
 # 게이트의 축은 '도구'가 아니라 **체크박스를 새로 도입하는 행위**다 — Write만 막으면
 #   체크박스 없는 파일을 Write로 통과시킨 뒤 Edit으로 체크박스만 더하는 2단계 우회가 성립한다.

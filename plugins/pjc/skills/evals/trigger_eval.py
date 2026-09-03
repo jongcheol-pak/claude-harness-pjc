@@ -68,9 +68,9 @@ def build_workspace(kind, dest):
     kind='with_plan'이면 미완료 task가 있는 plan.md를 둔다 — pjc:implement는 '승인된 plan이
     이미 있을 때만' 발동하므로, plan 유무가 곧 트리거 조건의 일부다.
 
-    kind='no_agents_md'면 AGENTS.md를 만들지 않는다 — bootstrap-agents-md는 **그 파일의 부재**가
-    발동 조건이라, AGENTS.md가 있는 워크스페이스에서는 발동하지 않는 것이 정상이다(그 상태로
-    측정하면 "발동 안 함"이 스킬 결함이 아니라 픽스처 결함이 된다).
+    kind='no_agents_md'면 AGENTS.md를 만들지 않는다 — 그 파일의 **부재**가 발동 조건의 일부인
+    케이스를 재기 위한 워크스페이스다(`record-project-fact`는 기존 파일 갱신 전담이라 부재
+    상태에서 미발동이 정답이다). AGENTS.md가 있는 워크스페이스로 재면 그 판정이 성립하지 않는다.
 
     kind='ddd_project'·'xaml_project'는 **그 스킬의 발동 조건이 프로젝트 성격**이라 따로 만든다.
     `add-domain-service`는 description이 "projects without a Domain/Application layer split

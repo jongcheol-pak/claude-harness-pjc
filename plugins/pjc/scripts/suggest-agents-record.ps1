@@ -98,7 +98,7 @@ if ($cdAll.Count -gt 0) {
     if (-not $inTree) { exit 0 }
 }
 
-# AGENTS.md 없으면 제안하지 않음 (bootstrap 영역 — 중복 제안 방지)
+# AGENTS.md 없으면 제안하지 않음 — 그 파일 생성은 `pjc:plan` Step 1 전담이고 이 제안은 갱신용이다
 $agentsPath = Join-Path $projDir 'AGENTS.md'
 if (-not (Test-Path -LiteralPath $agentsPath)) { exit 0 }
 $agentsRaw = Get-Content -LiteralPath $agentsPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue

@@ -80,52 +80,6 @@ if ($isHookScript -or $suspect83) {
     exit 2
 }
 
-# ---- 게이트 ② AGENTS.md 신규 생성은 bootstrap 스킬로만 ----
-# AGENTS.md bootstrap 게이트 — 근거는 `rules/write-gate-rationale.md`의 「§2 AGENTS.md bootstrap 게이트」
-if ($script:data.tool_name -eq 'Write' -and
-    [System.IO.Path]::GetFileName($targetPath) -eq 'AGENTS.md' -and
-    -not (Test-Path -LiteralPath $targetPath) -and
-    $env:CLAUDE_HARNESS_QUICK -ne '1') {
-
-    # 시스템 임시 폴더는 비대상 — 프로젝트 AGENTS.md가 아니다(아래 임시 폴더 완화와 동일 취지)
-    $agentsInTemp = $false
-    try {
-        $tempRootA = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
-        $tpNormA = $targetPath -replace '/', '\'
-        if ($tempRootA -and $tpNormA.StartsWith($tempRootA + '\', [System.StringComparison]::OrdinalIgnoreCase)) { $agentsInTemp = $true }
-    } catch { }
-
-    if (-not $agentsInTemp) {
-        $bootstrapLaunched = $false
-        $tp = [string]$script:data.transcript_path
-        if ([string]::IsNullOrWhiteSpace($tp) -or -not (Test-Path -LiteralPath $tp)) {
-            $bootstrapLaunched = $true   # fail-open — transcript를 확인할 수 없으면 차단하지 않는다
-        } else {
-            try {
-                $bootstrapLaunched = [bool](Select-String -LiteralPath $tp -Quiet -Pattern @(
-                    '"skill"\s*:\s*"pjc:bootstrap-agents-md"',
-                    'Launching skill: pjc:bootstrap-agents-md'))
-            } catch { $bootstrapLaunched = $true }   # 읽기 실패도 fail-open
-        }
-        if (-not $bootstrapLaunched) {
-            [Console]::Error.WriteLine("[HARNESS] BLOCKED: AGENTS.md 신규 생성은 pjc:bootstrap-agents-md 스킬로만 합니다.")
-            [Console]::Error.WriteLine("")
-            [Console]::Error.WriteLine("직접 Write는 스택 템플릿 자산과 사용자 승인 게이트([Y/E/N])를 통째로 우회합니다.")
-            [Console]::Error.WriteLine("")
-            [Console]::Error.WriteLine("해결 방법:")
-            [Console]::Error.WriteLine("  1) Skill 도구로 pjc:bootstrap-agents-md 호출 → 스택 감지·템플릿 채움 → 사용자 승인 후 저장")
-            [Console]::Error.WriteLine("  2) 사용자가 특정 내용을 직접 지정한 경우에도 위 스킬의 [E] 편집 경로로 반영")
-            [Console]::Error.WriteLine("  3) 스킬을 호출할 수 없는 상황(도구 제한 등)이면 사용자에게 확인 요청")
-            [Console]::Error.WriteLine("  4) 긴급 우회는 사용자만 가능 (Claude Code 시작 전 터미널에서):")
-            [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")
-            [Console]::Error.WriteLine("     ※ Claude가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효입니다 — 시도하지 말고,")
-            [Console]::Error.WriteLine("       필요하면 사용자에게 위 설정(후 Claude Code 재시작)을 안내하세요.")
-            Write-GacEvent 'block' 'AGENTS bootstrap 게이트'
-            exit 2
-        }
-    }
-}
-
 # ---- 게이트 ③ AGENTS.md 내용 경계 ----
 if ($env:CLAUDE_HARNESS_QUICK -eq '1') { exit 0 }
 

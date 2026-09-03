@@ -370,46 +370,6 @@
       "why": "기존 ViewModel 디버깅 — pjc-systematic-debugging 영역(description이 명시)"
     },
     {
-      "id": "boot-pos-1",
-      "skill": "pjc:bootstrap-agents-md",
-      "expect": "trigger",
-      "workspace": "no_agents_md",
-      "query": "AGENTS.md 만들어줘",
-      "why": "description 예시와 같은 문구지만 **의도적으로 유지**한다 — 파일명을 직접 부르는 가장 직접적인 요청이라 실사용 빈도가 높고, description이 그 실사용 문구를 담은 것이다. 이 케이스를 빼면 '직접 지명' 경로의 커버리지가 사라진다(T6 spec M2 판정)"
-    },
-    {
-      "id": "boot-pos-2",
-      "skill": "pjc:bootstrap-agents-md",
-      "expect": "trigger",
-      "workspace": "no_agents_md",
-      "query": "새로 합류한 사람이 빌드랑 테스트 방법을 바로 알 수 있게 문서 하나 만들어줘",
-      "why": "description 예시를 베끼지 않은 실사용 발화 — 파일 이름을 모르는 상태의 요청(T6 spec M2 반영)"
-    },
-    {
-      "id": "boot-pos-3",
-      "skill": "pjc:bootstrap-agents-md",
-      "expect": "trigger",
-      "workspace": "no_agents_md",
-      "query": "이 레포에 Claude가 참고할 규칙 파일이 하나도 없는데 하나 만들어 줄래",
-      "why": "파일 부재를 사용자가 인지한 형태. description 문구와 겹치지 않는다(T6 spec M2 반영)"
-    },
-    {
-      "id": "boot-neg-1",
-      "skill": "pjc:bootstrap-agents-md",
-      "expect": "no-trigger",
-      "workspace": "no_agents_md",
-      "query": "이 프로젝트 README를 새로 써줘",
-      "why": "다른 문서 — description이 \"README 작성\"을 명시적으로 제외"
-    },
-    {
-      "id": "boot-neg-2",
-      "skill": "pjc:bootstrap-agents-md",
-      "expect": "no-trigger",
-      "workspace": "no_plan",
-      "query": "AGENTS.md에 빌드 명령 한 줄 추가해줘",
-      "why": "**기존 파일 편집** — record-project-fact 영역이다(경계 케이스). AGENTS.md가 있는 워크스페이스"
-    },
-    {
       "id": "rec-pos-1",
       "skill": "pjc:record-project-fact",
       "expect": "trigger",
@@ -455,7 +415,7 @@
       "expect": "no-trigger",
       "workspace": "no_agents_md",
       "query": "AGENTS.md 새로 만들어줘",
-      "why": "**신규 생성** — bootstrap-agents-md 영역이다(boot-neg-2의 거울상 경계)"
+      "why": "**신규 생성** — 이 스킬은 기존 `AGENTS.md` 갱신 전담이고, 신규 생성은 `pjc:plan` Step 1이 작업 착수 시 맡는다"
     },
     {
       "id": "rec-neg-2",

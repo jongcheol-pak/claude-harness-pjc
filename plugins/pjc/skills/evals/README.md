@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 58건 (8스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 53건 (7스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
 | `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 | `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
 
@@ -77,7 +77,7 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 **`workspace`는 7종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
 - `no_plan` — AGENTS.md·소스만 있는 기본 프로젝트(Python 단일 스크립트).
 - `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `pjc:implement`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
-- `no_agents_md` — **AGENTS.md가 없는** 프로젝트. `bootstrap-agents-md`는 그 파일의 **부재**가 발동 조건이다.
+- `no_agents_md` — **AGENTS.md가 없는** 프로젝트. 그 파일의 **부재**가 발동 조건의 일부인 케이스를 재는 자리다(`record-project-fact`는 갱신 전담이라 부재 상태에서 미발동이 정답이다).
 - `ddd_project` — Domain/Application/Infrastructure 레이어 + DDD를 명시한 AGENTS.md. `add-domain-service`용.
 - `xaml_project` — Views/ViewModels + WinUI·CommunityToolkit.Mvvm을 명시한 AGENTS.md. `add-viewmodel`용.
 - `multi_file` — `src/` 아래 모듈 3개(loader·summary·report)가 **에러 처리를 서로 다르게** 갖는 Python 프로젝트. "여러 파일에 걸쳐 바꿔야 한다"는 질의가 성립하려면 그 상태가 실재해야 한다.
@@ -89,9 +89,9 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 **케이스 설계 시**: 질의를 description 문구에서 그대로 베끼지 않는다 — 그러면 발동률이 아니라 **복창률**을 재게 된다. 대조는 description 안의 **따옴표 인용 트리거 문구**와 하고(영문 산문은 한글 질의와 애초에 겹치지 않는다), 3어절 이상 연속 일치를 피한다. 조사만 바꾼 근접 일치(`빌드 명령 기록해줘` → `빌드 명령을 기록해줘`)는 형식상 통과해도 복창이므로, 그대로 둘 이유를 `why`에 남긴다.
 
-> **다만 "베낀 질의가 더 잘 발동한다"의 근거였던 사례는 반증됐다** — 이 문단은 원래 *"`bootstrap-agents-md` 양성 3건이 description 예시를 그대로 쓴 상태에서 3/3이었는데, 2건을 자연스러운 발화로 바꾸자 1/3~2/3으로 내려갔다"* 를 근거로 삼았다. 2026-08-06 재현 결과 그 하락의 실제 원인은 **복창 여부가 아니라 턴 소진**(당시 `MAX_TURNS=3`)이었고, 상한을 8로 올린 뒤 그 케이스(`boot-pos-2`)는 **턴이 남은 채 스킬 없이 직접 문서를 작성**했다(`tool_calls` 말미 `Write`). 그 뒤 **v1.161.0이 description에 *"파일 이름을 대지 않고 목적만 말하는 요청도 이 스킬"* + 산출물 지정을 추가하자 `boot-pos-2`는 pass로 바뀌었다**(run `20260806-153530`, `triggered=['pjc:bootstrap-agents-md']`) — 즉 원인은 복창 부족이 아니라 **트리거 목록에 그 발화 유형이 없던 것**이었다. 복창을 피하라는 규칙 자체는 유효하지만(그것은 측정의 정의 문제다) **이 수치를 그 근거로 인용하지 말 것.**
+> **"베낀 질의가 더 잘 발동한다"를 수치로 뒷받침하지 말 것** — 한때 그 근거로 쓰인 사례는 2026-08-06 재현에서 반증됐다. 하락의 실제 원인은 복창 여부가 아니라 **턴 소진**(당시 `MAX_TURNS=3`)과 **트리거 목록에 그 발화 유형이 없던 것**이었고, 상한을 8로 올리고 description에 그 유형을 더하자 pass로 바뀌었다. 복창을 피하라는 규칙 자체는 유효하다 — 그것은 측정의 정의 문제다. (근거였던 케이스는 v1.227.0에 스킬과 함께 폐기됐다.)
 
-**질의에 스택·환경을 쓰지 않는다** — 그것은 워크스페이스(AGENTS.md)가 정한다. 워크스페이스가 WinUI인데 질의에 "MAUI 프로젝트에"라고 쓰면 **전제가 모순돼 미발동이 정상**이 되고, 그 FAIL은 트리거 품질과 무관하다(실제로 `vm-pos-3`이 그렇게 실패했다). `no-trigger`는 **인접 스킬과 갈리는 경계**를 고르는 것이 가장 값지다(예: `bootstrap-agents-md`의 "AGENTS.md 새로 만들어줘" ↔ `record-project-fact`의 "AGENTS.md에 한 줄 추가해줘" — 두 방향을 모두 케이스로 두면 라우팅이 실제로 갈리는지 보인다). `why`는 러너가 읽지 않는 판정 근거이며, 케이스가 왜 그 기대값을 갖는지 후속 세션이 알 수 있게 남긴다.
+**질의에 스택·환경을 쓰지 않는다** — 그것은 워크스페이스(AGENTS.md)가 정한다. 워크스페이스가 WinUI인데 질의에 "MAUI 프로젝트에"라고 쓰면 **전제가 모순돼 미발동이 정상**이 되고, 그 FAIL은 트리거 품질과 무관하다(실제로 `vm-pos-3`이 그렇게 실패했다). `no-trigger`는 **인접 스킬과 갈리는 경계**를 고르는 것이 가장 값지다(예: `pjc:plan`의 "여러 곳 고쳐야 해" ↔ `pjc:implement`의 "이대로 진행해" — 두 방향을 모두 케이스로 두면 라우팅이 실제로 갈리는지 보인다). `why`는 러너가 읽지 않는 판정 근거이며, 케이스가 왜 그 기대값을 갖는지 후속 세션이 알 수 있게 남긴다.
 
 ## rubric_eval.py
 
@@ -133,7 +133,7 @@ python compare_evals.py <before.json> <after.json>
 
 ## 비용
 
-`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(58건 → 116세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(53건 → 106세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
 
 ## 실행 함정 (2026-09-03 실측)
 
