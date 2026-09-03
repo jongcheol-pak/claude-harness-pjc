@@ -51,11 +51,11 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
         if ($data.tool_name -eq 'Write') { $planGateTarget = $true }
     }
     if ($isPlanFileName -or $isInPlansDir) {
-        # # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다 — 근거는 `rules/write-gate-rationale.md`의 「§4 # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다」
+        # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다 — 근거는 `rules/write-gate-rationale.md`의 「§4 # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다」
         if ($data.tool_name -eq 'Write' -and $isInPlansDir) {
             if ([string]$data.tool_input.content -match $planTaskRx) { $planGateTarget = $true }
         }
-        # # ⓒ 체크박스를 '새로 도입'하는 Edit/MultiEdit — 위 2단계 우회 차단. — 근거는 `rules/write-gate-rationale.md`의 「§5 # ⓒ 체크박스를 '새로 도입'하는 Edit/MultiEdit — 위 2단계 우회 차단.」
+        # ⓒ 체크박스를 '새로 도입'하는 Edit/MultiEdit — 위 2단계 우회 차단. — 근거는 `rules/write-gate-rationale.md`의 「§5 # ⓒ 체크박스를 '새로 도입'하는 Edit/MultiEdit — 위 2단계 우회 차단.」
         if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
             $editPairs = @()
             if ($data.tool_name -eq 'MultiEdit' -and $data.tool_input.edits) {
@@ -83,7 +83,7 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     }
 
     if ($planGateTarget) {
-        # # 발동 흔적 판정 — pjc:plan — 근거는 `rules/write-gate-rationale.md`의 「§6 # 발동 흔적 판정 — pjc:plan」
+        # 발동 흔적 판정 — pjc:plan — 근거는 `rules/write-gate-rationale.md`의 「§6 # 발동 흔적 판정 — pjc:plan」
         $planSkillLaunched = $false
         $tpp = [string]$data.transcript_path
         if ([string]::IsNullOrWhiteSpace($tpp) -or -not (Test-Path -LiteralPath $tpp)) {
@@ -220,7 +220,7 @@ function Test-PlanInDirectory {
         (Test-Path -LiteralPath (Join-Path $Dir 'docs/plan.md') -PathType Leaf)) {
         return $true
     }
-    # # plan 위치는 루트 단일계뿐이다 — 근거는 `rules/write-gate-rationale.md`의 「§18 # plan 위치는 루트 단일계뿐이다」
+    # plan 위치는 루트 단일계뿐이다 — 근거는 `rules/write-gate-rationale.md`의 「§18 # plan 위치는 루트 단일계뿐이다」
     return $false
 }
 
@@ -260,7 +260,7 @@ foreach ($start in $searchStarts) {
 }
 
 if ($foundIn) {
-    # # ---- 완료된/빈 plan 비차단 경고 — 근거는 `rules/write-gate-rationale.md`의 「§19 # ---- 완료된/빈 plan 비차단 경고」
+    # ---- 완료된/빈 plan 비차단 경고 — 근거는 `rules/write-gate-rationale.md`의 「§19 # ---- 완료된/빈 plan 비차단 경고」
     $planFile = $null
     foreach ($cand in @('plan.md', 'PLAN.md', 'docs/plan.md')) {
         $pf = Join-Path $foundIn $cand
@@ -268,10 +268,10 @@ if ($foundIn) {
     }
     if ($planFile) {
         try {
-            # # 세션당 1회 디듑 — 근거는 `rules/write-gate-rationale.md`의 「§20 # 세션당 1회 디듑」
+            # 세션당 1회 디듑 — 근거는 `rules/write-gate-rationale.md`의 「§20 # 세션당 1회 디듑」
             $warnStateDir = Join-Path $env:USERPROFILE '.claude/.state/require-plan-warn'
             try { New-Item -Force -ItemType Directory -Path $warnStateDir | Out-Null } catch {}
-            # # 30일 지난 마커 자동 정리 — 마커는 세션×plan×경고 종류당 1개라 방치하면 무한 축적된다 — 근거는 `rules/write-gate-rationale.md`의 「§21 # 30일 지난 마커 자동 정리 — 마커는 세션×plan×경고 종류당 1개라 방치하면 무한 축적된다」
+            # 30일 지난 마커 자동 정리 — 마커는 세션×plan×경고 종류당 1개라 방치하면 무한 축적된다 — 근거는 `rules/write-gate-rationale.md`의 「§21 # 30일 지난 마커 자동 정리 — 마커는 세션×plan×경고 종류당 1개라 방치하면 무한 축적된다」
             try {
                 Get-ChildItem -LiteralPath $warnStateDir -File -ErrorAction Stop |
                     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
@@ -287,7 +287,7 @@ if ($foundIn) {
                 return $true
             }
             $planText = Get-Content -LiteralPath $planFile -Raw -Encoding UTF8
-            # # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] — 근거는 `rules/write-gate-rationale.md`의 「§22 # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X]」
+            # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] — 근거는 `rules/write-gate-rationale.md`의 「§22 # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X]」
             $incomplete = [regex]::Matches($planText, '(?m)^\s*[-*]\s*\[[ /]\]').Count
             $done = [regex]::Matches($planText, '(?m)^\s*[-*]\s*\[[xX]\]').Count
             if ($incomplete -eq 0 -and $done -ge 1) {

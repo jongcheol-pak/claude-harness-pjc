@@ -30,7 +30,7 @@ REASON_RX = re.compile(
     r'"(?:\[HARNESS\] )?(?:BLOCKED|\[차단\])[:\s]\s*([^"$]{6,60})'   # 직접 출력형
     r'|Deny\s+"([^"$]{6,60})"'                                          # block-destructive 의 Deny 헬퍼
     r'|\.Add\("(?:\[HARNESS\] )?BLOCKED[:\s]\s*([^"$]{6,60})"'         # $lines.Add 형
-    r'|"\[HARNESS\] BLOCKED[:\s]\s*([^"$]{6,60})')                       # 배열 리터럴 형
+    r'|"\[HARNESS\] BLOCKED[:\s]\s*([^"]{6,120})"')                      # 배열 리터럴 형(보간 포함)
 
 
 def read(p):
@@ -47,12 +47,17 @@ def block_paths():
         reasons = []
         for m in REASON_RX.finditer(text):
             s = next((g for g in m.groups() if g), '').strip().rstrip('.,·—-').strip()
-            # 보간 변수 앞까지만 — 그 뒤는 실행 시점에 정해져 케이스가 고정 대조할 수 없다
-            s = re.split(r'\$\(|\$[A-Za-z_]', s)[0].strip()
+            # 보간 변수를 기준으로 조각내고 **가장 긴 고정 구간**을 쓴다 — 앞부분이 짧아도
+            #   뒤에 고정 문면이 있으면 그것으로 대조할 수 있다(guard-bash 의 "T$taskNum 완료 커밋인데…").
+            frags = [x.strip() for x in re.split(r'\$\(|\$[A-Za-z_][A-Za-z0-9_]*', s)]
+            s = max(frags, key=len) if frags else ''
             if len(s) >= 6 and s not in reasons:
                 reasons.append(s)
         if reasons:
             out[f.stem] = reasons
+        else:
+            # exit 2 를 내는데 사유를 못 뽑았다 — 조용히 빠지는 것이 이 검사기가 막으려던 실패다
+            out.setdefault('_unparsed', []).append(f.stem)
     return out
 
 
@@ -96,6 +101,7 @@ def negative_by_hook(cases):
 
 def main():
     paths = block_paths()
+    unparsed = paths.pop('_unparsed', [])
     gtext, cases = golden_text()
     negatives = negative_by_hook(cases)
 
@@ -127,7 +133,12 @@ def main():
         for hook in missing_neg:
             print('  %s' % hook)
 
-    bad = len(missing_pos) + len(missing_neg)
+    if unparsed:
+        print('\n[WARN] exit 2 를 내는데 차단 사유를 뽑지 못한 파일 — 커버리지 판정 밖이다:')
+        for u in unparsed:
+            print('  %s' % u)
+
+    bad = len(missing_pos) + len(missing_neg) + len(unparsed)
     print('\n결과: %s' % ('전건 충족' if bad == 0 else '미충족 %d건' % bad))
     return 1 if bad else 0
 

@@ -25,7 +25,7 @@ function Invoke-TrivialEditGate {
                                 $newStr -match '(?m)\b(public|private|protected|internal|static)\s+[\w<>\[\],\s]+\s+\w+\s*\(' -or
                                 $newStr -match '(?m)\b(def|func|fun|function)\s+\w+\s*\('
 
-            # # 순수 값 치환 감지 — 근거는 `rules/write-gate-rationale.md`의 「§13 # 순수 값 치환 감지」
+            # 순수 값 치환 감지 — 근거는 `rules/write-gate-rationale.md`의 「§13 # 순수 값 치환 감지」
             $normValue = {
                 param([string]$s)
                 $c = [char]1 + 'C'   # 소스에 안 나타나는 제어문자 기반 토큰 (PS 5.1 호환)
@@ -36,7 +36,7 @@ function Invoke-TrivialEditGate {
             }
             $normOld = & $normValue $oldStr
             $normNew = & $normValue $newStr
-            # # 값치환 우회는 스타일/마크업 파일에만 적용한다 — 근거는 `rules/write-gate-rationale.md`의 「§14 # 값치환 우회는 스타일/마크업 파일에만 적용한다」
+            # 값치환 우회는 스타일/마크업 파일에만 적용한다 — 근거는 `rules/write-gate-rationale.md`의 「§14 # 값치환 우회는 스타일/마크업 파일에만 적용한다」
                     $styleExts = @($wgRules.styleExts)
             $isStyleFile = $styleExts -contains $ext
             # 스타일 파일 + 값이 하나라도 정규화됨(치환 대상 존재) + 정규화 후 동일(구조 동일) + 새 정의 아님

@@ -27,7 +27,7 @@ function Get-SystemBootStamp {
 }
 
 function Get-UnkillableMarkers {
-    # # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합. — 근거는 `rules/orphan-cleanup-rationale.md`의 「§5 # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합.」
+    # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합. — 근거는 `rules/orphan-cleanup-rationale.md`의 「§5 # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합.」
     param([string]$BootStamp)
     $set = @{}
     $dir = Get-OrphanMarkerDir
@@ -148,7 +148,7 @@ function Invoke-OrphanProcessCleanup {
     )
     $result = @{ Suppressed = $false; Scanned = 0; CimQueried = $false; Killed = 0; Unkillable = 0; CpuSec = 0 }
     try {
-        # # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 비종결 오류는 try/catch에 잡히지 않고 곧장 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§6 # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 비종결 오류는 try/catch에 잡히지 않고 곧장」
+        # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 비종결 오류는 try/catch에 잡히지 않고 곧장 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§6 # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 비종결 오류는 try/catch에 잡히지 않고 곧장」
         $ErrorActionPreference = 'SilentlyContinue'
         $injected = $PSBoundParameters.ContainsKey('Records')
 
@@ -185,7 +185,7 @@ function Invoke-OrphanProcessCleanup {
                 $gone = $true
             } else {
                 try { Stop-Process -Id $t.Id -Force -ErrorAction Stop } catch {}
-                # # Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다 — 실측에서 성공을 반환하고도 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§7 # Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다 — 실측에서 성공을 반환하고도」
+                # Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다 — 실측에서 성공을 반환하고도 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§7 # Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다 — 실측에서 성공을 반환하고도」
                 try {
                     $still = @(Get-CimInstance Win32_Process -Filter ("ProcessId=" + $t.Id) -ErrorAction Stop)
                     $gone = ($still.Count -eq 0) -or ($still[0].CreationDate -ne $t.StartTime)

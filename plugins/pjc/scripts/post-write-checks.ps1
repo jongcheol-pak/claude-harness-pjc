@@ -54,6 +54,9 @@ $harnessHookName = ''
 try {
     $harnessHookName = ((Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/harness-hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json).names -join '|')
 } catch {}
+# 목록을 못 읽으면 빈 문자열이 되어 아래 정규식이 **모든 `.ps1`에 매치**한다 — 그 상태의 경고는
+#   전부 오탐이므로 검사를 건너뛴다(차단 hook 인 guard-harness 도 같은 상황에서 exit 0 으로 빠진다).
+if ([string]::IsNullOrWhiteSpace($harnessHookName)) { $harnessHookName = '(?!)' }
 # 8.3 단축명 마스킹 감지 — 근거는 `rules/post-write-rationale.md`의 「§5 8.3 단축명 마스킹 감지」
 $has83H2 = ($normFileH2 -match '(?i)/CLAUDE~[0-9]+(/|$)')
 $suspect83H2 = $has83H2 -and
@@ -61,7 +64,7 @@ $suspect83H2 = $has83H2 -and
     ($normFileH2 -match '(?i)/plugins/cache/')
 if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hooks/hooks\.json$') {
     # 문구 중립화 + 세션·파일당 1회 (v1.98.0): 개발 repo의 정상 hook 개발 편집에도 "개조 시도" 프레임이
-    #   매번 붙던 것을 검증 리마인더로 낮춘다(설치본 개조 '차단'은 protect-harness 소관 — 여긴 리마인더).
+    #   매번 붙던 것을 검증 리마인더로 낮춘다(설치본 개조 '차단'은 guard-harness 소관 — 여긴 리마인더).
     if (Test-WarnOnce ('hooksrc|' + $normFileH2)) {
         $allMsgs.Add("[HARNESS] 하니스 hook 스크립트 변경: $file")
         $allMsgs.Add("  hook 동작 변경은 골든 회귀(run-hook-evals.ps1)로 검증하세요. (세션·파일당 1회 리마인더)")
@@ -136,10 +139,10 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             }
         }
 
-        # # ---- 민감 정보 검사 — 근거는 `rules/post-write-rationale.md`의 「§7 # ---- 민감 정보 검사」
+        # ---- 민감 정보 검사 — 근거는 `rules/post-write-rationale.md`의 「§7 # ---- 민감 정보 검사」
         $skipSecretScan = $file -match '\.(env|env\..*)$' -or $file -match '(^|[\\/])\.git[\\/]'
         if ((-not $skipSecretScan) -and $raw) {
-            # # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 — 근거는 `rules/post-write-rationale.md`의 「§8 # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만」
+            # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 — 근거는 `rules/post-write-rationale.md`의 「§8 # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만」
             $scanText = $raw
             try {
                 $fileDir = Split-Path -Parent $file
@@ -147,7 +150,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                     $null = & git -C $fileDir ls-files --error-unmatch -- $file 2>$null
                     if ($LASTEXITCODE -eq 0) {
                         $diffOut = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null)
-                        # # diff 성공 여부를 반드시 확인한다: ls-files는 staged 파일이면 HEAD 없이도 — 근거는 `rules/post-write-rationale.md`의 「§9 # diff 성공 여부를 반드시 확인한다: ls-files는 staged 파일이면 HEAD 없이도」
+                        # diff 성공 여부를 반드시 확인한다: ls-files는 staged 파일이면 HEAD 없이도 — 근거는 `rules/post-write-rationale.md`의 「§9 # diff 성공 여부를 반드시 확인한다: ls-files는 staged 파일이면 HEAD 없이도」
                         if ($LASTEXITCODE -eq 0) {
                             $added = @($diffOut |
                                 Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } |
@@ -187,7 +190,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR
         }
 
-        # # 코드 파일만 검사 — 근거는 `rules/post-write-rationale.md`의 「§11 # 코드 파일만 검사」
+        # 코드 파일만 검사 — 근거는 `rules/post-write-rationale.md`의 「§11 # 코드 파일만 검사」
         $codeExtsImpact = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift', '.vb', '.xaml', '.razor', '.vue', '.svelte', '.sql')
         $extImpact = [System.IO.Path]::GetExtension($file).ToLower()
 
@@ -226,7 +229,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             $m = [regex]::Match($line, $pattern)
                             if ($m.Success) {
                                 $sym = $m.Groups['sym'].Value
-                                # # 너무 짧거나 일반적인 이름은 제외 — 근거는 `rules/post-write-rationale.md`의 「§12 # 너무 짧거나 일반적인 이름은 제외」
+                                # 너무 짧거나 일반적인 이름은 제외 — 근거는 `rules/post-write-rationale.md`의 「§12 # 너무 짧거나 일반적인 이름은 제외」
                                 if ($sym.Length -ge 4 -and
                                     $sym -notmatch '^(?i)(get|set|is|has|name|type|data|text|value|item|key|count|index|result|state|status|title|content|message)$') {
                                     [void]$symbols.Add($sym)
@@ -273,7 +276,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             }
 
                             if ($callers.Count -gt 0) {
-                                # # 세션·파일·심볼당 1회 — 근거는 `rules/post-write-rationale.md`의 「§13 # 세션·파일·심볼당 1회」
+                                # 세션·파일·심볼당 1회 — 근거는 `rules/post-write-rationale.md`의 「§13 # 세션·파일·심볼당 1회」
                                 if (-not (Test-WarnOnce ('impact|' + $normalizedFile + '|' + $sym))) { continue }
                                 # 매치 상한 (v1.98.0): 참조 30건 초과는 흔한 이름/광범위 심볼 — caller 나열이
                                 #   무관 파일 다독을 유도하므로 나열 대신 요약 1줄만 남긴다.

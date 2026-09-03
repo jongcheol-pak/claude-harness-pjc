@@ -3,7 +3,7 @@
 function Get-WikiSignals {
     param([string]$cwd)
     $vaultLine = $null; $staleLine = $null; $feedbackLine = $null
-            # # ---- 위키 vault 설정 상태 판정 — 근거는 `rules/session-context-rationale.md`의 「§23 # ---- 위키 vault 설정 상태 판정」
+            # ---- 위키 vault 설정 상태 판정 — 근거는 `rules/session-context-rationale.md`의 「§23 # ---- 위키 vault 설정 상태 판정」
             $vaultLine = $null
             $feedbackLine = $null              # 스킬 개선 큐 잔량 (하네스 레포 세션에서만 — 아래)
             $staleLine = $null                 # 위키 뒤처짐 (프로젝트를 가리지 않는다 — 아래)
@@ -18,7 +18,7 @@ function Get-WikiSignals {
                         if (Test-Path -LiteralPath $vaultPath -PathType Container) {
                             $vaultLine = "[pjc 세션 컨텍스트] 위키 vault: 설정됨 ($vaultPath) — 프로젝트 맥락이 필요하면 AGENTS.md의 '## 위키'가 지목한 허브를 먼저 Read하세요(판정 단서는 글로벌 지침 「프로젝트 맥락은 위키를 먼저 본다」). 절차 K 참조 가능. `"미설정`"으로 단정하지 마세요."
 
-                            # # ---- 스킬 개선 큐 잔량 — 근거는 `rules/session-context-rationale.md`의 「§24 # ---- 스킬 개선 큐 잔량」
+                            # ---- 스킬 개선 큐 잔량 — 근거는 `rules/session-context-rationale.md`의 「§24 # ---- 스킬 개선 큐 잔량」
                             try {
                                 $pluginJson = Join-Path $cwd 'plugins/pjc/.claude-plugin/plugin.json'
                                 if (Test-Path -LiteralPath $pluginJson -PathType Leaf) {
@@ -30,7 +30,7 @@ function Get-WikiSignals {
                                             if ($fbMatch.Success) { $fbDates += $fbMatch.Groups[1].Value }
                                         }
                                         if ($fbDates.Count -gt 0) {
-                                            # # @ — 근거는 `rules/session-context-rationale.md`의 「§25 # @」
+                                            # @ — 근거는 `rules/session-context-rationale.md`의 「§25 # @」
                                             $fbOldest = @($fbDates | Sort-Object)[0]
                                             $fbAge = [int]([math]::Floor(((Get-Date).Date - [datetime]::ParseExact($fbOldest, 'yyyy-MM-dd', $null)).TotalDays))
                                             $feedbackLine = "[pjc 세션 컨텍스트] 스킬 개선 큐(skill-feedback.md): 대기 $($fbDates.Count)건 / 최고령 ${fbAge}일 — pjc:plan Step 1이 할 일 후보로 조회합니다."
@@ -39,12 +39,12 @@ function Get-WikiSignals {
                                 }
                             } catch {}
 
-                            # # ---- 위키 뒤처짐 알림 — 근거는 `rules/session-context-rationale.md`의 「§26 # ---- 위키 뒤처짐 알림」
+                            # ---- 위키 뒤처짐 알림 — 근거는 `rules/session-context-rationale.md`의 「§26 # ---- 위키 뒤처짐 알림」
                             try {
                                 $hubDir = Join-Path $vaultPath '20_projects'
                                 if (Test-Path -LiteralPath $hubDir -PathType Container) {
                                     $cwdNorm = ($cwd -replace '\\', '/').TrimEnd('/')
-                                    # # cwd 의 origin URL 은 루프 밖에서 1회만 읽는다 — 허브마다 부르면 git 이 — 근거는 `rules/session-context-rationale.md`의 「§27 # cwd 의 origin URL 은 루프 밖에서 1회만 읽는다 — 허브마다 부르면 git 이」
+                                    # cwd 의 origin URL 은 루프 밖에서 1회만 읽는다 — 허브마다 부르면 git 이 — 근거는 `rules/session-context-rationale.md`의 「§27 # cwd 의 origin URL 은 루프 밖에서 1회만 읽는다 — 허브마다 부르면 git 이」
                                     $cwdUrl = ''
                                     try {
                                         $urlRaw = (& git -C $cwd remote get-url origin 2>$null | Select-Object -First 1)
@@ -59,7 +59,7 @@ function Get-WikiSignals {
                                         try { $hubText = Get-Content -LiteralPath $hubFile.FullName -Raw -Encoding UTF8 } catch { continue }
                                         if (-not $hubText) { continue }
 
-                                        # # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. 허브에 `repo_url` 이 — 근거는 `rules/session-context-rationale.md`의 「§28 # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. 허브에 `repo_url` 이」
+                                        # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. 허브에 `repo_url` 이 — 근거는 `rules/session-context-rationale.md`의 「§28 # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. 허브에 `repo_url` 이」
                                         $hubUrl = ''
                                         if ($cwdUrl) {
                                             $urlMatch = [regex]::Match($hubText, '(?m)^repo_url:\s*"?([^"\r\n]+?)"?\s*$')
@@ -87,7 +87,7 @@ function Get-WikiSignals {
                                         $shaMatch = [regex]::Match($hubText, '(?m)^synced_commit:\s*(\S+)')
                                         if ($shaMatch.Success) {
                                             $syncedSha = $shaMatch.Groups[1].Value
-                                            # # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부 — 근거는 `rules/session-context-rationale.md`의 「§29 # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부」
+                                            # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부 — 근거는 `rules/session-context-rationale.md`의 「§29 # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부」
                                             try {
                                                 $countRaw = (& git -C $cwd rev-list --count "$syncedSha..HEAD" 2>$null | Select-Object -First 1)
                                                 if ("$countRaw" -match '^\d+$') { $behind = [int]$countRaw }
@@ -117,7 +117,7 @@ function Get-WikiSignals {
                                             }
                                         }
 
-                                        # # 계산된 축만 문구에 싣는다. 미계산 sentinel — 근거는 `rules/session-context-rationale.md`의 「§30 # 계산된 축만 문구에 싣는다. 미계산 sentinel」
+                                        # 계산된 축만 문구에 싣는다. 미계산 sentinel — 근거는 `rules/session-context-rationale.md`의 「§30 # 계산된 축만 문구에 싣는다. 미계산 sentinel」
                                         $behindKnown = ($behind -ge 0)
                                         $daysKnown = ($staleDays -ge 0)
                                         $behindHit = ($behindKnown -and ($behind -ge 30)) -or ($daysKnown -and ($staleDays -ge 14))

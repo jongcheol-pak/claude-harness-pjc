@@ -1,6 +1,6 @@
 ﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종 — 근거는 `rules/bash-guard-rationale.md`의 「§1 guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종」
 
-# bash-hook-lib.ps1 — Bash 계열 PreToolUse hook 3종의 검사 로직 공유 모듈 — 근거는 `rules/bash-guard-rationale.md`의 「§2 bash-hook-lib.ps1 — Bash 계열 PreToolUse hook 3종의 검사 로직 공유 모듈」
+# 아래 검사 함수 5종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(구 `bash-hook-lib.ps1` 주석을 옮긴 것).
 
 # 결과 객체 생성기 New-HookResult 는 아래 dot-source 대상(guard-commit-secrets.ps1)에 있다 —
 #   그쪽이 이 함수를 쓰므로 정의를 그 파일에 두어야 단독 dot-source(골든 프로브)가 성립한다.
@@ -37,7 +37,7 @@ function Invoke-WarnGlobalFind {
         }
         if ([string]::IsNullOrWhiteSpace($start)) { continue }
 
-        # # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는  — 근거는 `rules/bash-guard-rationale.md`의 「§4 # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 」
+        # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는  — 근거는 `rules/bash-guard-rationale.md`의 「§4 # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 」
         if ($start -match '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\/]?)$') { $hits.Add($start) }
     }
 
@@ -54,7 +54,7 @@ function Invoke-WarnDangerousAssignment {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # # 위험값: 루트·홈 최상위·드라이브 루트. warn-global-find의 탐색 시작점 판정과 같은 형태이 — 근거는 `rules/bash-guard-rationale.md`의 「§6 # 위험값: 루트·홈 최상위·드라이브 루트. warn-global-find의 탐색 시작점 판정과 같은 형태이」
+    # 위험값: 루트·홈 최상위·드라이브 루트. warn-global-find의 탐색 시작점 판정과 같은 형태이 — 근거는 `rules/bash-guard-rationale.md`의 「§6 # 위험값: 루트·홈 최상위·드라이브 루트. warn-global-find의 탐색 시작점 판정과 같은 형태이」
     $dangerRx = '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\\/]?)$'
     # 삭제 계열만 본다 — chmod·chown 같은 권한 변경까지 넓히면 정상 스크립트에서 자주 발화한다.
     $deleteRx = '(?i)^(.*[\\/])?(rm|rmdir|unlink|shred|del|erase|rd|remove-item|ri)(\.exe)?$'
@@ -106,7 +106,7 @@ function Invoke-WarnExternalOps {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게 — 근거는 `rules/bash-guard-rationale.md`의 「§7 # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게」
+    # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게 — 근거는 `rules/bash-guard-rationale.md`의 「§7 # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게」
     $scanCmd = $cmd
     if ($scanCmd -match '(?i)(^|\s)git(\s|$)') {
         $scanCmd = $scanCmd -replace '(?i)(^|\s)(-[a-z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '

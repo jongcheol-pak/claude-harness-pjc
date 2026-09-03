@@ -12,7 +12,7 @@ function Get-DiffHeadAdded {
            else { @(& git diff HEAD --unified=0 2>$null) }
     if ($LASTEXITCODE -ne 0) {
         $scope = if ($PathArgs.Count) { ($PathArgs -join ' ') } else { '전체' }
-        # # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st — 근거는 `rules/commit-secrets-rationale.md`의 「§3 # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st」
+        # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st — 근거는 `rules/commit-secrets-rationale.md`의 「§3 # ⚠ `Write-Warning`을 쓰지 않는다 — pwsh 기본 호스트는 Warning 스트림을 **st」
         if (-not $script:diffHeadFailNotified) {
             [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
                                        'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
@@ -25,7 +25,7 @@ function Get-DiffHeadAdded {
 
 function Invoke-WarnCommitSecrets {
     param($data)
-    # # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — hook 프로세스는 도구 호출당 새로 뜨지만 — 근거는 `rules/commit-secrets-rationale.md`의 「§4 # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — hook 프로세스는 도구 호출당 새로 뜨지만」
+    # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — hook 프로세스는 도구 호출당 새로 뜨지만 — 근거는 `rules/commit-secrets-rationale.md`의 「§4 # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — hook 프로세스는 도구 호출당 새로 뜨지만」
     $script:diffHeadFailNotified = $false
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
@@ -48,9 +48,9 @@ function Invoke-WarnCommitSecrets {
         $addedLines = @(@(& git diff --cached --unified=0 2>$null) |
             Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
 
-        # # -a/-am/--all이면 추적 파일 자동 스테이징분 — 근거는 `rules/commit-secrets-rationale.md`의 「§5 # -a/-am/--all이면 추적 파일 자동 스테이징분」
+        # -a/-am/--all이면 추적 파일 자동 스테이징분 — 근거는 `rules/commit-secrets-rationale.md`의 「§5 # -a/-am/--all이면 추적 파일 자동 스테이징분」
         $cmdFlags = $cmd -replace '(?i)(^|\s)(-[a-zA-Z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', '$1$2'
-        # # 셸 줄 연속 — 근거는 `rules/commit-secrets-rationale.md`의 「§6 # 셸 줄 연속」
+        # 셸 줄 연속 — 근거는 `rules/commit-secrets-rationale.md`의 「§6 # 셸 줄 연속」
         $commitSeg = @(($cmdFlags -replace '\\\r?\n\s*', ' ') -split '(\|\||&&|[;|]|\r?\n)' |
             Where-Object { $_ -match 'git\s+((-c|-C)\s+\S+\s+)*commit\b' })
         # 분리 결과가 비면 전체 명령으로 되돌아간다 — 정규화가 못 잡은 표기에서 판정 대상을
@@ -62,13 +62,13 @@ function Invoke-WarnCommitSecrets {
             $addedLines += Get-DiffHeadAdded
         }
 
-        # # 선행 스테이징 인지 — 근거는 `rules/commit-secrets-rationale.md`의 「§7 # 선행 스테이징 인지」
+        # 선행 스테이징 인지 — 근거는 `rules/commit-secrets-rationale.md`의 「§7 # 선행 스테이징 인지」
         $capHit = $false
         $addMatch = [regex]::Match($cmd, '(?i)git\s+((-c|-C)\s+\S+\s+)*add\s+([^&;|\r\n]*)')
         if ($addMatch.Success) {
             $addArgs = $addMatch.Groups[3].Value.Trim()
             $addTargets = @()
-            # # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만 — 근거는 `rules/commit-secrets-rationale.md`의 「§8 # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만」
+            # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만 — 근거는 `rules/commit-secrets-rationale.md`의 「§8 # 스캔 캡은 **추적 파일 분기와 공유한다** — 종전에는 아래 untracked 정독 루프에만」
             $scanned = 0
             $capNotified = $false
             if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
@@ -76,7 +76,7 @@ function Invoke-WarnCommitSecrets {
                 $addTargets = @(& git ls-files --others --exclude-standard 2>$null)
                 $addedLines += Get-DiffHeadAdded
             } else {
-                # # 경로 나열: 플래그를 뺀 인자만 대상으로 본다. — 근거는 `rules/commit-secrets-rationale.md`의 「§9 # 경로 나열: 플래그를 뺀 인자만 대상으로 본다.」
+                # 경로 나열: 플래그를 뺀 인자만 대상으로 본다. — 근거는 `rules/commit-secrets-rationale.md`의 「§9 # 경로 나열: 플래그를 뺀 인자만 대상으로 본다.」
                 $rawTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
                     ForEach-Object { $_.Trim('"', "'") })
                 foreach ($rt in $rawTargets) {
@@ -89,7 +89,7 @@ function Invoke-WarnCommitSecrets {
                         break
                     }
                     if (Test-Path -LiteralPath $rt -PathType Leaf) {
-                        # # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용 — 근거는 `rules/commit-secrets-rationale.md`의 「§10 # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용」
+                        # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용 — 근거는 `rules/commit-secrets-rationale.md`의 「§10 # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용」
                         if (@(& git ls-files -- $rt 2>$null).Count -gt 0) {
                             $addedLines += Get-DiffHeadAdded -PathArgs @($rt)
                             $scanned++
@@ -105,7 +105,7 @@ function Invoke-WarnCommitSecrets {
                 }
             }
 
-            # # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다. — 근거는 `rules/commit-secrets-rationale.md`의 「§11 # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다.」
+            # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다. — 근거는 `rules/commit-secrets-rationale.md`의 「§11 # 파일 수·크기 상한 — hook은 매 커밋마다 도는 경로라 무제한 정독은 지연을 만든다.」
             foreach ($t in $addTargets) {
                 if ($scanned -ge 50) {
                     $capHit = $true
@@ -142,10 +142,10 @@ function Invoke-WarnCommitSecrets {
             }
         }
 
-        # # `-and -not $capHit` — 캡에 걸렸으면 **검출 0건이어도 여기서 빠져나가면 안 된다** — 근거는 `rules/commit-secrets-rationale.md`의 「§12 # `-and -not $capHit` — 캡에 걸렸으면 **검출 0건이어도 여기서 빠져나가면 안 된다**」
+        # `-and -not $capHit` — 캡에 걸렸으면 **검출 0건이어도 여기서 빠져나가면 안 된다** — 근거는 `rules/commit-secrets-rationale.md`의 「§12 # `-and -not $capHit` — 캡에 걸렸으면 **검출 0건이어도 여기서 빠져나가면 안 된다**」
         if ($hits.Count -eq 0 -and $envFiles.Count -eq 0 -and -not $capHit) { return New-HookResult }
 
-        # # 고신뢰 라벨 — 근거는 `rules/commit-secrets-rationale.md`의 「§13 # 고신뢰 라벨」
+        # 고신뢰 라벨 — 근거는 `rules/commit-secrets-rationale.md`의 「§13 # 고신뢰 라벨」
         $gradeUnknown = -not (Get-Command Get-HighConfidenceSecretLabels -ErrorAction SilentlyContinue)
         if ($gradeUnknown) {
             $highConf = @($hits | Select-Object -Unique)
@@ -154,7 +154,7 @@ function Invoke-WarnCommitSecrets {
             $highConf = @($hits | Where-Object { $hcLabels -contains $_ } | Select-Object -Unique)
         }
 
-        # # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-vie — 근거는 `rules/commit-secrets-rationale.md`의 「§14 # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-vie」
+        # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-vie — 근거는 `rules/commit-secrets-rationale.md`의 「§14 # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-vie」
         $allowSecret = ($env:CLAUDE_HARNESS_ALLOW_SECRET -eq '1')
 
         if ($highConf.Count -gt 0 -and -not $allowSecret) {
@@ -184,13 +184,13 @@ function Invoke-WarnCommitSecrets {
             return New-HookResult -Block $true -Stderr $lines
         }
 
-        # # 캡 차단 — 근거는 `rules/commit-secrets-rationale.md`의 「§15 # 캡 차단」
+        # 캡 차단 — 근거는 `rules/commit-secrets-rationale.md`의 「§15 # 캡 차단」
         if ($capHit -and -not $allowSecret) {
             $lines = New-Object System.Collections.Generic.List[string]
             $lines.Add("[HARNESS] BLOCKED: 커밋될 파일이 많아 시크릿 검사를 끝까지 하지 못했습니다.")
             $lines.Add("")
             $lines.Add("  - 스캔 대상 50개 상한에 도달해 초과분은 검사하지 않았습니다.")
-            # # 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로 — 근거는 `rules/commit-secrets-rationale.md`의 「§16 # 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로」
+            # 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로 — 근거는 `rules/commit-secrets-rationale.md`의 「§16 # 저신뢰 검출분·.env 스테이징은 원래 경고 경로로 나가던 정보다 — 캡 차단이 먼저 반환하므로」
             if ($hits.Count -eq 0) {
                 $lines.Add("  - 검사한 범위에서 검출된 시크릿은 없습니다.")
             } else {
@@ -227,7 +227,7 @@ function Invoke-WarnCommitSecrets {
         if ($allowSecret -and $highConf.Count -gt 0) {
             $lines.Add("  * CLAUDE_HARNESS_ALLOW_SECRET=1 — 자격증명 차단이 우회된 상태입니다.")
         }
-        # # 캡 부기는 **이 경로에도** 필요하다 — `$hits`가 있고 우회가 켜져 있으면 위 두 차단 블록을 — 근거는 `rules/commit-secrets-rationale.md`의 「§17 # 캡 부기는 **이 경로에도** 필요하다 — `$hits`가 있고 우회가 켜져 있으면 위 두 차단 블록을」
+        # 캡 부기는 **이 경로에도** 필요하다 — `$hits`가 있고 우회가 켜져 있으면 위 두 차단 블록을 — 근거는 `rules/commit-secrets-rationale.md`의 「§17 # 캡 부기는 **이 경로에도** 필요하다 — `$hits`가 있고 우회가 켜져 있으면 위 두 차단 블록을」
         if ($capHit) {
             $lines.Add("  ! 스캔 대상 50개 상한에도 걸려 일부 파일은 아예 검사하지 못했습니다 — 위 목록이 전부가 아닐 수 있습니다.")
         }
