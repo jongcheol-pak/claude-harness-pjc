@@ -25,7 +25,7 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  전경에서 그대로 돌아간다(v1.225.0 실측 192~429초 · 748케이스 — 무상태 그룹 샤딩으로 분리 실행 절차가 사라졌다). **완료는 시간이 아니라 `결과: N/N OK` 라인과 exit 0으로 판정한다.** 실행 전 `CLAUDE_HARNESS_QUICK`을 지울 것 — 남아 있으면 41건이 FAIL한다(`docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
+  전경에서 그대로 돌아간다(v1.225.0 실측 192~429초 · 742케이스 — 무상태 그룹 샤딩으로 분리 실행 절차가 사라졌다). **완료는 시간이 아니라 `결과: N/N OK` 라인과 exit 0으로 판정한다.** 실행 전 `CLAUDE_HARNESS_QUICK`을 지울 것 — 남아 있으면 41건이 FAIL한다(`docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
 - **차단 경로 커버리지** (차단 hook·골든 케이스 수정 시 필수 — 차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다):
   ```
   python plugins/pjc/hooks/evals/check-block-coverage.py
@@ -70,7 +70,7 @@
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **명령 출력 예산**: 판정용 명령은 판정에 필요한 최소 형식으로 — `git status --porcelain`(clean이면 0B) · `git diff --stat` 선행 · `git blame -L` 범위 지정 · `gh`는 `--json <필드> --jq <표현식>`로 필드 지정. **단 `git log`는 `--oneline`으로 줄이지 않는다** — 커밋 본문에 회차 서사와 검증 결과가 담긴다. 실측 표·미채택 근거는 `docs/harness-conventions.md` 「명령 출력 예산」이 정본.
 - **파일 크기**: 문서 예산과 분할 판정은 `plugins/pjc/skills/DESIGN.md` 4절이 정본.
-- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단은 **`exit 2`** 하나이고 그것을 내는 hook은 넷이다 — `block-destructive`(파괴적 명령) · `guard-bash`(task 체크박스 게이트 + 커밋 시크릿(조건부)) · `guard-write`(plan 게이트) · `guard-harness`(자기보호 + AGENTS.md 내용 경계). **커밋 시크릿의 조건부 세부·스캔 범위는 `docs/harness-conventions.md`가 정본** — hook 수정 전 반드시 읽을 것. **우회 변수는 둘이며 서로 대체되지 않는다**: `CLAUDE_HARNESS_QUICK`(`guard-write`·`guard-harness`의 AGENTS.md 내용 경계·`guard-bash`의 체크박스 게이트) / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 차단 전용).
+- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단은 **`exit 2`** 하나이고 그것을 내는 hook은 넷이다 — `block-destructive`(파괴적 명령) · `guard-bash`(task 체크박스 게이트 + 커밋 시크릿(조건부)) · `guard-write`(plan 게이트) · `guard-harness`(자기보호 + AGENTS.md 내용 경계). **커밋 시크릿의 조건부 세부·스캔 범위는 `docs/harness-conventions.md`가 정본** — hook 수정 전 반드시 읽을 것. **우회 변수는 둘이며 서로 대체되지 않는다**: `CLAUDE_HARNESS_QUICK`(`guard-write`·`guard-harness`의 AGENTS.md 내용 경계·`guard-bash`의 체크박스 게이트) / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 차단 전용). **`guard-write`의 plan 존재 게이트에는 우회 변수와 별개로 파일 단위 면제 경로가 있다** — `pjc:plan`이 사용자 승인을 받아 남긴 `[PLAN-EXEMPT]` 표식에 적힌 파일만 통과한다(판정 상세는 `docs/harness-conventions.md`의 「`guard-write`의 PLAN-EXEMPT 면제 경로」).
 - **`guard-write`는 게이트 2종**: ① plan 존재 ② plan 작성. 둘은 같은 정규식(`$planTaskRx`)을 공유하므로 **한쪽만 고치지 말 것**(차이가 곧 우회 경로). **`guard-harness`는 자기보호와 AGENTS.md 내용 경계 2종이다** — AGENTS.md **신규 생성** 게이트는 v1.227.0에 없앴다(생성이 `pjc:plan` Step 1의 최소 골격으로 바뀌어 차단 대상이 소멸했다).
 - **⚠ `llm-wiki`의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md`의 vault 예외를 함께 확인**한다 — 검사기가 잡지 못한다(repo 밖). 필수 결합 2건·판정 기준은 `docs/harness-conventions.md`의 「llm-wiki ↔ 글로벌 지침 결합 (동반 수정 판정)」이 정본.
 - **SKILL 문서 작성**: 형식은 `plugins/pjc/skills/AUTHORING.md`, **설계 원칙(규약 문면 형식·자기참조 금지·문서 예산)은 `plugins/pjc/skills/DESIGN.md`가 정본**이다.
