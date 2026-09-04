@@ -29,9 +29,9 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ## 절대 규칙
 
-1. **AGENTS.md 우선.** 다른 패턴(ReactiveUI, MVVM Light 등)을 **명시**했다면 이 skill 을 쓰지 않는다 — 템플릿이 `CommunityToolkit.Mvvm` 소스 생성기를 전제해 다른 베이스에서는 컴파일되지 않는다. **`pjc:implement` 안에서는 멈추지 말고 그 프로젝트 패턴으로 직접 작성한다**(대체 경로가 없으면 루프가 정지한다).
-2. **DDD 준수.** ViewModel 은 UI 레이어이고 비즈니스 로직은 Domain 서비스를 호출하기만 한다 — 규칙이 VM 에 있으면 화면을 더 만들 때 복제된다 — **판정 축은 「화면이 없어도 성립하는가」**(입력 형식은 화면 것, 금액 한도는 도메인 것).
-3. **DI 등록 누락 금지.** ViewModel 은 반드시 컨테이너에 등록 — 빌드는 통과하고 **화면을 여는 순간 해석 실패로 죽는다** — 판정은 등록 코드를 쓴 것이 아니라 **진입점에서 실제로 호출되는가**다(진입점 이름은 프로젝트마다 다르다).
+1. **AGENTS.md 우선.** 다른 패턴(ReactiveUI, MVVM Light 등)을 **명시**했다면 이 skill 을 쓰지 않는다 — 템플릿이 `CommunityToolkit.Mvvm` 생성기를 전제해 다른 베이스에서는 컴파일되지 않는다. **`pjc:implement` 안에서는 멈추지 말고 그 프로젝트 패턴으로 직접 작성한다**(루프가 정지한다).
+2. **DDD 준수.** ViewModel 은 UI 레이어이고 비즈니스 로직은 Domain 서비스를 호출하기만 한다 — **판정 축은 「화면이 없어도 성립하는가」** — 입력 형식은 화면 것, 금액 한도는 도메인 것이며, 규칙이 VM 에 있으면 화면을 더 만들 때 복제된다.
+3. **DI 등록 누락 금지.** ViewModel 은 반드시 컨테이너에 등록 — 빌드는 통과하고 **화면을 여는 순간 해석 실패로 죽는다** — 판정은 **진입점에서 실제로 호출되는가**다(이름은 프로젝트마다 다르다).
 4. **한글 주석**(XML doc 포함) — 이 하니스의 산출물을 읽는 것은 한국어 세션이고, 언어가 섞이면 grep 대상이 갈린다.
 5. **인코딩은 대상 프로젝트 관례를 따른다** — `.cs` 는 Visual Studio 기본이 **BOM 포함**이라 이 하니스의 `.md` 관례를 적용하면 기존 파일과 갈린다(판정은 같은 폴더의 기존 파일).
 6. **WinUI 3 프로젝트면 그 프로젝트의 디자인·다국어 규칙을 따른다.** 정본은 위키 `conventions.md`(스택 고유 규약의 자리)이고, 레포에 `docs/WINUI3-DESIGN-GUIDE.md` 같은 상세 문서가 있으면 함께 본다. 규칙이 어디에도 없으면 **문구는 `x:Uid`+`.resw`로 빼고 하드코딩하지 않는다**는 최소선만 지킨다 — View의 문구를 코드·XAML에 직접 쓰지 않는다.
@@ -58,16 +58,7 @@ View + ViewModel 스켈레톤을 추가한다.
 
 #### WinUI 3 Page 또는 Window (WPF는 아래 주석 참조)
 
-XAML(`<Name>Page.xaml`) — `<Page x:Class="<ProjectNamespace>.Views.<Name>Page">` 에 표준 namespace 4개(`xmlns`·`xmlns:x`·`xmlns:d`·`xmlns:mc` + `mc:Ignorable="d"`)를 선언하고 그 안에 `<Grid Padding="16" RowDefinitions="Auto,*">`를 두고, 헤더는 `TextBlock` + `Text="{x:Bind ViewModel.Title, Mode=OneWay}"` + `Style="{StaticResource TitleTextBlockStyle}"`, 본문은 `ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"`로 시작한다.
-
-> **WPF 차이**: WPF에는 `x:Bind`·`ProgressRing`·`TitleTextBlockStyle`이 없다. WPF View는 `{Binding Title}`(DataContext에 VM 주입), `ProgressRing` 대신 `ProgressBar IsIndeterminate="True"`, namespace는 `System.Windows.Controls.Page`, Style은 프로젝트/WPF-UI 리소스를 사용한다. 또한 WPF는 **`Grid`의 `RowDefinitions="Auto,*"` 축약 문법과 `Grid Padding`을 지원하지 않는다** — `<Grid.RowDefinitions>`를 전개해 `<RowDefinition Height="Auto"/><RowDefinition Height="*"/>`로 쓰고, `Padding` 대신 자식 요소에 `Margin`을 준다(또는 Grid를 `Border Padding`으로 감싼다).
-
-> **MAUI 차이**: MAUI는 `Page` 대신 `ContentPage`(`Microsoft.Maui.Controls`). `x:Bind`가 없어 `{Binding Title}`(BindingContext에 VM 주입, `x:DataType`으로 컴파일 바인딩 권장), `ProgressRing` 대신 `ActivityIndicator`, 코드비하인드 namespace는 `Microsoft.Maui.Controls`, DI는 `MauiProgram`의 `builder.Services`(`App.GetService` 대신 생성자 주입). ViewModel(Step 2)은 CommunityToolkit.Mvvm 그대로 사용한다.
-
-코드비하인드 (`<Name>Page.xaml.cs`):
-> **코드 골격은 `references/templates.md`의 「Step 3」 절에 있다.**
-
-> **주의**: `App.GetService<T>()`는 `App.xaml.cs`에 정의된 정적 헬퍼라고 가정. 프로젝트가 다른 방식(생성자 주입, IPageFactory 등)을 쓰면 그쪽을 따른다.
+> **코드 골격은 `references/templates.md`의 「Step 3」 절에, XAML 골격과 WPF·MAUI 차이는 「XAML 골격」 절에 있다.**
 
 ### Step 4. DI 등록
 
@@ -121,11 +112,12 @@ ViewModel 을 **부모 View 가 `DataContext` 로 주입**한다. 내부는 상�
 | `INotifyPropertyChanged` 수동 구현 | `[ObservableProperty]` 사용 | 알림 누락이 컴파일에 안 걸려 화면이 조용히 갱신되지 않는다(**기존 코드가 수동 구현으로 통일돼 있으면 절대 규칙 1이 우선**) |
 | `ICommand`를 수동 구현 | `[RelayCommand]` 사용 | 위와 같은 축 — `CanExecute` 변경 통지를 손으로 관리하게 된다 |
 | ViewModel에서 `MessageBox` 직접 호출 | `IDialogService` 등으로 추상화 | UI 스레드와 창 핸들에 묶여 **VM 단위 테스트가 창을 띄운다** |
+| ViewModel에서 `HttpClient` 직접 사용 | Domain/Application 서비스 경유 | **VM 단위 테스트가 네트워크에 묶인다** — 규칙 2는 「비즈니스 로직」의 귀속을 정하지만 표시용 데이터를 직접 가져오는 것은 그 축에 안 걸린다 |
 | 코드비하인드에 비즈니스 로직 작성 | ViewModel로 이동 | 코드비하인드는 View 수명에 묶여 테스트에서 인스턴스화할 수 없다 |
 | 동기 `Wait()`, `.Result` 호출 | `async/await` | **UI 스레드에서 즉시 데드락** — 생성자라 `await` 을 못 쓰는 경우도 예외가 아니고 아래 `Loaded`·커맨드로 옮긴다 |
 | `LoadAsync`를 생성자에서 직접 호출 | `Loaded` 이벤트 또는 명시적 커맨드 | 생성자는 예외를 돌려줄 자리가 없어 실패가 DI 해석 실패로 나타난다 |
 
-> DI 등록 없이 `new ViewModel()`·영문 XML doc 주석 금지는 절대 규칙 3·4가 정본(중복 행 제거).
+> 여기서 뺀 행: `new ViewModel()` 금지·영문 XML doc 금지는 절대 규칙 3·4가 정본이다. **`HttpClient` 행은 뺐다가 되살렸다** — 규칙 2의 축(비즈니스 로직 귀속)과 달라 중복이 아니었다(회차 6 완료 리뷰).
 
 ## Halt 조건
 

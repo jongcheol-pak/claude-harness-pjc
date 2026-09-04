@@ -80,8 +80,6 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 
 #### 구현 (Domain 레이어)
 
-`src/<Project>.Domain/Services/<Name>Service.cs`:
-
 
 ### Step 3. Application Service 추가 (해당 시)
 
@@ -96,10 +94,6 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 
 > **코드 골격은 `references/templates.md`의 「Step 4」 절에 있다.**
 
-`src/<Project>.Application/DependencyInjection.cs`:
-
-
-진입점 (Program.cs / App.xaml.cs):
 
 
 > **수명**: 보통 `Scoped`. 상태 없는 순수 함수형이면 `Transient` 가능. `Singleton`은 동시성 위험.

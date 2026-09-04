@@ -142,3 +142,15 @@ public class <Name>ViewModelTests
     }
 }
 ```
+
+## XAML 골격
+
+XAML(`<Name>Page.xaml`) — `<Page x:Class="<ProjectNamespace>.Views.<Name>Page">` 에 표준 namespace 4개(`xmlns`·`xmlns:x`·`xmlns:d`·`xmlns:mc` + `mc:Ignorable="d"`)를 선언하고 그 안에 `<Grid Padding="16" RowDefinitions="Auto,*">`를 두고, 헤더는 `TextBlock` + `Text="{x:Bind ViewModel.Title, Mode=OneWay}"` + `Style="{StaticResource TitleTextBlockStyle}"`, 본문은 `ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"`로 시작한다.
+
+> **WPF 차이**: WPF에는 `x:Bind`·`ProgressRing`·`TitleTextBlockStyle`이 없다. WPF View는 `{Binding Title}`(DataContext에 VM 주입), `ProgressRing` 대신 `ProgressBar IsIndeterminate="True"`, namespace는 `System.Windows.Controls.Page`, Style은 프로젝트/WPF-UI 리소스를 사용한다. 또한 WPF는 **`Grid`의 `RowDefinitions="Auto,*"` 축약 문법과 `Grid Padding`을 지원하지 않는다** — `<Grid.RowDefinitions>`를 전개해 `<RowDefinition Height="Auto"/><RowDefinition Height="*"/>`로 쓰고, `Padding` 대신 자식 요소에 `Margin`을 준다(또는 Grid를 `Border Padding`으로 감싼다).
+
+> **MAUI 차이**: MAUI는 `Page` 대신 `ContentPage`(`Microsoft.Maui.Controls`). `x:Bind`가 없어 `{Binding Title}`(BindingContext에 VM 주입, `x:DataType`으로 컴파일 바인딩 권장), `ProgressRing` 대신 `ActivityIndicator`, 코드비하인드 namespace는 `Microsoft.Maui.Controls`, DI는 `MauiProgram`의 `builder.Services`(`App.GetService` 대신 생성자 주입). ViewModel(Step 2)은 CommunityToolkit.Mvvm 그대로 사용한다.
+
+코드비하인드 (`<Name>Page.xaml.cs`):
+
+> **주의**: `App.GetService<T>()`는 `App.xaml.cs`에 정의된 정적 헬퍼라고 가정. 프로젝트가 다른 방식(생성자 주입, IPageFactory 등)을 쓰면 그쪽을 따른다.
