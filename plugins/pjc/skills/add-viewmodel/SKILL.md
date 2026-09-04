@@ -56,7 +56,7 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ### Step 3. View 생성
 
-`src/<Project>/Views/<Name>Page.xaml` 과 코드비하인드 `<Name>Page.xaml.cs` 를 만든다 — **WinUI 3·WPF·MAUI 는 바인딩 문법이 달라 기존 View 를 따른다**.
+**베이스 타입은 사전 조건의 화면 종류를 따른다**(`Page`·`Window`·`UserControl`·`ContentDialog`) — 그 선택이 파일명과 DI·네비게이션 경로를 함께 정한다. `src/<Project>/Views/<Name>Page.xaml` 과 코드비하인드 `<Name>Page.xaml.cs` 형태로 만들고, **WinUI 3·WPF·MAUI 는 바인딩 문법이 달라 기존 View 를 따른다**.
 
 ### Step 4. DI 등록
 
