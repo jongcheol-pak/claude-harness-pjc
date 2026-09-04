@@ -34,7 +34,7 @@ View + ViewModel 스켈레톤을 추가한다.
 3. **DI 등록 누락 금지.** ViewModel 은 반드시 컨테이너에 등록 — 빌드는 통과하고 **화면을 여는 순간 해석 실패로 죽는다** — 판정은 **진입점에서 실제로 호출되는가**다(이름은 프로젝트마다 다르다).
 4. **한글 주석**(XML doc 포함) — 이 하니스의 산출물을 읽는 것은 한국어 세션이고, 언어가 섞이면 grep 대상이 갈린다.
 5. **인코딩은 대상 프로젝트 관례를 따른다** — `.cs` 는 Visual Studio 기본이 **BOM 포함**이라 이 하니스의 `.md` 관례를 적용하면 기존 파일과 갈린다(판정은 같은 폴더의 기존 파일).
-6. **WinUI 3 프로젝트면 그 프로젝트의 디자인·다국어 규칙을 따른다.** 정본은 위키 `conventions.md`(스택 고유 규약의 자리)이고, 레포에 `docs/WINUI3-DESIGN-GUIDE.md` 같은 상세 문서가 있으면 함께 본다 — **규칙이 어디에도 없으면 기존 View 를 따른다**(다국어를 쓰지 않는 앱에 리소스 분리를 강요하면 과잉이다).
+6. **WinUI 3 프로젝트면 그 프로젝트의 디자인·다국어 규칙을 따른다.** 정본은 위키 `conventions.md`(스택 고유 규약의 자리)이고, 레포에 `docs/WINUI3-DESIGN-GUIDE.md` 같은 상세 문서가 있으면 함께 본다 — **어디에도 없으면 규약이 없는 것으로 보고 넘어간다**(다국어를 쓰지 않는 앱에 리소스 분리를 강요하면 과잉이다).
 
 ## 실행 단계
 
@@ -56,13 +56,13 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ### Step 3. View 생성
 
-**View 베이스 타입은 사전 조건의 화면 종류를 따른다** — `src/<Project>/Views/<Name><종류>.xaml` 과 코드비하인드(예: `<Name>Page.xaml` · `<Name>Dialog.xaml`)를 만들고, **WinUI 3·WPF·MAUI 는 바인딩 문법이 달라 기존 View 를 따른다**.
+**View 베이스 타입은 사전 조건의 화면 종류를 따른다** — `src/<Project>/Views/<Name><종류>.xaml` 과 코드비하인드를 만들고(`<Name>Page.xaml` · `<Name>ContentDialog.xaml` — 그 프로젝트에 축약 관례가 있으면 따른다), **WinUI 3·WPF·MAUI 는 바인딩 문법이 달라 기존 View 를 따른다**.
 
-> **`Page` 가 아니면 Step 4·5 가 갈린다** — `ContentDialog`·`Window` 는 프레임이 꽂아 줄 자리가 없어 **View 자체를 컨테이너에 등록**하고 Step 5 대신 호출부에서 직접 띄운다. `UserControl` 은 **부모 View 가 `DataContext` 로 주입**하므로 둘 다 하지 않는다.
+> **`Page` 가 아니면 Step 4·5 가 갈린다** — `ContentDialog`·`Window` 는 프레임이 꽂아 줄 자리가 없어 **View 자체를 컨테이너에 등록**하고 Step 5 대신 호출부에서 직접 띄운다. `UserControl` 은 **부모 View 가 `DataContext` 로 주입**하므로 **View 등록도 직접 띄우기도 하지 않는다**(ViewModel 등록은 절대 규칙 3 대로 그대로 한다).
 
 ### Step 4. DI 등록
 
-`App.xaml.cs`(또는 `Program.cs`)의 `ConfigureServices` 에 ViewModel 을 등록한다 — **View 는 View DI 를 쓰는 프로젝트에서만** 함께 등록한다(`ContentDialog`·`Window` 는 Step 3 의 단서대로 등록 대상이다).
+`App.xaml.cs`(또는 `Program.cs`)의 `ConfigureServices` 에 ViewModel 을 등록한다 — **View 는 View DI 를 쓰는 프로젝트에서만** 함께 등록한다 — 종류별 판정은 Step 3 의 단서가 정본이다(`ContentDialog`·`Window` 는 등록 대상 · `UserControl` 은 제외).
 
 > **수명**: 일반적으로 ViewModel은 `Transient`. 앱 전체에서 상태를 유지해야 하면 `Singleton` 검토.
 
