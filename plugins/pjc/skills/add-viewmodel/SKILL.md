@@ -29,11 +29,11 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ## 절대 규칙
 
-1. **AGENTS.md 우선.** 프로젝트가 다른 패턴(ReactiveUI, MVVM Light 등)을 명시했다면 이 skill을 사용하지 않는다.
-2. **DDD 준수.** ViewModel은 UI 레이어. 비즈니스 로직은 Domain 서비스를 호출하기만 한다.
-3. **DI 등록 누락 금지.** ViewModel은 반드시 `ConfigureServices`에 등록.
-4. **한글 주석.** XML 문서 주석 포함 모두 한글.
-5. **UTF-8 (BOM 없음).**
+1. **AGENTS.md 우선.** 다른 패턴(ReactiveUI, MVVM Light 등)을 **명시**했다면 이 skill 을 쓰지 않는다 — 템플릿이 `CommunityToolkit.Mvvm` 소스 생성기를 전제해 다른 베이스에서는 컴파일되지 않는다. **`pjc:implement` 안에서는 멈추지 말고 그 프로젝트 패턴으로 직접 작성한다**(대체 경로가 없으면 루프가 정지한다).
+2. **DDD 준수.** ViewModel 은 UI 레이어이고 비즈니스 로직은 Domain 서비스를 호출하기만 한다 — 규칙이 VM 에 있으면 화면을 더 만들 때 복제된다 — **판정 축은 「화면이 없어도 성립하는가」**(입력 형식은 화면 것, 금액 한도는 도메인 것).
+3. **DI 등록 누락 금지.** ViewModel 은 반드시 컨테이너에 등록 — 빌드는 통과하고 **화면을 여는 순간 해석 실패로 죽는다** — 판정은 등록 코드를 쓴 것이 아니라 **진입점에서 실제로 호출되는가**다(진입점 이름은 프로젝트마다 다르다).
+4. **한글 주석**(XML doc 포함) — 이 하니스의 산출물을 읽는 것은 한국어 세션이고, 언어가 섞이면 grep 대상이 갈린다.
+5. **UTF-8 (BOM 없음).** — **[삭제 후보]** `.cs` 는 Visual Studio 기본이 **BOM 포함**이라 이 규칙은 대상 프로젝트와 어긋난다 — 「BOM 없음」은 이 하니스 자기 레포의 `.md` 관례다.
 6. **WinUI 3 프로젝트면 그 프로젝트의 디자인·다국어 규칙을 따른다.** 정본은 위키 `conventions.md`(스택 고유 규약의 자리)이고, 레포에 `docs/WINUI3-DESIGN-GUIDE.md` 같은 상세 문서가 있으면 함께 본다. 규칙이 어디에도 없으면 **문구는 `x:Uid`+`.resw`로 빼고 하드코딩하지 않는다**는 최소선만 지킨다 — View의 문구를 코드·XAML에 직접 쓰지 않는다.
 
 ## 실행 단계
@@ -52,62 +52,7 @@ View + ViewModel 스켈레톤을 추가한다.
 
 기본 템플릿:
 
-```csharp
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Logging;
-
-namespace <ProjectNamespace>.ViewModels;
-
-/// <summary>
-/// <화면 목적 한 줄 설명>
-/// </summary>
-public sealed partial class <Name>ViewModel : ObservableObject
-{
-    private readonly ILogger<<Name>ViewModel> _logger;
-    // 기타 의존성: private readonly I<Service> _service;
-
-    // 화면 표시용 상태
-    [ObservableProperty]
-    private string _title = "<기본 제목>";
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    public <Name>ViewModel(
-        ILogger<<Name>ViewModel> logger
-        /* , I<Service> service */)
-    {
-        _logger = logger;
-        // _service = service;
-    }
-
-    /// <summary>
-    /// 화면이 표시될 때 호출. 초기 데이터 로딩 등.
-    /// </summary>
-    [RelayCommand]
-    private async Task LoadAsync()
-    {
-        if (IsBusy) return;
-
-        try
-        {
-            IsBusy = true;
-            // TODO: 초기화 로직 (Domain 서비스 호출)
-            _logger.LogInformation("<Name> 화면 로딩 완료");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "<Name> 화면 로딩 실패");
-            // 사용자 알림 로직 (Dialog/SnackBar)
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-}
-```
+> **코드 골격은 `references/templates.md`의 「Step 2」 절에 있다.**
 
 ### Step 3. View 생성
 
@@ -120,26 +65,7 @@ XAML(`<Name>Page.xaml`) — `<Page x:Class="<ProjectNamespace>.Views.<Name>Page"
 > **MAUI 차이**: MAUI는 `Page` 대신 `ContentPage`(`Microsoft.Maui.Controls`). `x:Bind`가 없어 `{Binding Title}`(BindingContext에 VM 주입, `x:DataType`으로 컴파일 바인딩 권장), `ProgressRing` 대신 `ActivityIndicator`, 코드비하인드 namespace는 `Microsoft.Maui.Controls`, DI는 `MauiProgram`의 `builder.Services`(`App.GetService` 대신 생성자 주입). ViewModel(Step 2)은 CommunityToolkit.Mvvm 그대로 사용한다.
 
 코드비하인드 (`<Name>Page.xaml.cs`):
-```csharp
-using Microsoft.UI.Xaml.Controls;
-
-namespace <ProjectNamespace>.Views;
-
-public sealed partial class <Name>Page : Page
-{
-    public <Name>ViewModel ViewModel { get; }
-
-    public <Name>Page()
-    {
-        // DI 컨테이너에서 ViewModel 해석
-        ViewModel = App.GetService<<Name>ViewModel>();
-        InitializeComponent();
-
-        // 페이지가 표시될 때 초기 로딩
-        Loaded += async (_, _) => await ViewModel.LoadCommand.ExecuteAsync(null);
-    }
-}
-```
+> **코드 골격은 `references/templates.md`의 「Step 3」 절에 있다.**
 
 > **주의**: `App.GetService<T>()`는 `App.xaml.cs`에 정의된 정적 헬퍼라고 가정. 프로젝트가 다른 방식(생성자 주입, IPageFactory 등)을 쓰면 그쪽을 따른다.
 
@@ -147,22 +73,7 @@ public sealed partial class <Name>Page : Page
 
 `App.xaml.cs` (또는 `Program.cs`) 의 `ConfigureServices`에 추가:
 
-```csharp
-private static IServiceProvider ConfigureServices()
-{
-    var services = new ServiceCollection();
-
-    // ... 기존 등록 ...
-
-    // ViewModels
-    services.AddTransient<<Name>ViewModel>();   // 화면 진입마다 새 인스턴스
-
-    // Pages (선택 - Page DI를 쓰는 경우만)
-    services.AddTransient<<Name>Page>();
-
-    return services.BuildServiceProvider();
-}
-```
+> **코드 골격은 `references/templates.md`의 「Step 4」 절에 있다.**
 
 > **수명**: 일반적으로 ViewModel은 `Transient`. 앱 전체에서 상태를 유지해야 하면 `Singleton` 검토.
 
@@ -179,35 +90,7 @@ private static IServiceProvider ConfigureServices()
 
 `tests/<Project>.Tests/ViewModels/<Name>ViewModelTests.cs`:
 
-```csharp
-using Microsoft.Extensions.Logging.Abstractions;
-using Xunit;
-
-namespace <ProjectNamespace>.Tests.ViewModels;
-
-public class <Name>ViewModelTests
-{
-    private static <Name>ViewModel CreateSut()
-    {
-        return new <Name>ViewModel(
-            NullLogger<<Name>ViewModel>.Instance
-            /* , Mock 의존성 */);
-    }
-
-    [Fact]
-    public async Task LoadCommand_초기실행_IsBusy_가_복원된다()
-    {
-        // Arrange
-        var sut = CreateSut();
-
-        // Act
-        await sut.LoadCommand.ExecuteAsync(null);
-
-        // Assert
-        Assert.False(sut.IsBusy);
-    }
-}
-```
+> **코드 골격은 `references/templates.md`의 「Step 6」 절에 있다.**
 
 ### Step 7. 검증
 
@@ -221,27 +104,26 @@ public class <Name>ViewModelTests
 
 ### A. ContentDialog (모달)
 
-`Page` 대신 `ContentDialog`을 상속하고 **ViewModel을 생성자 주입**으로 받는다(DI에서 직접 해석).
+`Page` 대신 `ContentDialog` 을 상속하고 **ViewModel 을 생성자 주입**으로 받는다 — Page 와 달리 **코드에서 직접 생성**돼 프레임이 VM 을 꽂아 줄 자리가 없다(Dialog 자체도 컨테이너에 등록한다).
 
 ### B. UserControl (재사용 부품)
 
-ViewModel을 **부모 View가 `DataContext`로 주입**한다. UserControl 내부는 상속된 `DataContext`에 `{Binding}`으로 접근하고 **자체적으로 `DataContext`를 덮어쓰지 않는다.**
+ViewModel 을 **부모 View 가 `DataContext` 로 주입**한다. 내부는 상속된 `DataContext` 에 `{Binding}` 으로 접근하고 **자체적으로 덮어쓰지 않는다** — 덮어쓰면 부모가 꽂은 VM 과의 연결이 끊겨 바인딩이 조용히 빈 값을 낸다(디자인 타임 데이터는 `d:DataContext` 로).
 
 ### C. Settings / 영속화가 필요한 경우
 
-`Singleton` ViewModel + `ISettingsService` 의존성 주입.
+`Singleton` ViewModel + `ISettingsService` 주입 — 화면을 오갈 때 상태가 유지돼야 하기 때문이다 — **다만 이벤트를 구독하면 화면을 닫아도 해제되지 않아 누수가 되므로**, 구독이 있으면 해제 경로를 함께 만든다.
 
 ## 안티패턴 (금지)
 
-| 안티패턴 | 올바른 행동 |
-|---|---|
-| `INotifyPropertyChanged` 수동 구현 | `[ObservableProperty]` 사용 |
-| `ICommand`를 수동 구현 | `[RelayCommand]` 사용 |
-| ViewModel에서 `MessageBox` 직접 호출 | `IDialogService` 등으로 추상화 |
-| ViewModel에서 `HttpClient` 직접 사용 | Domain/Application 서비스 경유 |
-| 코드비하인드에 비즈니스 로직 작성 | ViewModel로 이동 |
-| 동기 `Wait()`, `.Result` 호출 | `async/await` |
-| `LoadAsync`를 생성자에서 직접 호출 | `Loaded` 이벤트 또는 명시적 커맨드 |
+| 안티패턴 | 올바른 행동 | 왜 |
+|---|---|---|
+| `INotifyPropertyChanged` 수동 구현 | `[ObservableProperty]` 사용 | 알림 누락이 컴파일에 안 걸려 화면이 조용히 갱신되지 않는다(**기존 코드가 수동 구현으로 통일돼 있으면 절대 규칙 1이 우선**) |
+| `ICommand`를 수동 구현 | `[RelayCommand]` 사용 | 위와 같은 축 — `CanExecute` 변경 통지를 손으로 관리하게 된다 |
+| ViewModel에서 `MessageBox` 직접 호출 | `IDialogService` 등으로 추상화 | UI 스레드와 창 핸들에 묶여 **VM 단위 테스트가 창을 띄운다** |
+| 코드비하인드에 비즈니스 로직 작성 | ViewModel로 이동 | 코드비하인드는 View 수명에 묶여 테스트에서 인스턴스화할 수 없다 |
+| 동기 `Wait()`, `.Result` 호출 | `async/await` | **UI 스레드에서 즉시 데드락** — 생성자라 `await` 을 못 쓰는 경우도 예외가 아니고 아래 `Loaded`·커맨드로 옮긴다 |
+| `LoadAsync`를 생성자에서 직접 호출 | `Loaded` 이벤트 또는 명시적 커맨드 | 생성자는 예외를 돌려줄 자리가 없어 실패가 DI 해석 실패로 나타난다 |
 
 > DI 등록 없이 `new ViewModel()`·영문 XML doc 주석 금지는 절대 규칙 3·4가 정본(중복 행 제거).
 
@@ -249,8 +131,8 @@ ViewModel을 **부모 View가 `DataContext`로 주입**한다. UserControl 내�
 
 다음 발견 시 사용자에게 보고하고 중지:
 
-- 기존 ViewModel이 다른 베이스 클래스(`BindableBase`, `ReactiveObject` 등)를 쓰고 있음
-- DI 컨테이너가 없거나 **관례 없는 전역 Service Locator를 남용**하고 있음(제3자 로케이터 라이브러리·전역 정적 컨테이너를 여기저기서 직접 뒤지는 형태). **`App.GetService<T>()` 같은 프로젝트 관례의 정적 헬퍼는 남용이 아니다**(Step 3 말미 참조)
-- 네비게이션 패턴이 plan.md에 명시되지 않았고 코드베이스에서도 단일 패턴이 보이지 않음
-- View가 코드 생성기로 만들어지는 경우 (`*.Generated.*`)
+- 기존 ViewModel 이 다른 베이스 클래스(`BindableBase`·`ReactiveObject` 등)를 쓰고 있음 — **절대 규칙 1과 발화 조건이 다르다** — 그쪽은 AGENTS.md 가 **명시**했을 때, 이쪽은 **코드에서 관측**됐을 때이며 어느 쪽을 따라도 절반과 어긋나므로 사용자가 정한다
+- DI 컨테이너가 없거나 **관례 없는 전역 Service Locator를 남용**하고 있음(제3자 로케이터 라이브러리·전역 정적 컨테이너를 여기저기서 직접 뒤지는 형태). **`App.GetService<T>()` 같은 프로젝트 관례의 정적 헬퍼는 남용이 아니다**(Step 3 말미 참조) — 절대 규칙 3의 「진입점에서 등록이 호출되는가」를 확인할 자리가 없으면 누락을 판정할 수 없다
+- 네비게이션 패턴이 plan.md 에 없고 코드베이스에도 단일 패턴이 없음 — 추측해 붙이면 **화면이 어디서도 도달되지 않는 채 완료 보고된다** — 단일 패턴이 코드에 있으면 그것을 따르고 멈추지 않는다
+- View 가 코드 생성기로 만들어지는 경우(`*.Generated.*`) — 손으로 고쳐도 다음 생성에서 덮인다 — 고칠 자리는 생성기 입력이다
 - **`CommunityToolkit.Mvvm` 패키지가 프로젝트에 없음** — `[ObservableProperty]`·`[RelayCommand]`·`ObservableObject`가 컴파일되지 않는다. 의존성 추가는 승인 필요이므로 임의로 추가하지 말고 사용자에게 확인(또는 plan에 패키지 추가를 명시)
