@@ -25,7 +25,7 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  전경에서 그대로 돌아간다(v1.225.0 실측 192~429초 · 742케이스 — 무상태 그룹 샤딩으로 분리 실행 절차가 사라졌다). **완료는 시간이 아니라 `결과: N/N OK` 라인과 exit 0으로 판정한다.** 실행 전 `CLAUDE_HARNESS_QUICK`을 지울 것 — 남아 있으면 41건이 FAIL한다(`docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
+  전경에서 그대로 돌아간다(v1.225.0 실측 192~429초 · 750케이스 — 무상태 그룹 샤딩으로 분리 실행 절차가 사라졌다). **완료는 시간이 아니라 `결과: N/N OK` 라인과 exit 0으로 판정한다.** 실행 전 `CLAUDE_HARNESS_QUICK`을 지울 것 — 남아 있으면 41건이 FAIL한다(`docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
 - **차단 경로 커버리지** (차단 hook·골든 케이스 수정 시 필수 — 차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다):
   ```
   python plugins/pjc/hooks/evals/check-block-coverage.py

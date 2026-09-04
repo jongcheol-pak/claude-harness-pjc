@@ -3,7 +3,7 @@
 function Write-HookEvent {
     param(
         [string]$Hook,          # hook 이름 (예: 'block-destructive')
-        [string]$Decision,      # 'block' | 'warn' | 'cleanup'(고아 프로세스 회수 — session-end-cleanup-lib)
+        [string]$Decision,      # 'block' | 'warn' | 'allow'(게이트를 여는 판정 — guard-write 의 PLAN-EXEMPT 면제) | 'cleanup'(고아 프로세스 회수 — session-end-cleanup-lib)
         [string]$Rule,          # 발동 규칙 키워드 (오탐 리뷰 시 어떤 검사가 발동했는지 식별용)
         [string]$CommandText = ''   # 명령/대상 원문 (시크릿 검사 후 앞 200자만 기록, 없으면 생략)
     )

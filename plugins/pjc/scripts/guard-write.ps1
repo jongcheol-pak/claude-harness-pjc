@@ -330,16 +330,40 @@ $tppX = [string]$data.transcript_path
 if ((-not [string]::IsNullOrWhiteSpace($tppX)) -and (Test-Path -LiteralPath $tppX)) {
     try {
         $cmpIC = [System.StringComparison]::OrdinalIgnoreCase
-        foreach ($ln in (Select-String -LiteralPath $tppX -Pattern 'PLAN-EXEMPT' -SimpleMatch)) {
+        # 마커는 대괄호를 포함해야 한다 — 맨 토큰('PLAN-EXEMPT')만 찾으면 이 판정을 설명하는
+        #   주석·문서 줄이 grep 결과로 transcript 에 실릴 때 그 줄이 표식으로 인정된다.
+        $exMarker = '[PLAN-EXEMPT]'
+        foreach ($ln in (Select-String -LiteralPath $tppX -Pattern $exMarker -SimpleMatch)) {
             $t = [string]$ln.Line
-            if ($t.IndexOf($exFile, $cmpIC) -lt 0) { continue }
-            # 파일명만으로는 다른 디렉터리의 동명 파일이 통과한다 — 직속 부모 이름을 함께 요구한다.
-            if ([string]::IsNullOrEmpty($exParent) -or ($t.IndexOf($exParent, $cmpIC) -ge 0)) { $exemptHit = $true; break }
+            $mi = $t.IndexOf($exMarker, $cmpIC)
+            if ($mi -lt 0) { continue }
+            # 마커 '뒤'만 본다 — 파일을 읽거나 grep 한 결과는 경로 접두가 마커 '앞'에 붙으므로,
+            #   그 줄로는 면제가 성립하지 않는다.
+            $rest = $t.Substring($mi + $exMarker.Length)
+            foreach ($tok in ($rest -split '[\s·,;"''()]+')) {
+                if ([string]::IsNullOrWhiteSpace($tok)) { continue }
+                # 경로 구분자를 정규화하지 않는다 — Path API 가 '/'·'\' 와 JSON 이스케이프된
+                #   '\\' 를 모두 같게 처리한다(실측: 셋 다 file=guard-write.ps1 parent=scripts).
+                $tf = ''
+                $tp = ''
+                try {
+                    $tf = [System.IO.Path]::GetFileName($tok)
+                    $tp = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($tok))
+                } catch { continue }
+                # 부분문자열이 아니라 완전 일치다 — 'write.ps1' 은 'guard-write.ps1' 의 부분문자열이라
+                #   IndexOf 로 보면 표식에 없는 파일이 열린다(부모의 'scr' ⊂ 'scripts' 도 같다).
+                if ([string]::IsNullOrEmpty($tf) -or (-not $tf.Equals($exFile, $cmpIC))) { continue }
+                if ([string]::IsNullOrEmpty($exParent) -or ((-not [string]::IsNullOrEmpty($tp)) -and $tp.Equals($exParent, $cmpIC))) {
+                    $exemptHit = $true
+                    break
+                }
+            }
+            if ($exemptHit) { break }
         }
     } catch { $exemptHit = $false }
 }
 if ($exemptHit) {
-    [Console]::Error.WriteLine("[HARNESS] PLAN-EXEMPT: 사용자 승인 면제($exFile). plan 검사 우회. 영향은 impact-warn hook이 검증합니다.")
+    [Console]::Error.WriteLine("[HARNESS] PLAN-EXEMPT: 사용자 승인 면제($exFile). plan 검사 우회.")
     Write-RpEvent 'allow' 'PLAN-EXEMPT 면제'
     exit 0
 }

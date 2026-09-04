@@ -266,5 +266,31 @@ Assert-Case -Name "면제: transcript 미제공은 면제 없음 — fail-closed
 #   여기서 오통과했을 것이므로, 이 케이스가 D2 의 '부모까지 본다'를 실증한다.
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir $pxSameName 'Write' @{} @{ transcript_path = $trExempt })
 Assert-Case -Name "면제: 부모 디렉터리가 다른 동명 파일은 차단 (PX4, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+
+# PX5·PX6·PX7 — 매칭 정밀도 축(회차 12 완료 리뷰 BLOCKER 2건). PX2·PX4 는 충돌하지 않는
+#   이름을 골라 이 경계를 재지 않는다: '표식으로 오인되는 산문'과 '부분문자열 충돌'이 그것이다.
+$pxScripts = Join-Path $pxDir 'scripts'
+$pxScr = Join-Path $pxDir 'scr'
+New-Item -ItemType Directory $pxScripts -Force | Out-Null
+New-Item -ItemType Directory $pxScr -Force | Out-Null
+$trProse = Join-Path $work 'tr-plan-exempt-prose.jsonl'
+# 대괄호 없는 산문 — 이 판정을 grep 한 결과가 그대로 실린 형태다(경로 접두가 함께 붙는다).
+(New-TranscriptLine -Type assistant -Text 'plugins/pjc/scripts/guard-write.ps1:324:# PLAN-EXEMPT 면제 판정') | Set-Content $trProse
+$trPrefix = Join-Path $work 'tr-plan-exempt-prefix.jsonl'
+(New-TranscriptLine -Type assistant -Text '[PLAN-EXEMPT] scripts/guard-write.ps1') | Set-Content $trPrefix
+
+# PX5 (델타 음성 — 마커 축): 대괄호 없는 산문 줄은 표식이 아니다
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'guard-write.ps1') 'Write' @{} @{ transcript_path = $trProse })
+Assert-Case -Name "면제: 대괄호 없는 산문 줄은 표식이 아니다 (PX5, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX6 (델타 음성 — 파일명 완전 일치): 'write.ps1' 은 'guard-write.ps1' 의 부분문자열이다
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'write.ps1') 'Write' @{} @{ transcript_path = $trPrefix })
+Assert-Case -Name "면제: 표식 파일명의 부분문자열인 다른 파일은 차단 (PX6, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX7 (델타 음성 — 부모 완전 일치): 'scr' 은 'scripts' 의 부분문자열이다
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScr 'guard-write.ps1') 'Write' @{} @{ transcript_path = $trPrefix })
+Assert-Case -Name "면제: 표식 부모의 부분문자열인 다른 디렉터리는 차단 (PX7, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX8 (양성 — 위 셋의 해소 대조): 같은 표식으로 '적힌 그 파일'은 그대로 통과한다.
+#   음성만 늘리면 「좁히다가 다 막아 버린」 상태와 구분되지 않는다.
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'guard-write.ps1') 'Write' @{} @{ transcript_path = $trPrefix })
+Assert-Case -Name "면제: 좁힌 뒤에도 표식에 적힌 그 파일은 통과 (PX8)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
 }   # ---- §2c 게이트 끝 ----
 
