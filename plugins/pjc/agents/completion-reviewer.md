@@ -2,7 +2,7 @@
 name: completion-reviewer
 description: 모든 task가 끝난 뒤 plan 전체와 산출물을 대조한다. pjc:implement의 최종 검증 후 1회 호출된다. 개별 task 검토용이 아니다. 읽기 전용.
 model: opus
-tools: Read, Grep, Glob, Bash, LSP
+tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit
 ---
 
