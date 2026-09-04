@@ -239,5 +239,32 @@ $r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $teDir (Join-Path $teDir '
 Assert-Case -Name "plan게이트: 시스템 임시폴더 plan.md Write 통과 — temp 예외 (TE1)" -R $r -ExpectExit 0
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $teDir (Join-Path $teDir 'AGENTS.md') 'Write' @{} @{ transcript_path = $trPlanNo })
 Assert-Case -Name "AGENTS게이트: 시스템 임시폴더 AGENTS.md 신규 Write 통과 — temp 예외 (TE2)" -R $r -ExpectExit 0
+
+# --- PX: PLAN-EXEMPT 면제 판정 (plan 존재 게이트) ---
+# 표식은 어시스턴트 텍스트로 transcript 에 실린다 — 실제 경로와 같은 형태를 쓴다.
+#   매칭 규칙은 「파일명 + 직속 부모 디렉터리 이름」이라 PX2/PX4 가 그 두 축을 각각 잰다.
+$pxDir = Join-Path $work 'proj-exempt'
+New-Item -ItemType Directory (Join-Path $pxDir 'src') -Force | Out-Null
+New-Item -ItemType Directory (Join-Path $pxDir 'other') -Force | Out-Null
+$trExempt = Join-Path $work 'tr-plan-exempt.jsonl'
+(New-TranscriptLine -Type assistant -Text '[PLAN-EXEMPT] src/A.cs') | Set-Content $trExempt
+$pxHit = Join-Path $pxDir 'src/A.cs'
+$pxMiss = Join-Path $pxDir 'src/B.cs'
+$pxSameName = Join-Path $pxDir 'other/A.cs'
+
+# PX1 (양성): 표식에 적힌 파일은 plan 없이 통과
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir $pxHit 'Write' @{} @{ transcript_path = $trExempt })
+Assert-Case -Name "면제: 표식에 적힌 파일은 plan 없이 통과 (PX1)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+# PX2 (음성 — 파일명 축): 같은 표식이어도 거기 없는 파일은 차단
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir $pxMiss 'Write' @{} @{ transcript_path = $trExempt })
+Assert-Case -Name "면제: 표식에 없는 파일은 차단 (PX2, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX3 (음성 — fail-closed): transcript 미제공이면 면제 없음. 작성 게이트의 fail-open(PG9)과
+#   방향이 반대라는 것이 이 케이스의 요점이다 — '통과를 여는' 판정이라 안전측이 차단이다.
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir $pxHit)
+Assert-Case -Name "면제: transcript 미제공은 면제 없음 — fail-closed (PX3, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX4 (음성 — 부모 디렉터리 축): 파일명은 같고 부모가 다르면 차단. 파일명 단독 매칭이었다면
+#   여기서 오통과했을 것이므로, 이 케이스가 D2 의 '부모까지 본다'를 실증한다.
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir $pxSameName 'Write' @{} @{ transcript_path = $trExempt })
+Assert-Case -Name "면제: 부모 디렉터리가 다른 동명 파일은 차단 (PX4, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
 }   # ---- §2c 게이트 끝 ----
 
