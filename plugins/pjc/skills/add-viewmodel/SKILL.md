@@ -56,15 +56,17 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ### Step 3. View 생성
 
-**베이스 타입은 사전 조건의 화면 종류를 따른다**(`Page`·`Window`·`UserControl`·`ContentDialog`) — 그 선택이 파일명과 DI·네비게이션 경로를 함께 정한다. `src/<Project>/Views/<Name>Page.xaml` 과 코드비하인드 `<Name>Page.xaml.cs` 형태로 만들고, **WinUI 3·WPF·MAUI 는 바인딩 문법이 달라 기존 View 를 따른다**.
+**View 베이스 타입은 사전 조건의 화면 종류를 따른다** — `src/<Project>/Views/<Name><종류>.xaml` 과 코드비하인드(예: `<Name>Page.xaml` · `<Name>Dialog.xaml`)를 만들고, **WinUI 3·WPF·MAUI 는 바인딩 문법이 달라 기존 View 를 따른다**.
+
+> **`Page` 가 아니면 Step 4·5 가 갈린다** — `ContentDialog`·`Window` 는 프레임이 꽂아 줄 자리가 없어 **View 자체를 컨테이너에 등록**하고 Step 5 대신 호출부에서 직접 띄운다. `UserControl` 은 **부모 View 가 `DataContext` 로 주입**하므로 둘 다 하지 않는다.
 
 ### Step 4. DI 등록
 
-`App.xaml.cs`(또는 `Program.cs`)의 `ConfigureServices` 에 ViewModel 을 등록한다 — **Page 는 Page DI 를 쓰는 프로젝트에서만** 함께 등록한다.
+`App.xaml.cs`(또는 `Program.cs`)의 `ConfigureServices` 에 ViewModel 을 등록한다 — **View 는 View DI 를 쓰는 프로젝트에서만** 함께 등록한다(`ContentDialog`·`Window` 는 Step 3 의 단서대로 등록 대상이다).
 
 > **수명**: 일반적으로 ViewModel은 `Transient`. 앱 전체에서 상태를 유지해야 하면 `Singleton` 검토.
 
-### Step 5. 네비게이션 연결 (해당하는 경우)
+### Step 5. 네비게이션 연결 (`Page` 인 경우)
 
 기존 네비게이션 패턴에 따라:
 - `Frame.Navigate(typeof(<Name>Page))`
