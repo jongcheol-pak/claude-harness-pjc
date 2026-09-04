@@ -321,6 +321,29 @@ if ($foundIn) {
     exit 0
 }
 
+# PLAN-EXEMPT 면제 판정 — 근거는 `rules/write-gate-rationale.md`의 「§23 PLAN-EXEMPT 면제 판정」
+$exFile = [System.IO.Path]::GetFileName($targetPath)
+$exParent = ''
+try { $exParent = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($targetPath)) } catch {}
+$exemptHit = $false
+$tppX = [string]$data.transcript_path
+if ((-not [string]::IsNullOrWhiteSpace($tppX)) -and (Test-Path -LiteralPath $tppX)) {
+    try {
+        $cmpIC = [System.StringComparison]::OrdinalIgnoreCase
+        foreach ($ln in (Select-String -LiteralPath $tppX -Pattern 'PLAN-EXEMPT' -SimpleMatch)) {
+            $t = [string]$ln.Line
+            if ($t.IndexOf($exFile, $cmpIC) -lt 0) { continue }
+            # 파일명만으로는 다른 디렉터리의 동명 파일이 통과한다 — 직속 부모 이름을 함께 요구한다.
+            if ([string]::IsNullOrEmpty($exParent) -or ($t.IndexOf($exParent, $cmpIC) -ge 0)) { $exemptHit = $true; break }
+        }
+    } catch { $exemptHit = $false }
+}
+if ($exemptHit) {
+    [Console]::Error.WriteLine("[HARNESS] PLAN-EXEMPT: 사용자 승인 면제($exFile). plan 검사 우회. 영향은 impact-warn hook이 검증합니다.")
+    Write-RpEvent 'allow' 'PLAN-EXEMPT 면제'
+    exit 0
+}
+
 # ---- 차단 ----
 [Console]::Error.WriteLine("[HARNESS] BLOCKED: 코드 변경 전에 plan이 필요합니다.")
 [Console]::Error.WriteLine("")
@@ -355,6 +378,10 @@ if (Test-Path -LiteralPath $legacyPlansDir -PathType Container) {
 [Console]::Error.WriteLine("  3) plan.md 위치 확인:")
 [Console]::Error.WriteLine("     루트의 plan.md 파일 위치와 검색 시작점이 다른 경로일 수 있습니다.")
 [Console]::Error.WriteLine("     모노레포라면 작업 디렉터리 위쪽에 plan.md 가 있어야 합니다.")
+[Console]::Error.WriteLine("")
+[Console]::Error.WriteLine("  4) 계획을 만들 가치가 없는 작은 변경이면 — pjc:plan 을 호출해 「계획 불필요」 판정을 받으세요.")
+[Console]::Error.WriteLine("     사용자가 A(바로 수정)를 고르면 그 스킬이 대상 파일을 적은 면제 표식을 남기고,")
+[Console]::Error.WriteLine("     이 hook 이 그 표식에 적힌 파일에 한해 통과시킵니다(표식에 없는 파일은 계속 차단).")
 
 Write-RpEvent 'block' 'plan 없음 차단'
 exit 2
