@@ -29,7 +29,7 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ## 절대 규칙
 
-1. **AGENTS.md 우선.** 다른 패턴(ReactiveUI, MVVM Light 등)을 **명시**했다면 이 skill 을 쓰지 않는다 — 템플릿이 `CommunityToolkit.Mvvm` 생성기를 전제해 다른 베이스에서는 컴파일되지 않는다. **`pjc:implement` 안에서는 멈추지 말고 그 프로젝트 패턴으로 직접 작성한다**(루프가 정지한다).
+1. **AGENTS.md 우선.** 다른 패턴(ReactiveUI, MVVM Light 등)을 **명시**했다면 이 skill 을 쓰지 않는다 — 이 skill 의 단계가 `CommunityToolkit.Mvvm` 생성기를 전제해 다른 베이스에서는 컴파일되지 않는다. **`pjc:implement` 안에서는 멈추지 말고 그 프로젝트 패턴으로 직접 작성한다**(루프가 정지한다).
 2. **DDD 준수.** ViewModel 은 UI 레이어이고 비즈니스 로직은 Domain 서비스를 호출하기만 한다 — **판정 축은 「화면이 없어도 성립하는가」** — 입력 형식은 화면 것, 금액 한도는 도메인 것이며, 규칙이 VM 에 있으면 화면을 더 만들 때 복제된다.
 3. **DI 등록 누락 금지.** ViewModel 은 반드시 컨테이너에 등록 — 빌드는 통과하고 **화면을 여는 순간 해석 실패로 죽는다** — 판정은 **진입점에서 실제로 호출되는가**다(이름은 프로젝트마다 다르다).
 4. **한글 주석**(XML doc 포함) — 이 하니스의 산출물을 읽는 것은 한국어 세션이고, 언어가 섞이면 grep 대상이 갈린다.
@@ -47,7 +47,7 @@ View + ViewModel 스켈레톤을 추가한다.
 - 기존 View 위치 (예: `src/*/Views/`)
 - DI 등록 진입점 (보통 `App.xaml.cs` 또는 `Program.cs`의 `ConfigureServices`)
 - 네비게이션 서비스 패턴 (`INavigationService` 등 존재 여부)
-- 기존 ViewModel 한 개를 읽어 컨벤션 파악 (네이밍, 베이스 클래스, 주석 스타일)
+- 기존 ViewModel·View 각 한 개를 읽어 컨벤션 파악 (네이밍, 베이스 클래스, 주석 스타일, 바인딩 문법)
 - **`CommunityToolkit.Mvvm` PackageReference 존재 확인**(csproj grep) — 없으면 **Halt**(아래 Halt 조건이 정본: 의존성 추가는 승인 필요이므로 임의 추가·컴파일 불가 코드 생성 금지).
 
 ### Step 2. ViewModel 생성
@@ -60,7 +60,7 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ### Step 4. DI 등록
 
-`App.xaml.cs`(또는 `Program.cs`)의 `ConfigureServices` 에 ViewModel 과 Page 를 등록하고, **진입점에서 그 등록이 실제로 호출되는지** 확인한다.
+`App.xaml.cs`(또는 `Program.cs`)의 `ConfigureServices` 에 ViewModel 을 등록한다 — **Page 는 Page DI 를 쓰는 프로젝트에서만** 함께 등록한다.
 
 > **수명**: 일반적으로 ViewModel은 `Transient`. 앱 전체에서 상태를 유지해야 하면 `Singleton` 검토.
 
@@ -118,7 +118,7 @@ ViewModel 을 **부모 View 가 `DataContext` 로 주입**한다. 내부는 상�
 다음 발견 시 사용자에게 보고하고 중지:
 
 - 기존 ViewModel 이 다른 베이스 클래스(`BindableBase`·`ReactiveObject` 등)를 쓰고 있음 — **절대 규칙 1과 발화 조건이 다르다** — 그쪽은 AGENTS.md 가 **명시**했을 때, 이쪽은 **코드에서 관측**됐을 때이며 어느 쪽을 따라도 절반과 어긋나므로 사용자가 정한다
-- DI 컨테이너가 없거나 **관례 없는 전역 Service Locator를 남용**하고 있음(제3자 로케이터 라이브러리·전역 정적 컨테이너를 여기저기서 직접 뒤지는 형태). **`App.GetService<T>()` 같은 프로젝트 관례의 정적 헬퍼는 남용이 아니다**(Step 3 말미 참조) — 절대 규칙 3의 「진입점에서 등록이 호출되는가」를 확인할 자리가 없으면 누락을 판정할 수 없다
+- DI 컨테이너가 없거나 **관례 없는 전역 Service Locator를 남용**하고 있음(제3자 로케이터 라이브러리·전역 정적 컨테이너를 여기저기서 직접 뒤지는 형태). **`App.GetService<T>()` 같은 프로젝트 관례의 정적 헬퍼는 남용이 아니다** — 절대 규칙 3의 「진입점에서 등록이 호출되는가」를 확인할 자리가 없으면 누락을 판정할 수 없다
 - 네비게이션 패턴이 plan.md 에 없고 코드베이스에도 단일 패턴이 없음 — 추측해 붙이면 **화면이 어디서도 도달되지 않는 채 완료 보고된다** — 단일 패턴이 코드에 있으면 그것을 따르고 멈추지 않는다
 - View 가 코드 생성기로 만들어지는 경우(`*.Generated.*`) — 손으로 고쳐도 다음 생성에서 덮인다 — 고칠 자리는 생성기 입력이다
 - **`CommunityToolkit.Mvvm` 패키지가 프로젝트에 없음** — `[ObservableProperty]`·`[RelayCommand]`·`ObservableObject`가 컴파일되지 않는다. 의존성 추가는 승인 필요이므로 임의로 추가하지 말고 사용자에게 확인(또는 plan에 패키지 추가를 명시)

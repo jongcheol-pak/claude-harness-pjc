@@ -21,7 +21,7 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 이 skill의 **책임 범위**: 인터페이스 정의, 구현 skeleton, DI 등록, 단위 테스트 스캐폴드 + csproj 의존 방향 검증.
 **책임 범위 밖**: 구체 비즈니스 규칙 작성 — `pjc:implement`가 담당.
 
-이 skill은 **.NET 프로젝트를 기준**으로 한다. 다른 스택(Kotlin/Android 등)은 AGENTS.md 컨벤션을 우선하고, 아래 템플릿·검증은 .NET 기준의 개념적 참고로만 사용한다.
+이 skill은 **.NET 프로젝트를 기준**으로 한다. 다른 스택(Kotlin/Android 등)은 AGENTS.md 컨벤션을 우선하고, 아래 단계·검증은 .NET 기준의 개념적 참고로만 사용한다.
 
 ## 사전 조건
 
