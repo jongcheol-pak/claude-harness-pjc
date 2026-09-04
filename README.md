@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.230.0
+**버전**: 1.231.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 **Claude Code**: 최소 v2.0 · **권장 v2.1.219+** — 완료 검토자(`completion-reviewer`)가 쓰는 `opus` 별칭이 **Claude Opus 5**로 해소되는 버전이다. 그 미만에서도 동작하지만 그 검토자가 이전 세대 Opus로 실행된다(계획 검토자는 sonnet 지정이라 무관). 상세는 [호환 환경](#호환-환경).
 
