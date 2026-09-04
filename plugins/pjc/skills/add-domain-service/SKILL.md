@@ -61,6 +61,8 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 
 ## 실행 단계
 
+> **코드 형태는 Step 1에서 읽은 기존 서비스를 따른다** — 그 코드가 정본이다.
+
 ### Step 1. 컨텍스트 파악
 
 - AGENTS.md에서 레이어 구조 확인 — **Domain/Application 레이어 분리가 없으면(비-DDD: 단일 프로젝트·Core/Infra만 등) 아래 Halt 조건으로 중지**(존재하지 않는 레이어를 강요하지 않는다).
@@ -72,37 +74,21 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 
 ### Step 2. Domain Service 추가 (해당 시)
 
-#### 인터페이스 (Domain 레이어)
-
-`src/<Project>.Domain/Services/I<Name>Service.cs`:
-
-> **코드 골격은 `references/templates.md`의 「Step 2」 절에 있다.**
-
-#### 구현 (Domain 레이어)
-
+인터페이스 `src/<Project>.Domain/Services/I<Name>Service.cs` 와 구현 `src/<Project>.Domain/Services/<Name>Service.cs` 를 만든다.
 
 ### Step 3. Application Service 추가 (해당 시)
 
-`src/<Project>.Application/UseCases/<Name>/<Name>Handler.cs`
-(또는 프로젝트 컨벤션에 맞게):
-
-> **코드 골격은 `references/templates.md`의 「Step 3」 절에 있다.**
+`src/<Project>.Application/UseCases/<Name>/<Name>Handler.cs` 에 만든다(또는 프로젝트 컨벤션에 맞는 위치).
 
 ### Step 4. DI 등록
 
-`src/<Project>.Domain/DependencyInjection.cs` 또는 동등 위치:
-
-> **코드 골격은 `references/templates.md`의 「Step 4」 절에 있다.**
-
-
+`src/<Project>.Domain/DependencyInjection.cs`(또는 동등 위치)와 `src/<Project>.Application/DependencyInjection.cs` 에 등록하고, **진입점(Program.cs · App.xaml.cs)에서 그 등록 메서드가 실제로 호출되는지** 확인한다.
 
 > **수명**: 보통 `Scoped`. 상태 없는 순수 함수형이면 `Transient` 가능. `Singleton`은 동시성 위험.
 
 ### Step 5. 단위 테스트 (Domain 우선)
 
-`tests/<Project>.Domain.Tests/Services/<Name>ServiceTests.cs`:
-
-> **코드 골격은 `references/templates.md`의 「Step 5」 절에 있다.**
+`tests/<Project>.Domain.Tests/Services/<Name>ServiceTests.cs` 에 만든다.
 
 ### Step 6. 검증
 
