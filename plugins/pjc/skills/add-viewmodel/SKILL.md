@@ -38,6 +38,8 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ## 실행 단계
 
+> **코드 형태는 Step 1에서 읽은 기존 ViewModel 을 따른다** — 그 코드가 정본이다.
+
 ### Step 1. 컨텍스트 파악
 
 다음을 확인:
@@ -50,21 +52,15 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ### Step 2. ViewModel 생성
 
-기본 템플릿:
-
-> **코드 골격은 `references/templates.md`의 「Step 2」 절에 있다.**
+`src/<Project>/ViewModels/<Name>ViewModel.cs` 에 만든다.
 
 ### Step 3. View 생성
 
-#### WinUI 3 Page 또는 Window (WPF는 아래 주석 참조)
-
-> **코드 골격은 `references/templates.md`의 「Step 3」 절에, XAML 골격과 WPF·MAUI 차이는 「XAML 골격」 절에 있다.**
+`src/<Project>/Views/<Name>Page.xaml` 과 코드비하인드 `<Name>Page.xaml.cs` 를 만든다 — **WinUI 3·WPF·MAUI 는 바인딩 문법이 달라 기존 View 를 따른다**.
 
 ### Step 4. DI 등록
 
-`App.xaml.cs` (또는 `Program.cs`) 의 `ConfigureServices`에 추가:
-
-> **코드 골격은 `references/templates.md`의 「Step 4」 절에 있다.**
+`App.xaml.cs`(또는 `Program.cs`)의 `ConfigureServices` 에 ViewModel 과 Page 를 등록하고, **진입점에서 그 등록이 실제로 호출되는지** 확인한다.
 
 > **수명**: 일반적으로 ViewModel은 `Transient`. 앱 전체에서 상태를 유지해야 하면 `Singleton` 검토.
 
@@ -79,9 +75,7 @@ View + ViewModel 스켈레톤을 추가한다.
 
 ### Step 6. 테스트 스캐폴드
 
-`tests/<Project>.Tests/ViewModels/<Name>ViewModelTests.cs`:
-
-> **코드 골격은 `references/templates.md`의 「Step 6」 절에 있다.**
+`tests/<Project>.Tests/ViewModels/<Name>ViewModelTests.cs` 에 만든다.
 
 ### Step 7. 검증
 
