@@ -269,28 +269,49 @@ Assert-Case -Name "면제: 부모 디렉터리가 다른 동명 파일은 차단
 
 # PX5·PX6·PX7 — 매칭 정밀도 축(회차 12 완료 리뷰 BLOCKER 2건). PX2·PX4 는 충돌하지 않는
 #   이름을 골라 이 경계를 재지 않는다: '표식으로 오인되는 산문'과 '부분문자열 충돌'이 그것이다.
-$pxScripts = Join-Path $pxDir 'scripts'
-$pxScr = Join-Path $pxDir 'scr'
+#   ⚠ 픽스처에 **레포의 실재 경로를 쓰지 않는다** — 마커 뒤에 실재 경로를 두면 이 파일을 읽는
+#   것만으로 그 파일의 면제가 발급된다(완료 재리뷰 MAJOR). 'px' 접두의 가짜 이름으로 부분문자열
+#   기하('px.cs' ⊂ 'px-guard.cs' · 'pxscr' ⊂ 'pxscripts')만 재현한다.
+$pxScripts = Join-Path $pxDir 'pxscripts'
+$pxScr = Join-Path $pxDir 'pxscr'
 New-Item -ItemType Directory $pxScripts -Force | Out-Null
 New-Item -ItemType Directory $pxScr -Force | Out-Null
 $trProse = Join-Path $work 'tr-plan-exempt-prose.jsonl'
 # 대괄호 없는 산문 — 이 판정을 grep 한 결과가 그대로 실린 형태다(경로 접두가 함께 붙는다).
-(New-TranscriptLine -Type assistant -Text 'plugins/pjc/scripts/guard-write.ps1:324:# PLAN-EXEMPT 면제 판정') | Set-Content $trProse
+(New-TranscriptLine -Type assistant -Text 'pxscripts/px-guard.cs:324:# PLAN-EXEMPT 면제 판정') | Set-Content $trProse
 $trPrefix = Join-Path $work 'tr-plan-exempt-prefix.jsonl'
-(New-TranscriptLine -Type assistant -Text '[PLAN-EXEMPT] scripts/guard-write.ps1') | Set-Content $trPrefix
+(New-TranscriptLine -Type assistant -Text '[PLAN-EXEMPT] pxscripts/px-guard.cs') | Set-Content $trPrefix
 
 # PX5 (델타 음성 — 마커 축): 대괄호 없는 산문 줄은 표식이 아니다
-$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'guard-write.ps1') 'Write' @{} @{ transcript_path = $trProse })
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trProse })
 Assert-Case -Name "면제: 대괄호 없는 산문 줄은 표식이 아니다 (PX5, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
-# PX6 (델타 음성 — 파일명 완전 일치): 'write.ps1' 은 'guard-write.ps1' 의 부분문자열이다
-$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'write.ps1') 'Write' @{} @{ transcript_path = $trPrefix })
+# PX6 (델타 음성 — 파일명 완전 일치): 'px.cs' 는 'px-guard.cs' 의 부분문자열이다
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px.cs') 'Write' @{} @{ transcript_path = $trPrefix })
 Assert-Case -Name "면제: 표식 파일명의 부분문자열인 다른 파일은 차단 (PX6, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
-# PX7 (델타 음성 — 부모 완전 일치): 'scr' 은 'scripts' 의 부분문자열이다
-$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScr 'guard-write.ps1') 'Write' @{} @{ transcript_path = $trPrefix })
+# PX7 (델타 음성 — 부모 완전 일치): 'pxscr' 은 'pxscripts' 의 부분문자열이다
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScr 'px-guard.cs') 'Write' @{} @{ transcript_path = $trPrefix })
 Assert-Case -Name "면제: 표식 부모의 부분문자열인 다른 디렉터리는 차단 (PX7, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
 # PX8 (양성 — 위 셋의 해소 대조): 같은 표식으로 '적힌 그 파일'은 그대로 통과한다.
 #   음성만 늘리면 「좁히다가 다 막아 버린」 상태와 구분되지 않는다.
-$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'guard-write.ps1') 'Write' @{} @{ transcript_path = $trPrefix })
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trPrefix })
 Assert-Case -Name "면제: 좁힌 뒤에도 표식에 적힌 그 파일은 통과 (PX8)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+
+# PX9·PX10 — 루트 파일 축(완료 재리뷰 MAJOR). 절대 경로에서는 부모가 항상 차므로
+#   「루트 파일은 파일명만」이 죽은 분기였다. 대상이 프로젝트 루트일 때만 파일명 단독을 인정한다.
+$trRootOnly = Join-Path $work 'tr-plan-exempt-rootonly.jsonl'
+(New-TranscriptLine -Type assistant -Text '[PLAN-EXEMPT] PxRoot.cs') | Set-Content $trRootOnly
+# PX9 (양성): 프로젝트 루트 파일은 파일명만 적은 표식으로 통과
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxDir 'PxRoot.cs') 'Write' @{} @{ transcript_path = $trRootOnly })
+Assert-Case -Name "면제: 루트 파일은 파일명만 적은 표식으로 통과 (PX9)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+# PX10 (델타 음성): 같은 표식으로 하위 디렉터리의 동명 파일은 차단 — 흔한 이름이 어디서든
+#   열리지 않게 하는 경계다.
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'PxRoot.cs') 'Write' @{} @{ transcript_path = $trRootOnly })
+Assert-Case -Name "면제: 파일명만 적은 표식은 하위 디렉터리 동명 파일을 열지 않는다 (PX10, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX11 (양성 — 장식 허용): 백틱이 붙은 표식도 인정한다. 조용히 차단되면 사용자는
+#   승인했는데도 막히는 것으로 보인다.
+$trDeco = Join-Path $work 'tr-plan-exempt-deco.jsonl'
+(New-TranscriptLine -Type assistant -Text '[PLAN-EXEMPT] `pxscripts/px-guard.cs`') | Set-Content $trDeco
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trDeco })
+Assert-Case -Name "면제: 백틱 장식이 붙은 표식도 인정 (PX11)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
 }   # ---- §2c 게이트 끝 ----
 

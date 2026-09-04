@@ -324,36 +324,37 @@ if ($foundIn) {
 # PLAN-EXEMPT 면제 판정 — 근거는 `rules/write-gate-rationale.md`의 「§23 PLAN-EXEMPT 면제 판정」
 $exFile = [System.IO.Path]::GetFileName($targetPath)
 $exParent = ''
-try { $exParent = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($targetPath)) } catch {}
+$exIsRootFile = $false
+try {
+    $exDir = [System.IO.Path]::GetDirectoryName($targetPath)
+    $exParent = [System.IO.Path]::GetFileName($exDir)
+    if ($exDir -and $projectRoot) {
+        $exIsRootFile = ($exDir.TrimEnd('\', '/') -ieq ([string]$projectRoot).TrimEnd('\', '/'))
+    }
+} catch {}
 $exemptHit = $false
 $tppX = [string]$data.transcript_path
 if ((-not [string]::IsNullOrWhiteSpace($tppX)) -and (Test-Path -LiteralPath $tppX)) {
     try {
         $cmpIC = [System.StringComparison]::OrdinalIgnoreCase
-        # 마커는 대괄호를 포함해야 한다 — 맨 토큰('PLAN-EXEMPT')만 찾으면 이 판정을 설명하는
-        #   주석·문서 줄이 grep 결과로 transcript 에 실릴 때 그 줄이 표식으로 인정된다.
         $exMarker = '[PLAN-EXEMPT]'
         foreach ($ln in (Select-String -LiteralPath $tppX -Pattern $exMarker -SimpleMatch)) {
             $t = [string]$ln.Line
             $mi = $t.IndexOf($exMarker, $cmpIC)
             if ($mi -lt 0) { continue }
-            # 마커 '뒤'만 본다 — 파일을 읽거나 grep 한 결과는 경로 접두가 마커 '앞'에 붙으므로,
-            #   그 줄로는 면제가 성립하지 않는다.
             $rest = $t.Substring($mi + $exMarker.Length)
-            foreach ($tok in ($rest -split '[\s·,;"''()]+')) {
+            foreach ($tok in ($rest -split '[\s·,;"''()`*<>「」]+')) {
                 if ([string]::IsNullOrWhiteSpace($tok)) { continue }
-                # 경로 구분자를 정규화하지 않는다 — Path API 가 '/'·'\' 와 JSON 이스케이프된
-                #   '\\' 를 모두 같게 처리한다(실측: 셋 다 file=guard-write.ps1 parent=scripts).
                 $tf = ''
                 $tp = ''
                 try {
                     $tf = [System.IO.Path]::GetFileName($tok)
                     $tp = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($tok))
                 } catch { continue }
-                # 부분문자열이 아니라 완전 일치다 — 'write.ps1' 은 'guard-write.ps1' 의 부분문자열이라
-                #   IndexOf 로 보면 표식에 없는 파일이 열린다(부모의 'scr' ⊂ 'scripts' 도 같다).
                 if ([string]::IsNullOrEmpty($tf) -or (-not $tf.Equals($exFile, $cmpIC))) { continue }
-                if ([string]::IsNullOrEmpty($exParent) -or ((-not [string]::IsNullOrEmpty($tp)) -and $tp.Equals($exParent, $cmpIC))) {
+                if ([string]::IsNullOrEmpty($tp)) {
+                    if ($exIsRootFile) { $exemptHit = $true; break }
+                } elseif ($tp.Equals($exParent, $cmpIC)) {
                     $exemptHit = $true
                     break
                 }
@@ -406,6 +407,8 @@ if (Test-Path -LiteralPath $legacyPlansDir -PathType Container) {
 [Console]::Error.WriteLine("  4) 계획을 만들 가치가 없는 작은 변경이면 — pjc:plan 을 호출해 「계획 불필요」 판정을 받으세요.")
 [Console]::Error.WriteLine("     사용자가 A(바로 수정)를 고르면 그 스킬이 대상 파일을 적은 면제 표식을 남기고,")
 [Console]::Error.WriteLine("     이 hook 이 그 표식에 적힌 파일에 한해 통과시킵니다(표식에 없는 파일은 계속 차단).")
+[Console]::Error.WriteLine("     ※ 표식에는 경로를 장식 없이 적습니다 — 디렉터리를 포함하고(루트 파일은 파일명만),")
+[Console]::Error.WriteLine("       마커 뒤에 둡니다. 마커 앞의 경로(grep·파일 읽기 결과)는 표식으로 보지 않습니다.")
 
 Write-RpEvent 'block' 'plan 없음 차단'
 exit 2
