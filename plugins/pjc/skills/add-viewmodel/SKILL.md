@@ -81,8 +81,8 @@ View + ViewModel 스켈레톤을 추가한다.
 
 다음을 모두 통과해야 완료:
 - [ ] 빌드 성공
-- [ ] 단위 테스트 통과 (최소 LoadCommand 1건)
-- [ ] DI 등록 누락 없음 (`App.GetService<<Name>ViewModel>()` 동작 확인)
+- [ ] 단위 테스트 통과 (최소 초기 로딩 커맨드 1건 — 이름은 기존 ViewModel 컨벤션을 따른다)
+- [ ] DI 등록 누락 없음 — 그 프로젝트의 해석 경로로 확인한다(`App.GetService<T>()` · 생성자 주입 · `IPageFactory` 등)
 - [ ] 네비게이션 진입 시 정상 표시 (가능하면 수동 확인)
 
 ## 변형 (Variants)

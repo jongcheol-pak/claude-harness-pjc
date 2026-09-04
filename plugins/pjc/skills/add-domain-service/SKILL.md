@@ -80,6 +80,8 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 
 `src/<Project>.Application/UseCases/<Name>/<Name>Handler.cs` 에 만든다(또는 프로젝트 컨벤션에 맞는 위치).
 
+영속화가 필요하면 **그 프로젝트의 기존 영속화 컨벤션을 그대로 쓴다** — `IUnitOfWork` 가 없는 프로젝트(리포지토리가 직접 `SaveChanges`·`DbContext` 주입 등)에 그것을 새로 도입하지 않는다. 도입은 구조 결정이라 `pjc:plan` 으로 돌린다.
+
 ### Step 4. DI 등록
 
 `src/<Project>.Domain/DependencyInjection.cs`(또는 동등 위치)와 `src/<Project>.Application/DependencyInjection.cs` 에 등록하고, **진입점(Program.cs · App.xaml.cs)에서 그 등록 메서드가 실제로 호출되는지** 확인한다.
