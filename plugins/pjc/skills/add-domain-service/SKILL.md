@@ -11,7 +11,7 @@ DDD 프로젝트에 비즈니스 로직 서비스(Domain Service 또는 Applicat
 
 ## 호출 흐름
 
-이 skill은 **`pjc:implement`의 Phase I 안에서 호출**되거나, 사용자가 직접 `/pjc:add-domain-service`로 호출할 수 있다.
+이 skill은 **`pjc:implement`의 task 실행 중 호출**되거나, 사용자가 직접 `/pjc:add-domain-service`로 호출할 수 있다.
 
 | 호출 방식 | 흐름 |
 |---|---|

@@ -632,7 +632,7 @@ def main():
         for m in all_issues:
             print("[MISMATCH] %s" % m)
         print("\n결과: 불일치 %d건 — 해당 파일을 고친 task가 기준선·앵커를 함께 갱신해야 합니다"
-              "(`docs/harness-conventions.md` 「문서 로드 예산 기준선」 서문 참조)." % len(all_issues))
+              "(`docs/harness-conventions.md` 「조건부 참조 문서 크기 임계」 참조)." % len(all_issues))
         sys.exit(1)
     print("결과: 대조 전부 일치 (%s)" % " + ".join(parts))
     sys.exit(0)

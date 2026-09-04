@@ -61,14 +61,14 @@
 
 ### 검증 매핑 (task 검증 선택)
 
-**표 정본은 `docs/harness-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증. task 단위 검증은 변경 파일에 맞는 행만 실행하고(여러 패턴이면 합집합), 전체 검증은 Phase F-2가 1회 보장한다. 같은 문서의 **「골든 부분 실행의 판정 자격」**·**「문서 로드 예산 기준선」**도 함께 읽는다.
+**표 정본은 `docs/harness-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증. task 단위 검증은 변경 파일에 맞는 행만 실행하고(여러 패턴이면 합집합), 전체 검증은 Phase F-2가 1회 보장한다. 같은 문서의 **「골든 부분 실행의 판정 자격」**·**「조건부 참조 문서 크기 임계」**도 함께 읽는다.
 
 ## Conventions
 
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
 - **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i`도 `Edit` 도구도 파일 전체를 LF로 바꿀 수 있다** — blob이 정규화돼 **`git diff`에 안 나타나므로** 조용히 누적된다(v1.214.0 실측: `Edit`으로 1줄만 고친 `README.md`·`plugin.json`이 `w/lf`가 됐다). **판정은 `git ls-files --eol <파일>`**(미수정 파일과 대조 — 정상은 `w/crlf`), **복원은 python `newline=""`로 읽어 `\r\n`으로 다시 쓴다**.
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
-- **명령 출력 예산**: 판정용 명령은 판정에 필요한 최소 형식으로 — `git status --porcelain`(clean이면 0B) · `git diff --stat` 선행 · `git blame -L` 범위 지정 · `gh`는 `--json <필드> --jq <표현식>`로 필드 지정. **단 `git log`는 `--oneline`으로 줄이지 않는다** — 커밋 본문이 F-4 스캔 대상이다. 실측 표·미채택 근거는 `docs/harness-conventions.md` 「명령 출력 예산」이 정본.
+- **명령 출력 예산**: 판정용 명령은 판정에 필요한 최소 형식으로 — `git status --porcelain`(clean이면 0B) · `git diff --stat` 선행 · `git blame -L` 범위 지정 · `gh`는 `--json <필드> --jq <표현식>`로 필드 지정. **단 `git log`는 `--oneline`으로 줄이지 않는다** — 커밋 본문에 회차 서사와 검증 결과가 담긴다. 실측 표·미채택 근거는 `docs/harness-conventions.md` 「명령 출력 예산」이 정본.
 - **파일 크기**: 문서 예산과 분할 판정은 `plugins/pjc/skills/DESIGN.md` 4절이 정본.
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단은 **`exit 2`** 하나이고 그것을 내는 hook은 넷이다 — `block-destructive`(파괴적 명령) · `guard-bash`(task 체크박스 게이트 + 커밋 시크릿(조건부)) · `guard-write`(plan 게이트) · `guard-harness`(자기보호 + AGENTS.md 내용 경계). **커밋 시크릿의 조건부 세부·스캔 범위는 `docs/harness-conventions.md`가 정본** — hook 수정 전 반드시 읽을 것. **우회 변수는 둘이며 서로 대체되지 않는다**: `CLAUDE_HARNESS_QUICK`(`guard-write`·`guard-harness`의 AGENTS.md 내용 경계·`guard-bash`의 체크박스 게이트) / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 차단 전용).
 - **`guard-write`는 게이트 2종**: ① plan 존재 ② plan 작성. 둘은 같은 정규식(`$planTaskRx`)을 공유하므로 **한쪽만 고치지 말 것**(차이가 곧 우회 경로). **`guard-harness`는 자기보호와 AGENTS.md 내용 경계 2종이다** — AGENTS.md **신규 생성** 게이트는 v1.227.0에 없앴다(생성이 `pjc:plan` Step 1의 최소 골격으로 바뀌어 차단 대상이 소멸했다).
