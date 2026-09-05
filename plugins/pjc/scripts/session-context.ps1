@@ -74,16 +74,19 @@ try {
                 $open = [regex]::Matches($planText, '(?m)^- \[[ /]\] T\d+').Count
 
                 # ---- Deferred 미판정 계수 — 근거는 `rules/session-context-rationale.md`의 「§7 ---- Deferred 미판정 계수」
+                # 마커의 백틱 코드 스팬을 허용한다 — 형식 정본(plan-template.md)이 마커를 표 안에서
+                #   코드 스팬으로 보여 주므로 그대로 따라 적으면 백틱이 붙는다. 정규식이 그것을 안 받으면
+                #   판정을 마친 항목이 통째로 미판정으로 집계된다(v1.233.0 회차가 실제로 그렇게 됐다).
                 $defUnjudged = 0
                 $defMatch = [regex]::Match($planText, '(?ms)^## Deferred / Follow-up\s*?$(.*?)(?=^## |\z)')
                 if ($defMatch.Success) {
                     foreach ($defLine in ($defMatch.Groups[1].Value -split "`r?`n")) {
                         if ($defLine -notmatch '^- ') { continue }
                         # `- ` 접두와 있으면 마커까지 벗겨 낸 뒤 본문을 본다 — 마커 그룹이 — 근거는 `rules/session-context-rationale.md`의 「§8 `- ` 접두와 있으면 마커까지 벗겨 낸 뒤 본문을 본다 — 마커 그룹이」
-                        if (($defLine -replace '^- (?:\[[^\]]*\]\s*)?', '') -match '^<') { continue }   # 템플릿 placeholder
-                        if ($defLine -match '^- \[등재\]') { continue }
+                        if (($defLine -replace ('^- ' + [char]96 + '?(?:\[[^\]]*\]' + [char]96 + '?\s*)?'), '') -match '^<') { continue }   # 템플릿 placeholder
+                        if ($defLine -match ('^- ' + [char]96 + '?\[등재\]')) { continue }
                         # 기호는 닫는 대괄호가 아닌 문자 1자 이상이어야 한다 — 사유 없는 — 근거는 `rules/session-context-rationale.md`의 「§9 기호는 닫는 대괄호가 아닌 문자 1자 이상이어야 한다 — 사유 없는」
-                        if ($defLine -match '^- \[미등재:[^\]]+\]') { continue }
+                        if ($defLine -match ('^- ' + [char]96 + '?\[미등재:[^\]]+\]')) { continue }
                         $defUnjudged++
                     }
                 }
