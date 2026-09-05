@@ -217,5 +217,52 @@
       "ANCHOR FAIL",
       "4. 문서 예산"
     ]
+  },
+  {
+    "id": "truncation-ok",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 절단 0건 · 짝 전건 일치",
+      "근거 인용 주석 2건"
+    ],
+    "expect_absent": [
+      "[FAIL]"
+    ]
+  },
+  {
+    "id": "truncation-cut",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/sample-hook.ps1",
+        "find": "# 종결부로 끝나는 충분히 긴 표제라서 절단으로 보지 않는다 — 근거는",
+        "replace": "# 표제가 길이 캡에 눌려 단어 중간에서 끊긴 형태를 재는 케이스이며 종결부 없이 여기서 그대로 잘린 — 근거는"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 절단 1건",
+      "sample-hook.ps1"
+    ]
+  },
+  {
+    "id": "truncation-pair-broken",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/rules/sample-rationale.md",
+        "find": "## §1 짧은 표제",
+        "replace": "## §1 표제가 바뀐 절"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 짝 불일치 1건",
+      "완전히 같은 헤딩 없음"
+    ]
   }
 ]
