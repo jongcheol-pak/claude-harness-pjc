@@ -660,13 +660,21 @@ _LE_SKIP_RX = re.compile(r"(^|/)fixtures/")
 
 
 def _tracked_files():
-    """`git ls-files -z` 로 tracked 경로를 낸다. git 이 없거나 실패하면 `die()` 로 합류한다.
+    """`git ls-files` 로 검사 대상 경로를 낸다. git 이 없거나 실패하면 `die()` 로 합류한다.
+
+    `--others --exclude-standard` 를 함께 준다 — **`git add` 전의 새 파일을 보기 위해서다**.
+    Write 도구가 만든 신규 파일은 LF 로 저장되는데(위키 conventions-verification
+    `[2026-08-23]`), tracked 만 열거하면 그 파일이 커밋된 **다음 실행**에서야 잡히고
+    회차 마지막 task 라면 다음 회차로 밀린다 — 그 항목이 *"파일을 만든 회차가 스스로
+    확인해야 한다"* 를 요구하던 이유다. `--exclude-standard` 가 gitignore 대상을
+    걸러 내므로 `plan.md`·`notes.md` 제외는 그대로 유지된다.
 
     미포착 traceback 으로 죽으면 **다른 일곱 축까지 함께 죽는다** — 이 검사기에
     처음 들어오는 외부 프로세스 의존이라 실패 경로를 명시한다.
     """
     try:
-        out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"],
+        out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z",
+                              "--cached", "--others", "--exclude-standard"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except OSError as e:
         die("[ANCHOR FAIL] git 을 실행할 수 없어 줄바꿈 축이 대상을 열거하지 못했다 — %s" % e)
@@ -697,8 +705,8 @@ def check_line_endings():
                    박히는 형태로, 원인은 다르나 검출 수단이 같아 여기서 함께 잰다.
       ⓒ 전면 LF  — 파일 전체가 LF. 위 전면 변환이 남기는 형태다.
 
-    **못 잡는 것**: BOM(별도 축이 없다) · gitignore 된 파일(`plan.md`·`notes.md` — tracked 가
-    아니라 열거되지 않는다) · index 쪽 줄바꿈(항상 LF 로 정규화돼 검사 의미가 없다).
+    **못 잡는 것**: BOM(별도 축이 없다) · gitignore 된 파일(`plan.md`·`notes.md` —
+    `--exclude-standard` 가 걸러 낸다) · index 쪽 줄바꿈(항상 LF 로 정규화돼 검사 의미가 없다).
 
     제외는 둘이다 — **바이너리**(NUL 바이트 포함. `.gitattributes` 가 없어 git 의 텍스트
     판정을 빌릴 수 없고, `assets/logo.png` 가 bare CR 1,253개로 상시 위반이 된다)와
