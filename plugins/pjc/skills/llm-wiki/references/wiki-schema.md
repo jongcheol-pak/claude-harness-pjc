@@ -730,7 +730,9 @@ v0.2는 provenance(`sources`)·trust(`generated`/`verified`)·lifecycle(`status`
 ### 미적합 잔여 항목 (알려진 격차 — 전면 전환은 별도 계획으로만)
 
 - ① **wikilink**(`[[경로|이름]]`, §3) — OKF v0.2 §6 Cross-linking and paths는 표준 markdown 링크를 권장한다. 외부 OKF 소비자는 wikilink를 링크로 추적하지 못한다(적합성 3요건 위반은 아님).
-- ② **index.md 표 기반 카탈로그**(§3·§4) — OKF v0.2 §8 Index files는 불릿 목록 구조다.
-- ③ **log.md 평면 목록**(§8) — OKF v0.2 §9 Log files는 날짜 헤딩(`## YYYY-MM-DD`) 그룹이다.
+- ② **index.md 표 기반 카탈로그**(§3·§4) — OKF v0.2 §8 Index files는 불릿 목록 구조다. **적합성 요건 ③(예약 파일의 구조 준수) 위반이다** — ①과 달리 이쪽은 요건이 직접 겨냥하는 자리라 「위반은 아님」이 성립하지 않는다.
+- ③ **log.md 평면 목록**(§8) — OKF v0.2 §9 Log files는 날짜 헤딩(`## YYYY-MM-DD`) 그룹이다. **②와 같은 이유로 적합성 요건 ③ 위반이다.**
 - ④ **`status` 어휘 충돌**(§2 각 타입 블록) — OKF v0.2 §5.4 Lifecycle: `status`가 `draft|stable|deprecated`를 예약 어휘로 정의(부재 시 `stable`)하는 반면 이 위키는 `active|paused|archived`(project/feature)·`open|investigating|resolved`(question)를 쓴다. 교집합은 `deprecated`뿐이다(§2.3 폐기 표시). 어휘를 바꾸지 않는 이유는 vault 전 페이지 마이그레이션에 더해 **lint 판정 로직이 현재 값에 직접 의존**하기 때문이다(§7-12·§7-23의 `resolved` 닫힘 판정, §7-17의 `deprecated` 집계). 적합성 3요건 위반은 아니지만, v0.2 소비자가 `status`를 OKF v0.2 §5.4 Lifecycle: `status`의 어휘로 읽으면 이 위키의 값은 그 어휘 밖이라 lifecycle 신호가 전달되지 않는다.
+> **판정 요약 — 이 vault는 OKF v0.2에 엄밀히는 non-conformant다.** 적합성 3요건 중 ①(비예약 `.md` 전부 frontmatter)·②(`type` 비어있지 않음)는 lint §7-9·§7-7이 기계로 지키지만, **③(예약 파일 구조 준수)은 위 ②③이 정면으로 어긴다.** 그것을 알고 유지하는 선택이며 근거는 아래 한 줄이다 — 이 형식을 바꾸면 잃는 것(lint·검색·인덱스)이 얻는 것(외부 OKF 소비자의 기계 파싱)보다 크고, 그 소비자가 아직 없다. **①(wikilink)·④(`status` 어휘)는 요건이 겨냥하지 않는 자리라 위반이 아니다** — 전자는 cross-linking 권장이고 후자는 선택 필드의 어휘다.
+
 - 네 항목은 lint(§7)·검색·인덱스 체계 전반이 의존하는 형식이라 유지한다. 전환하려면 lint 재작성 + vault 전체 마이그레이션이 필요하므로 **사용자 명시 요청에 의한 별도 계획으로만** 진행한다(§11 설계 방향 전환 규정과 동일 원칙).
