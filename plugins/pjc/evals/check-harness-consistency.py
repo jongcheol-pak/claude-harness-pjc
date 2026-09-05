@@ -137,7 +137,7 @@ def check_pointer_reachability():
     pat_any = re.compile(r"`([A-Za-z0-9_./-]+\.md)`")
     heading_cache = {}
     issues, checked, skipped, exempt = [], 0, [], []
-    unnamed = 0
+    unnamed, named = 0, 0
 
     def anchors_of(path):
         """도달 대상 = 헤딩 ∪ 굵은 텍스트.
@@ -205,7 +205,9 @@ def check_pointer_reachability():
         # 대장 2종은 위에서 이미 파일 단위 면제라 계수에서도 뺀다 — 그 둘은 관측 시점의
         #   기록이라 산문 언급이 많고(실측 302건), 넣으면 이 수가 부풀어 신호가 죽는다.
         if rel_src not in POINTER_EXEMPT_SRC:
-            unnamed += len(pat_any.findall(text)) - len(pat.findall(text))
+            _named = len(pat.findall(text))
+            unnamed += len(pat_any.findall(text)) - _named
+            named += _named
         for ref_path, sec_name in pat.findall(text):
             cand = [os.path.join(ROOT, ref_path.replace("/", os.sep)),
                     os.path.join(os.path.dirname(src), ref_path.replace("/", os.sep))]
@@ -263,10 +265,13 @@ def check_pointer_reachability():
     if checked == 0:
         die("포인터 도달성: 검사 대상 포인터를 하나도 찾지 못함 (패턴이 낡았는지 확인)")
     if unnamed:
-        print("[NOTE] 절 이름 없는 `*.md` 참조 %d건은 **이 축의 대상 밖**이다(검사한 포인터 %d건). "
-              "경로만 적은 참조는 파일 전체를 가리킨 것일 수도, 절을 적었어야 하는데 빠진 것일 수도 "
-              "있어 기계가 가르지 못한다 — 이 수는 판정이 아니라 감시 범위다."
-              % (unnamed, checked))
+        # 분모를 `checked` 로 쓰지 않는다 — 그 수에는 대장 2종의 포인터가 들어 있는데
+        #   `unnamed` 는 그 둘을 뺀 집합에서 세므로, 둘을 나란히 내면 읽는 쪽이 같은 분모로
+        #   비교하다 어긋난다(회차 18 완료 리뷰 MINOR). `named` 는 같은 제외 규칙에서 센다.
+        print("[NOTE] 절 이름 없는 `*.md` 참조 %d건은 **이 축의 대상 밖**이다(같은 소스 집합의 "
+              "절 이름 동반 참조 %d건). 경로만 적은 참조는 파일 전체를 가리킨 것일 수도, 절을 "
+              "적었어야 하는데 빠진 것일 수도 있어 기계가 가르지 못한다 — 이 수는 판정이 아니라 감시 범위다."
+              % (unnamed, named))
     if exempt:
         print("[NOTE] 포인터 %d건은 **검사 비대상으로 선언**됨(레포 밖 대상·산문 언급) — %s"
               % (len(exempt), " / ".join(exempt)))
