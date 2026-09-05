@@ -685,8 +685,8 @@ tags: [convention, 프로젝트태그]
 - 적용 대상: `origin` 필드를 보유한 전 타입 — **project/feature 포함**, entity/concept/guide
 - `origin: agent-synthesized`인 페이지는 미검증 상태
 - LLM은 미검증 페이지 인용 시 `(미검증)` 표기
-- 사용자 검증 후 `origin: human-validated`로 변경
-- 코드 재대조 없이 작성·유지된 기존 feature/project 페이지는 `confidence: medium` 이하로 표시한다(재대조 후 상향)
+- **승격은 F-1 10(코드 정합 샘플링)이 그 페이지를 표본으로 잡아 서술을 실제 코드와 대조하고 통과했을 때 `origin: human-validated`로 올린다** — 사용자가 직접 읽고 확인해도 같다. *"사용자 검증 후"* 만 조건으로 두던 v1.238.0 전에는 **40일간 신규 승격이 0건**이었다: vault를 사람이 열어 보는 일이 드물어 그 문이 열리지 않았고, 정작 매 lint가 도는 코드 대조는 승격 권한을 갖지 못했다. 문은 실제로 도는 절차에 달아야 열린다
+- 코드 재대조 없이 작성·유지된 기존 feature/project 페이지는 `confidence: medium` 이하로 표시한다(재대조 후 상향). **§7-3 폐지 이후 이 줄이 `confidence` 값을 정하는 유일한 근거다** — 시간 경과는 더 이상 그 값을 움직이지 않는다
 - Lint 집계 INFO(§7-12 — `(미검증)` 표기·미해결 question)가 1건 이상이면 결과 보고 시 **사용자 검증 후보로 명시 보고**한다(표기만 하고 방치하지 않는 회수 장치)
 - 이 규칙 번들의 **설계 방향 전환**은 사용자 명시적 요청 시에만 허용 (구조를 실제 위키 상태에 맞추는 자동 갱신은 references/procedures-ops.md "H" 범위)
 
