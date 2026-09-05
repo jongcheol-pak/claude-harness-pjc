@@ -560,10 +560,16 @@ BUDGET_TARGETS = [
 #   「분리된 `lookup-rules.md` 의 문면 감량」 항목이 추적한다. 면제를 여기 명시해 두지
 #   않으면 다음 회차가 「왜 통과하는가」를 코드에서 되짚어야 한다.
 BUDGET_EXEMPT_PREFIX = ("plugins/pjc/skills/llm-wiki/",)
-# `session-context-rationale.md` 는 신설 상한(20,000 B)의 1.83배다(36,616 B). **면제이지 통과가
-#   아니다** — 축을 세우는 회차와 감량 회차를 분리한 것이고, 감량은 대장의 「session-context-rationale
-#   감량」 항목이 추적한다. 여기 적어 두지 않으면 다음 회차가 「왜 통과하는가」를 코드에서 되짚어야 한다.
-BUDGET_EXEMPT = {"plugins/pjc/scripts/rules/session-context-rationale.md"}
+# 초과를 면제로 숨기지 않는다 — `rules/*.md` 는 **통지 등급**이라 초과해도 exit 0 이므로,
+#   면제 없이 그대로 두면 「얼마나 넘었는가」가 매 실행에 보이면서 회차를 막지는 않는다.
+#   (v1.234.0 까지는 session-context-rationale.md 를 면제로 뺐는데, 그때는 예산 축이 한 등급뿐이라
+#   면제가 유일한 통과 수단이었다 — 등급이 갈린 지금은 그 우회가 불필요하다.)
+BUDGET_EXEMPT = set()
+
+# 게이트 등급의 임박 통지 임계. 추출 앵커 축의 80% 보다 높게 잡았다 — 실측에서 SKILL.md 6개가
+#   전부 87% 이상이라 80% 로 두면 **매 실행에 6건이 상시로 떠 신호가 소음이 된다**
+#   (대장 [2026-08-03] 「늘 '해당 없음'으로 채워지면 형식만 남는다」 와 같은 축).
+BUDGET_NEAR_RATIO = 0.9
 
 
 def check_agents_target():
@@ -600,17 +606,18 @@ def check_doc_budget():
     text = read(DESIGN_MD)
     body = section(text, r"^## 4\. 문서 예산", label="DESIGN.md 「4. 문서 예산」")
     limits = {}
-    for m in re.finditer(r"^\| (.+?) \| \*\*([\d,]+) B\*\* \|", body, re.M):
-        limits[m.group(1).strip()] = int(m.group(2).replace(",", ""))
+    # 등급까지 읽는다 — 게이트는 issues(exit 1), 통지는 notices(exit 0)로 간다.
+    for m in re.finditer(r"^\| (.+?) \| \*\*([\d,]+) B\*\* \| \*\*(게이트|통지)\*\* \|", body, re.M):
+        limits[m.group(1).strip()] = (int(m.group(2).replace(",", "")), m.group(3))
     if not limits:
         die("[ANCHOR FAIL] DESIGN.md 4절 표에서 상한을 하나도 읽지 못했다 — 표 형식이 바뀌었다")
 
-    issues, n = [], 0
+    issues, notices, near, n = [], [], [], 0
     for label, globs in BUDGET_TARGETS:
         if label not in limits:
             issues.append("예산 표에 「%s」 행이 없다 — BUDGET_TARGETS 와 표가 갈렸다" % label)
             continue
-        cap = limits[label]
+        cap, grade = limits[label]
         for g in globs:
             for path in sorted(glob.glob(os.path.join(ROOT, g))):
                 rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
@@ -619,9 +626,24 @@ def check_doc_budget():
                 n += 1
                 size = os.path.getsize(path)
                 if size > cap:
-                    issues.append("문서 예산 초과: %s %d B > 상한 %d B (「%s」)"
-                                  % (rel, size, cap, label))
-    return issues, n
+                    msg = ("문서 예산 초과: %s %d B > 상한 %d B (「%s」)" % (rel, size, cap, label))
+                    if grade == "게이트":
+                        issues.append(msg)
+                    else:
+                        notices.append(msg + " — 통지 등급이라 exit 0 을 유지합니다(고칠 때만 읽는 문서).")
+                elif grade == "게이트" and size >= cap * BUDGET_NEAR_RATIO:
+                    # 임박 통지 — 게이트는 넘는 순간 회차를 막으므로, 넘기 **전에** 보여야 한다.
+                    #   여유 8 B 로 꽉 찬 SKILL.md 가 실재했고(회차 13 실측), 그 상태에서는 규칙을
+                    #   한 구 고치려 해도 감량이 선행돼 본작업이 멈춘다.
+                    near.append((cap - size, rel, size, cap))
+    # 임박은 건수 요약 1줄 + 여유가 가장 적은 셋만 낸다 — 전건 나열은 상시 6줄이라 읽히지 않는다.
+    if near:
+        near.sort()
+        head = " · ".join("%s %d/%d B(여유 %d)" % (r.split("/")[-2] + "/" + r.split("/")[-1], sz, cp, sl)
+                            for sl, r, sz, cp in near[:3])
+        notices.append("문서 예산 임박 %d건(게이트 등급, 상한의 %d%% 이상) — 여유 최소 셋: %s"
+                       % (len(near), round(BUDGET_NEAR_RATIO * 100), head))
+    return issues, n, notices
 
 
 def main():
@@ -643,6 +665,7 @@ def main():
 
     # 라벨 목록을 한 곳에 두고 **배너와 결과 문구가 둘 다 여기서 파생**되게 한다 —
     #  종전에는 배너가 별도 리터럴이라 축을 늘려도 그대로 남았다(이 회차가 실제로 겪었다).
+    budget_issues, budget_n, budget_notices = check_doc_budget()
     axes = [
         ("포인터 도달성", check_pointer_reachability()),
         ("Deferred 집계", check_deferred_stats(ledger, ledger_closed)),
@@ -650,7 +673,7 @@ def main():
         ("한 줄 문장 중복", check_line_dup()),
         ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
         ("추출 앵커 도달성", check_compact_anchors()),
-        ("문서 예산", check_doc_budget()),
+        ("문서 예산", (budget_issues, budget_n)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
@@ -659,7 +682,7 @@ def main():
 
     print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
     # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
-    for m in check_agents_target():
+    for m in check_agents_target() + budget_notices:
         print("[NOTICE] %s" % m)
     if all_issues:
         for m in all_issues:
