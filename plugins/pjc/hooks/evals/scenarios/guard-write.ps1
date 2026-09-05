@@ -348,5 +348,33 @@ Assert-Case -Name "면제: 마커 줄 뒤에 문장이 더 있어도 통과 (PX1
 # PX15 (양성): 펜스 코드블록 안의 표식도 통과
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trFence })
 Assert-Case -Name "면제: 펜스 코드블록 안의 표식도 통과 (PX15)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+
+# PX16~PX19 — 채널 축과 장식 축(회차 13 재리뷰 MAJOR 2건).
+#   채널: 첫째 갈래(리터럴 \n)는 필드를 가리지 않으므로 줄에 "assistant" 를 요구하지 않으면
+#     user·tool_result 줄의 마커가 표식이 된다 — 그런 내용을 담은 파일을 읽는 것만으로 면제다.
+#   장식: 모델은 마커를 볼드·백틱으로 감싸는 습관이 있다(이 회차 실측에서 ** 접두 10건).
+#     허용하지 않으면 승인받은 표식이 조용히 차단되고 사용자는 이유를 알 수 없다.
+$trUser = Join-Path $work 'tr-plan-exempt-user.jsonl'
+(New-TranscriptLine -Type user -Text "확인.`n[PLAN-EXEMPT] pxscripts/px-guard.cs") | Set-Content $trUser
+$trToolRes = Join-Path $work 'tr-plan-exempt-toolres.jsonl'
+# tool_result 는 헬퍼가 만들지 않는 형태라 리터럴로 쓴다(파일을 cat 한 결과가 실린 모양).
+('{""type"":""user"",""message"":{""content"":[{""type"":""tool_result"",""content"":""파일:\\n[PLAN-EXEMPT] pxscripts/px-guard.cs""}]}}') | Set-Content $trToolRes
+$trBullet = Join-Path $work 'tr-plan-exempt-bullet.jsonl'
+(New-TranscriptLine -Type assistant -Text "확인.`n- [PLAN-EXEMPT] pxscripts/px-guard.cs") | Set-Content $trBullet
+$trBold = Join-Path $work 'tr-plan-exempt-bold.jsonl'
+(New-TranscriptLine -Type assistant -Text "확인.`n**[PLAN-EXEMPT]** pxscripts/px-guard.cs") | Set-Content $trBold
+
+# PX16 (델타 음성): user 줄의 마커는 표식이 아니다
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trUser })
+Assert-Case -Name "면제: user 줄의 마커는 표식이 아니다 (PX16, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX17 (델타 음성): tool_result 줄 — 파일을 읽은 결과로는 면제가 발급되지 않는다
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trToolRes })
+Assert-Case -Name "면제: tool_result 줄의 마커는 표식이 아니다 (PX17, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX18 (양성): 불릿 접두가 붙은 표식도 인정
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trBullet })
+Assert-Case -Name "면제: 불릿 접두가 붙은 표식도 인정 (PX18)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+# PX19 (양성): 볼드로 감싼 마커도 인정
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trBold })
+Assert-Case -Name "면제: 볼드로 감싼 마커도 인정 (PX19)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
 }   # ---- §2c 게이트 끝 ----
 

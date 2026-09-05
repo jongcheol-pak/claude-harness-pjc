@@ -321,7 +321,7 @@ if ($foundIn) {
     exit 0
 }
 
-# PLAN-EXEMPT 면제 판정 — 근거는 `rules/write-gate-rationale.md`의 「§23 PLAN-EXEMPT 면제 판정」
+# PLAN-EXEMPT 면제 판정 — 근거는 `rules/plan-exempt-rationale.md`의 「§23 PLAN-EXEMPT 면제 판정」
 $exFile = [System.IO.Path]::GetFileName($targetPath)
 $exParent = ''
 $exIsRootFile = $false
@@ -338,9 +338,10 @@ if ((-not [string]::IsNullOrWhiteSpace($tppX)) -and (Test-Path -LiteralPath $tpp
     try {
         $cmpIC = [System.StringComparison]::OrdinalIgnoreCase
         $exMarker = '[PLAN-EXEMPT]'
-        $exStartRx = [regex]::new('(?:\\n|"text"\s*:\s*")[ \t]*\[PLAN-EXEMPT\]', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        $exStartRx = [regex]::new('(?:\\n|"text"\s*:\s*")(?:[ ]|\\t)*(?:[-*>`]+(?:[ ]|\\t)*)?\[PLAN-EXEMPT\]', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         foreach ($ln in (Select-String -LiteralPath $tppX -Pattern $exMarker -SimpleMatch)) {
             $t = [string]$ln.Line
+            if ($t.IndexOf('"assistant"', $cmpIC) -lt 0) { continue }
             foreach ($m in $exStartRx.Matches($t)) {
             $rest = $t.Substring($m.Index + $m.Length)
             $exNl = $rest.IndexOf('\n')
