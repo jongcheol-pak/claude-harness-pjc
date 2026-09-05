@@ -593,6 +593,30 @@ def check_case(case):
                 got = ft.count(needle)
                 if got != want:
                     return False, "%s의 '%s' 개수 불일치 — 기대 %d / 실제 %d" % (rel, needle, want, got)
+        # **2회째 실행은 아무것도 수행하지 않아야 한다 — 케이스마다 붙는 무조건 계약이다.**
+        #  `--auto-split`은 반복 호출이 전제이고 「수렴하면 수행 대상 없음」이 그 계약인데,
+        #  1회만 도는 검사는 **호출 간에 지속되지 않는 상태에 기댄 가드**의 결함을 원리상
+        #  못 본다 — 한 호출 안의 중복 이동만 막는 지역 변수 가드가 그랬고, 그 결함은 호출을
+        #  두 번 해야 드러난다(1회 실행에서는 26케이스 중 25개가 이미 수렴해 조용했다).
+        #  **맨 끝에 두는 이유**: 위 expect_file_contains·expect_file_count는 **1회 수행 후
+        #  상태**를 재는 판정이라, 2회째를 앞에 두면 그 판정들이 다른 상태를 보게 된다.
+        out3, rc3, err3 = run_lint(dest, ["--auto-split"])
+        if rc3 not in (0, 1):
+            tail = err3.strip().splitlines()[-1] if err3.strip() else "(stderr 없음)"
+            shutil.rmtree(tmp, ignore_errors=True)
+            return False, f"2회째 --auto-split 비정상 종료({rc3}): {tail}"
+        if "수행 대상 없음" not in out3:
+            # 어느 처방이 수렴하지 않았는지가 판정 근거다 — 건수만으로는 원인을 못 가른다.
+            #  **`== --auto-split:` 배너 뒤만 본다** — 그 앞에는 연쇄 호출한 build_index의
+            #  출력이 같은 들여쓰기로 섞여 있어, 들여쓰기만으로 거르면 무관한 줄이 판정
+            #  근거로 실린다(실측: `라벨 미역이관` 경고의 대상 줄이 딸려 왔다).
+            lines = out3.splitlines()
+            head = next((i for i, ln in enumerate(lines)
+                         if ln.startswith("== --auto-split:")), len(lines))
+            did = [ln.strip() for ln in lines[head + 1:]
+                   if ln.startswith("  ") and ln.strip() and not ln.strip().startswith("사본:")]
+            shutil.rmtree(tmp, ignore_errors=True)
+            return False, "2회째 --auto-split이 수렴하지 않음: " + ("; ".join(did) if did else out3.strip())
         shutil.rmtree(tmp, ignore_errors=True)
         return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
 
