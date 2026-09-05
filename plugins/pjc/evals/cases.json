@@ -264,5 +264,54 @@
       "[FAIL] 짝 불일치 1건",
       "완전히 같은 헤딩 없음"
     ]
+  },
+  {
+    "id": "stale-ok",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 살아 있는 자산의 삭제 자산 참조 0건"
+    ],
+    "expect_absent": [
+      "[FAIL]"
+    ]
+  },
+  {
+    "id": "stale-tree-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/sample/SKILL.md",
+        "find": "이 스킬 문서에는 삭제된 자산의 이름이 없다.",
+        "replace": "절차 상세는 `references/phase-f-detail.md`를 읽는다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에",
+      "sample/SKILL.md"
+    ]
+  },
+  {
+    "id": "stale-ledger-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "cli_args": [
+      "--ledger"
+    ],
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "**삭제 자산 이름이 없는 항목** — 착수 조건 없음.",
+        "replace": "**`plan-feature` 절차를 되살린다** — 착수 조건 없음."
+      }
+    ],
+    "expect_keywords": [
+      "대장 `## 대기` 삭제 자산 참조",
+      "참조 1건"
+    ]
   }
 ]

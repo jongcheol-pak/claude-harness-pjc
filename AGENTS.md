@@ -52,7 +52,7 @@
   python plugins/pjc/evals/check-comment-truncation.py
   ```
 
-- **삭제 자산 참조 검사** (`plugins/**`·`docs/*.md` 수정 시 필수 — 회차 1·2가 없앤 21개 이름이 살아 있는 자산에 남았는가. `--ledger` 는 대장 `## 대기` 를 본다):
+- **삭제 자산 참조 검사** (`plugins/**`·`docs/*.md` 수정 시 필수 — 회차 1·2가 없앤 24개 이름이 살아 있는 자산에 남았는가. `--ledger` 는 대장 `## 대기` 를 본다):
   ```
   python plugins/pjc/evals/check-stale-refs.py
   ```
