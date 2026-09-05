@@ -1,6 +1,6 @@
 ---
 type: schema
-version: "2.42"
+version: "2.43"
 updated: 2026-09-05
 language: ko
 ---
@@ -692,7 +692,7 @@ tags: [convention, 프로젝트태그]
 
 ### okf_version 선언
 
-- 루트 `index.md` frontmatter에 `okf_version: "0.2"`를 선언한다(OKF v0.2 §12 Versioning — 루트 index.md가 유일한 선언 위치이며, 기존 `type: index`·`updated`와 병존 가능. OKF v0.2 §8 Index files도 index.md frontmatter의 유일한 예외로 이 키를 명시한다).
+- 루트 `index.md` frontmatter에 `okf_version: "0.2"`를 선언한다(OKF v0.2 §12 Versioning — 루트 index.md가 유일한 선언 위치다. 스펙이 그 파일에 명시적으로 허용하는 키는 `okf_version` 하나이고 다른 키는 언급하지 않는다 — 다만 §11이 **미지의 frontmatter 키를 거부 사유에서 제외**하므로 이 위키의 `type: index`·`updated`·`tags` 병존은 적합성에 영향이 없다. OKF v0.2 §8 Index files도 index.md frontmatter의 유일한 예외로 이 키를 명시한다).
 - 신규 vault는 부트스트랩(`references/wiki-ops-rules.md` 절차 J)이 자동 포함한다. **기존 vault의 구버전 선언을 갱신할 의무는 두지 않는다** — v1.238.0 전에는 *"위키 세션(B/F)에서 `"0.2"`로 갱신"* 을 규정했으나, 기계 검사가 없어 2026-07-27 도입 후 40일간 한 번도 발동하지 않았다(그 사이 B·F 세션이 여러 번 돌았고 vault 루트 `index.md`는 `"0.1"` 그대로였다). 검사 없는 의무는 규정이 아니라 기록일 뿐이라 지웠다. OKF 소비는 best-effort이며 선언 부재도 구버전 잔존도 오류가 아니다(OKF v0.2 §12 Versioning).
 
 ### description (권장 필드)
@@ -710,7 +710,7 @@ tags: [convention, 프로젝트태그]
 
 ### 위키 필드 ↔ OKF v0.2 패밀리 매핑
 
-v0.2는 provenance(`sources`)·trust(`generated`/`verified`)·lifecycle(`status`/`stale_after`) 패밀리를 신설했다(OKF v0.2 §5 Provenance, trust, and lifecycle). 아래 표는 이 위키의 기존 요소가 그중 무엇에 대응하는지와 **채택 판정**이다. 판정 열은 **현재 상태의 기술이지 도입 예고가 아니다** — 신규 필드를 실제로 넣으려면 별도 계획이 필요하다(아래 "미적합 잔여"와 같은 원칙).
+v0.2는 provenance(`sources`)·trust(`generated`/`verified`)·lifecycle(`status`/`stale_after`) 패밀리를 신설했다(OKF v0.2 §5 Provenance, trust, and lifecycle). 아래 표는 이 위키의 기존 요소가 그중 무엇에 대응하는지와 **채택 판정**이다. 판정 열은 **현재 상태의 기술이지 도입 예고가 아니다** — 신규 필드를 실제로 넣으려면 별도 계획이 필요하다(아래 "형식 격차"와 같은 원칙).
 
 표에서 `OKF v0.2 §`는 스펙 원문의 절이고, 접두 없는 `§`는 이 문서(wiki-schema)의 절이다 — 문서 전체 관례와 동일하다.
 
@@ -719,7 +719,7 @@ v0.2는 provenance(`sources`)·trust(`generated`/`verified`)·lifecycle(`status`
 | `updated` (YYYY-MM-DD) | `generated.at`(OKF v0.2 §5.2 Trust: `generated` and `verified`) — v0.1 `timestamp`의 후신 | **확장 키로 유지** — `generated` 미도입(위 절) |
 | `origin: agent-synthesized \| human-validated` (lint `ORIGIN_VOCAB`, 5타입 필수) | trust tier(OKF v0.2 §5.3 Trust tiers) — `verified` 유무와 actor 종류에서 *파생*되는 값(저장 필드가 아님) | **확장 키로 유지** — 의미는 대응하나 tier의 원천인 `verified` 이벤트 목록은 미도입 |
 | `confidence: high \| medium \| low` (lint `CONFIDENCE_VOCAB`) | **대응 필드 없음** — v0.2가 신뢰에 두는 것은 `verified` 파생 tier(OKF v0.2 §5.3 Trust tiers)와 *소스별* 객관 신호(`author`·`usage_count`·`last_modified`, OKF v0.2 §5.1 Provenance: `sources`)뿐이다 | **확장 키로 유지** — OKF가 배제하는 것은 소스별 credibility **점수**이지 페이지 단위 신뢰도가 아니므로, 확장 키로 그대로 유효하다(OKF v0.2 §4.1 Frontmatter) |
-| `status` — project/feature `active\|paused\|archived`, question `open\|investigating\|resolved`(§2 각 타입 블록) | `status: draft \| stable \| deprecated`(OKF v0.2 §5.4 Lifecycle: `status`) — 예약 어휘, 부재 시 `stable` | **어휘 충돌** — 아래 미적합 잔여 ④ |
+| `status` — project/feature `active\|paused\|archived`, question `open\|investigating\|resolved`(§2 각 타입 블록) | `status: draft \| stable \| deprecated`(OKF v0.2 §5.4 Lifecycle: `status`) — 예약 어휘, 부재 시 `stable` | **어휘 충돌** — 아래 형식 격차 ④ |
 | 각주 출처 구조 — 본문 `[^src-태그]` + `10_sources` 스텁 wikilink(§2.3·`references/templates.md`) | per-claim attribution(OKF v0.2 §5.1 Provenance: `sources`) — 각주 라벨이 `sources[].id`를 가리키는 join key | **형태는 대응, 필드 미도입** — join 대상이 frontmatter `sources`가 아니라 소스 스텁 페이지다(lint §7-18·§7-20이 이 구조를 검사) |
 | (대응 요소 없음) | `sources` + credibility 신호(OKF v0.2 §5.1 Provenance: `sources`) | **필드 미도입** — 출처 정본은 각주 + 소스 스텁이며, 전 페이지 frontmatter 백필은 "저비용으로 적합 가능한 항목만 채택" 원칙과 충돌 |
 | (대응 요소 없음) | `stale_after`(OKF v0.2 §5.5 Lifecycle: `stale_after`) | **필드 미도입** — 이 위키는 시간 경과를 신선도 신호로 쓰지 않는다(§7-3 폐지). 콘텐츠가 레포를 못 따라온 상태는 §7-26이 커밋 수로 잰다 |
@@ -727,12 +727,16 @@ v0.2는 provenance(`sources`)·trust(`generated`/`verified`)·lifecycle(`status`
 
 - **본문 `# Citations` → `sources` 이전은 이 위키에 무영향**이다 — v0.2의 breaking change(OKF v0.2 §13.1 Breaking changes) 중 하나지만, 위키는 `# Citations` 섹션을 애초에 쓰지 않고 위 각주 + 소스 스텁 구조를 쓰므로 대응 작업이 없다. 나머지 하나(`timestamp` 폐기)의 대응은 위 "updated ↔ OKF 콘텐츠 시각 필드 매핑" 절이다.
 
-### 미적합 잔여 항목 (알려진 격차 — 전면 전환은 별도 계획으로만)
+### 형식 격차 (적합성 위반은 아님 — 전면 전환은 별도 계획으로만)
 
 - ① **wikilink**(`[[경로|이름]]`, §3) — OKF v0.2 §6 Cross-linking and paths는 표준 markdown 링크를 권장한다. 외부 OKF 소비자는 wikilink를 링크로 추적하지 못한다(적합성 3요건 위반은 아님).
-- ② **index.md 표 기반 카탈로그**(§3·§4) — OKF v0.2 §8 Index files는 불릿 목록 구조다. **적합성 요건 ③(예약 파일의 구조 준수) 위반이다** — ①과 달리 이쪽은 요건이 직접 겨냥하는 자리라 「위반은 아님」이 성립하지 않는다.
-- ③ **log.md 평면 목록**(§8) — OKF v0.2 §9 Log files는 날짜 헤딩(`## YYYY-MM-DD`) 그룹이다. **②와 같은 이유로 적합성 요건 ③ 위반이다.**
+- ② **index.md 표 기반 카탈로그**(§3·§4) — OKF v0.2 §8 Index files는 불릿 목록 구조다. **그러나 위반이 아니다** — §8은 그 형식을 *권고*로 두고(`Producers MAY generate index.md automatically; consumers MAY synthesize one on the fly`) 표 표현을 배제하지 않는다.
+- ③ **log.md 평면 목록**(§8) — OKF v0.2 §9 Log files는 날짜 헤딩(`## YYYY-MM-DD`) 그룹이다. **그러나 위반이 아니다** — 그 절의 MUST는 *헤딩이 존재할 때 그 형식*에 걸린다(`Date headings MUST use ISO 8601 YYYY-MM-DD form`). 헤딩을 두지 않는 평면 목록은 그 MUST의 대상이 아니다.
 - ④ **`status` 어휘 충돌**(§2 각 타입 블록) — OKF v0.2 §5.4 Lifecycle: `status`가 `draft|stable|deprecated`를 예약 어휘로 정의(부재 시 `stable`)하는 반면 이 위키는 `active|paused|archived`(project/feature)·`open|investigating|resolved`(question)를 쓴다. 교집합은 `deprecated`뿐이다(§2.3 폐기 표시). 어휘를 바꾸지 않는 이유는 vault 전 페이지 마이그레이션에 더해 **lint 판정 로직이 현재 값에 직접 의존**하기 때문이다(§7-12·§7-23의 `resolved` 닫힘 판정, §7-17의 `deprecated` 집계). 적합성 3요건 위반은 아니지만, v0.2 소비자가 `status`를 OKF v0.2 §5.4 Lifecycle: `status`의 어휘로 읽으면 이 위키의 값은 그 어휘 밖이라 lifecycle 신호가 전달되지 않는다.
-> **판정 요약 — 이 vault는 OKF v0.2에 엄밀히는 non-conformant다.** 적합성 3요건 중 ①(비예약 `.md` 전부 frontmatter)·②(`type` 비어있지 않음)는 lint §7-9·§7-7이 기계로 지키지만, **③(예약 파일 구조 준수)은 위 ②③이 정면으로 어긴다.** 그것을 알고 유지하는 선택이며 근거는 아래 한 줄이다 — 이 형식을 바꾸면 잃는 것(lint·검색·인덱스)이 얻는 것(외부 OKF 소비자의 기계 파싱)보다 크고, 그 소비자가 아직 없다. **①(wikilink)·④(`status` 어휘)는 요건이 겨냥하지 않는 자리라 위반이 아니다** — 전자는 cross-linking 권장이고 후자는 선택 필드의 어휘다.
+> **판정 요약 — 네 항목 모두 적합성 위반이 아니다.** 적합성 3요건 중 ①(비예약 `.md` 전부 frontmatter)·②(`type` 비어있지 않음)는 lint §7-9·§7-7이 기계로 지키고, ③(예약 파일 구조 준수)이 겨냥하는 §8·§9는 **형식을 권고로 두지 강제하지 않는다**(위 ②③ 참조). ①(wikilink)·④(`status` 어휘)는 요건이 겨냥하지 않는 자리다 — 전자는 cross-linking 권장이고 후자는 선택 필드의 어휘다.
+>
+> **§11 Conformance는 소비자가 번들을 거부해서는 안 되는 것을 열거한다** — 선택 필드 부재 · 미지의 `type` 값 · **미지의 frontmatter 키** · **깨진 링크** · **`index.md` 부재**. 이 목록이 위 판정의 근거다: 이 위키의 격차는 전부 「형식 편차」이고 스펙은 그것을 conformance failure로 부르지 않는다(`Consumers SHOULD treat all other constraints as soft guidance`).
+>
+> **⚠ 이 판정은 2026-09-05에 스펙 원문을 다시 대조해 뒤집은 것이다** — 그 전에는 ②③을 「요건 ③ 위반」으로 적어 이 vault를 non-conformant로 판정하고 있었다. §8·§9의 서술을 *구조 규정*으로 읽고 그 절들이 실제로 쓰는 MAY·SHOULD를 보지 않은 오독이다. **원문은 번들에 두지 않으므로**(위 서두) 다시 대조할 때는 https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md 를 본다.
 
 - 네 항목은 lint(§7)·검색·인덱스 체계 전반이 의존하는 형식이라 유지한다. 전환하려면 lint 재작성 + vault 전체 마이그레이션이 필요하므로 **사용자 명시 요청에 의한 별도 계획으로만** 진행한다(§11 설계 방향 전환 규정과 동일 원칙).
