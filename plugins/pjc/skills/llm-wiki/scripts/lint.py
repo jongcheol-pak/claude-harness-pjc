@@ -1998,7 +1998,10 @@ def auto_split(vault, dry_run):
       ① index 계열 -- `build_index`가 담당(생성 마커 vault). 여기서는 마지막에 연쇄 호출한다.
       ② 롤오버 -- log.md · decision-log · project 허브 `## 최근 주요 변경`
       ③ 산문 하위 분리 -- 필수 섹션 헤딩은 남기고 본문만 옮긴 뒤 포인터 1줄
-      ④ 등록 -- ①의 연쇄로 신설 하위가 인덱스에 오른다(등록이 빠지면 분할이 곧 유실이다)
+      ④ 기록·재점검 -- §4 7번 기록을 남기고, 그 기록이 log.md를 밀었으면 처방을 1회 더
+         돌린다. **그 회차의 수행분도 수행 목록·기록에 합류한다**(보고에 없는 파일은
+         「되돌리는 방법」의 대상에서 빠진다).
+      ⑤ 등록 -- ①의 연쇄로 신설 하위가 인덱스에 오른다(등록이 빠지면 분할이 곧 유실이다)
 
     반환: 종료 코드(0 정상 / 1 처방 실패)."""
     ses = SplitSession(vault, dry_run)
@@ -2026,8 +2029,11 @@ def auto_split(vault, dry_run):
         return 0
 
     # §4 7번 기록. **이 기록이 log.md를 다시 임계로 밀 수 있으므로** 기록 후 롤오버 트리거를
-    #  1회 재점검한다(§8 "log 기록 추가 직후 트리거 점검"). 그 재점검이 유발한 롤오버는
-    #  기록을 다시 남기지 않는다 -- 기록→롤오버→기록의 연쇄를 끊는 것이 이 「1회」의 의미다.
+    #  1회 재점검한다(§8 "log 기록 추가 직후 트리거 점검"). **그 재점검이 수행한 처방도 같은
+    #  형식으로 기록한다** -- 연쇄를 끊는 것은 아래 「1회」라는 **횟수 고정**이지 기록의
+    #  부재가 아니다(재점검 뒤에는 점검이 없으므로 기록이 다음 회를 부르지 않는다).
+    #  종전 규정은 그 목적에 수단을 하나 더 얹었고, 대가가 **파일은 만들어졌는데 log에
+    #  기록이 없는** 상태였다(v1.238.3 개정 -- §4 7번이 정본).
     written = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
     if written:
         # 재점검은 처방 **목록 전체**를 다시 돌린다 -- 특정 처방을 이름으로 부르지 않는 이유는
@@ -2036,9 +2042,20 @@ def auto_split(vault, dry_run):
         #  본 실행과 **같은 격리 계약**을 쓴다(_run_prescriptions 공용).
         recheck = SplitSession(vault, dry_run)
         _run_prescriptions(recheck)
+        # 재점검의 **실패도 종료 코드에 합류**한다 -- 그러지 않으면 재점검에서 사본이 실패해
+        #  처방을 못 돌아도 `exit 0`이라, 호출측(F-2·A-4·B-3)이 그것을 통과로 읽는다.
+        ses.failed = ses.failed or recheck.failed
+        ses.notes.extend(recheck.notes)
         if recheck.actions:
+            # 수행 목록과 기록에 **합류시킨다.** 종전에는 notes 1줄만 남겨 아래 사후 보고에도
+            #  §4 7번 기록에도 들어가지 않았다 -- 실측으로 한 실행이 만든 파일이 13개인데
+            #  `[SCHEMA]` 기록은 7건이었다. 되돌리는 방법을 알리는 것이 승인을 없앤 대가인데
+            #  (§4 6번) 보고에 없는 파일은 그 대상에서 통째로 빠진다.
+            ses.actions.extend(recheck.actions)
+            _append_log_entries(vault, [recheck.log_line(*a) for a in recheck.actions])
             ses.notes.append(
-                f"log 기록 후 재점검에서 {len(recheck.actions)}건 추가 수행(§4 7번 기록 미생성 — 연쇄 차단)")
+                f"위 {len(recheck.actions)}건은 log 기록 후 재점검이 수행했다"
+                "(§8 트리거 점검 — 재점검은 1회 고정이라 여기서 연쇄가 끊긴다)")
 
     # 신설 하위를 인덱스에 등재한다 -- 이 연쇄가 없으면 분할 직후 §7-6·§7-30ⓒ가 미등록을
     #  경고하고 조회 경로가 끊긴다. 생성 마커가 없는 vault에서는 build_index가 아무것도 쓰지
