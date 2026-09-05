@@ -44,6 +44,8 @@
 
 **AGENTS.md 이관 골든** — **기준선 14케이스**(2026-08-27 실측, 1초 미만). 발동·미발동·이관 불가·검증 델타 음성·이관처 신설·원복 2종을 덮는다. 판정 서술의 정본은 그 스크립트의 모듈 docstring이다(스킬 문서가 아니다).
 
+**evals 골든 러너** — `plugins/pjc/evals/` 세 검사기의 **판정 자체**를 잰다. 케이스마다 픽스처를 임시 복사본으로 뜨고 **검사기를 그 트리의 같은 상대 경로에 복사해** subprocess 로 돌린다 — 세 검사기 모두 repo 루트를 자기 파일의 3단계 상위로 고정해 인자·환경변수 주입 지점이 없기 때문이고, 그래서 **검사기 코드를 고치지 않고** ROOT 를 픽스처로 바꿀 수 있다. 픽스처는 `git init` 된 트리여야 한다(「줄바꿈 정합」 축이 `git ls-files` 로 대상을 열거하고 실패하면 exit 2 를 낸다). `--filter harness|truncation|stale` 로 좁힌다. **exit 2 케이스를 따로 둔다** — 앵커 파싱 실패가 통과로 읽히면 표 형식이 깨져 축이 통째로 사라져도 러너가 green 이다.
+
 **하니스 정합 셀프체크** — **여덟 축**(포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합)을 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). **축 목록의 정본은 `plugins/pjc/evals/check-harness-consistency.py`의 모듈 docstring이다** — v1.224.0이 구 스킬·리뷰어 6종을 없애며 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 마커 목록 · 개념 정본 · 착수 조건 동기 · 잔류 절 동기 · 복제 리터럴 동기 · 파생 수치 동기)이 잴 대상을 잃었고, **그때 이 문서의 목록이 함께 갱신되지 않아 2026-09-04까지 「열다섯 축」으로 남아 있었다**. 여덟 중 **볼드 마커 짝·한 줄 문장 중복**만 이 문서에 설명 절이 있고(「문서 표기 축」), **문서 예산**은 `plugins/pjc/skills/DESIGN.md` 4절, **Deferred 집계**는 대장 자신의 「카운트 기준」 블록, 나머지 넷은 판정 규칙이 곧 코드라 그 함수 주석이 정본이다.
 
 **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 내장 경로 보호가 같은 명령 문자열 안 다른 따옴표 경로를 집어 오차단한다(하니스 hook과 무관). 조건·회피법은 아래 「검증 배치의 `Remove-Item` 오차단」.
@@ -64,7 +66,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
 | `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든 27케이스**가 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint → **2회째 수행(「수행 대상 없음」 요구)**을 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (14케이스, 1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |
-| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다) |
+| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python plugins/pjc/evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든 19케이스이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다). |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) |
 | 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — 기본값. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 | 여기에 **`python plugins/pjc/evals/check-stale-refs.py`**를 함께 돌린다 — 회차 1·2가 없앤 24개 이름이 살아 있는 자산에 남았는지 본다(실행에 영향이 없어 골든이 못 잡는 축이다).
@@ -76,7 +78,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 55,199 | 137,000 |
+| `docs/harness-conventions.md` | 56,340 | 137,000 |
 | `docs/golden-runner.md` | 16,698 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,241 | 37,000 |
 

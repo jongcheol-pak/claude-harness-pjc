@@ -47,6 +47,11 @@
   python plugins/pjc/evals/check-harness-consistency.py
   ```
 
+- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 19케이스, 약 20초. `--filter harness|truncation|stale` 로 좁힌다):
+  ```
+  python plugins/pjc/evals/run-evals.py
+  ```
+
 - **잘린 주석 검사** (`scripts/*.ps1`·`scripts/rules/*-rationale.md` 수정 시 필수 — 근거 인용 주석의 절단과 rationale 헤딩 짝 2축):
   ```
   python plugins/pjc/evals/check-comment-truncation.py
