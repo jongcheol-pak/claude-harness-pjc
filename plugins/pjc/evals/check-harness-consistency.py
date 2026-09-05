@@ -27,6 +27,8 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
      스킬 5종 중 4종이 12,000 B 상한을 최대 2.02배 초과한 채였는데, 크기를 재는 축이 하나도
      없어 조용히 통과했다. 예산이 문서에만 있고 기계는 보지 않는 상태였다.
   ⑧ 줄바꿈 정합    — 워킹트리 tracked 파일이 CRLF 규약을 지키는가(혼재 · bare CR · 전면 LF).
+  ⑨ 종결 사유 명시  — `deferred-closed.md`의 각 항목이 왜 닫혔는지 적었는가.
+  ⑩ 핵심 포인터 실재 — 「절 이름」 없이 적힌 「유일한 방어선」급 참조가 살아 있는가.
      `core.autocrlf=true` 아래에서 워킹트리가 LF 로 바뀌면 blob 이 정규화돼 **`git diff` 가 비고**,
      그래서 리뷰로도 사람 눈으로도 잡히지 않는다 — v1.176.0 부터 다섯 번 재발했고 매번 `git add`
      경고나 우연한 관측으로만 드러났다.
@@ -795,6 +797,72 @@ def check_line_endings():
     return issues, n
 
 
+# 축 9가 인정하는 종결 사유. 「대상 소멸」은 독립 범주가 아니라 `기각(대상 소멸 — …)` 형태의
+#   하위 사유라 넣지 않는다(넣어도 기각과 중복 매치일 뿐이다). `확인 종결`·`실측 종결`은
+#   실사용 4건이 있어 인정한다 — 사유를 안 적은 것이 아니라 다른 말로 적은 것이다.
+CLOSE_REASON_RX = re.compile(r"기각|반영|병합|해소|확인 종결|실측 종결|사유 미상")
+CLOSED_ITEM_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]")
+
+
+def check_close_reasons():
+    """종결 사유 명시 — `deferred-closed.md`의 각 항목이 왜 닫혔는지 적었는가.
+
+    **재는 것은 「사유가 있는가」이지 「기각인가」가 아니다.** 대장 규약은 한때
+    *「기각만 여기로」*였으나 실측은 다르다 — 반영·병합·해소가 이미 그 파일에 산다.
+    규약을 문자 그대로 강제하면 이력 본문 61건을 파일에서 들어내야 하므로, 회차 24가
+    **실태를 규약으로** 삼고 이 축은 사유 명시만 잰다.
+
+    **왜 필요한가**: 불변식(`대기 + 종결 + 삭제누계 == 총등재`)은 **개수만** 구속해
+    어느 항목이 어느 파일에 있는지, 왜 닫혔는지를 보지 않는다. 회차 22·23이 각각
+    미규정 이동과 반영 오분류를 그 불변식 아래로 통과시켰다.
+    """
+    issues, n = [], 0
+    for line in read(LEDGER_CLOSED_MD).splitlines():
+        if not CLOSED_ITEM_RX.match(line):
+            continue
+        n += 1
+        if not CLOSE_REASON_RX.search(line):
+            head = re.search(r"\*\*(.+?)\*\*", line)
+            issues.append("종결 사유 없음: %s" % (head.group(1)[:70] if head else line[:70]))
+    return issues, n
+
+
+# 축 10이 검사하는 포인터. **손으로 관리한다** — 「유일한 방어선」·「정본」 같은 말을 grep 하는
+#   기준은 폭에 따라 1~69건으로 갈려 재현되지 않는다(회차 24 계획 리뷰). 여기 적힌 것은
+#   문면이 스스로 그 문서 없이는 규칙이 사라진다고 선언한 자리다.
+CRITICAL_POINTERS = [
+    ("plugins/pjc/skills/implement/SKILL.md",
+     "plugins/pjc/skills/implement/references/loop-stop-patterns.md",
+     "자율 루프 정지 판정의 유일한 방어선 — 그 판정을 하던 hook 이 v1.225.0 에 제거돼 이 문면이 대신한다"),
+]
+
+
+def check_critical_pointers():
+    """핵심 포인터 실재 — 「절 이름」이 없어도 이 참조들은 검사한다.
+
+    포인터 도달성 축의 정규식은 경로 뒤에 「절 이름」이 붙은 형태만 세므로 경로만 적은
+    참조 756건이 판정 밖이다. 대부분은 파일 전체를 가리킨 정당한 표기라 전부 올리면
+    오탐이 대량 발생하지만, **그 안에 「유일한 방어선」급이 섞여 있다** — 지워져도 축
+    수치가 안 움직인다(회차 22 계획 리뷰 BLOCKER의 근거).
+    """
+    issues, n = [], 0
+    for src_rel, ref_rel, why in CRITICAL_POINTERS:
+        n += 1
+        src_p = os.path.join(ROOT, *src_rel.split("/"))
+        ref_p = os.path.join(ROOT, *ref_rel.split("/"))
+        if not os.path.exists(src_p):
+            # 출처가 아예 없는 레포는 이 축의 관심사가 아니다 — 검사할 포인터가 없는 것이지
+            #   포인터가 깨진 것이 아니다(골든 픽스처 `minimal-repo` 가 그런 형상이다).
+            n -= 1
+            continue
+        if not os.path.exists(ref_p):
+            issues.append("핵심 포인터의 대상이 없다: %s → %s (%s)" % (src_rel, ref_rel, why))
+            continue
+        if os.path.basename(ref_rel) not in read(src_p):
+            issues.append("핵심 포인터가 출처에서 사라졌다: %s → %s (%s)" % (src_rel, ref_rel, why))
+    return issues, n
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -824,6 +892,8 @@ def main():
         ("추출 앵커 도달성", check_compact_anchors()),
         ("문서 예산", (budget_issues, budget_n)),
         ("줄바꿈 정합", check_line_endings()),
+        ("종결 사유 명시", check_close_reasons()),
+        ("핵심 포인터 실재", check_critical_pointers()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:

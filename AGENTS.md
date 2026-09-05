@@ -42,7 +42,7 @@
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
-- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`)·`session-context.ps1`의 절 추출 앵커·**`skills/**`·`agents/*.md`·`scripts/*.ps1`의 크기**·**그 밖에 레포 안 파일을 고치거나 새로 만든 모든 task**(「줄바꿈 정합」 축은 파일 패턴과 무관하다) 수정 시 필수 — 여덟 축, **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`)·`session-context.ps1`의 절 추출 앵커·**`skills/**`·`agents/*.md`·`scripts/*.ps1`의 크기**·**그 밖에 레포 안 파일을 고치거나 새로 만든 모든 task**(「줄바꿈 정합」 축은 파일 패턴과 무관하다) 수정 시 필수 — 열 축, **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python plugins/pjc/evals/check-harness-consistency.py
   ```
