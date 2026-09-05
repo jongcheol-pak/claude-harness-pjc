@@ -321,58 +321,10 @@ if ($foundIn) {
     exit 0
 }
 
-# PLAN-EXEMPT 면제 판정 — 근거는 `rules/plan-exempt-rationale.md`의 「§23 PLAN-EXEMPT 면제 판정」
-$exFile = [System.IO.Path]::GetFileName($targetPath)
-$exParent = ''
-$exIsRootFile = $false
-try {
-    $exDir = [System.IO.Path]::GetDirectoryName($targetPath)
-    $exParent = [System.IO.Path]::GetFileName($exDir)
-    if ($exDir -and $projectRoot) {
-        $exIsRootFile = ($exDir.TrimEnd('\', '/') -ieq ([string]$projectRoot).TrimEnd('\', '/'))
-    }
-} catch {}
-$exemptHit = $false
-$tppX = [string]$data.transcript_path
-if ((-not [string]::IsNullOrWhiteSpace($tppX)) -and (Test-Path -LiteralPath $tppX)) {
-    try {
-        $cmpIC = [System.StringComparison]::OrdinalIgnoreCase
-        $exMarker = '[PLAN-EXEMPT]'
-        $exStartRx = [regex]::new('(?:\\n|"text"\s*:\s*")(?:[ ]|\\t)*(?:[-*>`]+(?:[ ]|\\t)*)?\[PLAN-EXEMPT\]', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-        foreach ($ln in (Select-String -LiteralPath $tppX -Pattern $exMarker -SimpleMatch)) {
-            $t = [string]$ln.Line
-            if (-not [regex]::IsMatch($t, '(?<!\\)"type"\s*:\s*"assistant"')) { continue }
-            foreach ($m in $exStartRx.Matches($t)) {
-            $rest = $t.Substring($m.Index + $m.Length)
-            $exNl = $rest.IndexOf('\n')
-            if ($exNl -ge 0) { $rest = $rest.Substring(0, $exNl) }
-            foreach ($tok in ($rest -split '[\s·,;"''()`*<>「」]+')) {
-                if ([string]::IsNullOrWhiteSpace($tok)) { continue }
-                $tf = ''
-                $tp = ''
-                try {
-                    $tf = [System.IO.Path]::GetFileName($tok)
-                    $tp = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($tok))
-                } catch { continue }
-                if ([string]::IsNullOrEmpty($tf) -or (-not $tf.Equals($exFile, $cmpIC))) { continue }
-                if ([string]::IsNullOrEmpty($tp)) {
-                    if ($exIsRootFile) { $exemptHit = $true; break }
-                } elseif ($tp.Equals($exParent, $cmpIC)) {
-                    $exemptHit = $true
-                    break
-                }
-            }
-            if ($exemptHit) { break }
-            }
-            if ($exemptHit) { break }
-        }
-    } catch { $exemptHit = $false }
-}
-if ($exemptHit) {
-    [Console]::Error.WriteLine("[HARNESS] PLAN-EXEMPT: 사용자 승인 면제($exFile). plan 검사 우회.")
-    Write-RpEvent 'allow' 'PLAN-EXEMPT 면제'
-    exit 0
-}
+# 면제 판정은 `write-gate-exempt.ps1`이 담당한다 — transcript 파싱·채널 판정·토큰 분해가
+#   함께 있어 부피가 크고, 이 파일의 게이트 판정과 관심사가 다르다(trivial 게이트와 같은 분리).
+. (Join-Path $PSScriptRoot 'write-gate-exempt.ps1')
+Invoke-PlanExemptGate $data $targetPath $projectRoot { Write-RpEvent 'allow' 'PLAN-EXEMPT 면제' }
 
 # ---- 차단 ----
 [Console]::Error.WriteLine("[HARNESS] BLOCKED: 코드 변경 전에 plan이 필요합니다.")
