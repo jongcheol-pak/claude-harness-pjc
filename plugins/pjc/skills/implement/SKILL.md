@@ -20,6 +20,8 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 
 > Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
 
+- **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
+
 ## 자율 루프
 
 ```
