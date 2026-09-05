@@ -287,7 +287,7 @@ Write-Host "  직접 만들 필요는 없습니다:" -ForegroundColor White
 Write-Host ""
 Write-Host "    cd C:\Repos\<your-project>" -ForegroundColor Yellow
 Write-Host "    claude" -ForegroundColor Yellow
-Write-Host "    > 무엇이든 계획을 요청하세요           # pjc:plan Step 1이 AGENTS.md 부재를" -ForegroundColor Yellow
+Write-Host "    > 무엇이든 계획을 요청하세요            # pjc:plan Step 1이 AGENTS.md 부재를" -ForegroundColor Yellow
 Write-Host "                                            #   감지하면 최소 골격으로 만듭니다" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  빈 절은 작업하며 채워집니다 — 빌드·테스트 명령을 실제로 돌리면" -ForegroundColor DarkGray
