@@ -341,7 +341,7 @@ if ((-not [string]::IsNullOrWhiteSpace($tppX)) -and (Test-Path -LiteralPath $tpp
         $exStartRx = [regex]::new('(?:\\n|"text"\s*:\s*")(?:[ ]|\\t)*(?:[-*>`]+(?:[ ]|\\t)*)?\[PLAN-EXEMPT\]', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         foreach ($ln in (Select-String -LiteralPath $tppX -Pattern $exMarker -SimpleMatch)) {
             $t = [string]$ln.Line
-            if ($t.IndexOf('"assistant"', $cmpIC) -lt 0) { continue }
+            if (-not [regex]::IsMatch($t, '(?<!\\)"type"\s*:\s*"assistant"')) { continue }
             foreach ($m in $exStartRx.Matches($t)) {
             $rest = $t.Substring($m.Index + $m.Length)
             $exNl = $rest.IndexOf('\n')
