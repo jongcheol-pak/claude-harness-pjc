@@ -47,7 +47,7 @@
   python plugins/pjc/evals/check-harness-consistency.py
   ```
 
-- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 26케이스, 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다):
+- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 29케이스, 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다):
   ```
   python plugins/pjc/evals/run-evals.py
   ```
@@ -57,7 +57,7 @@
   python plugins/pjc/evals/check-comment-truncation.py
   ```
 
-- **삭제 자산 참조 검사** (`plugins/**`·`docs/*.md` 수정 시 필수 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산에 남았는가 — `plugins/**`·`docs/**` 와 **레포 루트의 `*.ps1`·`*.md`** 를 본다. `--ledger` 는 대장 `## 대기` 를 본다):
+- **삭제 자산 참조 검사** (`plugins/**`·`docs/**`·**레포 루트의 `*.ps1`·`*.md`**(`validate.ps1`·`install.ps1`·`README.md` 등) 수정 시 필수 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산에 남았는가 — `plugins/**`·`docs/**` 와 **레포 루트의 `*.ps1`·`*.md`** 를 본다. `--ledger` 는 대장 `## 대기` 를 본다):
   ```
   python plugins/pjc/evals/check-stale-refs.py
   ```

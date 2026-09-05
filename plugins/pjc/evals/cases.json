@@ -344,7 +344,36 @@
     ]
   },
   {
-    "id": "harness-close-reason-missing",
+    "id": "stale-root-md-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "이 파일에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 스킬 add-viewmodel 을 안내한다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에",
+      "README.md"
+    ]
+  },
+  {
+    "id": "stale-root-exception-silent",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 살아 있는 자산의 삭제 자산 참조 0건",
+      "루트의 진행 메모·이력"
+    ],
+    "expect_absent": [
+      "[FAIL]"
+    ]
+  },
+  {    "id": "harness-close-reason-missing",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 1,
@@ -373,7 +402,21 @@
     ]
   },
   {
-    "id": "harness-critical-pointer-lost",
+    "id": "harness-critical-pointer-target-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/references/loop-stop-patterns.md",
+        "delete": true
+      }
+    ],
+    "expect_keywords": [
+      "핵심 포인터의 대상이 없다"
+    ]
+  },
+  {    "id": "harness-critical-pointer-lost",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 1,

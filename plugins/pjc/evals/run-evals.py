@@ -5,8 +5,8 @@
 경로에 복사해** subprocess 로 돌린 뒤 종료 코드와 출력 문구를 대조한다.
 
   왜 사본을 픽스처 안에 두는가: 세 검사기 모두 repo 루트를 **자기 파일의 3단계 상위**로
-  고정한다(`check-harness-consistency.py:45` · `check-stale-refs.py:25` ·
-  `check-comment-truncation.py:26`). 인자도 환경변수도 주입 지점이 없으므로, 검사기를
+  고정한다(세 파일 모두 `ROOT = Path(__file__).resolve().parents[3]` — 라인 번호는 문서 편집으로
+  밀리므로 심볼로 적는다). 인자도 환경변수도 주입 지점이 없으므로, 검사기를
   `<픽스처>/plugins/pjc/evals/` 에 놓는 것이 ROOT 를 픽스처로 만드는 유일한 방법이다.
   이 방식은 **검사기 코드를 고치지 않는다** — 테스트를 위해 프로덕션 경로에 훅을 내면
   그 훅 자체가 감시 밖의 분기가 된다.
@@ -77,6 +77,11 @@ def build_tree(case):
         p = os.path.join(root, mut["file"].replace("/", os.sep))
         if not os.path.exists(p):
             return None, "변이 대상 없음: " + mut["file"]
+        # 파일 삭제 변이 — 참조 대상의 **부재**를 재는 축(핵심 포인터 실재의 ⓐ 분기)은
+        #   치환으로 표현할 수 없다. `find`/`replace` 없이 `delete` 만 적는다.
+        if mut.get("delete"):
+            os.remove(p)
+            continue
         # `newline=""` 로 읽고 쓴다 — 텍스트 모드 변환이 CRLF 를 LF 로 바꾸면
         #   변이와 무관한 「줄바꿈 정합」 축이 함께 발화해 케이스의 판정이 갈린다.
         with io.open(p, encoding="utf-8", newline="") as fh:
