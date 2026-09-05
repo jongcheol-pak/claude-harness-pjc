@@ -2053,9 +2053,14 @@ def auto_split(vault, dry_run):
             #  (§4 6번) 보고에 없는 파일은 그 대상에서 통째로 빠진다.
             ses.actions.extend(recheck.actions)
             _append_log_entries(vault, [recheck.log_line(*a) for a in recheck.actions])
+            # **어느 줄이 재점검 몫인지 지목한다** — 「위 N건」은 목록이 여러 줄일 때 무엇을
+            #  가리키는지 갈린다(§4 6번 사후 보고를 사람이 읽는 자리다). 재점검분은 목록의
+            #  끝에 붙으므로 그 대상 이름을 그대로 적는다.
             ses.notes.append(
-                f"위 {len(recheck.actions)}건은 log 기록 후 재점검이 수행했다"
-                "(§8 트리거 점검 — 재점검은 1회 고정이라 여기서 연쇄가 끊긴다)")
+                "위 목록의 마지막 %d건(%s)은 log 기록 후 재점검이 수행했다"
+                "(§8 트리거 점검 — 재점검은 1회 고정이라 여기서 연쇄가 끊긴다)"
+                % (len(recheck.actions),
+                   "·".join(f"{k} — {t}" for k, t, _c in recheck.actions)))
 
     # 신설 하위를 인덱스에 등재한다 -- 이 연쇄가 없으면 분할 직후 §7-6·§7-30ⓒ가 미등록을
     #  경고하고 조회 경로가 끊긴다. 생성 마커가 없는 vault에서는 build_index가 아무것도 쓰지

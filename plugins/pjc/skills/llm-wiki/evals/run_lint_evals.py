@@ -524,7 +524,11 @@ def check_case(case):
             return False, "--auto-split --dry-run이 파일을 변경함: " + ", ".join(changed)
         out, rc, err = run_lint(dest, ["--auto-split"])
         out2, rc2, err2 = run_lint(dest)
-        if rc not in (0, 1):
+        # **정상 케이스의 종료 코드는 0 하나다.** 1은 `ses.failed`(사본 실패 등 처방 미수행)이
+        #  내는 값이라 골든 픽스처에서는 나올 이유가 없는데, 종전 판정이 0과 1을 함께 통과시켜
+        #  **`ses.failed`가 종료 코드로 나가는 경로 전체가 골든 밖**이었다(실측: 재점검 실패를
+        #  합류시키는 한 줄을 지워도 전건 PASS였다). 27케이스 전부 rc 0임을 실측하고 좁혔다.
+        if rc != 0:
             tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
             return False, f"--auto-split 비정상 종료({rc}): {tail}"
         missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
@@ -601,7 +605,7 @@ def check_case(case):
         #  **맨 끝에 두는 이유**: 위 expect_file_contains·expect_file_count는 **1회 수행 후
         #  상태**를 재는 판정이라, 2회째를 앞에 두면 그 판정들이 다른 상태를 보게 된다.
         out3, rc3, err3 = run_lint(dest, ["--auto-split"])
-        if rc3 not in (0, 1):
+        if rc3 != 0:
             tail = err3.strip().splitlines()[-1] if err3.strip() else "(stderr 없음)"
             shutil.rmtree(tmp, ignore_errors=True)
             return False, f"2회째 --auto-split 비정상 종료({rc3}): {tail}"
