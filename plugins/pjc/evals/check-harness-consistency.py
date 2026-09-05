@@ -655,11 +655,11 @@ def check_doc_budget():
 
 
 # ⑧ 줄바꿈 정합이 쓰는 유일한 git 열거다 — 기존 축의 `_md_files()` 는 md 전용 `os.walk` 라
-#   `.json`·`.ps1`·`.gitignore` 를 보지 못하고 「tracked 인가」도 판정하지 못한다.
+#   `.json`·`.ps1`·`.gitignore` 를 보지 못하고 「레포 안 파일인가」도 판정하지 못한다.
 _LE_SKIP_RX = re.compile(r"(^|/)fixtures/")
 
 
-def _tracked_files():
+def _line_ending_targets():
     """`git ls-files` 로 검사 대상 경로를 낸다. git 이 없거나 실패하면 `die()` 로 합류한다.
 
     `--others --exclude-standard` 를 함께 준다 — **`git add` 전의 새 파일을 보기 위해서다**.
@@ -713,7 +713,7 @@ def check_line_endings():
     **fixture**(다른 축과 같은 정책 — 의도적으로 깨뜨린 파일이다).
     """
     issues, n = [], 0
-    for rel in _tracked_files():
+    for rel in _line_ending_targets():
         if _LE_SKIP_RX.search(rel):
             continue
         try:
