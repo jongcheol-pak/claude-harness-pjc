@@ -78,12 +78,10 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 - `no_plan` — AGENTS.md·소스만 있는 기본 프로젝트(Python 단일 스크립트).
 - `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `pjc:implement`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
 - `no_agents_md` — **AGENTS.md가 없는** 프로젝트. 그 파일의 **부재**가 발동 조건의 일부인 케이스를 재는 자리다(`record-project-fact`는 갱신 전담이라 부재 상태에서 미발동이 정답이다).
-- `ddd_project` — Domain/Application/Infrastructure 레이어 + DDD를 명시한 AGENTS.md. `add-domain-service`용.
-- `xaml_project` — Views/ViewModels + WinUI·CommunityToolkit.Mvvm을 명시한 AGENTS.md. `add-viewmodel`용.
 - `multi_file` — `src/` 아래 모듈 3개(loader·summary·report)가 **에러 처리를 서로 다르게** 갖는 Python 프로젝트. "여러 파일에 걸쳐 바꿔야 한다"는 질의가 성립하려면 그 상태가 실재해야 한다.
 - `stale_agents_md` — 기본 프로젝트에 AGENTS.md의 Test 줄만 **더 이상 유효하지 않은 명령**(`pytest tests/`인데 `tests/`가 없음)으로 바꾼 것. `record-project-fact`의 **제거** 축은 지울 대상이 실재해야 발동한다.
 
-> **⚠ 워크스페이스가 스킬의 발동 조건과 어긋나면 "발동 안 함"이 스킬 결함이 아니라 픽스처 결함이 된다.** 뒤의 다섯 종류는 전부 그래서 생겼다 — 실제로 1차 측정에서 `add-domain-service`·`add-viewmodel`이 **0/3**이었는데, 두 스킬 description이 *"scripts·single-project apps"*·*"non-XAML stacks"*를 **명시적 제외**로 두므로 기본 워크스페이스(Python 스크립트)에서는 **미발동이 정상**이었다. 새 스킬 케이스를 추가할 때는 **그 스킬의 제외 조건부터 읽고** 워크스페이스가 거기 걸리지 않는지 확인할 것.
+> **⚠ 워크스페이스가 스킬의 발동 조건과 어긋나면 "발동 안 함"이 스킬 결함이 아니라 픽스처 결함이 된다.** 뒤의 세 종류는 전부 그래서 생겼다 — 스킬 description 이 특정 프로젝트 성격을 **명시적 제외**로 두면 기본 워크스페이스(Python 스크립트)에서는 **미발동이 정상**이라, 그 수치는 트리거 품질이 아니라 픽스처 불일치를 잰 것이 된다(v1.243.0 이 스택 전용 스킬 2종을 없애며 그 목적의 워크스페이스 `ddd_project`·`xaml_project` 도 함께 지웠다). 새 스킬 케이스를 추가할 때는 **그 스킬의 제외 조건부터 읽고** 워크스페이스가 거기 걸리지 않는지 확인할 것.
 
 > **⚠ 어긋남은 워크스페이스만이 아니다 — 질의도 세 가지를 만족해야 한다.** 러너는 `claude -p`로 **대화 이력이 없는 단발 세션**을 띄우므로: ① **자기완결**이어야 한다(지시대명사 금지 — *"**방금 확인한** 빌드 명령을 기록해줘"* 는 모델이 *"확인한 적 없는 명령은 추측해 적을 수 없다"* 며 정상적으로 되묻는다) ② **질의의 전제가 픽스처에 실재**해야 한다(*"여러 파일에 걸쳐"* 인데 소스가 하나면, *"안 쓰는 테스트 명령을 빼 달라"* 인데 지울 명령이 없으면, *"빈 리스트를 넘기면 터진다"* 인데 코드상 안 터지면 — 모델은 전제 모순을 짚고 멈춘다) ③ **기록할 내용이 픽스처에 이미 있으면 안 된다**(*"이미 그대로 있어서 추가할 게 없습니다"*). **셋 다 결과 JSON에는 똑같이 "발동 안 함"으로 남아 description 결함과 구분되지 않는다** — 2026-08-06에 실제로 그 오진이 Deferred 대장에 등재됐고(`record-project-fact` 0/3을 "description 취약"으로 판정), 케이스만 고치자 **description 무수정으로 3/3**이 됐다. 판정 전에 **미발동 케이스의 `tool_calls`·`final_text`를 먼저 읽을 것.**
 

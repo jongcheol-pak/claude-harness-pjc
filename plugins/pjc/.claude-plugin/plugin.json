@@ -1,7 +1,7 @@
 {
   "name": "pjc",
   "version": "1.242.0",
-  "description": "Korean-first harness for Claude Code: plan, implement, pjc-systematic-debugging, DDD-friendly skills, review subagents. Safety hooks run on pwsh 7 / Windows PowerShell, cross-platform (Windows verified, macOS/Linux experimental); skills are OS-agnostic.",
+  "description": "Korean-first harness for Claude Code: plan, implement, pjc-systematic-debugging, review subagents. Safety hooks run on pwsh 7 / Windows PowerShell, cross-platform (Windows verified, macOS/Linux experimental); skills are OS-agnostic.",
   "author": {
     "name": "pjc"
   },
@@ -12,10 +12,6 @@
   "keywords": [
     "harness",
     "korean",
-    "ddd",
-    "winui",
-    "dotnet",
-    "android",
     "powershell",
     "windows",
     "plan",

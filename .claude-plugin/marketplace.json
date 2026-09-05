@@ -9,11 +9,10 @@
       "name": "pjc",
       "source": "./plugins/pjc",
       "displayName": "pjc — 계획·검증 코딩 하네스",
-      "description": "Korean-first agentic coding harness: plan, implement, pjc-systematic-debugging, MVVM/DDD skills, 2-stage review subagents. Safety hooks run on pwsh 7 / Windows PowerShell, cross-platform (Windows verified, macOS/Linux experimental); skills work on any OS.",
+      "description": "Korean-first agentic coding harness: plan, implement, pjc-systematic-debugging, 2-stage review subagents. Safety hooks run on pwsh 7 / Windows PowerShell, cross-platform (Windows verified, macOS/Linux experimental); skills work on any OS.",
       "category": "workflow",
       "tags": [
         "korean",
-        "ddd",
         "windows",
         "powershell",
         "harness-engineering"
@@ -23,13 +22,7 @@
         "verification",
         "autonomous-loop",
         "code-review",
-        "safety-hooks",
-        "mvvm",
-        "winui3",
-        "wpf",
-        "maui",
-        "android",
-        "dotnet"
+        "safety-hooks"
       ],
       "homepage": "https://github.com/jongcheol-pak/claude-harness-pjc",
       "license": "MIT"

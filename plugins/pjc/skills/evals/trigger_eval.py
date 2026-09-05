@@ -72,12 +72,6 @@ def build_workspace(kind, dest):
     케이스를 재기 위한 워크스페이스다(`record-project-fact`는 기존 파일 갱신 전담이라 부재
     상태에서 미발동이 정답이다). AGENTS.md가 있는 워크스페이스로 재면 그 판정이 성립하지 않는다.
 
-    kind='ddd_project'·'xaml_project'는 **그 스킬의 발동 조건이 프로젝트 성격**이라 따로 만든다.
-    `add-domain-service`는 description이 "projects without a Domain/Application layer split
-    (single-project apps, scripts...)"를 명시적 제외로 두고, `add-viewmodel`은 "non-XAML stacks"를
-    제외한다 — 기본 워크스페이스(Python 단일 스크립트)로 재면 **미발동이 정상**이라 그 수치는
-    스킬 트리거 품질이 아니라 픽스처 불일치를 잰 것이 된다(no_agents_md와 같은 이유).
-
     kind='multi_file'·'stale_agents_md'도 같은 이유로 생겼다 — **질의가 전제하는 상태가 기본
     워크스페이스에 없어서** 미발동하던 케이스들이다(2026-08-06 실측). 전자는 "여러 파일에 걸쳐"를
     전제하는데 기본 워크스페이스는 `src/sample.py` 하나뿐이었고, 후자는 "안 쓰는 테스트 명령을

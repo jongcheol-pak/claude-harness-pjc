@@ -149,8 +149,8 @@
 ## §14 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다.
 
 ```
-        # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 add-viewmodel·
-        #   add-domain-service가 단독 사용 시 켜라고 안내하는 일상 변수라, 재사용하면 그 세션에서
+        # 우회는 전용 변수로만 — CLAUDE_HARNESS_QUICK을 쓰지 않는다. QUICK은 게이트를 잠시
+        #   여는 일상 변수라, 재사용하면 그 세션에서
         #   자격증명 차단까지 함께 꺼진다(block-destructive·guard-harness가 "QUICK도 무시"하는
         #   것과 같은 이유 — 안전 임계 게이트는 QUICK에 종속되지 않는다).
 ```
