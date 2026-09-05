@@ -282,24 +282,17 @@ if ($policy -in @('Restricted', 'AllSigned')) {
 # ---- 10. AGENTS.md 안내 ----
 Write-Section "Next Steps"
 
-$templatesDir = Join-Path $marketplacePath "plugins/pjc/skills/bootstrap-agents-md/templates"
-if (Test-Path $templatesDir) {
-    Write-Host "  각 프로젝트의 루트에 AGENTS.md를 배치하세요." -ForegroundColor White
-    Write-Host "  자동 생성 (권장):" -ForegroundColor White
-    Write-Host ""
-    Write-Host "    cd C:\Repos\<your-project>" -ForegroundColor Yellow
-    Write-Host "    claude" -ForegroundColor Yellow
-    Write-Host "    > /pjc:bootstrap-agents-md   # stack 자동 감지 + AGENTS.md 생성" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  또는 수동 (template에서 복사):" -ForegroundColor White
-    Write-Host ""
-    Write-Host "    # 사용 가능 templates:" -ForegroundColor DarkGray
-    Get-ChildItem -Path $templatesDir -Filter "*.md" | ForEach-Object {
-        Write-Host "    #   $($_.Name)" -ForegroundColor DarkGray
-    }
-    Write-Host "    Copy-Item `"$templatesDir/<stack>.md`" ./AGENTS.md" -ForegroundColor Yellow
-    Write-Host ""
-}
+Write-Host "  각 프로젝트의 루트에 AGENTS.md가 필요합니다 — 빌드·테스트 명령이 거기서 옵니다." -ForegroundColor White
+Write-Host "  직접 만들 필요는 없습니다:" -ForegroundColor White
+Write-Host ""
+Write-Host "    cd C:\Repos\<your-project>" -ForegroundColor Yellow
+Write-Host "    claude" -ForegroundColor Yellow
+Write-Host "    > 무엇이든 계획을 요청하세요           # pjc:plan Step 1이 AGENTS.md 부재를" -ForegroundColor Yellow
+Write-Host "                                            #   감지하면 최소 골격으로 만듭니다" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  빈 절은 작업하며 채워집니다 — 빌드·테스트 명령을 실제로 돌리면" -ForegroundColor DarkGray
+Write-Host "  hook이 기록을 제안하고 /pjc:record-project-fact가 받습니다." -ForegroundColor DarkGray
+Write-Host ""
 
 Write-Host "  Claude Code 사용:" -ForegroundColor White
 Write-Host ""
