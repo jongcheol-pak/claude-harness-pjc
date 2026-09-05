@@ -128,8 +128,16 @@ def check_pointer_reachability():
     #   `rules/*-rationale.md`로 내리며 붙은 `§N ` 접두 때문에 62~64자에 몰렸기 때문이다.
     #   상한을 120자로 올리고 비교 전 양쪽을 strip 한다(후행 공백 차이로 갈리지 않게).
     pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
+    # 위 `pat`이 못 잡는 나머지를 세기 위한 전체 참조 패턴. **판정이 아니라 범위 공개다** —
+    #   경로만 적은 참조는 파일 전체를 가리킨 정당한 포인터일 수도, 절을 적었어야 하는데
+    #   빠진 것일 수도 있어 기계가 가르지 못한다. 그런데 그 수를 내지 않으면 이 축이
+    #   **무엇을 보지 않는지**가 보이지 않아, 회차 17이 실제로 그랬듯 「축이 검사한다」를
+    #   근거로 적어 놓고 실은 매치조차 안 되는 포인터가 생긴다(축 계수 +1인데 새 참조는 둘이었다).
+    #   `issues`에 넣지 않으므로 FAIL 조건도 축 항목 수도 늘지 않는다.
+    pat_any = re.compile(r"`([A-Za-z0-9_./-]+\.md)`")
     heading_cache = {}
     issues, checked, skipped, exempt = [], 0, [], []
+    unnamed = 0
 
     def anchors_of(path):
         """도달 대상 = 헤딩 ∪ 굵은 텍스트.
@@ -194,6 +202,10 @@ def check_pointer_reachability():
         if _ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
             continue
         text = open(src, encoding="utf-8-sig", errors="replace").read()
+        # 대장 2종은 위에서 이미 파일 단위 면제라 계수에서도 뺀다 — 그 둘은 관측 시점의
+        #   기록이라 산문 언급이 많고(실측 302건), 넣으면 이 수가 부풀어 신호가 죽는다.
+        if rel_src not in POINTER_EXEMPT_SRC:
+            unnamed += len(pat_any.findall(text)) - len(pat.findall(text))
         for ref_path, sec_name in pat.findall(text):
             cand = [os.path.join(ROOT, ref_path.replace("/", os.sep)),
                     os.path.join(os.path.dirname(src), ref_path.replace("/", os.sep))]
@@ -250,6 +262,11 @@ def check_pointer_reachability():
                                   % (rel_src, ref_path, sec_name))
     if checked == 0:
         die("포인터 도달성: 검사 대상 포인터를 하나도 찾지 못함 (패턴이 낡았는지 확인)")
+    if unnamed:
+        print("[NOTE] 절 이름 없는 `*.md` 참조 %d건은 **이 축의 대상 밖**이다(검사한 포인터 %d건). "
+              "경로만 적은 참조는 파일 전체를 가리킨 것일 수도, 절을 적었어야 하는데 빠진 것일 수도 "
+              "있어 기계가 가르지 못한다 — 이 수는 판정이 아니라 감시 범위다."
+              % (unnamed, checked))
     if exempt:
         print("[NOTE] 포인터 %d건은 **검사 비대상으로 선언**됨(레포 밖 대상·산문 언급) — %s"
               % (len(exempt), " / ".join(exempt)))
