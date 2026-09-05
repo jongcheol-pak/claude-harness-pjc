@@ -166,6 +166,13 @@ CHG_PTR_RX = re.compile(r"(90_archive/[^\s`()]+changes\.md)")
 SUBDOC_BACK_RX = re.compile(r"(?m)^>\s*상위 문서:\s*\[\[([^\]|]+)")
 # 본문을 옮긴 자리에 남는 정본 포인터. 대상 파일과 **절 이름**을 함께 뽑아 도달성을 검사한다.
 PROSE_PTR_RX = re.compile(r"\*\*정본은 \[\[([^\]|]+)\|[^\]]*\]\]의 「([^」]+)」이다\*\*")
+# 같은 포인터를 **줄 단위로** 잡는다(볼드 유무 무관). 위 정규식과 나누는 이유는 잡는 것이
+#  다르기 때문이다 — 저쪽은 도달성 검사용으로 **대상과 절 이름**을 뽑고, 이쪽은 그 줄을
+#  **지워 없애** 남는 본문이 있는지 보는 데 쓴다(뒤따르는 `— 본문 N자를 옮겼다…`·각주 참조를
+#  함께 흡수해야 하므로 끝을 열어 둔다). 두 형식이 서로 다른 자리에서 생산된다: 이동 자리에
+#  남는 볼드형(relocate_sections)과 하위에 재현되는 필수 섹션의 비볼드형(_sub_page_text).
+#  한쪽만 잡으면 다른 쪽이 그대로 남아 같은 결함이 절반만 닫힌다.
+PTR_ONLY_LINE_RX = re.compile(r"(?m)^\s*\*{0,2}정본은 \[\[[^\]]+\]\]의 「[^」]+」이다\*{0,2}.*$")
 # origin/confidence 필수 타입 화이트리스트 (wiki-schema.md §3 — source-stub/question/인프라 타입 제외)
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
@@ -1792,6 +1799,17 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
         c_body = cur[cur.index("\n", c0) + 1:c1]
         if not c_body.strip():
             continue
+        # **본문이 정본 포인터뿐인 절은 옮기지 않는다** — 옮겨도 문서가 줄지 않고 같은 스텁이
+        #  하나 더 생길 뿐이다. 위 빈 본문 판정과 사유가 달라 분기를 합치지 않는다(저쪽은
+        #  「비어 있다」, 이쪽은 「옮길 실 내용이 없다」).
+        #  **이 판정이 여기 있어야 하는 이유**: relocate_sections의 `keep`은 한 번의 호출
+        #  안에서만 살아 있어(지역 변수) 다음 호출이 같은 스텁을 다시 최대 후보로 집는다.
+        #  파일 내용으로 가르면 호출 경계와 무관해진다.
+        #  **스텁의 생산자는 둘이고 둘 다 정상 동작이다** — 이동 자리에 남는 포인터와
+        #  _sub_page_text가 하위에 재현하는 필수 섹션 포인터(§7-18ⓐ·§7-21 게이트가 하위에도
+        #  걸리므로 재현이 필요하다). 그 재현을 없애는 것은 처방이 아니다.
+        if not PTR_ONLY_LINE_RX.sub("", c_body).strip():
+            continue
         sub_text = _sub_page_text(text, fm, typ, c_title, c_body, label, rel, nl, secmap)
         sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
         if sst and (sst.critical or sst.over):
@@ -1899,6 +1917,10 @@ def relocate_sections(ses):
             #  한 줄뿐인데, 빼지 않으면 그 **스텁이 다시 최대 후보로 뽑혀** 거의 같은 길이의
             #  새 포인터로 바뀌기만 한다 — 문서가 줄지 않으니 발동도 풀리지 않아 `-3`·`-4`로
             #  그 스텁을 옮기고 또 옮긴다(필수 섹션 총량이 예산보다 큰 문서에서 실재하는 경로다).
+            #  **이 가드는 한 호출 안의 중복 이동만 막는다** — `keep`이 지역 변수라 다음 호출은
+            #  같은 스텁을 다시 집었고, 그 교차 실행 경로는 _pick_relocatable의 포인터 전용 절
+            #  판정이 막는다. 두 가드가 같은 현상을 다른 층에서 막으므로 한쪽만 보고 나머지를
+            #  지우지 않는다(이쪽은 제목 기준·한 호출 안, 저쪽은 내용 기준·호출 무관).
             keep.add(title)
             created.append((sub_path, sub_rel, sub_text))
             entries.append((sub_rel[:-len(".md")], "%s — %s" % (label, title), title, label))
