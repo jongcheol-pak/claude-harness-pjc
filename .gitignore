@@ -20,3 +20,5 @@ __pycache__/
 plan.md
 notes.md
 notes-archive/
+# 예외 — 골든 픽스처의 notes.md 는 예외 정규식 축의 입력이라 추적한다.
+!plugins/pjc/evals/fixtures/**/notes.md
