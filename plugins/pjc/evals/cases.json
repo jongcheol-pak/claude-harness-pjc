@@ -313,5 +313,111 @@
       "대장 `## 대기` 삭제 자산 참조",
       "참조 1건"
     ]
+  },
+  {
+    "id": "stale-root-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "setup.ps1",
+        "find": "이 스크립트에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 스킬 bootstrap-agents-md 를 부른다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에",
+      "setup.ps1"
+    ]
+  },
+  {
+    "id": "stale-root-clean",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 살아 있는 자산의 삭제 자산 참조 0건"
+    ],
+    "expect_absent": [
+      "setup.ps1"
+    ]
+  },
+  {
+    "id": "harness-close-reason-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — **반영**: 처리 완료.",
+        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 처리 완료."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "종결 사유 없음"
+    ]
+  },
+  {
+    "id": "harness-close-reason-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "종결 사유 명시"
+    ],
+    "expect_absent": [
+      "종결 사유 없음"
+    ]
+  },
+  {
+    "id": "harness-critical-pointer-lost",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/SKILL.md",
+        "find": "`references/loop-stop-patterns.md`",
+        "replace": "`references/gone.md`"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 포인터가 출처에서 사라졌다"
+    ]
+  },
+  {
+    "id": "harness-critical-pointer-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "핵심 포인터 실재"
+    ],
+    "expect_absent": [
+      "핵심 포인터가"
+    ]
+  },
+  {
+    "id": "harness-pointer-counts-normal-source",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/sample/SKILL.md",
+        "find": "여기서 추출이 멈춘다.",
+        "replace": "여기서 추출이 멈춘다.\r\n\r\n- 임시 인용: `loop-stop-patterns.md`「루프를 멈추는 형태 (픽스처)」"
+      }
+    ],
+    "expect_keywords": [
+      "포인터 도달성"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
   }
 ]
