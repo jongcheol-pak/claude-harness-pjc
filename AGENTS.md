@@ -34,7 +34,7 @@
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
-- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수 — 101케이스, 약 45초. `--auto-split` 26케이스가 같은 실행에 포함):
+- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수 — 102케이스, 약 45초. `--auto-split` 27케이스가 같은 실행에 포함되며 **전부 「2회째 실행은 수행 대상 없음」을 무조건 검사**한다):
   ```
   python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
   ```

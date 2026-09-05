@@ -1168,6 +1168,30 @@
       ]
     },
     {
+      "fixture": "split-recheck-log",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "롤오버 — log.md",
+        "재점검"
+      ],
+      "expect_file_count": {
+        "log.md": {
+          "[SCHEMA]": 2
+        }
+      },
+      "expect_file_contains": {
+        "90_archive/log/2026-06.md": [
+          "항목 01"
+        ]
+      },
+      "after_expect_absent": [
+        "log 아카이브 미등록",
+        "log 아카이브 인덱스 깨짐"
+      ],
+      "rationale": "**재점검 pass가 수행한 처방도 보고·기록에 합류하는가.** `log.md`를 critical 경계(5,501자) 바로 아래(5,395자)로 두어 **산문 분리가 남기는 `[SCHEMA]` 1줄이 그 경계 위로 밀어 올리게** 만든 픽스처다. 그래서 한 번의 `--auto-split`이 처방을 두 번 돈다 — 본 pass의 산문 분리와, 기록 직후 재점검이 유발하는 log 롤오버. **§8의 「log 기록 추가 직후 트리거 점검」 경로를 태우는 유일한 케이스**이고 그 전까지 이 경로는 어느 골든에도 없었다 — 26개 auto_split 픽스처 중 재점검이 발동한 것은 `prose-stub-cycle` 하나뿐이었는데 그것은 스텁 순환이라는 **결함** 때문이었고, 그 결함을 닫으면서 실증 수단이 함께 사라졌다. **`[SCHEMA]` 2건이 판정의 핵심**이다 — 종전에는 재점검 몫이 `ses.actions`에도 log 기록에도 들어가지 않아 파일은 만들어졌는데 기록이 없었고, 그 상태가 §4 7번에 규정으로 굳어 있었다(연쇄를 끊는 것은 「1회」라는 횟수 고정이지 기록의 부재가 아니다 — v1.238.3 개정). `expect_file_contains`가 아카이브를 함께 보는 것은 **기록만 맞고 이동이 비는** 반쪽 통과를 막기 위해서다. `after_expect_absent`의 두 문구(§7-19)는 롤오버가 `## 아카이브 인덱스` 행을 실제로 세웠는지를 재며, 그 행이 없으면 옮긴 이력이 조회 밖으로 나간다."
+    },
+    {
       "fixture": "subdoc-missing",
       "expect_keywords": [
         "하위 문서 목록 누락: 20_projects/personal/demo/feat-thing.md의 '## 하위 문서'에 20_projects/personal/demo/feat-thing-2.md"
