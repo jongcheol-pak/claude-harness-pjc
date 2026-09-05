@@ -47,7 +47,7 @@
   python plugins/pjc/evals/check-harness-consistency.py
   ```
 
-- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 19케이스, 약 20초. `--filter harness|truncation|stale` 로 좁힌다):
+- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 19케이스, 2026-09-05 실측 4.7초. `--filter harness|truncation|stale` 로 좁힌다):
   ```
   python plugins/pjc/evals/run-evals.py
   ```

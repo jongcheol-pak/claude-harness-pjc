@@ -1,0 +1,14 @@
+[
+  {
+    "id": "sample-case",
+    "checker": "stale",
+    "fixture": "sample-repo",
+    "mutate": [
+      {
+        "file": "docs/x.md",
+        "find": "그대로",
+        "replace": "`references/phase-f-detail.md`"
+      }
+    ]
+  }
+]
