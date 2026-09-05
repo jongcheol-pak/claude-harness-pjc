@@ -1,0 +1,15 @@
+[
+  {
+    "id": "harness-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "문서 예산"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  }
+]
