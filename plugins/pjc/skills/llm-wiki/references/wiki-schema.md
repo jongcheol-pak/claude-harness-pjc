@@ -1,6 +1,6 @@
 ---
 type: schema
-version: "2.44"
+version: "2.45"
 updated: 2026-09-05
 language: ko
 ---
