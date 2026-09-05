@@ -187,7 +187,7 @@ LOG_ROLLOVER_SLACK = 300
 #  **문자 예산과 무관한 별개 트리거**다(§7-2 「별개 트리거」ⓑ) — budget_state를 타지 않는다.
 HUB_CHANGES_KEEP = 5
 # 고아·타입 검사에서 제외하는 인프라 타입 (위키 본문 페이지가 아님)
-INFRA_TYPES = {"index", "log", "dashboard", "schema"}
+INFRA_TYPES = {"index", "log", "schema"}
 # (ARCHIVE_EXEMPT_TYPES · FRESHNESS_EXEMPT_TYPES 자리 — v1.238.0이 시간 기반 신선도를
 #  폐지하면서 두 상수의 유일한 소비처인 60/90일 분기가 사라졌다. 면제 목록은 면제할 검사가
 #  있을 때만 존재한다.)
