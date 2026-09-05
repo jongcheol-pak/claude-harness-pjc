@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """삭제 자산 참조 검출 — 회차 1·2가 없앤 것을 살아 있는 자산이 아직 가리키는가.
 
-무엇을 재는가: 아래 DEAD 24개 이름을 `plugins/**`·`docs/*.md` 에서 계수한다.
+무엇을 재는가: 아래 DEAD 26개 이름을 `plugins/**`·`docs/*.md` 에서 계수한다.
 `--ledger` 를 주면 대신 `docs/plans/deferred.md` 의 `## 대기` 구간만 본다(T9 용).
 
 왜 필요한가: 회차 1이 스킬 절차를, 회차 2가 hook 을 갈아엎었는데 그 이름들이
@@ -43,6 +43,9 @@ DEAD = [
     # 구 llm-wiki 자산 2 (회차 15) — OKF 스펙 원문 사본과 신선도 축 골든 픽스처.
     #  'dashboard' 는 넣지 않는다: 살아 있는 프로젝트 이름(devdashboard-winui 등)이 오탐된다.
     'okf-spec', 'archived-fresh',
+    # 구 스킬 2 (회차 22) — 스택 전용 스캐폴딩. 스택 무관분은 implement/references/code-style.md 로 옮겼고
+    #  DDD 레이어 배치는 그것을 채택한 프로젝트의 AGENTS.md·위키 패턴 페이지가 받는다.
+    'add-viewmodel', 'add-domain-service',
 ]
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
