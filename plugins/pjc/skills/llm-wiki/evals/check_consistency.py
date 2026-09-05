@@ -40,7 +40,7 @@
 ⑩ 신규 타입 열거 누락 정합 — 새 페이지 타입을 도입할 때 **기존 타입이 산문으로 열거된 자리**가
 조용히 낡는 사각을 잡는다(⑨는 타입 집합의 존재만 보고 산문 열거는 읽지 않는다). 두 그룹으로
 나뉘고 기대 집합의 정본이 서로 다르다 — ⓐ 값의 정본이 lint.py 상수인 자리(§3 origin·confidence,
-§7-3, §7-9, §7-28, §8 아카이브 예외, §11 적용 대상)는 상수 ↔ 산문을 집합 대조하고, ⓑ 정본이
+§7-9, §7-28, §11 적용 대상)는 상수 ↔ 산문을 집합 대조하고, ⓑ 정본이
 schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.md 목차, §12 description 권장/비대상)는
 전 타입 등장(§12는 권장·비대상 **분할 커버**)을 요구한다. 새 타입 누락을 강제로 잡는 것은 ⓑ다.
 계기: v1.164.0이 `convention` 타입을 신설하며 이 자리들을 일회성 정규식 스캔으로 손수 찾아냈고,
@@ -485,10 +485,8 @@ TYPE_ENUM_SITES_LINT = {
                       lambda lint: lint.ORIGIN_REQUIRED_TYPES),
     # §7-9: 상수명을 문서가 직접 인용하는 자리 (PROSE_SET_ALIASES 치환 대상)
     "A2-updated": (r"`UPDATED_REQUIRED_TYPES` = (.+?),", lambda lint: lint.UPDATED_REQUIRED_TYPES),
-    # §7-3 신선도 항목 줄 전체 — 한 줄에 규칙 4개(아카이브 제외/전체 면제 3종)가 섞여 있어
-    #  세부 앵커로 쪼개면 문구 의존이 심해진다. 합집합으로 대조하는 편이 견고하다.
-    "A3-freshness": (r"^3\. \*\*신선도\*\*(.+)$",
-                     lambda lint: lint.FRESHNESS_EXEMPT_TYPES | lint.ARCHIVE_EXEMPT_TYPES),
+    # (A3-freshness 자리 — §7-3 신선도 축이 v1.238.0에 폐지되면서 대조 대상이 사라졌다.
+    #  라벨은 재사용하지 않는다: 남은 A1·A2·A5~A7은 그대로 두어 이력에서 번호가 밀리지 않게 한다.)
     # §7-28: '**제외**:' 뒤 ~ 첫 ' — ' 앞
     "A5-release": (r"\*\*제외\*\*: (.+?) — ", lambda lint: lint.RELEASE_MARKER_EXEMPT_TYPES),
     # §7-29: '**제외 타입**:' 뒤 ~ 첫 ' — ' 앞. A5의 '**제외**: '와는 문면이 달라 서로 물지 않는다.
@@ -591,21 +589,9 @@ def check_type_enumerations(schema_text, lint):
             issues.append(f"타입 열거 '{label}' 불일치: 문서에만 {sorted(found - expected)} / "
                           f"lint 상수에만 {sorted(expected - found)}")
 
-    # ⓐ A4 — §8 「아카이브」 예외 목록. 절 전체가 아니라 '- **예외' 줄만 모은다:
-    #  같은 절에 'confidence 하락은 … 모든 타입(project·feature 포함)에 적용된다'가 있어
-    #  절 전체를 구간으로 쓰면 project가 섞여 문서를 고쳐도 불일치가 풀리지 않는다.
-    sec = re.search(r"^### 아카이브\n(.*?)(?=^### |\Z)", schema_text, re.M | re.S)
-    if not sec:
-        die("wiki-schema.md §8 '### 아카이브' 절을 찾지 못함(⑩ A4)")
-    exc = [ln for ln in sec.group(1).splitlines() if re.match(r"^- \*\*예외", ln)]
-    if not exc:
-        die("§8 '### 아카이브' 절에서 '- **예외' 줄을 하나도 찾지 못함(⑩ A4)")
-    checked += 1
-    found = extract_type_tokens("\n".join(exc), types)
-    expected = lint.FRESHNESS_EXEMPT_TYPES | lint.ARCHIVE_EXEMPT_TYPES
-    if found != expected:
-        issues.append(f"타입 열거 'A4-archive-exceptions' 불일치: 문서에만 {sorted(found - expected)} / "
-                      f"lint 상수에만 {sorted(expected - found)}")
+    # (ⓐ A4 — §8 「아카이브」 예외 목록 대조 자리. v1.238.0이 시간 기반 신선도(60일 confidence
+    #  하락 · 90일 아카이브)를 폐지하면서 그 절의 예외 목록 자체가 사라졌다 — 면제할 검사가
+    #  없으면 면제 목록도 없다. 축을 남겨 두면 앵커를 못 찾아 die()로 전 축이 죽는다.)
 
     # ⓑ 전 타입 커버
     cover_expected = {
@@ -823,7 +809,7 @@ TRIGGER_ALLOWLIST = [
      "§2.6 펜스 제외 판정 — 「초과 WARN 문구」는 §7-2 신호의 이름 인용이지 조건 서술이 아니다"),
     (SCHEMA_MD, ["- **도달 경로(4번 등록)의 기계 검증은 타입에 따라", "만 보고 넘기면 등록 누락이"],
      "「lint 통과만 보고 넘기면」 — 예산 무관"),
-    (SCHEMA_MD, ["2b. **델타 신뢰도 점검**", "**30일 초과**면"], "허브 `updated` 30일 초과 = 신선도 축(§7-3)"),
+    (SCHEMA_MD, ["2b. **델타 신뢰도 점검**", "**30일 초과**면"], "허브 `updated` 30일 초과 = ingest 델타 신뢰도 축(§5-2b)"),
     (OPS_RULES_MD, ["| index.md | 제한 없음", "기능별 인덱스 200행 초과 시", "동일 임계 측정 — 초과 시 B/F 세션이"], "§7-14 index 트리거 — 줄/행 기준"),
     (OPS_MD, ["`[기계]` index·sub-index 분할 신호", "sub-index 초과는 3단계 순번 파일"], "F-1 인덱스의 §7-14 라벨"),
     # ── 섹션 구역화 축(§7-32) — 파일 예산이 아니라 **한 섹션의 문자 수 + `### ` 유무**가
@@ -864,7 +850,7 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_MD, ["7. **기록**: `log.md`에", "(사유: 임계 초과)`"], "log 기록 형식의 `(사유: 임계 초과)` 예시 문자열"),
     (SCHEMA_MD, ["19. **log 아카이브 인덱스 정합**", "영영 아카이브로 넘어가지 않고"], "§7-19 검사 항목 본문 — 오배치 항목이 아카이브로 「넘어가지 않는다」는 결과 서술이지 예산 조건이 아니다"),
     (CONTENT_MD, ["그 파일은 프로젝트 단위 규약", "프로젝트·스택을 넘는 일반 패턴", "절차 I(가이드/레시피)로 넘긴다"], "「스택을 넘는 일반 패턴」 — 귀속 판정이지 예산 아님"),
-    (CONTENT_MD, ["5. **델타 신뢰도 점검**", "**30일 초과**면"], "허브 `updated` 30일 초과 = 신선도 축"),
+    (CONTENT_MD, ["5. **델타 신뢰도 점검**", "**30일 초과**면"], "허브 `updated` 30일 초과 = ingest 델타 신뢰도 축"),
     (CONTENT_MD, ["> **축소 조건 (소규모 갱신)**", "14일을 넘거나 변경 파일이 5개를 초과하면"], "변경 파일 5개 초과 = 개수 조건, 예산 무관"),
     (LOOKUP_RULES_MD, ['**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "프로젝트 경계를 넘는 지식이라"], "절차 K 조회 순서 — 「경계를 넘는 지식」"),
     (LOOKUP_RULES_MD, ["**무매칭 = 사실대로 보고(합성 금지)**", "기록 없이 넘기면 위키가"], "「기록 없이 넘기면」 — 큐 기록 규약"),

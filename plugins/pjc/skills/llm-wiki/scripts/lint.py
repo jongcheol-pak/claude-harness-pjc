@@ -5,8 +5,8 @@
 검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md·skill-feedback.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
-      / updated 필드 누락(§7-9 — 신선도 추적 전제) / feature '## 구현 방법' 섹션 부재(§7-18 확장)
-      / 고아 페이지(간이) / 신선도(60·90일)·미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
+      / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature '## 구현 방법' 섹션 부재(§7-18 확장)
+      / 고아 페이지(간이) / 미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
@@ -46,9 +46,10 @@ try:
 except Exception:
     pass
 
-# 시간 기반 판정(신선도 60·90일 · 미래 날짜 · 백업 30일 정리)의 「오늘」. 골든 픽스처는 날짜가
-#  고정 커밋돼 있어 실제 today로 재면 시간이 지나며 기대 결과가 조용히 뒤집힌다(2026-09에
-#  `orphan-lint-report`가 60일 축으로 실제 FAIL했다) — 러너가 이 환경변수로 기준일을 고정한다.
+# 시간 기반 판정(미래 날짜 · 백업 30일 정리)의 「오늘」. 골든 픽스처는 날짜가 고정 커밋돼
+#  있어 실제 today로 재면 시간이 지나며 기대 결과가 조용히 뒤집힌다 — 러너가 이 환경변수로
+#  기준일을 고정한다. (v1.238.0 전에는 폐지된 신선도 60·90일 축도 이 「오늘」을 썼고, 그 축이
+#  2026-09에 `orphan-lint-report`를 실제로 FAIL시킨 것이 이 고정 장치의 계기였다.)
 #  **일반 실행에는 설정하지 않는다** — 미설정이면 종전과 동일하게 실제 오늘을 쓴다.
 def _today():
     raw = (os.environ.get("LLM_WIKI_TODAY") or "").strip()
@@ -169,7 +170,7 @@ PROSE_PTR_RX = re.compile(r"\*\*정본은 \[\[([^\]|]+)\|[^\]]*\]\]의 「([^」
 ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
 CATEGORY_VOCAB = {"personal", "work"}
-# updated 필수 타입 (§7-9 — 필드가 없으면 신선도(§7-3)·미래날짜 검사가 조용히 건너뛰어져 추적 사각.
+# updated 필수 타입 (§7-9 — 필드가 없으면 미래날짜 검사가 조용히 건너뛰어져 추적 사각.
 #  source-stub은 불변 스텁이라 ingested를 쓰므로 제외)
 UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log", "convention"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, wiki-schema §4·§8)
@@ -185,20 +186,11 @@ LOG_ROLLOVER_SLACK = 300
 # project 허브 `## 최근 주요 변경` 유지 개수(§2.2·§8 — 3~5개 유지, 6번째가 생기면 롤오버).
 #  **문자 예산과 무관한 별개 트리거**다(§7-2 「별개 트리거」ⓑ) — budget_state를 타지 않는다.
 HUB_CHANGES_KEEP = 5
-# 신선도·고아·타입 검사에서 제외하는 인프라 타입 (위키 본문 페이지가 아님)
+# 고아·타입 검사에서 제외하는 인프라 타입 (위키 본문 페이지가 아님)
 INFRA_TYPES = {"index", "log", "dashboard", "schema"}
-# 신선도: 90일 아카이브 후보에서 제외하는 타입 (wiki-schema.md §8 예외 2)
-ARCHIVE_EXEMPT_TYPES = {"feature", "guide"}
-# 신선도: 시간 기반 처리 **전체**(60일 confidence 하락 + 90일 아카이브 후보)에서 면제하는 타입
-#  (§7-3 · §8 「아카이브」 예외 목록). ARCHIVE_EXEMPT_TYPES와 갈리는 지점: 그 집합은 90일 분기에서만
-#  걸러 60일 분기로 떨어지는데, 아래 셋은 confidence 필드 자체가 없어 '60일+ confidence 하락 후보'
-#  라벨이 성립하지 않는다 — 그래서 90일만이 아니라 전체를 면제한다.
-#  (§ 번호가 아니라 절 제목으로 인용하는 이유: 예외 항목이 늘면 번호가 밀려 주석만 낡는다.)
-#    decision-log: 결정 이력은 미편집이 정상 (§2.8)
-#    question:     resolved question은 동결된 이력 기록이라 편집이 정상적으로 멈추고(lint-* 리포트 포함),
-#                  open question은 §7-12 집계가 이미 추적한다 (§2.7 — priority를 쓰고 confidence가 없다)
-#    convention:   작업 규약은 오래돼도 유효하므로 미편집이 정상 (§2.9)
-FRESHNESS_EXEMPT_TYPES = {"decision-log", "question", "convention"}
+# (ARCHIVE_EXEMPT_TYPES · FRESHNESS_EXEMPT_TYPES 자리 — v1.238.0이 시간 기반 신선도를
+#  폐지하면서 두 상수의 유일한 소비처인 60/90일 분기가 사라졌다. 면제 목록은 면제할 검사가
+#  있을 때만 존재한다.)
 # §7-28 본문 릴리즈 마커 검사에서 제외하는 타입 — 재작성 대상이 아닌 동결 기록이라 WARN이
 #  수리 불가능한 소음이 된다(decision-log는 항목 불변 이력, question은 발견 원문 인용 보존).
 #  convention은 미편입 — 규약은 갱신이 정상이라 동결 기록이 아니다(§5 changelog 미러링 금지가 그대로 적용).
@@ -207,7 +199,7 @@ RELEASE_MARKER_EXEMPT_TYPES = {"decision-log", "question"}
 #  섞여 들어오면 **고칠 수 없는 WARN**이 영구히 남는다(규약이 수정을 금지한 파일에 수리를 요구하는 모순).
 #  RELEASE_MARKER_EXEMPT_TYPES와 값을 공유하지 않고 따로 두는 이유는 제외 근거가 다르기 때문이다 —
 #  그쪽은 "동결 기록이라 재작성 대상이 아님"이고 여기는 "규약상 수정이 금지됨"이라, 한쪽 제외를
-#  바꿀 때 다른 쪽이 조용히 따라 바뀌면 안 된다(ARCHIVE_EXEMPT_TYPES를 별도로 둔 것과 같은 이유).
+#  바꿀 때 다른 쪽이 조용히 따라 바뀌면 안 된다.
 #  question을 넣지 않은 이유: 항목 불변 규정이 없어 본문 편집이 가능하고, 인용 원문의 이모지는
 #  대개 코드펜스 안이라 strip_code가 이미 걷어낸다.
 EMOJI_EXEMPT_TYPES = {"decision-log"}
@@ -2319,7 +2311,6 @@ def main():
     dep_count = 0                             # deprecated 페이지 집계 (wiki-schema §7-17)
     feat_files, index_feat_links = set(), set()
     indexed_files = {}     # typ -> {무확장 경로} — guide·entity·concept 인덱스 등록 검사(§7-30 ⓒ)
-    stale60 = []           # (경과일, 경로) — 60일+ 미편집 집계용(§7-3)
     link_targets = set()   # 위키 전체에서 링크된 대상 (고아 검사용)
     pages = {}             # rel -> (frontmatter, type, 본문 텍스트)
     unreadable = set()     # 읽기 실패한 rel 경로 — 부재와 구분해 진단하기 위해 실패 지점에서 기록한다
@@ -2512,7 +2503,7 @@ def main():
             if re.search(r"\d+\.\d+", ts):
                 warn(f"허브 tech_stack 휘발성 버전 기재: {r} (이름만, 버전 진실원천은 코드)", r)
 
-        # origin/confidence: 화이트리스트 타입만 검사 (type 매칭만으로 수행, 신선도 로직과 무관)
+        # origin/confidence: 화이트리스트 타입만 검사 (type 매칭만으로 수행, 날짜 로직과 무관)
         if typ in ORIGIN_REQUIRED_TYPES and not in_archive:
             for key, vocab in (("origin", ORIGIN_VOCAB), ("confidence", CONFIDENCE_VOCAB)):
                 val = fm.get(key)
@@ -2521,33 +2512,20 @@ def main():
                 elif val not in vocab:
                     errors.append(f"{key} 통제어휘 위반: {r} -> '{val}'")
 
-        # 미래/이상 날짜 + 신선도 (updated 필드 보유 페이지만)
+        # 미래/이상 날짜 (updated 필드 보유 페이지만)
         raw_upd = fm.get("updated", "")
         upd = parse_date(raw_upd) if raw_upd else None
         if raw_upd and upd is None:
             warn(f"updated 형식 이상: {r} -> '{raw_upd}'", r)
-        # updated 누락 (§7-9): 필드가 아예 없으면 신선도(§7-3)·미래날짜 검사가 조용히 건너뛰어진다 —
+        # updated 누락 (§7-9): 필드가 아예 없으면 미래날짜 검사가 조용히 건너뛰어지고, 절차 B의
+        #  절차 B의 델타 신뢰도 점검(§5-2b)도 기준을 잃는다 —
         #  origin/confidence 누락은 WARN인데 updated만 침묵하던 사각을 메운다.
         if typ in UPDATED_REQUIRED_TYPES and not in_archive and not raw_upd:
-            warn(f"updated 누락: {r} (type={typ}) — 신선도 추적 불가 (schema §7-9)", r)
+            warn(f"updated 누락: {r} (type={typ}) — 최종 수정일 추적 불가 (schema §7-9)", r)
         if upd:
             if upd > today and not in_archive:
                 # 미래 날짜 ERR도 90_archive/ 제외 — 동결 백업이 exit 1을 유발하지 않게 (§2.8·§8 자동 제외)
                 errors.append(f"미래 날짜: {r} updated={upd}")
-            # 타입 기반 전체 면제 3종(decision-log·question·convention)의 근거는 FRESHNESS_EXEMPT_TYPES 정의부.
-            # status: paused·archived도 전체 면제 — 의도적으로 중단/보관한 frozen 상태라 미편집이 정상 (§8 예외 1)
-            # lint 리포트(lint-YYYYMMDD, type: question)도 제외 — 갱신 안 되는 보존 스냅샷이라 90일 후 매 실행
-            #   자기 자신을 '아카이브 후보'로 오탐한다(§7-8 고아 제외와 동일 계열, bcc6558 정합).
-            #   (타입으로는 question이라 위 집합에도 걸리지만, 파일명 기반 판정이라 별도 절로 남긴다.)
-            elif (typ not in INFRA_TYPES and typ not in FRESHNESS_EXEMPT_TYPES
-                  and not in_archive
-                  and fm.get("status") not in ("paused", "archived") and not is_dep
-                  and not is_lint_report(r)):
-                days = (today - upd).days
-                if days >= 90 and typ not in ARCHIVE_EXEMPT_TYPES:
-                    infos.append(f"90일+ 미편집(아카이브 후보): {r} ({days}일)")
-                elif days >= 60:
-                    stale60.append((days, r))
 
         # 네이밍 규칙
         base = os.path.basename(r)
@@ -3190,10 +3168,10 @@ def main():
                     warn(f"{label} 레포에 없음: {r} -> '{t}' ({detail}, schema {sec})", r)
 
     # 위키 뒤처짐 (wiki-schema §7-26): 허브 synced_commit(§2.2) 이후 레포에 쌓인 커밋 수를 센다.
-    #  updated(§7-3 신선도)는 "언제 손댔나"라서, 날짜만 갱신되고 내용이 레포를 못 따라온 상태를
-    #  그대로 통과시킨다 — 그 사각을 이 검사가 메운다("어디까지 담았나").
+    #  updated는 "언제 손댔나"라서, 날짜만 갱신되고 내용이 레포를 못 따라온 상태를 그대로
+    #  통과시킨다 — 그 사각을 이 검사가 메운다("어디까지 담았나").
     #  전부 INFO다: 커밋 수 임계는 프로젝트 커밋 빈도에 따라 의미가 달라 근거 없는 상수가 되므로
-    #  신선도와 같이 "후보 제시"에 머문다(exit code 불변). 접근 불가는 조용히 skip(fail-open).
+    #  "후보 제시"에 머문다(exit code 불변). 접근 불가는 조용히 skip(fail-open).
     for r, (fm, typ, text) in sorted(pages.items()):
         if typ != "project" or r.startswith("90_archive/"):
             continue
@@ -3221,18 +3199,6 @@ def main():
             continue
         if r[:-3].casefold() not in link_targets:  # link_targets는 casefold 정규화값(M-3/L-1과 정합)
             warn(f"고아 페이지(어디서도 링크되지 않음): {r}", r)
-
-    # 60일+ 미편집 집계 (§7-3) — 개별 나열하지 않는다.
-    #  실 vault에서 86건이 나와 INFO 89건 중 96%를 차지했고, 그 더미에 다른 신호가 묻혔다.
-    #  이 축은 "confidence를 낮출지 판단하라"는 **경향 신호**라 개별 파일명이 액션에 직결되지
-    #  않는다 — 오래된 순 상위 5건만 보이면 어디부터 볼지 정할 수 있다. 반면 90일+(아카이브
-    #  후보)는 파일 단위 처리 대상이라 개별 유지한다(위 검사).
-    if stale60:
-        top = sorted(stale60, reverse=True)[:5]
-        more = len(stale60) - len(top)
-        tail = (" … 외 %d건" % more) if more > 0 else ""
-        infos.append("60일+ 미편집 %d건(confidence 하락 후보) — 오래된 순: %s%s"
-                     % (len(stale60), ", ".join("%s(%d일)" % (r, d) for d, r in top), tail))
 
     # (미검증)·미해결 question 집계 리포트 — 사용자 검증 후보 (0건이면 생략, wiki-schema §11)
     if unverified_hits:

@@ -178,16 +178,6 @@
       "rationale": "M-2 — 비 UTF-8(CP949) 파일 1개가 전체 lint를 크래시시키지 않고 그 파일만 ERR로 격리, 나머지 검사 계속"
     },
     {
-      "fixture": "archived-fresh",
-      "expect_keywords": [
-        "오류 0건"
-      ],
-      "expect_absent": [
-        "미편집"
-      ],
-      "rationale": "T9(F1) §8 예외 1 — status: archived 페이지는 updated가 90일+ 과거여도 시간기반 신선도 INFO(미편집)를 내지 않아야 함(paused 동급, 절차 D로 20_projects/에 남은 archived 프로젝트의 영구 노이즈 방지). ERR 0 확인 + '미편집' 부재. status를 active로 바꾸면 '90일+ 미편집'이 나오는 fixture라 면제가 실제 작동함을 검증(expect_clean은 INFO를 허용하므로 expect_keywords로 expect_absent를 활성화)"
-    },
-    {
       "fixture": "pending-backlog",
       "expect_keywords": [
         "pending.md 미처리 잔량",
@@ -430,11 +420,7 @@
         "무효 항목 제거",
         "하위 파일"
       ],
-      "expect_absent": [
-        "90일+ 미편집",
-        "60일+ 미편집"
-      ],
-      "rationale": "§7-2 convention 예산(12000자) 초과 WARN + 처방 힌트 — 신규 타입이 BUDGET에 편입돼 문자 수로 판정되고, 초과 시점에 수리 경로(무효 항목 제거 → 하위 파일 분리)를 안내하는지 함께 실증한다(wiki-schema §2.9·§4·§7-2). 수리 경로가 정해진 타입은 임박 WARN과 초과 WARN 양쪽에 힌트를 병기해야 하며, 초과 시점에 침묵하면 정작 고쳐야 할 때 방법을 못 받는다. expect_absent는 신선도 오탐 가드: convention은 §7-3·§8 예외 1-3으로 60/90일 전체 면제인데, ARCHIVE_EXEMPT_TYPES 갈래로 구현하면 90일 분기만 막혀 60일 INFO로 떨어지므로 두 라벨 모두 부재를 검증한다(picked-up: 이 픽스처의 updated는 2026-08-01이라 두 임계 모두 미달이지만, 구현이 잘못돼 타입 무관 오탐을 내면 여기서 드러난다)."
+      "rationale": "§7-2 convention 예산(12000자) 초과 WARN + 처방 힌트 — 신규 타입이 BUDGET에 편입돼 문자 수로 판정되고, 초과 시점에 수리 경로(무효 항목 제거 → 하위 파일 분리)를 안내하는지 함께 실증한다(wiki-schema §2.9·§4·§7-2). 수리 경로가 정해진 타입은 임박 WARN과 초과 WARN 양쪽에 힌트를 병기해야 하며, 초과 시점에 침묵하면 정작 고쳐야 할 때 방법을 못 받는다. (v1.238.0 전에는 신선도 60/90일 오탐 가드로 expect_absent 2줄을 함께 실었으나, 그 축이 폐지돼 두 줄이 영원히 자명하게 통과하는 상태가 됐으므로 걷어냈다.)"
     },
     {
       "fixture": "convention-legacy-hub",
