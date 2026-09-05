@@ -40,6 +40,9 @@ DEAD = [
     'docs/prd.md',
     # 구 스킬 1 (회차 4) — 역할이 AGENTS-BOUNDARY 뼈대·pjc:plan Step 1·record-project-fact 로 나뉘었다
     'bootstrap-agents-md',
+    # 구 llm-wiki 자산 2 (회차 15) — OKF 스펙 원문 사본과 신선도 축 골든 픽스처.
+    #  'dashboard' 는 넣지 않는다: 살아 있는 프로젝트 이름(devdashboard-winui 등)이 오탐된다.
+    'okf-spec', 'archived-fresh',
 ]
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
