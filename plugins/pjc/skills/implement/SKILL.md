@@ -1,4 +1,4 @@
----
+﻿---
 name: implement
 description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1부터 마지막 task까지 사용자에게 묻지 않고 진행하고, 전부 끝난 뒤 한 번 보고한다. 승인된 plan.md가 이미 있을 때(또는 사용자가 방금 제시된 plan을 승인할 때)만 발동하며, 한국어(구현/구현해/이대로 진행/진행해/계속/T3부터 계속/실행)와 영어(implement/proceed/go/continue)에 반응한다. "T6부터 계속"은 T6 하나가 아니라 T6부터 마지막 task까지와 최종 검증을 뜻한다. plan이 아직 없는데 여러 파일에 걸친 변경을 요청받았다면 이 스킬이 아니라 pjc:plan이 먼저다 — 그쪽이 계획을 쓰고 이 스킬이 실행한다. 계획 없이 끝나는 한 줄 편집·오타·설정값 변경에는 발동하지 않는다(직접 편집한다).
 ---
@@ -108,7 +108,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - [ ] `plan.md`의 모든 task가 `[x]`다 (불요 판정으로 닫힌 것 포함)
 - [ ] 최종 검증(4번)이 통과했고 그 출력이 있다
 - [ ] plan의 Goal 성공 기준이 실측으로 확인됐다
-- [ ] `## Deferred / Follow-up`의 미처리 항목이 `docs/plans/deferred.md`로 옮겨졌다
+- [ ] `## Deferred / Follow-up`의 항목이 전부 판정됐다 — **등재 전에 「지금 고칠 것인가」를 먼저 가른다**(판정 4조건은 `references/plan-template.md`의 「Deferred / Follow-up」). 등재분은 `docs/plans/deferred.md`로 옮겼다
 
 - **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
 
