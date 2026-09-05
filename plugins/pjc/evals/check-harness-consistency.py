@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산.
+r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -24,6 +24,10 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
   ⑦ 문서 예산      — `DESIGN.md` 4절 표의 상한을 실측 파일 크기와 대조한다. v1.226.0 착수 시점에
      스킬 5종 중 4종이 12,000 B 상한을 최대 2.02배 초과한 채였는데, 크기를 재는 축이 하나도
      없어 조용히 통과했다. 예산이 문서에만 있고 기계는 보지 않는 상태였다.
+  ⓗ 줄바꿈 정합    — 워킹트리 tracked 파일이 CRLF 규약을 지키는가(혼재 · bare CR · 전면 LF).
+     `core.autocrlf=true` 아래에서 워킹트리가 LF 로 바뀌면 blob 이 정규화돼 **`git diff` 가 비고**,
+     그래서 리뷰로도 사람 눈으로도 잡히지 않는다 — v1.176.0 부터 다섯 번 재발했고 매번 `git add`
+     경고나 우연한 관측으로만 드러났다.
 
 **축을 지운 이력 (v1.224.0)**: 구 `plan-feature`·`implement-task`와 그 references, 리뷰어 6종이
 제거되면서 그것을 대상으로 하던 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 ·
@@ -34,6 +38,7 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
 import glob
 import os
 import re
+import subprocess
 import sys
 
 # repo 루트 = 이 파일의 3단계 상위 (plugins/pjc/evals/ → repo)
@@ -646,6 +651,83 @@ def check_doc_budget():
     return issues, n, notices
 
 
+# ⓗ 줄바꿈 정합이 쓰는 유일한 git 열거다 — 기존 축의 `_md_files()` 는 md 전용 `os.walk` 라
+#   `.json`·`.ps1`·`.gitignore` 를 보지 못하고 「tracked 인가」도 판정하지 못한다.
+_LE_SKIP_RX = re.compile(r"(^|/)fixtures/")
+
+
+def _tracked_files():
+    """`git ls-files -z` 로 tracked 경로를 낸다. git 이 없거나 실패하면 `die()` 로 합류한다.
+
+    미포착 traceback 으로 죽으면 **다른 일곱 축까지 함께 죽는다** — 이 검사기에
+    처음 들어오는 외부 프로세스 의존이라 실패 경로를 명시한다.
+    """
+    try:
+        out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError as e:
+        die("[ANCHOR FAIL] git 을 실행할 수 없어 줄바꿈 축이 대상을 열거하지 못했다 — %s" % e)
+    if out.returncode != 0:
+        die("[ANCHOR FAIL] git ls-files 실패(rc=%d) — 줄바꿈 축이 대상을 열거하지 못했다"
+            % out.returncode)
+    for raw in out.stdout.split(b"\x00"):
+        if raw:
+            yield raw.decode("utf-8")
+
+
+def check_line_endings():
+    """ⓗ 줄바꿈 정합 — 워킹트리 tracked 파일의 CRLF 규약 위반을 잡는다.
+
+    왜 필요한가: `core.autocrlf=true` 아래에서 워킹트리가 LF 로 바뀜어도 **blob 이
+    LF 로 정규화돼 저장되므로 `git diff` 가 비어 있다**. 그래서 사람 눈으로도 리뷰로도
+    잡힐 수 없고, 실제로 v1.176.0 부터 다섯 번 재발하며 매번 `git add` 경고나 우연한
+    관측으로만 드러났다(대장 `[2026-08-16]` 2회 재확인 · `[2026-08-25]`).
+
+    세 형태를 본다. **대장의 최초 처방은 「혼재」 하나였는데 여기서 넓혔다** — 그
+    처방은 전면 LF 파일을 예외 목록으로 빼는 부담을 피하려던 것이나, 기록된 사고
+    다섯 중 다수가 `sed -i`·텍스트 모드 I/O 의 **전면 변환**이라 혼재만 재면 실제로
+    일어난 형태를 하나도 못 잡는다. 실측에서 fixture 를 민 예외가 2건뿐이라(그 2건은
+    이 회차가 CRLF 로 복원했다) 회피의 근거가 사라졌다.
+
+      ⓐ 혼재     — CRLF 와 LF 가 한 파일에 섞였다. 편집이 삽입한 새 줄의 흔적이다.
+      ⓑ bare CR  — LF 를 동반하지 않는 단독 CR. 이스케이프가 한 번 더 풀려 제어문자가
+                   박히는 형태로, 원인은 다르나 검출 수단이 같아 여기서 함께 재다.
+      ⓒ 전면 LF  — 파일 전체가 LF. 위 전면 변환이 남기는 형태다.
+
+    **못 잡는 것**: BOM(별도 축이 없다) · gitignore 된 파일(`plan.md`·`notes.md` — tracked 가
+    아니라 열거되지 않는다) · index 쪽 줄바꿈(항상 LF 로 정규화돼 검사 의미가 없다).
+
+    제외는 둘이다 — **바이너리**(NUL 바이트 포함. `.gitattributes` 가 없어 git 의 텍스트
+    판정을 빌릴 수 없고, `assets/logo.png` 가 bare CR 1,253개로 상시 위반이 된다)와
+    **fixture**(다른 축과 같은 정책 — 의도적으로 깨뜨린 파일이다).
+    """
+    issues, n = [], 0
+    for rel in _tracked_files():
+        if _LE_SKIP_RX.search(rel):
+            continue
+        try:
+            with open(os.path.join(ROOT, rel), "rb") as fh:
+                b = fh.read()
+        except OSError:
+            # 워킹트리에 없는 tracked 경로(삭제 대기 등) — 잤 대상이 아니다.
+            continue
+        if b"\x00" in b:
+            continue
+        crlf = b.count(b"\r\n")
+        lf = b.count(b"\n") - crlf
+        cr = b.count(b"\r") - crlf
+        n += 1
+        if crlf and lf:
+            issues.append("줄바꿈 혼재: %s (CRLF %d · LF %d) — 편집이 삽입한 줄이 LF 로 남았다"
+                          % (rel, crlf, lf))
+        elif crlf == 0 and lf:
+            issues.append("줄바꿈 전면 LF: %s (LF %d) — 워킹트리 규약은 CRLF 다"
+                          % (rel, lf))
+        if cr:
+            issues.append("bare CR: %s (%d개) — LF 없는 단독 CR 이 박혔다" % (rel, cr))
+    return issues, n
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -674,6 +756,7 @@ def main():
         ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
         ("추출 앵커 도달성", check_compact_anchors()),
         ("문서 예산", (budget_issues, budget_n)),
+        ("줄바꿈 정합", check_line_endings()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
