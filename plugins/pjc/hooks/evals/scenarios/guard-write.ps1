@@ -313,5 +313,22 @@ $trDeco = Join-Path $work 'tr-plan-exempt-deco.jsonl'
 (New-TranscriptLine -Type assistant -Text '[PLAN-EXEMPT] `pxscripts/px-guard.cs`') | Set-Content $trDeco
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trDeco })
 Assert-Case -Name "면제: 백틱 장식이 붙은 표식도 인정 (PX11)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+
+# PX12·PX13 — 마커는 텍스트 줄의 시작이어야 한다(회차 13). transcript 한 줄은 JSON 객체
+#   하나라 텍스트 내부 개행은 리터럴 \n 두 글자로 실린다 — 그 뒤이거나 text 필드 시작일 때만
+#   표식으로 본다. 이 규칙을 *설명하는* 산문은 마커로 줄을 시작하지 않는다.
+$trMid = Join-Path $work 'tr-plan-exempt-mid.jsonl'
+(New-TranscriptLine -Type assistant -Text ('훅은 ' + [char]96 + '[PLAN-EXEMPT] pxscripts/px-guard.cs' + [char]96 + ' 형태의 표식을 읽습니다.')) | Set-Content $trMid
+$trNl = Join-Path $work 'tr-plan-exempt-nl.jsonl'
+(New-TranscriptLine -Type assistant -Text "바로 수정하겠습니다.`n[PLAN-EXEMPT] pxscripts/px-guard.cs") | Set-Content $trNl
+
+# PX12 (델타 음성 — 줄 중간 마커): 실제 경로가 함께 있어도 산문 안이면 표식이 아니다.
+#   회차 12의 매칭은 줄 어디서든 마커를 찾아 이 형태가 열렸다.
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trMid })
+Assert-Case -Name "면제: 줄 중간 마커(산문)는 표식이 아니다 (PX12, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
+# PX13 (양성 — 개행 뒤 마커): 설명 문장 다음 줄에 단독으로 낸 표식은 인정한다.
+#   PX1 계열이 재는 'text 필드 시작'과 다른 갈래라 둘 다 필요하다.
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trNl })
+Assert-Case -Name "면제: 개행 뒤 단독 줄 표식은 통과 (PX13)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
 }   # ---- §2c 게이트 끝 ----
 

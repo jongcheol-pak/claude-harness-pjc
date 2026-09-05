@@ -338,11 +338,13 @@ if ((-not [string]::IsNullOrWhiteSpace($tppX)) -and (Test-Path -LiteralPath $tpp
     try {
         $cmpIC = [System.StringComparison]::OrdinalIgnoreCase
         $exMarker = '[PLAN-EXEMPT]'
+        # 표식은 텍스트 줄의 시작이어야 한다 — transcript 한 줄은 JSON 객체 하나라 텍스트 내부
+        #   개행은 리터럴 \n 두 글자로 실린다. 두 갈래를 받는 이유는 표식이 메시지 첫 줄일 때다.
+        $exStartRx = [regex]'(?:\\n|"text"\s*:\s*")[ \t]*\[PLAN-EXEMPT\]'
         foreach ($ln in (Select-String -LiteralPath $tppX -Pattern $exMarker -SimpleMatch)) {
             $t = [string]$ln.Line
-            $mi = $t.IndexOf($exMarker, $cmpIC)
-            if ($mi -lt 0) { continue }
-            $rest = $t.Substring($mi + $exMarker.Length)
+            foreach ($m in $exStartRx.Matches($t)) {
+            $rest = $t.Substring($m.Index + $m.Length)
             foreach ($tok in ($rest -split '[\s·,;"''()`*<>「」]+')) {
                 if ([string]::IsNullOrWhiteSpace($tok)) { continue }
                 $tf = ''
@@ -358,6 +360,8 @@ if ((-not [string]::IsNullOrWhiteSpace($tppX)) -and (Test-Path -LiteralPath $tpp
                     $exemptHit = $true
                     break
                 }
+            }
+            if ($exemptHit) { break }
             }
             if ($exemptHit) { break }
         }

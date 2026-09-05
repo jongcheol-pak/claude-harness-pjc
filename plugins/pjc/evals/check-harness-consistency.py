@@ -46,6 +46,7 @@ LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
 #   ⚠ 두 파일을 여기서 함께 읽지 않으면 계수 축과 차수 축이 **0항목으로 조용히 통과**한다.
 LEDGER_CLOSED_MD = os.path.join(ROOT, "docs", "plans", "deferred-closed.md")
 LEDGER_HISTORY_MD = os.path.join(ROOT, "docs", "plans", "deferred-history.md")
+AGENTS_MD = os.path.join(ROOT, "AGENTS.md")
 
 # 9,000B 경계 = auto-compact 후 스킬이 앞 5,000토큰만 재부착된다는 사양에서 온 값.
 # 이 상수만은 문서가 아니라 여기 둔다 — 표의 "경계 행" 열이 이 값으로 계산된 결과이므로,
@@ -547,6 +548,7 @@ BUDGET_TARGETS = [
     ("가이드 문서 (`DESIGN.md`·`AUTHORING.md`)",
      ["plugins/pjc/skills/DESIGN.md", "plugins/pjc/skills/AUTHORING.md"]),
     ("hook 스크립트 `scripts/*.ps1`", ["plugins/pjc/scripts/*.ps1"]),
+    ("근거 문서 `scripts/rules/*.md`", ["plugins/pjc/scripts/rules/*.md"]),
 ]
 
 # `llm-wiki` 트리는 예산 축의 대상이 아니다 — 회차 1~3이 Out of Scope 로 두었고(그 스킬은
@@ -555,7 +557,32 @@ BUDGET_TARGETS = [
 #   「분리된 `lookup-rules.md` 의 문면 감량」 항목이 추적한다. 면제를 여기 명시해 두지
 #   않으면 다음 회차가 「왜 통과하는가」를 코드에서 되짚어야 한다.
 BUDGET_EXEMPT_PREFIX = ("plugins/pjc/skills/llm-wiki/",)
-BUDGET_EXEMPT = set()
+# `session-context-rationale.md` 는 신설 상한(20,000 B)의 1.83배다(36,616 B). **면제이지 통과가
+#   아니다** — 축을 세우는 회차와 감량 회차를 분리한 것이고, 감량은 대장의 「session-context-rationale
+#   감량」 항목이 추적한다. 여기 적어 두지 않으면 다음 회차가 「왜 통과하는가」를 코드에서 되짚어야 한다.
+BUDGET_EXEMPT = {"plugins/pjc/scripts/rules/session-context-rationale.md"}
+
+
+def check_agents_target():
+    """AGENTS.md 목표선 통지 — `issues` 가 아니라 통지다(exit 코드에 반영하지 않는다).
+
+    상수 주석이 이 값을 "넘기기 전에 알리는 경고선"으로 규정한다 — 하드 게이트는
+    `session-context.ps1` 의 16,384 B 이고 그쪽이 넘으면 주입이 목차 폴백으로 깨진다.
+    둘을 같은 등급으로 내면 경고선이 사실상 하드 게이트가 되어, 목표선을 넘은 동안
+    이 검사기를 쓰는 모든 회차가 막힌다.
+
+    통지에 현재값·목표선·하드 게이트·할 일을 함께 적는다 — 숫자만 내면 다음 세션이
+    무엇을 해야 하는지 모른 채 그 줄을 지나친다.
+    """
+    try:
+        size = os.path.getsize(AGENTS_MD)
+    except OSError:
+        return []
+    if size <= AGENTS_TARGET_BYTES:
+        return []
+    return ["AGENTS.md %d B > 목표선 %d B (하드 게이트 %d B — `session-context.ps1` 이 정본). "
+            "주입 상한을 넘기기 전에 절을 이관하세요 — `pjc:record-project-fact` 의 Step 5 가 그 경로입니다."
+            % (size, AGENTS_TARGET_BYTES, 16384)]
 
 
 def check_doc_budget():
@@ -628,6 +655,9 @@ def main():
         parts.append("%s %d항목" % (label, n))
 
     print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
+    # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
+    for m in check_agents_target():
+        print("[NOTICE] %s" % m)
     if all_issues:
         for m in all_issues:
             print("[MISMATCH] %s" % m)
