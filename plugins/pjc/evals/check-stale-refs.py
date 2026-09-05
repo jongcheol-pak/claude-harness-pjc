@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """삭제 자산 참조 검출 — 회차 1·2가 없앤 것을 살아 있는 자산이 아직 가리키는가.
 
-무엇을 재는가: 아래 DEAD 26개 이름을 `plugins/**`·`docs/*.md` 에서 계수한다.
+무엇을 재는가: 아래 DEAD 26개 이름을 `plugins/**`·`docs/**` 와 **레포 루트의 `*.ps1`·`*.md`** 에서
+계수한다. 루트를 넣은 것은 `validate.ps1`·`install.ps1` 이 스킬·hook 이름을 배열로 담아
+**이름이 죽으면 조용히 깨지는 자리**인데 종전 범위 밖이었기 때문이다(회차 22 가 지운
+`bootstrap-agents-md` 가 `validate.ps1` 에, 회차 4 가 지운 같은 이름이 `install.ps1` 에
+살아 있었고 검사기는 계속 exit 0 이었다).
 `--ledger` 를 주면 대신 `docs/plans/deferred.md` 의 `## 대기` 구간만 본다(T9 용).
 
 왜 필요한가: 회차 1이 스킬 절차를, 회차 2가 hook 을 갈아엎었는데 그 이름들이
@@ -55,6 +59,9 @@ SKIP_DIRS = {'.git', '__pycache__', 'notes-archive', '.agents-presplit', 'node_m
 EXCEPTIONS = [
     (re.compile(r'^docs/plans/'),
      '대장 3파일은 이력이다 — 등재 당시의 대상을 그 이름으로 적는 것이 기록의 정확성이다'),
+    (re.compile(r'^(plan|notes)\.md$'),
+     '루트의 진행 메모·이력 — 이 스캐너는 pathlib 순회라 gitignore 를 보지 않는다(둘 다 gitignore 지만 디스크에 실재한다). '
+     '지나간 회차가 그때의 대상을 이름으로 적은 것이라 갱신 대상이 아니다'),
     (re.compile(r'^plugins/pjc/evals/check-stale-refs\.py$'),
      '이 검사기 자신 — DEAD 목록이 곧 검사 대상 문자열이다'),
     (re.compile(r'^plugins/pjc/skills/llm-wiki/evals/fixtures/'),
@@ -111,6 +118,10 @@ def scan_ledger():
 
 def scan_tree():
     targets = []
+    # 레포 루트의 스크립트·문서 — 하위 재귀는 하지 않는다(그 트리는 아래 루프가 돈다).
+    #   루트를 재귀하면 .git·node_modules 배제를 새로 관리해야 하는데 얻는 것이 없다.
+    for pat in ('*.ps1', '*.md'):
+        targets.extend(p for p in ROOT.glob(pat) if p.is_file())
     for base in ('plugins', 'docs'):
         d = ROOT / base
         if not d.is_dir():
