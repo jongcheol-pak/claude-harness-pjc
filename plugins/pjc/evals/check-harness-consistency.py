@@ -255,7 +255,14 @@ def check_pointer_reachability():
             hs = anchors_of(target)
             if hs is None:
                 continue
-            checked += 1
+            # 대장 2종의 인용은 축 수치에서 뺀다 — 위 `named`/`unnamed` 계수와 같은 조건이다.
+            #   갈라 두면 **대장을 편집하는 것만으로 `checked` 가 움직여**, 그 수치를
+            #   acceptance 로 쓰는 회차가 자기 변경과 무관한 값을 판정 근거로 삼게 된다
+            #   (회차 21·22 가 실제로 그 값을 acceptance 로 썼고, 회차 22 의 213 → 214 는
+            #   실재 포인터가 아니라 신규 등재 항목이 인용한 크기 표기였다).
+            #   도달성 판정 자체는 계속 한다 — 끊긴 인용은 아래 `issues` 로 뜬다.
+            if rel_src not in POINTER_EXEMPT_SRC:
+                checked += 1
             # 전체 일치 또는 앵커가 그 이름으로 시작(부제·괄호 꼬리 허용).
             # 양쪽을 strip 하는 이유: 기계 생성 포인터는 절단 위치에 따라 후행 공백이 남는데
             #   그것으로 갈리면 실질 도달 가능한 참조가 끊김으로 잡힌다.
