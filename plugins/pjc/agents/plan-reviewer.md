@@ -30,6 +30,7 @@ disallowedTools: Write, Edit, NotebookEdit, Bash
 ### 3. task의 Files 완전성
 
 - **plan이 바꾸겠다고 한 심볼의 호출자·구현체·직렬화·테스트가 Files에 있는지 확인한다** — Grep으로 직접 센다. 여기서 빠진 파일은 구현 중에 발견되고 그때는 다른 task가 그 위에 쌓여 있다.
+- **동작을 새로 만들거나 바꾸는 task에 케이스 경로도 면제 범주도 없으면 지적한다** — 면제 3범주는 `skills/plan/references/plan-template.md` 「작업 단계」이고, **적힌 사유가 그 셋 어디에도 해당하지 않는 것도 지적 대상**이다. 범주 ②(기존 케이스가 덮는다)는 **지목된 경로가 실재하는지 Grep으로 확인한다** — 경로 없는 면제는 사유의 참됨을 아무도 못 재는 자리가 된다.
 
 ### 4. acceptance의 판정 가능성
 
