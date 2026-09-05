@@ -73,3 +73,15 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 
 - **각 절은 다음 Phase 판정에 쓰이는 것만 담는다** — 증상 배경·코드 동작 설명은 원인 확정에 기여하지 않으면서 이미 모은 단서를 그 아래 묻는다(출처: Opus 5 가이드 「작성된 산출물의 길이」).
 - **기각된 가설은 지우지 말고 `❌` + 한 구 사유만 남긴다** — 지우면 다음 세션이 같은 가설을 다시 세우고, 서술을 통째로 남기면 확정된 원인이 그 사이에 묻힌다.
+
+## 최근 변경 검사 명령 (1-C)
+
+```bash
+git log --oneline -20
+git diff --stat HEAD~N..HEAD -- <의심 파일>   # 규모를 먼저 잰 뒤 큰 파일만 전문으로
+git diff HEAD~N..HEAD -- <의심 파일>
+git log -n 20 --since="N hours ago"           # 개수 상한을 함께 — 본문은 유지한다
+git blame -L <시작>,<끝> <파일>               # 범위를 모르면 -L 없이 쓰되 파일을 좁힌다
+```
+
+> **`git log` 본문은 유지한다**(`--oneline` 금지) — 커밋 본문이 단서다. 근거는 §11.
