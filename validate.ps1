@@ -6,7 +6,7 @@
 # 검증 항목:
 #   1. plugin 디렉터리 존재
 #   2. plugin.json + marketplace.json 유효
-#   3. skill 8개 모두 등록
+#   3. skill 5개 모두 등록
 #   4. agent 6개 모두 등록
 #   5. hook 9개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM

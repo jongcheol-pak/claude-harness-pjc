@@ -78,45 +78,6 @@ def build_workspace(kind, dest):
     빼 달라"인데 AGENTS.md가 `Test: 없음`이라 지울 대상이 아예 없었다.
     """
     os.makedirs(dest, exist_ok=True)
-    if kind == "ddd_project":
-        for sub in ("src/Domain/Orders", "src/Application/Orders", "src/Infrastructure"):
-            os.makedirs(os.path.join(dest, *sub.split("/")), exist_ok=True)
-        with open(os.path.join(dest, "src", "Domain", "Orders", "Order.cs"),
-                  "w", encoding="utf-8", newline="\n") as fh:
-            fh.write("namespace Shop.Domain.Orders;\n\n"
-                     "public sealed class Order\n{\n"
-                     "    public Guid Id { get; init; }\n"
-                     "    public decimal Amount { get; private set; }\n}\n")
-        with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(
-                "# AGENTS.md\n\n"
-                "## Stack\n- .NET 8 / C# 12. **DDD 레이어 분리**(Domain · Application · Infrastructure).\n"
-                "- 비즈니스 로직은 Domain 레이어에 둔다. DI는 Microsoft.Extensions.DependencyInjection.\n\n"
-                "## Build & Test\n- Build: `dotnet build`\n- Test: `dotnet test`\n\n"
-                "## Plan Location\n- 단일 plan: `plan.md`\n"
-            )
-        return
-    if kind == "xaml_project":
-        for sub in ("Views", "ViewModels"):
-            os.makedirs(os.path.join(dest, sub), exist_ok=True)
-        with open(os.path.join(dest, "ViewModels", "MainViewModel.cs"),
-                  "w", encoding="utf-8", newline="\n") as fh:
-            fh.write("using CommunityToolkit.Mvvm.ComponentModel;\n\n"
-                     "namespace App.ViewModels;\n\n"
-                     "public partial class MainViewModel : ObservableObject\n{\n"
-                     "    [ObservableProperty]\n    private string title = \"Home\";\n}\n")
-        with open(os.path.join(dest, "App.csproj"), "w", encoding="utf-8", newline="\n") as fh:
-            fh.write('<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n'
-                     "    <UseWinUI>true</UseWinUI>\n  </PropertyGroup>\n</Project>\n")
-        with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(
-                "# AGENTS.md\n\n"
-                "## Stack\n- **WinUI 3** (Windows App SDK) / C#. MVVM은 **CommunityToolkit.Mvvm**.\n"
-                "- View는 `Views/`, ViewModel은 `ViewModels/`에 둔다.\n\n"
-                "## Build & Test\n- Build: `dotnet build`\n- Test: 없음\n\n"
-                "## Plan Location\n- 단일 plan: `plan.md`\n"
-            )
-        return
     if kind == "multi_file":
         # 에러 처리를 **서로 다르게** 흩어 둔다 — "여러 파일에 걸쳐 바꿔야 한다"는 질의가
         # 성립하려면 흩어진 상태가 실재해야 한다(한 파일에 모여 있으면 그 요청이 모순이 된다).
