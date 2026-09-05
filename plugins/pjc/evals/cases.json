@@ -11,5 +11,211 @@
     "expect_absent": [
       "[MISMATCH]"
     ]
+  },
+  {
+    "id": "pointer-dead-section",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "「검증 매핑 (task 검증 선택)」",
+        "replace": "「없어진 절 이름」"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "없어진 절 이름"
+    ]
+  },
+  {
+    "id": "deferred-count-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "총 등재 누계 6",
+        "replace": "총 등재 누계 7"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "Deferred 불변식"
+    ]
+  },
+  {
+    "id": "deferred-wait-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "대기 2 / 종결 1 / 정리 삭제 누계 3 / 총 등재 누계 6",
+        "replace": "대기 3 / 종결 1 / 정리 삭제 누계 2 / 총 등재 누계 6"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "Deferred 집계"
+    ]
+  },
+  {
+    "id": "bold-odd",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 처리 완료.",
+        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — **처리 완료."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "볼드 마커 홀수"
+    ]
+  },
+  {
+    "id": "line-dup",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "## 종결",
+        "replace": "이 줄은 한 줄 안 문장 중복 축을 발화시키려고 넣은 문장이다. 이 줄은 한 줄 안 문장 중복 축을 발화시키려고 넣은 문장이다.\r\n\r\n## 종결"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "한 줄 안 문장"
+    ]
+  },
+  {
+    "id": "batch-gap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-history.md",
+        "find": "> **2차 batch",
+        "replace": "> **4차 batch"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "차수"
+    ]
+  },
+  {
+    "id": "anchor-renamed",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/sample/SKILL.md",
+        "find": "## 주입 대상 절",
+        "replace": "## 이름이 바뀐 절"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "추출 앵커"
+    ]
+  },
+  {
+    "id": "budget-design-over-cap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/DESIGN.md",
+        "find": "| `SKILL.md` | **12,000 B** | **게이트** |",
+        "replace": "| `SKILL.md` | **10 B** | **게이트** |"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "문서 예산 초과",
+      "sample/SKILL.md"
+    ]
+  },
+  {
+    "id": "budget-conv-record-mismatch",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 139 |",
+        "replace": "| `docs/golden-runner.md` | 138 |"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "조건부 참조 표 기록값 불일치",
+      "docs/golden-runner.md"
+    ]
+  },
+  {
+    "id": "budget-conv-over-cap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 139 | 4,000 |",
+        "replace": "| `docs/golden-runner.md` | 139 | 100 |"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "조건부 참조 표 상한 초과"
+    ]
+  },
+  {
+    "id": "linefeed-all-lf",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "\r\n",
+        "replace": "\n"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "줄바꿈 전면 LF"
+    ]
+  },
+  {
+    "id": "anchor-parse-fail",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 2,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/DESIGN.md",
+        "find": "## 4. 문서 예산",
+        "replace": "## 4-1. 문서 예산"
+      }
+    ],
+    "expect_keywords": [
+      "ANCHOR FAIL",
+      "4. 문서 예산"
+    ]
   }
 ]
