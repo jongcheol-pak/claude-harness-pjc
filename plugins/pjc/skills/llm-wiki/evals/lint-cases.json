@@ -1172,7 +1172,7 @@
       "auto_split": true,
       "expect_keywords": [
         "산문 분리 — 20_projects/personal/demo/feat-thing.md",
-        "롤오버 — log.md",
+        "롤오버 — log.md: 90_archive/log/2026-06.md",
         "재점검"
       ],
       "expect_file_count": {
