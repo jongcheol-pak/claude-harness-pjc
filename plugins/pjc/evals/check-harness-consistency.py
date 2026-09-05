@@ -21,7 +21,9 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
   ⑥ 추출 앵커 도달성 — `session-context.ps1`이 압축 직후 잘라 오는 절의 헤딩이 대상 문서에
      실재하고 크기 상한 안인가. 헤딩이 바뀌면 hook은 조용히 폴백해 주입이 사라지고, 그 상실은
      압축된 세션에서만 드러나 아무도 모른 채 지나간다.
-  ⑦ 문서 예산      — `DESIGN.md` 4절 표의 상한을 실측 파일 크기와 대조한다. v1.226.0 착수 시점에
+  ⑦ 문서 예산      — `DESIGN.md` 4절 표의 상한과 `harness-conventions.md` 「조건부 참조 문서
+     크기 임계」 표의 **기록값·상한**을 실측 파일 크기와 대조한다(표는 둘, 축은 하나).
+     v1.226.0 착수 시점에
      스킬 5종 중 4종이 12,000 B 상한을 최대 2.02배 초과한 채였는데, 크기를 재는 축이 하나도
      없어 조용히 통과했다. 예산이 문서에만 있고 기계는 보지 않는 상태였다.
   ⑧ 줄바꿈 정합    — 워킹트리 tracked 파일이 CRLF 규약을 지키는가(혼재 · bare CR · 전면 LF).
@@ -625,7 +627,7 @@ def check_agents_target():
 
 
 def check_doc_budget():
-    """⑦ 문서 예산 — `DESIGN.md` 4절 표의 상한을 실측 파일 크기와 대조한다.
+    """⑦ 문서 예산 — 예산 표 **둘**의 상한·기록값을 실측 파일 크기와 대조한다.
 
     왜 필요한가: v1.226.0 착수 시점에 스킬 5종 중 4종이 그 표의 12,000 B 를 최대 2.02배
     초과한 채였는데 **크기를 재는 축이 하나도 없어 조용히 통과**했다. 예산은 문서에만
@@ -666,6 +668,31 @@ def check_doc_budget():
                     #   여유 8 B 로 꽉 찬 SKILL.md 가 실재했고(회차 13 실측), 그 상태에서는 규칙을
                     #   한 구 고치려 해도 감량이 선행돼 본작업이 멈춘다.
                     near.append((cap - size, rel, size, cap))
+    # 조건부 참조 표 — `DESIGN.md` 4절과 **같은 축에서** 읽는다(그 절 자신이 그렇게 규정한다).
+    #   이 표만 **기록값 열**을 갖는다: 대상이 `docs/` 라 위 `BUDGET_TARGETS` 의 글로브가 닿지
+    #   않고, 상시 로드가 아니라 조건부 참조라 「메인 조합」 합산에 섞으면 그 전제가 깨진다.
+    #   기록값을 함께 재는 이유는 그 절이 **편집한 task 가 같은 task 안에서 갱신**하도록 규정하기
+    #   때문이다 — 그 의무를 재는 것이 없으면 값이 조용히 낡는다(회차 18 실측: +5,830 B).
+    conv_body = section(read(CONV_MD), r"^## 조건부 참조 문서 크기 임계",
+                        label="harness-conventions.md 「조건부 참조 문서 크기 임계」")
+    conv_rows = re.findall(r"^\| `([^`]+)` \| ([\d,]+) \| ([\d,]+) \|", conv_body, re.M)
+    if not conv_rows:
+        die("[ANCHOR FAIL] 「조건부 참조 문서 크기 임계」 표에서 행을 하나도 읽지 못했다 — 표 형식이 바뀌었다")
+    for rel, rec_s, cap_s in conv_rows:
+        rec, conv_cap = int(rec_s.replace(",", "")), int(cap_s.replace(",", ""))
+        n += 1
+        try:
+            size = os.path.getsize(os.path.join(ROOT, *rel.split("/")))
+        except OSError:
+            issues.append("조건부 참조 표: %s 가 없다 — 표에서 빼거나 경로를 고치세요" % rel)
+            continue
+        if size != rec:
+            issues.append("조건부 참조 표 기록값 불일치: %s 기록 %d B / 실측 %d B (%+d) — "
+                          "그 파일을 고친 task 가 같은 task 안에서 표를 갱신해야 합니다"
+                          % (rel, rec, size, size - rec))
+        if size > conv_cap:
+            issues.append("조건부 참조 표 상한 초과: %s %d B > 상한 %d B" % (rel, size, conv_cap))
+
     # 임박은 건수 요약 1줄 + 여유가 가장 적은 셋만 낸다 — 전건 나열은 상시 6줄이라 읽히지 않는다.
     if near:
         near.sort()
