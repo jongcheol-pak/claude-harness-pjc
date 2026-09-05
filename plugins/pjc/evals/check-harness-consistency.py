@@ -60,6 +60,9 @@ HEAD_BUDGET_BYTES = 9000
 #   값의 근거: 상한 대비 여유 6,384B ≈ 그 증가율로 약 37일. 상한처럼 hook에서 읽지 않는 이유는
 #   정본이 없기 때문이다 — 이 경고선은 이 검사기 고유의 판정이라 여기가 정본이다.
 AGENTS_TARGET_BYTES = 10000
+# 하드 게이트 — 정본은 `session-context.ps1` 의 `$agentsMaxBytes` 다. 여기 두는 것은 통지 문구에
+#   함께 적기 위한 사본이고, 판정에는 쓰지 않는다(판정은 위 목표선만 본다).
+AGENTS_HARD_LIMIT_BYTES = 16384
 
 
 def die(msg):
@@ -582,7 +585,7 @@ def check_agents_target():
         return []
     return ["AGENTS.md %d B > 목표선 %d B (하드 게이트 %d B — `session-context.ps1` 이 정본). "
             "주입 상한을 넘기기 전에 절을 이관하세요 — `pjc:record-project-fact` 의 Step 5 가 그 경로입니다."
-            % (size, AGENTS_TARGET_BYTES, 16384)]
+            % (size, AGENTS_TARGET_BYTES, AGENTS_HARD_LIMIT_BYTES)]
 
 
 def check_doc_budget():

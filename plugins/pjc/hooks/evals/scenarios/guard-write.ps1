@@ -330,5 +330,23 @@ Assert-Case -Name "면제: 줄 중간 마커(산문)는 표식이 아니다 (PX1
 #   PX1 계열이 재는 'text 필드 시작'과 다른 갈래라 둘 다 필요하다.
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trNl })
 Assert-Case -Name "면제: 개행 뒤 단독 줄 표식은 통과 (PX13)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+
+# PX14·PX15 — 마커 줄 **뒤에 내용이 더 있는** 양성(회차 13 완료 리뷰 MAJOR). PX13 은 마커가
+#   메시지의 마지막 줄이라 이 축을 재지 못했다 — 뒤에 문장이 오면 토큰이 'path\n문장'이 되고
+#   Windows 에서 \ 가 경로 구분자라 GetFileName 이 'n문장'을 돌려줘 정상 표식이 차단됐다.
+$BT3 = [string][char]96 * 3
+$trTrail = Join-Path $work 'tr-plan-exempt-trail.jsonl'
+(New-TranscriptLine -Type assistant -Text "확인했습니다.`n[PLAN-EXEMPT] pxscripts/px-guard.cs`n바로 수정하겠습니다.") | Set-Content $trTrail
+$trFence = Join-Path $work 'tr-plan-exempt-fence.jsonl'
+# 발급 지시(`plan/references/interview.md`)가 표식을 펜스 코드블록으로 보여 준다 — 모델이 그대로
+#   흉내 낸 형태가 차단되면, 사용자는 승인했는데도 막히고 그 이유가 어디에도 안 뜬다.
+(New-TranscriptLine -Type assistant -Text ("바로 수정합니다.`n" + $BT3 + "`n[PLAN-EXEMPT] pxscripts/px-guard.cs`n" + $BT3)) | Set-Content $trFence
+
+# PX14 (양성): 마커 줄 뒤에 문장이 더 있어도 통과
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trTrail })
+Assert-Case -Name "면제: 마커 줄 뒤에 문장이 더 있어도 통과 (PX14)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+# PX15 (양성): 펜스 코드블록 안의 표식도 통과
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts 'px-guard.cs') 'Write' @{} @{ transcript_path = $trFence })
+Assert-Case -Name "면제: 펜스 코드블록 안의 표식도 통과 (PX15)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
 }   # ---- §2c 게이트 끝 ----
 
