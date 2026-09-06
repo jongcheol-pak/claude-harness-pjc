@@ -409,7 +409,7 @@
     ]
   },
   {
-"id": "harness-close-reason-vague-in-body",
+    "id": "harness-close-reason-vague-in-body",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 0,
@@ -429,7 +429,7 @@
     ]
   },
   {
-"id": "harness-close-reason-vague-notice",
+    "id": "harness-close-reason-vague-notice",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 0,

@@ -128,10 +128,13 @@ def run_case(case):
         shutil.rmtree(os.path.dirname(root), ignore_errors=True)
 
 
-# 케이스 블록의 여는 중괄호는 자기 줄에 홀로 있어야 한다. **이것을 재는 이유**: 회차 25·26 이
-#   연달아 `  {    "id": …` 형태로 붙여 넣었고 **어느 검사기도 잡지 않았다** — JSON 은 유효하고
-#   `Test(JSON 3종)` 은 매니페스트만 보며 이 러너도 파싱만 했다. 두 번 다 사람이 눈으로 잡았다.
+# 케이스 블록은 **두 줄 계약**이다 — `  {` 가 자기 줄에 홀로 있고 **다음 줄이 `    "` 로 시작**한다.
+#   **두 줄을 다 재는 이유**: 회차 25·26 이 `  {    "id": …` 로 붙여 넣었고 어느 검사기도 잡지 않았다
+#   (JSON 은 유효하고 `Test(JSON 3종)` 은 매니페스트만 보며 이 러너도 파싱만 했다). 회차 27 이
+#   앞줄만 재는 검사를 넣자 **그 처방이 개행만 넣고 들여쓰기를 빠뜨려** 같은 결함이 형태만 바꿔
+#   남았다(완료 리뷰 BLOCKER). 한쪽만 재는 계약은 반대쪽으로 새는 자리를 만든다.
 CASE_OPEN_RX = re.compile(r"^  \{\s*\S")
+CASE_KEY_RX = re.compile(r'^    "')
 
 
 def check_case_format():
@@ -143,7 +146,10 @@ def check_case_format():
     """
     with io.open(CASES, encoding="utf-8", newline="") as fh:
         lines = fh.read().splitlines()
-    return [i + 1 for i, l in enumerate(lines) if CASE_OPEN_RX.match(l)]
+    bad = [i + 1 for i, l in enumerate(lines) if CASE_OPEN_RX.match(l)]
+    bad += [i + 2 for i, l in enumerate(lines)
+            if l == "  {" and i + 1 < len(lines) and not CASE_KEY_RX.match(lines[i + 1])]
+    return sorted(bad)
 
 
 def main():
@@ -159,9 +165,10 @@ def main():
     #   케이스 FAIL 이 아니라 `check-harness-consistency.py` 와 같은 exit 2 를 쓴다.
     bad = check_case_format()
     if bad:
-        print("[FORMAT FAIL] cases.json 의 여는 중괄호가 첫 키와 같은 줄에 있습니다 — 줄 %s"
+        print("[FORMAT FAIL] cases.json 케이스 블록의 두 줄 계약 위반 — 줄 %s"
               % ", ".join(str(i) for i in bad))
-        print("케이스를 돌리지 않고 멈춥니다. `  {` 다음 줄에 `    \"id\"` 가 오도록 고치세요.")
+        print("케이스를 돌리지 않고 멈춥니다. `  {` 는 자기 줄에 홀로 두고 "
+              "다음 줄을 `    \"id\"` 로 4칸 들여쓰세요.")
         return 2
     if a.filter:
         cases = [c for c in cases if c["checker"] == a.filter]
