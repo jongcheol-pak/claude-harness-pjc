@@ -9,9 +9,7 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 
 ## 진행 중 사용자와의 소통
 
-> Before your first tool call, say in one sentence what you're about to do. While working, give a brief update only when you find something important or change direction. When you finish, lead with the outcome: your first sentence should answer "what happened" or "what did you find," with supporting detail after it for readers who want it.
-
-- **자율 루프 안에서는 중간 업데이트도 내지 않는다** — 사용자가 개입할 지점이 없는 구간의 서술은 결정에 쓰이지 않으면서 컨텍스트를 소모해 후반 task의 품질을 떨어뜨린다. 남길 것은 `plan.md`에 쓰고, 사용자가 알아야 할 것은 최종 보고에 모은다.
+- **자율 루프 안에서는 중간 업데이트를 내지 않는다** — 사용자가 개입할 지점이 없는 구간의 서술은 결정에 쓰이지 않으면서 컨텍스트를 소모해 후반 task의 품질을 떨어뜨린다. 남길 것은 `plan.md`에 쓰고, 사용자가 알아야 할 것은 최종 보고에 모은다.
 - **화면에 내는 것은 task당 한 줄이다** — `T<N> 시작 — <무엇을>`. 그 줄은 같은 turn의 다음 도구 호출과 한 묶음이어야 한다. 줄만 내고 turn을 끝내면 거기서 루프가 멈춘다.
 
 - **루프를 멈추는 네 형태와 그 문구 목록은 `references/loop-stop-patterns.md`에 있다** — 정지 의도는 어휘가 아니라 turn이 끝났다는 사실에 있어 기계가 판정할 수 없다. 이 문면이 유일한 방어선이다.
@@ -74,8 +72,8 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 - **`completion-reviewer` 서브에이전트를 호출한다** — 회차 전체를 계획과 대조하는 것은 각 task를 지나온 쪽이 보기 어려운 각도다. 전달: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로.
 - **결과를 받아 판정한 뒤에 완료 선언으로 간다** — 호출만 하고 다음으로 넘어가면 리뷰가 없는 것과 같다.
-- **BLOCKER·MAJOR는 고치고 다시 호출한다. MINOR는 `## Deferred / Follow-up`에 적고 진행한다** — 완료를 막는 것과 다음으로 미룰 수 있는 것을 섞으면 어느 쪽도 처리되지 않는다.
-- **같은 BLOCKER가 3회 연속이면 멈춘다** — 중단 조건 2번(동일 원인 3회 실패)에 해당한다.
+- **BLOCKER·MAJOR는 고치고 다시 호출한다. MINOR도 「지금 고칠 것인가」(아래 「완료 정의」의 4조건)를 통과하면 고치고 재호출하며, 어긋난 것만 `## Deferred / Follow-up`에 적는다** — 이번 회차가 낸 흠을 다음 회차에 넘기는 것은 처리가 아니라 전가다.
+- **같은 지적이 3회 연속이면 멈춘다. 고칠 때마다 새 MINOR가 나서 라운드가 늘면 중단 조건 4번이다** — 매 라운드 조금씩 나아지는 것은 실패로 집계되지 않아 2번에 걸리지 않는다.
 - **리뷰어가 호출되지 않는 환경이면 그 사실을 최종 보고에 적고 진행한다** — 리뷰 부재를 통과로 적지 않는다.
 - **plan 승인이 이 호출의 승인이다** — 리뷰 지점에서 사용자에게 묻지 않는다.
 - **검증하지 못했으면 "완료"가 아니라 "미검증"으로 적는다** — 둘을 같은 말로 적으면 사용자가 확인할 자리를 잃는다.
