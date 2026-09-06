@@ -394,7 +394,8 @@
       "[MISMATCH]"
     ]
   },
-  {    "id": "harness-close-reason-missing",
+  {
+    "id": "harness-close-reason-missing",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 1,
