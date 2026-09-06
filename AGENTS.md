@@ -78,6 +78,7 @@
 
 ## Conventions
 
+- **아키텍처**: 계층 없음 — 실행 단위가 hook 스크립트와 Markdown 지침이라 도메인/UI/인프라로 가를 대상이 없다(글로벌 지침의 *"단순 스크립트·유틸리티는 대상이 아니다"*).
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
 - **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i`도 `Edit` 도구도 파일 전체를 LF로 바꿀 수 있다** — blob이 정규화돼 **`git diff`에 안 나타나므로** 조용히 누적된다(v1.214.0 실측: `Edit`으로 1줄만 고친 `README.md`·`plugin.json`이 `w/lf`가 됐다). **판정은 `git ls-files --eol <파일>`**(미수정 파일과 대조 — 정상은 `w/crlf`), **복원은 python `newline=""`로 읽어 `\r\n`으로 다시 쓴다**.
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
