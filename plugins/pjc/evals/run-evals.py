@@ -137,7 +137,7 @@ CASE_OPEN_RX = re.compile(r"^  \{\s*\S")
 CASE_KEY_RX = re.compile(r'^    "')
 
 
-def check_case_format():
+def check_case_format(n_cases):
     """`cases.json` 원문의 들여쓰기 서식을 검사해 위반 줄 번호를 돌려준다.
 
     **축이 아니라 여기 있는 이유**: 이 파일은 이 러너의 입력이라 지역성이 맞고,
@@ -149,7 +149,12 @@ def check_case_format():
     bad = [i + 1 for i, l in enumerate(lines) if CASE_OPEN_RX.match(l)]
     bad += [i + 2 for i, l in enumerate(lines)
             if l == "  {" and i + 1 < len(lines) and not CASE_KEY_RX.match(lines[i + 1])]
-    return sorted(bad)
+    # 위 둘은 **`  {` 형태를 전제**한다 — 중괄호 줄 자신이 그 형태를 벗어나면(뒤 공백·3칸·0칸)
+    #   양쪽이 함께 꺼진다. 개수를 대조해 그 자리를 닫는다(완료 리뷰 MINOR).
+    opens = sum(1 for l in lines if l == "  {")
+    if opens != n_cases:
+        bad.append(-1)  # 줄 하나로 짚을 수 없는 결함이라 음수 표식을 쓴다
+    return sorted(bad), opens
 
 
 def main():
@@ -163,10 +168,13 @@ def main():
 
     # 서식 결함은 「어떤 케이스가 틀렸다」가 아니라 **입력을 신뢰할 수 없다**는 뜻이라,
     #   케이스 FAIL 이 아니라 `check-harness-consistency.py` 와 같은 exit 2 를 쓴다.
-    bad = check_case_format()
+    bad, opens = check_case_format(len(cases))
     if bad:
-        print("[FORMAT FAIL] cases.json 케이스 블록의 두 줄 계약 위반 — 줄 %s"
-              % ", ".join(str(i) for i in bad))
+        where = ", ".join(str(i) for i in bad if i > 0) or "-"
+        print("[FORMAT FAIL] cases.json 케이스 블록의 두 줄 계약 위반 — 줄 %s" % where)
+        if -1 in bad:
+            print("  여는 중괄호 줄(`  {`) %d개 ≠ 케이스 %d건 — 중괄호 줄 자신의 들여쓰기를 확인하세요."
+                  % (opens, len(cases)))
         print("케이스를 돌리지 않고 멈춥니다. `  {` 는 자기 줄에 홀로 두고 "
               "다음 줄을 `    \"id\"` 로 4칸 들여쓰세요.")
         return 2
