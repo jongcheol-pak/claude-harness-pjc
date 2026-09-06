@@ -47,7 +47,7 @@
   python plugins/pjc/evals/check-harness-consistency.py
   ```
 
-- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 32케이스, 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다. **exit 2 는 `cases.json` 서식 위반**이라 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다 — 여는 중괄호가 첫 키와 같은 줄에 있으면 그 줄 번호를 낸다):
+- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 33케이스, 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다. **exit 2 는 `cases.json` 서식 위반**이라 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다 — 여는 중괄호가 첫 키와 같은 줄에 있으면 그 줄 번호를 낸다):
   ```
   python plugins/pjc/evals/run-evals.py
   ```
