@@ -83,7 +83,7 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 
 템플릿과 각 절의 작성 규칙은 `references/plan-template.md`에 있다. 루트 `plan.md` 하나에 쓴다(덮어쓰기).
 
-- **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 앞부분만 이번 plan에 담고 나머지는 `## Deferred / Follow-up`에 적은 뒤, 그 회차를 끝내고 다음 plan을 새로 쓴다.
+- **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 앞부분만 이번 plan에 담고 나머지는 `## Deferred / Follow-up`에 **`[다음 회차]` 마커로** 적은 뒤, 그 회차를 끝내고 다음 plan을 새로 쓴다. **그 마커가 `pjc:implement`의 인계 프롬프트를 켜므로 대장 등재(`[등재]`)로 대신하지 않는다** — 형식은 `references/plan-template.md`「Deferred / Follow-up」.
 
 ## Step 6. 리뷰와 승인
 

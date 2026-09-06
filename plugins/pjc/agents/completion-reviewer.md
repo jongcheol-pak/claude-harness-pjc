@@ -47,7 +47,7 @@ disallowedTools: Write, Edit, NotebookEdit
 
 ### 6. Deferred 처리
 
-- **`## Deferred / Follow-up`의 항목이 `docs/plans/deferred.md`로 옮겨졌는지 확인한다** — `plan.md`는 다음 회차에 교체되므로 옮기지 않으면 유실된다.
+- **`## Deferred / Follow-up`의 항목이 `docs/plans/deferred.md`로 옮겨졌는지 확인한다** — `plan.md`는 다음 회차에 교체되므로 옮기지 않으면 유실된다. **단 `[다음 회차]` 마커는 대장 등재 대상이 아니다** — 인계 프롬프트가 받으므로 미이관을 지적하지 말고, 대신 **보고에 그 프롬프트가 실제로 나왔는지**를 본다.
 
 ### 7. 위키 기록
 
