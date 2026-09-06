@@ -57,7 +57,7 @@
   python plugins/pjc/evals/check-comment-truncation.py
   ```
 
-- **삭제 자산 참조 검사** (`plugins/**`·`docs/**`·**레포 루트의 `*.ps1`·`*.md`**(`validate.ps1`·`install.ps1`·`README.md` 등) 수정 시 필수 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산에 남았는가 — `plugins/**`·`docs/**` 와 **레포 루트의 `*.ps1`·`*.md`** 를 본다. `--ledger` 는 대장 `## 대기` 를 본다):
+- **삭제 자산 참조 검사** (`plugins/**`·`docs/**`·**레포 루트의 `*.ps1`·`*.md`**(`validate.ps1`·`install.ps1`·`README.md` 등) 수정 시 필수 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산에 남았는가. 스캔 범위는 위 트리거와 같다. `--ledger` 는 대장 `## 대기` 를 본다 — **대기 13건이 미판정이라 그 모드는 exit 1 이 현재의 기대값**이다):
   ```
   python plugins/pjc/evals/check-stale-refs.py
   ```

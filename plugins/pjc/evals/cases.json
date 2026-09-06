@@ -373,7 +373,8 @@
       "[FAIL]"
     ]
   },
-  {    "id": "harness-close-reason-missing",
+  {
+    "id": "harness-close-reason-missing",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 1,
@@ -416,7 +417,8 @@
       "핵심 포인터의 대상이 없다"
     ]
   },
-  {    "id": "harness-critical-pointer-lost",
+  {
+    "id": "harness-critical-pointer-lost",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 1,
