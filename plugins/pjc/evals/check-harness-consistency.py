@@ -809,6 +809,13 @@ CLOSE_REASON_RX = re.compile(r"기각|반영|병합|해소|확인 종결|실측 
 # 인정하되 **세는** 표현. 「모른다」가 쌓이는 것은 결함이지만 red 로 막을 것은 아니다 —
 #   막으면 red 를 피하려 억지 사유를 적게 되고 그것이 더 나쁘다(회차 25 D3).
 VAGUE_REASON_RX = re.compile(r"사유 미상")
+# 회차 24 가 정한 종결 사유 표기. **이 표기가 있으면 `사유 미상` 을 그 뒤에서만 찾는다** —
+#   항목 줄 전체를 보면 **본문이 이 축을 인용하기만 해도** 통지가 뜬다(회차 26 T4 실측 오탐 1건:
+#   종결 사유는 `반영` 인데 본문이 「축 ⑨ 의 `사유 미상` 통지와 같은 형태」라고 적었다).
+#   **표기가 없으면 종전대로 줄 전체를 본다** — 실측 종결 205건 중 표기는 37건뿐이고 168건이
+#   미표기라, 전체에 적용하면 그 168건이 판정 밖으로 나간다.
+#   `CLOSE_REASON_RX`(사유가 하나라도 적혔는가)는 건드리지 않는다 — 그쪽은 넓게 보는 편이 맞다.
+CLOSE_REASON_TAG = "**종결 사유**:"
 CLOSED_ITEM_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]")
 
 
@@ -829,7 +836,8 @@ def check_close_reasons():
         if not CLOSED_ITEM_RX.match(line):
             continue
         n += 1
-        if VAGUE_REASON_RX.search(line):
+        tag = line.find(CLOSE_REASON_TAG)
+        if VAGUE_REASON_RX.search(line if tag < 0 else line[tag:]):
             vague += 1
         if not CLOSE_REASON_RX.search(line):
             head = re.search(r"\*\*(.+?)\*\*", line)
