@@ -70,7 +70,9 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) + **`python plugins/pjc/evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 두 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
 | 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — 기본값. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 | 여기에 **`python plugins/pjc/evals/check-stale-refs.py`**를 함께 돌린다 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산(레포 루트의 `*.ps1`·`*.md` 포함)에 남았는지 본다(실행에 영향이 없어 골든이 못 잡는 축이다).
-| `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·Phase F-2에 포함하지 않는다**(실제 모델 호출이라 비용이 크다) |
+| `plugins/pjc/skills/*/SKILL.md` 의 frontmatter **`description`** | 아래 「그 외」 행에 더해 **`python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>`** — `description` 이 트리거의 1차 메커니즘이라(`plugins/pjc/skills/AUTHORING.md` 「description 작성」) 한 구만 고쳐도 발동·미발동 경계가 함께 움직인다. 케이스 id 접두는 `plan`·`impl`·`rec`·`wiki`·`dbg`. **자수도 함께 잰다** — 운용 기준 **1,024자**를 넘으면 잘린다(회차 30 실측: `record-project-fact` 가 1,045자로 넘어 있었고 재는 축이 0건이었다). 전량 실행은 명시 호출 전용이다 |
+| 위키 회로 6파일 — `implement/SKILL.md` · `plugins/pjc/skills/WIKI.md` · `plan/SKILL.md` · `plugins/pjc/skills/llm-wiki/**` | 해당 행에 더해 **`python plugins/pjc/skills/evals/check_wiki_circuit.py`**(7단계, 모델 호출 없음 · 1초 미만) — 「같은 함정에 두 번 걸리지 않는다」가 성립하려면 기록 → 소비 → 조회가 한 줄로 이어져야 하는데, 어느 한 곳을 고쳐도 다른 다섯은 그대로 통과한다. **비용이 없으므로 스모크가 아니라 전량이 기본이다** |
+| `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·Phase F-2에 포함하지 않는다**(실제 모델 호출이라 비용이 크다). **`rubric_eval.py`·`compare_evals.py` 에 이 표의 행이 없는 것은 누락이 아니다** — 전자의 입력은 `docs/plans/` 의 plan 이고 후자는 두 결과 JSON 이라, 레포 소스를 고치는 것이 그 둘의 트리거가 아니다(회차 30 판정) |
 
 ## 조건부 참조 문서 크기 임계
 
@@ -78,7 +80,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 57,902 | 137,000 |
+| `docs/harness-conventions.md` | 59,384 | 137,000 |
 | `docs/golden-runner.md` | 16,698 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,241 | 37,000 |
 

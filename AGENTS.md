@@ -61,6 +61,14 @@
   ```
   python plugins/pjc/evals/check-stale-refs.py
   ```
+- **스킬 트리거 eval** (`skills/*/SKILL.md` 의 frontmatter `description` 수정 시 필수 — 43케이스, **실제 모델 호출이라 비용이 크다**. `--filter <plan|impl|rec|wiki|dbg>` 로 좁힌다. `--isolation both` 는 격리·비격리 각 1회라 2배. 설치·push 불요 — 러너가 워킹트리를 `--plugin-dir` 로 직접 싣는다):
+  ```
+  python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>
+  ```
+- **위키 회로 검사** (`implement/SKILL.md`·`skills/WIKI.md`·`plan/SKILL.md`·`skills/llm-wiki/**` 수정 시 필수 — 기록 → 소비 → 조회 7단계가 이어져 있는가. **모델 호출이 없어 1초 미만**):
+  ```
+  python plugins/pjc/skills/evals/check_wiki_circuit.py
+  ```
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 검사하므로 워킹트리 변경은 재설치 후에만 반영된다.
 - **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 경로 보호가 오차단한다.
 

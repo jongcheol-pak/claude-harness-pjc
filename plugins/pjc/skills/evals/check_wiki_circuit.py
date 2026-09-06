@@ -20,6 +20,13 @@ import argparse
 import sys
 from pathlib import Path
 
+# Windows 콘솔(cp949)에서 한글·이모지 출력이 죽지 않도록 강제 (같은 폴더 러너 셋과 동일 관례)
+# 이것이 없어 전 단계 PASS 뒤 성공 메시지의 em-dash 에서 죽어 exit 1 을 냈다 — 통과가 실패로 보였다.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 DEFAULT_SKILLS = Path(__file__).resolve().parents[1]
 
 _parser = argparse.ArgumentParser(add_help=True)
