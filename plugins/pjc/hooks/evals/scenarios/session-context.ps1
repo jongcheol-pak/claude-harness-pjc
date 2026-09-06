@@ -351,6 +351,22 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef2 } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 전부 판정된 Deferred는 부기 미발화 (SC40b)" -R $r -ExpectExit 0 -ExpectContains '미완료 1' -ExpectNotContains 'Deferred 미판정'
 
+    # SC40m: `[다음 회차]`도 판정 완료 마커다 → 그 항목만 있으면 부기 미발화, 섞이면 나머지만 센다.
+    #   회차 28이 이 마커를 신설하면서 형식 정본(plan-template.md)만 고치고 이 계수를 빠뜨려,
+    #   판정을 마친 4건이 「미판정 4건」으로 집계됐다(완료 리뷰 MAJOR). 두 방향을 함께 잰다 —
+    #   전건 `[다음 회차]`면 0(미발화)이고, 마커 없는 1건이 섞이면 그 1건만 센다.
+    $scDefN = Join-Path $scDefBase 'nextround'; New-Item -ItemType Directory $scDefN -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [다음 회차] **A**', '- [다음 회차] **B**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDefN 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDefN } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: [다음 회차]는 미판정으로 세지 않는다 (SC40m)" -R $r -ExpectExit 0 -ExpectContains '미완료 1' -ExpectNotContains 'Deferred 미판정'
+
+    # SC40m2 (양성 대조): 같은 절에 마커 없는 항목이 하나 섞이면 그 1건만 센다 —
+    #   위 케이스만 있으면 「절에 [다음 회차]가 있으면 통째로 skip」으로 구현해도 green이다.
+    $scDefN2 = Join-Path $scDefBase 'nextround-mixed'; New-Item -ItemType Directory $scDefN2 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [다음 회차] **A**', '- **B** 마커 없음', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDefN2 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDefN2 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: [다음 회차]와 무마커가 섞이면 무마커만 센다 (SC40m2)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
+
     # SC40c (델타 음성): `## Deferred / Follow-up` 절 자체가 없는 plan → 부기 미발화·오류 없음.
     #   기존 픽스처 대부분이 이 형태라 무회귀의 근거이기도 하다.
     $scDef3 = Join-Path $scDefBase 'nosection'; New-Item -ItemType Directory $scDef3 -Force | Out-Null

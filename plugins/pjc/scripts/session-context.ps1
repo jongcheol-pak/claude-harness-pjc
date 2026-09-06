@@ -87,6 +87,8 @@ try {
                         if ($defLine -match ('^- ' + [char]96 + '?\[등재\]')) { continue }
                         # 기호는 닫는 대괄호가 아닌 문자 1자 이상이어야 한다 — 사유 없는 — 근거는 `rules/session-context-rationale.md`의 「§9 기호는 닫는 대괄호가 아닌 문자 1자 이상이어야 한다 — 사유 없는」
                         if ($defLine -match ('^- ' + [char]96 + '?\[미등재:[^\]]+\]')) { continue }
+                        # `[다음 회차]`도 판정을 마친 상태다 — 대장이 아니라 인계 프롬프트가 받는 — 근거는 `rules/session-context-rationale.md`의 「§36 `[다음 회차]`도 판정을 마친 상태다 — 대장이 아니라 인계 프롬프트가 받는」
+                        if ($defLine -match ('^- ' + [char]96 + '?\[다음 회차\]')) { continue }
                         $defUnjudged++
                     }
                 }
