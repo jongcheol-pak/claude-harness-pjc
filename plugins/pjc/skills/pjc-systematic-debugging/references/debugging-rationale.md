@@ -6,7 +6,7 @@
 
 **95%의 「근본 원인 없음」 사례는 불충분한 조사의 결과다.** 증상 수정(symptom patch)은 그 자리에서는 통과하지만, 원인이 남아 있으므로 다른 얼굴로 돌아온다 — 그때는 처음 고친 자리가 오히려 추적을 방해한다.
 
-이 방법론은 Superpowers `systematic-debugging`의 4-phase를 한글·DDD 컨벤션과 통합한 것이고, mattpocock `diagnosing-bugs`의 **피드백 루프(1-B)·프로브↔가설 매핑(3-A)·반증 가능한 가설(2-B)** 관점을 흡수했다(v1.130.0).
+이 방법론은 Superpowers `systematic-debugging`의 4-phase를 한글 컨벤션과 통합한 것이고, mattpocock `diagnosing-bugs`의 **피드백 루프(1-B)·프로브↔가설 매핑(3-A)·반증 가능한 가설(2-B)** 관점을 흡수했다(v1.130.0).
 
 ## §2 경량 경로가 Iron Law의 예외가 아닌 이유
 
