@@ -126,4 +126,4 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 ## 6. 적용 범위
 
-`skills/plan/` · `skills/implement/` · `agents/`. 나머지 스킬 3종(`llm-wiki`·`pjc-systematic-debugging`·`record-project-fact`)은 아직 이 원칙으로 재작성되지 않았고, 적용 여부는 그 스킬을 고칠 때 판정한다 — 부분 적용은 한 스킬에 두 형식을 섞어 정본을 흐린다.
+`skills/plan/` · `skills/implement/` · `agents/`. 나머지 셋에 §1 형식을 일괄 적용하지 않는다 — `llm-wiki`·`pjc-systematic-debugging` 은 회차 32 가 **4축 전수 판정**을 마친 결과이고(그 커밋 본문), `record-project-fact` 는 **미판정**이다.

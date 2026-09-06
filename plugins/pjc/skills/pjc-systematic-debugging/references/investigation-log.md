@@ -77,7 +77,7 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 ## 최근 변경 검사 명령 (1-C)
 
 ```bash
-git log --oneline -20
+git log -n 20                                 # 최근 20개 — 본문 포함
 git diff --stat HEAD~N..HEAD -- <의심 파일>   # 규모를 먼저 잰 뒤 큰 파일만 전문으로
 git diff HEAD~N..HEAD -- <의심 파일>
 git log -n 20 --since="N hours ago"           # 개수 상한을 함께 — 본문은 유지한다
