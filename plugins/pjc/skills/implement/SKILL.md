@@ -104,14 +104,8 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ## 완료 정의
 
-**다음이 전부 참일 때만 완료다.**
-
-- [ ] `plan.md`의 모든 task가 `[x]`다 (불요 판정으로 닫힌 것 포함)
-- [ ] 최종 검증(4번)이 통과했고 그 출력이 있다
-- [ ] plan의 Goal 성공 기준이 실측으로 확인됐다
-- [ ] `## Deferred / Follow-up`의 항목이 전부 판정됐다 — **등재 전에 「지금 고칠 것인가」를 먼저 가른다**(판정 4조건은 `references/plan-template.md`의 「Deferred / Follow-up」). 등재분은 `docs/plans/deferred.md`로 옮겼다
-
-- **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
+- **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다. task 마커·최종 검증·Goal 기준은 위 「검증」 4번과 최종 리뷰가 이미 전수로 잰다.
+- **`## Deferred / Follow-up`의 항목을 전부 판정한다 — 등재 전에 「지금 고칠 것인가」를 먼저 가른다**(판정 4조건은 `references/plan-template.md`의 「Deferred / Follow-up」). 등재분은 `docs/plans/deferred.md`로 옮긴다.
 
 ## 최종 보고
 

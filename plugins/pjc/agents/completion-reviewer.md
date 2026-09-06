@@ -36,7 +36,6 @@ disallowedTools: Write, Edit, NotebookEdit
 ### 4. 회귀
 
 - **이번 변경이 건드린 심볼의 다른 사용처가 여전히 성립하는지 본다** — plan의 Files 밖에 있는 호출자가 깨졌는지 Grep으로 확인한다.
-- **plan의 `## Risks & Unknowns`(있으면)에 적힌 위험이 실현됐는지 본다** — 계획이 미리 지목한 위험은 가장 실현되기 쉬운 것이다.
 
 ### 5. 코드 품질 — 사후에만 드러나는 것
 
