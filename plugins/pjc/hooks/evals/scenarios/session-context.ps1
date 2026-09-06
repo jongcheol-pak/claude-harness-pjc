@@ -332,9 +332,10 @@ if (Test-HookSelected @('session-context')) {
     # SC40~SC40i: plan `## Deferred / Follow-up`의 **미판정 건수 주입** (v1.214.0 T3).
     #   plan.md는 gitignore + 다음 회차 교체라, 대장(docs/plans/deferred.md)으로 옮기지 못한 항목은
     #   회차와 함께 사라진다. task 체크박스는 위 케이스들이 재지만 Deferred는 아무도 세지 않았다.
-    #   마커 3종([등재]/[미등재:<사유>]/[미판정] — 형식 정본은
+    #   마커 4종([등재]/[미등재:<사유>]/[미판정]/[다음 회차] — 형식 정본은
     #   plan/references/plan-template.md 「Deferred / Follow-up」)이
-    #   그 상태를 기계 판독 가능하게 만들고, hook이 **미판정만** 센다.
+    #   그 상태를 기계 판독 가능하게 만들고, hook은 **판정 마커가 붙지 않은 것**을 센다
+    #   (`[미판정]`을 찾는 것이 아니다 — 회차 28이 이 표현을 plan-template.md에서 정정했다).
     #   ⚠ 대조 문자열은 부기 리터럴 'Deferred 미판정'이다 — 숫자만 재면 문면이 바뀌어도 통과한다.
     $scDefBase = Join-Path $work 'sc-def'
 
@@ -355,15 +356,18 @@ if (Test-HookSelected @('session-context')) {
     #   회차 28이 이 마커를 신설하면서 형식 정본(plan-template.md)만 고치고 이 계수를 빠뜨려,
     #   판정을 마친 4건이 「미판정 4건」으로 집계됐다(완료 리뷰 MAJOR). 두 방향을 함께 잰다 —
     #   전건 `[다음 회차]`면 0(미발화)이고, 마커 없는 1건이 섞이면 그 1건만 센다.
+    #   ⚠ 픽스처에 **백틱 있는 형태와 없는 형태를 섞는다** — MAJOR1을 낳은 실물이 백틱 형태였고
+    #   (형식 정본이 마커를 표 안 코드 스팬으로 보여 준다), 무백틱만 재면 누가 skip 줄의
+    #   백틱 옵셔널을 떼도 이 케이스는 통과하고 실 plan.md만 깨진다(v1.233.0이 겪은 형태).
     $scDefN = Join-Path $scDefBase 'nextround'; New-Item -ItemType Directory $scDefN -Force | Out-Null
-    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [다음 회차] **A**', '- [다음 회차] **B**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDefN 'plan.md')
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [다음 회차] **A**', '- `[다음 회차]` **B**', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDefN 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDefN } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: [다음 회차]는 미판정으로 세지 않는다 (SC40m)" -R $r -ExpectExit 0 -ExpectContains '미완료 1' -ExpectNotContains 'Deferred 미판정'
 
     # SC40m2 (양성 대조): 같은 절에 마커 없는 항목이 하나 섞이면 그 1건만 센다 —
     #   위 케이스만 있으면 「절에 [다음 회차]가 있으면 통째로 skip」으로 구현해도 green이다.
     $scDefN2 = Join-Path $scDefBase 'nextround-mixed'; New-Item -ItemType Directory $scDefN2 -Force | Out-Null
-    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [다음 회차] **A**', '- **B** 마커 없음', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDefN2 'plan.md')
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- `[다음 회차]` **A**', '- **B** 마커 없음', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDefN2 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDefN2 } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: [다음 회차]와 무마커가 섞이면 무마커만 센다 (SC40m2)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
 
