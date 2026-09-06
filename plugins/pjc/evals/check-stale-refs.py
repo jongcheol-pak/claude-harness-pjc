@@ -100,19 +100,41 @@ def scan_ledger():
             cur += '\n' + line
     if cur:
         items.append(cur)
-    def live(item):
-        # 트리 경로와 같은 규칙 — 버전 태그 + 제거·개명 동사가 같은 줄에 있으면 이력이다
-        # 이 검사기 자신을 논하는 줄도 면제한다 — DEAD 목록을 다루는 대장 항목은
-        #   그 이름을 적을 수밖에 없다. 트리 경로의 「검사기 자신」 예외와 같은 성격이다.
-        return [l for l in item.splitlines()
-                if RX.search(l)
-                and 'check-stale-refs' not in l
-                and not (HISTORY_RX.search(l) and HISTORY_VERB_RX.search(l))]
+    def classify(item):
+        """항목을 hit · self(검사기 자신 언급) · history(이력 표기) · None 으로 가른다.
 
-    hit = [x for x in items if live(x)]
+        **면제는 항목 단위다** — 대장은 항목 1건 = 1줄이라, 줄 어디든 면제 조건이 있으면
+        그 항목이 통째로 빠진다. 그래서 **한 번 면제된 항목에 나중에 다른 죽은 이름이
+        섞여도 잡히지 않는다**. 그 대가를 아래 통지가 드러낸다(회차 26).
+        """
+        dead = [l for l in item.splitlines() if RX.search(l)]
+        if not dead:
+            return None
+        # 이 검사기 자신을 논하는 줄은 면제한다 — DEAD 목록을 다루는 대장 항목은
+        #   그 이름을 적을 수밖에 없다. 트리 경로의 「검사기 자신」 예외와 같은 성격이다.
+        rest = [l for l in dead if 'check-stale-refs' not in l]
+        if not rest:
+            return 'self'
+        # 트리 경로와 같은 규칙 — 버전 태그 + 제거·개명 동사가 같은 줄에 있으면 이력이다
+        if any(not (HISTORY_RX.search(l) and HISTORY_VERB_RX.search(l)) for l in rest):
+            return 'hit'
+        return 'history'
+
+    marked = [(x, classify(x)) for x in items]
+    hit = [x for x, k in marked if k == 'hit']
+    exempt = [(x, k) for x, k in marked if k in ('self', 'history')]
     print(f'== 대장 `## 대기` 삭제 자산 참조 ==\n대기 {len(items)}건 · 참조 {len(hit)}건')
     for x in hit:
         print(f'  {x.split(chr(10))[0][:110]}')
+    if exempt:
+        n_hist = sum(1 for _, k in exempt if k == 'history')
+        n_self = len(exempt) - n_hist
+        print(f'[NOTICE] 죽은 이름을 담았으나 면제된 항목 {len(exempt)}건 '
+              f'(이력 표기 {n_hist} · 검사기 자신 {n_self}) — **면제는 항목 단위**라 '
+              f'한 번 표기된 항목에 나중에 다른 죽은 이름이 섞여도 잡히지 않는다. '
+              f'그래서 세어 보인다(막지는 않는다).')
+        for x, k in exempt:
+            print(f'  [{k}] {x.split(chr(10))[0][:100]}')
     return 1 if hit else 0
 
 

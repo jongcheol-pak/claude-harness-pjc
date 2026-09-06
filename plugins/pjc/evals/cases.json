@@ -295,7 +295,21 @@
     ]
   },
   {
-    "id": "stale-ledger-hit",
+    "id": "stale-ledger-exempt-notice",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "cli_args": [
+      "--ledger"
+    ],
+    "expect_keywords": [
+      "[NOTICE] 죽은 이름을 담았으나 면제된 항목 1건",
+      "(이력 표기 1 · 검사기 자신 0)",
+      "[history] - [2026-09-02]",
+      "참조 0건"
+    ]
+  },
+  {    "id": "stale-ledger-hit",
     "checker": "stale",
     "fixture": "refs-repo",
     "expect_rc": 1,

@@ -47,7 +47,7 @@
   python plugins/pjc/evals/check-harness-consistency.py
   ```
 
-- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 30케이스, 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다):
+- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 31케이스, 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다):
   ```
   python plugins/pjc/evals/run-evals.py
   ```
@@ -57,7 +57,7 @@
   python plugins/pjc/evals/check-comment-truncation.py
   ```
 
-- **삭제 자산 참조 검사** (`plugins/**`·`docs/**`·**레포 루트의 `*.ps1`·`*.md`**(`validate.ps1`·`install.ps1`·`README.md` 등) 수정 시 필수 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산에 남았는가. 스캔 범위는 위 트리거와 같다. `--ledger` 는 대장 `## 대기` 를 본다 — **대기 13건이 미판정이라 그 모드는 exit 1 이 현재의 기대값**이다):
+- **삭제 자산 참조 검사** (`plugins/**`·`docs/**`·**레포 루트의 `*.ps1`·`*.md`**(`validate.ps1`·`install.ps1`·`README.md` 등) 수정 시 필수 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산에 남았는가. 스캔 범위는 위 트리거와 같다. `--ledger` 는 대장 `## 대기` 를 본다 — 회차 25 가 대기 13건을 전수 판정해 **현재는 exit 0** 이고, 죽은 이름을 담았으나 면제된 항목은 `[NOTICE]` 로 건수·목록이 나온다(**면제는 항목 단위**라 한 번 표기된 항목에 나중에 다른 죽은 이름이 섞여도 잡히지 않는다 — 그 대가를 보이게 한 것이다)):
   ```
   python plugins/pjc/evals/check-stale-refs.py
   ```
