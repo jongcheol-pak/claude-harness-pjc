@@ -33,7 +33,7 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
   ⑨ 종결 사유 명시  — `deferred-closed.md`의 각 항목이 왜 닫혔는지 적었는가. 불변식(축 ②)은
      **개수만** 구속해 어느 항목이 왜 닫혔는지를 보지 않는다. **규약 문면의 정본은 그 파일의
      머리말**이고, **인정 표현과 판정 규칙의 정본은 `CLOSE_REASON_RX` 와 `check_close_reasons()`
-     의 주석**이다.
+     의 주석**이다. `사유 미상` 은 인정하되 **건수를 `[NOTICE]` 로 센다**(`VAGUE_REASON_RX`).
   ⑩ 핵심 포인터 실재 — 「절 이름」 없이 적힌 「유일한 방어선」급 참조가 살아 있는가. 축 ①의
      정규식이 절 이름 동반 형태만 세므로 그 밖의 참조는 지워져도 수치가 안 움직인다. 대상 목록은
      손으로 관리하며 `CRITICAL_POINTERS` 가 정본이다.
@@ -806,6 +806,9 @@ def check_line_endings():
 #   하위 사유라 넣지 않는다(넣어도 기각과 중복 매치일 뿐이다). `확인 종결`·`실측 종결`은
 #   실사용 4건이 있어 인정한다 — 사유를 안 적은 것이 아니라 다른 말로 적은 것이다.
 CLOSE_REASON_RX = re.compile(r"기각|반영|병합|해소|확인 종결|실측 종결|사유 미상")
+# 인정하되 **세는** 표현. 「모른다」가 쌓이는 것은 결함이지만 red 로 막을 것은 아니다 —
+#   막으면 red 를 피하려 억지 사유를 적게 되고 그것이 더 나쁘다(회차 25 D3).
+VAGUE_REASON_RX = re.compile(r"사유 미상")
 CLOSED_ITEM_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]")
 
 
@@ -821,15 +824,22 @@ def check_close_reasons():
     어느 항목이 어느 파일에 있는지, 왜 닫혔는지를 보지 않는다. 회차 22·23이 각각
     미규정 이동과 반영 오분류를 그 불변식 아래로 통과시켰다.
     """
-    issues, n = [], 0
+    issues, notices, n, vague = [], [], 0, 0
     for line in read(LEDGER_CLOSED_MD).splitlines():
         if not CLOSED_ITEM_RX.match(line):
             continue
         n += 1
+        if VAGUE_REASON_RX.search(line):
+            vague += 1
         if not CLOSE_REASON_RX.search(line):
             head = re.search(r"\*\*(.+?)\*\*", line)
             issues.append("종결 사유 없음: %s" % (head.group(1)[:70] if head else line[:70]))
-    return issues, n
+    if vague:
+        notices.append(
+            "종결 사유 `사유 미상` %d건 — **막지 않고 센다**. 인정 표현에서 빼면 정말 모를 때 적을 자리가"
+            " 없어져 red 를 피하려 억지 사유를 적게 되고, 그것은 지금보다 나쁘다. 회차 25 가 23건을"
+            " 전수 재판정해 0 으로 내렸고, 그때 **본문을 읽으면 안 갈리는 것은 하나도 없었다**." % vague)
+    return issues, n, notices
 
 
 # 축 10이 검사하는 포인터. **손으로 관리한다** — 「유일한 방어선」·「정본」 같은 말을 grep 하는
@@ -889,6 +899,7 @@ def main():
     # 라벨 목록을 한 곳에 두고 **배너와 결과 문구가 둘 다 여기서 파생**되게 한다 —
     #  종전에는 배너가 별도 리터럴이라 축을 늘려도 그대로 남았다(이 회차가 실제로 겪었다).
     budget_issues, budget_n, budget_notices = check_doc_budget()
+    close_issues, close_n, close_notices = check_close_reasons()
     axes = [
         ("포인터 도달성", check_pointer_reachability()),
         ("Deferred 집계", check_deferred_stats(ledger, ledger_closed)),
@@ -898,7 +909,7 @@ def main():
         ("추출 앵커 도달성", check_compact_anchors()),
         ("문서 예산", (budget_issues, budget_n)),
         ("줄바꿈 정합", check_line_endings()),
-        ("종결 사유 명시", check_close_reasons()),
+        ("종결 사유 명시", (close_issues, close_n)),
         ("핵심 포인터 실재", check_critical_pointers()),
     ]
     all_issues, parts = [], []
@@ -908,7 +919,7 @@ def main():
 
     print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
     # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
-    for m in check_agents_target() + budget_notices:
+    for m in check_agents_target() + budget_notices + close_notices:
         print("[NOTICE] %s" % m)
     if all_issues:
         for m in all_issues:

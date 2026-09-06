@@ -374,7 +374,27 @@
     ]
   },
   {
-    "id": "harness-close-reason-missing",
+    "id": "harness-close-reason-vague-notice",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "**종결된 항목** — **반영**: 처리 완료.",
+        "replace": "**종결된 항목** — **사유 미상**: 종결 시점 서술이 없다."
+      }
+    ],
+    "expect_keywords": [
+      "[NOTICE] 종결 사유 `사유 미상` 1건",
+      "막지 않고 센다",
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {    "id": "harness-close-reason-missing",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 1,
