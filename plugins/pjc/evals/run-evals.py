@@ -34,6 +34,7 @@ import argparse
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -127,6 +128,24 @@ def run_case(case):
         shutil.rmtree(os.path.dirname(root), ignore_errors=True)
 
 
+# 케이스 블록의 여는 중괄호는 자기 줄에 홀로 있어야 한다. **이것을 재는 이유**: 회차 25·26 이
+#   연달아 `  {    "id": …` 형태로 붙여 넣었고 **어느 검사기도 잡지 않았다** — JSON 은 유효하고
+#   `Test(JSON 3종)` 은 매니페스트만 보며 이 러너도 파싱만 했다. 두 번 다 사람이 눈으로 잡았다.
+CASE_OPEN_RX = re.compile(r"^  \{\s*\S")
+
+
+def check_case_format():
+    """`cases.json` 원문의 들여쓰기 서식을 검사해 위반 줄 번호를 돌려준다.
+
+    **축이 아니라 여기 있는 이유**: 이 파일은 이 러너의 입력이라 지역성이 맞고,
+    `check-harness-consistency.py` 에 축을 더하면 열한 축이 되면서 `AGENTS.md`·
+    `harness-conventions.md`·그 docstring 세 곳의 「열 축」 표기를 또 동기해야 한다.
+    """
+    with io.open(CASES, encoding="utf-8", newline="") as fh:
+        lines = fh.read().splitlines()
+    return [i + 1 for i, l in enumerate(lines) if CASE_OPEN_RX.match(l)]
+
+
 def main():
     ap = argparse.ArgumentParser(description="pjc evals 골든 러너")
     ap.add_argument("--filter", help="checker 필드로 좁힌다 (harness | truncation | stale)")
@@ -135,6 +154,15 @@ def main():
 
     with io.open(CASES, encoding="utf-8") as fh:
         cases = json.load(fh)
+
+    # 서식 결함은 「어떤 케이스가 틀렸다」가 아니라 **입력을 신뢰할 수 없다**는 뜻이라,
+    #   케이스 FAIL 이 아니라 `check-harness-consistency.py` 와 같은 exit 2 를 쓴다.
+    bad = check_case_format()
+    if bad:
+        print("[FORMAT FAIL] cases.json 의 여는 중괄호가 첫 키와 같은 줄에 있습니다 — 줄 %s"
+              % ", ".join(str(i) for i in bad))
+        print("케이스를 돌리지 않고 멈춥니다. `  {` 다음 줄에 `    \"id\"` 가 오도록 고치세요.")
+        return 2
     if a.filter:
         cases = [c for c in cases if c["checker"] == a.filter]
     if not cases:

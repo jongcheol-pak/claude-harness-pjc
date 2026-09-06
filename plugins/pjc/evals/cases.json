@@ -408,7 +408,8 @@
       "[MISMATCH]"
     ]
   },
-  {    "id": "harness-close-reason-vague-notice",
+  {
+"id": "harness-close-reason-vague-notice",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 0,
