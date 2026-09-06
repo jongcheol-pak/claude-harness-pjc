@@ -309,7 +309,8 @@
       "참조 0건"
     ]
   },
-  {    "id": "stale-ledger-hit",
+  {
+    "id": "stale-ledger-hit",
     "checker": "stale",
     "fixture": "refs-repo",
     "expect_rc": 1,
