@@ -11,7 +11,7 @@
 
 ## Build & Test
 
-모든 명령은 **repo 루트에서** 실행한다. **각 명령이 무엇을 대조하는지·함정·케이스 수 기준선은 `docs/harness-conventions.md`의 「검증 명령 상세 (무엇을 대조하는가 · 함정)」이 정본이다.**
+모든 명령은 **repo 루트에서** 실행한다. **각 명령이 무엇을 대조하는지·함정·소요 시간·케이스 수 기준선은 `docs/harness-conventions.md`의 「검증 명령 상세 (무엇을 대조하는가 · 함정)」이 정본이다** — 여기에는 명령과 트리거만 둔다.
 
 - **Build (전 ps1 구문 검사)**:
   ```
@@ -25,16 +25,15 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  전경에서 그대로 돌아간다(v1.225.0 실측 192~429초 — 무상태 그룹 샤딩으로 분리 실행 절차가 사라졌다). **완료는 시간이 아니라 `결과: N/N OK` 라인과 exit 0으로 판정한다.** 실행 전 `CLAUDE_HARNESS_QUICK`을 지울 것 — 남아 있으면 41건이 FAIL한다(`docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
-- **차단 경로 커버리지** (차단 hook·골든 케이스 수정 시 필수 — 차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다):
+- **차단 경로 커버리지** (차단 hook·골든 케이스 수정 시 필수):
   ```
   python plugins/pjc/hooks/evals/check-block-coverage.py
   ```
-- **llm-wiki 상수·배치 정합 셀프체크** (SKILL.md 예산표·라우팅 표·`references/procedures-*.md`·`wiki-schema` §2/§3/§4/§7/§8/§11/§12·목차·`templates.md`·`lint.py` 상수 수정 시 필수):
+- **llm-wiki 상수·배치 정합 셀프체크** (`skills/llm-wiki/**` 수정 시 필수):
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
-- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수 — 약 45초. `--auto-split` 골든이 같은 실행에 포함되며 **전부 「2회째 실행은 수행 대상 없음」을 무조건 검사**한다):
+- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수):
   ```
   python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
   ```
@@ -42,51 +41,44 @@
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
-- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**(`deferred.md`·`deferred-closed.md`·`deferred-history.md`)·`session-context.ps1`의 절 추출 앵커·**`skills/**`·`agents/*.md`·`scripts/*.ps1`의 크기**·**그 밖에 레포 안 파일을 고치거나 새로 만든 모든 task**(「줄바꿈 정합」 축은 파일 패턴과 무관하다) 수정 시 필수 — 열한 축, **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**·`plugins/pjc/agents/*.md`·`*.md` 문서 수정 시 필수 — **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python plugins/pjc/evals/check-harness-consistency.py
   ```
-
-- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 잰다. 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다. **exit 2 는 `cases.json` 서식 위반 또는 미추적 픽스처**라 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다 — 케이스 블록은 **두 줄 계약**이고(`  {` 가 자기 줄에 홀로 있고 **다음 줄이 `    "` 로 시작**), 어긋난 **그 줄**의 번호를 낸다(키 줄 위반이면 중괄호 줄이 아니라 키 줄 번호다). 중괄호 줄 자신이 그 형태를 벗어나면 줄로 못 짚어 **개수 불일치**로 보고한다):
+- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — **exit 2는 `cases.json` 서식 위반 또는 미추적 픽스처**라 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다):
   ```
   python plugins/pjc/evals/run-evals.py
   ```
-
-- **잘린 주석 검사** (`scripts/*.ps1`·`scripts/rules/*-rationale.md` 수정 시 필수 — 근거 인용 주석의 절단과 rationale 헤딩 짝 2축):
+- **잘린 주석 검사** (`scripts/*.ps1`·`scripts/rules/*-rationale.md` 수정 시 필수):
   ```
   python plugins/pjc/evals/check-comment-truncation.py
   ```
-
-- **삭제 자산 참조 검사** (`plugins/**`·`docs/**`·**레포 루트의 `*.ps1`·`*.md`**(`validate.ps1`·`install.ps1`·`README.md` 등) 수정 시 필수 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산에 남았는가. 스캔 범위는 위 트리거와 같다. `--ledger` 는 대장 `## 대기` 를 본다 — 회차 25 가 대기 13건을 전수 판정해 **현재는 exit 0** 이고, 죽은 이름을 담았으나 면제된 항목은 `[NOTICE]` 로 건수·목록이 나온다(**면제는 항목 단위**라 한 번 표기된 항목에 나중에 다른 죽은 이름이 섞여도 잡히지 않는다 — 그 대가를 보이게 한 것이다)):
+- **삭제 자산 참조 검사** (`plugins/**`·`docs/**`·**레포 루트의 `*.ps1`·`*.md`** 수정 시 필수):
   ```
   python plugins/pjc/evals/check-stale-refs.py
   ```
-- **스킬 트리거 eval** (`skills/*/SKILL.md` 의 frontmatter `description` 수정 시 필수 — **실제 모델 호출이라 비용이 크다**. `--filter <plan|impl|rec|wiki|dbg>` 로 좁힌다. `--isolation both` 는 격리·비격리 각 1회라 2배. 설치·push 불요 — 러너가 워킹트리를 `--plugin-dir` 로 직접 싣는다):
+- **스킬 트리거 eval** (`skills/*/SKILL.md`의 frontmatter `description` 수정 시 필수 — **실제 모델 호출이라 비용이 크다**):
   ```
-  python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>
+  python plugins/pjc/skills/evals/trigger_eval.py --filter <plan|impl|rec|wiki|dbg>
   ```
-- **위키 회로 검사** (`implement/SKILL.md`·`skills/WIKI.md`·`plan/SKILL.md`·`skills/llm-wiki/**` 수정 시 필수 — 기록 → 소비 → 조회 7단계가 이어져 있는가. **모델 호출이 없어 1초 미만**):
+- **위키 회로 검사** (`implement/SKILL.md`·`skills/WIKI.md`·`plan/SKILL.md`·`skills/llm-wiki/**` 수정 시 필수):
   ```
   python plugins/pjc/skills/evals/check_wiki_circuit.py
   ```
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 검사하므로 워킹트리 변경은 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 하나이고 **`README.md` 상단 `**버전**:` 줄을 함께 갱신**한다(`marketplace.json`에는 버전 필드가 없다 — `source: ./plugins/pjc`로 참조한다). 회차를 마감할 때 **버전만 올리는 별도 커밋**을 만들고 제목은 `설정: v{버전} — {회차 요약}`. **push 뒤 곧바로 릴리즈를 발행한다** — `gh release create v{버전} --target <full-sha>`(**short sha는 거부된다**). ⚠ **그 태그는 원격에만 생겨** `git tag -l`로는 안 보인다 — 확인은 `gh release list`. 로컬 태그만 보고 「안 만드는 관행」으로 역추론하면 v1.247.0·v1.248.0처럼 누락된다. 설치본 반영은 사용자가 `/plugin update`를 실행할 때 일어난다 — push·릴리즈는 종전대로 별도 승인 대상이다.
+- **Release**: 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` + `README.md` 상단 `**버전**:` 줄. **버전만 올리는 별도 커밋** → push → **곧바로 릴리즈 발행**(`gh release create v{버전} --target <full-sha>`). ⚠ 태그가 원격에만 생겨 `git tag -l`로는 안 보인다 — 확인은 `gh release list`(상세·역추론 함정은 `docs/harness-conventions.md`의 「Release (배포·릴리즈 발행)」이 정본). push·릴리즈는 별도 승인.
 - **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 경로 보호가 오차단한다.
-
-### 검증 매핑 (task 검증 선택)
-
-**표 정본은 `docs/harness-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증. task 단위 검증은 변경 파일에 맞는 행만 실행하고(여러 패턴이면 합집합), 전체 검증은 Phase F-2가 1회 보장한다. 같은 문서의 **「골든 부분 실행의 판정 자격」**·**「조건부 참조 문서 크기 임계」**도 함께 읽는다.
 
 ## Conventions
 
 - **아키텍처**: 계층 없음 — 실행 단위가 hook 스크립트와 Markdown 지침이라 도메인/UI/인프라로 가를 대상이 없다(글로벌 지침의 *"단순 스크립트·유틸리티는 대상이 아니다"*).
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
-- **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i`도 `Edit` 도구도 파일 전체를 LF로 바꿀 수 있다** — blob이 정규화돼 **`git diff`에 안 나타나므로** 조용히 누적된다(v1.214.0 실측: `Edit`으로 1줄만 고친 `README.md`·`plugin.json`이 `w/lf`가 됐다). **판정은 `git ls-files --eol <파일>`**(미수정 파일과 대조 — 정상은 `w/crlf`), **복원은 python `newline=""`로 읽어 `\r\n`으로 다시 쓴다**.
+- **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i`도 `Edit` 도구도 파일 전체를 LF로 바꿔 놓는다** — 편집 후 `git ls-files --eol`로 확인한다(사고 형태·안전한 편집 방법은 `docs/harness-conventions.md`의 「편집 스크립트의 줄바꿈 사고」가 정본).
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
-- **명령 출력 예산**: 판정용 명령은 판정에 필요한 최소 형식으로 — `git status --porcelain`(clean이면 0B) · `git diff --stat` 선행 · `git blame -L` 범위 지정 · `gh`는 `--json <필드> --jq <표현식>`로 필드 지정. **단 `git log`는 `--oneline`으로 줄이지 않는다** — 커밋 본문에 회차 서사와 검증 결과가 담긴다. 실측 표·미채택 근거는 `docs/harness-conventions.md` 「명령 출력 예산」이 정본.
+- **명령 출력 예산**: 판정용 명령은 **판정에 필요한 최소 형식**으로 낸다(정본은 `docs/harness-conventions.md`의 「명령 출력 예산」).
 - **파일 크기**: 문서 예산과 분할 판정은 `plugins/pjc/skills/DESIGN.md` 4절이 정본.
-- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext. 차단은 **`exit 2`** 하나이고 그것을 내는 hook은 넷이다 — `block-destructive`(파괴적 명령) · `guard-bash`(task 체크박스 게이트 + 커밋 시크릿(조건부)) · `guard-write`(plan 게이트) · `guard-harness`(자기보호 + AGENTS.md 내용 경계). **커밋 시크릿의 조건부 세부·스캔 범위는 `docs/harness-conventions.md`가 정본** — hook 수정 전 반드시 읽을 것. **우회 변수는 둘이며 서로 대체되지 않는다**: `CLAUDE_HARNESS_QUICK`(`guard-write`·`guard-harness`의 AGENTS.md 내용 경계·`guard-bash`의 체크박스 게이트) / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 차단 전용). **`guard-write`의 plan 존재 게이트에는 우회 변수와 별개로 파일 단위 면제 경로가 있다** — `pjc:plan`이 사용자 승인을 받아 남긴 `[PLAN-EXEMPT]` 표식에 적힌 파일만 통과한다(판정 상세는 `docs/harness-conventions.md`의 「`guard-write`의 PLAN-EXEMPT 면제 경로」).
-- **`guard-write`는 게이트 2종**: ① plan 존재 ② plan 작성. 둘은 같은 정규식(`$planTaskRx`)을 공유하므로 **한쪽만 고치지 말 것**(차이가 곧 우회 경로). **`guard-harness`는 자기보호와 AGENTS.md 내용 경계 2종이다** — AGENTS.md **신규 생성** 게이트는 v1.227.0에 없앴다(생성이 `pjc:plan` Step 1의 최소 골격으로 바뀌어 차단 대상이 소멸했다).
+- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**이고 그것을 내는 hook은 넷이다(`block-destructive`·`guard-bash`·`guard-write`·`guard-harness`). **우회 변수는 둘이며 서로 대체되지 않는다** — `CLAUDE_HARNESS_QUICK` / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 전용). 각 hook의 담당·조건부 세부·우회 범위·`[PLAN-EXEMPT]` 면제 경로는 `docs/harness-conventions.md`가 정본이다 — **hook 수정 전 반드시 읽을 것**.
+- **`guard-write`는 게이트 2종**(plan 존재·plan 작성)이고 **같은 정규식을 공유하므로 한쪽만 고치지 말 것** — 차이가 곧 우회 경로다. `guard-harness`는 자기보호와 AGENTS.md 내용 경계 2종이다.
 - **⚠ `llm-wiki`의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md`의 vault 예외를 함께 확인**한다 — 검사기가 잡지 못한다(repo 밖). 필수 결합 2건·판정 기준은 `docs/harness-conventions.md`의 「llm-wiki ↔ 글로벌 지침 결합 (동반 수정 판정)」이 정본.
 - **SKILL 문서 작성**: 형식은 `plugins/pjc/skills/AUTHORING.md`, **설계 원칙(규약 문면 형식·자기참조 금지·문서 예산)은 `plugins/pjc/skills/DESIGN.md`가 정본**이다.
 - **위키 연동**: 계획·구현이 위키를 언제 읽고 언제 쓰는지는 `plugins/pjc/skills/WIKI.md`가 정본.
@@ -105,16 +97,15 @@
 ## DO NOT
 
 - 실제 비밀번호·API 키·토큰·시크릿·DB 연결문자열·내부 IP/호스트를 코드·문서·notes·plan에 기록(환경변수 이름만, 값은 `.env`로).
-- **`block-destructive.ps1`·`guard-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(끌 수 없음, 마지막 방어선). **각 hook이 무엇을 차단하는지는 `plugins/pjc/scripts/rules/`의 판정 데이터와 근거 문서가 정본이다.** **단 두 종류는 사용자 승인 선례로 허용된다**: ① **오탐 수정** — 골든 회귀(신규 통과 케이스 + 수정 전 차단 음성 대조)로 실증하는 조건 ② **미탐 보완**(차단 범위 확대) — 같은 조건 + **새 경계가 실제로 발화하는 「델타 음성」 케이스로 오차단 0을 반드시 실증**할 것(통과만 확인하는 무회귀 케이스는 근거가 못 된다).
+- **`block-destructive.ps1`·`guard-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(끌 수 없음, 마지막 방어선). 각 hook이 무엇을 차단하는지는 `plugins/pjc/scripts/rules/`가 정본이다. **오탐 수정·미탐 보완 두 종류만 승인 선례로 허용되며 골든 실증 조건이 붙는다**(`docs/harness-conventions.md`의 「안전 임계 hook 의 차단 동작 변경」).
 - 자동 생성·캐시 디렉터리(`__pycache__/`, lock 파일 등) 커밋.
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass`(백신이 격리할 수 있음).
 
 ## Plan Location
 
 - **plan은 루트 `plan.md` 하나**다(덮어쓰기). 위치 선택지가 없으므로 `Plan Location:` 선언을 두지 않는다.
-
-- **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — **작업의 영구 기록은 git 커밋**이고, 미처리 Deferred는 커밋되는 `docs/plans/deferred.md`가 담는다(v1.198.0부터 **대장은 셋** — 대기는 `deferred.md`, 기각 종결은 `deferred-closed.md`, 소진 batch 회고는 `deferred-history.md`. **계획 때 여는 것은 `deferred.md` 하나**이고 나머지 둘은 batch·차수 대조 때만 연다).
-- **PRD는 쓰지 않는다** — 요구는 `plan.md`의 `## 요구 이해`, 결정 이력은 위키 `decisions.md`, 미착수 항목은 `docs/plans/deferred.md`가 담는다.
+- **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — **작업의 영구 기록은 git 커밋**이고, 미처리 Deferred는 커밋되는 **대장 3파일**이 담는다(`deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 연산 규칙은 그 파일 머리말이 정본).
+- **PRD는 쓰지 않는다** — 요구는 `plan.md`의 `## 요구 이해`, 결정 이력은 위키 `decisions.md`, 미착수 항목은 대장이 담는다.
 
 ## OS/플랫폼
 

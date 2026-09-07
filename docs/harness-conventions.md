@@ -48,6 +48,10 @@
 
 **스킬 트리거 eval** — 케이스 정본은 `plugins/pjc/skills/evals/trigger-cases.json`이고 **기준선 43케이스**다. `skills/*/SKILL.md`의 frontmatter `description`을 고치면 필수이며 **실제 모델 호출이라 비용이 크다** — `--filter <plan|impl|rec|wiki|dbg>`로 좁히고, `--isolation both`는 격리·비격리 각 1회라 2배다. 설치·push는 불요하다(러너가 워킹트리를 `--plugin-dir`로 직접 싣는다).
 
+**안전 임계 hook 의 차단 동작 변경 — 허용되는 두 종류** — `block-destructive.ps1`·`guard-harness.ps1` 의 차단 동작 변경은 `AGENTS.md` 「DO NOT」 대상이지만, **사용자 승인 선례로 두 종류가 허용된다**: ① **오탐 수정** — 골든 회귀로 실증한다(신규 통과 케이스 + **수정 전 차단 음성 대조**) ② **미탐 보완**(차단 범위 확대) — 같은 조건에 더해 **새 경계가 실제로 발화하는 「델타 음성」 케이스로 오차단 0을 반드시 실증**한다. **통과만 확인하는 무회귀 케이스는 근거가 못 된다** — 그 케이스는 코드를 지워도 green 이라 무엇도 재지 않는다. 각 hook 이 무엇을 차단하는지는 `plugins/pjc/scripts/rules/` 의 판정 데이터와 근거 문서가 정본이다.
+
+**Release (배포·릴리즈 발행)** — 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 하나이고 `README.md` 상단 `**버전**:` 줄을 함께 갱신한다(`marketplace.json`에는 버전 필드가 없다 — `source: ./plugins/pjc`로 참조한다). 회차를 마감할 때 **버전만 올리는 별도 커밋**을 만들고 제목은 `설정: v{버전} — {회차 요약}`. **push 뒤 곧바로 릴리즈를 발행한다** — `gh release create v{버전} --target <full-sha>`(**short sha는 거부된다**). ⚠ **그 태그는 원격에만 생겨** `git tag -l`로는 안 보인다 — 확인은 `gh release list`. **로컬 태그만 보고 「안 만드는 관행」으로 역추론하면 누락된다**: `ef38a8fd`가 실제로 그렇게 판단해 규약에 「태그도 릴리즈도 만들지 않는다」를 적었고, 그 오기를 따라 v1.247.0·v1.248.0 두 배포가 릴리즈 없이 끝났다(회차 35가 소급 발행). 설치본 반영은 사용자가 `/plugin update`를 실행할 때 일어난다. push·릴리즈는 별도 승인 대상이다.
+
 **차단 경로 커버리지** — `plugins/pjc/hooks/evals/check-block-coverage.py`. **차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다** — 차단 hook 이나 그 골든 케이스를 고쳤으면 필수다.
 
 **잘린 주석 검사** — `plugins/pjc/evals/check-comment-truncation.py`. 두 축이다: 근거 인용 주석의 **절단**과 `rules/*-rationale.md` 헤딩과의 **짝**. `scripts/*.ps1`·`scripts/rules/*-rationale.md` 를 고쳤으면 필수다.
@@ -90,7 +94,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 62,934 | 137,000 |
+| `docs/harness-conventions.md` | 64,861 | 137,000 |
 | `docs/golden-runner.md` | 16,671 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,241 | 37,000 |
 
