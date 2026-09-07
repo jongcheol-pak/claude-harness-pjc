@@ -9,7 +9,7 @@
 ```markdown
 # plan — <회차 제목>
 
-> 요구: `intent/YYYY-MM-DD-<슬러그>.md` — 형식·커밋 시점의 정본은 `references/intent-rules.md`
+> 요구: `intent/YYYY-MM-DD-<슬러그>.md`
 
 ## Goal                                        [필수]
 
@@ -80,7 +80,8 @@
 
 ### Open Questions
 
-- **요구 자체가 미확정인 것은 여기가 아니라 intent 의 `Open questions` 다** — 이 절은 승인되면 사라지고 그쪽은 남아 다음 회차로 이월된다(`references/intent-rules.md`).
+- **요구 자체가 미확정인 것은 intent 의 `Open questions` 다**(`references/intent-rules.md`) — 이 절은 승인되면 사라진다.
+- **요구 포인터의 형식·커밋 시점도 같은 파일이 정본이다** — 펜스 안에는 경로만 둔다. 플러그인 상대경로를 템플릿에 넣으면 생성된 `plan.md` 위치에서 풀리지 않는다.
 
 ### Investigation Log
 
