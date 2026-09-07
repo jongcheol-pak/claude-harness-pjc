@@ -23,6 +23,10 @@
   ⓓ 이관처 — 결정론 2분기다. ① 본문에 백틱·링크로 등장하는 `.md` 경로 중 **최다 등장**(동수면
      먼저 나온 것) ② 후보가 없으면 `docs/agents-detail.md` 신설. 「규약 문서처럼 보이는 것을
      고른다」 같은 판단 여지를 두지 않는다 — 회차마다 다른 곳으로 흩어지면 그것이 곧 유실이다.
+     **후보에서 빼는 것은 「그 레포에서 쓸 수 없는 경로」 하나의 술어다**: 자기 자신(`AGENTS.md`) ·
+     지침 파일(`CLAUDE.md` — 이 스킬의 절대 규칙 2가 기록처로 금지한다) · 레포 밖(`http(s)://` ·
+     `~` 시작) · 글로브(`*`·`?` — 파일이 아니라 패턴이라 열 수 없다). 축마다 따로 좁히면 사각이
+     남으므로 한 자리에서 판정한다.
   ⓔ 포인터 — 옮긴 자리에 **절 제목을 유지한 채** `**정본은 …의 「…」이다** — …` 1줄을 남긴다.
      제목까지 지우면 목차 폴백에서도 그 주제가 사라져 「어디로 갔는지 물을 실마리」조차 없다.
   ⓕ 사본 — 착수 직전 `docs/.agents-presplit/{YYYY-MM-DD}/`에 복사한다(git 저장소여도 만든다 —
@@ -121,8 +125,11 @@ def pick_destination(raw):
     order, count = [], {}
     for a, b in hits:
         p = (a or b).strip()
-        if p.lower().endswith("agents.md") or p.startswith(("http://", "https://")):
-            continue        # 자기 자신·외부 링크는 이관처가 아니다
+        low = p.lower()
+        if (low.endswith("agents.md") or low.endswith("claude.md")
+                or p.startswith(("http://", "https://", "~"))
+                or "*" in p or "?" in p):
+            continue        # 그 레포에서 쓸 수 없는 경로는 이관처가 아니다 (docstring ⓓ)
         if p not in count:
             order.append(p)
         count[p] = count.get(p, 0) + 1

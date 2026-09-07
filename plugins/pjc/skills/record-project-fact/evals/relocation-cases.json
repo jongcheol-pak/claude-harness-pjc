@@ -175,7 +175,12 @@
     },
     {
       "fixture": "unreached",
-      "cli_args": ["--verify-only", "{fx}/orig.md", "{fx}/AGENTS.md", "{fx}/docs/agents-detail.md"],
+      "cli_args": [
+        "--verify-only",
+        "{fx}/orig.md",
+        "{fx}/AGENTS.md",
+        "{fx}/docs/agents-detail.md"
+      ],
       "expect_rc": 1,
       "expect_keywords": [
         "원문 도달 대조",
@@ -186,7 +191,14 @@
     },
     {
       "fixture": "unreached",
-      "cli_args": ["--verify-only", "{fx}/orig.md", "{fx}/AGENTS.md", "{fx}/docs/agents-detail.md", "--declared", "{fx}/declared.txt"],
+      "cli_args": [
+        "--verify-only",
+        "{fx}/orig.md",
+        "{fx}/AGENTS.md",
+        "{fx}/docs/agents-detail.md",
+        "--declared",
+        "{fx}/declared.txt"
+      ],
       "expect_rc": 0,
       "expect_keywords": [
         "도달 대조 통과",
@@ -196,6 +208,32 @@
         "미도달"
       ],
       "rationale": "**`--declared`가 이 경로의 필수 인자임을 고정한다.** 바로 위 케이스와 인자 하나만 다르므로 rc 1 → 0을 뒤집는 것이 선언 파일 하나임이 드러난다. 값을 받는 플래그는 이것뿐이라 위치 인자 필터에 섞이기 쉬운데, 섞이면 원문 경로가 밀려 조용히 다른 파일을 대조하게 된다 — 그 회귀를 이 케이스가 잡는다."
+    },
+    {
+      "fixture": "dest-claude-md",
+      "expect_rc": 0,
+      "expect_keywords": [
+        "옮긴 절:",
+        "이관 후:"
+      ],
+      "expect_absent": [
+        "~/.claude/CLAUDE.md",
+        "[검증 실패]"
+      ],
+      "rationale": "**지침 파일은 이관처가 아니다.** 본문 최다 등장 경로가 `~/.claude/CLAUDE.md` 여도 그리로 옮기지 않는다 — 이 스킬의 절대 규칙 2가 `CLAUDE.md` 를 기록처에서 금지하는데, Step 5 는 승인 게이트가 없어 그 금지가 여기서만 지켜질 수 있다. 수정 전 `pick_destination()` 은 실제로 그 경로를 골랐다(회차 38 RED 실측)."
+    },
+    {
+      "fixture": "dest-glob",
+      "expect_rc": 0,
+      "expect_keywords": [
+        "옮긴 절:",
+        "이관 후:"
+      ],
+      "expect_absent": [
+        "skills/*/SKILL.md",
+        "[검증 실패]"
+      ],
+      "rationale": "**글로브는 파일이 아니라 패턴이라 열 수 없다.** 규약 문서가 `plugins/pjc/skills/*/SKILL.md` 처럼 패턴을 백틱으로 적는 것은 이 레포의 관례라 후보에 섞이는데, 그것을 이관처로 고르면 그 이름의 파일을 만들려 든다(Windows 에서는 생성 자체가 실패한다)."
     }
   ]
 }
