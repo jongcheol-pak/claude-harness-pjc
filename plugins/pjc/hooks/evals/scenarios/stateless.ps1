@@ -7,7 +7,7 @@
 # =====================================================================
 Write-Host "== pjc hook 골든 회귀 =="
 if ($script:FilterSet) {
-    Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:FilterSet -join ', ')) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
+    Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:FilterSet -join ', ')) — 개발 반복 전용, task 검증·최종 검증 판정에 사용 금지"
 }
 $cases = (Get-Content -LiteralPath $casesPath -Raw -Encoding UTF8 | ConvertFrom-Json).cases
 # 샤드 필터 — 러너가 `stateless-<N>` 그룹으로 나눠 부르면 그중 자기 몫만 돈다.

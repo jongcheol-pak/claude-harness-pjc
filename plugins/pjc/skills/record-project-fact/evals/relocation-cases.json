@@ -175,12 +175,7 @@
     },
     {
       "fixture": "unreached",
-      "cli_args": [
-        "--verify-only",
-        "{fx}/orig.md",
-        "{fx}/AGENTS.md",
-        "{fx}/docs/agents-detail.md"
-      ],
+      "cli_args": ["--verify-only", "{fx}/orig.md", "{fx}/AGENTS.md", "{fx}/docs/agents-detail.md"],
       "expect_rc": 1,
       "expect_keywords": [
         "원문 도달 대조",
@@ -191,14 +186,7 @@
     },
     {
       "fixture": "unreached",
-      "cli_args": [
-        "--verify-only",
-        "{fx}/orig.md",
-        "{fx}/AGENTS.md",
-        "{fx}/docs/agents-detail.md",
-        "--declared",
-        "{fx}/declared.txt"
-      ],
+      "cli_args": ["--verify-only", "{fx}/orig.md", "{fx}/AGENTS.md", "{fx}/docs/agents-detail.md", "--declared", "{fx}/declared.txt"],
       "expect_rc": 0,
       "expect_keywords": [
         "도달 대조 통과",

@@ -23,7 +23,7 @@
 #   ② 병렬 경로에 문제가 생겼을 때의 폴백. 판정 정본으로서의 자격은 두 모드가 동일하다.
 #
 # -Filter 계약(v1.107.0): hook 기본명(.ps1 유무·대소문자 무관, 쉼표 복수)으로 실행 범위를 좁힌다.
-#   구현 중 반복 확인 전용이며 task 검증(V-2 검증 매핑)·Phase F-2 판정에는 사용 금지 — 부분 실행은
+#   구현 중 반복 확인 전용이며 task 검증(검증 매핑)·최종 검증 판정에는 사용 금지 — 부분 실행은
 #   커버리지가 좁아(섹션 태그는 케이스 단위가 아니라 섹션 단위 — 소량 초과 실행은 허용, 누락은 불허)
 #   무인자 전체 실행만 판정 정본이다. 필터 모드는 경고 헤더를 강제 출력하고, 실행 케이스 0이면
 #   exit 1로 실패한다(필터 이름 오타가 "전부 통과"로 보이는 거짓 안심 방지).
@@ -110,7 +110,7 @@ $evalTempParent = Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName
 $script:NormalizedFilter = Get-NormalizedFilter -Filter $Filter
 if ($script:NormalizedFilter) {
     Write-UnknownFilterWarning -NormalizedFilter $script:NormalizedFilter
-    Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:NormalizedFilter -join ', ')) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
+    Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:NormalizedFilter -join ', ')) — 개발 반복 전용, task 검증·최종 검증 판정에 사용 금지"
 }
 
 # ---- 중단된 실행이 남긴 격리 폴더 정리 ----
@@ -174,7 +174,7 @@ if ($Sequential) {
         exit 1
     }
     if ($Filter) {
-        Write-Host "⚠ 부분 실행 결과 (-Filter) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
+        Write-Host "⚠ 부분 실행 결과 (-Filter) — 개발 반복 전용, task 검증·최종 검증 판정에 사용 금지"
     }
     Write-Host "[MODE] 순차 실행 (-Sequential)"
     Write-Host ("결과: {0}/{1} OK (FAIL {2})" -f ($total - $failCount), $total, $failCount)
@@ -370,7 +370,7 @@ if ($Filter -and $total -eq 0) {
     exit 1
 }
 if ($Filter) {
-    Write-Host "⚠ 부분 실행 결과 (-Filter) — 개발 반복 전용, task 검증(V-2)·F-2 판정에 사용 금지"
+    Write-Host "⚠ 부분 실행 결과 (-Filter) — 개발 반복 전용, task 검증·최종 검증 판정에 사용 금지"
 }
 if ($deadGroups.Count) {
     Write-Host ("[WARN] 완주하지 못한 그룹 {0}개: {1} — -Resume 으로 이어서 돌릴 수 있습니다." -f $deadGroups.Count, ($deadGroups -join ', '))
