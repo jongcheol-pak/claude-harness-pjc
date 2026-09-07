@@ -420,7 +420,7 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef8 } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 기호 없는 미등재는 미판정으로 계수 (SC40h)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 2건'
 
-    # SC40k (델타 음성 — 백틱 코드 스팬 마커): 형식 정본(plan-template.md)이 마커를 표 안에서
+    # SC40k (델타 음성 — 백틱 코드 스팬 마커): 형식 정본(deferred-rules.md)이 마커를 표 안에서
     #   코드 스팬으로 보여 주므로 그대로 따라 적으면 `` `[등재]` `` 가 된다. 그 형태를 안 받으면
     #   **판정을 마친 항목이 통째로 미판정으로 집계된다** — v1.233.0 회차가 실제로 그렇게 됐고
     #   세션 시작에 '미판정 5건'이 떴다(전건 판정 완료 상태였다).

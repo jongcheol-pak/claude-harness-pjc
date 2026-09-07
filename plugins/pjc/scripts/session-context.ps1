@@ -74,7 +74,7 @@ try {
                 $open = [regex]::Matches($planText, '(?m)^- \[[ /]\] T\d+').Count
 
                 # ---- Deferred 미판정 계수 — 근거는 `rules/session-context-rationale.md`의 「§7 ---- Deferred 미판정 계수」
-                # 마커의 백틱 코드 스팬을 허용한다 — 형식 정본(plan-template.md)이 마커를 표 안에서
+                # 마커의 백틱 코드 스팬을 허용한다 — 형식 정본(deferred-rules.md)이 마커를 표 안에서
                 #   코드 스팬으로 보여 주므로 그대로 따라 적으면 백틱이 붙는다. 정규식이 그것을 안 받으면
                 #   판정을 마친 항목이 통째로 미판정으로 집계된다(v1.233.0 회차가 실제로 그렇게 됐다).
                 $defUnjudged = 0
