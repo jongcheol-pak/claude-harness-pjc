@@ -78,6 +78,22 @@
       "rationale": "§7-34 음성 방향 — 전 항목이 줄 끝 앵커를 가진 vault는 집계 줄을 내지 않는다(0건이면 생략)"
     },
     {
+      "fixture": "pattern-case-section",
+      "expect_keywords": [
+        "patterns 관측 폭",
+        "3건 / 전체 4건"
+      ],
+      "rationale": "§7-35 patterns 관측 폭 집계 (INFO) — 분자·분모를 둘 다 잰다. concept 4건 중 보유 1(`## 프로젝트 사례`) · 미보유 3(`## 사용 사례` 다른 이름 · `## 프로젝트 사례 (.NET)` 꼬리 붙은 이름 · 절 자체 없음). **꼬리 붙은 이름이 미보유로 세어지는 것이 이 케이스의 경계다** — 실 vault의 layered-architecture가 그 형태이고, 통과시키면 이름을 하나로 모으는 축의 목적이 사라진다"
+    },
+    {
+      "fixture": "pattern-case-section-ok",
+      "expect_absent": [
+        "patterns 관측 폭"
+      ],
+      "expect_clean": true,
+      "rationale": "§7-35 음성 방향 — 전 patterns가 `## 프로젝트 사례`를 가진 vault는 집계 줄을 내지 않는다(0건이면 생략)"
+    },
+    {
       "fixture": "decision-verdict-prose-ok",
       "expect_absent": [
         "decision-log 방향 미기재"
@@ -1431,4 +1447,4 @@
       "rationale": "**롤오버가 훑지 않는 구역에 이력 항목이 놓이면 조용히 유실된다.** 롤오버는 `## 최근 변경`만 보므로 `## 아카이브 인덱스`에 섞인 항목은 영영 월별 파일로 넘어가지 않고, 그 시기를 조회하면 아카이브에도 본문에도 없어 「기록 없음」으로 읽힌다(실 vault log.md에서 큐 소비 기록 2건이 이 상태였다). 정상 항목은 `- {YYYY-MM}.md: …` 형태라 날짜 대괄호로 가른다. `log-under`와 픽스처를 나눈 이유는 그 케이스의 축이 「임계 미만이면 처방이 돌지 않는다」라서다 — 한 픽스처에 두 축을 실으면 한쪽을 손댈 때 다른 쪽이 조용히 무력화된다."
     }
   ]
-}
+}
