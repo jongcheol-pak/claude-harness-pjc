@@ -68,8 +68,10 @@ LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
 LEDGER_CLOSED_MD = os.path.join(ROOT, "docs", "plans", "deferred-closed.md")
 LEDGER_HISTORY_MD = os.path.join(ROOT, "docs", "plans", "deferred-history.md")
 AGENTS_MD = os.path.join(ROOT, "AGENTS.md")
-# 축 11이 읽는다. **gitignore 대상이라 커밋되지 않는다** — 없는 것이 정상이므로
-#   부재는 조용히 통과한다(회차 시작 전·plan 없는 세션이 그 상태다).
+# 축 11이 읽는다. **레포 루트의 이 파일만 gitignore 대상이라 커밋되지 않는다** — 없는 것이
+#   정상이므로 부재는 조용히 통과한다(회차 시작 전·plan 없는 세션이 그 상태다).
+#   ⚠ **픽스처 사본은 다르다** — `.gitignore` 의 `!plugins/pjc/evals/fixtures/**/plan.md` 예외로
+#   추적되며, 이 축의 골든 2건이 성립하는 근거가 그 커밋된 파일이다.
 PLAN_MD = os.path.join(ROOT, "plan.md")
 
 # 9,000B 경계 = auto-compact 후 스킬이 앞 5,000토큰만 재부착된다는 사양에서 온 값.
