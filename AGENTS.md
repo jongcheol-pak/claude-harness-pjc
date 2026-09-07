@@ -6,12 +6,12 @@
 ## 위키
 
 - **프로젝트 페이지**: `20_projects/personal/claude-harness-pjc.md` (LLM WIKI vault)
-- 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 이 파일에 중복 기재하지 않는다 (단 `## Conventions`의 **아키텍처 선언 1줄**은 여기 남는다).
+- 프로젝트 성격·기술 스택·디렉터리 구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다. 여기 중복 기재하지 않는다(단 `## Conventions`의 **아키텍처 선언 1줄**은 남는다).
 - 작업 규약·함정: 같은 폴더의 `conventions.md`(+ `conventions-*.md` 하위)
 
 ## Build & Test
 
-모든 명령은 **repo 루트에서** 실행한다. **각 명령이 무엇을 대조하는지·함정·소요 시간·케이스 수 기준선은 `docs/harness-conventions.md`의 「검증 명령 상세 (무엇을 대조하는가 · 함정)」이 정본이다** — 여기에는 명령과 트리거만 둔다.
+모든 명령은 **repo 루트에서** 실행한다. **각 명령이 무엇을 대조하는지·함정·소요 시간·케이스 수 기준선은 `docs/harness-conventions.md`의 「검증 명령 상세」가 정본**이다 — 여기에는 명령과 트리거만 둔다.
 
 - **Build (전 ps1 구문 검사)**:
   ```
@@ -65,25 +65,29 @@
   ```
   python plugins/pjc/skills/evals/check_wiki_circuit.py
   ```
-- **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 검사하므로 워킹트리 변경은 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` + `README.md` 상단 `**버전**:` 줄. **버전만 올리는 별도 커밋** → push → **곧바로 릴리즈 발행**(`gh release create v{버전} --target <full-sha>`). ⚠ 태그가 원격에만 생겨 `git tag -l`로는 안 보인다 — 확인은 `gh release list`(상세·역추론 함정은 `docs/harness-conventions.md`의 「Release (배포·릴리즈 발행)」이 정본). push·릴리즈는 별도 승인.
-- **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 경로 보호가 오차단한다.
+- **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
+- **Release**: 버전 정본은 `plugin.json` + `README.md` 상단 `**버전**:` 줄. **버전만 올리는 별도 커밋** → push → **곧바로 릴리즈 발행**(`gh release create v{버전} --target <full-sha>`). ⚠ 태그가 원격에만 생겨 `git tag -l`로는 안 보인다 — 확인은 `gh release list`(정본은 `docs/harness-conventions.md`의 「Release (배포·릴리즈 발행)」). push·릴리즈는 별도 승인.
+- **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — PowerShell 도구 경로 보호가 오차단한다(회피법은 정본).
+
+### 검증 매핑 (task 검증 선택)
+
+**표 정본은 `docs/harness-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증(여러 패턴이면 합집합). **「줄바꿈 정합」 축만은 파일 패턴과 무관하게 모든 task가 대상**이다. 같은 문서의 **「골든 부분 실행의 판정 자격」**·**「조건부 참조 문서 크기 임계」**도 함께 읽는다.
 
 ## Conventions
 
 - **아키텍처**: 계층 없음 — 실행 단위가 hook 스크립트와 Markdown 지침이라 도메인/UI/인프라로 가를 대상이 없다(글로벌 지침의 *"단순 스크립트·유틸리티는 대상이 아니다"*).
 - **인코딩**: `.ps1`은 **UTF-8 BOM 필수**(Windows PowerShell 5.1 한글 호환). 그 외(.md/.json)는 **BOM 없음**.
-- **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i`도 `Edit` 도구도 파일 전체를 LF로 바꿔 놓는다** — 편집 후 `git ls-files --eol`로 확인한다(사고 형태·안전한 편집 방법은 `docs/harness-conventions.md`의 「편집 스크립트의 줄바꿈 사고」가 정본).
+- **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i`도 `Edit` 도구도 파일 전체를 LF로 바꿔 놓는다** — 편집 후 `git ls-files --eol`로 확인(정본은 `docs/harness-conventions.md`의 「편집 스크립트의 줄바꿈 사고」).
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **명령 출력 예산**: 판정용 명령은 **판정에 필요한 최소 형식**으로 낸다(정본은 `docs/harness-conventions.md`의 「명령 출력 예산」).
 - **파일 크기**: 문서 예산과 분할 판정은 `plugins/pjc/skills/DESIGN.md` 4절이 정본.
-- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**이고 그것을 내는 hook은 넷이다(`block-destructive`·`guard-bash`·`guard-write`·`guard-harness`). **우회 변수는 둘이며 서로 대체되지 않는다** — `CLAUDE_HARNESS_QUICK` / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 전용). 각 hook의 담당·조건부 세부·우회 범위·`[PLAN-EXEMPT]` 면제 경로는 `docs/harness-conventions.md`가 정본이다 — **hook 수정 전 반드시 읽을 것**.
+- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**이고 그것을 내는 hook은 넷이다(`block-destructive`·`guard-bash`·`guard-write`·`guard-harness`). **우회 변수는 둘이며 서로 대체되지 않는다** — `CLAUDE_HARNESS_QUICK` / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 전용). 담당·조건부 세부·우회 범위·`[PLAN-EXEMPT]` 면제 경로는 `docs/harness-conventions.md`가 정본 — **hook 수정 전 반드시 읽을 것**.
 - **`guard-write`는 게이트 2종**(plan 존재·plan 작성)이고 **같은 정규식을 공유하므로 한쪽만 고치지 말 것** — 차이가 곧 우회 경로다. `guard-harness`는 자기보호와 AGENTS.md 내용 경계 2종이다.
-- **⚠ `llm-wiki`의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md`의 vault 예외를 함께 확인**한다 — 검사기가 잡지 못한다(repo 밖). 필수 결합 2건·판정 기준은 `docs/harness-conventions.md`의 「llm-wiki ↔ 글로벌 지침 결합 (동반 수정 판정)」이 정본.
+- **⚠ `llm-wiki`의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md`의 vault 예외를 함께 확인**한다 — 검사기가 못 잡는다(repo 밖). 정본은 `docs/harness-conventions.md`의 「llm-wiki ↔ 글로벌 지침 결합」.
 - **SKILL 문서 작성**: 형식은 `plugins/pjc/skills/AUTHORING.md`, **설계 원칙(규약 문면 형식·자기참조 금지·문서 예산)은 `plugins/pjc/skills/DESIGN.md`가 정본**이다.
 - **위키 연동**: 계획·구현이 위키를 언제 읽고 언제 쓰는지는 `plugins/pjc/skills/WIKI.md`가 정본.
-- **README.md 갱신 규약**: 버전별 changelog 블록 기재 **금지** — 현재 기능 설명만 유지한다(제거된 기능 설명은 삭제). 버전 표기는 상단 1곳만 두고 릴리즈 시 `plugin.json`과 **함께** 갱신한다. 이력은 git 커밋이 정본이다.
-- **규약 개정 요청**: 요청이 이 레포 규약에 걸려도 「규약이 금지한다」로 작업을 제외·전환하지 않는다 — **현행 규약 안의 안**과 **규약을 함께 고치는 안**을 둘 다 제시한다. 정본은 `docs/harness-conventions.md`의 「규약 개정 요청의 취급」.
+- **README.md 갱신 규약**: changelog 기재 **금지**(현재 기능 설명만) · 버전 표기는 상단 1곳. 정본은 `docs/harness-conventions.md`의 「README.md 갱신 규약」.
+- **규약 개정 요청**: 요청이 이 레포 규약에 걸려도 「규약이 금지한다」로 제외·전환하지 않는다 — **현행 규약 안의 안**과 **규약을 함께 고치는 안**을 둘 다 낸다(정본은 `docs/harness-conventions.md`의 「규약 개정 요청의 취급」).
 
 ## 데이터 접근
 
@@ -97,14 +101,14 @@
 ## DO NOT
 
 - 실제 비밀번호·API 키·토큰·시크릿·DB 연결문자열·내부 IP/호스트를 코드·문서·notes·plan에 기록(환경변수 이름만, 값은 `.env`로).
-- **`block-destructive.ps1`·`guard-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(끌 수 없음, 마지막 방어선). 각 hook이 무엇을 차단하는지는 `plugins/pjc/scripts/rules/`가 정본이다. **오탐 수정·미탐 보완 두 종류만 승인 선례로 허용되며 골든 실증 조건이 붙는다**(`docs/harness-conventions.md`의 「안전 임계 hook 의 차단 동작 변경」).
+- **`block-destructive.ps1`·`guard-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(끌 수 없음, 마지막 방어선). 각 hook의 차단 대상은 `plugins/pjc/scripts/rules/`가 정본. **오탐 수정·미탐 보완만 승인 선례로 허용되며 골든 실증이 붙는다**(`docs/harness-conventions.md`의 「안전 임계 hook 의 차단 동작 변경」).
 - 자동 생성·캐시 디렉터리(`__pycache__/`, lock 파일 등) 커밋.
 - 검증·테스트 스크립트에 평문 자격증명·`-WindowStyle Hidden`·과도한 `-ExecutionPolicy Bypass`(백신이 격리할 수 있음).
 
 ## Plan Location
 
 - **plan은 루트 `plan.md` 하나**다(덮어쓰기). 위치 선택지가 없으므로 `Plan Location:` 선언을 두지 않는다.
-- **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — **작업의 영구 기록은 git 커밋**이고, 미처리 Deferred는 커밋되는 **대장 3파일**이 담는다(`deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 연산 규칙은 그 파일 머리말이 정본).
+- **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — **영구 기록은 git 커밋**이고, 미처리 Deferred는 **대장 3파일**이 담는다(`deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 연산 규칙은 그 파일 머리말이 정본).
 - **PRD는 쓰지 않는다** — 요구는 `plan.md`의 `## 요구 이해`, 결정 이력은 위키 `decisions.md`, 미착수 항목은 대장이 담는다.
 
 ## OS/플랫폼
