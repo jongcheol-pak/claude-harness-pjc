@@ -30,6 +30,7 @@
       / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 초과하면서 '### ' 0개면 INFO).
       / decision-log 방향 미기재(§7-33 — 기각·보류 항목의 판정 직후 ': {실제 방향}' 부재).
       / conventions 근거 표기 집계(INFO — 항목 끝 '({근거})' 미보유 건수 / 전체, §7-34).
+      / patterns 관측 폭 집계(INFO — '## 프로젝트 사례' 절 미보유 건수 / 전체, §7-35).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 자동 백업 — schema §7 서두 정본).
 범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
@@ -135,6 +136,16 @@ DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
 # §7-33 방향 풀어쓰기를 요구하는 판정 (wiki-schema §2.8) — 주제 자리에 행위·부정문이 오면
 #  이 둘만 방향이 뒤집혀 읽힌다. 채택·번복은 주제와 방향이 같아 대상이 아니다.
 VERDICT_PROSE_REQUIRED = {"기각", "보류"}
+# §7-35 patterns(concept)의 관측 기록 절 이름 — wiki-schema §2.5가 정본.
+#  **이름을 하나로 고정하는 이유**: 조회자가 `confidence`를 「현재 실증 폭」으로 읽는데 그 필드는
+#  §2.5 「소급 비적용」상 **등재 시점 판정**이라 갈린다(실측 2026-09-07 — medium 20건 중 5건이
+#  2~6개 프로젝트 관측). 폭을 볼 자리가 필요한데 실 vault의 절 이름이 5종으로 갈려 있어
+#  기계도 사람도 한 자리를 못 본다. `layered-architecture`가 그 형태다 — `## 프로젝트 사례 (.NET)`
+#  이라 집계에서 빠지고, 빠진 것을 문서 전체 링크로 벌충하면 **비채택·미정으로 인용된 프로젝트가
+#  섞인다**(그 파일의 desktube는 비채택, taskmon은 「비어 있는 자리」다).
+PATTERN_CASE_SECTION = "프로젝트 사례"
+PATTERNS_DIR = "30_knowledge/patterns/"
+
 # §7-34 convention 항목의 근거 통제 어휘 (wiki-schema §3 「근거 통제 어휘」가 정본 —
 #  check_consistency.py의 VOCAB_LINES가 이 상수와 그 줄을 대조한다). convention은
 #  origin·confidence를 두지 않아(§2.9·§11 비대상) 이 표기가 유일한 신뢰도 축이다.
@@ -3169,6 +3180,26 @@ def main():
         infos.append(f"conventions 근거 표기 없음: {conv_missing}건 / 전체 {conv_total}건 "
                      f"— 항목 끝 '({'|'.join(sorted(EVIDENCE_VOCAB))})'가 이 타입의 유일한 신뢰도 축이다"
                      f"(schema §2.9 항목 형식·§3 근거 통제 어휘·§7-34)")
+
+    # §7-35: patterns 페이지의 관측 기록 절(`## 프로젝트 사례`) 미보유 건수를 **집계 1줄**로 낸다.
+    #  **§7-34와 같은 등급·형태다**(INFO 고정 + 분모 병기). 이유도 같다 — ⓐ 절 이름을 고치는 것은
+    #  그 절이 「관측 기록」인지 「쓰는 법」인지 읽어야 갈리는 판단이라 코드가 대신할 수 없고(실측
+    #  2026-09-07: `사용 사례` 9건이 그 갈림에 걸린다) ⓑ WARN이면 점진 적용 대상 전부가 매 lint마다
+    #  경고를 내 실제 결함이 묻힌다. **분모를 함께 내는 것이 요점이다** — 7/35는 「축이 고장났다」가
+    #  아니라 「형식이 아직 안 쓰인다」는 뜻이고, 두 수를 함께 보여야 그것이 한 줄에서 읽힌다.
+    #  **`## 프로젝트 사례 (.NET)` 처럼 뒤에 덧붙은 꼴은 보유로 세지 않는다** — 그것을 통과시키면
+    #  이름을 하나로 모으는 이 축의 목적이 사라지고, 정확히 그 형태가 지금 집계를 갈라 놓은 원인이다.
+    pat_total = pat_missing = 0
+    for r, (fm, typ, text) in pages.items():
+        if typ != "concept" or not r.startswith(PATTERNS_DIR) or r.startswith("90_archive/"):
+            continue
+        pat_total += 1
+        if not re.search(r"(?m)^##\s+" + re.escape(PATTERN_CASE_SECTION) + r"\s*$", text):
+            pat_missing += 1
+    if pat_missing:
+        infos.append(f"patterns 관측 폭: '## {PATTERN_CASE_SECTION}' 절 없음 {pat_missing}건 "
+                     f"/ 전체 {pat_total}건 — `confidence`는 **등재 시점** 판정이라 현재 실증 폭과 "
+                     f"다르다(§2.5 소급 비적용). 폭을 볼 자리가 이 절이다(schema §2.5·§7-35)")
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
