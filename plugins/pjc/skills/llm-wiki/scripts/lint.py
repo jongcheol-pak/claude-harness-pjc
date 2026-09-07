@@ -2960,7 +2960,7 @@ def main():
         #  **항목의 첫 판정만 본다** — 채택 항목의 본문이 대안을 "**기각**"으로 언급하는
         #  형태가 실 vault에 다수라(21건 중 6건), 줄 어디든 매치로 세면 그것들이 전부 잡힌다.
         #  괄호 부기는 `:`를 대체하지 못한다(§2.8) — 방향인 것과 메타 정보인 것이 같은 형태다.
-        vague = []
+        vague = 0
         for ln in text.splitlines():
             if not dec_item_rx.match(ln):
                 continue
@@ -2968,9 +2968,9 @@ def main():
             if not m or m.group(1) not in VERDICT_PROSE_REQUIRED:
                 continue
             if not ln[m.end():].startswith(":"):
-                vague.append(ln[:60])
+                vague += 1
         if vague:
-            warn(f"decision-log 방향 미기재: {r} {len(vague)}건 — 기각·보류는 판정 직후 "
+            warn(f"decision-log 방향 미기재: {r} {vague}건 — 기각·보류는 판정 직후 "
                  f"': {{실제 방향}}'이 필요하다(괄호 부기는 대체 불가, wiki-schema §2.8·§7-33)", r)
     # ⓐ-역방향: 롤오버 아카이브가 실재하는데 대응 현행 파일에 포인터 미등재 (검색 유실).
     #  대응 현행 파일 자체가 없으면 절차 C 보존-삭제 이력이므로 건너뜀(§7-24).
