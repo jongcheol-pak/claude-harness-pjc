@@ -44,6 +44,8 @@ disallowedTools: Write, Edit, NotebookEdit
 
 ### 6. Deferred 처리
 
+- **`[등재]` 가 4조건을 실제로 어겼는지 본다**(`plan-template.md` 「Deferred / Follow-up」) — **이번 회차가 만든 것(①)인데 등재됐으면 전가다.** 옮겼는가만 재면 잘못된 등재가 정상으로 보인다.
+
 - **`## Deferred / Follow-up`의 항목이 그 레포의 Deferred 대장(이 레포는 `docs/plans/deferred.md`)으로 옮겨졌는지 확인한다** — `plan.md`는 다음 회차에 교체되므로 옮기지 않으면 유실된다. **단 `[다음 회차]`는 등재 대상이 아니다** — 인계 프롬프트가 받는다. 미이관을 지적하지 말고, **보고에 그 프롬프트를 낼 것**을 판정문에 적는다(보고는 이 리뷰 뒤라 볼 수 없다).
 
 ### 7. 위키 기록
