@@ -11,7 +11,7 @@
 
 ## Build & Test
 
-모든 명령은 **repo 루트에서** 실행한다. **각 명령이 무엇을 대조하는지·함정은 `docs/harness-conventions.md`의 「검증 명령 상세 (무엇을 대조하는가 · 함정)」이 정본이다.**
+모든 명령은 **repo 루트에서** 실행한다. **각 명령이 무엇을 대조하는지·함정·케이스 수 기준선은 `docs/harness-conventions.md`의 「검증 명령 상세 (무엇을 대조하는가 · 함정)」이 정본이다.**
 
 - **Build (전 ps1 구문 검사)**:
   ```
@@ -25,7 +25,7 @@
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
   ```
-  전경에서 그대로 돌아간다(v1.225.0 실측 192~429초 · 767케이스 — 무상태 그룹 샤딩으로 분리 실행 절차가 사라졌다). **완료는 시간이 아니라 `결과: N/N OK` 라인과 exit 0으로 판정한다.** 실행 전 `CLAUDE_HARNESS_QUICK`을 지울 것 — 남아 있으면 41건이 FAIL한다(`docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
+  전경에서 그대로 돌아간다(v1.225.0 실측 192~429초 — 무상태 그룹 샤딩으로 분리 실행 절차가 사라졌다). **완료는 시간이 아니라 `결과: N/N OK` 라인과 exit 0으로 판정한다.** 실행 전 `CLAUDE_HARNESS_QUICK`을 지울 것 — 남아 있으면 41건이 FAIL한다(`docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
 - **차단 경로 커버리지** (차단 hook·골든 케이스 수정 시 필수 — 차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다):
   ```
   python plugins/pjc/hooks/evals/check-block-coverage.py
@@ -34,11 +34,11 @@
   ```
   python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
   ```
-- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수 — 106케이스, 약 45초. `--auto-split` 27케이스가 같은 실행에 포함되며 **전부 「2회째 실행은 수행 대상 없음」을 무조건 검사**한다):
+- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수 — 약 45초. `--auto-split` 골든이 같은 실행에 포함되며 **전부 「2회째 실행은 수행 대상 없음」을 무조건 검사**한다):
   ```
   python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
   ```
-- **AGENTS.md 이관 골든** (`relocate-agents.py` 수정 시 필수 — 14케이스):
+- **AGENTS.md 이관 골든** (`relocate-agents.py` 수정 시 필수):
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
@@ -47,7 +47,7 @@
   python plugins/pjc/evals/check-harness-consistency.py
   ```
 
-- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 재는 34케이스, 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다. **exit 2 는 `cases.json` 서식 위반**이라 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다 — 케이스 블록은 **두 줄 계약**이고(`  {` 가 자기 줄에 홀로 있고 **다음 줄이 `    "` 로 시작**), 어긋난 **그 줄**의 번호를 낸다(키 줄 위반이면 중괄호 줄이 아니라 키 줄 번호다). 중괄호 줄 자신이 그 형태를 벗어나면 줄로 못 짚어 **개수 불일치**로 보고한다):
+- **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — 세 검사기의 판정을 잰다. 2026-09-06 실측 6.0초. `--filter harness|truncation|stale` 로 좁힌다. **exit 2 는 `cases.json` 서식 위반**이라 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다 — 케이스 블록은 **두 줄 계약**이고(`  {` 가 자기 줄에 홀로 있고 **다음 줄이 `    "` 로 시작**), 어긋난 **그 줄**의 번호를 낸다(키 줄 위반이면 중괄호 줄이 아니라 키 줄 번호다). 중괄호 줄 자신이 그 형태를 벗어나면 줄로 못 짚어 **개수 불일치**로 보고한다):
   ```
   python plugins/pjc/evals/run-evals.py
   ```
@@ -61,7 +61,7 @@
   ```
   python plugins/pjc/evals/check-stale-refs.py
   ```
-- **스킬 트리거 eval** (`skills/*/SKILL.md` 의 frontmatter `description` 수정 시 필수 — 43케이스, **실제 모델 호출이라 비용이 크다**. `--filter <plan|impl|rec|wiki|dbg>` 로 좁힌다. `--isolation both` 는 격리·비격리 각 1회라 2배. 설치·push 불요 — 러너가 워킹트리를 `--plugin-dir` 로 직접 싣는다):
+- **스킬 트리거 eval** (`skills/*/SKILL.md` 의 frontmatter `description` 수정 시 필수 — **실제 모델 호출이라 비용이 크다**. `--filter <plan|impl|rec|wiki|dbg>` 로 좁힌다. `--isolation both` 는 격리·비격리 각 1회라 2배. 설치·push 불요 — 러너가 워킹트리를 `--plugin-dir` 로 직접 싣는다):
   ```
   python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>
   ```
