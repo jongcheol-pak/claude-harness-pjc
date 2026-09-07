@@ -528,6 +528,35 @@
     ]
   },
   {
+    "id": "harness-ledger-marker-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "등재 마커 실재 1항목"
+    ],
+    "expect_absent": [
+      "등재 마커가 주장하는"
+    ]
+  },
+  {
+    "id": "harness-ledger-marker-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "**첫 번째 미처리 항목**",
+        "replace": "**이름이 바뀐 항목**"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "등재 마커가 주장하는 항목이 대장에 없음"
+    ]
+  },
+  {
     "id": "harness-critical-pointer-ok",
     "checker": "harness",
     "fixture": "minimal-repo",

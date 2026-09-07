@@ -37,6 +37,13 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
   ⑩ 핵심 포인터 실재 — 「절 이름」 없이 적힌 「유일한 방어선」급 참조가 살아 있는가. 축 ①의
      정규식이 절 이름 동반 형태만 세므로 그 밖의 참조는 지워져도 수치가 안 움직인다. 대상 목록은
      손으로 관리하며 `CRITICAL_POINTERS` 가 정본이다.
+  ⑪ 등재 마커 실재  — `plan.md` 의 `[등재…]` 항목이 대장에 **실제로 있는가**. 그 마커의 정의는
+     `plan-template.md` 가 *「`deferred.md` 에 올렸다」* 로 두는 **완료 시제**인데, 마커를 적는 것과
+     대장에 줄을 넣는 것은 서로 다른 두 편집이라 한쪽만 하고 끝나기 쉽다. 회차 33·34 가 연속으로
+     마커만 달고 이관을 빠뜨렸고, **`session-context` hook 의 「미판정」 계수는 마커가 붙은 항목을
+     세지 않으므로** 기계가 그것을 정상으로 봤다 — 유실이 조용한 구조였다. 판정은 **제목(마커 뒤
+     첫 볼드)** 일치로 하고 본문은 보지 않는다(표현이 다듬어질 때마다 오탐이 되며, 두 실측 누락은
+     제목이 그대로 옮겨진 형태였다). `plan.md` 부재는 조용히 통과한다.
 
 **축을 지운 이력 (v1.224.0)**: 구 `plan-feature`·`implement-task`와 그 references, 리뷰어 6종이
 제거되면서 그것을 대상으로 하던 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 ·
@@ -61,6 +68,9 @@ LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
 LEDGER_CLOSED_MD = os.path.join(ROOT, "docs", "plans", "deferred-closed.md")
 LEDGER_HISTORY_MD = os.path.join(ROOT, "docs", "plans", "deferred-history.md")
 AGENTS_MD = os.path.join(ROOT, "AGENTS.md")
+# 축 11이 읽는다. **gitignore 대상이라 커밋되지 않는다** — 없는 것이 정상이므로
+#   부재는 조용히 통과한다(회차 시작 전·plan 없는 세션이 그 상태다).
+PLAN_MD = os.path.join(ROOT, "plan.md")
 
 # 9,000B 경계 = auto-compact 후 스킬이 앞 5,000토큰만 재부착된다는 사양에서 온 값.
 # 이 상수만은 문서가 아니라 여기 둔다 — 표의 "경계 행" 열이 이 값으로 계산된 결과이므로,
@@ -863,6 +873,47 @@ CRITICAL_POINTERS = [
 ]
 
 
+# 축 11이 대장 실재로 인정하는 파일. 종결된 항목은 `deferred-closed.md` 로 옮겨지므로
+#   둘 다 봐야 한다 — 대기에서만 찾으면 이미 처리된 항목이 위반으로 잡힌다.
+LEDGER_MARKER_RX = re.compile(r"^-\s*`?\[등재[^\]]*\]`?\s*(.*)$")
+
+
+def check_ledger_marker_sync():
+    """등재 마커 실재 — `plan.md` 의 `[등재…]` 항목이 대장에 실제로 있는가.
+
+    **왜 필요한가**: `[등재]` 는 「올렸다」는 완료 시제인데(`plan-template.md`), 마커를 적는
+    것과 대장에 줄을 넣는 것은 서로 다른 두 편집이다. 회차 33·34 가 연속으로 마커만 달고
+    이관을 빠뜨렸다. 더 나쁜 것은 **`session-context` hook 의 미판정 계수가 마커 붙은 항목을
+    세지 않는다**는 점이다 — 마커만 달면 기계가 정상으로 보고, `plan.md` 는 다음 회차에
+    교체되므로 그 항목이 조용히 사라진다.
+
+    **제목만 대조하는 이유**: 본문은 대장으로 옮기며 다듬어지는 것이 정상이라 전문 일치를
+    요구하면 오탐이 된다. 두 실측 누락은 둘 다 볼드 제목이 그대로 옮겨진 형태였다.
+
+    fail-open: `plan.md` 가 없으면 `([], 0)`. gitignore 대상이라 없는 것이 정상이다.
+    """
+    try:
+        plan = open(PLAN_MD, encoding="utf-8").read()
+    except OSError:
+        return [], 0
+    ledgers = read(LEDGER_MD) + read(LEDGER_CLOSED_MD)
+    issues, n = [], 0
+    for line in plan.splitlines():
+        m = LEDGER_MARKER_RX.match(line.strip())
+        if not m:
+            continue
+        title = re.search(r"\*\*(.+?)\*\*", m.group(1))
+        if not title:
+            continue   # 제목이 없으면 대조할 키가 없다 — 세지 않는다
+        n += 1
+        if title.group(1) not in ledgers:
+            issues.append(
+                "등재 마커가 주장하는 항목이 대장에 없음: %s — `[등재]` 는 「올렸다」는 뜻이다"
+                " (`docs/plans/deferred.md` 에 넣거나 마커를 `[미등재:<사유>]` 로 바꿔라)"
+                % title.group(1)[:70])
+    return issues, n
+
+
 def check_critical_pointers():
     """핵심 포인터 실재 — 「절 이름」이 없어도 이 참조들은 검사한다.
 
@@ -922,6 +973,7 @@ def main():
         ("줄바꿈 정합", check_line_endings()),
         ("종결 사유 명시", (close_issues, close_n)),
         ("핵심 포인터 실재", check_critical_pointers()),
+        ("등재 마커 실재", check_ledger_marker_sync()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
