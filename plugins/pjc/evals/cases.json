@@ -667,5 +667,22 @@
       "등재 근거 실측 3항목",
       "대조 전부 일치"
     ]
+  },
+  {
+    "id": "harness-ledger-evidence-multiline",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "- [2026-09-01] **첫 번째 미처리 항목** — 착수 조건 없음. **(실해: 2026-09-01 픽스처용 관측 요지)**",
+        "replace": "- [2026-09-01] **첫 번째 미처리 항목** — 착수 조건 없음. 본문이 코드스팬에 실제 줄바꿈을 담아 여기서 끊긴다.\r\n이어지는 물리줄이다. **(실해: 2026-09-01 픽스처용 관측 요지)**"
+      }
+    ],
+    "expect_keywords": [
+      "등재 근거 실측 2항목",
+      "대조 전부 일치"
+    ]
   }
 ]
