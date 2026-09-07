@@ -49,7 +49,9 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
      `check-stale-refs.py` 는 **파일**의 삭제만 보고 문서 안 식별자는 보지 않아, 3-1 이 구
      검증 단계의 폐기를 선언한 뒤로 그 이름들을 재는 축이 없었다 — 회차 38 이 같은 결함을
      세 번 만났고 매번 관측 범위가 달라 건수가 갈렸다. 인용(폐기 사실·유래·과거 사례)은
-     `DEPRECATED_QUOTE_ALLOWLIST` 가 덮고 그 **적중 수**를 기준선 상수와 대조한다.
+     `DEPRECATED_QUOTE_ALLOWLIST` 가 덮고, 그 **목록 길이**를 기준선 상수와 · **적중 수**를
+     스캔에 실재한 항목 수와 대조한다(앞은 면제가 조용히 느는 것을, 뒤는 조각이 넓어져
+     새 줄까지 덮는 것을 잡는다).
      **⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.
 
@@ -125,11 +127,16 @@ def section(text, heading_re, stop_re=r"^#{1,6} ", label=""):
     return "\n".join(lines[start:end])
 
 
+# 스캔에서 빼는 디렉터리 — `_md_files()` 와 축 ⑭ 가 **같은 집합을 쓴다**(복사본을 두면
+#  축마다 다른 것을 보게 된다).
+_SCAN_SKIP_DIRS = {".git", "node_modules", "__pycache__", "notes-archive", "fixtures"}
+
+
 def _md_files():
     # `evals/fixtures/`는 **검사 대상이 아니다** — 골든 픽스처는 검사기가 잡아야 할
     #  위반을 **의도적으로** 담고 있어(깨진 포인터·누락 절 등), 여기서 세면 그 의도가
     #  곧 실패로 보고된다. lint.py가 `90_archive/`를 제외하는 것과 같은 계열이다.
-    skip = {".git", "node_modules", "__pycache__", "notes-archive", "fixtures"}
+    skip = _SCAN_SKIP_DIRS
     for base, dirs, names in os.walk(ROOT):
         dirs[:] = [d for d in dirs if d not in skip]
         for n in names:
@@ -171,8 +178,8 @@ def check_pointer_reachability():
     def anchors_of(path):
         """도달 대상 = 헤딩 ∪ 굵은 텍스트.
 
-        이 repo는 절 앵커로 헤딩만 쓰지 않는다 — `**분해 전 — 기준 확보 …**`,
-        `**▶ 현행 잔량(기계 대조 대상)**`, 표 행의 `**컨트롤 타입 대체 불가피 (V-9)**`처럼
+        이 repo는 절 앵커로 헤딩만 쓰지 않는다 — `**카운트 기준 …**`,
+        `**▶ 현행 잔량(기계 대조 대상)**`, `**판정 3축**` 처럼
         굵은 텍스트를 앵커로 삼는 관례가 실재한다. 헤딩만 보면 그 참조가 전부 오탐이 된다.
         """
         if path not in heading_cache:
@@ -977,7 +984,9 @@ _DEPRECATED_EXTS = (".md", ".ps1", ".py", ".json")
 #  **같은 술어**를 쓴다 — 제외 정책을 두 번 정의하면 축마다 다른 것을 보게 된다.
 #  **골든 케이스 파일도 뺀다** — 검사기가 잡아야 할 위반을 `mutate` 문자열에 **의도적으로**
 #  담으므로, 세면 축이 자기 케이스에 걸린다(`_md_files()` 가 `fixtures/` 를 빼는 것과 같은 이유).
-_DEPRECATED_SKIP_SUFFIXES = ("cases.json",)
+#  좁게 잡는다 — 다른 `*-cases.json` 은 `rationale` 같은 산문 필드가 살아 있는 규칙을
+#  서술하므로 통째로 빼면 그 자리에 생기는 stale 이 안 보인다(그쪽 인용은 허용목록이 덮는다).
+_DEPRECATED_SKIP_RELS_EXTRA = {"plugins/pjc/evals/cases.json"}
 _DEPRECATED_SKIP_RELS = {
     "docs/plans/deferred.md",
     "docs/plans/deferred-closed.md",
@@ -993,7 +1002,7 @@ DEPRECATED_QUOTE_ALLOWLIST = [
     ("docs/golden-runner.md", "갈음한 사례들이 전부"),
     ("docs/harness-conventions.md", "구 근거였던 「F-4 스캔」은 대상이 소멸했다"),
     ("plugins/pjc/hooks/evals/scenarios/post-write-checks.ps1", "전재 폴백으로 경고 유지"),
-    ("plugins/pjc/evals/check-harness-consistency.py", "표 행의 `**컨트롤 타입 대체 불가피"),
+    ("plugins/pjc/skills/llm-wiki/evals/lint-cases.json", "M1이 잡은 미커버 축이다"),
 ]
 
 # 면제 **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 축의 전제가 「정규식의
@@ -1006,16 +1015,15 @@ DEPRECATED_ALLOWLIST_BASELINE = 7
 
 def _deprecated_targets():
     """스캔 대상을 `(경로, 레포 상대경로)`로 낸다 — `_scan_scope()`의 제외 술어 + 대장 3파일."""
-    skip_dirs = {".git", "node_modules", "__pycache__", "notes-archive", "fixtures"}
     for base, dirs, names in os.walk(ROOT):
-        dirs[:] = [d for d in dirs if d not in skip_dirs]
+        dirs[:] = [d for d in dirs if d not in _SCAN_SKIP_DIRS]
         for n in names:
             if not n.endswith(_DEPRECATED_EXTS):
                 continue
             path = os.path.join(base, n)
             rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
             if (_ARCHIVED_RX.match(rel) or rel in _LOCAL_ONLY or rel in _DEPRECATED_SKIP_RELS
-                    or n.endswith(_DEPRECATED_SKIP_SUFFIXES)):
+                    or rel in _DEPRECATED_SKIP_RELS_EXTRA):
                 continue
             yield path, rel
 
@@ -1047,12 +1055,16 @@ def _deprecated_pattern():
 
 
 def check_deprecated_identifiers():
-    """폐기 단계명이 살아 있는 자산에 남았는지 본다 — 허용목록이 인용을 덮고 적중 수를 기준선과 대조한다."""
+    """폐기 단계명이 살아 있는 자산에 남았는지 본다.
+
+    허용목록이 인용을 덮고, 그 **목록 길이**를 기준선 상수와 · **적중 수**를 스캔에 실재한
+    항목 수와 대조한다. 적중하지 않는 항목은 그 파일이 스캔 대상일 때만 따로 낸다.
+    """
     rx = _deprecated_pattern()
     allow = {}
     for rel, frag in DEPRECATED_QUOTE_ALLOWLIST:
         allow.setdefault(rel, []).append(frag)
-    issues, n, seen, present = [], 0, set(), set()
+    issues, n, hits, seen, present = [], 0, 0, set(), set()
     for path, rel in _deprecated_targets():
         present.add(rel)
         try:
@@ -1067,6 +1079,7 @@ def check_deprecated_identifiers():
             n += 1
             covered = next((f for f in frags if f in line), None)
             if covered is not None:
+                hits += 1
                 seen.add((rel, covered))
                 continue
             issues.append("폐기 식별자 `%s` 가 살아 있는 자산에 있다: %s:%d — 현행 규정을 가리키면 "
@@ -1080,6 +1093,13 @@ def check_deprecated_identifiers():
         issues.append("면제 총량이 기준선과 다르다: %d != %d (DEPRECATED_ALLOWLIST_BASELINE — "
                       "정당한 증감이면 상수를 함께 올려라)"
                       % (len(DEPRECATED_QUOTE_ALLOWLIST), DEPRECATED_ALLOWLIST_BASELINE))
+    # 총량은 같은 파일 두 리터럴의 대조라 **레포를 재지 않는다** — 스캔에 실재한 파일로
+    #  한정해 적중 수와 기대 수를 함께 세면 상수가 다시 레포를 잰다. 기존 조각이 같은
+    #  파일의 **새 줄에도 걸리기 시작하는** 변화가 이 대조에만 잡힌다.
+    expect_hit = sum(1 for rel, _ in DEPRECATED_QUOTE_ALLOWLIST if rel in present)
+    if hits != expect_hit:
+        issues.append("면제 적중 수가 목록과 다르다: %d != %d (같은 조각이 새 줄에도 걸렸거나 "
+                      "한 줄이 두 조각에 덮인다 — 조각을 그 줄만 특정하게 좁혀라)" % (hits, expect_hit))
     return issues, n
 
 
