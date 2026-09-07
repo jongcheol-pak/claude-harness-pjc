@@ -70,7 +70,7 @@
   python plugins/pjc/skills/evals/check_wiki_circuit.py
   ```
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 검사하므로 워킹트리 변경은 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 하나이고 **`README.md` 상단 `**버전**:` 줄을 함께 갱신**한다(`marketplace.json`에는 버전 필드가 없다 — `source: ./plugins/pjc`로 참조한다). 회차를 마감할 때 **버전만 올리는 별도 커밋**을 만들고 제목은 `설정: v{버전} — {회차 요약}`. **태그도 GitHub 릴리즈도 만들지 않는다**(v1.226.0 이후 관행 — 되살리려면 사용자에게 확인한다). **배포는 push 하나이고** 설치본 반영은 사용자가 `/plugin update`를 실행할 때 일어난다 — push·태그는 종전대로 별도 승인 대상이다.
+- **Release**: 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 하나이고 **`README.md` 상단 `**버전**:` 줄을 함께 갱신**한다(`marketplace.json`에는 버전 필드가 없다 — `source: ./plugins/pjc`로 참조한다). 회차를 마감할 때 **버전만 올리는 별도 커밋**을 만들고 제목은 `설정: v{버전} — {회차 요약}`. **push 뒤 곧바로 릴리즈를 발행한다** — `gh release create v{버전} --target <full-sha>`(**short sha는 거부된다**). ⚠ **그 태그는 원격에만 생겨** `git tag -l`로는 안 보인다 — 확인은 `gh release list`. 로컬 태그만 보고 「안 만드는 관행」으로 역추론하면 v1.247.0·v1.248.0처럼 누락된다. 설치본 반영은 사용자가 `/plugin update`를 실행할 때 일어난다 — push·릴리즈는 종전대로 별도 승인 대상이다.
 - **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 경로 보호가 오차단한다.
 
 ### 검증 매핑 (task 검증 선택)
