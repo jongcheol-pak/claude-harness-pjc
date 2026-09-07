@@ -44,7 +44,7 @@
 
 **AGENTS.md 이관 골든** — 케이스 정본은 `plugins/pjc/skills/record-project-fact/evals/relocation-cases.json`이고 **기준선 14케이스**다(2026-08-27 실측, 1초 미만). 발동·미발동·이관 불가·검증 델타 음성·이관처 신설·원복 2종을 덮는다. 판정 서술의 정본은 그 스크립트의 모듈 docstring이다(스킬 문서가 아니다).
 
-**evals 골든 러너** — 케이스 정본은 `plugins/pjc/evals/cases.json`이고 **기준선 34케이스**다(2026-09-06 실측 6.0초). `plugins/pjc/evals/` 세 검사기의 **판정 자체**를 잰다. 케이스마다 픽스처를 임시 복사본으로 뜨고 **검사기를 그 트리의 같은 상대 경로에 복사해** subprocess 로 돌린다 — 세 검사기 모두 repo 루트를 자기 파일의 3단계 상위로 고정해 인자·환경변수 주입 지점이 없기 때문이고, 그래서 **검사기 코드를 고치지 않고** ROOT 를 픽스처로 바꿀 수 있다. 픽스처는 `git init` 된 트리여야 한다(「줄바꿈 정합」 축이 `git ls-files` 로 대상을 열거하고 실패하면 exit 2 를 낸다). `--filter harness|truncation|stale` 로 좁힌다. **exit 2 케이스를 따로 둔다** — 앵커 파싱 실패가 통과로 읽히면 표 형식이 깨져 축이 통째로 사라져도 러너가 green 이다.
+**evals 골든 러너** — 케이스 정본은 `plugins/pjc/evals/cases.json`이고 **기준선 36케이스**다(2026-09-06 실측 6.0초). `plugins/pjc/evals/` 세 검사기의 **판정 자체**를 잰다. 케이스마다 픽스처를 임시 복사본으로 뜨고 **검사기를 그 트리의 같은 상대 경로에 복사해** subprocess 로 돌린다 — 세 검사기 모두 repo 루트를 자기 파일의 3단계 상위로 고정해 인자·환경변수 주입 지점이 없기 때문이고, 그래서 **검사기 코드를 고치지 않고** ROOT 를 픽스처로 바꿀 수 있다. 픽스처는 `git init` 된 트리여야 한다(「줄바꿈 정합」 축이 `git ls-files` 로 대상을 열거하고 실패하면 exit 2 를 낸다). `--filter harness|truncation|stale` 로 좁힌다. **exit 2 케이스를 따로 둔다** — 앵커 파싱 실패가 통과로 읽히면 표 형식이 깨져 축이 통째로 사라져도 러너가 green 이다.
 
 **스킬 트리거 eval** — 케이스 정본은 `plugins/pjc/skills/evals/trigger-cases.json`이고 **기준선 43케이스**다. `skills/*/SKILL.md`의 frontmatter `description`을 고치면 필수이며 **실제 모델 호출이라 비용이 크다** — `--filter <plan|impl|rec|wiki|dbg>`로 좁히고, `--isolation both`는 격리·비격리 각 1회라 2배다. 설치·push는 불요하다(러너가 워킹트리를 `--plugin-dir`로 직접 싣는다).
 
