@@ -622,5 +622,50 @@
       "허용목록 항목이 적중하지 않는다",
       "**폐기한 것**:"
     ]
+  },
+  {
+    "id": "harness-ledger-evidence-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": " **(실해: 2026-09-01 픽스처용 관측 요지)**",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "등재 근거 필드가 없다",
+      "첫 번째 미처리 항목"
+    ]
+  },
+  {
+    "id": "harness-ledger-evidence-ok-added",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "- [2026-09-02] **두 번째 미처리 항목**",
+        "replace": "- [2026-09-03] **세 번째 미처리 항목** — 착수 조건 없음. **(실해: 2026-09-03 필드를 갖춘 신규 항목)**\r\n- [2026-09-02] **두 번째 미처리 항목**"
+      },
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "대기 2 / 종결 1",
+        "replace": "대기 3 / 종결 1"
+      },
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "총 등재 누계 6",
+        "replace": "총 등재 누계 7"
+      }
+    ],
+    "expect_keywords": [
+      "등재 근거 실측 3항목",
+      "대조 전부 일치"
+    ]
   }
 ]
