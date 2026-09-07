@@ -158,6 +158,45 @@ def check_case_format(n_cases):
     return sorted(bad), opens
 
 
+def check_fixture_tracking():
+    """픽스처 파일이 **전부 git 에 추적되는가**를 케이스 실행 전에 본다.
+
+    **왜 필요한가 — 같은 사고가 두 번 났다**: `061f9065`(2026-09-06) 가 `refs-repo/notes.md` 를,
+    `fa27ed2a`(2026-09-07) 가 `minimal-repo/plan.md` 를 각각 `.gitignore` 의 **경로 무관 패턴**에
+    빼앗겼다. 앞엣것은 `git status` 를 눈으로 보다 우연히 발견했고, 뒤엣것은 **v1.249.0 으로
+    배포된 뒤** 완료 리뷰가 잡았다.
+
+    **왜 자기 PC 에서는 안 보이는가**: 이 러너는 `shutil.copytree` 로 **워킹트리를 통째** 뜬다.
+    미추적 파일도 그 사본에 들어가므로 작성자 환경에서는 언제나 전건 통과이고, 클론·설치본
+    에서만 red 다 — 돌려 보는 것으로는 원리상 드러나지 않는다. 그래서 **파일 존재가 아니라
+    「인덱스에 있는가」** 를 따로 재야 한다.
+
+    **fail-closed**: git 을 못 부르거나 `git ls-files` 가 실패하면 통과시키지 않고 사유를 낸다
+    (`check-harness-consistency.py` 의 `die()` 가 세운 원칙 — *「검사 자체가 성립하지 않으므로
+    통과로 처리하지 않는다」*). **「미추적 0건」과 「열거 실패」를 같은 말로 내지 않는다** —
+    이 검사가 막으려는 것이 바로 그 구분 없는 침묵이다.
+
+    반환: `(미추적 상대경로 목록, 실패 사유 or None)`.
+    """
+    repo = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+    if not os.path.isdir(FIXTURES):
+        return [], None                      # 픽스처 폴더가 없으면 잴 것이 없다
+    on_disk = set()
+    for dirpath, _dirs, files in os.walk(FIXTURES):
+        for f in files:
+            rel = os.path.relpath(os.path.join(dirpath, f), repo)
+            on_disk.add(rel.replace(os.sep, "/"))
+    try:
+        out = subprocess.run(["git", "ls-files", "plugins/pjc/evals/fixtures"],
+                             cwd=repo, capture_output=True, text=True)
+    except OSError as e:
+        return [], "git 을 실행할 수 없다 — %s" % e
+    if out.returncode != 0:
+        return [], "git ls-files 실패(rc=%d)" % out.returncode
+    tracked = {l.strip() for l in out.stdout.splitlines() if l.strip()}
+    return sorted(on_disk - tracked), None
+
+
 def main():
     ap = argparse.ArgumentParser(description="pjc evals 골든 러너")
     ap.add_argument("--filter", help="checker 필드로 좁힌다 (harness | truncation | stale)")
@@ -178,6 +217,21 @@ def main():
                   % (opens, len(cases)))
         print("케이스를 돌리지 않고 멈춥니다. `  {` 는 자기 줄에 홀로 두고 "
               "다음 줄을 `    \"id\"` 로 4칸 들여쓰세요.")
+        return 2
+    # 픽스처가 커밋되지 않으면 이 러너는 **워킹트리 사본** 덕에 통과하지만 클론에서는 red 다.
+    #   서식 결함과 같은 성격(입력을 신뢰할 수 없다)이라 같은 exit 2 를 쓴다.
+    untracked, git_err = check_fixture_tracking()
+    if git_err:
+        print("[FIXTURE FAIL] 픽스처 추적을 열거하지 못했다 — %s" % git_err)
+        print("케이스를 돌리지 않고 멈춥니다 — 「미추적 0건」이 아니라 **판정 불가**입니다.")
+        return 2
+    if untracked:
+        print("[FIXTURE FAIL] git 에 추적되지 않는 픽스처 %d건:" % len(untracked))
+        for rel in untracked:
+            print("  " + rel)
+        print("케이스를 돌리지 않고 멈춥니다 — 이 파일들은 클론·설치본에 없어 "
+              "그 케이스가 침묵하는 green 이 됩니다. `.gitignore` 의 경로 무관 패턴을 확인하세요"
+              "(예외 형식: `!plugins/pjc/evals/fixtures/**/<파일명>`).")
         return 2
     if a.filter:
         cases = [c for c in cases if c["checker"] == a.filter]

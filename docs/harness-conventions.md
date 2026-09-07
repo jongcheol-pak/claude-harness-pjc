@@ -44,7 +44,7 @@
 
 **AGENTS.md 이관 골든** — 케이스 정본은 `plugins/pjc/skills/record-project-fact/evals/relocation-cases.json`이고 **기준선 14케이스**다(2026-08-27 실측, 1초 미만). 발동·미발동·이관 불가·검증 델타 음성·이관처 신설·원복 2종을 덮는다. 판정 서술의 정본은 그 스크립트의 모듈 docstring이다(스킬 문서가 아니다).
 
-**evals 골든 러너** — 케이스 정본은 `plugins/pjc/evals/cases.json`이고 **기준선 36케이스**다(2026-09-06 실측 6.0초). `plugins/pjc/evals/` 세 검사기의 **판정 자체**를 잰다. 케이스마다 픽스처를 임시 복사본으로 뜨고 **검사기를 그 트리의 같은 상대 경로에 복사해** subprocess 로 돌린다 — 세 검사기 모두 repo 루트를 자기 파일의 3단계 상위로 고정해 인자·환경변수 주입 지점이 없기 때문이고, 그래서 **검사기 코드를 고치지 않고** ROOT 를 픽스처로 바꿀 수 있다. 픽스처는 `git init` 된 트리여야 한다(「줄바꿈 정합」 축이 `git ls-files` 로 대상을 열거하고 실패하면 exit 2 를 낸다). `--filter harness|truncation|stale` 로 좁힌다. **exit 2 케이스를 따로 둔다** — 앵커 파싱 실패가 통과로 읽히면 표 형식이 깨져 축이 통째로 사라져도 러너가 green 이다.
+**evals 골든 러너** — 케이스 정본은 `plugins/pjc/evals/cases.json`이고 **기준선 36케이스**다(2026-09-06 실측 6.0초). `plugins/pjc/evals/` 세 검사기의 **판정 자체**를 잰다. 케이스마다 픽스처를 임시 복사본으로 뜨고 **검사기를 그 트리의 같은 상대 경로에 복사해** subprocess 로 돌린다 — 세 검사기 모두 repo 루트를 자기 파일의 3단계 상위로 고정해 인자·환경변수 주입 지점이 없기 때문이고, 그래서 **검사기 코드를 고치지 않고** ROOT 를 픽스처로 바꿀 수 있다. 픽스처는 `git init` 된 트리여야 한다(「줄바꿈 정합」 축이 `git ls-files` 로 대상을 열거하고 실패하면 exit 2 를 낸다). `--filter harness|truncation|stale` 로 좁힌다. **케이스를 돌리기 전에 입력을 두 가지로 검사한다** — `cases.json` 서식(두 줄 계약)과 **픽스처의 git 추적 여부**이고, 어느 쪽이든 위반이면 exit 2 다. 후자는 `.gitignore` 의 경로 무관 패턴이 픽스처를 삼켜도 이 러너가 **워킹트리를 통째 복사해** 작성자 PC 에서만 통과하던 것을 막는다(2026-09-06 `notes.md`·2026-09-07 `plan.md` 2회 관측). git 을 못 부르면 「미추적 0건」이 아니라 **판정 불가**로 멈춘다(fail-closed). **exit 2 케이스를 따로 둔다** — 앵커 파싱 실패가 통과로 읽히면 표 형식이 깨져 축이 통째로 사라져도 러너가 green 이다.
 
 **스킬 트리거 eval** — 케이스 정본은 `plugins/pjc/skills/evals/trigger-cases.json`이고 **기준선 43케이스**다. `skills/*/SKILL.md`의 frontmatter `description`을 고치면 필수이며 **실제 모델 호출이라 비용이 크다** — `--filter <plan|impl|rec|wiki|dbg>`로 좁히고, `--isolation both`는 격리·비격리 각 1회라 2배다. 설치·push는 불요하다(러너가 워킹트리를 `--plugin-dir`로 직접 싣는다).
 
@@ -68,7 +68,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다) |
 | `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든**이 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint → **2회째 수행(「수행 대상 없음」 요구)**을 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |
-| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python plugins/pjc/evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든(**exit 2 는 `cases.json` 서식 위반** — 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다)이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다). |
+| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python plugins/pjc/evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든(**exit 2 는 `cases.json` 서식 위반 또는 미추적 픽스처** — 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다)이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다). |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) + **`python plugins/pjc/evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 두 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
 | 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — 기본값. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 | 여기에 **`python plugins/pjc/evals/check-stale-refs.py`**를 함께 돌린다 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산(레포 루트의 `*.ps1`·`*.md` 포함)에 남았는지 본다(실행에 영향이 없어 골든이 못 잡는 축이다).
@@ -82,7 +82,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 60,638 | 137,000 |
+| `docs/harness-conventions.md` | 61,200 | 137,000 |
 | `docs/golden-runner.md` | 16,671 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,241 | 37,000 |
 
