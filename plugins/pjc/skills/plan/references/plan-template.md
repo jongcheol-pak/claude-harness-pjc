@@ -132,7 +132,7 @@
 
 **다음은 plan에 적혀 있어도 실행 시점에 별도 승인을 받는다.**
 
-- 파괴적 작업 — force push · history rewrite · 재귀/대량 삭제 · DB DROP/TRUNCATE · 권한 변경
+- 파괴적 작업 — force push · history rewrite · 재귀/대량 삭제 · DB DROP/TRUNCATE · WHERE 없는 UPDATE/DELETE · 권한 변경
 - 외부·비가역 작업 — push · 병합 · 태그 · 릴리즈 · PR
 - 인증정보가 필요한 신규 외부 서비스
 - 파일 5개 이상 또는 100줄 이상의 삭제·이동·이름 변경
