@@ -975,6 +975,9 @@ _DEPRECATED_EXTS = (".md", ".ps1", ".py", ".json")
 #  본문이고, 고치면 그 시점의 사실이 아니게 된다(축 ① 이 대장 2종을 면제하는 것과 같은 이유).
 #  실측 39건이 전부 그 형태다. `_ARCHIVED_RX`·fixtures·`_LOCAL_ONLY` 는 `_scan_scope()` 와
 #  **같은 술어**를 쓴다 — 제외 정책을 두 번 정의하면 축마다 다른 것을 보게 된다.
+#  **골든 케이스 파일도 뺀다** — 검사기가 잡아야 할 위반을 `mutate` 문자열에 **의도적으로**
+#  담으므로, 세면 축이 자기 케이스에 걸린다(`_md_files()` 가 `fixtures/` 를 빼는 것과 같은 이유).
+_DEPRECATED_SKIP_SUFFIXES = ("cases.json",)
 _DEPRECATED_SKIP_RELS = {
     "docs/plans/deferred.md",
     "docs/plans/deferred-closed.md",
@@ -991,7 +994,6 @@ DEPRECATED_QUOTE_ALLOWLIST = [
     ("docs/harness-conventions.md", "구 근거였던 「F-4 스캔」은 대상이 소멸했다"),
     ("plugins/pjc/hooks/evals/scenarios/post-write-checks.ps1", "전재 폴백으로 경고 유지"),
     ("plugins/pjc/evals/check-harness-consistency.py", "표 행의 `**컨트롤 타입 대체 불가피"),
-    ("plugins/pjc/skills/llm-wiki/evals/lint-cases.json", "M1이 잡은 미커버 축이다"),
 ]
 
 # 면제 **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 축의 전제가 「정규식의
@@ -999,7 +1001,7 @@ DEPRECATED_QUOTE_ALLOWLIST = [
 #  올리는 것이 정답이고** 숫자를 맞추려 면제를 지우면 안 된다. 적중하지 않는 항목(문면이
 #  사라졌는데 목록에 남은 것)은 **그 파일이 스캔 대상에 실재할 때만** 따로 낸다 — 골든
 #  픽스처는 레포의 일부만 담아 없는 파일까지 세면 축이 픽스처에서 상시 실패한다.
-DEPRECATED_ALLOWLIST_BASELINE = 8
+DEPRECATED_ALLOWLIST_BASELINE = 7
 
 
 def _deprecated_targets():
@@ -1012,7 +1014,8 @@ def _deprecated_targets():
                 continue
             path = os.path.join(base, n)
             rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
-            if _ARCHIVED_RX.match(rel) or rel in _LOCAL_ONLY or rel in _DEPRECATED_SKIP_RELS:
+            if (_ARCHIVED_RX.match(rel) or rel in _LOCAL_ONLY or rel in _DEPRECATED_SKIP_RELS
+                    or n.endswith(_DEPRECATED_SKIP_SUFFIXES)):
                 continue
             yield path, rel
 
