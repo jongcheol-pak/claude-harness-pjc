@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재 · 폐기 식별자 실재.
+r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재 · 폐기 식별자 실재 · 등재 근거 실측.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -57,7 +57,7 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
   ⑮ 등재 근거 실측  — 대장 `## 대기` 의 각 항목이 **실해 근거 필드**(`(실해: YYYY-MM-DD …)`)를
      갖는가. 등재 하한선(「실해가 관측된 것만 올린다」)의 정본은 `plan-template.md`
      「Deferred / Follow-up」이고 이 축은 그것을 기계로 잰다. 하한선이 문면에만 있던 동안
-     대기가 **205건**까지 늘었고 그중 106건이 실해 없이 등재된 것으로 판정됐다(회차 40).
+     대기가 **205건**까지 늘었고 그중 96건이 실해 없이 등재된 것으로 판정됐다(회차 40).
      **어휘가 아니라 고정 형식 필드를 재는 이유**는 회차 39 의 교훈이다 — 문자열 어휘를
      세는 축은 자기 주석·골든·규약 문서에 걸린다. 필드의 **내용이 참인지**는 못 재며 그
      판정은 완료 리뷰어가 진다.
@@ -1117,7 +1117,7 @@ def check_deprecated_identifiers():
 #
 # 왜 필요한가 — 하한선이 문면에만 있던 동안 「현재 오차 0이다」·「조건이 오면 터진다」·
 #   「재는 축이 없다」 형태가 계속 쌓여 대기가 **205건**까지 늘었고(회차 40 착수 실측),
-#   그중 106건이 실해 없이 등재된 것으로 판정됐다. 문면은 다음 세션이 안 읽으면 닿지 않는다.
+#   그중 96건이 실해 없이 등재된 것으로 판정됐다. 문면은 다음 세션이 안 읽으면 닿지 않는다.
 #
 # 왜 어휘가 아니라 형식 필드를 재는가 — 「실측」·「걸렸다」 같은 어휘를 세면 **그 축의
 #   주석·골든·규약 문서가 자기 검사 대상이 된다**(회차 39 가 축 ⑭ 에서 한 회차에 2회 걸렸다).
@@ -1143,18 +1143,22 @@ def check_ledger_evidence(ledger):
         w = next(i for i, l in enumerate(lines) if l.strip() == "## 대기")
     except StopIteration:
         die("`deferred.md`에서 `## 대기` 구간 헤딩을 찾지 못함")
-    issues, n = [], 0
-    for l in lines[w:]:
-        if not re.match(r"^- \[\d{4}-\d{2}-\d{2}", l):
+    # **항목 블록 단위로 본다 — 물리줄이 아니다.** 대장에는 코드스팬 안에 실제 CR·LF 를 담아
+    #  그 함정을 보여주는 항목이 있어(줄바꿈 관련 3건) 한 항목이 여러 물리줄에 걸친다.
+    #  첫 줄만 보면 필드를 「항목 끝」에 두라는 머리말 형식과 양립할 수 없다(회차 40 완료 리뷰).
+    tail = lines[w:]
+    starts = [i for i, l in enumerate(tail) if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l)]
+    issues, n = [], len(starts)
+    for k, a in enumerate(starts):
+        b = starts[k + 1] if k + 1 < len(starts) else len(tail)
+        block = "\n".join(tail[a:b])
+        if LEDGER_EVIDENCE_RX.search(block):
             continue
-        n += 1
-        if LEDGER_EVIDENCE_RX.search(l):
-            continue
-        title = re.search(r"\*\*(.+?)\*\*", l)
+        title = re.search(r"\*\*(.+?)\*\*", tail[a])
         issues.append(
             "등재 근거 필드가 없다: %s — 등재 하한선은 「실해가 관측된 것만」이다"
             " (`(실해: YYYY-MM-DD <관측>)` 를 붙이거나 항목을 내려라)"
-            % (title.group(1)[:70] if title else l.strip()[:70]))
+            % (title.group(1)[:70] if title else tail[a].strip()[:70]))
     return issues, n
 
 
