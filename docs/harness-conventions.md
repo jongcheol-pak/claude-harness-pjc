@@ -48,6 +48,14 @@
 
 **스킬 트리거 eval** — 케이스 정본은 `plugins/pjc/skills/evals/trigger-cases.json`이고 **기준선 43케이스**다. `skills/*/SKILL.md`의 frontmatter `description`을 고치면 필수이며 **실제 모델 호출이라 비용이 크다** — `--filter <plan|impl|rec|wiki|dbg>`로 좁히고, `--isolation both`는 격리·비격리 각 1회라 2배다. 설치·push는 불요하다(러너가 워킹트리를 `--plugin-dir`로 직접 싣는다).
 
+**차단 경로 커버리지** — `plugins/pjc/hooks/evals/check-block-coverage.py`. **차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다** — 차단 hook 이나 그 골든 케이스를 고쳤으면 필수다.
+
+**잘린 주석 검사** — `plugins/pjc/evals/check-comment-truncation.py`. 두 축이다: 근거 인용 주석의 **절단**과 `rules/*-rationale.md` 헤딩과의 **짝**. `scripts/*.ps1`·`scripts/rules/*-rationale.md` 를 고쳤으면 필수다.
+
+**삭제 자산 참조 검사** — `plugins/pjc/evals/check-stale-refs.py`. 회차 1·2·22 가 없앤 **26개 이름**이 살아 있는 자산에 남았는가를 본다. 스캔 범위는 `plugins/**`·`docs/**`·레포 루트의 `*.ps1`·`*.md`(`validate.ps1`·`install.ps1`·`README.md` 등)이고 트리거도 같다. **`--ledger` 는 대장 `## 대기` 를 함께 본다** — 회차 25 가 대기 13건을 전수 판정해 **현재는 exit 0** 이고, 죽은 이름을 담았으나 면제된 항목은 `[NOTICE]` 로 건수·목록이 나온다. **면제는 항목 단위다** — 한 번 표기된 항목에 나중에 다른 죽은 이름이 섞여도 잡히지 않으며, 그 대가를 숨기지 않고 보이게 한 것이 이 `[NOTICE]` 다.
+
+**위키 회로 검사** — `plugins/pjc/skills/evals/check_wiki_circuit.py`. 기록 → 소비 → 조회 **7단계**가 이어져 있는가를 본다 — 어느 한 곳을 고쳐도 나머지 여섯은 그대로 통과하므로 이 검사가 그 연결을 잰다. **모델 호출이 없어 1초 미만**이라 스모크가 아니라 전량이 기본이다. `implement/SKILL.md`·`skills/WIKI.md`·`plan/SKILL.md`·`skills/llm-wiki/**` 를 고쳤으면 필수다.
+
 **하니스 정합 셀프체크** — **열한 축**(포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재)을 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). **축 목록의 정본은 `plugins/pjc/evals/check-harness-consistency.py`의 모듈 docstring이다** — v1.224.0이 구 스킬·리뷰어 6종을 없애며 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 마커 목록 · 개념 정본 · 착수 조건 동기 · 잔류 절 동기 · 복제 리터럴 동기 · 파생 수치 동기)이 잴 대상을 잃었고, **그때 이 문서의 목록이 함께 갱신되지 않아 2026-09-04까지 「열다섯 축」으로 남아 있었다**. 열한 중 **볼드 마커 짝·한 줄 문장 중복**만 이 문서에 설명 절이 있고(「문서 표기 축」), **문서 예산**은 `plugins/pjc/skills/DESIGN.md` 4절, **Deferred 집계**는 대장 자신의 「카운트 기준」 블록, **종결 사유 명시**는 규약 문면이 `deferred-closed.md` 머리말이고 **인정 표현·판정 규칙은 `CLOSE_REASON_RX` 와 `check_close_reasons()` 주석**이며, 나머지 여섯은 판정 규칙이 곧 코드라 그 함수 주석이 정본이다(회차 24 가 더한 **핵심 포인터 실재**의 대상 목록은 `CRITICAL_POINTERS` 상수다).
 
 **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 내장 경로 보호가 같은 명령 문자열 안 다른 따옴표 경로를 집어 오차단한다(하니스 hook과 무관). 조건·회피법은 아래 「검증 배치의 `Remove-Item` 오차단」.
@@ -82,7 +90,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 61,200 | 137,000 |
+| `docs/harness-conventions.md` | 62,934 | 137,000 |
 | `docs/golden-runner.md` | 16,671 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,241 | 37,000 |
 
