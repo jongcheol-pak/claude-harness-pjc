@@ -18,6 +18,9 @@
 ### WRONG / RIGHT
 
 ```
+WRONG: **추측 금지.**
+       → 무엇이 추측인지, 대신 무엇을 해야 하는지가 없다.
+
 WRONG: **추측 금지.** 모르는 것은 "확인 필요"로 표시한다. "아마도"·"보통은" 같은 가정은
        쓰지 않는다. 모든 주장은 Read 또는 grep으로 확인한 결과여야 한다. 사용처는 전수
        조사한다. 읽기 비례 원칙 — hit 과다(30건 초과)면 … (900자 계속)
@@ -81,7 +84,6 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 > Before your first tool call, say in one sentence what you're about to do. While working, give a brief update only when you find something important or change direction. When you finish, lead with the outcome: your first sentence should answer "what happened" or "what did you find," with supporting detail after it for readers who want it.
 
-- **자율 루프에서는 중간 업데이트도 내지 않는다** — 사용자가 개입할 지점이 없는 구간의 서술은 결정에 쓰이지 않으면서 컨텍스트를 소모해 후반 task의 품질을 떨어뜨린다.
 
 ## 4. 문서 예산
 
@@ -90,7 +92,7 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 | `SKILL.md` | **12,000 B** | **게이트** | 스킬 본문은 발동할 때마다 전량 로드된다. 이 선을 넘으면 규칙이 파묻히기 시작하고, 넘긴 뒤에는 줄이는 편집 자체가 새 결함을 만든다(실측: 104,733 B와 109,769 B에서 그렇게 됐다) |
 | 단일 `references/*.md` | **15,000 B** | **게이트** | 한 번에 Read해 쓸 수 있는 크기. 넘으면 주제를 쪼갠다 |
 | 에이전트 정의 `agents/*.md` | **6,000 B** | **게이트** | 리뷰어는 호출 프롬프트와 함께 로드되므로 짧을수록 지시가 선명하다 |
-| 가이드 문서 (`DESIGN.md`·`AUTHORING.md`) | **13,000 B** | **통지** | 자동 로드되지 않고 스킬을 고칠 때만 사람·모델이 열어 보므로 런타임 예산을 쓰지 않는다. 상한을 두는 이유는 읽는 부담뿐이다. **12,000 B에서 올렸다** — 관리 대상이 한 행 늘면 표를 담은 이 문서도 커진다(「넘을 때마다 올린다」와 다른 축) |
+| 가이드 문서 (`DESIGN.md`·`AUTHORING.md`) | **13,000 B** | **통지** | 자동 로드되지 않고 스킬을 고칠 때만 사람·모델이 열어 보므로 런타임 예산을 쓰지 않는다. 상한을 두는 이유는 읽는 부담뿐이다. |
 | hook 스크립트 `scripts/*.ps1` | **25,000 B** | **통지** | 한 번에 Read해 고칠 수 있는 크기. 넘으면 판정 데이터를 `rules/*.json`으로, 근거 주석을 `rules/*-rationale.md`로 내린다. **15,000 B에서 올렸다** — 근거·데이터를 전부 내려도 판정 로직과 차단 메시지가 17,000~22,000 B 남는다(v1.225.0 실측) |
 | 근거 문서 `scripts/rules/*.md` | **20,000 B** | **통지** | 코드에서 내린 근거를 받는 그릇이라 `references/*.md`와 hook 스크립트 사이다. 넘으면 주제를 쪼갠다 |
 
@@ -125,4 +127,4 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 ## 6. 적용 범위
 
-`skills/plan/` · `skills/implement/` · `agents/`. **§2·§3도 같은 범위다** — 다만 §2가 막는 것은 **편집으로 밀리는 번호**라, 번호가 기계 대조의 키인 참조(`wiki-schema` §7-N ↔ `lint.py`)는 그 대상이 아니다. 나머지 셋에 §1 형식을 일괄 적용하지 않는다 — `llm-wiki`·`pjc-systematic-debugging` 은 회차 32 가 **4축 전수 판정**을 마친 결과이고(그 커밋 본문), `record-project-fact` 는 **미판정**이다.
+`skills/plan/` · `skills/implement/` · `agents/`. **§2·§3도 같은 범위다**(**§4·§5는 스킬 트리 전체가 대상이다** — 예산 표는 `skills/*/SKILL.md` 를, hook 표는 그 밖의 스킬까지 잰다) — 다만 §2가 막는 것은 **편집으로 밀리는 번호**라, 번호가 기계 대조의 키인 참조(`wiki-schema` §7-N ↔ `lint.py`)는 그 대상이 아니다. 나머지 셋에 §1 형식을 일괄 적용하지 않는다 — `llm-wiki`·`pjc-systematic-debugging` 은 회차 32 가 **4축 전수 판정**을 마친 결과이고(그 커밋 본문), `record-project-fact` 는 **미판정**이다.
