@@ -141,8 +141,9 @@ def check_case_format(n_cases):
     """`cases.json` 원문의 들여쓰기 서식을 검사해 위반 줄 번호를 돌려준다.
 
     **축이 아니라 여기 있는 이유**: 이 파일은 이 러너의 입력이라 지역성이 맞고,
-    `check-harness-consistency.py` 에 축을 더하면 열한 축이 되면서 `AGENTS.md`·
-    `harness-conventions.md`·그 docstring 세 곳의 「열 축」 표기를 또 동기해야 한다.
+    `check-harness-consistency.py` 에 축을 더하면 `AGENTS.md`·`harness-conventions.md`·
+    그 docstring **세 곳의 축 개수 표기**를 또 동기해야 한다(수치를 여기 적으면 축을 더할
+    때마다 이 줄이 낡는다 — 회차 35 가 실제로 그렇게 낡혔다).
     """
     with io.open(CASES, encoding="utf-8", newline="") as fh:
         lines = fh.read().splitlines()

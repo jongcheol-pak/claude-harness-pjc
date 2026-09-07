@@ -48,7 +48,7 @@
 
 **스킬 트리거 eval** — 케이스 정본은 `plugins/pjc/skills/evals/trigger-cases.json`이고 **기준선 43케이스**다. `skills/*/SKILL.md`의 frontmatter `description`을 고치면 필수이며 **실제 모델 호출이라 비용이 크다** — `--filter <plan|impl|rec|wiki|dbg>`로 좁히고, `--isolation both`는 격리·비격리 각 1회라 2배다. 설치·push는 불요하다(러너가 워킹트리를 `--plugin-dir`로 직접 싣는다).
 
-**하니스 정합 셀프체크** — **열한 축**(포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재)을 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). **축 목록의 정본은 `plugins/pjc/evals/check-harness-consistency.py`의 모듈 docstring이다** — v1.224.0이 구 스킬·리뷰어 6종을 없애며 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 마커 목록 · 개념 정본 · 착수 조건 동기 · 잔류 절 동기 · 복제 리터럴 동기 · 파생 수치 동기)이 잴 대상을 잃었고, **그때 이 문서의 목록이 함께 갱신되지 않아 2026-09-04까지 「열다섯 축」으로 남아 있었다**. 열 중 **볼드 마커 짝·한 줄 문장 중복**만 이 문서에 설명 절이 있고(「문서 표기 축」), **문서 예산**은 `plugins/pjc/skills/DESIGN.md` 4절, **Deferred 집계**는 대장 자신의 「카운트 기준」 블록, **종결 사유 명시**는 규약 문면이 `deferred-closed.md` 머리말이고 **인정 표현·판정 규칙은 `CLOSE_REASON_RX` 와 `check_close_reasons()` 주석**이며, 나머지 다섯은 판정 규칙이 곧 코드라 그 함수 주석이 정본이다(회차 24 가 더한 **핵심 포인터 실재**의 대상 목록은 `CRITICAL_POINTERS` 상수다).
+**하니스 정합 셀프체크** — **열한 축**(포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재)을 대조한다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). **축 목록의 정본은 `plugins/pjc/evals/check-harness-consistency.py`의 모듈 docstring이다** — v1.224.0이 구 스킬·리뷰어 6종을 없애며 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 · 마커 목록 · 개념 정본 · 착수 조건 동기 · 잔류 절 동기 · 복제 리터럴 동기 · 파생 수치 동기)이 잴 대상을 잃었고, **그때 이 문서의 목록이 함께 갱신되지 않아 2026-09-04까지 「열다섯 축」으로 남아 있었다**. 열한 중 **볼드 마커 짝·한 줄 문장 중복**만 이 문서에 설명 절이 있고(「문서 표기 축」), **문서 예산**은 `plugins/pjc/skills/DESIGN.md` 4절, **Deferred 집계**는 대장 자신의 「카운트 기준」 블록, **종결 사유 명시**는 규약 문면이 `deferred-closed.md` 머리말이고 **인정 표현·판정 규칙은 `CLOSE_REASON_RX` 와 `check_close_reasons()` 주석**이며, 나머지 여섯은 판정 규칙이 곧 코드라 그 함수 주석이 정본이다(회차 24 가 더한 **핵심 포인터 실재**의 대상 목록은 `CRITICAL_POINTERS` 상수다).
 
 **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 내장 경로 보호가 같은 명령 문자열 안 다른 따옴표 경로를 집어 오차단한다(하니스 hook과 무관). 조건·회피법은 아래 「검증 배치의 `Remove-Item` 오차단」.
 
@@ -82,7 +82,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 60,635 | 137,000 |
+| `docs/harness-conventions.md` | 60,638 | 137,000 |
 | `docs/golden-runner.md` | 16,671 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 21,241 | 37,000 |
 
