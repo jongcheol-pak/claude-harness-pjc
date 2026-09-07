@@ -108,8 +108,8 @@
 ## Plan Location
 
 - **plan은 루트 `plan.md` 하나**다(덮어쓰기). 위치 선택지가 없으므로 `Plan Location:` 선언을 두지 않는다.
-- **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용)** — **영구 기록은 git 커밋**이고, 미처리 Deferred는 **대장 3파일**이 담는다(`deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 연산 규칙은 그 파일 머리말이 정본).
-- **PRD는 쓰지 않는다** — 요구는 `plan.md`의 `## 요구 이해`, 결정 이력은 위키 `decisions.md`, 미착수 항목은 대장이 담는다.
+- **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(로컬 전용·`intent/`는 추적)** — **영구 기록은 git 커밋**이고, 미처리 Deferred는 **대장 3파일**이 담는다(`deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 연산 규칙은 그 파일 머리말이 정본).
+- **PRD는 쓰지 않는다** — 요구는 `intent/`, 결정 이력은 위키 `decisions.md`, 미착수 항목은 대장이 담는다.
 
 ## OS/플랫폼
 
