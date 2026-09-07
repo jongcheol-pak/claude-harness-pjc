@@ -157,7 +157,7 @@
     "mutate": [
       {
         "file": "docs/harness-conventions.md",
-        "find": "| `docs/golden-runner.md` | 139 |",
+        "find": "| `docs/golden-runner.md` | 265 |",
         "replace": "| `docs/golden-runner.md` | 138 |"
       }
     ],
@@ -175,8 +175,8 @@
     "mutate": [
       {
         "file": "docs/harness-conventions.md",
-        "find": "| `docs/golden-runner.md` | 139 | 4,000 |",
-        "replace": "| `docs/golden-runner.md` | 139 | 100 |"
+        "find": "| `docs/golden-runner.md` | 265 | 4,000 |",
+        "replace": "| `docs/golden-runner.md` | 265 | 100 |"
       }
     ],
     "expect_keywords": [
@@ -585,6 +585,42 @@
     ],
     "expect_absent": [
       "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "harness-deprecated-live-asset",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/SKILL.md",
+        "find": "# Implement (픽스처)",
+        "replace": "# Implement (픽스처)\n\n검증은 Phase V-3 에서 수행한다."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "폐기 식별자",
+      "implement/SKILL.md"
+    ]
+  },
+  {
+    "id": "harness-deprecated-allowlist-dead",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/DESIGN.md",
+        "find": "- **폐기한 것**: Phase V 9단계(V-1~V-9) · Phase F 8단계 · Phase G.",
+        "replace": "- 구 검증 단계는 전부 사라졌다."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "허용목록 항목이 적중하지 않는다",
+      "**폐기한 것**:"
     ]
   }
 ]

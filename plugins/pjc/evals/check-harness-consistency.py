@@ -994,10 +994,11 @@ DEPRECATED_QUOTE_ALLOWLIST = [
     ("plugins/pjc/skills/llm-wiki/evals/lint-cases.json", "M1이 잡은 미커버 축이다"),
 ]
 
-# 면제 **적중 수**의 기준선. 늘거나 줄면 불일치다 — 이 축의 전제가 「정규식의 사각은 안
-#  보이지만 면제가 늘어나는 것은 보인다」이고, 적중하지 않는 항목(문면이 사라졌는데 목록에
-#  남은 것)도 같은 판정으로 낸다. 정당한 증감이면 **이 값을 함께 올리는 것이 정답이고**
-#  숫자를 맞추려 면제를 지우면 안 된다.
+# 면제 **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 축의 전제가 「정규식의
+#  사각은 안 보이지만 면제가 늘어나는 것은 보인다」이다. 정당한 증감이면 **이 값을 함께
+#  올리는 것이 정답이고** 숫자를 맞추려 면제를 지우면 안 된다. 적중하지 않는 항목(문면이
+#  사라졌는데 목록에 남은 것)은 **그 파일이 스캔 대상에 실재할 때만** 따로 낸다 — 골든
+#  픽스처는 레포의 일부만 담아 없는 파일까지 세면 축이 픽스처에서 상시 실패한다.
 DEPRECATED_ALLOWLIST_BASELINE = 8
 
 
@@ -1048,8 +1049,9 @@ def check_deprecated_identifiers():
     allow = {}
     for rel, frag in DEPRECATED_QUOTE_ALLOWLIST:
         allow.setdefault(rel, []).append(frag)
-    issues, n, hit_allow, seen = [], 0, 0, set()
+    issues, n, seen, present = [], 0, set(), set()
     for path, rel in _deprecated_targets():
+        present.add(rel)
         try:
             text = open(path, encoding="utf-8").read()
         except (OSError, UnicodeDecodeError):
@@ -1062,19 +1064,19 @@ def check_deprecated_identifiers():
             n += 1
             covered = next((f for f in frags if f in line), None)
             if covered is not None:
-                hit_allow += 1
                 seen.add((rel, covered))
                 continue
             issues.append("폐기 식별자 `%s` 가 살아 있는 자산에 있다: %s:%d — 현행 규정을 가리키면 "
                           "현행 이름으로 고치고, 인용이면 DEPRECATED_QUOTE_ALLOWLIST 에 올려라"
                           % (m.group(1), rel, i))
     for rel, frag in DEPRECATED_QUOTE_ALLOWLIST:
-        if (rel, frag) not in seen:
+        if rel in present and (rel, frag) not in seen:
             issues.append("허용목록 항목이 적중하지 않는다: %s — `%s` (문면이 사라졌으면 목록에서 빼라)"
                           % (rel, frag))
-    if hit_allow != DEPRECATED_ALLOWLIST_BASELINE:
-        issues.append("면제 적중 수가 기준선과 다르다: %d != %d (DEPRECATED_ALLOWLIST_BASELINE — "
-                      "정당한 증감이면 상수를 함께 올려라)" % (hit_allow, DEPRECATED_ALLOWLIST_BASELINE))
+    if len(DEPRECATED_QUOTE_ALLOWLIST) != DEPRECATED_ALLOWLIST_BASELINE:
+        issues.append("면제 총량이 기준선과 다르다: %d != %d (DEPRECATED_ALLOWLIST_BASELINE — "
+                      "정당한 증감이면 상수를 함께 올려라)"
+                      % (len(DEPRECATED_QUOTE_ALLOWLIST), DEPRECATED_ALLOWLIST_BASELINE))
     return issues, n
 
 
