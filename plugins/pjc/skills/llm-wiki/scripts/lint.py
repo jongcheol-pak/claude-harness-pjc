@@ -28,6 +28,7 @@
         ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향)
       / 작업 규약 미마이그레이션(§7-31 — 허브에 '## 작업 규약·주의사항' 잔존 시 INFO, conventions.md 이전 대상)
       / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 초과하면서 '### ' 0개면 INFO).
+      / decision-log 방향 미기재(§7-33 — 기각·보류 항목의 판정 직후 ': {실제 방향}' 부재).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 자동 백업 — schema §7 서두 정본).
 범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
@@ -130,6 +131,9 @@ ROOT_QUEUE_FILES = {"pending.md", "skill-feedback.md"}
 QUEUE_DATE_PREFIX_RX = re.compile(r"^\[\d{4}-\d{2}-\d{2}\]\s*$")
 # decision-log 항목 결정 어휘 (wiki-schema §2.8·§3 — 어긋나면 타임라인 합성·번복 추적 누락)
 DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
+# §7-33 방향 풀어쓰기를 요구하는 판정 (wiki-schema §2.8) — 주제 자리에 행위·부정문이 오면
+#  이 둘만 방향이 뒤집혀 읽힌다. 채택·번복은 주제와 방향이 같아 대상이 아니다.
+VERDICT_PROSE_REQUIRED = {"기각", "보류"}
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
 #  2필드(v1.2)·v 없는 버전(2.9.2)은 제품 라인·라이브러리 버전일 수 있어 비검출(오탐 회피가 1급 요건).
 #  경계를 \b로 하지 않는 이유: 한글도 \w라 "v1.2.3에서"(실vault 최빈 형태)의 꼬리 경계가 실패한다 —
@@ -2942,6 +2946,22 @@ def main():
                   if dec_item_rx.match(ln) and not dec_vocab_rx.search(ln))
         if bad:
             warn(f"decision-log 어휘 위반: {r} {bad}건 (고정 어휘 채택|보류|기각|번복 — wiki-schema §2.8)", r)
+        # ⓒ §7-33 기각·보류 항목의 방향 풀어쓰기 (wiki-schema §2.8).
+        #  **항목의 첫 판정만 본다** — 채택 항목의 본문이 대안을 "**기각**"으로 언급하는
+        #  형태가 실 vault에 다수라(21건 중 6건), 줄 어디든 매치로 세면 그것들이 전부 잡힌다.
+        #  괄호 부기는 `:`를 대체하지 못한다(§2.8) — 방향인 것과 메타 정보인 것이 같은 형태다.
+        vague = []
+        for ln in text.splitlines():
+            if not dec_item_rx.match(ln):
+                continue
+            m = dec_vocab_rx.search(ln)
+            if not m or m.group(1) not in VERDICT_PROSE_REQUIRED:
+                continue
+            if not ln[m.end():].startswith(":"):
+                vague.append(ln[:60])
+        if vague:
+            warn(f"decision-log 방향 미기재: {r} {len(vague)}건 — 기각·보류는 판정 직후 "
+                 f"': {{실제 방향}}'이 필요하다(괄호 부기는 대체 불가, wiki-schema §2.8·§7-33)", r)
     # ⓐ-역방향: 롤오버 아카이브가 실재하는데 대응 현행 파일에 포인터 미등재 (검색 유실).
     #  대응 현행 파일 자체가 없으면 절차 C 보존-삭제 이력이므로 건너뜀(§7-24).
     for r in pages:

@@ -54,6 +54,22 @@
       "rationale": "§7-24 decision-log 결정 어휘 위반 (WARN)"
     },
     {
+      "fixture": "decision-verdict-prose",
+      "expect_keywords": [
+        "decision-log 방향 미기재",
+        "2건"
+      ],
+      "rationale": "§7-33 기각·보류 방향 미기재 (WARN) — 판정 직후 마침표 1건 + 괄호 부기 1건. 괄호가 `:`를 대체하지 못함을 함께 실증하고, 같은 파일의 채택 항목(본문이 대안을 「기각」으로 언급)이 세어지지 않아 건수가 3이 아니라 2다"
+    },
+    {
+      "fixture": "decision-verdict-prose-ok",
+      "expect_absent": [
+        "decision-log 방향 미기재"
+      ],
+      "expect_clean": true,
+      "rationale": "§7-33 음성 방향 — 기각·보류가 `:`로 방향을 풀어쓴 vault는 경고하지 않는다. 채택 항목이 본문에서 대안을 「기각」으로 언급하는 줄도 오탐하지 않는다(첫 판정만 본다)"
+    },
+    {
       "fixture": "no-index",
       "expect_keywords": [
         "index.md 없음"
