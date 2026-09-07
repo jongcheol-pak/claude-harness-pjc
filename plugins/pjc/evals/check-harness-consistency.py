@@ -54,6 +54,13 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
      새 줄까지 덮는 것을 잡는다).
      **⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.
+  ⑮ 등재 근거 실측  — 대장 `## 대기` 의 각 항목이 **실해 근거 필드**(`(실해: YYYY-MM-DD …)`)를
+     갖는가. 등재 하한선(「실해가 관측된 것만 올린다」)의 정본은 `plan-template.md`
+     「Deferred / Follow-up」이고 이 축은 그것을 기계로 잰다. 하한선이 문면에만 있던 동안
+     대기가 **205건**까지 늘었고 그중 106건이 실해 없이 등재된 것으로 판정됐다(회차 40).
+     **어휘가 아니라 고정 형식 필드를 재는 이유**는 회차 39 의 교훈이다 — 문자열 어휘를
+     세는 축은 자기 주석·골든·규약 문서에 걸린다. 필드의 **내용이 참인지**는 못 재며 그
+     판정은 완료 리뷰어가 진다.
 
 **축을 지운 이력 (v1.224.0)**: 구 `plan-feature`·`implement-task`와 그 references, 리뷰어 6종이
 제거되면서 그것을 대상으로 하던 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 ·
@@ -1103,6 +1110,54 @@ def check_deprecated_identifiers():
     return issues, n
 
 
+# ─────────────────────────────────────────────────────────────
+# ⑮ 등재 근거 실측 — 대장 `## 대기` 의 각 항목이 **실해 근거 필드**를 갖는가
+#   등재 하한선의 정본은 `plan/references/plan-template.md` 「Deferred / Follow-up」이고,
+#   그 하한선은 「실해가 관측된 것만 올린다」이다. 필드 형식은 `(실해: YYYY-MM-DD <관측>)`.
+#
+# 왜 필요한가 — 하한선이 문면에만 있던 동안 「현재 오차 0이다」·「조건이 오면 터진다」·
+#   「재는 축이 없다」 형태가 계속 쌓여 대기가 **205건**까지 늘었고(회차 40 착수 실측),
+#   그중 106건이 실해 없이 등재된 것으로 판정됐다. 문면은 다음 세션이 안 읽으면 닿지 않는다.
+#
+# 왜 어휘가 아니라 형식 필드를 재는가 — 「실측」·「걸렸다」 같은 어휘를 세면 **그 축의
+#   주석·골든·규약 문서가 자기 검사 대상이 된다**(회차 39 가 축 ⑭ 에서 한 회차에 2회 걸렸다).
+#   고정 형식 필드는 축 ⑭ 가 `DESIGN.md` 3-1 을 정본으로 삼은 것과 같은 구조라 그 함정을 피한다.
+#
+# 못 잡는 것 — **필드에 적힌 관측이 참인지는 기계가 가르지 못한다.** 형식만 흉내 내면 통과한다.
+#   그 판정은 완료 리뷰어의 「6. Deferred 처리」가 지고, 이 축은 **적을 자리가 있는가**만 잰다.
+#   `deferred-closed.md`·`deferred-history.md` 는 대상이 아니다 — 닫힌 이력에 소급 필드를
+#   요구하면 216건을 손대야 하고, 그것은 이 하한선이 겨냥하는 자리가 아니다.
+# ─────────────────────────────────────────────────────────────
+LEDGER_EVIDENCE_RX = re.compile(r"\(실해: \d{4}-\d{2}-\d{2} ")
+
+
+def check_ledger_evidence(ledger):
+    """등재 근거 실측 — `## 대기` 항목이 `(실해: YYYY-MM-DD <관측>)` 필드를 갖는가.
+
+    날짜까지 본다 — 필드 이름만 있고 날짜가 없으면 형식을 흉내 낸 것이지 관측 기록이 아니다.
+    판정 대상은 `## 대기` 구간의 날짜 접두 항목뿐이고, 머리말의 형식 예시는 그 구간 밖이라
+    걸리지 않는다(축 ② 가 같은 구간 기준으로 세는 것과 맞춘다).
+    """
+    lines = ledger.split("\n")
+    try:
+        w = next(i for i, l in enumerate(lines) if l.strip() == "## 대기")
+    except StopIteration:
+        die("`deferred.md`에서 `## 대기` 구간 헤딩을 찾지 못함")
+    issues, n = [], 0
+    for l in lines[w:]:
+        if not re.match(r"^- \[\d{4}-\d{2}-\d{2}", l):
+            continue
+        n += 1
+        if LEDGER_EVIDENCE_RX.search(l):
+            continue
+        title = re.search(r"\*\*(.+?)\*\*", l)
+        issues.append(
+            "등재 근거 필드가 없다: %s — 등재 하한선은 「실해가 관측된 것만」이다"
+            " (`(실해: YYYY-MM-DD <관측>)` 를 붙이거나 항목을 내려라)"
+            % (title.group(1)[:70] if title else l.strip()[:70]))
+    return issues, n
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -1137,6 +1192,7 @@ def main():
         ("핵심 포인터 실재", check_critical_pointers()),
         ("등재 마커 실재", check_ledger_marker_sync()),
         ("폐기 식별자 실재", check_deprecated_identifiers()),
+        ("등재 근거 실측", check_ledger_evidence(ledger)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
