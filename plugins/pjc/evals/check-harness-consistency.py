@@ -1112,7 +1112,7 @@ def check_deprecated_identifiers():
 
 # ─────────────────────────────────────────────────────────────
 # ⑮ 등재 근거 실측 — 대장 `## 대기` 의 각 항목이 **실해 근거 필드**를 갖는가
-#   등재 하한선의 정본은 `plan/references/plan-template.md` 「Deferred / Follow-up」이고,
+#   등재 하한선의 정본은 `plan/references/deferred-rules.md`이고,
 #   그 하한선은 「실해가 관측된 것만 올린다」이다. 필드 형식은 `(실해: YYYY-MM-DD <관측>)`.
 #
 # 왜 필요한가 — 하한선이 문면에만 있던 동안 「현재 오차 0이다」·「조건이 오면 터진다」·

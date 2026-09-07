@@ -333,7 +333,7 @@ if (Test-HookSelected @('session-context')) {
     #   plan.md는 gitignore + 다음 회차 교체라, 대장(docs/plans/deferred.md)으로 옮기지 못한 항목은
     #   회차와 함께 사라진다. task 체크박스는 위 케이스들이 재지만 Deferred는 아무도 세지 않았다.
     #   마커 4종([등재]/[미등재:<사유>]/[미판정]/[다음 회차] — 형식 정본은
-    #   plan/references/plan-template.md 「Deferred / Follow-up」)이
+    #   plan/references/deferred-rules.md)이
     #   그 상태를 기계 판독 가능하게 만들고, hook은 **판정 마커가 붙지 않은 것**을 센다
     #   (`[미판정]`을 찾는 것이 아니다 — 회차 28이 이 표현을 plan-template.md에서 정정했다).
     #   ⚠ 대조 문자열은 부기 리터럴 'Deferred 미판정'이다 — 숫자만 재면 문면이 바뀌어도 통과한다.
