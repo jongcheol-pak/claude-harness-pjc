@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재.
+r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재 · 폐기 식별자 실재.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -44,6 +44,14 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
      세지 않으므로** 기계가 그것을 정상으로 봤다 — 유실이 조용한 구조였다. 판정은 **제목(마커 뒤
      첫 볼드)** 일치로 하고 본문은 보지 않는다(표현이 다듬어질 때마다 오탐이 되며, 두 실측 누락은
      제목이 그대로 옮겨진 형태였다). `plan.md` 부재는 조용히 통과한다.
+  ⑭ 폐기 식별자 실재 — 폐기된 단계명이 살아 있는 자산에서 **현행 규정**을 가리키는가.
+     목록의 정본은 `DESIGN.md` 3-1 의 고정 형식 1줄이라 선언과 검사가 한 자리에 묶인다.
+     `check-stale-refs.py` 는 **파일**의 삭제만 보고 문서 안 식별자는 보지 않아, 3-1 이 구
+     검증 단계의 폐기를 선언한 뒤로 그 이름들을 재는 축이 없었다 — 회차 38 이 같은 결함을
+     세 번 만났고 매번 관측 범위가 달라 건수가 갈렸다. 인용(폐기 사실·유래·과거 사례)은
+     `DEPRECATED_QUOTE_ALLOWLIST` 가 덮고 그 **적중 수**를 기준선 상수와 대조한다.
+     **⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
+     가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.
 
 **축을 지운 이력 (v1.224.0)**: 구 `plan-feature`·`implement-task`와 그 references, 리뷰어 6종이
 제거되면서 그것을 대상으로 하던 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 ·
@@ -943,6 +951,133 @@ def check_critical_pointers():
     return issues, n
 
 
+# ─────────────────────────────────────────────────────────────
+# ⑭ 폐기 식별자 실재 — 폐기된 단계명이 살아 있는 자산에서 **현행 규정**을 가리키는가
+#   목록의 정본은 `DESIGN.md` 3-1 의 고정 형식 1줄이다 — 선언과 검사가 한 자리에 묶인다.
+#   ⑫⑬ 은 결번이다: v1.224.0 이 지운 옛 축(개념 정본 유일성 · batch 트리거 동기)을
+#   대장 대기 항목 넷이 아직 그 번호로 가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.
+#
+# 왜 필요한가 — `check-stale-refs.py` 는 **파일**의 삭제만 보고 문서 안 식별자는 보지 않아,
+#   `DESIGN.md` 3-1 이 구 검증 단계의 폐기를 선언한 뒤로 그 이름들을 재는 축이 없었다.
+#   회차 38 은 같은 결함을 세 번 만났고 매번 관측 범위가 달라 건수가 갈렸다.
+#
+# 못 잡는 것 — **인용인지 규정인지는 기계가 가르지 못한다.** 그 판정은 허용목록이 대신
+#   지므로 새 인용을 넣는 회차가 목록에 함께 올려야 하고, 기준선 상수가 그 누락을 낸다.
+#   두 글자 접두처럼 짧은 토큰은 단어 경계로만 걸러 우연한 일치가 남을 수 있다.
+# ─────────────────────────────────────────────────────────────
+_DEPRECATED_ANCHOR = "**폐기 식별자(기계 대조)**:"
+
+# 스캔 대상 확장자 — 이 repo 는 마크다운이 곧 실행 규칙이지만 폐기 단계명은 hook 시나리오
+#  (`.ps1`)·골든 케이스(`.json`)·검사기(`.py`) 주석에도 실재한다(회차 38 이 hooks/evals/ 5건).
+_DEPRECATED_EXTS = (".md", ".ps1", ".py", ".json")
+
+# 대장 3파일은 **관측 시점의 기록**이라 제외한다 — 과거 회차가 그 이름으로 무엇을 했는지가
+#  본문이고, 고치면 그 시점의 사실이 아니게 된다(축 ① 이 대장 2종을 면제하는 것과 같은 이유).
+#  실측 39건이 전부 그 형태다. `_ARCHIVED_RX`·fixtures·`_LOCAL_ONLY` 는 `_scan_scope()` 와
+#  **같은 술어**를 쓴다 — 제외 정책을 두 번 정의하면 축마다 다른 것을 보게 된다.
+_DEPRECATED_SKIP_RELS = {
+    "docs/plans/deferred.md",
+    "docs/plans/deferred-closed.md",
+    "docs/plans/deferred-history.md",
+}
+
+# 허용목록 — `(레포 상대경로, 그 줄을 특정하는 조각)`. **줄 번호를 쓰지 않는다**(밀린다).
+#  전부 폐기 사실·유래·과거 사례의 **인용**이라 현행 규정을 가리키지 않는다.
+DEPRECATED_QUOTE_ALLOWLIST = [
+    ("plugins/pjc/skills/DESIGN.md", "**폐기한 것**:"),
+    ("plugins/pjc/skills/DESIGN.md", _DEPRECATED_ANCHOR),
+    ("plugins/pjc/skills/plan/SKILL.md", "회차 38 실측:"),
+    ("docs/golden-runner.md", "갈음한 사례들이 전부"),
+    ("docs/harness-conventions.md", "구 근거였던 「F-4 스캔」은 대상이 소멸했다"),
+    ("plugins/pjc/hooks/evals/scenarios/post-write-checks.ps1", "전재 폴백으로 경고 유지"),
+    ("plugins/pjc/evals/check-harness-consistency.py", "표 행의 `**컨트롤 타입 대체 불가피"),
+    ("plugins/pjc/skills/llm-wiki/evals/lint-cases.json", "M1이 잡은 미커버 축이다"),
+]
+
+# 면제 **적중 수**의 기준선. 늘거나 줄면 불일치다 — 이 축의 전제가 「정규식의 사각은 안
+#  보이지만 면제가 늘어나는 것은 보인다」이고, 적중하지 않는 항목(문면이 사라졌는데 목록에
+#  남은 것)도 같은 판정으로 낸다. 정당한 증감이면 **이 값을 함께 올리는 것이 정답이고**
+#  숫자를 맞추려 면제를 지우면 안 된다.
+DEPRECATED_ALLOWLIST_BASELINE = 8
+
+
+def _deprecated_targets():
+    """스캔 대상을 `(경로, 레포 상대경로)`로 낸다 — `_scan_scope()`의 제외 술어 + 대장 3파일."""
+    skip_dirs = {".git", "node_modules", "__pycache__", "notes-archive", "fixtures"}
+    for base, dirs, names in os.walk(ROOT):
+        dirs[:] = [d for d in dirs if d not in skip_dirs]
+        for n in names:
+            if not n.endswith(_DEPRECATED_EXTS):
+                continue
+            path = os.path.join(base, n)
+            rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+            if _ARCHIVED_RX.match(rel) or rel in _LOCAL_ONLY or rel in _DEPRECATED_SKIP_RELS:
+                continue
+            yield path, rel
+
+
+def _deprecated_pattern():
+    """`DESIGN.md` 3-1 고정 형식 1줄에서 식별자 정규식을 만든다.
+
+    접두가 같고 끝자리만 다른 두 토큰이 이웃하면 **범위 표기**로 보고 한 패턴으로 접는다 —
+    낱개를 코드에 나열하면 그 목록이 곧 두 번째 정본이 된다.
+    """
+    line = next((l for l in read(DESIGN_MD).splitlines() if _DEPRECATED_ANCHOR in l), None)
+    if line is None:
+        die("DESIGN.md 3-1 에서 `%s` 줄을 찾지 못함 (폐기 식별자 목록의 정본)" % _DEPRECATED_ANCHOR)
+    toks = re.findall(r"`([^`]+)`", line.split(_DEPRECATED_ANCHOR, 1)[1])
+    if not toks:
+        die("DESIGN.md 3-1 폐기 식별자 줄에서 백틱 토큰을 하나도 파싱하지 못함")
+    num_rx = re.compile(r"^(.*?)([0-9]+)$")
+    pats, i = [], 0
+    while i < len(toks):
+        lo = num_rx.match(toks[i])
+        hi = num_rx.match(toks[i + 1]) if i + 1 < len(toks) else None
+        if lo and hi and lo.group(1) == hi.group(1):
+            pats.append("%s[%s-%s]" % (re.escape(lo.group(1)), lo.group(2), hi.group(2)))
+            i += 2
+            continue
+        pats.append(re.escape(toks[i]))
+        i += 1
+    return re.compile(r"(?<![0-9A-Za-z_-])(%s)(?![0-9A-Za-z_-])" % "|".join(pats))
+
+
+def check_deprecated_identifiers():
+    """폐기 단계명이 살아 있는 자산에 남았는지 본다 — 허용목록이 인용을 덮고 적중 수를 기준선과 대조한다."""
+    rx = _deprecated_pattern()
+    allow = {}
+    for rel, frag in DEPRECATED_QUOTE_ALLOWLIST:
+        allow.setdefault(rel, []).append(frag)
+    issues, n, hit_allow, seen = [], 0, 0, set()
+    for path, rel in _deprecated_targets():
+        try:
+            text = open(path, encoding="utf-8").read()
+        except (OSError, UnicodeDecodeError):
+            continue
+        frags = allow.get(rel, [])
+        for i, line in enumerate(text.splitlines(), 1):
+            m = rx.search(line)
+            if not m:
+                continue
+            n += 1
+            covered = next((f for f in frags if f in line), None)
+            if covered is not None:
+                hit_allow += 1
+                seen.add((rel, covered))
+                continue
+            issues.append("폐기 식별자 `%s` 가 살아 있는 자산에 있다: %s:%d — 현행 규정을 가리키면 "
+                          "현행 이름으로 고치고, 인용이면 DEPRECATED_QUOTE_ALLOWLIST 에 올려라"
+                          % (m.group(1), rel, i))
+    for rel, frag in DEPRECATED_QUOTE_ALLOWLIST:
+        if (rel, frag) not in seen:
+            issues.append("허용목록 항목이 적중하지 않는다: %s — `%s` (문면이 사라졌으면 목록에서 빼라)"
+                          % (rel, frag))
+    if hit_allow != DEPRECATED_ALLOWLIST_BASELINE:
+        issues.append("면제 적중 수가 기준선과 다르다: %d != %d (DEPRECATED_ALLOWLIST_BASELINE — "
+                      "정당한 증감이면 상수를 함께 올려라)" % (hit_allow, DEPRECATED_ALLOWLIST_BASELINE))
+    return issues, n
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -976,6 +1111,7 @@ def main():
         ("종결 사유 명시", (close_issues, close_n)),
         ("핵심 포인터 실재", check_critical_pointers()),
         ("등재 마커 실재", check_ledger_marker_sync()),
+        ("폐기 식별자 실재", check_deprecated_identifiers()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
