@@ -276,6 +276,11 @@ def main():
         plans = [p for p in plans if args.filter in os.path.basename(p)]
     if not plans:
         print(f"[중단] 채점할 plan이 없습니다: {args.plans_dir}")
+        # 기본 경로(docs/plans)에는 대장 3파일만 있고 `YYYY-MM-DD-<slug>.md`가 없다 —
+        # 이 레포는 plan.md 를 추적하지 않아 채점 대상 세트가 레포 안에 존재하지 않는다.
+        if args.plans_dir == DEFAULT_PLANS_DIR:
+            print("       이 레포는 plan.md 를 추적하지 않습니다(.gitignore) — "
+                  "보관해 둔 plan 세트를 `--plans-dir <경로>`로 지목하세요.")
         sys.exit(2)
 
     run_id = time.strftime("%Y%m%d-%H%M%S")

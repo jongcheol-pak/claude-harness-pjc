@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 53건 (7스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 43건 (5스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
 | `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 | `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
 
@@ -57,7 +57,7 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 2026-07-29 기준선에서 격리 0.6 / 비격리 0.9로 갈렸다. **한쪽 수치만 보고 "트리거가 나쁘다/좋다"로 결론짓지 말 것** — A/B 비교는 같은 모드끼리만 유효하다.
 
-**현행 격리 기준선 (2026-08-06, run `20260806-153530` · 56건 · opus)**: 발동률 **0.906**(판정 pos 32건) · 오발동률 **0.000**(판정 neg 23건) · `inconclusive` 0 · `timeout` 1(`impl-neg-1`).
+**현행 격리 기준선 (2026-08-06, run `20260806-153530` · **그때의 케이스 파일 56건** — 그 뒤 스킬 2종이 폐기돼 현행 43건과 분모가 다르다 · opus)**: 발동률 **0.906**(판정 pos 32건) · 오발동률 **0.000**(판정 neg 23건) · `inconclusive` 0 · `timeout` 1(`impl-neg-1`).
 
 ⚠ **이 값은 앞의 `0.6`·`0.750`과 분모가 다르다** — should-trigger 케이스의 턴 소진분을 분모에서 빼기 시작한 뒤의 수치이므로(위 「턴 상한」), 그 전 값과 직접 빼서 증감으로 읽지 말 것. **같은 정의로 잰 값끼리의 추이**는 `20260805-175450` 0.750 → `20260806-122901` 0.833 → `20260806-143647` 0.871 → **`20260806-153530` 0.906**이다.
 
@@ -74,7 +74,7 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 `trigger-cases.json`의 `cases[]`에 `id`·`skill`·`expect`·`workspace`·`query`·`why`를 넣는다.
 
-**`workspace`는 7종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
+**`workspace`는 5종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
 - `no_plan` — AGENTS.md·소스만 있는 기본 프로젝트(Python 단일 스크립트).
 - `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `pjc:implement`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
 - `no_agents_md` — **AGENTS.md가 없는** 프로젝트. 그 파일의 **부재**가 발동 조건의 일부인 케이스를 재는 자리다(`record-project-fact`는 갱신 전담이라 부재 상태에서 미발동이 정답이다).
@@ -94,13 +94,13 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 ## rubric_eval.py
 
 ```
-python rubric_eval.py                     # docs/plans/의 전 plan을 2회씩 채점
+python rubric_eval.py --plans-dir <경로>   # 그 폴더의 전 plan을 2회씩 채점
 python rubric_eval.py --repeats 1         # 편차 측정 없이 1회만 (스모크)
 python rubric_eval.py --filter harness     # plan 파일명 부분 일치 필터
-python rubric_eval.py --plans-dir <경로>   # 입력 세트 지정
+python rubric_eval.py --repeats 3         # 편차를 더 넓게
 ```
 
-`rubric.md`의 8개 항목을 judge에게 그대로 실어 보내 각 plan을 채점한다. 채점 대상은 파일명이 `YYYY-MM-DD-<slug>.md`인 것만이다 — `deferred.md`·`deferred-closed.md`·`deferred-history.md` 같은 대장 문서를 plan으로 오인해 채점하지 않기 위한 필터다(파일명 규약 기준이라 대장이 셋으로 갈려도 동작은 같다).
+`rubric.md`의 8개 항목을 judge에게 그대로 실어 보내 각 plan을 채점한다. **기본 경로(`docs/plans`)에는 채점 대상이 없다** — 이 레포는 `plan.md`를 추적하지 않아(.gitignore) `YYYY-MM-DD-<slug>.md`가 거기 존재하지 않는다. 보관해 둔 plan 세트를 `--plans-dir`로 지목하고, 0건이면 러너가 `exit 2`로 멈춘다(조용한 성공을 만들지 않는다).  채점 대상은 파일명이 `YYYY-MM-DD-<slug>.md`인 것만이다 — `deferred.md`·`deferred-closed.md`·`deferred-history.md` 같은 대장 문서를 plan으로 오인해 채점하지 않기 위한 필터다(파일명 규약 기준이라 대장이 셋으로 갈려도 동작은 같다).
 
 ### 이 러너가 반드시 지키는 것
 
@@ -127,11 +127,13 @@ python compare_evals.py <before.json> <after.json>
 - 통계 검정도 시각화도 하지 않는다. 차이가 잡음인지 신호인지는 러너가 함께 보고하는 **편차 수치**를 보고 사람이 판단한다(2026-07-29 기준선의 편차는 최대 1점).
 - exit code: 비교 완료 `0` / 입력 오류·`kind` 불일치 `1`.
 
-`kind`가 다른 run, D4 상위 구조가 아닌 파일, 없는 파일은 전부 명확한 메시지와 함께 `exit 1`로 거부한다.
+> **`trigger_eval.py`의 종료 코드**: 전건 통과 `0` / `fail` 있음 `1` / **`error`·`timeout` 있음 `2`**(관측 실패는 통과가 아니다 — 로드 단언 실패와 같은 등급이다).
+
+`kind`가 다른 run, 위 「공통 출력 계약」 구조가 아닌 파일, 없는 파일은 전부 명확한 메시지와 함께 `exit 1`로 거부한다.
 
 ## 비용
 
-`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(53건 → 106세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(43건 → 86세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
 
 ## 실행 함정 (2026-09-03 실측)
 

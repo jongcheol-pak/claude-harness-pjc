@@ -36,7 +36,7 @@ UNJUDGED_TRIGGER_STATUSES = ("timeout", "error", "inconclusive")
 
 
 def load_run(path):
-    """run JSON을 읽고 D4 상위 구조를 검증한다. 어긋나면 즉시 종료한다."""
+    """run JSON을 읽고 README 「공통 출력 계약」 구조를 검증한다. 어긋나면 즉시 종료한다."""
     try:
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)

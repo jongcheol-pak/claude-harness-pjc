@@ -438,6 +438,19 @@ def summarize(cases):
     }
 
 
+def exit_code(summaries):
+    """run 요약들에서 프로세스 종료 코드를 정한다.
+
+    `error`·`timeout`은 **관측 실패**라 통과로 흘리면 안 된다 — 케이스가 판정되지
+    않았는데 exit 0 이 나가면 CI도 사람도 green 으로 읽는다. 로드 단언 실패와 같은
+    등급(2)으로 묶는다. `fail`만 있으면 트리거 품질 저하이므로 1이다.
+    """
+    unobserved = sum(s["error"] + s["timeout"] for s in summaries)
+    if unobserved:
+        return 2
+    return 1 if sum(s["failed"] for s in summaries) else 0
+
+
 def run_suite(cases, isolation, model, out_dir, run_id):
     """한 격리 모드로 전 케이스를 돌리고 결과 JSON을 저장한 뒤 요약을 반환한다."""
     config_dir = prepare_isolated_config() if isolation == "isolated" else None
@@ -465,6 +478,11 @@ def run_suite(cases, isolation, model, out_dir, run_id):
             if result.get("detail"):
                 print(f"       {result['detail']}")
             results.append(result)
+        # `init` 이벤트를 한 번도 못 받으면 위 단언이 아예 돌지 않는다 — 로드 확인 없이
+        # 전 케이스가 "미발동"으로 집계되는 은닉 실패라, 그 자체를 실패로 낸다.
+        if load_info is None:
+            print(f"[중단] init 이벤트를 한 번도 받지 못해 pjc 로드를 확인하지 못했습니다 (mode={isolation}).")
+            sys.exit(2)
     finally:
         shutil.rmtree(tmp_root, ignore_errors=True)
         if config_dir:
@@ -556,8 +574,7 @@ def main():
     if len(modes) == 2:
         print_isolation_diff(runs["isolated"], runs["native"])
 
-    failed = sum(r["summary"]["failed"] for r in runs.values())
-    sys.exit(1 if failed else 0)
+    sys.exit(exit_code([r["summary"] for r in runs.values()]))
 
 
 if __name__ == "__main__":
