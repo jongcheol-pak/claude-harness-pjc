@@ -182,7 +182,7 @@ function Invoke-WarnExternalOps {
     return New-HookResult -Block $false -Stderr @($msg) -Context $msg
 }
 
-# ---- require-task-checkbox: 'T<N>:' 완료 커밋인데 plan의 해당 체크박스가 미완료면 차단(exit 2) ----
+# ---- require-task-checkbox: 'T<N>' 완료 커밋(제목 `{유형}: T<N> — …` 또는 구형 `T<N>: …`)인데 plan의 해당 체크박스가 미완료면 차단(exit 2) ----
 function Invoke-RequireTaskCheckbox {
     param($data)
     $cmd = $data.tool_input.command
@@ -190,14 +190,18 @@ function Invoke-RequireTaskCheckbox {
 
     if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
 
-    # 완료 커밋 판정: 커밋 메시지 '제목(첫 줄)'이 'T<N>:'로 시작할 때만(본문·괄호 언급 오탐 방지).
+    # 완료 커밋 판정: 커밋 메시지 '제목(첫 줄)'이 `{유형}: T<N> — …`(글로벌 「Git」 다섯 유형 · 회차 44 정본) 또는 구형 `T<N>: …` 일 때만
+    #   (본문·괄호 언급 오탐 방지). 종전 정규식은 구형만 받아 최근 40커밋(전부 신형)에서 한 번도 발화하지 않았다 — 게이트가 사문화돼 있었다.
     $msgMatch = [regex]::Match($cmd, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
     if (-not $msgMatch.Success) { return New-HookResult }
     $msgVal = if ($msgMatch.Groups[1].Success) { $msgMatch.Groups[1].Value }
               elseif ($msgMatch.Groups[2].Success) { $msgMatch.Groups[2].Value }
               else { $msgMatch.Groups[3].Value }
-    $msgTitle = ($msgVal -split '\r?\n', 2)[0]
-    $m = [regex]::Match($msgTitle, '^\s*T(\d+)\s*:')
+    $msgLines = @($msgVal -split '\r?\n')
+    $msgTitle = $msgLines[0]
+    # `-m "$(cat <<'EOF' … EOF)"` 형태는 첫 줄이 heredoc 여는 줄이라 제목이 아니다 — 그 다음 줄이 제목이다(회차 44 실측 미탐).
+    if ($msgTitle -match '^\s*\$\(\s*cat\s+<<-?\s*["'']?\w+["'']?\s*$' -and $msgLines.Count -gt 1) { $msgTitle = $msgLines[1] }
+    $m = [regex]::Match($msgTitle, '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T(\d+)\s*(?::|—|-)')
     if (-not $m.Success) { return New-HookResult }
     $taskNum = $m.Groups[1].Value
 
@@ -221,8 +225,9 @@ function Invoke-RequireTaskCheckbox {
     }
     if ([string]::IsNullOrWhiteSpace($planText)) { return New-HookResult }
 
-    # 미완료 마커 [ ]/[/] + 해당 task 번호. 불릿은 '-'·'*' 둘 다. 'T$taskNum\b'라 T1이 T10 오매치 안 함.
-    $unchecked = [regex]::Match($planText, "(?m)^\s*[-*]\s*\[[ /]\]\s*T$taskNum\b")
+    # 미완료 마커 [ ]/[/] + 해당 task 번호. 불릿은 '-'·'*' 둘 다. 템플릿 정본의 하위 항목 `- [ ] **T<N>-<M>**`(볼드)도 받는다 —
+    #   T<N> 완료 커밋의 대상은 T<N>-1…T<N>-k 전부라 하나라도 미완료면 차단한다(회차 44 D2). 'T$taskNum(-\d+)?\b'라 T1이 T10 오매치 안 함.
+    $unchecked = [regex]::Match($planText, "(?m)^\s*[-*]\s*\[[ /]\]\s*\**T$taskNum(-\d+)?\b")
     if (-not $unchecked.Success) { return New-HookResult }
 
     $foundLine = $unchecked.Value.Trim()

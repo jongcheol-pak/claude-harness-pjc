@@ -555,7 +555,7 @@
     },
     {
       "hook": "guard-bash.ps1",
-      "name": "git commit --fixup 침묵 통과 (T<N>: 패턴 없음)",
+      "name": "git commit --fixup 침묵 통과 (T<N> 제목 패턴 없음)",
       "command": "git commit --fixup=abc123",
       "expect_exit": 0,
       "expect_silent": true

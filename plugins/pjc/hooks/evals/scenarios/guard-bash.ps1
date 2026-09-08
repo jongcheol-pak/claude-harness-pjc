@@ -58,11 +58,28 @@ $rtcNo = Join-Path $work 'rtc-noplan'; New-Item -ItemType Directory $rtcNo -Forc
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcNo 'T3: 검색 요약')
 Assert-Case -Name "rtc: plan 파일 없음 통과(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-# ---- [P1T5] 제목이 아닌 본문·괄호의 T<N>: 언급은 판정 제외 (제목 첫 줄만) ----
+# ---- [P1T5] 제목이 아닌 본문·괄호의 T<N> 언급은 판정 제외 (제목 첫 줄만) ----
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn '문서: 릴리즈 노트 (T3: 스키마 변경 반영)')
 Assert-Case -Name "rtc: 제목이 '문서:'이고 괄호에 T3 언급 → 통과 (P1T5 제목 한정)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T3: 실제 완료 커밋')
 Assert-Case -Name "rtc: 제목이 T3:로 시작 → 미완료 차단 유지 (P1T5)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+# ---- [회차 44 T4] 현행 제목 형식 `{유형}: T<N> — …` + 템플릿 볼드 하위 항목 `- [ ] **T3-1**` ----
+#   종전 정규식은 구형 `T3:` 제목과 비볼드 체크박스만 받아 현행 회차에서 한 번도 발화하지 않았다(게이트 사문화).
+#   양성 2(신형 제목 · heredoc 제목) + 완료 통과 1 + 델타 음성 1(유형 뒤가 T 가 아닌 제목).
+$rtcBold = Join-Path $work 'rtc-bold'; New-Item -ItemType Directory $rtcBold -Force | Out-Null
+"# plan`n### T3. 검색`n- [ ] **T3-1** 검색 요약`n- [x] **T3-2** 인덱스" | Set-Content (Join-Path $rtcBold 'plan.md')
+$rtcBoldOk = Join-Path $work 'rtc-bold-ok'; New-Item -ItemType Directory $rtcBoldOk -Force | Out-Null
+"# plan`n### T3. 검색`n- [x] **T3-1** 검색 요약`n- [x] **T3-2** 인덱스" | Set-Content (Join-Path $rtcBoldOk 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcBold '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: 신형 제목 기능: T3 — + 볼드 하위 항목 미완료 → 차단 (회차 44 T4)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$heredocMsg = [string]::Join("`n", @('$(cat <<''EOF''', '기능: T3 — 검색 요약', '', '본문', 'EOF', ')'))
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcBold $heredocMsg)
+Assert-Case -Name "rtc: heredoc 제목(-m 뒤 cat heredoc 본문) 도 둘째 줄을 제목으로 읽어 차단 (회차 44 T4)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcBoldOk '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: 볼드 하위 항목 전부 [x] → 신형 제목 통과(무출력) (회차 44 T4)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcBold '설정: v1.258.0 — 회차 44: T3 정리')
+Assert-Case -Name "rtc: 유형 뒤가 T<N> 이 아닌 제목은 판정 제외 (회차 44 T4 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
 # QUICK 우회 — 별도 stderr 안내 출력이 있는 독립 분기 (silent 아님, exit 0)
 $env:CLAUDE_HARNESS_QUICK = '1'

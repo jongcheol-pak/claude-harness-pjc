@@ -69,9 +69,10 @@ try {
             $planText = $null
             try { $planText = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 } catch {}
             if ($planText) {
-                # task 라인만 카운트 (pjc plan 규약: "- [x] T1: ..." — 통과 체크리스트 등 다른 체크박스 제외)
-                $all = [regex]::Matches($planText, '(?m)^- \[[ /x]\] T\d+').Count
-                $open = [regex]::Matches($planText, '(?m)^- \[[ /]\] T\d+').Count
+                # task 라인만 카운트 — 템플릿 정본(plan-template.md 「작업 단계」)은 `- [ ] **T1-1** …`(볼드 하위 항목)이고 구형 `- [x] T1: …` 도 받는다.
+                #   통과 체크리스트 등 다른 체크박스는 제외. 종전 정규식은 볼드를 못 받아 현행 plan 에서 0건으로 떨어졌다(대장 2026-09-06·09-08 등재분 — 회차 44 해소).
+                $all = [regex]::Matches($planText, '(?m)^- \[[ /x]\] \**T\d+').Count
+                $open = [regex]::Matches($planText, '(?m)^- \[[ /]\] \**T\d+').Count
 
                 # ---- Deferred 미판정 계수 — 근거는 `rules/session-context-rationale.md`의 「§7 ---- Deferred 미판정 계수」
                 # 마커의 백틱 코드 스팬을 허용한다 — 형식 정본(deferred-rules.md)이 마커를 표 안에서

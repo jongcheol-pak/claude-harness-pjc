@@ -6,15 +6,17 @@
 # 13) session-context 시나리오 (SessionStart — plan 상태 요약 주입, v1.112.0)
 # =====================================================================
 if (Test-HookSelected @('session-context')) {
-    # 픽스처: plan.md(T 3개 중 미완료 2 — [x]/[/]/[ ] 혼합)
+    # 픽스처: plan.md(T 3개 중 미완료 2 — [x]/[/]/[ ] 혼합). 형식도 혼합이다 — 템플릿 정본의 볼드 하위 항목
+    #   `- [ ] **T3-1**` 과 구형 `- [/] T2:` 를 함께 두어 계수가 두 형식을 다 세는지 잰다(회차 44 T4 — 종전 픽스처는
+    #   전부 구형이라 볼드를 못 세는 회귀가 green 이었다: 대장 2026-09-06·09-08).
     $scProj = Join-Path $work 'sc-proj'
     New-Item -ItemType Directory $scProj -Force | Out-Null
     @(
         '# Plan: test',
         '## Tasks',
-        '- [x] T1: done (Type A)',
+        '- [x] **T1-1** done (Type A)',
         '- [/] T2: in progress (Type B)',
-        '- [ ] T3: todo (Type C)'
+        '- [ ] **T3-1** todo (Type C)'
     ) | Set-Content -Encoding UTF8 (Join-Path $scProj 'plan.md')
 
     # SC1: startup → plan 미완료 카운트 주입
