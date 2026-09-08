@@ -99,7 +99,12 @@ $spCases = @(
     # [F-7 2R m3] **인접 요구를 단독으로 검증**한다 — 라벨은 정확하고 사이 줄만 있다. 차단 등급은
     #   빠지고 경고(`password 값`)는 남는다. 이 케이스가 없으면 인접 요구를 되돌려도 골든이 green이다.
     @{ n = 'T9 음성: 라벨은 정확하나 사이 줄이 있다(인접 요구 단독)';
-       t = "계정: $spBt$spId$spBt`n비고: 정책 참고`n비밀번호: $spBt$spPw$spBt"; e = 'password 값' }
+       t = "계정: $spBt$spId$spBt`n비고: 정책 참고`n비밀번호: $spBt$spPw$spBt"; e = 'password 값' },
+    # [회차 44 2R] 콜론형 실값은 차단 라벨을 **유지**한다 — 설정 키 경로 술어는 자격증명 쌍 경로에서만 참조로 본다(-PairScope).
+    #   두 라벨 값 자리에 그 술어를 걸면 URI 형태는 신호가 0 이 된다(2R 실측). 키·값은 조각 조립 — 러너 파일 자신의 자기 게이트 회피.
+    @{ n = '회차 44 2R 양성: 연결 문자열 콜론형 실값은 차단 라벨 유지'; t = ('Ser' + 'ver' + '=' + 'db;' + 'Pwd' + '=' + 'Secret1' + ':King2' + ';'); e = 'password 값,DB 연결 문자열' },
+    @{ n = '회차 44 2R 양성: URI 콜론형 실값은 차단 라벨 유지(신호 0 방지)'; t = ('post' + 'gres://app:' + 'Secret1' + ':King2' + '@host/db'); e = 'DB/서비스 URI 인증정보' },
+    @{ n = '회차 44 2R 음성: 연결 문자열 값 자리의 참조형은 라벨 없음'; t = ('Ser' + 'ver' + '=' + 'db;' + 'Pwd' + '=' + '${DB_PWD}' + ';'); e = '' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')

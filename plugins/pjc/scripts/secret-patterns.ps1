@@ -37,7 +37,7 @@ function Test-CredentialPairToken {
 
     # 값이 아니라 **참조**면 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§6 값이 아니라 **참조**면 자격증명이 아니다」
     #   술어 본체는 Test-ReferenceValue 하나다(회차 44 완료 리뷰 — 사본이 둘이면 갈린다).
-    if (Test-ReferenceValue $pw) { return $false }
+    if (Test-ReferenceValue $pw -PairScope) { return $false }
 
     # 상태·에러코드 열거는 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§7 상태·에러코드 열거는 자격증명이 아니다」
     if ($pw -match '^[\d._-]+$') { return $false }
@@ -49,14 +49,19 @@ function Test-CredentialPairToken {
 # 값이 아니라 **참조**면 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§6 값이 아니라 **참조**면 자격증명이 아니다」
 #   회차 44: 같은 술어를 함수로 묶어 차단 등급 두 라벨(DB 연결 문자열 · DB/서비스 URI)의 **값 자리**에도 적용한다 —
 #   종전에는 키 존재만 봐서 `Password=${DB_PASSWORD}` 참조형이 차단됐고, 차단 메시지가 권하는 형태로 고쳐도 다시 차단됐다(실측).
+#   범위는 둘이다(2R BLOCKER) — 차단 등급 두 라벨은 D10 이 열거한 참조 표기(변수·플레이스홀더·코드 조회)만 쓰고,
+#   「설정 키 경로」·「안내어」는 **자격증명 쌍 경로에서만**(-PairScope) 참조로 본다. 그 둘을 차단 등급에 걸면
+#   `Secret1:King2` 같은 콜론형 실값의 차단 라벨이 사라진다(2R 실측 — URI 형태는 신호가 0 이 된다).
 function Test-ReferenceValue {
-    param([string]$v)
+    param([string]$v, [switch]$PairScope)
     if ([string]::IsNullOrWhiteSpace($v)) { return $false }
     if ($v -match '^\$' -or $v -match '^%[\w.]+%$') { return $true }                                   # $X · ${X} · $env:X · %X%
     if ($v -match '(?i)^(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\()') { return $true }
     if ($v -match '^<[^>]+>$' -or $v -match '^\{\{?[\w.:-]+\}\}?$') { return $true }                 # <placeholder> · {{template}}
-    if ($v -match '^[A-Za-z][\w-]*(:[A-Za-z][\w-]*)+$') { return $true }                              # 설정 키 경로(appsettings:Db:Pwd)
-    if ($v -match '(?i)^(환경변수|없음|미설정|\.env)') { return $true }                               # 값 대신 안내를 적은 자리
+    if ($PairScope) {
+        if ($v -match '^[A-Za-z][\w-]*(:[A-Za-z][\w-]*)+$') { return $true }                          # 설정 키 경로(appsettings:Db:Pwd)
+        if ($v -match '(?i)^(환경변수|없음|미설정|\.env)') { return $true }                           # 값 대신 안내를 적은 자리
+    }
     return $false
 }
 
