@@ -362,14 +362,15 @@ def check_case(case):
         fn = getattr(mod, u["func"], None)
         if fn is None:
             return False, "lint.py에 함수 없음: " + u["func"]
+        # **기대값이 없으면 실패로 본다** — 없으면 아래 대조를 모두 건너뛰고 통과가 되어,
+        #  오타 한 글자로 「아무것도 재지 않는 케이스」가 조용히 늘어난다. 위 스키마 방어가
+        #  unit 을 제외하므로 그 몫을 여기서 진다.
+        if "expect" not in u:
+            return False, "unit 케이스에 기대값(`expect`)이 없음: " + u["func"]
         got = fn(*u.get("args", []))
-        want_first = u.get("expect_first_line")
-        if want_first is not None:
-            first = (got or "").splitlines()[0] if got else None
-            if first != want_first:
-                return False, "%s 첫 줄 불일치 — 기대 %r / 실제 %r" % (
-                    u["func"], want_first, first)
-        if "expect" in u and got != u["expect"]:
+        # **반환 전문을 대조한다** — 첫 줄만 재면 시작 경계만 고정되고 끝 경계가 무너져도
+        #  통과한다(회차 45 완료 리뷰 2R 이 그 상태를 실측으로 잡았다).
+        if got != u["expect"]:
             return False, "%s 반환 불일치 — 기대 %r / 실제 %r" % (u["func"], u["expect"], got)
         return True, "%s 단위 판정 통과" % u["func"]
 

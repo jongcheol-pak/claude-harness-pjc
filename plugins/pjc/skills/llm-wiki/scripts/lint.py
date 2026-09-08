@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """llm-wiki Lint 보조 스크립트.
 
-사용법: python lint.py "<vault_path>" [--fix] [--build-index [--dry-run]]
+사용법: python lint.py "<vault_path>" [--fix [--dry-run]] [--build-index [--dry-run]] [--auto-split [--dry-run]]
 검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md·skill-feedback.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
