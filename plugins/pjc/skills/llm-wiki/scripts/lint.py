@@ -608,7 +608,7 @@ def cleanup_backups(vault, today):
          `--fix` 자동 백업만 쌓이는 것을 막는다. 제거 시점을 「세션 종료」가 아니라 「다음 --fix 시작」으로
          두는 이유: 미커밋 상태로 세션이 끝나면 git 복구(checkout은 미커밋을 못 되돌린다)와 백업이
          동시에 없어져 복구 수단이 0이 된다. 한 세션분을 남기면 복구 창이 유지되고 누적은 1개로 상한된다.
-      ② **`{YYYY-MM-DD}-presplit/` 중 BACKUP_KEEP_DAYS 경과분 제거** — 원본이 vault에 그대로 있는
+      ② **`{YYYY-MM-DD}[-{HHMMSS}]-presplit/` 중 BACKUP_KEEP_DAYS 경과분 제거** — 원본이 vault에 그대로 있는
          수정 백업 성격이라 30일 정리 대상이다(§8 — `-deleted`·`-pre-restore` 같은 보존 특례가 없다).
     **`-deleted`(삭제 백업 = 유일 사본)와 `-pre-restore`(복구 재백업)는 어느 규칙에도 걸리지 않는다** —
     지우면 복구가 영구 불가해진다. 날짜로 읽히지 않는 이름(사람이 만든 임의 폴더)도 건드리지 않는다.
@@ -633,7 +633,7 @@ def cleanup_backups(vault, today):
             if day == today:
                 continue
             reason = "이전 날짜 — 누적 금지"
-        elif suffix == "-presplit":
+        elif suffix.endswith("-presplit"):   # `-{HHMMSS}-presplit` — 실행마다 고유
             if (today - day).days <= BACKUP_KEEP_DAYS:
                 continue
             reason = f"{BACKUP_KEEP_DAYS}일 경과"
@@ -1081,6 +1081,30 @@ def build_index(vault, dry_run):
     return 0
 
 
+def _presplit_dir(vault):
+    """이번 실행 전용 사본 폴더 경로 — `{YYYY-MM-DD}-{HHMMSS…}-presplit`.
+
+    **날짜만 쓰면 같은 날 두 번째 실행이 첫 실행의 사본을 재사용한다**: `backup()`의
+    미덮어쓰기 규정(§8 「그 세션 최초 상태 1부」)이 그때는 **1회째 분할 결과를 「원본」으로
+    보존**해, 원복해도 1회째가 반영된 상태로 돌아간다(되돌릴 수 없는 구간이 생긴다).
+    날짜를 앞에 두는 것은 `cleanup_backups`의 30일 판정이 그 자리를 읽기 때문이다.
+
+    시각은 고정 장치를 두지 않는다 — `_today()`와 달리 이 값을 기대값으로 삼는 골든이
+    없고(폴더는 개수와 내용으로 판정한다), 고정하면 같은 초 재실행이 다시 겹친다.
+    **한 실행 안에서도 본 pass와 재점검 pass가 각자 세션을 만든다**(auto_split) — 그 둘도
+    갈려야 하므로 밀리초까지 쓰고, 그래도 겹치면 순번을 붙인다(시계 해상도에 기대지 않는다).
+    순번은 `-presplit` **앞**에 넣는다 — 뒤에 붙이면 `cleanup_backups`의 접미 판정이 놓친다."""
+    root = os.path.join(vault, "90_archive", "backup")
+    stamp = "%s-%s" % (_today().isoformat(),
+                       datetime.datetime.now().strftime("%H%M%S%f")[:9])
+    path = os.path.join(root, stamp + "-presplit")
+    n = 2
+    while os.path.exists(path):
+        path = os.path.join(root, "%s-%d-presplit" % (stamp, n))
+        n += 1
+    return path
+
+
 class SplitSession:
     """`--auto-split` 한 번의 실행 컨텍스트 — 사본·기록·보고를 모은다(§4 분할 수행 절차).
 
@@ -1091,10 +1115,9 @@ class SplitSession:
     def __init__(self, vault, dry_run):
         self.vault = vault
         self.dry_run = dry_run
-        self.backup_dir = os.path.join(
-            vault, "90_archive", "backup",
-            _today().isoformat() + "-presplit")
+        self.backup_dir = _presplit_dir(vault)
         self.backed_up = set()
+        self.created = set()   # 이번 실행이 **만든** 파일 — restore()가 걷는다(§4 5번)
         self.claimed = set()   # 이번 실행에서 어느 처방이 이미 맡은 파일 — claim() 참조
         self.current_claims = set()   # **지금 도는 처방이** 맡은 것 — 격리·계약 강제의 단위
         self.actions = []      # (종류, 대상, 신설 파일 목록) — §4 7번 log 기록·사후 보고 공용
@@ -1160,9 +1183,11 @@ class SplitSession:
         다른 처방의 결과를 담지 않는다 — 과잉 복원(앞 처방 결과까지 되돌림)도, 미복원
         (이미 백업돼 차집합에서 빠진 공유 파일)도 생기지 않는다.
 
-        **사본이 있는 파일만** 되돌린다 — 신설된 하위 파일은 사본이 없으므로 그대로 남는데,
-        그것은 다음 실행이 같은 이름으로 덮어쓰거나 사람이 지울 수 있는 상태다(원본이
-        온전하면 유실이 아니다). 반환: 되돌린 파일 수."""
+        **되돌리기는 둘이다**(§4 5번 — *"사본 복원 + 그 회차가 만들거나 늘린 것 되돌리기"*):
+        사본이 있는 파일은 사본으로 덮고, **이번 실행이 신설한 파일은 지운다**(`mark_created`).
+        신설물을 남기면 원본만 되돌아가, 포인터 없는 하위·기록 없는 아카이브가 vault에 남고
+        다음 실행이 그것을 이미 있던 파일로 보고 append한다.
+        반환: 되돌린 파일 수(복원 + 제거)."""
         n = 0
         for p in sorted(self.backed_up if only is None else (only & self.backed_up)):
             src = os.path.join(self.backup_dir, os.path.relpath(p, self.vault))
@@ -1173,7 +1198,24 @@ class SplitSession:
                 n += 1
             except OSError:
                 self.notes.append(f"원복 실패: {os.path.relpath(p, self.vault)}")
+        for p in sorted(self.created if only is None else (only & self.created)):
+            if not os.path.exists(p):
+                continue
+            try:
+                os.remove(p)
+                self.created.discard(p)
+                n += 1
+            except OSError:
+                self.notes.append(f"신설물 제거 실패: {os.path.relpath(p, self.vault)}")
         return n
+
+    def mark_created(self, *paths):
+        """이번 실행이 새로 만든 파일을 등록한다 — 원복이 지울 대상이다(§4 5번).
+
+        사본으로 되돌릴 수 있는 것은 **이미 있던 파일**뿐이라, 신설물은 등록해 두지 않으면
+        원복 뒤에도 남는다. 그 상태는 「원본은 되돌아갔는데 포인터가 가리키던 하위·아카이브는
+        그대로」라 다음 실행이 그 파일을 이미 있는 것으로 보고 append한다."""
+        self.created.update(paths)
 
     def record(self, kind, target, created):
         self.actions.append((kind, target, list(created)))
@@ -1447,6 +1489,7 @@ def rollover_log(ses):
         else:
             abom, anl = False, nl
             body = "# %s log\n\n" % mon + "".join(blocks)
+            ses.mark_created(af)
         if not ses.dry_run:
             os.makedirs(arch_dir, exist_ok=True)
             _write_or_abort(af, body, abom, anl, arch_rel)
@@ -1530,6 +1573,7 @@ def rollover_decisions(ses):
             arch_text = prev.rstrip("\n") + "\n" + "".join(blocks)
         else:
             abom, anl = False, nl
+            ses.mark_created(arch_path)
             proj = frontmatter(text).get("project", "") or os.path.basename(os.path.dirname(rel))
             # 아카이브는 frontmatter 없이 둔다(§2.8) — type을 남기면 무한 성장 파일에
             #  예산 검사가 걸릴 이유가 없는데도 걸린다.
@@ -1637,6 +1681,7 @@ def rollover_hub_changes(ses):
             arch_text = prev.rstrip("\n") + "\n" + "".join(blocks)
         else:
             abom, anl = False, nl
+            ses.mark_created(arch_path)
             proj = frontmatter(text).get("project", "") or os.path.basename(rel)[:-len(".md")]
             # 아카이브는 frontmatter 없이 둔다(§2.2) — `90_archive/` 하위라 lint 검사에서
             #  자동 제외되므로 타입을 붙일 이유가 없다.
@@ -2035,6 +2080,8 @@ def relocate_sections(ses):
             # 하위 먼저, 원본 나중 — 하위 신설이 실패하면 예외가 올라 원본에서 본문을
             #  들어내지 않는다(포인터만 남고 정본이 없는 상태를 만들지 않는다).
             for sub_path, sub_rel_, body_text in created:
+                ses.mark_created(sub_path)   # 쓰기 **전에** 등록한다 — 실패한 쓰기도 파일을
+                #  남길 수 있고(치환 직전 실패), 등록 전에 죽으면 그것이 원복 대상에서 빠진다
                 _write_or_abort(sub_path, body_text, bom, nl, sub_rel_)
             _write_or_abort(path, cur, bom, nl, rel)
             if hub:

@@ -587,6 +587,14 @@ def check_case(case):
                 undo_split_failures(restore)
                 shutil.rmtree(tmp, ignore_errors=True)
                 return False, "처방 실패인데 변경됐다: " + rel
+        # **원복이 신설물을 걷었는가**(§4 5번) — 사본으로 되돌릴 수 있는 것은 이미 있던
+        #  파일뿐이라, 신설된 하위·아카이브는 지우지 않으면 원복 뒤에도 남는다. 그 상태는
+        #  「원본은 되돌아갔는데 그것이 가리키던 파일은 그대로」다.
+        for rel in case.get("expect_absent_files", []):
+            if _read_bytes(dest, rel) is not None:
+                undo_split_failures(restore)
+                shutil.rmtree(tmp, ignore_errors=True)
+                return False, "원복 후에도 신설물이 남았다: " + rel
         missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
         if missing:
             return False, "--auto-split 출력 미검출 키워드: " + ", ".join(missing)
@@ -660,6 +668,29 @@ def check_case(case):
         #  두 번 해야 드러난다(1회 실행에서는 26케이스 중 25개가 이미 수렴해 조용했다).
         #  **맨 끝에 두는 이유**: 위 expect_file_contains·expect_file_count는 **1회 수행 후
         #  상태**를 재는 판정이라, 2회째를 앞에 두면 그 판정들이 다른 상태를 보게 된다.
+        # **사본이 세션마다 고유한가**(§8) — 날짜만으로 이름 지으면 뒤에 뜨는 세션이 앞
+        #  세션의 결과를 「그 세션 최초 상태」로 보존해, 원복이 앞 세션 반영분까지 남긴다.
+        #  한 번의 `--auto-split`도 본 pass와 재점검 pass가 각자 세션을 만든다.
+        #  폴더 개수만 세지 않고 **내용이 다른지**까지 본다 — 같은 파일을 두 번 복사해도
+        #  개수는 2가 되기 때문이다.
+        want_dirs = case.get("expect_presplit_dirs")
+        if want_dirs:
+            broot = os.path.join(dest, "90_archive", "backup")
+            dirs = sorted(d for d in (os.listdir(broot) if os.path.isdir(broot) else [])
+                          if d.endswith("-presplit"))
+            if len(dirs) != want_dirs:
+                undo_split_failures(restore)
+                shutil.rmtree(tmp, ignore_errors=True)
+                return False, "-presplit 폴더 %d개(기대 %d): %s" % (
+                    len(dirs), want_dirs, ", ".join(dirs) or "(없음)")
+            snaps = [_snapshot_md(os.path.join(broot, d)) for d in dirs]
+            if len(dirs) > 1 and all(s == snaps[0] for s in snaps[1:]):
+                undo_split_failures(restore)
+                shutil.rmtree(tmp, ignore_errors=True)
+                return False, "-presplit 사본 %d개의 내용이 모두 같다 — 실행이 갈리지 않았다" % len(dirs)
+            undo_split_failures(restore)
+            shutil.rmtree(tmp, ignore_errors=True)
+            return True, "-presplit 사본 %d개가 서로 다른 상태를 담았다" % len(dirs)
         if want_rc != 0:
             # 실패 주입 케이스는 2회째도 같은 실패라 「수렴」이 성립하지 않는다.
             undo_split_failures(restore)
