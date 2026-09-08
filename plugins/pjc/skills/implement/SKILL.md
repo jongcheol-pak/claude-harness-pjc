@@ -16,8 +16,6 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 
 ## 작업 범위
 
-> Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
-
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
 
 ## 자율 루프
@@ -33,7 +31,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 멈추는 넷 — 그리고 목록 밖의 셋
 
-1. **파괴적·외부 비가역 작업** — force push · history rewrite · 재귀/대량 삭제 · DB DROP/TRUNCATE · WHERE 없는 UPDATE/DELETE · push · 병합 · 태그 · 릴리즈 · PR. plan에 적혀 있어도 승인을 받는다.
+1. **파괴적·외부 비가역 작업** — force push · history rewrite · 재귀/대량 삭제 · DB DROP/TRUNCATE · WHERE 없는 UPDATE/DELETE · **권한 변경** · push · 병합 · 태그 · 릴리즈 · PR. **파일 5개 이상 또는 100줄 이상의 삭제·이동·이름 변경**도 여기다. plan에 적혀 있어도 승인을 받는다(정본 `../plan/references/plan-template.md` 「승인 필요 항목」).
 2. **동일 원인 3회 실패** — 같은 문제를 세 번 다르게 시도해도 안 되면 수단이 잘못됐다는 신호다. 시도한 셋과 각각의 결과를 보고한다.
 3. **인증정보가 필요한 신규 외부 서비스**
 4. **같은 수단을 3회 반복하는데 목표에 닿지 못했을 때** — 실패가 아니어도 멈춘다. 2번은 *실패*를 세는데 **매번 조금씩 나아지는 조정**(문서를 조금씩 줄이기·임계를 조금씩 낮추기)은 성공으로 집계돼 그 카운터에 영영 걸리지 않은 채 반복된다. 3회차에 *"이 수단으로 끝낼 수 있는가"*를 자문하고, 아니면 접근을 바꾸거나 선택지를 내고 멈춘다.
@@ -71,6 +69,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 최종 리뷰 (4번 통과 후 1회)
 
+- **순서는 「Deferred 판정·대장 이관 → 위키 기록 → 리뷰」다** — 리뷰어가 그 둘의 결과를 검사하므로, 먼저 하지 않으면 매 회차 미이관·미기록으로 지적된다.
 - **`completion-reviewer` 서브에이전트를 호출한다** — 회차 전체를 계획과 대조하는 것은 각 task를 지나온 쪽이 보기 어려운 각도다. **호출 인자·판정·재호출 한계·리뷰어 부재 처리는 `references/final-review.md`「절차」가 정본이다** — 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
 
 ### 실패 처리
