@@ -58,7 +58,6 @@ Author: <발원자>. Status: draft | approved.
 - **요구가 아직 안 정해진 것만 담는다.** 착수 가능한 미착수 작업은 종전대로 `plan.md` 의 `## Deferred / Follow-up` 과 Deferred 대장이 맡는다(`references/deferred-rules.md`). 성격이 달라 한쪽이 다른 쪽을 대체하지 못한다 — 여기 것은 *무엇을 원하는지가 미정*이고, 저기 것은 *원하는 것은 정해졌는데 이번에 안 한다*이다.
 - **미결인 채로 승인해도 된다** — 공식도 그것을 전제한다(*"are the open questions from `intent.md` answered or carried forward?"*).
 - **해소 게이트는 이 하니스에 하나뿐이다** — `plan/SKILL.md` Step 6 의 계획 리뷰다. 공식은 Stage 2 의 `spec.md` 리뷰가 그 자리인데 이 하니스에는 그 단계가 없다. 그래서 **Step 6 에서 답하지 못한 질문은 다음 회차의 intent 로 이월한다** — 이월할 때 원문을 그대로 옮기고 `(이월: YYYY-MM-DD <어느 intent 에서>)` 를 붙인다. 붙이지 않으면 몇 회차를 미뤄 왔는지 아무도 세지 못한다.
-- **새 intent 를 쓰기 전에 `intent/` 의 최근 파일을 열어 미해소 `Open questions` 가 있는지 확인한다** — 이월 규칙은 여기서만 발화한다. `plan/SKILL.md` Step 1 이 읽으라고 지목하는 넷(`AGENTS.md`·위키·Deferred 대장·진행 중 `plan.md`)에 `intent/` 가 없어, 이 줄이 없으면 미확정 요구가 승인을 통과해 남아도 다음 회차가 그것을 볼 경로가 없다.
 - **`plan.md` 의 `## Open Questions` 와 다른 것이다** — 그쪽은 *승인 전까지만* 존재하고 승인되면 사라진다. 이쪽은 승인 후에도 남는다.
 
 ## 승인과 커밋
