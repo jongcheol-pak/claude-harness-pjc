@@ -60,3 +60,14 @@ foreach ($c in $cases) {
     }
 }
 
+# ---- [회차 44 T7] block-destructive 는 CLAUDE_HARNESS_QUICK 을 무시한다(끌 수 없음) — 계약을 케이스로 고정 ----
+#   AGENTS.md 「hook 출력 규약」이 「우회 변수는 둘이며 block-destructive 는 어느 것도 읽지 않는다」고 적지만 재는 케이스가 없었다.
+#   샤드마다 dot-source 되므로 0번 샤드에서만 돈다 — 아니면 같은 케이스가 샤드 수만큼 중복 집계된다.
+if ((Test-HookSelected @('block-destructive')) -and ($shardIdx -eq 0)) {
+    $savedQuickBd = $env:CLAUDE_HARNESS_QUICK
+    try {
+        $env:CLAUDE_HARNESS_QUICK = '1'
+        $r = Invoke-Hook 'block-destructive.ps1' (@{ tool_name = 'Bash'; tool_input = @{ command = 'rm -rf /' } } | ConvertTo-Json -Compress)
+        Assert-Case -Name "block-destructive.ps1: QUICK=1 이어도 rm -rf / 차단 (우회 변수 무시 계약, 회차 44 T7)" -R $r -ExpectExit 2 -ExpectContains '재귀 삭제 + 위험 루트 대상 감지'
+    } finally { $env:CLAUDE_HARNESS_QUICK = $savedQuickBd }
+}

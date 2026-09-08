@@ -416,3 +416,18 @@ $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $pxDir (Join-Path $pxScripts '
 Assert-Case -Name "면제: sidechain 줄의 마커는 표식이 아니다 (PX23, 델타 음성)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
 }   # ---- §2c 게이트 끝 ----
 
+# ---- [회차 44 T7] CLAUDE_HARNESS_QUICK 우회 두 분기 — 골든 공백 메움 ----
+#   guard-write 의 QUICK 분기는 둘(plan 작성 게이트 :42 · plan 존재 게이트 :181)인데 어느 케이스도 재지 않았다.
+#   우회 변수는 사용자만 켜므로 케이스는 변수를 저장·복원한다(다른 섹션 오염 방지).
+if (Test-HookSelected @('guard-write')) {
+$savedQuickW = $env:CLAUDE_HARNESS_QUICK
+try {
+    $env:CLAUDE_HARNESS_QUICK = '1'
+    $qk = Join-Path $work 'proj-quick'; New-Item -ItemType Directory $qk -Force | Out-Null
+    $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $qk (Join-Path $qk 'A.cs'))
+    Assert-Case -Name "guard-write: QUICK=1 plan 존재 게이트 우회 (비차단 + 안내) (회차 44 T7)" -R $r -ExpectExit 0 -ExpectContains 'QUICK'
+    # 작성 게이트는 transcript 에 스킬 흔적이 없어야 발화한다(위 §2c 의 $trPlanNo 스텁) — QUICK 이면 그 판정 자체를 건너뛴다.
+    $r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $qk (Join-Path $qk 'plan.md') "# plan`n- [ ] T1: x" $trPlanNo)
+    Assert-Case -Name "guard-write: QUICK=1 plan 작성 게이트(plan.md Write + 흔적 없음) 우회 (회차 44 T7)" -R $r -ExpectExit 0 -ExpectNotContains 'plan 작성은'
+} finally { $env:CLAUDE_HARNESS_QUICK = $savedQuickW }
+}
