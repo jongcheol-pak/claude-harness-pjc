@@ -898,10 +898,17 @@ def build_index(vault, dry_run):
     idx_path = os.path.join(vault, "index.md")
     try:
         with open(idx_path, "rb") as fh:
-            cur = fh.read().decode("utf-8-sig")
+            idx_bytes = fh.read()
+        cur = idx_bytes.decode("utf-8-sig")
     except (UnicodeDecodeError, OSError) as e:
         print("index.md 읽기 실패(%s) -- 생성을 중단합니다." % type(e).__name__)
         return 1
+    # **원본의 BOM·줄바꿈을 잡아 두었다가 쓰기에서 되돌린다** — 보존하지 않으면 CRLF·BOM
+    #  vault의 index.md가 생성기를 돌릴 때마다 LF·BOM 없음으로 평탄화돼, 마커 밖을 한 글자도
+    #  건드리지 않는다는 이 함수의 계약이 **파일 전체 diff**로 깨진다(`_atomic_write`가 파일
+    #  하나짜리 쓰기에서 이미 지키는 규약과 같다).
+    idx_bom = idx_bytes.startswith(b"\xef\xbb\xbf")
+    idx_nl = "\r\n" if "\r\n" in cur else "\n"
     cur_n = cur.replace("\r\n", "\n").replace("\r", "\n")
     if AUTO_INDEX_BEGIN not in cur_n or AUTO_INDEX_END not in cur_n:
         print("생성 마커 없음 -- index.md를 덮어쓰지 않았습니다.")
@@ -1057,8 +1064,11 @@ def build_index(vault, dry_run):
                 (os.path.join(vault, name + ".md"), _aux_index_text(name, title, lines))
                 for name, (title, lines) in sorted(aux_files.items())]:
             tmp = path + ".tmp-build-index"
+            # 신설 sub-index·aux 도 index.md 의 형상을 따른다 — 한 vault 안에서 파일마다
+            #  줄바꿈이 갈리면 그 뒤의 모든 편집이 혼재를 퍼뜨린다.
+            data = content.replace("\n", idx_nl).encode("utf-8")
             with open(tmp, "wb") as fh:
-                fh.write(content.encode("utf-8"))
+                fh.write((b"\xef\xbb\xbf" + data) if idx_bom else data)
             staged.append((tmp, path))
         for tmp, path in staged:
             os.replace(tmp, path)
@@ -2455,13 +2465,24 @@ def apply_fixes(vault, dry_run=False):
     print()
 
 
+def _normalize_vault(arg):
+    """vault 인자의 **마지막** 구분자만 벗긴다.
+
+    `rstrip("/\\")`은 `D:\\`를 `D:`로 만든다 — 그것은 드라이브 루트가 아니라 **그 드라이브의
+    현재 디렉터리**를 뜻하는 다른 경로라, lint가 조용히 엉뚱한 곳을 검사한다. 루트 자체를
+    넘긴 경우(`D:\\`·`/`)는 그대로 둔다."""
+    if len(arg) > 1 and arg[-1] in "/\\" and not arg.endswith(":" + arg[-1]):
+        return arg[:-1]
+    return arg
+
+
 def main():
     if len(sys.argv) < 2:
         print("사용법: python lint.py \"<vault_path>\" "
               "[--fix [--dry-run]] [--build-index [--dry-run]] "
               "[--auto-split [--dry-run]]")
         sys.exit(1)
-    vault = sys.argv[1].rstrip("/\\")
+    vault = _normalize_vault(sys.argv[1])
     # --fix는 opt-in — 지정 시 안전 3종을 먼저 수정하고, 이어지는 본 lint가 수정 후 상태를 보고한다.
     #  (기본 실행은 완전 read-only 불변). `--dry-run`을 함께 주면 **무엇을 고칠지만** 낸다 —
     #  종전에는 그 플래그를 보지 않아 미리보기를 요청해도 실제로 파일을 고쳤다.

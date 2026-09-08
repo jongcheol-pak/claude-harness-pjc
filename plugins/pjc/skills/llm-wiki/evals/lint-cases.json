@@ -769,6 +769,16 @@
       "rationale": "§4 1단계 본체 구역 분리를 실제 쓰기로 태운다. concept 420개로 본체를 임계 위로 밀어 올려 `## 범용 패턴`이 index-patterns.md로 덜어내지는지, 그 파일이 type: index와 자기 헤딩을 갖는지 본다. **핵심은 §7-23 오탐 회귀 가드다** — 구역이 sub-index로 옮겨간 뒤 그 검사가 본체만 보면 open question이 전부 '미등록'으로 잡히는데(수정 전 실측 1건), 합본 뒤로 판정을 옮겨 0건이 됐다. open question을 심지 않으면 그 검사가 아무것도 세지 않아 회귀가 침묵한다."
     },
     {
+      "fixture": "build-index-crlf",
+      "index_shape": true,
+      "expect_bom": true,
+      "expect_crlf": true,
+      "expect_sub_files": [
+        "index-personal.md"
+      ],
+      "rationale": "**생성기가 index.md의 BOM·줄바꿈을 보존한다.** 「마커 밖을 한 글자도 바꾸지 않는다」는 이 함수의 계약은 내용에만 걸린 것이 아니다 — 형상이 평탄화되면 **파일 전체가 diff로 뜨고**, 그 뒤의 모든 편집이 혼재를 퍼뜨린다(이 레포가 같은 함정에 네 번 걸린 적이 있다). 종전 구현은 읽을 때 `utf-8-sig`로 BOM을 버리고 CRLF를 LF로 정규화한 뒤, 쓸 때 `content.encode(\"utf-8\")`로 고정해 **CRLF+BOM vault의 index.md를 매 실행 LF·BOM 없음으로 바꿨다**. **신설 sub-index도 함께 본다** — 한 vault 안에서 파일마다 줄바꿈이 갈리면 다음 편집이 어느 쪽을 따를지 매번 달라진다. 기존 `build-index` 픽스처와의 차이는 index.md의 형상 하나뿐이라(분류 결과 동일) 이 케이스가 재는 축이 형상 보존으로 좁혀진다."
+    },
+    {
       "fixture": "log-rollover",
       "auto_split": true,
       "expect_keywords": [

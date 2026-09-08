@@ -338,7 +338,8 @@ def check_case(case):
     #  키워드 대조를 쓰지 않는다 — 그 모드가 스스로 구조를 세어 판정하므로 여기서 요구하면
     #  의미 없는 키워드를 형식상 넣게 된다(방어가 오히려 케이스를 왜곡한다).
     if ("expect_clean" not in case and "expect_keywords" not in case
-            and not case.get("chunk_split") and not case.get("aux_split")):
+            and not case.get("chunk_split") and not case.get("aux_split")
+            and not case.get("index_shape")):
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
 
     # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
@@ -359,6 +360,42 @@ def check_case(case):
     # build_index_write 케이스: **실제 쓰기 경로**(--dry-run 없이)를 돈다. dry-run만 돌리면
     #  파일을 만드는 분기가 한 번도 실행되지 않아, sub-index 생성·마커 치환·마커 밖 보존이
     #  "출력에서만" 맞는 상태로 통과할 수 있다. 여기서는 쓰인 파일을 다시 읽어 대조한다.
+    # index_shape 케이스: 생성기가 index.md의 **BOM·줄바꿈을 보존**하는가.
+    #  마커 밖을 한 글자도 건드리지 않는다는 계약은 내용에 대한 것만이 아니다 — 형상이
+    #  평탄화되면 그 파일 전체가 diff 로 뜨고, 이후 편집이 혼재를 퍼뜨린다. **신설되는
+    #  sub-index·aux 도 같은 형상이어야 한다**: 한 vault 안에서 파일마다 줄바꿈이 갈리면
+    #  그 뒤의 모든 편집이 어느 쪽을 따를지 매번 달라진다.
+    if case.get("index_shape"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-shape-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        out, rc, err = run_lint(dest, ["--build-index"])
+        made = sorted(n for n in os.listdir(dest)
+                      if n.startswith("index") and n.endswith(".md"))
+        shapes = {}
+        for name in made:
+            with open(os.path.join(dest, name), "rb") as fh:
+                b = fh.read()
+            shapes[name] = (b.startswith(b"\xef\xbb\xbf"), b"\r\n" in b,
+                            b"\r\n" not in b and b"\n" in b)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if rc != 0:
+            return False, "build-index 종료코드 %d: %s" % (rc, out.strip()[:120])
+        want_bom = case.get("expect_bom", True)
+        want_crlf = case.get("expect_crlf", True)
+        bad = [n for n, (bom, crlf, _lf) in shapes.items()
+               if bom != want_bom or crlf != want_crlf]
+        if bad:
+            return False, "형상 불일치(BOM %s·CRLF %s 기대) — %s" % (
+                want_bom, want_crlf,
+                ", ".join("%s: BOM %s·CRLF %s" % (n, shapes[n][0], shapes[n][1])
+                          for n in bad))
+        for name in case.get("expect_sub_files", []):
+            if name not in shapes:
+                return False, "생성되지 않음: " + name
+        return True, "형상 보존 확인(%d파일: BOM %s·CRLF %s)" % (
+            len(shapes), want_bom, want_crlf)
+
     if case.get("build_index_write"):
         tmp, dest = prepare_placeholder_vault(vault)
         idx = os.path.join(dest, "index.md")
