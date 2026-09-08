@@ -1,6 +1,6 @@
 # 조사 로그 서식
 
-> `pjc-systematic-debugging`의 조사 결과를 `plan.md`(또는 별도 `debug-<날짜>.md`)에 남기는 형식.
+> `pjc-systematic-debugging`의 조사 결과를 루트 `plan.md`에 남기는 형식 — 그 파일 하나이고 별도 조사 파일을 만들지 않는다(`AGENTS.md`의 `## Plan Location`).
 > **조사를 시작할 때 이 서식을 열어 그대로 채운다** — 빈 칸이 곧 아직 안 한 일이다.
 
 ```markdown
