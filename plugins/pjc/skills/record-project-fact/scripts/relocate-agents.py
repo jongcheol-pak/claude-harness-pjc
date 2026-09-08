@@ -181,6 +181,29 @@ def pick_destination(raw):
     return best, False
 
 
+def rollback(backups, dest, dest_new):
+    """사본으로 되돌리고 이 회차가 **신설한** 이관처를 지운다. 반환: 실패한 항목 설명 목록.
+
+    **원복 자체의 실패를 삼키지 않는다** — 되돌릴 대상이 읽기 전용이거나 잠겨 있으면 복사가
+    다시 예외를 던지는데, 그것을 잡지 않으면 사용자는 트레이스백만 보고 **무엇이 되돌아갔고
+    무엇이 안 되돌아갔는지** 알 수 없다. 부분 원복 상태를 알리는 것이 조용한 성공보다 낫다.
+
+    신설 이관처의 판정은 「백업 목록에 있는가」다 — `not backups` 는 AGENTS.md 사본이 늘
+    들어가 항상 거짓이라 아무것도 지우지 못했다."""
+    failed = []
+    for orig, b in backups:
+        try:
+            shutil.copy2(b, orig)
+        except OSError as e:
+            failed.append("%s 원복 실패(%s)" % (os.path.basename(orig), type(e).__name__))
+    if dest_new and not any(p == dest for p, _b in backups) and os.path.exists(dest):
+        try:
+            os.remove(dest)
+        except OSError as e:
+            failed.append("신설 이관처 제거 실패(%s)" % type(e).__name__)
+    return failed
+
+
 def relocate(root, dry_run=False):
     """이관을 수행한다. 반환: (종료 코드, 보고 줄 목록)."""
     log = []
@@ -273,25 +296,17 @@ def relocate(root, dry_run=False):
             with open(agents, "wb") as fh:
                 fh.write(cur)
         except OSError as e:
-            for orig, b in backups:
-                shutil.copy2(b, orig)
-            if dest_new and not any(p == dest for p, _b in backups) and os.path.exists(dest):
-                os.remove(dest)
-            return 1, ["[쓰기 실패] %s — 사본으로 원복했다: %s" % (type(e).__name__, bdir)]
+            hurt = rollback(backups, dest, dest_new)
+            log = ["[쓰기 실패] %s — 사본으로 원복했다: %s" % (type(e).__name__, bdir)]
+            return 1, log + ["[원복 불완전] " + h for h in hurt]
 
     ok, problems = verify(cur, dest_raw, dest_rel, limit, raw,
                           ratio=ratio, slack=slack, dest_before=dest_before)
     if not ok:
-        if not dry_run:
-            for orig, b in backups:
-                shutil.copy2(b, orig)
-            # 이 회차에 **신설한** 이관처는 사본이 없으므로 되돌릴 대상이 아니라 지울
-            #  대상이다. 판정은 「그 파일이 백업 목록에 있는가」로 한다 — `not backups`는
-            #  AGENTS.md 백업이 늘 들어가 항상 거짓이라 아무것도 지우지 못했다.
-            if dest_new and not any(p == dest for p, _b in backups):
-                if os.path.exists(dest):
-                    os.remove(dest)
-        return 1, ["[검증 실패] " + p for p in problems] + ["사본으로 원복했다: " + bdir]
+        hurt = rollback(backups, dest, dest_new) if not dry_run else []
+        return 1, (["[검증 실패] " + p for p in problems]
+                   + ["사본으로 원복했다: " + bdir]
+                   + ["[원복 불완전] " + h for h in hurt])
 
     log.append("이관 전: %dB / 상한 %dB" % (size, limit))
     for title, _b, n in moved:

@@ -17,6 +17,7 @@ import io
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -100,6 +101,14 @@ def run_case(mod, case):
         before = {}
         for rel in case.get("expect_unchanged", []):
             before[rel] = open(os.path.join(dest, rel.replace("/", os.sep)), "rb").read()
+        # **쓰기 실패 주입** — 정상 경로만 도는 골든은 원복 코드를 한 줄도 지나지 않는다.
+        #  읽기 전용 파일에 원자적 치환·쓰기는 PermissionError 를 낸다(실측 errno 13).
+        #  lint 러너가 세운 것과 같은 형태이며, 프로덕션 코드에 테스트 훅을 넣지 않는다.
+        readonly = []
+        for rel in case.get("readonly_paths", []):
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            readonly.append((fp, os.stat(fp).st_mode))
+            os.chmod(fp, stat.S_IREAD)
         orig_verify = mod.verify
         if case.get("sabotage_verify"):
             # 검증을 강제로 실패시켜 **원복 경로**를 태운다. 정상 경로만 돌리면 그 코드는
@@ -109,6 +118,11 @@ def run_case(mod, case):
             code, log = mod.relocate(dest, case.get("dry_run", False))
         finally:
             mod.verify = orig_verify
+            for fp, mode in readonly:
+                try:
+                    os.chmod(fp, mode)   # 되돌리지 않으면 임시 폴더가 지워지지 않는다
+                except OSError:
+                    pass
         out = "\n".join(log)
         if code != case.get("expect_rc", 0):
             return False, "종료 코드 불일치 — 기대 %d / 실제 %d (%s)" % (
