@@ -1673,6 +1673,34 @@
       "command": "echo \"C:\\\"; Get-ChildItem .",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "[회차 44 T6] git restore <path> 폐기 경고 (checkout -- 와 등가 — 실측 무경고 보완)",
+      "command": "git restore src/foo.cs",
+      "expect_exit": 0,
+      "expect_contains": "restore"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "[회차 44 T6] git restore . 전체 폐기 경고",
+      "command": "git restore .",
+      "expect_exit": 0,
+      "expect_contains": "restore"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "[회차 44 T6 델타 음성] git restore --staged <path> 무경고 (인덱스만 되돌림 — 워킹트리 무손실)",
+      "command": "git restore --staged src/foo.cs",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "[회차 44 T6] git restore --staged --worktree <path> 는 경고 (워킹트리도 폐기)",
+      "command": "git restore --staged --worktree src/foo.cs",
+      "expect_exit": 0,
+      "expect_contains": "restore"
     }
   ]
 }

@@ -48,6 +48,18 @@ function Test-CredentialPairToken {
     return $true
 }
 
+# 값이 아니라 **참조**면 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§6 값이 아니라 **참조**면 자격증명이 아니다」
+#   회차 44: 같은 술어를 함수로 묶어 차단 등급 두 라벨(DB 연결 문자열 · DB/서비스 URI)의 **값 자리**에도 적용한다 —
+#   종전에는 키 존재만 봐서 `Password=${DB_PASSWORD}` 참조형이 차단됐고, 차단 메시지가 권하는 형태로 고쳐도 다시 차단됐다(실측).
+function Test-ReferenceValue {
+    param([string]$v)
+    if ([string]::IsNullOrWhiteSpace($v)) { return $false }
+    if ($v -match '^\$' -or $v -match '^%[\w.]+%$') { return $true }                                   # $X · ${X} · $env:X · %X%
+    if ($v -match '(?i)^(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\()') { return $true }
+    if ($v -match '^<[^>]+>$' -or $v -match '^\{\{?[\w.:-]+\}\}?$') { return $true }                 # <placeholder> · {{template}}
+    return $false
+}
+
 function Get-SecretMatches {
     param([string]$content)
 
@@ -83,6 +95,30 @@ function Get-SecretMatches {
                 }
                 if ($pubHit)  { $found.Add($sp.label) }
                 if ($privHit) { $found.Add('IP 주소(사설)') }
+                continue
+            }
+            # 차단 등급 두 라벨은 값 자리를 본다 — 참조형(환경변수·플레이스홀더)뿐이면 라벨을 내지 않는다(회차 44, Test-ReferenceValue).
+            if ($sp.label -eq 'DB 연결 문자열') {
+                $realHit = $false
+                foreach ($cm in [regex]::Matches($content, $sp.rx)) {
+                    # 매치는 `…Password=` 까지다 — 같은 줄의 다음 `;` 앞이 값. 키가 User Id 뿐이면 값 판정 없이 종전대로 라벨.
+                    $tail = ($content.Substring($cm.Index + $cm.Length) -split '\r?\n', 2)[0]
+                    $val = ($tail -split ';', 2)[0].Trim().Trim('"', "'")
+                    $keyIsPw = $cm.Value -match '(?i)(Password|Pwd)[ \t]*=$'
+                    if ($keyIsPw -and (Test-ReferenceValue $val)) { continue }
+                    $realHit = $true; break
+                }
+                if ($realHit) { $found.Add($sp.label) }
+                continue
+            }
+            if ($sp.label -eq 'DB/서비스 URI 인증정보') {
+                $realHit = $false
+                foreach ($um in [regex]::Matches($content, $sp.rx)) {
+                    $uriPw = [regex]::Match($um.Value, '://[^\s:/@]+:([^\s@]+)@').Groups[1].Value
+                    if (Test-ReferenceValue $uriPw) { continue }
+                    $realHit = $true; break
+                }
+                if ($realHit) { $found.Add($sp.label) }
                 continue
             }
             $found.Add($sp.label)

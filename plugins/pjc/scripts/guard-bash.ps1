@@ -137,7 +137,9 @@ function Invoke-WarnExternalOps {
         @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*stash\s+clear\b';              label = 'git stash clear (스태시 전체 삭제)' },
         @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+--\s';              label = 'git checkout -- <path> (워킹트리 변경 폐기)' },
         @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\S+\s+--\s';        label = 'git checkout <ref> -- <path> (워킹트리 변경 폐기)' },
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\.(\s|$)';          label = 'git checkout . (워킹트리 전체 변경 폐기)' }
+        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\.(\s|$)';          label = 'git checkout . (워킹트리 전체 변경 폐기)' },
+        # git restore 는 checkout -- <path> 와 등가의 워킹트리 폐기다 — `--staged` 단독(인덱스만 되돌림)은 제외하고 `--staged --worktree`/`-W` 는 포함(회차 44).
+        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*restore\s+(?![^&;|\r\n]*--staged\b(?![^&;|\r\n]*(--worktree\b|\s-W\b)))\S'; label = 'git restore <path> / . (워킹트리 변경 폐기)' }
     )
 
     # 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게).

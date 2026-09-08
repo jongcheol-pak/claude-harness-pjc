@@ -138,7 +138,8 @@ function Invoke-WarnCommitSecrets {
             foreach ($n in $staged) {
                 if ([string]::IsNullOrWhiteSpace($n)) { continue }
                 $base = [System.IO.Path]::GetFileName($n)
-                if ($base -match '^\.env(\..*)?$') { $envFiles.Add($n) }
+                # .env.example / .env.sample 은 템플릿이라 제외한다 — guard-write 가 같은 두 이름을 plan 없이 허용하는 것과 판정을 맞춘다(회차 44).
+                if ($base -match '^\.env(\..*)?$' -and $base -notmatch '^\.env\.(example|sample)$') { $envFiles.Add($n) }
             }
         }
 

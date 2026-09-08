@@ -151,6 +151,12 @@ if ($gitOk) {
     $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
     Assert-Case -Name "commit-secrets: 클린 스테이징 무출력(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+    # 4b) [회차 44 T6] .env.example / .env.sample 은 템플릿이라 경고하지 않는다 — guard-write 와 판정 정합.
+    Push-Location $wcs; Set-Content .env.example 'APP_ENV=dev'; git add -f .env.example; Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
+    Assert-Case -Name "commit-secrets: .env.example 스테이징은 무경고 (회차 44 T6 오탐 수정 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+    Push-Location $wcs; git rm -q --cached .env.example; Remove-Item .env.example -Force; Pop-Location
+
     # 5) -am 자동 스테이징분(추적 파일 시크릿) → 경고
     Push-Location $wcs; git commit -qm ok2; Add-Content app.js $fakeApi; Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -am update' } } | ConvertTo-Json -Compress)
@@ -218,6 +224,27 @@ if ($gitOk) {
     Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: DB 연결 문자열 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+
+    # (d3) [회차 44 T6] 참조형 연결 문자열·URI 는 차단하지 않는다 — 차단 메시지가 권하는 형태(값 대신 환경변수)가 다시 차단되던 오탐 수정.
+    #      위 (d2)가 평문 값 차단 유지(양성)이고 여기가 음성이다 — 둘이 같은 파일 자리에서 값만 달라 오탐 수정의 경계를 잰다.
+    Push-Location $wcsB
+    git rm -q --cached db.config; Remove-Item db.config -Force
+    $dbRef = 'Server' + '=' + 'prod-sql' + ';' + 'Pwd' + '=' + '${DB_PASSWORD}' + ';'
+    Set-Content db.config $dbRef; git add db.config
+    Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: 참조형 연결 문자열(환경변수)은 차단 안 함 (회차 44 T6 오탐 수정 음성)" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+    Push-Location $wcsB
+    git rm -q --cached db.config; Remove-Item db.config -Force
+    Set-Content db.url.md ('DATABASE_URL=postgres://app:' + '${DB_PASS}' + '@db.internal:5432/app'); git add db.url.md
+    Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: 참조형 URI 인증정보는 차단 안 함 (회차 44 T6 오탐 수정 음성)" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+    # (e) 가 db.config 스테이징 상태를 전제하므로 되돌려 둔다.
+    Push-Location $wcsB
+    git rm -q --cached db.url.md; Remove-Item db.url.md -Force
+    Set-Content db.config 'placeholder=1'; git add db.config
+    Pop-Location
 
     # (e) 저신뢰(비인용 자격증명 쌍) → 경고만. 차단 범위가 넓어지면 여기서 잡힌다.
     Push-Location $wcsB

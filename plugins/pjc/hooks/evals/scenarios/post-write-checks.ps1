@@ -37,6 +37,14 @@ $r = Invoke-Hook 'post-write-checks.ps1' $sjp
 Assert-Case -Name "post-write: API key/token 값 경고" -R $r -ExpectExit 0 -ExpectContains 'API key/token 값'
 Assert-Case -Name "post-write: DB 연결 문자열 경고" -R $r -ExpectExit 0 -ExpectContains 'DB 연결 문자열'
 Assert-Case -Name "post-write: URI 자격증명 경고" -R $r -ExpectExit 0 -ExpectContains 'DB/서비스 URI 인증정보'
+
+# [회차 44 T6] 참조형 연결 문자열·URI 는 경고하지 않는다(오탐 수정 음성) — 다른 트리거 없는 파일이라 완전 무출력 기대.
+$secRefPath = Join-Path $pw 'notes-secrets-ref.md'
+# 문자열은 조각으로 조립한다 — 한 리터럴에 붙여 두면 이 러너 파일 자체가 설치본 커밋 게이트(구 판정)에 차단된다(회차 44 실측).
+$secRefBody = @(('conn: Ser' + 'ver=dbhost;User=app;Pass' + 'word=' + '${DB_PASSWORD};'), ('uri: post' + 'gres://appuser:' + '%DB_PASS%' + '@dbhost/appdb')) -join "`n"
+[System.IO.File]::WriteAllText($secRefPath, $secRefBody, [System.Text.UTF8Encoding]::new($false))
+$rRef = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $secRefPath } } | ConvertTo-Json -Compress)   # $r 은 아래 단언들이 계속 쓴다 — 덮어쓰지 않는다
+Assert-Case -Name "post-write: 참조형 연결 문자열·URI 무경고 (회차 44 T6 오탐 수정 음성)" -R $rRef -ExpectExit 0 -ExpectSilent $true
 Assert-Case -Name "post-write: 개인키 경고" -R $r -ExpectExit 0 -ExpectContains '개인키'
 Assert-Case -Name "post-write: Bearer 토큰 경고" -R $r -ExpectExit 0 -ExpectContains 'Bearer 토큰'
 Assert-Case -Name "post-write: IP 주소 경고" -R $r -ExpectExit 0 -ExpectContains 'IP 주소'

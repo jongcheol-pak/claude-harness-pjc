@@ -104,6 +104,8 @@ dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래)
     #   `C:\`도 인정한다 — PowerShell 도구 경로에서 드라이브 루트의 일상 표기다.
 ```
 
+**회차 44 — `git restore` 를 `$localOps` 에 더했다.** `checkout -- <path>`·`checkout .` 과 등가의 워킹트리 폐기인데 목록에 없어 무경고였다(검토 실측). `--staged` 단독은 인덱스만 되돌려 워킹트리 손실이 없으므로 제외하고, `--staged --worktree`·`-W` 동반은 포함한다.
+
 ## §7 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게(값만 제거, 플래그 토큰 보존).
 
 ```
