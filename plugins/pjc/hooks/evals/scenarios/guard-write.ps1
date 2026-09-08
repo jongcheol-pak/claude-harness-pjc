@@ -32,6 +32,16 @@ $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $emptyplan (Join-Path $emptypl
 Assert-Case -Name "require-plan: 빈 plan(체크박스 0) 경고+비차단 (H3)" -R $r -ExpectExit 0 -ExpectContains '빈/플레이스홀더'
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $starplan (Join-Path $starplan 'A.cs'))
 Assert-Case -Name "require-plan: 별표('*') 완료 plan은 G4(완료)로 판정, H3(빈) 오탐 아님" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
+# [회차 44 T5] 계수가 $planBulletRx 를 공유하는지 — 번호 불릿 미완료 plan 은 H3 도 G4 도 아니고(델타 음성), `+` 불릿 전부 완료 plan 은 G4 다.
+#   작성 게이트($planTaskRx)는 두 불릿을 이미 받았으므로 계수만 좁으면 위 두 오판이 난다.
+$numplan = Join-Path $work 'proj-num';  New-Item -ItemType Directory $numplan -Force | Out-Null
+"# plan`n1. [ ] T1: work`n2. [x] T2: done" | Set-Content (Join-Path $numplan 'plan.md')
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $numplan (Join-Path $numplan 'A.cs'))
+Assert-Case -Name "require-plan: 번호 불릿 미완료 plan 은 H3(빈)·G4(완료) 어느 쪽도 아님 (회차 44 T5 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '빈/플레이스홀더'
+$plusplan = Join-Path $work 'proj-plus';  New-Item -ItemType Directory $plusplan -Force | Out-Null
+"# plan`n+ [x] T1: done" | Set-Content (Join-Path $plusplan 'plan.md')
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $plusplan (Join-Path $plusplan 'A.cs'))
+Assert-Case -Name "require-plan: 플러스(+) 불릿 완료 plan 은 G4(완료)로 판정 (회차 44 T5)" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
 $trivial = @{ tool_name = 'Edit'; cwd = $noplan; tool_input = @{ file_path = (Join-Path $noplan 'A.cs'); old_string = 'int x = 1;'; new_string = 'int x = 2;' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'guard-write.ps1' $trivial
 Assert-Case -Name "require-plan: trivial Edit 통과" -R $r -ExpectExit 0 -ExpectContains 'Trivial'

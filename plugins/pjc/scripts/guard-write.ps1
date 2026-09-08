@@ -37,7 +37,10 @@ function Write-RpEvent {
 }
 
 # plan 작성 게이트 — 근거는 `rules/write-gate-rationale.md`의 「§3 plan 작성 게이트」
-$planTaskRx = '(?m)^\s*([-*+]|\d+[.)])\s*\[[ /xX~-]\]'
+# 불릿 집합의 정본은 $planBulletRx 하나다 — 작성 게이트($planTaskRx)와 완료/빈 plan 계수(G4/H3)가 여기서 파생한다.
+#   종전에는 계수가 `[-*]` 만 세어 번호 불릿(`1. [ ]`)·`+` 불릿 plan 을 H3 「빈 plan」으로 오판했다(회차 44 실측).
+$planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
+$planTaskRx = $planBulletRx + '\[[ /xX~-]\]'
 
 if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     $planFileName = [System.IO.Path]::GetFileName($targetPath)
@@ -288,8 +291,8 @@ if ($foundIn) {
             }
             $planText = Get-Content -LiteralPath $planFile -Raw -Encoding UTF8
             # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] — 근거는 `rules/write-gate-rationale.md`의 「§22 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X]」
-            $incomplete = [regex]::Matches($planText, '(?m)^\s*[-*]\s*\[[ /]\]').Count
-            $done = [regex]::Matches($planText, '(?m)^\s*[-*]\s*\[[xX]\]').Count
+            $incomplete = [regex]::Matches($planText, $planBulletRx + '\[[ /]\]').Count
+            $done = [regex]::Matches($planText, $planBulletRx + '\[[xX]\]').Count
             if ($incomplete -eq 0 -and $done -ge 1) {
                 if (Test-WarnOnce -Kind 'G4') {
                     $warnMsg = "[HARNESS] 이 plan은 완료된 것으로 보입니다 (task 체크박스 ${done}개 전부 [x], 미완료 0). " +
