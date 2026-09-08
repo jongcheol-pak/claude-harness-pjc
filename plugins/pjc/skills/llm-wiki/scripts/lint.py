@@ -308,7 +308,13 @@ def frontmatter(text):
         for line in m.group(1).splitlines():
             mm = re.match(r"\s*([A-Za-z_]+)\s*:\s*(.*)", line)
             if mm:
-                fm[mm.group(1)] = mm.group(2).strip().strip('"')
+                val = mm.group(2).strip()
+                # YAML 스칼라는 홑따옴표로도 인용된다 — 겹따옴표만 벗기면 `type: 'feature'`가
+                #  따옴표째 값이 되어 통제 어휘 대조가 전부 어긋난다(그 페이지는 타입이 없는
+                #  것처럼 취급돼 예산·필수 섹션 검사에서 통째로 빠진다).
+                if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+                    val = val[1:-1]
+                fm[mm.group(1)] = val
     return fm
 
 
@@ -356,7 +362,10 @@ def section(text, heading):
     """본문에서 '## {heading}' 섹션(헤딩 줄부터 다음 '## ' 헤딩 또는 문서 끝까지)을 반환, 없으면 None.
     기능별 인덱스(§7-6·14)·레포 정보(§7-20)·아카이브 인덱스(§7-19)·미해결 질문(§7-23) 공용 —
     섹션 경계 규칙(다음 ## 또는 \\Z)이 검사마다 어긋나지 않게 한 곳에서 유지한다."""
-    m = re.search(r"^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)",
+    # 헤딩 끝을 **줄 끝**으로 못박는다 — `\b`만으로는 `## 아카이브`가 `## 아카이브 인덱스`를
+    #  먼저 물어, 롤오버 포인터를 넣으려던 코드가 **다른 섹션을 통째로 교체**한다(실측).
+    #  뒤에 오는 것은 공백·괄호 주석뿐이므로 그것만 허용한다.
+    m = re.search(r"^##\s*" + re.escape(heading) + r"[ \t]*$.*?(?=^##\s|\Z)",
                   text, re.M | re.S)
     return m.group(0) if m else None
 
@@ -367,7 +376,7 @@ def without_section(text, heading):
     is_feat_recipe_row가 True) 의미가 달라(첫 컬럼이 '증상' 관찰 표현) 한/영 병기(§7-16)·등록
     (§7-6) 검사 대상이 아니다 — 스캔 텍스트에서 이 섹션을 뺀다. §7-14 행수는 section('기능별
     인덱스')로 이미 스코프돼 영향 없고, 행 wikilink의 깨진 링크는 §7-1이 전 페이지에서 잡는다."""
-    return re.sub(r"^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)", "",
+    return re.sub(r"^##\s*" + re.escape(heading) + r"[ \t]*$.*?(?=^##\s|\Z)", "",
                   text, flags=re.M | re.S)
 
 
@@ -392,8 +401,11 @@ def question_is_resolved(fm):
 
 def is_lint_report(rel_path):
     """lint-YYYYMMDD 리포트 페이지 판정: type: question을 쓰지만 '질문'이 아니라 lint 결과 보존물 —
-    §7-12 미해결 집계와 §7-23 인덱스 등록 요구에서 같은 기준으로 제외한다(집계↔등록 모순 방지)."""
-    return os.path.basename(rel_path).startswith("lint-")
+    §7-12 미해결 집계와 §7-23 인덱스 등록 요구에서 같은 기준으로 제외한다(집계↔등록 모순 방지).
+
+    **날짜까지 맞아야 리포트다** — 접두만 보면 `lint-rules.md`·`lint-strategy.md` 같은 정상
+    페이지가 함께 빠져, 그 페이지들이 미해결 집계에서도 인덱스 등록 요구에서도 조용히 사라진다."""
+    return bool(re.match(r"^lint-\d{8}\.md$", os.path.basename(rel_path)))
 
 
 def budget_split_suppressed(fm, chars):
@@ -1404,18 +1416,22 @@ def _run_prescriptions(ses):
 def _split_items(section_text):
     """`- [YYYY-MM-DD] …` 항목 목록을 **블록 단위**로 자른다(§2.8·§8 「항목 단위로만 자른다」).
 
-    다음 `- [` 직전까지가 한 블록이라 하위 불릿이 딸려 있어도 통째로 따라온다 — 규정이
+    다음 항목 불릿 직전까지가 한 블록이라 하위 불릿이 딸려 있어도 통째로 따라온다 — 규정이
     말하는 「하위 불릿 포함 블록이 한 항목」이 이 split만으로 성립한다.
+
+    **불릿 기호 셋을 다 받는다**(`-`·`*`·`+`) — 마크다운이 셋을 같게 렌더하므로 사람이 쓴
+    문서에는 실제로 섞여 있고, `-`만 세면 나머지 항목이 **헤딩부에 갇혀 롤오버 대상에서
+    통째로 빠진다**(그 항목들은 예산을 차지하면서 영영 아카이브로 가지 않는다).
     반환: (헤딩부, [(날짜, 블록 텍스트), ...]). 날짜가 없는 블록은 날짜 None으로 돌려준다."""
-    m = re.search(r"(?m)^(- \[\d{4}-\d{2}-\d{2})", section_text)
+    m = re.search(r"(?m)^([-*+] \[\d{4}-\d{2}-\d{2})", section_text)
     if not m:
         return section_text, []
     head, rest = section_text[:m.start()], section_text[m.start():]
     out = []
-    for blk in re.split(r"(?m)^(?=- \[)", rest):
+    for blk in re.split(r"(?m)^(?=[-*+] \[)", rest):
         if not blk.strip():
             continue
-        dm = re.match(r"- \[(\d{4}-\d{2}-\d{2})\]", blk)
+        dm = re.match(r"[-*+] \[(\d{4}-\d{2}-\d{2})\]", blk)
         out.append((parse_date(dm.group(1)) if dm else None, blk))
     return head, out
 
@@ -2602,7 +2618,10 @@ def main():
         #  섹션 판정은 줄 시작 헤딩 정규식으로 — 산문이 '## 구현 방법'을 인용만 해도 존재로
         #  오인하지 않게 한다(단순 포함 검사의 오탐).
         if typ == "feature" and not is_dep and not in_archive:
-            if not re.search(r"(?m)^##\s*구현 방법\b", text):
+            # 펜스 안의 예시 헤딩은 세지 않는다 — 이 레포·위키 문서는 자기 서식을
+            #  코드블록으로 예시하는 것이 관례라 그 오차가 구조적이다(실측: 절 수 계수가
+            #  같은 회차에 두 번 그렇게 틀렸다).
+            if not re.search(r"(?m)^##\s*구현 방법[ \t]*$", strip_code(text)):
                 warn(f"구현 방법 섹션 누락: {r} ('## 구현 방법'은 필수 섹션 — 얇게라도 유지, schema §2.3·§7-18)", r)
             elif "[^src-" not in text:
                 warn(f"구현 근거 각주 누락: {r} (## 구현 방법 있으나 [^src-...] 0개 — 얕은 feature 의심, schema §2.3)", r)

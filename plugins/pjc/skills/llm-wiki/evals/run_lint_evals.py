@@ -26,6 +26,7 @@ exit code: 전 case PASS면 0, 하나라도 FAIL이면 1.
 """
 import datetime
 import glob
+import importlib.util
 import json
 import os
 import re
@@ -327,19 +328,58 @@ def _snapshot_md(root):
     return snap
 
 
+def load_lint_module():
+    """lint.py를 import해 함수를 직접 부를 수 있게 한다(모듈 캐시).
+
+    이 러너의 기본은 subprocess 실행이다 — 실사용 경로와 같기 때문이다. 단 **공용 함수의
+    사각처럼 지금은 어느 호출부도 밟지 않는 결함**은 vault 단위로 잴 수 없어(증상이 없다)
+    여기서만 함수를 직접 부른다. 형제 러너 `run_relocation_evals.py`가 같은 이유로 검증
+    함수를 직접 태운다."""
+    global _LINT_MOD
+    if _LINT_MOD is None:
+        spec = importlib.util.spec_from_file_location("lint_under_test", LINT_PY)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _LINT_MOD = mod
+    return _LINT_MOD
+
+
+_LINT_MOD = None
+
+
 def check_case(case):
     """한 case를 실행·대조해 (passed, detail) 반환."""
     fixture = case["fixture"]
     vault = os.path.join(FIXTURES_DIR, fixture)
     if not os.path.isdir(vault):
         return False, f"픽스처 폴더 없음: {vault}"
+    # unit 케이스: lint.py의 함수를 직접 불러 반환값을 대조한다. `input`은 픽스처 파일이
+    #  아니라 **케이스에 적은 텍스트**다 — 재는 것이 파일 구조가 아니라 함수의 경계 판정이라,
+    #  vault를 만들면 무엇을 재는지가 오히려 흐려진다.
+    if case.get("unit"):
+        mod = load_lint_module()
+        u = case["unit"]
+        fn = getattr(mod, u["func"], None)
+        if fn is None:
+            return False, "lint.py에 함수 없음: " + u["func"]
+        got = fn(*u.get("args", []))
+        want_first = u.get("expect_first_line")
+        if want_first is not None:
+            first = (got or "").splitlines()[0] if got else None
+            if first != want_first:
+                return False, "%s 첫 줄 불일치 — 기대 %r / 실제 %r" % (
+                    u["func"], want_first, first)
+        if "expect" in u and got != u["expect"]:
+            return False, "%s 반환 불일치 — 기대 %r / 실제 %r" % (u["func"], u["expect"], got)
+        return True, "%s 단위 판정 통과" % u["func"]
+
     # case 스키마 방어: 기대 조건이 하나도 없으면 오타로 조용히 PASS되는 것을 막는다.
     #  단 **자체 기대 필드를 갖는 모드**(chunk_split의 expect_total_rows·expect_min_subs 등)는
     #  키워드 대조를 쓰지 않는다 — 그 모드가 스스로 구조를 세어 판정하므로 여기서 요구하면
     #  의미 없는 키워드를 형식상 넣게 된다(방어가 오히려 케이스를 왜곡한다).
     if ("expect_clean" not in case and "expect_keywords" not in case
             and not case.get("chunk_split") and not case.get("aux_split")
-            and not case.get("index_shape")):
+            and not case.get("index_shape") and not case.get("unit")):
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
 
     # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
