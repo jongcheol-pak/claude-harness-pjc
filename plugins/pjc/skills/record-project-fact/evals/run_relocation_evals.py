@@ -82,9 +82,12 @@ def run_case(mod, case):
             orig = agents
             if case.get("orig_rel"):
                 orig = open(os.path.join(dest, case["orig_rel"].replace("/", os.sep)), "rb").read()
+            # `ratio`·`slack`을 주면 검증 ①이 **임박선**으로 판정한다 — 발동 조건과 같은
+            #  술어라야 「옮겼는데 여전히 발동 중」이 실패로 잡힌다. 주지 않으면 상한만 본다.
             ok, problems = mod.verify(agents, draw, case["dest_rel"],
                                       case.get("limit", 16384), orig,
-                                      tuple(case.get("declared_removals", ())))
+                                      tuple(case.get("declared_removals", ())),
+                                      ratio=case.get("ratio"), slack=case.get("slack"))
             want = case.get("expect_ok", False)
             if ok != want:
                 return False, "검증 결과 불일치 — 기대 %s / 실제 %s (%s)" % (
@@ -124,6 +127,17 @@ def run_case(mod, case):
             miss = [n for n in needles if n not in ft]
             if miss:
                 return False, "%s에 기대 문자열 없음: %s" % (rel, ", ".join(miss))
+        # **줄바꿈 혼재 검사** — 포인터와 이관처 append 가 LF 를 고정으로 넣으면 CRLF 파일에
+        #  혼재가 생기는데, 그 혼재는 `git diff` 에 보이지 않은 채 이후 편집으로 퍼진다.
+        for rel in case.get("expect_no_mixed_eol", []):
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                return False, "결과 파일 없음: " + rel
+            with open(fp, "rb") as fh:
+                b = fh.read()
+            n_lf, n_crlf = b.count(b"\n"), b.count(b"\r\n")
+            if n_lf != n_crlf:
+                return False, "%s 에 줄바꿈 혼재 — CRLF %d / LF %d" % (rel, n_crlf, n_lf)
         for rel in case.get("expect_absent_files", []):
             if os.path.exists(os.path.join(dest, rel.replace("/", os.sep))):
                 return False, "원복 후에도 남아 있다: " + rel

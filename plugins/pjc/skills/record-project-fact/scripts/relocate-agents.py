@@ -19,21 +19,35 @@
      자체가 사라졌고(`plugins/pjc/skills/AGENTS-BOUNDARY.md` 「AGENTS.md 내용 경계」), `## 위키`는
      그 정본으로 가는 유일한 포인터라 옮기면 도달 경로가 끊긴다.
   ⓒ 대상 — 잔류 밖의 `## ` 절을 바이트 크기순으로 세어 큰 것부터. 크기는 헤딩 줄부터 다음
-     `## ` 직전까지의 **파일 바이트**(CRLF 포함 — ⓐ 판정과 같은 기준).
+     `## ` 직전까지의 **파일 바이트**(CRLF 포함 — ⓐ 판정과 같은 기준). **코드펜스 안의 `## `는
+     절이 아니다** — 이 레포 문서는 자기 서식을 코드블록으로 예시하는 것이 관례라, 세면 본문
+     한가운데를 자른다. **이미 포인터만 남은 절은 후보가 아니다** — 옮겨도 문서가 줄지 않고
+     같은 스텁이 이관처에 하나 더 생길 뿐이다(같은 제목의 절이 둘일 때 뒤엣것을 집는 것도
+     이 술어가 맡는다).
   ⓓ 이관처 — 결정론 2분기다. ① 본문에 백틱·링크로 등장하는 `.md` 경로 중 **최다 등장**(동수면
      먼저 나온 것) ② 후보가 없으면 `docs/agents-detail.md` 신설. 「규약 문서처럼 보이는 것을
      고른다」 같은 판단 여지를 두지 않는다 — 회차마다 다른 곳으로 흩어지면 그것이 곧 유실이다.
      **후보에서 빼는 것은 「그 레포에서 쓸 수 없는 경로」 하나의 술어다**: 자기 자신(`AGENTS.md`) ·
      지침 파일(`CLAUDE.md` — 이 스킬의 절대 규칙 2가 기록처로 금지한다) · 레포 밖(`http(s)://` ·
-     `~` 시작) · 글로브(`*`·`?` — 파일이 아니라 패턴이라 열 수 없다). 축마다 따로 좁히면 사각이
-     남으므로 한 자리에서 판정한다.
+     `~` 시작 · 드라이브 문자나 `/`로 시작하는 절대경로 · `..`로 레포를 벗어나는 상대경로 ·
+     **위키 vault의 최상위 폴더**(`10_sources/`·`20_projects/`·`30_knowledge/`·`40_guides/`·
+     `50_questions/`·`90_archive/` — AGENTS.md의 `## 위키` 절이 그 경로를 본문에 적으므로 후보에
+     오르는데, 그것은 **다른 저장소의 파일**이라 이 레포에서 열 수 없다) · **추적되지 않는 작업
+     문서**(`plan.md`·`notes.md` — 회차마다 덮어써지므로 옮긴 절이 다음 회차에 사라진다) ·
+     글로브(`*`·`?` — 파일이 아니라 패턴이라 열 수 없다). 축마다 따로 좁히면 사각이 남으므로
+     한 자리에서 판정한다.
   ⓔ 포인터 — 옮긴 자리에 **절 제목을 유지한 채** `**정본은 …의 「…」이다** — …` 1줄을 남긴다.
      제목까지 지우면 목차 폴백에서도 그 주제가 사라져 「어디로 갔는지 물을 실마리」조차 없다.
-  ⓕ 사본 — 착수 직전 `docs/.agents-presplit/{YYYY-MM-DD}/`에 복사한다(git 저장소여도 만든다 —
-     이관은 미커밋 작업 도중에도 돌 수 있어 `git checkout` 원복이 그 작업까지 지운다).
-  ⓖ 검증 — ① 상한 이내 ② 잔류 절 7종 존재 ③ 포인터 도달성(파일 실재 + **같은 절 이름 존재**)
-     ④ **원문 도달 대조**(줄 수 합이 아니라 각 줄이 어딘가에 닿았는가 — `unreached_lines`).
-     하나라도 실패하면 ⓕ 사본으로 원복하고 보고한다.
+  ⓕ 사본 — 착수 직전 `docs/.agents-presplit/{YYYY-MM-DD}-{HHMMSS}/`에 복사한다(git 저장소여도
+     만든다 — 이관은 미커밋 작업 도중에도 돌 수 있어 `git checkout` 원복이 그 작업까지 지운다).
+     **시각을 붙이는 이유**: 날짜만 쓰면 같은 날 두 번째 실행이 첫 실행 **결과**를 원본으로
+     덮어써, 되돌릴 지점이 사라진다.
+  ⓖ 검증 — ① **임박선 이내**(상한이 아니다 — 발동 조건과 같은 술어를 써야 「옮겼는데 여전히
+     발동 중」이 실패로 잡힌다) ② 잔류 절 7종 존재 ③ 포인터 도달성(파일 실재 + **같은 절 이름
+     존재**) ④ **원문 도달 대조**(줄 수 합이 아니라 각 줄이 어딘가에 닿았는가 —
+     `unreached_lines`. **이관처에 원래 있던 줄은 도달로 세지 않는다**: 우연히 같은 줄이 있으면
+     유실이 통과한다). 하나라도 실패하면 ⓕ 사본으로 원복하고 보고한다. **쓰기 도중 실패도
+     같은 경로로 되돌린다** — 이관처만 써진 채 죽으면 같은 내용이 두 곳에 남는다.
   ※ 소급 정리(이미 있는 AGENTS.md를 새 경계로 맞추는 것)는 이 스크립트 소관이 아니다 —
      정본은 SKILL.md 「소급 정리」다(삭제를 포함해 승인이 필요하고 산출물이 plan.md다).
   ⓘ 이관 불가 — 잔류 절만으로 이미 상한을 넘거나 옮길 절이 하나도 없으면 **아무것도 옮기지
@@ -47,6 +61,8 @@
         그 경로는 삭제가 정상이라 `--declared`로 「의도적으로 지운 줄」을 함께 넘긴다.
 종료 코드: 0 정상(이관했거나 발동하지 않음) / 1 실패(검증 실패로 원복했거나 미도달 줄이 있음)
       / 2 입력 오류(파일 부재·인자 부족 — 「검사할 것을 못 찾았다」이지 통과가 아니다).
+      **이 세 값이 정본이다** — 스킬 문서가 1과 2를 합쳐 적으면 호출부가 입력 오류를 검증
+      실패로 읽어 「원복됐다」는 없는 사실을 보고한다.
 """
 import datetime
 import io
@@ -74,6 +90,13 @@ MIGRATE_HINT = (
 
 KEEP_SECTIONS = ("위키", "Build & Test", "Conventions", "데이터 접근",
                  "산출물·파일 관리", "DO NOT", "Plan Location")
+# 이관처가 될 수 없는 경로 (판정 ⓓ). **위키 vault 최상위 폴더**는 `## 위키` 절이 본문에 적어
+#  후보로 오르지만 다른 저장소의 파일이고, **작업 문서**는 회차마다 덮어써져 옮긴 절이 사라진다.
+VAULT_PREFIXES = ("10_sources/", "20_projects/", "30_knowledge/", "40_guides/",
+                  "50_questions/", "90_archive/")
+SCRATCH_DOCS = ("plan.md", "notes.md")
+# 옮긴 자리에 남는 포인터 1줄. 그 줄만 있는 절은 다시 옮길 것이 없다(판정 ⓒ).
+PTR_LINE_RX = re.compile(r"(?m)^\*\*정본은 `[^`]+`의 「[^」]+」이다\*\*.*$".encode("utf-8"))
 DEFAULT_DEST = "docs/agents-detail.md"
 BACKUP_DIR = os.path.join("docs", ".agents-presplit")
 # hook에서 읽을 세 값의 변수 이름. 이름이 바뀌면 여기서 **명확히 실패**한다(조용한 기본값 금지).
@@ -101,10 +124,23 @@ def read_bytes(path):
         return fh.read()
 
 
+def blank_fences(raw):
+    """코드펜스 안을 **같은 길이의 공백**으로 덮은 사본. 오프셋이 보존돼 원문에 그대로 쓴다.
+
+    이 레포 문서는 자기 서식을 ```` ```md ```` 블록으로 예시하는 것이 관례라, 펜스 안의
+    `## `를 절로 세면 **본문 한가운데를 잘라** 옮긴다(같은 함정에 위키 lint 쪽이 먼저 걸렸다)."""
+    return re.sub(rb"```.*?```|```.*\Z",
+                  lambda m: re.sub(rb"[^\r\n]", b" ", m.group(0)), raw, flags=re.S)
+
+
 def md_sections(raw):
-    """`## ` 절을 [(제목, 시작 바이트, 끝 바이트)]로 돌려준다(파일 바이트 기준)."""
-    marks = [(m.start(), m.group(1).decode("utf-8").strip())
-             for m in re.finditer(rb"(?m)^##[ \t]+(.+)$", raw)]
+    """`## ` 절을 [(제목, 시작 바이트, 끝 바이트)]로 돌려준다(파일 바이트 기준).
+
+    헤딩 판정은 펜스를 덮은 사본으로 하고, 반환하는 오프셋은 원문 기준이다."""
+    probe = blank_fences(raw)
+    marks = [(m.start(), raw[m.start():m.end()].decode("utf-8", "replace")
+              .lstrip("#").strip())
+             for m in re.finditer(rb"(?m)^##[ \t]+.+$", probe)]
     out = []
     for i, (pos, title) in enumerate(marks):
         end = marks[i + 1][0] if i + 1 < len(marks) else len(raw)
@@ -126,8 +162,13 @@ def pick_destination(raw):
     for a, b in hits:
         p = (a or b).strip()
         low = p.lower()
+        norm = p.replace("\\", "/")
         if (low.endswith("agents.md") or low.endswith("claude.md")
                 or p.startswith(("http://", "https://", "~"))
+                or norm.startswith("/") or re.match(r"^[A-Za-z]:", norm)
+                or norm.startswith("../") or "/../" in norm
+                or norm.startswith(VAULT_PREFIXES)
+                or os.path.basename(norm) in SCRATCH_DOCS
                 or "*" in p or "?" in p):
             continue        # 그 레포에서 쓸 수 없는 경로는 이관처가 아니다 (docstring ⓓ)
         if p not in count:
@@ -151,6 +192,9 @@ def relocate(root, dry_run=False):
     limit, ratio, slack = load_limit(os.path.normpath(hook))
 
     raw = read_bytes(agents)
+    # 원본 줄바꿈을 따른다 — 포인터와 이관처 append에 LF를 고정으로 넣으면 CRLF 파일에
+    #  혼재가 생기고, 그 혼재는 `git diff`에 보이지 않은 채 이후 편집으로 퍼진다.
+    eol = b"\r\n" if b"\r\n" in raw else b"\n"
     size = len(raw)
     if not (size >= limit * ratio or limit - size < slack):
         return 0, ["이관 대상 아님 — %dB / 상한 %dB (여유 %dB)" % (size, limit, limit - size)]
@@ -168,7 +212,9 @@ def relocate(root, dry_run=False):
     dest = os.path.join(root, dest_rel.replace("/", os.sep))
 
     # ⓕ 사본 — 이관처가 이미 있으면 그것도 함께 뜬다(원복이 한쪽만 되돌리면 반쪽이 남는다).
-    stamp = datetime.date.today().isoformat()
+    # 날짜만 쓰면 같은 날 두 번째 실행이 **첫 실행 결과**를 원본으로 덮어써 되돌릴 지점이
+    #  사라진다(위키 쪽 사본이 같은 결함을 갖고 있었다).
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
     bdir = os.path.join(root, BACKUP_DIR, stamp)
     backups = []
     if not dry_run:
@@ -184,37 +230,57 @@ def relocate(root, dry_run=False):
         if len(cur) < limit * ratio and limit - len(cur) >= slack:
             break
         # 매 회차 현재 본문에서 경계를 다시 잡는다 — 앞 절을 옮기면 뒤 절의 오프셋이 밀린다.
-        span = [s for s in md_sections(cur) if s[0] == title]
-        if not span:
+        # **아직 옮기지 않은 절을 고른다** — 같은 제목이 둘이면 앞엣것은 이미 포인터로
+        #  바뀌었으므로 뒤엣것이 대상이고, 포인터뿐인 절은 옮겨도 문서가 줄지 않는다.
+        #  두 경우를 한 술어로 판정한다(따로 두면 한쪽만 고쳐진다).
+        picked = None
+        for _t, s0, s1 in md_sections(cur):
+            if _t != title:
+                continue
+            head_end = cur.index(b"\n", s0) + 1
+            body = cur[head_end:s1]
+            if not PTR_LINE_RX.sub(b"", body).strip():
+                continue
+            picked = (s0, s1, head_end, body)
+            break
+        if picked is None:
             continue
-        _t, s0, s1 = span[0]
+        s0, s1, head_end, body = picked
         block = cur[s0:s1]
-        head_end = cur.index(b"\n", s0) + 1
-        body = cur[head_end:s1]
-        if not body.strip():
-            continue
-        ptr = ("\n**정본은 `%s`의 「%s」이다** — 이 절의 규정은 그 문서가 담는다.\n\n"
+        ptr = ("**정본은 `%s`의 「%s」이다** — 이 절의 규정은 그 문서가 담는다."
                % (dest_rel, title)).encode("utf-8")
-        cur = cur[:head_end] + ptr + cur[s1:]
+        cur = cur[:head_end] + eol + ptr + eol + eol + cur[s1:]
         moved.append((title, block, len(block)))
 
     if not moved:
         return 0, [MIGRATE_HINT % "발동했으나 옮길 수 있는 절이 없다"]
 
-    dest_raw = read_bytes(dest) if os.path.exists(dest) else b""
+    dest_before = read_bytes(dest) if os.path.exists(dest) else b""
+    dest_raw = dest_before
     if not dest_raw.strip():
-        dest_raw = b"# AGENTS \xeb\xb3\xb4\xec\xa1\xb0 \xeb\xac\xb8\xec\x84\x9c\n\n"  # "# AGENTS 보조 문서"
+        dest_raw = b"# AGENTS \xeb\xb3\xb4\xec\xa1\xb0 \xeb\xac\xb8\xec\x84\x9c" + eol + eol  # "# AGENTS 보조 문서"
     for title, block, _n in moved:
-        dest_raw = dest_raw.rstrip(b"\n") + b"\n\n" + block.rstrip(b"\n") + b"\n"
+        dest_raw = (dest_raw.rstrip(b"\r\n") + eol + eol
+                    + block.rstrip(b"\r\n") + eol)
 
     if not dry_run:
-        os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
-        with open(dest, "wb") as fh:
-            fh.write(dest_raw)
-        with open(agents, "wb") as fh:
-            fh.write(cur)
+        # **쓰기 도중 실패도 사본으로 되돌린다** — 이관처만 써진 채 죽으면 같은 내용이 두 곳에
+        #  남고, 다음 실행은 그것을 「이미 옮겨진 것」으로 보지 않아 또 옮긴다.
+        try:
+            os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+            with open(dest, "wb") as fh:
+                fh.write(dest_raw)
+            with open(agents, "wb") as fh:
+                fh.write(cur)
+        except OSError as e:
+            for orig, b in backups:
+                shutil.copy2(b, orig)
+            if dest_new and not any(p == dest for p, _b in backups) and os.path.exists(dest):
+                os.remove(dest)
+            return 1, ["[쓰기 실패] %s — 사본으로 원복했다: %s" % (type(e).__name__, bdir)]
 
-    ok, problems = verify(cur, dest_raw, dest_rel, limit, raw)
+    ok, problems = verify(cur, dest_raw, dest_rel, limit, raw,
+                          ratio=ratio, slack=slack, dest_before=dest_before)
     if not ok:
         if not dry_run:
             for orig, b in backups:
@@ -235,7 +301,7 @@ def relocate(root, dry_run=False):
     return 0, log
 
 
-def unreached_lines(orig_raw, parts, declared_removals=()):
+def unreached_lines(orig_raw, parts, declared_removals=(), already=b""):
     """원문 줄 중 **어느 목적지에도 도달하지 않은 것**을 순서대로 돌려준다.
 
     종전 축은 「줄 수 합이 줄지 않았는가」였는데 그것은 내용이 도달했음을 보장하지 않는다.
@@ -243,13 +309,16 @@ def unreached_lines(orig_raw, parts, declared_removals=()):
     나오는 자리가 있어, 집합으로 보면 그중 하나만 남아도 나머지 유실이 통과한다.
     정규화는 둘이다 — 각 줄을 `strip()` 하고 **빈 줄은 대상에서 뺀다**. 이관이 블록을
     `rstrip` 후 붙이므로 말미 빈 줄이 사라지는데, 그것까지 미도달로 세면 오탐이 된다.
-    `declared_removals`에 있는 줄(같은 정규화)은 의도적 삭제라 미도달로 세지 않는다."""
+    `declared_removals`에 있는 줄(같은 정규화)은 의도적 삭제라 미도달로 세지 않는다.
+    `already`는 **결과에 원래 있던 내용**이다(이관 전 이관처) — 이번에 옮겨 넣은 것이 아니므로
+    도달 몫에서 뺀다. 빼지 않으면 목적지에 우연히 같은 줄이 있을 때 유실이 통과한다."""
     def norm(raw):
         return Counter(l.strip() for l in raw.decode("utf-8", "replace").splitlines() if l.strip())
 
     reached = Counter()
     for p in parts:
         reached += norm(p)
+    reached -= norm(already)
     reached += Counter(d.strip() for d in declared_removals if d.strip())
     out = []
     for line, need in norm(orig_raw).items():
@@ -258,13 +327,23 @@ def unreached_lines(orig_raw, parts, declared_removals=()):
     return out
 
 
-def verify(agents_raw, dest_raw, dest_rel, limit, orig_raw, declared_removals=()):
+def verify(agents_raw, dest_raw, dest_rel, limit, orig_raw, declared_removals=(),
+           ratio=None, slack=None, dest_before=b""):
     """ⓖ 검증 4종. 반환: (통과 여부, 문제 목록).
 
     `declared_removals`는 **의도적으로 지운 줄**이다 — 소급 정리 경로가 넘긴다.
-    Step 5(무손실 이관)는 지우는 것이 없으므로 비어 있고, 그때 미도달은 곧 유실이다."""
+    Step 5(무손실 이관)는 지우는 것이 없으므로 비어 있고, 그때 미도달은 곧 유실이다.
+
+    `ratio`·`slack`을 주면 ①을 **임박선**으로 판정한다 — 발동 조건과 같은 술어라야
+    「옮겼는데 여전히 발동 중」이 실패로 잡힌다. 주지 않으면 상한만 본다(단독 호출 하위호환).
+    `dest_before`는 **이관 전 이관처 내용**이다: 그 줄들은 이번 이관이 옮긴 것이 아니므로
+    도달로 세지 않는다 — 우연히 같은 줄이 있으면 유실이 통과한다."""
     problems = []
-    if len(agents_raw) > limit:
+    if ratio is not None and slack is not None:
+        if len(agents_raw) >= limit * ratio or limit - len(agents_raw) < slack:
+            problems.append("AGENTS.md가 여전히 임박선 위다(%dB / 상한 %dB, 여유 %dB)"
+                            % (len(agents_raw), limit, limit - len(agents_raw)))
+    elif len(agents_raw) > limit:
         problems.append("AGENTS.md가 여전히 상한을 넘는다(%dB > %dB)" % (len(agents_raw), limit))
     titles = {t for t, _s, _e in md_sections(agents_raw)}
     for k in KEEP_SECTIONS:
@@ -279,7 +358,8 @@ def verify(agents_raw, dest_raw, dest_rel, limit, orig_raw, declared_removals=()
             problems.append("포인터가 가리키는 절이 이관처에 없다: 「%s」" % m.group(2))
     # ④ 원문 도달 대조 — 줄 수 합계는 「내용이 도달했는가」를 보장하지 않고,
     #    소급 정리처럼 삭제가 정상 경로가 되면 원리상 성립하지도 않는다(지운 만큼 줄이 준다).
-    missing = unreached_lines(orig_raw, (agents_raw, dest_raw), declared_removals)
+    missing = unreached_lines(orig_raw, (agents_raw, dest_raw), declared_removals,
+                              already=dest_before)
     if missing:
         more = " 외 %d건" % (len(missing) - 3) if len(missing) > 3 else ""
         problems.append("원문 %d줄이 어디에도 도달하지 않았다 — %s%s"

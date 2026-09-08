@@ -16,6 +16,9 @@ desktop.ini
 __pycache__/
 *.pyc
 
+# AGENTS.md 이관 사본 (원복 수단 — 레포에 남길 것이 아니다)
+docs/.agents-presplit/
+
 # 작업 문서 (로컬 전용 — git 미추적)
 plan.md
 notes.md
