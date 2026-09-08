@@ -1754,7 +1754,14 @@ TYPE_REQUIRED_SECTIONS = {
     "guide": ("개요",),
     "convention": (),
 }
-RELOCATE_TYPES = tuple(TYPE_REQUIRED_SECTIONS)
+# **project 허브는 산문 하위 분리 대상이 아니다.** 하위는 원본과 같은 타입이라(§4 2번)
+#  `type: project`가 되는데, 그러면 `_project_hub_paths`·`_rows_projects`와 §7-20·§7-21·
+#  §7-26·§7-30이 그 하위를 **별개 프로젝트**로 잡는다 — 인덱스 프로젝트 표에 한 줄이 더 생기고,
+#  `## 레포 정보`가 없다고 경고하고, 뒤처짐 계측이 그것을 따로 센다. 자동 분할이 스스로 새
+#  위반을 만드는 자리라 문자 축 처방을 두지 않는다(§4 표 project 행 — 그 자리는 사람이 하는
+#  정리 §2.9가 맡는다). `TYPE_REQUIRED_SECTIONS`에는 남긴다 — 그 dict 는 필수 섹션의 정의이지
+#  분리 대상 목록이 아니다.
+RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS if t != "project")
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
 
 
@@ -1919,7 +1926,10 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
         #  **스텁의 생산자는 둘이고 둘 다 정상 동작이다** — 이동 자리에 남는 포인터와
         #  _sub_page_text가 하위에 재현하는 필수 섹션 포인터(§7-18ⓐ·§7-21 게이트가 하위에도
         #  걸리므로 재현이 필요하다). 그 재현을 없애는 것은 처방이 아니다.
-        if not PTR_ONLY_LINE_RX.sub("", c_body).strip():
+        # 각주 정의 줄도 함께 뺀다 — 옮긴 자리에 포인터와 **원본에 남긴 각주 정의**가 남는데,
+        #  정의만으로는 옮길 실 내용이 아니다. 빼지 않으면 그 스텁이 다음 라운드에 다시 최대
+        #  후보로 잡혀, 각주를 데리고 하위로 갔다가 §7-18ⓑ 위반이 되돌아온다.
+        if not FOOTNOTE_DEF_RX.sub("", PTR_ONLY_LINE_RX.sub("", c_body)).strip():
             continue
         sub_text = _sub_page_text(text, fm, typ, c_title, c_body, label, rel, nl, secmap)
         sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
@@ -2023,7 +2033,13 @@ def relocate_sections(ses):
             hd_end = cur.index("\n", s0) + 1
             ptr = ("**정본은 [[%s|%s — %s]]의 「%s」이다** — 본문 %d자를 옮겼다(§7-2 발동 처방).\n\n"
                    % (sub_rel[:-len(".md")], label, title, title, len(body)))
-            cur = cur[:hd_end] + "\n" + ptr + cur[s1:]
+            # **본문 안의 각주 정의는 원본에 남긴다**(D2) — 각주는 파일 로컬이라, 정의가
+            #  옮기는 절 안에 있으면 본문과 함께 빠져 **원본의 `[^src-` 가 0이 된다**(§7-18ⓑ가
+            #  곧바로 새 위반을 낸다). 하위에는 body 에 이미 딸려 가므로 여기서 복제하지 않는다.
+            #  마지막 절이 옮겨질 때 실제로 일어나는 경로다 — 각주 정의는 관례상 문서 끝에 모인다.
+            kept_defs = FOOTNOTE_DEF_RX.findall(body)
+            tail = ("\n".join(kept_defs) + "\n\n") if kept_defs else ""
+            cur = cur[:hd_end] + "\n" + ptr + tail + cur[s1:]
             # 옮긴 섹션은 이후 라운드의 후보에서 뺀다. 그 자리에 남는 것은 헤딩과 포인터
             #  한 줄뿐인데, 빼지 않으면 그 **스텁이 다시 최대 후보로 뽑혀** 거의 같은 길이의
             #  새 포인터로 바뀌기만 한다 — 문서가 줄지 않으니 발동도 풀리지 않아 `-3`·`-4`로

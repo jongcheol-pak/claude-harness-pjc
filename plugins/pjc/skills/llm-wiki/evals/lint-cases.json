@@ -1092,6 +1092,43 @@
       }
     },
     {
+      "fixture": "prose-footnote-tail",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "구현 근거 각주 누락",
+        "예산 초과: 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "[^src-thing]: [[10_sources/personal/src-demo"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "[^src-thing]: [[10_sources/personal/src-demo"
+        ]
+      },
+      "rationale": "**각주 정의가 이동 대상 절의 본문 안에 있을 때 원본에 남는가.** 각주는 파일 로컬이라 정의가 옮기는 절 안에 있으면 본문과 함께 빠지고, 그러면 **원본의 `[^src-` 가 0이 되어** §7-18ⓑ가 곧바로 새 위반을 낸다 — 자동 분할이 스스로 만든 위반이다. 기존 `prose-split` 픽스처는 정의가 문서 끝의 독립 줄이라 이 경로를 한 번도 타지 않았다(그 케이스의 각주 축은 「본문 밖 정의가 하위에 복제되는가」를 잰다). **마지막 절이 옮겨질 때 실제로 일어나는 형태다** — 각주 정의는 관례상 문서 끝에 모이고, 그 자리는 마지막 절의 본문 안이다. 원본·하위 **양쪽**에 정의가 있는지 함께 본다: 한쪽만 보면 「옮기지 않고 복제만」이나 「남기고 하위엔 없음」이 통과한다."
+    },
+    {
+      "fixture": "hub-prose-split",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 20_projects/personal/demo.md"
+      ],
+      "after_expect_keywords": [
+        "예산 초과: 20_projects/personal/demo.md"
+      ],
+      "rationale": "**project 허브는 산문 하위 분리 대상이 아니다**(D1). 허브를 나누면 하위가 같은 타입이라 (§4 2번) `type: project`가 되고, 그러면 `_project_hub_paths`·`_rows_projects`와 §7-20·§7-26·§7-30이 그 하위를 **별개 프로젝트**로 잡는다 — 인덱스 프로젝트 표에 줄이 하나 더 생기고, `## 레포 정보`가 없다고 경고하고, 뒤처짐 계측이 그것을 따로 센다. 기존 `hub-budget-only`와 **다른 축**이다: 저쪽은 모든 절이 잔류 대상이라 「옮길 것이 없어서」 조용한 것이고, 이 픽스처는 **잔류 밖 절**(실 vault 허브의 「설계 / 아키텍처 가이드」와 같은 형태)을 두어 제외가 없으면 실제로 분리가 일어나게 했다. 수행 후 재lint에 예산 신호가 **그대로 남아 있는지**까지 본다 — 이 처방이 해소하지 않는 것이 정상이며, 그 자리는 사람이 정리한다(§2.9)."
+    },
+    {
       "fixture": "prose-guard",
       "auto_split": true,
       "expect_keywords": [
