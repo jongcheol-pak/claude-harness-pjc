@@ -30,6 +30,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -147,6 +148,37 @@ def prepare_bad_index_vault(fixture_dir):
     with open(bad, "wb") as fh:
         fh.write("# 인덱스\n\n한글 CP949 본문".encode("cp949"))
     return tmp, dest
+
+
+def inject_split_failures(dest, case):
+    """`--auto-split` 처방을 실패시킬 조건을 복사본에 심는다. 반환: 되돌릴 (경로, 모드) 목록.
+
+    **정상 경로만 도는 골든은 실패 경로를 원리상 못 본다** — 쓰기·읽기 실패에서 원본을
+    지키는지는 실패가 실제로 일어나야 드러나고, 그 실패를 lint.py 안에서 만들면 테스트
+    훅이 실사용 경로에 남는다. 그래서 파일 쪽 조건으로 만든다:
+      `readonly_paths`      — 읽기 전용 파일에 `os.replace`는 PermissionError(실측 errno 13)
+      `bad_encoding_paths`  — CP949로 덮어써 UTF-8 디코딩을 실패시킨다
+    """
+    restore = []
+    for rel in case.get("readonly_paths", []):
+        p = os.path.join(dest, rel.replace("/", os.sep))
+        mode = os.stat(p).st_mode
+        os.chmod(p, stat.S_IREAD)
+        restore.append((p, mode))
+    for rel in case.get("bad_encoding_paths", []):
+        p = os.path.join(dest, rel.replace("/", os.sep))
+        with open(p, "wb") as fh:
+            fh.write("# 2026-07 log\n\n- [2026-07-01] 한글 CP949 본문".encode("cp949"))
+    return restore
+
+
+def undo_split_failures(restore):
+    """read-only를 되돌린다 — 그대로 두면 `shutil.rmtree`가 임시 폴더를 지우지 못한다."""
+    for p, mode in restore:
+        try:
+            os.chmod(p, mode)
+        except OSError:
+            pass
 
 
 def prepare_git_repo_vault(fixture_dir, synced_mode):
@@ -270,6 +302,15 @@ def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
                  "origin: human-validated\nconfidence: high\nupdated: 2026-07-02\n"
                  "tags: [guide]\n---\n\n# 사용자 메모\n\n## 목적\n생성물이 아니다.\n")
     return tmp, dest
+
+
+def _read_bytes(root, rel):
+    """vault 상대경로의 바이트. 없으면 None — 「무변경」 판정이 부재와 내용을 함께 본다."""
+    p = os.path.join(root, rel.replace("/", os.sep))
+    if not os.path.exists(p):
+        return None
+    with open(p, "rb") as fh:
+        return fh.read()
 
 
 def _snapshot_md(root):
@@ -522,15 +563,30 @@ def check_case(case):
             changed = sorted(k for k in set(dry_before) | set(dry_after)
                              if dry_before.get(k) != dry_after.get(k))
             return False, "--auto-split --dry-run이 파일을 변경함: " + ", ".join(changed)
+        # 실패 주입은 dry-run 무변경 확인 **뒤**에 건다 — dry-run은 실패 경로와 무관한
+        #  계약이고, 앞에 걸면 그 계약이 「쓰지 못해서 안 바뀐 것」과 구분되지 않는다.
+        restore = inject_split_failures(dest, case)
+        unchanged_before = {rel: _read_bytes(dest, rel)
+                            for rel in case.get("expect_unchanged", [])}
         out, rc, err = run_lint(dest, ["--auto-split"])
         out2, rc2, err2 = run_lint(dest)
         # **정상 케이스의 종료 코드는 0 하나다.** 1은 `ses.failed`(사본 실패 등 처방 미수행)이
         #  내는 값이라 골든 픽스처에서는 나올 이유가 없는데, 종전 판정이 0과 1을 함께 통과시켜
         #  **`ses.failed`가 종료 코드로 나가는 경로 전체가 골든 밖**이었다(실측: 재점검 실패를
         #  합류시키는 한 줄을 지워도 전건 PASS였다). 27케이스 전부 rc 0임을 실측하고 좁혔다.
-        if rc != 0:
+        want_rc = case.get("expect_rc", 0)
+        if rc != want_rc:
             tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
-            return False, f"--auto-split 비정상 종료({rc}): {tail}"
+            undo_split_failures(restore)
+            shutil.rmtree(tmp, ignore_errors=True)
+            return False, f"--auto-split 종료 코드 불일치 — 기대 {want_rc} / 실제 {rc}: {tail}"
+        # **원본이 그대로인가** — 처방이 실패했는데 원본만 갱신되면 항목이 어디에도 없다.
+        #  출력에 `[SPLIT-FAIL]`이 있는 것만으로는 그 유실이 걸러지지 않는다.
+        for rel, before in unchanged_before.items():
+            if _read_bytes(dest, rel) != before:
+                undo_split_failures(restore)
+                shutil.rmtree(tmp, ignore_errors=True)
+                return False, "처방 실패인데 변경됐다: " + rel
         missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
         if missing:
             return False, "--auto-split 출력 미검출 키워드: " + ", ".join(missing)
@@ -604,6 +660,12 @@ def check_case(case):
         #  두 번 해야 드러난다(1회 실행에서는 26케이스 중 25개가 이미 수렴해 조용했다).
         #  **맨 끝에 두는 이유**: 위 expect_file_contains·expect_file_count는 **1회 수행 후
         #  상태**를 재는 판정이라, 2회째를 앞에 두면 그 판정들이 다른 상태를 보게 된다.
+        if want_rc != 0:
+            # 실패 주입 케이스는 2회째도 같은 실패라 「수렴」이 성립하지 않는다.
+            undo_split_failures(restore)
+            shutil.rmtree(tmp, ignore_errors=True)
+            return True, "--auto-split 실패 경로 확인(rc=%d): %s" % (
+                rc, ", ".join(case.get("expect_keywords", [])))
         out3, rc3, err3 = run_lint(dest, ["--auto-split"])
         if rc3 != 0:
             tail = err3.strip().splitlines()[-1] if err3.strip() else "(stderr 없음)"
@@ -621,6 +683,7 @@ def check_case(case):
                    if ln.startswith("  ") and ln.strip() and not ln.strip().startswith("사본:")]
             shutil.rmtree(tmp, ignore_errors=True)
             return False, "2회째 --auto-split이 수렴하지 않음: " + ("; ".join(did) if did else out3.strip())
+        undo_split_failures(restore)
         shutil.rmtree(tmp, ignore_errors=True)
         return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
 

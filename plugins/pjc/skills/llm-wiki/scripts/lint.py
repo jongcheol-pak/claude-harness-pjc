@@ -1212,6 +1212,36 @@ def _atomic_write(path, content, bom=False, newline="\n"):
         return False
 
 
+class SplitIOError(RuntimeError):
+    """처방이 파일을 읽거나 쓰지 못했다 — 격리 루프(_run_prescriptions)가 받아 원복한다.
+
+    반환값으로 알리지 않고 예외로 올리는 이유: 처방 하나가 파일을 여러 개 손대는데,
+    실패를 그 자리에서 돌려주면 **이미 고친 앞 파일을 되돌릴 책임이 각 처방에 흩어진다.**
+    격리 루프는 이미 claim 단위 원복을 갖고 있으므로 그리로 보낸다."""
+
+
+def _write_or_abort(path, content, bom=False, newline="\n", label=None):
+    """`_atomic_write`가 실패하면 SplitIOError로 올린다.
+
+    **쓰기 실패를 무시하면 원본만 갱신된다** — 롤오버는 「아카이브에 쓰고 원본에서 빼는」
+    두 걸음이라, 앞 걸음의 실패를 지나치면 항목이 어디에도 남지 않는다(유실). 예외로
+    올리면 뒤 걸음에 도달하지 않고 격리 루프가 사본으로 되돌린다."""
+    if not _atomic_write(path, content, bom, newline):
+        raise SplitIOError("쓰기 실패: " + (label or path))
+
+
+def _read_archive(path, label):
+    """append할 아카이브를 읽는다. 못 읽으면 SplitIOError.
+
+    **읽기 실패를 빈 문자열로 대신하지 않는다** — `(prev or "")`로 진행하면 기존 아카이브가
+    통째로 새 블록으로 대체돼, 이미 옮겨 둔 과거 항목이 사라진다(덮어쓰기 금지 규정의
+    정반대). 「읽을 수 없다」와 「비어 있다」는 다르다."""
+    prev, bom, page_nl = _read_page(path)
+    if prev is None:
+        raise SplitIOError("아카이브를 읽지 못해 append할 수 없다: " + label)
+    return prev, bom, page_nl
+
+
 def _read_page(path):
     """페이지를 읽어 (정규화 텍스트, BOM 여부, 줄바꿈)을 돌려준다. 실패면 (None, False, "\\n").
     쓰기 쪽(_atomic_write)이 원본 형상을 보존하려면 읽기 쪽이 그 형상을 함께 알려줘야 한다."""
@@ -1231,16 +1261,19 @@ def _read_page(path):
 def _append_log_entries(vault, lines):
     """§4 7번 기록을 log.md `## 최근 변경`에 append한다. 파일·섹션이 없으면 만들지 않고
     건너뛴다 — 없는 vault에 구조를 지어내지 않는다(그 경우 보고에만 남는다).
-    반환: 기록한 줄 수."""
+
+    반환: `(기록한 줄 수, 실패 사유 또는 None)`. **「적을 것이 없었다」와 「적지 못했다」를
+    가른다** — 종전에는 둘 다 0이라 기록 실패가 호출부의 `if written:`에서 조용히 지나갔다.
+    §4 7번 기록이 비면 6번 사후 보고와 5번 원복이 기대는 「무엇이 만들어졌는가」가 함께 빈다."""
     path = os.path.join(vault, "log.md")
     if not lines or not os.path.exists(path):
-        return 0
+        return 0, None
     text, bom, nl = _read_page(path)
     if text is None:
-        return 0
+        return 0, "log.md를 읽지 못해 §4 7번 기록을 남기지 못했다"
     sec = section(text, "최근 변경")
     if not sec:
-        return 0
+        return 0, None
     # **맨 위에 넣는다** — log.md는 최신이 위(내림차순)가 관례다(실측). 아래에 붙이면 방금 쓴
     #  기록이 가장 오래된 자리에 놓여, 롤오버가 「같은 날짜면 아래쪽이 더 오래된 것」으로 tie를
     #  가를 때 그 기록부터 아카이브로 보내게 된다(자기가 남긴 기록을 자기가 치우는 꼴).
@@ -1248,8 +1281,8 @@ def _append_log_entries(vault, lines):
     body = "".join(b for _d, b in items)
     new_sec = head + "\n".join(lines) + "\n" + body
     if not _atomic_write(path, text.replace(sec, new_sec, 1), bom, nl):
-        return 0
-    return len(lines)
+        return 0, "log.md 쓰기 실패로 §4 7번 기록을 남기지 못했다"
+    return len(lines), None
 
 
 # 처방 목록 — 각 처방이 자기 함수를 정의하고 여기 등록한다(auto_split의 순차 호출 대상).
@@ -1281,7 +1314,7 @@ def _run_prescriptions(ses):
             del ses.actions[before_actions:]
             ses.notes.append(
                 f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
-                f"{type(e).__name__} — 사본에서 {restored}개 파일 원복 후 다음 처방 계속")
+                f"{type(e).__name__}({e}) — 사본에서 {restored}개 파일 원복 후 다음 처방 계속")
             ses.failed = True
 
 
@@ -1407,15 +1440,16 @@ def rollover_log(ses):
     for mon in sorted(targets):
         blocks = [b for _d, b in targets[mon]]
         af = os.path.join(arch_dir, "%s.md" % mon)
+        arch_rel = "90_archive/log/%s.md" % mon
         if os.path.exists(af):
-            prev, abom, anl = _read_page(af)
-            body = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+            prev, abom, anl = _read_archive(af, arch_rel)
+            body = prev.rstrip("\n") + "\n" + "".join(blocks)
         else:
             abom, anl = False, nl
             body = "# %s log\n\n" % mon + "".join(blocks)
         if not ses.dry_run:
             os.makedirs(arch_dir, exist_ok=True)
-            _atomic_write(af, body, abom, anl)
+            _write_or_abort(af, body, abom, anl, arch_rel)
         dates = sorted(d for d, _b in targets[mon])
         line = "- %s.md: %d건 (%s~%s)" % (mon, len(blocks), dates[0], dates[-1])
         idx_sec = section(new_text, "아카이브 인덱스")
@@ -1426,7 +1460,7 @@ def rollover_log(ses):
         else:
             new_text = new_text.rstrip("\n") + "\n\n## 아카이브 인덱스\n\n" + line + "\n"
     if not ses.dry_run:
-        _atomic_write(path, new_text, bom, nl)
+        _write_or_abort(path, new_text, bom, nl, "log.md")
     ses.record("롤오버", "log.md",
                ["90_archive/log/%s.md" % m for m in sorted(targets)])
 
@@ -1492,8 +1526,8 @@ def rollover_decisions(ses):
 
         blocks = [b for _d, b in moving]
         if os.path.exists(arch_path):
-            prev, abom, anl = _read_page(arch_path)
-            arch_text = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+            prev, abom, anl = _read_archive(arch_path, arch_rel)
+            arch_text = prev.rstrip("\n") + "\n" + "".join(blocks)
         else:
             abom, anl = False, nl
             proj = frontmatter(text).get("project", "") or os.path.basename(os.path.dirname(rel))
@@ -1531,8 +1565,9 @@ def rollover_decisions(ses):
                 "\n\n## 아카이브\n\n- 이전 이력: %s (%s)\n" % (arch_rel, span))
         if not ses.dry_run:
             os.makedirs(os.path.dirname(arch_path), exist_ok=True)
-            _atomic_write(arch_path, arch_text, abom, anl)
-            _atomic_write(path, new_text, bom, nl)
+            # 아카이브 먼저, 원본 나중 — 앞이 실패하면 예외가 올라 원본에 도달하지 않는다.
+            _write_or_abort(arch_path, arch_text, abom, anl, arch_rel)
+            _write_or_abort(path, new_text, bom, nl, rel)
         ses.record("롤오버", rel, [arch_rel])
 
 
@@ -1598,8 +1633,8 @@ def rollover_hub_changes(ses):
 
         blocks = [b for _d, b in moving]
         if os.path.exists(arch_path):
-            prev, abom, anl = _read_page(arch_path)
-            arch_text = (prev or "").rstrip("\n") + "\n" + "".join(blocks)
+            prev, abom, anl = _read_archive(arch_path, arch_rel)
+            arch_text = prev.rstrip("\n") + "\n" + "".join(blocks)
         else:
             abom, anl = False, nl
             proj = frontmatter(text).get("project", "") or os.path.basename(rel)[:-len(".md")]
@@ -1639,8 +1674,9 @@ def rollover_hub_changes(ses):
                 "\n\n## 아카이브\n\n- 이전 이력: %s (%s)\n" % (arch_rel, span))
         if not ses.dry_run:
             os.makedirs(os.path.dirname(arch_path), exist_ok=True)
-            _atomic_write(arch_path, arch_text, abom, anl)
-            _atomic_write(path, new_text, bom, nl)
+            # 아카이브 먼저, 원본 나중 — 앞이 실패하면 예외가 올라 원본에 도달하지 않는다.
+            _write_or_abort(arch_path, arch_text, abom, anl, arch_rel)
+            _write_or_abort(path, new_text, bom, nl, rel)
         ses.record("롤오버", rel, [arch_rel])
 
 
@@ -1996,12 +2032,18 @@ def relocate_sections(ses):
             ses.notes.append(f"{rel} 하위 분리 건너뜀 — 다른 처방이 맡았거나 사본 실패")
             continue
         if not ses.dry_run:
-            for sub_path, _sub_rel, body_text in created:
-                _atomic_write(sub_path, body_text, bom, nl)
-            _atomic_write(path, cur, bom, nl)
+            # 하위 먼저, 원본 나중 — 하위 신설이 실패하면 예외가 올라 원본에서 본문을
+            #  들어내지 않는다(포인터만 남고 정본이 없는 상태를 만들지 않는다).
+            for sub_path, sub_rel_, body_text in created:
+                _write_or_abort(sub_path, body_text, bom, nl, sub_rel_)
+            _write_or_abort(path, cur, bom, nl, rel)
             if hub:
-                hbom, hnl = _read_page(hub_path)[1:]
-                _atomic_write(hub_path, hub[1], hbom, hnl)
+                # 허브 형상은 읽어서 보존한다 — 읽기 실패를 기본값(BOM 없음·LF)으로 메우면
+                #  CRLF·BOM 허브가 조용히 평탄화된다.
+                hprev, hbom, hnl = _read_page(hub_path)
+                if hprev is None:
+                    raise SplitIOError("허브를 읽지 못해 갱신할 수 없다: " + hub[0])
+                _write_or_abort(hub_path, hub[1], hbom, hnl, hub[0])
         if st.typ == "feature" and not hub:
             ses.notes.append(f"{rel} 허브 `## 기능 목록` 미갱신 — 허브를 찾지 못했다(수기 등록 필요)")
         ses.record("산문 분리", rel, [c[1] for c in created])
@@ -2059,7 +2101,12 @@ def auto_split(vault, dry_run):
     #  부재가 아니다(재점검 뒤에는 점검이 없으므로 기록이 다음 회를 부르지 않는다).
     #  종전 규정은 그 목적에 수단을 하나 더 얹었고, 대가가 **파일은 만들어졌는데 log에
     #  기록이 없는** 상태였다(v1.238.3 개정 -- §4 7번이 정본).
-    written = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
+    written, log_err = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
+    if log_err:
+        # 기록 실패는 파일을 이미 다 쓴 뒤라 원복 대상이 아니지만, 종료 코드로는 알린다 —
+        #  호출측(F-2·A-4·B-3)이 「되돌리는 방법」을 그 기록에서 찾기 때문이다.
+        ses.notes.append(log_err)
+        ses.failed = True
     if written:
         # 재점검은 처방 **목록 전체**를 다시 돌린다 -- 특정 처방을 이름으로 부르지 않는 이유는
         #  그 이름이 이 골격에 없는 심볼에 대한 계약이 되어(정의 위치가 후속 task) 목록과
@@ -2077,7 +2124,11 @@ def auto_split(vault, dry_run):
             #  `[SCHEMA]` 기록은 7건이었다. 되돌리는 방법을 알리는 것이 승인을 없앤 대가인데
             #  (§4 6번) 보고에 없는 파일은 그 대상에서 통째로 빠진다.
             ses.actions.extend(recheck.actions)
-            _append_log_entries(vault, [recheck.log_line(*a) for a in recheck.actions])
+            _rewritten, recheck_err = _append_log_entries(
+                vault, [recheck.log_line(*a) for a in recheck.actions])
+            if recheck_err:
+                ses.notes.append(recheck_err)
+                ses.failed = True
             # **어느 줄이 재점검 몫인지 지목한다** — 「위 N건」은 목록이 여러 줄일 때 무엇을
             #  가리키는지 갈린다(§4 6번 사후 보고를 사람이 읽는 자리다). 재점검분은 목록의
             #  끝에 붙으므로 그 대상 이름을 그대로 적는다.
@@ -2152,12 +2203,14 @@ def apply_fixes(vault):
         backed.add(r)
 
     def write(r, new_raw):
+        """원본 BOM을 보존해 원자적으로 쓴다(BOM 정리는 fix 범위 아님 — 별도 WARN이 안내).
+
+        같은 파일의 `_atomic_write`와 규약을 맞춘다 — 직접 덮어쓰면 쓰기 도중 실패가 그
+        파일만 깨뜨린다. 줄바꿈은 `new_raw`가 이미 원본 형상을 갖고 있어 변환하지 않는다."""
         bom, _ = raws[r]
-        data = new_raw.encode("utf-8")
-        if bom:   # 원본 BOM 보존 — BOM 정리는 fix 범위 아님(별도 WARN이 안내)
-            data = b"\xef\xbb\xbf" + data
-        with open(os.path.join(vault, r.replace("/", os.sep)), "wb") as fh:
-            fh.write(data)
+        p = os.path.join(vault, r.replace("/", os.sep))
+        if not _atomic_write(p, new_raw, bom, "\n"):
+            raise OSError("원자적 쓰기 실패: " + r)   # 항목별 [FIX-FAIL] 격리가 받는다
         raws[r] = (bom, new_raw)
 
     def nl_of(raw):
