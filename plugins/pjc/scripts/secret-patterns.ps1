@@ -36,10 +36,8 @@ function Test-CredentialPairToken {
     if ($pw -notmatch '[\d#$%!@^&*+=?~]') { return $false }
 
     # 값이 아니라 **참조**면 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§6 값이 아니라 **참조**면 자격증명이 아니다」
-    if ($pw -match '^\$' -or $pw -match '^%[\w.]+%$') { return $false }              # $env:X · ${X} · $X · %X%
-    if ($pw -match '(?i)^(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\()') { return $false }
-    if ($pw -match '^[A-Za-z][\w-]*(:[A-Za-z][\w-]*)+$') { return $false }           # 설정 키 경로(appsettings:Db:Pwd)
-    if ($pw -match '(?i)^(환경변수|없음|미설정|\.env)') { return $false }            # 값 대신 안내를 적은 자리
+    #   술어 본체는 Test-ReferenceValue 하나다(회차 44 완료 리뷰 — 사본이 둘이면 갈린다).
+    if (Test-ReferenceValue $pw) { return $false }
 
     # 상태·에러코드 열거는 자격증명이 아니다 — 근거는 `rules/secret-patterns-rationale.md`의 「§7 상태·에러코드 열거는 자격증명이 아니다」
     if ($pw -match '^[\d._-]+$') { return $false }
@@ -57,6 +55,8 @@ function Test-ReferenceValue {
     if ($v -match '^\$' -or $v -match '^%[\w.]+%$') { return $true }                                   # $X · ${X} · $env:X · %X%
     if ($v -match '(?i)^(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\()') { return $true }
     if ($v -match '^<[^>]+>$' -or $v -match '^\{\{?[\w.:-]+\}\}?$') { return $true }                 # <placeholder> · {{template}}
+    if ($v -match '^[A-Za-z][\w-]*(:[A-Za-z][\w-]*)+$') { return $true }                              # 설정 키 경로(appsettings:Db:Pwd)
+    if ($v -match '(?i)^(환경변수|없음|미설정|\.env)') { return $true }                               # 값 대신 안내를 적은 자리
     return $false
 }
 
