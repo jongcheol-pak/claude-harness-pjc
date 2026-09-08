@@ -368,7 +368,11 @@ def section(text, heading):
     #  헤딩이 실 vault index.md 와 픽스처에 실재하고, 그것을 거르면 §7-14 행수·§7-16 병기
     #  스코프가 조용히 0이 된다(좁히기 전보다 나쁜 상태다). 거르는 것은 **낱말이 이어지는
     #  경우**뿐이다 — 그것이 다른 섹션이다.
-    m = re.search(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\(.*)?$.*?(?=^##\s|\Z)",
+    #  **괄호 안은 `[^\n]*` 로 한 줄에 묶는다** — `re.S` 아래서 `.` 는 개행을 먹으므로 `.*` 로
+    #  두면 탐욕 매치가 문서 끝까지 가고 `$` 가 마지막 줄에서 성립해 **헤딩부터 EOF 전체가 한
+    #  절**이 된다. 그 반환값으로 `_replace_section` 이 통째 치환하니 절 하나를 고치려던 편집이
+    #  문서 뒷부분을 통째로 지운다(회차 45 완료 리뷰 2R 실측).
+    m = re.search(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\([^\n]*)?$.*?(?=^##\s|\Z)",
                   text, re.M | re.S)
     return m.group(0) if m else None
 
@@ -379,8 +383,8 @@ def without_section(text, heading):
     is_feat_recipe_row가 True) 의미가 달라(첫 컬럼이 '증상' 관찰 표현) 한/영 병기(§7-16)·등록
     (§7-6) 검사 대상이 아니다 — 스캔 텍스트에서 이 섹션을 뺀다. §7-14 행수는 section('기능별
     인덱스')로 이미 스코프돼 영향 없고, 행 wikilink의 깨진 링크는 §7-1이 전 페이지에서 잡는다."""
-    return re.sub(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\(.*)?$.*?(?=^##\s|\Z)", "",
-                  text, flags=re.M | re.S)
+    return re.sub(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\([^\n]*)?$.*?(?=^##\s|\Z)",
+                  "", text, flags=re.M | re.S)
 
 
 def wikilink_targets(text):
