@@ -1,6 +1,6 @@
 ---
 name: pjc-systematic-debugging
-description: Use whenever the user reports a bug, test/build failure, runtime error, exception, crash, unexpected behavior, performance regression, memory leak, race condition, deadlock, or CI/CD issue. Triggers on Korean (버그/에러/오류/예외/크래시/안 됨/동작 안 함/이상해/왜 이래/왜 안 돼/이상한 현상/테스트 실패/빌드 실패/재현/디버깅) and English (bug/fix/debug/error/exception/crash/fails/broken/regression). Root cause investigation is mandatory before any patch. If the compiler/stack trace pinpoints the cause (file·line·reason) and the fix is a small single-file change, use the lightweight path, not a skip. Not for non-bug "fix" requests (reformatting/renaming — trivial edits, not debugging). Skip ONLY when the user explicitly asks to apply a fix they already diagnosed ("그냥 이 한 줄만 수정해줘, 원인 다 안다"). pjc variant (regression-test-first fix, spec-compliance review, cross-project llm-wiki lookup); prefer over generic systematic-debugging in pjc projects.
+description: Use whenever the user reports a bug, test/build failure, runtime error, exception, crash, unexpected behavior, performance regression, memory leak, race condition, deadlock, or CI/CD issue. Triggers on Korean (버그/에러/오류/예외/크래시/안 됨/동작 안 함/이상해/왜 이래/왜 안 돼/이상한 현상/테스트 실패/빌드 실패/재현/디버깅) and English — but only when the word reports a defect (bug/debug/exception/crash/fails/broken/regression, and fix/error only when something is actually misbehaving). Root cause investigation is mandatory before any patch. If the compiler/stack trace pinpoints the cause (file·line·reason) and the fix is a small single-file change, use the lightweight path, not a skip. Not for non-bug "fix" requests (reformatting/renaming — trivial edits, not debugging). Skip ONLY when the user explicitly asks to apply a fix they already diagnosed ("그냥 이 한 줄만 수정해줘, 원인 다 안다"). pjc variant (regression-test-first fix, spec-compliance review, cross-project llm-wiki lookup); prefer over generic systematic-debugging in pjc projects.
 argument-hint: "<버그 또는 에러 설명>"
 ---
 
@@ -46,10 +46,7 @@ argument-hint: "<버그 또는 에러 설명>"
 
 ### 1-C. 최근 변경 검사
 
-명령은 `references/investigation-log.md`의 「최근 변경 검사 명령 (1-C)」에 있다.
-
-
-검사 대상: 최근 커밋 · 설정 파일 · 의존성 버전(lock 파일) · 환경 변수 · 빌드 파이프라인.
+명령은 `references/investigation-log.md`의 「최근 변경 검사 명령 (1-C)」에 있다. 검사 대상: 최근 커밋 · 설정 파일 · 의존성 버전(lock 파일) · 환경 변수 · 빌드 파이프라인.
 
 ### 1-D. 컴포넌트 경계 증거 수집
 
@@ -159,7 +156,6 @@ vault·등록 **두 판정을 순서대로** 거친 뒤에만 제안한다(§9) 
 | **수정 코드가 try-catch로 에러를 가림** — 빈 catch로 삼키는 것 포함 | 근본 원인 수정 |
 | **우회로 덮기** — 재시도 루프·if 분기로 특수 케이스 회피·버전 다운그레이드·캐시 클리어·재부팅 | 왜 그 상태가 되는지 추적해 원인을 고친다 |
 | 테스트 비활성화·주석 처리 | 테스트가 옳고 코드가 틀린지 검증 |
-| 에러 메시지에 "Unknown error" 추가 | 메시지를 구체화 |
 | "환경 차이" 결론으로 종결 | 환경 차이의 구체적 메커니즘 명시 |
 | 프로젝트 로그 관례를 무시한 로그 | 기존 관례 우선(영/한 혼용·구조화 로그 등), 없으면 한글 |
 

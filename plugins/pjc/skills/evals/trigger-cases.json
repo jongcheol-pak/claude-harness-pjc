@@ -206,8 +206,8 @@
       "skill": "pjc:plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
-      "query": "설정 화면 카드 3개 padding 16px로, 제목 font-size 18px로, 포인트 색 #336699로 바꿔줘. 구조나 로직은 그대로 두고 값만.",
-      "why": "다건 순수 값 치환 — 개수가 많아도 trivial(Trivial Bypass 예외)이라 직접 수정 대상. plan-neg-2는 단건이라 '개수가 많으면 발동'으로 오학습될 여지가 남았다 (구형 id=17 흡수)"
+      "query": "설정 화면 카드 3개랑 목록 카드 4개 padding 을 전부 16px 로 바꿔줘. 값만.",
+      "why": "한 종류(padding) 값 치환을 여러 곳에 — **종류가 하나면 개수가 많아도 trivial** 이라는 본문 규약(`plan/SKILL.md` 「이 스킬을 건너뛰는 경우」)과 description 의 「바꾸는 값의 종류가 하나뿐인 단순 치환」을 함께 잰다. plan-neg-2 는 단건이라 「개수가 많으면 발동」으로 오학습될 여지가 남았다. **회차 46 교정**: 옛 질의는 padding·font-size·색 3종류였는데 본문 규약대로면 그것은 발동 대상이라, 케이스가 규약과 정면으로 어긋나 있었다 (구형 id=17 흡수)"
     },
     {
       "id": "wiki-pos-1",
