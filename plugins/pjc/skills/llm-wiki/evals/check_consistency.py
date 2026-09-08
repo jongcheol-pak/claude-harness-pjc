@@ -304,7 +304,12 @@ def check_procedure_placement(skill_text):
             continue  # 파일 부재는 위 고유 경로 검사에서 이미 보고됨
         # 라벨은 요약 표기('0. 시작 절차 (…) · 사전 준수 사항')라 괄호·병기 앞 선두부만 헤딩과 대조
         key = label.split("(")[0].split("·")[0].strip()
-        if not re.search(r"^#{2,4}\s+" + re.escape(key), text, re.M):
+        # **끝 경계를 준다** — 접두만 맞으면 통과시키면 `## 절차 A`를 찾는 행이 `## 절차 A-1`에
+        #  매치돼, 정작 그 절차가 사라진 상태를 통과시킨다. 라벨은 선두부만 남긴 요약이라
+        #  뒤에 오는 것은 **부제를 여는 구분자**뿐이므로 그것만 허용한다(줄표·괄호·
+        #  가운뎃점·콜론). 공백 뒤에 글자가 이어지면 그것은 다른 헤딩이다.
+        if not re.search(r"^#{2,4}\s+" + re.escape(key) + r"(?=[ \t]*$|[ \t]*[(·:—])",
+                         text, re.M):
             issues.append(f"라우팅 행 '{label}'의 헤딩('{key}' 선두)이 '{target}'에 없음")
     return issues, checked
 
@@ -381,8 +386,14 @@ _WHICH_FILE_RX = re.compile(r"references/procedures-(content|ops)\.md")
 
 def build_letter_file_map():
     """A~L 각 절차 문자의 실제 `### X.` 헤딩이 있는 파일을 {문자: {파일,…}}로 반환.
-    ⑤(check_procedure_placement)의 지역변수 found 대신 본체 + 분할 2파일을 직접 스캔한다
-    (독립 재계산 — 지역변수 공유 대신). PROC_HEADING_RX(### X. )를 ⑤와 동일하게 사용."""
+    ⑤(check_procedure_placement)의 지역변수 found 대신 절차 문면이 사는 파일 전부를 직접
+    스캔한다(독립 재계산 — 지역변수 공유 대신). PROC_HEADING_RX(### X. )를 ⑤와 동일하게 사용.
+
+    **스캔 대상은 절차가 이관된 자리를 따라간다** — 절차 K의 조회(1~5)와 큐 기록(5~6)이
+    `lookup-rules.md`·`queue-rules.md`로 옮겨졌는데(이 파일 위쪽 주석이 그 이관을 적는다)
+    목록은 4파일에 멈춰 있었다. 그러면 그 두 파일의 절차 헤딩이 **어느 축에도 안 잡혀**,
+    중복·이동이 조용히 통과한다. 이 함수가 「어디에 있는가」의 유일한 근거이므로 목록이
+    좁으면 그 밖은 존재하지 않는 것과 같다."""
     result = {}
     sources = {
         "SKILL.md": read(SKILL_MD),
@@ -390,6 +401,8 @@ def build_letter_file_map():
         "references/procedures-content.md": read(
             os.path.join(SKILL_DIR, "references", "procedures-content.md")),
         "references/procedures-ops.md": read(OPS_MD),
+        "references/lookup-rules.md": read(LOOKUP_RULES_MD),
+        "references/queue-rules.md": read(QUEUE_RULES_MD),
     }
     for fname, text in sources.items():
         for hm in PROC_HEADING_RX.finditer(text):
