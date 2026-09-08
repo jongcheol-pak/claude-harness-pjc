@@ -195,7 +195,7 @@ if (Test-HookSelected @('session-context')) {
     # SC42c (델타 음성): startup엔 주입하지 않는다(SC41c와 같은 취지).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: startup엔 큐 규약 미주입 (SC42c)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
-    # SC42d (델타 음성): compact + 미완료 task 세션엔 새지 않는다 — 그쪽은 F-6.5 ⓒ가 스킬을 재발동해 복구한다.
+    # SC42d (델타 음성): compact + 미완료 task 세션엔 새지 않는다 — 그쪽이 쓰는 [PROJECT-FACT] 형식은 skills/WIKI.md 가 담는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미완료 task 세션엔 큐 규약 미주입 (SC42d)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
 

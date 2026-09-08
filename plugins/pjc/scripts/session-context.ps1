@@ -95,7 +95,7 @@ try {
                 }
                 # 기존 라인 **뒤에** 붙인다 — 앞에 끼우면 `미완료 2`·`전부 완료`·`존재`를 부분문자열로
                 #   재는 기존 골든 7건이 살아남더라도 사람이 읽는 순서가 뒤집힌다.
-                $defNote = if ($defUnjudged -gt 0) { " · **Deferred 미판정 ${defUnjudged}건** — 대장(docs/plans/deferred.md) 등재 판정이 남아 있습니다(F-6.5)." } else { "" }
+                $defNote = if ($defUnjudged -gt 0) { " · **Deferred 미판정 ${defUnjudged}건** — 대장(docs/plans/deferred.md) 등재 판정이 남아 있습니다." } else { "" }
                 if ($all -gt 0) {
                     if ($open -gt 0) {
                         $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 중 미완료 ${open}개 — 작업 시작 전 plan.md 진행 상태를 확인하세요.${defNote}")

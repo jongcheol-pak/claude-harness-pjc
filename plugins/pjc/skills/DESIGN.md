@@ -41,7 +41,7 @@ RIGHT: **사실 주장은 `주장 | 실행한 명령 | 출력 요지` 표에 적
 **규칙에서 다른 문서의 항목 번호를 지목하지 않는다. 파일명까지만 쓴다.**
 
 - **번호는 편집으로 밀린다** — 항목 하나를 넣거나 빼면 그것을 가리키던 모든 참조가 조용히 어긋나고, 검사기는 번호가 여전히 존재하므로 깨진 것을 알아채지 못한다.
-- **폐기 대상의 실제 문면**: `plan-reviewer 항목 2·3·4·7·9·12-a·14·16·18`을 한 문장이 동시에 지목했다. 한 항목을 고칠 때마다 다른 문서 아홉 자리를 함께 확인해야 하고, 그 확인이 빠지면 다음 수정이 새 문제를 만든다.
+- **폐기 대상의 실제 문면**: 한 문장이 `plan-reviewer` 항목 아홉을 동시에 지목했다 — 한 항목을 고칠 때마다 아홉 자리를 함께 확인해야 하고, 빠지면 다음 수정이 새 문제를 만든다.
 
 ```
 WRONG: (정본은 `sync-detail.md` §6 게이트 ⓑ-2의 ⑴이며, 그 예외는 ⓓ의 두 ⚠가 정본)
@@ -82,9 +82,7 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 ### 3-4. 진행 보고
 
-가이드가 제시한 문구를 원문 그대로 쓴다:
-
-> Before your first tool call, say in one sentence what you're about to do. While working, give a brief update only when you find something important or change direction. When you finish, lead with the outcome: your first sentence should answer "what happened" or "what did you find," with supporting detail after it for readers who want it.
+- **진행 보고 규약은 각 스킬이 자기 실행 형태에 맞게 갖는다** — 자율 루프는 task당 한 줄, 위키 세션은 절차당 한 줄이다. 여기에 공통 문구를 두면 그 둘 중 하나는 반드시 어긋난다.
 
 
 ## 4. 문서 예산
@@ -100,7 +98,7 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 **등급은 런타임에 로드되는가로 갈린다.** **게이트**는 컨텍스트에 실려 규칙이 파묻히므로 초과를 `exit 1` 로 막고, 상한의 90% 를 넘으면 **넘기 전에** 알린다(요약 1줄 + 여유 최소 셋). **통지**는 고칠 때만 열어 보므로 `[NOTICE]` 만 내고 `exit 0` 을 유지한다 — 둘을 같은 등급으로 막으면 본작업이 문서 감량에 끌려간다(회차 13 실측: 한 회차에 초과를 네 번 만나 그때마다 멈췄다).
 
-**`llm-wiki/` 트리는 이 표의 대상이 아니다**(검사기 `BUDGET_EXEMPT_PREFIX`) — 면제이지 통과가 아니고, 감량은 대장이 잇는다.
+**`llm-wiki/` 트리는 이 표의 대상이 아니다**(검사기 `BUDGET_EXEMPT_PREFIX`) — 면제이지 통과가 아니다.
 
 **초과가 보이면 문장을 줄이지 말고 항목을 뺀다** — 같은 내용을 압축해 담는 개정은 매번 조금씩 나아지지만 끝나지 않는다. 뺄 항목이 없다고 판단되면 그 판단 자체를 의심한다.
 
@@ -129,4 +127,4 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 ## 6. 적용 범위
 
-`skills/plan/` · `skills/implement/` · `agents/`. **§2·§3도 같은 범위다**(**§4·§5는 스킬 트리 전체가 대상이다** — 예산 표는 `skills/*/SKILL.md` 를, hook 표는 그 밖의 스킬까지 잰다) — 다만 §2가 막는 것은 **편집으로 밀리는 번호**라, 번호가 기계 대조의 키인 참조(`wiki-schema` §7-N ↔ `lint.py`)와 **번호가 헤딩에 박힌 이름**인 참조(`## §1 Iron Law이 …` — 위치 파생이 아니라 표제의 일부라 절을 넣어도 밀리지 않는다)는 그 대상이 아니다. 회차 39 가 적용 범위 밖 3종의 §참조 25건을 이 두 축으로 전건 면제 판정했다. 나머지 셋에 §1 형식을 일괄 적용하지 않는다 — `llm-wiki`·`pjc-systematic-debugging` 은 회차 32 가 **4축 전수 판정**을 마친 결과이고(그 커밋 본문), `record-project-fact` 는 **미판정**이다.
+`skills/plan/` · `skills/implement/` · `agents/`. **§2·§3도 같은 범위다**(**§4·§5는 스킬 트리 전체가 대상이다** — 예산 표는 `skills/*/SKILL.md` 를, hook 표는 그 밖의 스킬까지 잰다) — 다만 §2가 막는 것은 **편집으로 밀리는 번호**라, 번호가 기계 대조의 키인 참조(`wiki-schema` §7-N ↔ `lint.py`)와 **번호가 헤딩에 박힌 이름**인 참조(`## §1 Iron Law이 …` — 위치 파생이 아니라 표제의 일부라 절을 넣어도 밀리지 않는다)는 그 대상이 아니다. 나머지 셋에 §1 형식을 일괄 적용하지 않는다 — `llm-wiki`·`pjc-systematic-debugging` 은 전수 판정을 마친 결과이고, `record-project-fact` 는 **미판정**이다.
