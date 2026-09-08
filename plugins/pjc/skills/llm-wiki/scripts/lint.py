@@ -1038,6 +1038,11 @@ def build_index(vault, dry_run):
         for name, lines in sorted(sub_files.items()):
             print("---- %s.md ----" % name)
             print("\n".join(lines))
+        # 덜어낸 구역(aux)도 낸다 — 실제 실행은 이 파일들도 쓰므로, 미리보기가 sub-index만
+        #  보여주면 **표시 범위와 쓰기 범위가 갈린다**(구역을 덜어내는 vault에서만 갈려 더 늦게 드러난다).
+        for name, (title, lines) in sorted(aux_files.items()):
+            print("---- %s.md (덜어낸 구역: %s) ----" % (name, title))
+            print("\n".join(lines))
         return 0
 
     # 여러 파일을 순차로 덮어쓰면 중간 실패가 **깨진 상태**를 남긴다 -- index.md는 이미
@@ -2200,7 +2205,7 @@ def auto_split(vault, dry_run):
     return 1 if ses.failed else 0
 
 
-def apply_fixes(vault):
+def apply_fixes(vault, dry_run=False):
     """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 3종만 자동 수정한다 (§7 —fix 규약) —
       ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거 —
          섹션이 표면 표 행, 아니면 불릿으로 추가: insert_into_section)
@@ -2217,9 +2222,12 @@ def apply_fixes(vault):
       (그 파일만 [FIX-FAIL] 보고 후 계속). 위반 0이면 파일 무변경·백업 미생성.
     **백업 정리는 새 백업을 만들기 전에 1회 수행한다**(cleanup_backups — §8 누적 금지·30일 정리).
       순서가 중요하다: 나중에 하면 방금 만든 오늘 백업을 지울 판정을 다시 하게 된다.
-    플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변(정리도 여기서만 일어난다)."""
+    플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변(정리도 여기서만 일어난다).
+    **`dry_run`이면 무엇을 고칠지만 보고하고 한 바이트도 쓰지 않는다** — 백업·정리도 건너뛴다
+    (정리는 폴더를 지우는 파괴적 동작이라 「미리보기」에 섞이면 안 된다). 판정 로직은 같은
+    것을 그대로 태운다 — 미리보기 전용 경로를 따로 만들면 그것이 실제 수정과 갈린다."""
     today = _today()
-    cleaned, cleanup_failed = cleanup_backups(vault, today)
+    cleaned, cleanup_failed = ([], []) if dry_run else cleanup_backups(vault, today)
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
     raws, pages = {}, {}   # rel -> (bom, 원본 텍스트) / rel -> (fm, type, 정규화 텍스트)
@@ -2240,7 +2248,7 @@ def apply_fixes(vault):
     backed = set()
 
     def backup(r):
-        if r in backed:
+        if r in backed or dry_run:
             return
         src = os.path.join(vault, r.replace("/", os.sep))
         dst = os.path.join(vault, "90_archive", "backup", today.isoformat(), r.replace("/", os.sep))
@@ -2255,10 +2263,15 @@ def apply_fixes(vault):
         같은 파일의 `_atomic_write`와 규약을 맞춘다 — 직접 덮어쓰면 쓰기 도중 실패가 그
         파일만 깨뜨린다. 줄바꿈은 `new_raw`가 이미 원본 형상을 갖고 있어 변환하지 않는다."""
         bom, _ = raws[r]
+        # 메모리 상태는 dry-run에서도 갱신한다 — 한 파일에 두 번째 수정이 걸릴 때(§7-24는
+        #  제거와 추가가 같은 파일을 잇달아 손댄다) 그것이 첫 수정 결과 위에서 판정돼야
+        #  미리보기가 실제 실행과 같은 목록을 낸다.
+        raws[r] = (bom, new_raw)
+        if dry_run:
+            return
         p = os.path.join(vault, r.replace("/", os.sep))
         if not _atomic_write(p, new_raw, bom, "\n"):
             raise OSError("원자적 쓰기 실패: " + r)   # 항목별 [FIX-FAIL] 격리가 받는다
-        raws[r] = (bom, new_raw)
 
     def nl_of(raw):
         return "\r\n" if "\r\n" in raw else "\n"
@@ -2403,7 +2416,8 @@ def apply_fixes(vault):
         except OSError as e:
             failed.append(f"log.md 수정 실패({type(e).__name__}) — 건너뜀")
 
-    print("== --fix 적용 (안전 3종: §7-23 / §7-24 / §7-19 stale 제거) ==")
+    head = "== --fix --dry-run (파일 미변경)" if dry_run else "== --fix 적용"
+    print(head + " (안전 3종: §7-23 / §7-24 / §7-19 stale 제거) ==")
     for c in cleaned:
         print("[CLEANUP] 백업 제거: " + c)
     for c in cleanup_failed:
@@ -2413,8 +2427,11 @@ def apply_fixes(vault):
         print("[SKIP] " + s)
     if fixed:
         for f in fixed:
-            print("[FIXED] " + f)
-        print(f"백업: 90_archive/backup/{today.isoformat()}/ (원본 보존 — 복구는 절차 L)")
+            print(("[WOULD-FIX] " if dry_run else "[FIXED] ") + f)
+        if dry_run:
+            print("파일을 바꾸지 않았다 — 그대로 적용하려면 `--dry-run` 없이 다시 실행한다")
+        else:
+            print(f"백업: 90_archive/backup/{today.isoformat()}/ (원본 보존 — 복구는 절차 L)")
     else:
         print("수정 대상 없음 (파일 무변경·백업 미생성)")
     for f in failed:
@@ -2425,11 +2442,13 @@ def apply_fixes(vault):
 def main():
     if len(sys.argv) < 2:
         print("사용법: python lint.py \"<vault_path>\" "
-              "[--fix] [--build-index [--dry-run]] [--auto-split [--dry-run]]")
+              "[--fix [--dry-run]] [--build-index [--dry-run]] "
+              "[--auto-split [--dry-run]]")
         sys.exit(1)
     vault = sys.argv[1].rstrip("/\\")
     # --fix는 opt-in — 지정 시 안전 3종을 먼저 수정하고, 이어지는 본 lint가 수정 후 상태를 보고한다.
-    #  (기본 실행은 완전 read-only 불변)
+    #  (기본 실행은 완전 read-only 불변). `--dry-run`을 함께 주면 **무엇을 고칠지만** 낸다 —
+    #  종전에는 그 플래그를 보지 않아 미리보기를 요청해도 실제로 파일을 고쳤다.
     # --build-index는 검사와 독립이다 -- 생성만 하고 끝낸다(검사가 섞이면 결과가 진단에 묻힌다).
     if "--build-index" in sys.argv[2:]:
         sys.exit(build_index(vault, "--dry-run" in sys.argv[2:]))
@@ -2443,7 +2462,7 @@ def main():
             sys.exit(1)
         sys.exit(auto_split(vault, "--dry-run" in sys.argv[2:]))
     if "--fix" in sys.argv[2:]:
-        apply_fixes(vault)
+        apply_fixes(vault, "--dry-run" in sys.argv[2:])
     # L-3: vault 경로에 glob 메타문자([ ] * ? 등)가 있어도 리터럴로 취급 — glob.escape로 감싸지 않으면
     #   'D:\wiki[2026]' 같은 경로에서 md 목록이 0개가 되어 대부분 검사가 공허 통과한다.
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]

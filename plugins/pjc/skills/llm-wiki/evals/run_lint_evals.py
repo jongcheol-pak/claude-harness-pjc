@@ -463,6 +463,10 @@ def check_case(case):
     if case.get("aux_split"):
         tmp, dest = prepare_aux_split_vault(
             vault, case.get("concept_count", 260), case.get("open_questions", 2))
+        # **미리보기의 표시 범위가 쓰기 범위와 같은가** — dry-run이 sub-index만 내고 덜어낸
+        #  구역을 빼면, 실제 실행이 만드는 파일 중 일부가 미리보기에 없다(그 차이는 구역을
+        #  덜어내는 vault에서만 드러나 더 늦게 발견된다).
+        dry_out, _rc_dry, _err_dry = run_lint(dest, ["--build-index", "--dry-run"])
         out, rc, err = run_lint(dest, ["--build-index"])
         with open(os.path.join(dest, "index.md"), encoding="utf-8-sig") as fh:
             idx = fh.read()
@@ -475,6 +479,11 @@ def check_case(case):
         if body_lines > limit and case.get("expect_under_limit", True):
             problems.append("본체 %d줄 > 임계 %d(덜어내기 미달)" % (body_lines, limit))
         for name in case.get("expect_aux_files", []):
+            # **파일 이름이 아니라 그 파일의 미리보기 블록을 찾는다** — 덜어낸 구역은 본체에
+            #  「…는 [[index-patterns|…]]에 있다」 안내 줄로도 등장하므로, 이름만 세면 내용이
+            #  하나도 안 나와도 통과한다(그 느슨한 판정이 실제로 변이를 놓쳤다).
+            if case.get("expect_aux_in_dry_run") and ("---- " + name) not in dry_out:
+                problems.append("dry-run 출력에 덜어낸 구역의 내용 없음: " + name)
             path = os.path.join(dest, name)
             if not os.path.exists(path):
                 problems.append("덜어낸 구역 파일 없음: " + name)
@@ -717,6 +726,37 @@ def check_case(case):
         undo_split_failures(restore)
         shutil.rmtree(tmp, ignore_errors=True)
         return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
+
+    # fix_dry_run 케이스: `--fix --dry-run`이 **무엇을 고칠지만** 내는가.
+    #  키워드만 보면 증명되지 않는다 — 출력이 맞아도 파일을 고쳤을 수 있다(종전이 정확히
+    #  그랬다: `main`이 그 플래그를 보지 않아 미리보기 요청이 실제 수정으로 돌았다).
+    #  그래서 `.md` 바이트를 앞뒤로 비교하고, **백업 폴더가 생기지 않았는지**까지 본다
+    #  (백업 생성은 그 자체가 쓰기이며, 30일 정리는 폴더를 지우는 파괴적 동작이다).
+    if case.get("fix_dry_run"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-fixdry-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        before = _snapshot_md(dest)
+        out, rc, err = run_lint(dest, ["--fix", "--dry-run"])
+        after = _snapshot_md(dest)
+        broot = os.path.join(dest, "90_archive", "backup")
+        made = sorted(os.listdir(broot)) if os.path.isdir(broot) else []
+        shutil.rmtree(tmp, ignore_errors=True)
+        if before != after:
+            changed = sorted(k for k in set(before) | set(after)
+                             if before.get(k) != after.get(k))
+            return False, "--fix --dry-run이 파일을 변경함: " + ", ".join(changed)
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+        if missing:
+            return False, "--fix --dry-run 출력 미검출: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "--fix --dry-run 출력에 금지 키워드: " + ", ".join(present)
+        if made != case.get("expect_backup_kept", []):
+            return False, "백업 폴더 불일치 — 기대 %s / 실제 %s" % (
+                case.get("expect_backup_kept", []), made)
+        return True, "--fix --dry-run 무변경 + 미리보기 확인: " + ", ".join(
+            case.get("expect_keywords", []))
 
     if case.get("fix_mode"):
         tmp = tempfile.mkdtemp(prefix="lint-eval-fix-")

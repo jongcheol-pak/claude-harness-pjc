@@ -381,6 +381,23 @@
       "rationale": "--fix 안전 3종(§7-23 양방향·§7-24 양방향·§7-19 stale 제거) 실증 — 임시 복사본에 --fix 적용 후 재lint에서 원 위반 문구 전부 부재 (v1.106.0 T2)"
     },
     {
+      "fixture": "fix-mode",
+      "fix_dry_run": true,
+      "expect_keywords": [
+        "== --fix --dry-run (파일 미변경)",
+        "[WOULD-FIX] index.md: 미해결 질문 등록",
+        "[WOULD-FIX] index.md: 해결된 질문 행 1개 제거",
+        "깨진 decisions 아카이브 포인터 1행 제거",
+        "그대로 적용하려면 `--dry-run` 없이 다시 실행한다"
+      ],
+      "expect_absent": [
+        "[FIXED]",
+        "백업: 90_archive/backup/"
+      ],
+      "expect_backup_kept": [],
+      "rationale": "**미리보기가 파일을 고치지 않는다.** `main`이 `--fix`와 함께 온 `--dry-run`을 보지 않아, 「무엇이 바뀌는지 먼저 보자」는 요청이 그대로 실제 수정으로 돌았다 — 되돌릴 수단은 그때 만들어진 백업뿐이고, 사용자는 자기가 쓰기를 시켰다는 것조차 모른다. 판정은 출력 키워드만으로 서지 않는다(출력이 맞아도 파일은 바뀌었을 수 있다): `.md` 바이트를 앞뒤로 비교하고 **백업 폴더가 생기지 않았는지**까지 본다. 백업 생성은 그 자체가 쓰기이고, 함께 도는 30일 정리는 폴더를 지우는 파괴적 동작이라 미리보기에 섞이면 안 된다. `[FIXED]` 부재도 함께 본다 — 라벨이 갈려야 로그를 읽는 사람이 적용분과 예정분을 구분한다."
+    },
+    {
       "fixture": "fix-mode-guard",
       "fix_mode": true,
       "expect_keywords": [
@@ -740,6 +757,7 @@
     {
       "fixture": "build-index",
       "aux_split": true,
+      "expect_aux_in_dry_run": true,
       "concept_count": 420,
       "open_questions": 2,
       "expect_aux_files": [
