@@ -419,6 +419,28 @@ BudgetState = collections.namedtuple(
     "typ budget chars eff_chars fence_note over near critical suppressed target stage")
 
 
+def rollover_target(rel_path, typ, budget):
+    """처방이 **어디까지 내려가야 멈추는가**(§8 log · §2.8 decision-log). 없으면 None.
+
+    None이면 종료 기준은 「§7-2 발동이 풀릴 때까지」다(`budget_resolved`) — 산문 하위 분리가
+    그 경우다. 두 롤오버는 그보다 낮은 목표를 갖는데, 값의 근거가 각자 처방 안 주석에만
+    있어 문서와 대조할 수 없었다. 여기 모아 `budget_resolved`가 세 처방의 유일한 종료 술어가
+    되게 한다."""
+    fixed = BUDGET_ROLLOVER_TARGET.get(rel_path)
+    if fixed is not None:
+        # **명시 목표보다 LOG_ROLLOVER_SLACK만큼 더 내려간다** — 처방 직후 §4 7번 기록 1줄이
+        #  log.md에 append되므로, 목표에 딱 맞춰 멈추면 그 한 줄 때문에 다음 실행이 또
+        #  롤오버한다(실측 3,081/3,000). 기록 몫을 미리 비워 매 실행 조금씩 도는 것을 막는다.
+        return max(0, fixed - LOG_ROLLOVER_SLACK)
+    if typ == "decision-log":
+        # 이 타입에는 명시 목표치가 없다. §7-2 종료 조건(발동 해소)의 선에 딱 맞추면 **결정
+        #  한 건에 곧 재발동**하므로 예산의 BUDGET_NEAR_RATIO를 쓴다 — 결정 몇 건분 여유가
+        #  남는다. 조회 목적(§2.8 — 계획 전에 보류·기각을 회수)을 해치지 않음을 실측했다:
+        #  실 vault에서 최근 6일치가 남고 그 이전은 `## 아카이브` 포인터로 도달한다.
+        return int(budget * BUDGET_NEAR_RATIO)
+    return None
+
+
 def budget_state(rel_path, fm, text):
     """§7-2 예산 조건을 **한 곳에서** 계산해 BudgetState로 돌려준다. 대상이 아니면 None.
 
@@ -467,7 +489,7 @@ def budget_state(rel_path, fm, text):
         typ=typ, budget=budget, chars=chars, eff_chars=eff_chars, fence_note=fence_note,
         over=eff_chars > budget, near=near, critical=critical,
         suppressed=budget_split_suppressed(fm, eff_chars),
-        target=BUDGET_ROLLOVER_TARGET.get(rel_path),
+        target=rollover_target(rel_path, typ, budget),
         stage=2 if typ == "convention" else 1)
 
 
@@ -476,7 +498,11 @@ def budget_resolved(state):
 
     **「예산 이내」가 종료 기준이 아니다** -- 한 항목·한 절만 옮겨 문턱 바로 아래로 내려오면
     다음 추가로 곧 재발화하므로, 발동이 풀릴 때까지 오래된 것부터 반복한다. 타입이 더 낮은
-    목표치를 따로 정했으면(log.md 3000자) 그쪽이 우선한다."""
+    목표치를 따로 정했으면(`rollover_target`) 그쪽이 우선한다.
+
+    **세 처방이 이 하나를 쓴다** — 롤오버 둘은 `fits`로 「남길 것이 목표에 드는가」를 물을 때,
+    산문 분리는 라운드마다 「아직 발동 중인가」를 물을 때. 종전에는 각자 자기 부등식을 갖고
+    이 함수는 아무도 부르지 않아, 조건이 갈려도 드러날 자리가 없었다."""
     if state.target is not None:
         return state.eff_chars <= state.target
     return not (state.over or state.critical)
@@ -1466,8 +1492,8 @@ def rollover_log(ses):
     # **목표보다 LOG_ROLLOVER_SLACK만큼 더 내려간다**: 이 처방이 끝나면 §4 7번 기록 1줄이
     #  log.md에 append되는데, 목표에 딱 맞춰 멈추면 그 한 줄 때문에 **다음 실행이 또
     #  롤오버한다**(실측 3,081/3,000). 매 실행 조금씩 도는 것을 막으려면 기록 몫을 미리 비운다.
-    goal = max(0, st.target - LOG_ROLLOVER_SLACK)
-    fits = lambda blocks: len(text) - len(sec) + len(head) + len("".join(blocks)) <= goal
+    fits = lambda blocks: budget_resolved(st._replace(
+        eff_chars=len(text) - len(sec) + len(head) + len("".join(blocks))))
     moving, kept = _rollover_items(items, fits)
     if not moving:
         return
@@ -1565,13 +1591,9 @@ def rollover_decisions(ses):
         _h, items = _split_items(body)
         if not items:
             continue
-        # 목표치를 예산의 `BUDGET_NEAR_RATIO`(80%)로 잡는 이유: 이 타입에는 log.md 같은
-        #  명시 목표치가 없어 §7-2 종료 조건(발동 해소)만 있는데, 그 선(95%·여유 500)에
-        #  딱 맞추면 **다음 결정 한 건에 곧 재발동**한다. 80%는 결정 몇 건분 여유를 남긴다.
-        #  조회 목적(§2.8 — 계획 전에 읽어 보류·기각을 회수)을 해치지 않음을 실측으로 확인했다:
-        #  실 vault에서 moa 12건·claude-harness-pjc 10건(최근 6일치)이 남고 그 이전은
-        #  `## 아카이브` 포인터로 도달한다.
-        fits = lambda blocks: len(head) + len("".join(blocks)) + len(tail) <= st.budget * BUDGET_NEAR_RATIO
+        # 목표치의 근거는 `rollover_target`에 있다(세 처방이 같은 술어를 쓰게 모았다).
+        fits = lambda blocks: budget_resolved(st._replace(
+            eff_chars=len(head) + len("".join(blocks)) + len(tail)))
         moving, kept = _rollover_items(items, fits)
         if not moving:
             continue
@@ -2063,7 +2085,7 @@ def relocate_sections(ses):
             entries.append((sub_rel[:-len(".md")], "%s — %s" % (label, title), title, label))
             moved += 1
             nst = budget_state(rel, fm, cur)
-            if not nst or not (nst.critical or nst.over):
+            if not nst or budget_resolved(nst):
                 break
         if not created:
             continue
@@ -2470,7 +2492,7 @@ def _normalize_vault(arg):
 
     `rstrip("/\\")`은 `D:\\`를 `D:`로 만든다 — 그것은 드라이브 루트가 아니라 **그 드라이브의
     현재 디렉터리**를 뜻하는 다른 경로라, lint가 조용히 엉뚱한 곳을 검사한다. 루트 자체를
-    넘긴 경우(`D:\\`·`/`)는 그대로 둔다."""
+    루트 자체를 인자로 준 경우(`D:\\`·`/`)는 그대로 둔다."""
     if len(arg) > 1 and arg[-1] in "/\\" and not arg.endswith(":" + arg[-1]):
         return arg[:-1]
     return arg
