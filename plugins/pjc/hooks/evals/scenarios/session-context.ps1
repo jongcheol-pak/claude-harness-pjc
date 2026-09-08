@@ -168,16 +168,16 @@ if (Test-HookSelected @('session-context')) {
     #   SC39 계열이 구현 세션에서 양성·델타 음성·발췌 표기를 나눠 건 것과 같은 구조로 넷을 건다.
     # SC41 (양성): compact + plan 없음 → 실측 규칙 **본문 문자열**이 실려 온다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact 계획 규칙 절 주입 (SC41)" -R $r -ExpectExit 0 -ExpectContains '형식이 규칙을 대신한다'
+    Assert-Case -Name "session-context: compact 계획 규칙 절 주입 (SC41)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다'
     # SC41b (발췌 표기): 주입분이 전문이 아니라 발췌임을 밝힌다 — 없으면 모델이 이것을 전문으로 오인한다(SC39d와 같은 이유).
     Assert-Case -Name "session-context: 계획 주입에 발췌 표기 (SC41b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — plan/SKILL.md'
     # SC41c (델타 음성): startup엔 주입하지 않는다 — 압축 전용 보완이라 매 세션 얹으면 예산 낭비다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: startup엔 계획 규칙 미주입 (SC41c)" -R $r -ExpectExit 0 -ExpectNotContains '형식이 규칙을 대신한다'
+    Assert-Case -Name "session-context: startup엔 계획 규칙 미주입 (SC41c)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
     # SC41d (델타 음성): compact + 미완료 task 세션엔 계획 주입이 새지 않는다.
     #   ⚠ 대조 문자열은 **주입 본문**이어야 한다 — `plan/SKILL.md`로 걸면 SC29와 완전히 같아 새 회귀를 못 잡는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '형식이 규칙을 대신한다'
+    Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
 
     # SC42~SC42f: 계획 세션에 **큐 기록 규약(K 5-2~5-3) 원문 주입** (v1.218.0).
     #   위 SC41 계열과 같은 분기에서 돌지만 대상 문서가 다르므로 따로 건다 —
@@ -297,7 +297,7 @@ if (Test-HookSelected @('session-context')) {
     $scEmptyAg = Join-Path $work 'sc-empty-agents'; New-Item -ItemType Directory $scEmptyAg -Force | Out-Null
     New-Item -ItemType File -Path (Join-Path $scEmptyAg 'AGENTS.md') -Force | Out-Null
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmptyAg } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '형식이 규칙을 대신한다' -ExpectNotContains '위키 vault: 설정'
+    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다' -ExpectNotContains '위키 vault: 설정'
     # SC42e (회귀 고정 — v1.218.0): 큐 규약 **주입**도 같은 짝을 지킨다.
     #   주입이 둘로 늘었으므로 `$cwdBaseCount++`도 둘이어야 한다 — 한 쪽만 올리면
     #   그 세션에 vault 라인이 새로 붙는다(SC41e가 고정한 것과 같은 형태의 회귀).
