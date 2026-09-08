@@ -42,12 +42,12 @@ description: >
 
 > **지연 로드 규칙 (필수)**: 절차를 수행할 때는 **해당 위치의 파일을 먼저 Read**한다. 파일을 읽지 않고 이 표의 절차 이름만 보고 작업을 진행하지 않는다 — 각 절차에는 생략하면 안 되는 필수 단계·사용자 게이트(pending 큐 소비, recipe 승격 확인, 삭제 확인 등)가 있다. **대형 참조 파일(`procedures-content.md`·`wiki-schema.md`)은 단일 Read에 다 담기지 않으므로 offset 분할로 해당 절차 구간 전체를 읽는다 — 첫 페이지만 읽고 로드를 마쳤다고 판정하지 않는다**(남은 구간이 있으면 offset을 늘려 이어 읽는다).
 >
-> **예산 처방은 세션이 손으로 옮기지 않는다** — `python "<skill>/scripts/lint.py" "<vault>" --auto-split`을 호출하고 결과를 검증·보고한다(§7-2 번복 · §4 분할 수행 절차 1·5·6번). 그 호출 지점은 F-2(lint)·A-4(등록)·B-3(ingest) 셋이다.
+> **예산 처방은 세션이 손으로 옮기지 않는다** — `python "<skill>/scripts/lint.py" "<vault>" --auto-split`을 호출하고 결과를 검증·보고한다(§7-2 번복 · §4 분할 수행 절차 1·5·6번). 그 **`--auto-split`** 호출 지점은 F-2(lint)·A-4(등록)·B-3(ingest) 셋이다 — 처방 없는 plain lint 호출은 절차 I-4에도 있으므로 둘을 섞어 세지 않는다.
 >
 > - WRONG: 라우팅 표만 보고 B(ingest)를 수행 → pending 큐 소비(B-1 0)·망라 재대조(B-1a)·recipe 게이트(A-3a) 등 필수 단계 생략
 > - RIGHT: `references/procedures-content.md`를 Read한 뒤 B-1부터 순서대로 수행
 >
-> **본체 = §0 + 공통 사전 준수 사항 + Wikilink 형식.** 절차 K(작업 참조 — 조회)는 `references/lookup-rules.md`로 분리했다(v1.220.0) — **코드 작업 세션은 그 파일 하나만 Read하면 되고 이 문서를 로드하지 않는다.** 절차 K 5~6(큐 기록 규약)은 `references/queue-rules.md`에 있다 — 배치 시점에만 읽는다. 쓰기 세션 전용 규칙은 `references/wiki-ops-rules.md`로 분리했다 — **쓰기 절차(A~F·I·M)는 그 파일도 함께 Read한다.** 단 「비 git vault 사전 백업」은 본체에 남아 있다(절차 M이 코드 세션에서 요구).
+> **본체 = §0 + 공통 사전 준수 사항 + Wikilink 형식.** 절차 K(작업 참조 — 조회)는 `references/lookup-rules.md`로 분리했다(v1.220.0) — **코드 작업 세션은 그 파일 하나만 Read하면 되고 이 문서를 로드하지 않는다.** 절차 K 5~6(큐 기록 규약)은 `references/queue-rules.md`에 있다 — 배치 시점에만 읽는다. 쓰기 세션 전용 규칙은 `references/wiki-ops-rules.md`로 분리했다 — **vault에 쓰는 절차는 그 파일도 함께 Read한다** — 열거하지 않는다. 판정은 *"이 절차가 vault 파일을 만들거나 고치거나 지우는가"* 이고, 큐 파일 1줄 append(H)와 백업 사본 복원(L)도 여기 해당한다. 단 「비 git vault 사전 백업」은 본체에 남아 있다.
 
 ## 0. 시작 절차 (모든 작업 전 1회 실행)
 
