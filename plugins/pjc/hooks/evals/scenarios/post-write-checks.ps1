@@ -114,6 +114,11 @@ $sessionEndPath = Join-Path $pw 'plugins/pjc/scripts/session-end-cleanup.ps1'
 [System.IO.File]::WriteAllText($sessionEndPath, '# test', [System.Text.UTF8Encoding]::new($true))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $sessionEndPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: session-end-cleanup 변경 감지 (T2 H2 집합 합류)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
+# [회차 44 T2] write-gate-exempt 합류 — 차단 쪽(guard-harness)과 같은 이름 집합을 읽으므로 탐지도 함께 넓어져야 대칭이 산다.
+$exemptPath = Join-Path $pw 'plugins/pjc/scripts/write-gate-exempt.ps1'
+[System.IO.File]::WriteAllText($exemptPath, '# test', [System.Text.UTF8Encoding]::new($true))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $exemptPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: write-gate-exempt 변경 감지 (회차 44 T2 H2 집합 합류)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
 
 # ---- [v1.90.2 M2] .claude/settings.json 변경 감지 (enabledPlugins 하니스 전체 무력화면 — 비차단 경고) ----
 $setPath = Join-Path $pw '.claude/settings.json'

@@ -97,6 +97,10 @@ $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 
 Assert-Case -Name "guard-harness: 설치본 session-end-cleanup-lib 헬퍼 Write 차단 (T2 집합 합류)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/session-end-cleanup.ps1'))
 Assert-Case -Name "guard-harness: 설치본 session-end-cleanup Write 차단 (T2 집합 합류)" -R $r -ExpectExit 2
+# ---- [회차 44 T2] write-gate-exempt 합류 — PLAN-EXEMPT 면제(plan 게이트를 **여는** 코드)가 집합에 없어 설치본 개조가 무방비였다.
+#   델타 음성은 위 「개발 repo 의 rules/*.json 은 통과」·「개발 repo hook 스크립트(.claude 없음) 통과」가 같은 술어(.claude 경로 유무)를 덮는다.
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/write-gate-exempt.ps1'))
+Assert-Case -Name "guard-harness: 설치본 write-gate-exempt 면제 헬퍼 Write 차단 (회차 44 T2 집합 합류)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 # 새 이름은 $suspect83 분기에도 들어가므로 그 확대까지 양성으로 고정한다(캐시 컨텍스트가 게이트).
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.187.0/scripts/session-end-cleanup.ps1")
 Assert-Case -Name "guard-harness: 8.3 마스킹 설치본 session-end-cleanup 차단 (T2 — 8.3 분기 확대 실증)" -R $r -ExpectExit 2 -ExpectContains '8.3'

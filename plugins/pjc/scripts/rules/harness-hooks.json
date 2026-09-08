@@ -16,6 +16,7 @@
     "session-wiki-signals",
     "suggest-agents-record",
     "warn-version-drift",
+    "write-gate-exempt",
     "write-gate-trivial"
   ]
 }
