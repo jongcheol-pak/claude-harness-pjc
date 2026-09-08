@@ -148,8 +148,8 @@ try {
             }
 
             # 조회 절차는 원문을 싣지 않고 경로만 가리킨다 — 근거는 `rules/session-context-rationale.md`의 「§22 조회 절차는 원문을 싣지 않고 경로만 가리킨다」
-            $lookupPath = "$skillsDir/llm-wiki/references/lookup-rules.md"
-            $lines.Add("[pjc 세션 컨텍스트] 위키 조회 절차: $lookupPath — 위키를 참조하기 전에 이 파일을 Read하세요(절차 K 1~5 전체). vault 판정 게이트가 그 안에 있습니다.")
+            $lookupPath = "$skillsDir/WIKI.md"
+            $lines.Add("[pjc 세션 컨텍스트] 위키 조회 절차: $lookupPath — 위키를 참조하기 전에 이 파일을 Read하세요(무엇을 언제 읽고 쓰는가의 정본). vault 판정 게이트가 그 안에 있습니다.")
             # 위 둘과 같은 짝 — 라인이 하나 늘었으므로 기준선도 하나 올린다.
             #   주입과 달리 추출 실패 분기가 없어 무조건 올린다.
             $cwdBaseCount++
