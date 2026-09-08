@@ -1552,6 +1552,127 @@
       "command": "X=/; Y=$X; rm -rf $Y",
       "expect_exit": 0,
       "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] git push origin main -f 후치 -f 차단 (실측 미탐 보완)",
+      "command": "git push origin main -f",
+      "expect_exit": 2,
+      "expect_contains": "파괴적 명령 패턴 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] git push -uf origin main 결합 플래그 차단 (실측 미탐 보완)",
+      "command": "git push -uf origin main",
+      "expect_exit": 2,
+      "expect_contains": "파괴적 명령 패턴 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] rm -rf /c/ MSYS 드라이브 루트 차단 (실측 미탐 보완)",
+      "command": "rm -rf /c/",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] rm -rf /c/* MSYS 드라이브 루트 글롭 차단",
+      "command": "rm -rf /c/*",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] rm -rf /d MSYS 드라이브 루트(슬래시 없음) 차단",
+      "command": "rm -rf /d",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] rm -rf ${HOME} 중괄호 홈 변수 차단 (실측 미탐 보완)",
+      "command": "rm -rf ${HOME}",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] Remove-Item -Recurse -Force ${env:USERPROFILE} 중괄호 env 차단",
+      "command": "Remove-Item -Recurse -Force ${env:USERPROFILE}",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] rm -rf .. 상위 디렉터리 단독 차단 (D7)",
+      "command": "rm -rf ..",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] rm -rf ../* 상위 디렉터리 내용물 글롭 차단 (D7)",
+      "command": "rm -rf ../*",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3] PowerShell 도구: echo \"C:\\\"; Remove-Item C:\\ -Recurse -Force 차단 (따옴표 규칙 분기 — 실측 미탐 보완)",
+      "tool_name": "PowerShell",
+      "command": "echo \"C:\\\"; Remove-Item C:\\ -Recurse -Force",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제 + 위험 루트 대상 감지"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3 델타 음성] git push -u origin main 통과 (단문자 옵션에 f 없음)",
+      "command": "git push -u origin main",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3 델타 음성] git push origin feature-f 통과 (인자 안의 -f 는 옵션이 아니다)",
+      "command": "git push origin feature-f",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3 델타 음성] rm -rf /c/Users/x/proj/build 통과 (드라이브 루트 하위 2단계+)",
+      "command": "rm -rf /c/Users/x/proj/build",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3 델타 음성] rm -rf ${HOME}/proj/build 통과 (중괄호 홈 하위 — 깊이 cap 동일)",
+      "command": "rm -rf ${HOME}/proj/build",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3 델타 음성] Remove-Item -Recurse -Force ${env:TEMP}\\claude\\x 통과 (중괄호 env 하위)",
+      "command": "Remove-Item -Recurse -Force ${env:TEMP}\\claude\\x",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3 델타 음성] Bash 도구: echo \"C:\\\"; Remove-Item C:\\ -Recurse -Force 통과 (bash 에서는 \\\" 가 이스케이프라 인용이 안 닫힌다 — 도구별 분기의 반대편 고정)",
+      "command": "echo \"C:\\\"; Remove-Item C:\\ -Recurse -Force",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 44 T3 델타 음성] PowerShell 도구: echo \"C:\\\"; Get-ChildItem . 통과 (분기가 정상 명령을 잡지 않는다)",
+      "tool_name": "PowerShell",
+      "command": "echo \"C:\\\"; Get-ChildItem .",
+      "expect_exit": 0,
+      "expect_silent": true
     }
   ]
 }

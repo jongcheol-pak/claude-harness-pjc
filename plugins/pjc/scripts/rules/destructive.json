@@ -1,6 +1,6 @@
 {
   "_note": "block-destructive.ps1의 판정 데이터. 스크립트는 로직만 담고 이 파일이 무엇을 차단하는지의 정본이다. rx 안의 {dangerTarget}은 로드 시 dangerTarget 값으로 치환된다.",
-  "dangerTarget": "(^|\\s)([\"']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\\S*)?|/home[\\\\/]+[^\\\\/\\s]+[\\\\/]\\.?\\*[\\\\/]?|/home([\\\\/]+[^\\\\/\\s]+)?[\\\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \\(x86\\))?|ProgramData)([\\\\/]\\S*)?|/\\.\\*[\\\\/]?|/[*/]?|([^\\s\"']*[\\\\/])?\\.\\.([\\\\/]+\\.\\.)+[\\\\/]?|~[\\\\/]\\.?\\*[\\\\/]?|~[\\\\/]?|\\$HOME[\\\\/]\\.?\\*[\\\\/]?|\\$HOME[\\\\/]?|\\$env:\\w+[\\\\/]\\.?\\*[\\\\/]?|\\$env:\\w+[\\\\/]?|\\*|\\.\\*|\\./\\*|\\./|\\.|[A-Za-z]:[\\\\/]+(Windows|Program Files( \\(x86\\))?|ProgramData)([\\\\/]\\S*)?|[A-Za-z]:[\\\\/]+Users[\\\\/]+[^\\\\/\\s]+[\\\\/]\\.?\\*[\\\\/]?|[A-Za-z]:[\\\\/]+Users([\\\\/]+[^\\\\/\\s]+)?[\\\\/]?|[A-Za-z]:[\\\\/]+\\*?)([\"']?)(\\s|$)",
+  "dangerTarget": "(^|\\s)([\"']?)(/(usr|etc|bin|sbin|lib64|lib|var|boot|root|sys|proc|dev|opt|srv|run)(/\\S*)?|/home[\\\\/]+[^\\\\/\\s]+[\\\\/]\\.?\\*[\\\\/]?|/home([\\\\/]+[^\\\\/\\s]+)?[\\\\/]?|/(mnt/)?[a-z]/(Windows|Program Files( \\(x86\\))?|ProgramData)([\\\\/]\\S*)?|/\\.\\*[\\\\/]?|/[*/]?|/(mnt/)?[a-z]([\\\\/]\\*?)?|([^\\s\"']*[\\\\/])?\\.\\.([\\\\/]+\\.\\.)+[\\\\/]?|\\.\\.([\\\\/]\\.?\\*)?[\\\\/]?|~[\\\\/]\\.?\\*[\\\\/]?|~[\\\\/]?|\\$HOME[\\\\/]\\.?\\*[\\\\/]?|\\$HOME[\\\\/]?|\\$env:\\w+[\\\\/]\\.?\\*[\\\\/]?|\\$env:\\w+[\\\\/]?|\\$\\{(HOME|USERPROFILE|env:\\w+)\\}([\\\\/]\\.?\\*)?[\\\\/]?|\\*|\\.\\*|\\./\\*|\\./|\\.|[A-Za-z]:[\\\\/]+(Windows|Program Files( \\(x86\\))?|ProgramData)([\\\\/]\\S*)?|[A-Za-z]:[\\\\/]+Users[\\\\/]+[^\\\\/\\s]+[\\\\/]\\.?\\*[\\\\/]?|[A-Za-z]:[\\\\/]+Users([\\\\/]+[^\\\\/\\s]+)?[\\\\/]?|[A-Za-z]:[\\\\/]+\\*?)([\"']?)(\\s|$)",
   "delCmdAlt": "rm|Remove-Item|ri|rmdir|rd|del|erase",
   "findDangerRoot": "(?i)\\bfind\\s+(/\\S*|~\\S*|\\$HOME\\S*|\\$env:\\S*|[A-Za-z]:[\\\\/]\\S*)",
   "enumSource": "(?i)(^|\\s|\\|)(Get-ChildItem|gci|ls|dir|find)\\b",
@@ -13,6 +13,10 @@
     {
       "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+-f(\\s|$)",
       "why": "git push -f (git -c/-C 선행 옵션으로 우회 방지)"
+    },
+    {
+      "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\b[^|;&\\r\\n]*\\s-[a-zA-Z]*f[a-zA-Z]*(\\s|$)",
+      "why": "git push … -f 후치·결합 단문자 force(git push origin main -f · git push -uf origin main — 회차 44 실측 미탐. \\s-[a-zA-Z]*f 라 --force 계열·feature-f 같은 인자에는 안 걸린다)"
     },
     {
       "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+\\S+\\s+\\+\\S",

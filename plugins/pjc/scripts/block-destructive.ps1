@@ -17,6 +17,8 @@ $inputJson = [Console]::In.ReadToEnd()
 try {
     $data = $inputJson | ConvertFrom-Json
     $cmd = $data.tool_input.command
+    # PowerShell 도구는 따옴표 규칙이 bash 와 다르다(이스케이프는 백틱, `\` 는 리터럴) — 분리기에 넘긴다(회차 44)
+    $isPowerShellTool = ([string]$data.tool_name -eq 'PowerShell')
 } catch {
     exit 0   # 파싱 실패는 통과 — 차단 실패가 더 위험하다
 }
@@ -118,7 +120,10 @@ if (($beforePipe -match $enumSource) -and (Test-DangerTarget $enumSrcScan) -and 
 # ---- 최상위 구분자 분리 (따옴표 인식) ----
 # 단순 -split는 따옴표 안의 구분자에서 쪼개 인용이 깨지고, 그러면 데이터 인자 제거가 작동하지 않아
 #   오탐이 난다. 개행도 최상위 구분자다 — 아니면 둘째 줄의 파괴 명령이 ^앵커 패턴을 벗어난다.
-function Split-TopLevel([string]$s) {
+function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
+    # $PsQuoting: PowerShell 도구 입력이면 `\` 를 이스케이프로 보지 않는다. bash 규칙으로 읽으면 `echo "C:\"; Remove-Item C:\ -Recurse -Force` 의
+    #   `\"` 가 인용을 열어 둔 채로 남아 `;` 분리가 안 되고, echo 스트립이 뒤 명령까지 지워 exit 0 이었다(회차 44 실측 — PowerShell 에서 `"C:\"` 는 닫힌 문자열이다).
+    #   PowerShell 의 큰따옴표 안 이스케이프는 백틱이므로 그쪽을 대신 소비한다.
     $parts = New-Object System.Collections.Generic.List[string]
     $cur = ''
     $q = $null
@@ -130,7 +135,8 @@ function Split-TopLevel([string]$s) {
             $cur += $ch
             if ($ch -eq "'") { $q = $null }
         } elseif ($q -eq '"') {
-            if ($ch -eq '\' -and $i + 1 -lt $chars.Length) {
+            $esc = if ($PsQuoting) { '`' } else { '\' }
+            if ($ch -eq $esc -and $i + 1 -lt $chars.Length) {
                 $cur += $ch; $cur += $chars[$i + 1]; $i++
             } else {
                 $cur += $ch
@@ -138,7 +144,7 @@ function Split-TopLevel([string]$s) {
             }
         } else {
             # 인용 밖 백슬래시도 다음 문자를 이스케이프한다 — \" 가 인용을 열어 구분자 분리를 깨뜨리던 미탐 방어
-            if ($ch -eq '\' -and $i + 1 -lt $chars.Length) {
+            if ((-not $PsQuoting) -and $ch -eq '\' -and $i + 1 -lt $chars.Length) {
                 $cur += $ch; $cur += $chars[$i + 1]; $i++
             } elseif ($ch -eq '"' -or $ch -eq "'") {
                 $q = $ch; $cur += $ch
@@ -157,7 +163,7 @@ function Split-TopLevel([string]$s) {
 #   \s*를 넣지 않는 이유: '\ <개행>'은 줄-이음이 아니라 이스케이프된 공백 + 종결 개행이다.
 $cmdJoined = $cmd -replace '`\r?\n', ' '
 $cmdJoined = $cmdJoined -replace '\\\r?\n', ' '
-$subs = Split-TopLevel $cmdJoined
+$subs = Split-TopLevel $cmdJoined $isPowerShellTool
 
 foreach ($sub in $subs) {
     $sub = $sub.Trim()

@@ -28,7 +28,9 @@ foreach ($c in $cases) {
     $runDispatchEcho = $isDispatchEchoTarget -and (Test-HookSelected @($hookBase, 'guard-bash'))
     if (-not ($runIndividual -or $runDispatchEcho)) { continue }
 
-    $json = @{ tool_name = 'Bash'; tool_input = @{ command = $c.command } } | ConvertTo-Json -Compress
+    # tool_name 은 선택 필드 — 기본 Bash. PowerShell 도구 고유의 따옴표 규칙을 재는 케이스만 적는다(회차 44 T3).
+    $toolName = if ($c.tool_name) { [string]$c.tool_name } else { 'Bash' }
+    $json = @{ tool_name = $toolName; tool_input = @{ command = $c.command } } | ConvertTo-Json -Compress
     if ($runIndividual) {
         $r = Invoke-Hook $c.hook $json
         Assert-Case -Name "$($c.hook): $($c.name)" -R $r `
