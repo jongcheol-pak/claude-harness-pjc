@@ -1,7 +1,7 @@
 # Deferred / Follow-up 규약 (정본)
 
 > `plan.md` 의 `## Deferred / Follow-up` 에 무엇을 어떤 형식으로 적고 그중 무엇을 **Deferred 대장**에 올리는가의 정본이다 — 판정 마커 4종 · 「지금 고칠 것인가」 3조건 · 등재 하한선.
-> **읽는 쪽은 `pjc:implement` 의 완료 시점**이다(`implement/SKILL.md` 「완료 정의」 · `references/report-format.md` · `references/final-review.md` · `agents/completion-reviewer.md` 「6. Deferred 처리」). **계획 시점에는 마커 형식만 본다**(`plan/SKILL.md` Step 5 의 `[다음 회차]`). 계획 서식인 `plan-template.md` 에서 갈라져 나왔다 — 그 파일은 계획을 쓸 때마다 로드되는데 이 규약은 회차 끝에만 쓰인다.
+> **읽는 쪽은 `pjc:implement` 의 완료 시점**이다(`implement/SKILL.md` 「완료 정의」 · `references/report-format.md` · `references/final-review.md` · `agents/completion-reviewer.md` 「6. Deferred 처리」). **계획 시점에는 마커 형식만 본다** — `plan/SKILL.md` 가 `[다음 회차]` 를 쓰는 자리다. 계획 서식인 `plan-template.md` 에서 갈라져 나왔다 — 그 파일은 계획을 쓸 때마다 로드되는데 이 규약은 회차 끝에만 쓰인다.
 
 **항목마다 등재 판정 마커를 앞에 붙인다 — 형식 정본은 여기다.**
 

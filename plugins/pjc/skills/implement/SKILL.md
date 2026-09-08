@@ -25,7 +25,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
   1. 준비  — plan의 해당 task 정독 · Files 목록 Read · 위키 확인(첫 task 또는 기능이 바뀔 때)
   2. 구현  — 최소 변경 · 첫 코드 task 전 1회 `references/code-style.md`「코드 작성 규약」 Read
   3. 검증  — 아래 「검증」
-  4. 기록  — 체크박스 [x] · 완료 커밋 · 2 task마다 Progress Log
+  4. 기록  — 체크박스 [x] · 기능·UI를 바꿨으면 README 갱신 · 완료 커밋 · 2 task마다 Progress Log
 → 전 task 완료 후 최종 검증 → 최종 보고
 ```
 
@@ -51,7 +51,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ## 검증
 
-**task마다 아래 셋 중 해당하는 것을 실행한다.** 명령은 `AGENTS.md`에서 가져온다 — 추측한 명령은 실행 시점에 실패한다.
+**task마다 아래 셋 중 해당하는 것을 실행한다.** 명령은 `AGENTS.md`에서 가져온다 — 추측한 명령은 실행 시점에 실패한다. **`AGENTS.md`에 없으면 사용자에게 묻는다**(그 파일이 아직 비어 있는 레포가 있다).
 
 | # | 대상 | 언제 |
 |---|---|---|
@@ -87,7 +87,6 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 - **`plan.md`의 체크박스가 진행 상태의 정본이다** — 첫 미완료 task부터 시작한다. "T6부터"라는 지시는 T6부터 **마지막 task까지와 최종 검증**을 뜻한다.
 - **2 task마다 `## Progress Log`에 1~2줄 남긴다** — 이후 task는 대화 히스토리 대신 이 요약과 git log를 본다.
-- **각 task는 독립적으로 처리한다** — 이전 task에서 읽은 내용에 기대지 말고 필요한 것은 `plan.md`와 코드에서 다시 확인한다.
 
 ## 완료 시 위키 기록
 

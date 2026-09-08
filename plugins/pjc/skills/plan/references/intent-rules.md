@@ -1,7 +1,7 @@
 # intent 산출물 규약 (정본)
 
 > 계획 세션이 확정한 **요구**를 어디에 · 어떤 형식으로 남기고 언제 커밋하는가의 정본이다 — 저장 경로 · 5항목 형식 · 커밋 시점 · `Open questions` 판정.
-> **읽는 쪽은 `pjc:plan` 의 Step 5~6**(`plan/SKILL.md`)이고, 그 뒤 `plan.md` 의 포인터를 따라 **두 리뷰어**(`agents/plan-reviewer.md` · `agents/completion-reviewer.md`)가 같은 파일을 연다. `plan.md` 는 `.gitignore` 라 회차마다 덮어써지지만 이 산출물은 **추적된다** — 요구가 남는 자리는 여기 하나다.
+> **읽는 쪽은 `pjc:plan`**(컨텍스트 수집 · plan 작성 · 리뷰와 승인 — `plan/SKILL.md`)과 그 서식(`plan-template.md` 「Open Questions」)이고, 그 뒤 `plan.md` 의 포인터를 따라 **두 리뷰어**(`agents/plan-reviewer.md` · `agents/completion-reviewer.md`)가 같은 파일을 연다. `plan.md` 는 `.gitignore` 라 회차마다 덮어써지지만 이 산출물은 **추적된다** — 요구가 남는 자리는 여기 하나다.
 
 **형식은 Anthropic 의 AI-Native SDLC Stage 1 을 따른다**(2026-09-08 확인 · `academy.claude.com/courses/ai-native-sdlc-playbook/capture-intent`). 항목 이름을 번역하지 않는 것은 그 출처와 대조할 수 있게 두기 위해서다.
 
@@ -47,7 +47,7 @@ Author: <발원자>. Status: draft | approved.
 
 ### Affected users and systems
 
-- 인터뷰의 **「사용자」**에 **걸리는 시스템**을 더한 것이다. 사람만 적고 시스템을 빠뜨리면 영향 범위 실측(`plan/SKILL.md` Step 3)이 무엇을 재야 하는지 잃는다.
+- 인터뷰의 **「사용자」**에 **걸리는 시스템**을 더한 것이다. 사람만 적고 시스템을 빠뜨리면 영향 범위 실측(`plan/SKILL.md`)이 무엇을 재야 하는지 잃는다.
 
 ### Constraints
 
@@ -57,7 +57,7 @@ Author: <발원자>. Status: draft | approved.
 
 - **요구가 아직 안 정해진 것만 담는다.** 착수 가능한 미착수 작업은 종전대로 `plan.md` 의 `## Deferred / Follow-up` 과 Deferred 대장이 맡는다(`references/deferred-rules.md`). 성격이 달라 한쪽이 다른 쪽을 대체하지 못한다 — 여기 것은 *무엇을 원하는지가 미정*이고, 저기 것은 *원하는 것은 정해졌는데 이번에 안 한다*이다.
 - **미결인 채로 승인해도 된다** — 공식도 그것을 전제한다(*"are the open questions from `intent.md` answered or carried forward?"*).
-- **해소 게이트는 이 하니스에 하나뿐이다** — `plan/SKILL.md` Step 6 의 계획 리뷰다. 공식은 Stage 2 의 `spec.md` 리뷰가 그 자리인데 이 하니스에는 그 단계가 없다. 그래서 **Step 6 에서 답하지 못한 질문은 다음 회차의 intent 로 이월한다** — 이월할 때 원문을 그대로 옮기고 `(이월: YYYY-MM-DD <어느 intent 에서>)` 를 붙인다. 붙이지 않으면 몇 회차를 미뤄 왔는지 아무도 세지 못한다.
+- **해소 게이트는 이 하니스에 하나뿐이다** — `plan/SKILL.md` 의 계획 리뷰다. 공식은 Stage 2 의 `spec.md` 리뷰가 그 자리인데 이 하니스에는 그 단계가 없다. 그래서 **거기서 답하지 못한 질문은 다음 회차의 intent 로 이월한다** — 이월할 때 원문을 그대로 옮기고 `(이월: YYYY-MM-DD <어느 intent 에서>)` 를 붙인다. 붙이지 않으면 몇 회차를 미뤄 왔는지 아무도 세지 못한다.
 - **`plan.md` 의 `## Open Questions` 와 다른 것이다** — 그쪽은 *승인 전까지만* 존재하고 승인되면 사라진다. 이쪽은 승인 후에도 남는다.
 
 ## 승인과 커밋
