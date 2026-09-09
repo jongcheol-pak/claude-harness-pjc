@@ -311,6 +311,31 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         # 섹션 2 실패는 섹션 1 결과(이미 $allMsgs에 있음)에 영향 없음(격리).
     }
 
+# H3: 저장 직후 줄바꿈 — 근거는 `rules/post-write-rationale.md`의 「§15 H3: 저장 직후 줄바꿈」
+try {
+    if ($file -notmatch '(?i)[\/]llm-wiki[\/]evals[\/]fixtures[\/]') {
+        # git 추적 대상만 본다 — plan.md·notes.md 는 gitignore 라 워킹트리 규약의 대상이 아니다.
+        $tracked = & git ls-files --error-unmatch -- $file 2>$null
+        if ($LASTEXITCODE -eq 0 -and $tracked) {
+            $bytes = [System.IO.File]::ReadAllBytes($file)
+            $lf = 0; $crlf = 0
+            for ($i = 0; $i -lt $bytes.Length; $i++) {
+                if ($bytes[$i] -ne 0x0A) { continue }
+                if ($i -gt 0 -and $bytes[$i - 1] -eq 0x0D) { $crlf++ } else { $lf++ }
+            }
+            if ($lf -gt 0 -and (Test-WarnOnce "eol|$file")) {
+                $nm = Split-Path -Leaf $file
+                if ($allMsgs.Count -gt 0) { $allMsgs.Add("") }
+                $allMsgs.Add("[EOL WARNING] ${nm}: 워킹트리 줄바꿈이 LF 입니다 (LF $lf / CRLF $crlf).")
+                $allMsgs.Add("이 레포의 워킹트리 규약은 CRLF 이고(`AGENTS.md` 「줄바꿈」) Write·Edit 도구는 LF 로 씁니다 — 「줄바꿈 정합」 축이 red 를 냅니다.")
+                $allMsgs.Add("`git ls-files --eol` 로 확인하고 CRLF 로 되돌리세요. 이 경고는 차단이 아닙니다.")
+            }
+        }
+    }
+} catch {
+    # 줄바꿈 검사 실패는 위 두 검사 결과에 영향 없음(격리).
+}
+
 # ============================================================ — 근거는 `rules/post-write-rationale.md`의 「§14 ============================================================」
 if ($allMsgs.Count -gt 0) {
     $msg = ($allMsgs -join "`n")

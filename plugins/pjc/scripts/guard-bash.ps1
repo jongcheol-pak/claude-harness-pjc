@@ -149,7 +149,8 @@ function Invoke-BlockPlanWrite {
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
     return New-HookResult -Block $true -Stderr @(
-        "[HARNESS] BLOCKED: plan.md 를 스크립트로 쓰려 합니다 ($where).",
+        "[HARNESS] BLOCKED: plan.md 를 스크립트로 쓰려 합니다.",
+        "감지된 쓰기 구문: $where.",
         "gitignore 라 잘못 쓰면 복구할 수 없습니다 — 전체 교체는 Write, 부분 수정은 Edit 도구로 하세요(`plan/SKILL.md` 「Step 5」). 읽기는 막지 않습니다."
     ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
 }

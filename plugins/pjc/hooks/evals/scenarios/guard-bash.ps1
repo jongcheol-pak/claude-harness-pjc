@@ -94,5 +94,38 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcOk 'T3: 검색 요약')
 Assert-Case -Name "dispatch=rtc: 완료 [x] T3 커밋 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn '문서: 릴리즈 노트 (T3: 반영)')
 Assert-Case -Name "dispatch=rtc: 제목 아닌 T3 언급 통과 (제목 한정)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# ---- [회차 51] block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 ----
+#   회차 50 이 Deferred 절 교체 스크립트로 plan.md 를 29줄만 남기고 잘랐다. plan.md 는 gitignore 라
+#   git 으로 복구할 수 없어 경고가 아니라 차단이다. 판정은 「쓰기 구문의 **대상 인자**가 plan.md 인가」
+#   하나이고, 「명령 어딘가에 plan.md 가 있는가」가 아니다 — 후자면 대장의 그 줄을 지우는 정상 작업이
+#   막힌다(대장에 리터럴 plan.md 가 20회 있다). 그래서 음성 4건이 양성 1건과 짝을 이룬다.
+function New-BashJson([string]$cmd) {
+    return (@{ tool_name = 'Bash'; tool_input = @{ command = $cmd } } | ConvertTo-Json -Compress)
+}
+
+# BPW1 (양성): 회차 50 의 사고 명령 형태 — 변수를 거쳐 지시하므로 리터럴 매치로는 새어 나간다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'PY'`np='plan.md'`ns=open(p).read()`nopen(p,'w').write(s)`nPY")
+Assert-Case -Name "bpw: python open(p,'w') 로 plan.md 쓰기 차단 (BPW1)" -R $r -ExpectExit 2 -ExpectContains 'plan.md 를 스크립트로 쓰려 합니다'
+
+# BPW2 (델타 음성 — 읽기): 조회는 막지 않는다. 막으면 실측·조사 자체가 불가능해진다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "grep -n 'Deferred' plan.md")
+Assert-Case -Name "bpw: plan.md 읽기는 통과 (BPW2)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# BPW3 (델타 음성 — 읽어서 다른 파일로): 리다이렉션 **대상**이 plan.md 가 아니다.
+#   이 케이스가 없으면 「명령에 plan.md 와 `>` 가 있으면 막는다」로 구현해도 전건 green 이다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'head -12 plan.md > /tmp/plan_head.txt')
+Assert-Case -Name "bpw: plan.md 를 읽어 다른 파일로 내보내는 형태는 통과 (BPW3)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# BPW4 (델타 음성 — 다른 파일 쓰기): plan.md 를 언급조차 하지 않는 스크립트 쓰기.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'PY'`nopen('notes.md','w').write('x')`nPY")
+Assert-Case -Name "bpw: 다른 파일을 쓰는 인라인 스크립트는 통과 (BPW4)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# BPW5 (델타 음성 — 대상은 다른 파일인데 명령 텍스트에 plan.md 가 있다): 계획 리뷰 BLOCKER 를 고정한다.
+#   sed -i 의 대상은 **마지막 위치 인자**이고 패턴 문자열 안의 plan.md 는 대상이 아니다.
+#   초안 설계(「언급 ∧ 쓰기 신호」)면 회차 51 자신의 T4-1 이 이 형태라 스스로 차단됐다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '/plan.md 를 스크립트로 후편집/d' docs/plans/deferred.md")
+Assert-Case -Name "bpw: sed -i 패턴 안의 plan.md 는 대상이 아니다 (BPW5)" -R $r -ExpectExit 0 -ExpectSilent $true
+
 }   # ---- §8 게이트 끝 (guard-bash) ----
 

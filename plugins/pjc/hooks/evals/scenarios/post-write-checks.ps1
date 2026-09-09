@@ -272,5 +272,38 @@ if ((-not (Test-Path -LiteralPath $pwOldMk)) -and (Test-Path -LiteralPath $pwNew
 } else {
     $script:results.Add(@{ ok = $false; line = "[FAIL] post-write: .state TTL 청소 — 31일 마커 잔존=$(Test-Path -LiteralPath $pwOldMk) / 3일 마커 소실=$(-not (Test-Path -LiteralPath $pwNewMk))" })
 }
+
+# ---- [회차 51] H3 저장 직후 줄바꿈 경고 ----
+#   워킹트리 규약은 CRLF 인데 Write·Edit 도구는 LF 로 쓴다. AGENTS.md 「줄바꿈」이 확인을 요구하지만
+#   회차 50 이 intent/ 를 쓰고 확인하지 않아 「줄바꿈 정합」 축이 red 를 냈다 — 저장한 자리에서 알린다.
+#   ⚠ 차단이 아니라 경고다(exit 0 유지). 그리고 **git 추적 파일만** 본다 — plan.md·notes.md 는
+#     gitignore 라 규약 대상이 아니고, 경고하면 편집마다 발화한다.
+$eolRepo = Join-Path $work 'eolrepo'; New-Item -ItemType Directory $eolRepo -Force | Out-Null
+Push-Location $eolRepo
+git init -q; git config user.email t@t; git config user.name t
+$eolLf = Join-Path $eolRepo 'lf.md'
+$eolCrlf = Join-Path $eolRepo 'crlf.md'
+[System.IO.File]::WriteAllText($eolLf, "첫 줄`n둘째 줄`n")
+[System.IO.File]::WriteAllText($eolCrlf, "첫 줄`r`n둘째 줄`r`n")
+# 픽스처 제외 경로 — 실제 레포의 LF 18건이 전부 이 형태라 오탐하면 그 트리를 만질 때마다 발화한다.
+$eolFx = Join-Path $eolRepo 'plugins/pjc/skills/llm-wiki/evals/fixtures/x'
+New-Item -ItemType Directory $eolFx -Force | Out-Null
+$eolFxFile = Join-Path $eolFx 'input.md'
+[System.IO.File]::WriteAllText($eolFxFile, "픽스처는 LF 가 테스트 입력이다`n")
+git add -A; git commit -qm init
+Pop-Location
+
+# EOL1 (양성): 추적 파일이 LF 면 경고한다.
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-a'; tool_input = @{ file_path = $eolLf } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 추적 파일이 LF 면 경고 (EOL1)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+
+# EOL2 (델타 음성 — CRLF): 규약대로 저장된 파일은 조용하다. 없으면 「항상 경고」로 바꿔도 green 이다.
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-b'; tool_input = @{ file_path = $eolCrlf } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: CRLF 파일은 무경고 (EOL2)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
+# EOL3 (델타 음성 — 픽스처 제외): llm-wiki/evals/fixtures/ 아래 LF 는 의도된 테스트 입력이다.
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-c'; tool_input = @{ file_path = $eolFxFile } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: llm-wiki 픽스처의 LF 는 무경고 (EOL3)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
 }   # ---- §6·§7·Pre.cs 게이트 끝 (post-write-checks) ----
 
