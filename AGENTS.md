@@ -85,7 +85,7 @@
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**이고 그것을 내는 hook은 넷이다(`block-destructive`·`guard-bash`·`guard-write`·`guard-harness`). **우회 변수는 둘이며 서로 대체되지 않는다** — `CLAUDE_HARNESS_QUICK` / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 전용). 담당·조건부 세부·우회 범위·`[PLAN-EXEMPT]` 면제 경로는 `docs/harness-conventions.md`가 정본 — **hook 수정 전 반드시 읽을 것**.
 - **`guard-write`는 게이트 2종**(plan 존재·plan 작성)이고 **같은 정규식을 공유하므로 한쪽만 고치지 말 것** — 차이가 곧 우회 경로다. `guard-harness`는 자기보호와 AGENTS.md 내용 경계 2종이다.
 - **⚠ `llm-wiki`의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md`의 vault 예외를 함께 확인**한다 — 검사기가 못 잡는다(repo 밖). 정본은 `docs/harness-conventions.md`의 「llm-wiki ↔ 글로벌 지침 결합」.
-- **SKILL 문서 작성**: 형식은 `plugins/pjc/skills/AUTHORING.md`, **설계 원칙(규약 문면 형식·자기참조 금지·문서 예산)은 `plugins/pjc/skills/DESIGN.md`가 정본**이다.
+- **SKILL 문서 작성**: 형식은 `plugins/pjc/skills/AUTHORING.md`, **설계 원칙(규약 문면 형식·자기참조 금지)은 `plugins/pjc/skills/DESIGN.md`가 정본**이다.
 - **위키 연동**: 계획·구현이 위키를 언제 읽고 언제 쓰는지는 `plugins/pjc/skills/WIKI.md`가 정본.
 - **README.md 갱신 규약**: changelog 기재 **금지**(현재 기능 설명만) · 버전 표기는 상단 1곳. 정본은 `docs/harness-conventions.md`의 「README.md 갱신 규약」.
 - **규약 개정 요청**: 요청이 이 레포 규약에 걸려도 「규약이 금지한다」로 제외·전환하지 않는다 — **현행 규약 안의 안**과 **규약을 함께 고치는 안**을 둘 다 낸다(정본은 `docs/harness-conventions.md`의 「규약 개정 요청의 취급」).

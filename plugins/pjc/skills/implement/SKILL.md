@@ -99,7 +99,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 ## 완료 정의
 
 - **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다. task 마커·최종 검증·Goal 기준은 위 「검증」 4번과 최종 리뷰가 이미 전수로 잰다.
-- **`## Deferred / Follow-up`의 항목을 전부 판정한다 — 등재 전에 「지금 고칠 것인가」를 먼저 가른다**(판정 3조건과 등재 하한선은 `../plan/references/deferred-rules.md`). 등재분은 그 레포의 **Deferred 대장**(이 레포는 `docs/plans/deferred.md`)으로 옮긴다 — **대장이 없는 레포면 등재가 아니라 `[미등재:대장 없음]`으로 닫고 최종 보고에 싣는다.**
+- **`## Deferred / Follow-up`의 항목을 전부 판정한다 — 등재 전에 「지금 고칠 것인가」를 먼저 가른다**(판정 3조건과 등재 하한선은 `../plan/references/deferred-rules.md`). 등재분은 그 레포의 **Deferred 대장**(이 레포는 `docs/plans/deferred.md`)으로 옮긴다 — **대장이 없는 레포면 등재가 아니라 `[미등재:대장 없음]`으로 닫는다.**
 
 ## 최종 보고
 

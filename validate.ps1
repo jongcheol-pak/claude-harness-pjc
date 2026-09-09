@@ -7,6 +7,7 @@
 #   1. plugin 디렉터리 존재
 #   2. plugin.json + marketplace.json 유효
 #   3. skill 5개 모두 등록
+#   3-1. 가이드 문서 3개 존재 (DESIGN/AUTHORING/BUDGET)
 #   4. agent 6개 모두 등록
 #   5. hook 9개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
