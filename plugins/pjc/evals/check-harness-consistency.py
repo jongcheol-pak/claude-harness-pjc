@@ -43,7 +43,13 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
      마커만 달고 이관을 빠뜨렸고, **`session-context` hook 의 「미판정」 계수는 마커가 붙은 항목을
      세지 않으므로** 기계가 그것을 정상으로 봤다 — 유실이 조용한 구조였다. 판정은 **제목(마커 뒤
      첫 볼드)** 일치로 하고 본문은 보지 않는다(표현이 다듬어질 때마다 오탐이 되며, 두 실측 누락은
-     제목이 그대로 옮겨진 형태였다). `plan.md` 부재는 조용히 통과한다.
+     제목이 그대로 옮겨진 형태였다). **비교할 때 양쪽의 공백을 지운다** — 같은 다듬기가 제목에도
+     닿아, 대장은 조사를 띄어 쓰고(`task 가`) plan 은 붙여 쓰는 편차만으로 옮긴 항목이 안 옮긴
+     것으로 잡혔다(2026-09-09 실측 2건). 여기에 **서식 게이트**가 붙는다 — 마커를 담았는데 줄
+     머리가 규정 서식(`- `[등재]` **제목**`)이 아닌 항목을 잡는다. 「읽을 수 있는가」는 「실재하는가」의
+     전제이고, 볼드로 시작한 회차 49 에서 이 축이 **0항목으로 침묵**했다. 서식 검사만 `## Deferred /
+     Follow-up` 절 안으로 한정한다(작업 단계 체크박스 줄이 마커를 예시로 인용한다). `plan.md`
+     부재는 조용히 통과한다.
   ⑭ 폐기 식별자 실재 — 폐기된 단계명이 살아 있는 자산에서 **현행 규정**을 가리키는가.
      목록의 정본은 `DESIGN.md` 3-1 의 고정 형식 1줄이라 선언과 검사가 한 자리에 묶인다.
      `check-stale-refs.py` 는 **파일**의 삭제만 보고 문서 안 식별자는 보지 않아, 3-1 이 구
@@ -904,9 +910,23 @@ CRITICAL_POINTERS = [
 #   둘 다 봐야 한다 — 대기에서만 찾으면 이미 처리된 항목이 위반으로 잡힌다.
 LEDGER_MARKER_RX = re.compile(r"^-\s*`?\[등재[^\]]*\]`?\s*(.*)$")
 
+# 서식 게이트 3종. `## Deferred / Follow-up` 절만 잘라 보는 이유는 아래 docstring 에 있다.
+#   구간 정규식은 `session-context.ps1` 의 계수 블록과 같은 형태로 둔다 — 두 소비자가
+#   다른 구간을 보면 한쪽만 통과하는 서식이 생긴다.
+DEFERRED_SECTION_RX = re.compile(r"(?ms)^## Deferred / Follow-up\s*?$(.*?)(?=^## |\Z)")
+MARKER_ANY_RX = re.compile(r"\[(?:등재|미등재|미판정|다음 회차)")
+MARKER_HEAD_RX = re.compile(r"^-\s*`?\[(?:등재|미등재|미판정|다음 회차)")
+
+
+def _nospace(s):
+    # 제목 대조 전용 정규화 — **추출이 끝난 뒤에만** 쓴다. 추출 전에 공백을 지우면
+    #   볼드 경계(`**…**`)가 붙어 버려 제목의 시작·끝을 가를 수 없다.
+    return re.sub(r"\s+", "", s)
+
 
 def check_ledger_marker_sync():
     """등재 마커 실재 — `plan.md` 의 `[등재…]` 항목이 대장에 실제로 있는가.
+    함께 **마커를 읽을 수 있는 서식인가**도 본다.
 
     **왜 필요한가**: `[등재]` 는 「올렸다」는 완료 시제인데(`deferred-rules.md`), 마커를 적는
     것과 대장에 줄을 넣는 것은 서로 다른 두 편집이다. 회차 33·34 가 연속으로 마커만 달고
@@ -917,6 +937,20 @@ def check_ledger_marker_sync():
     **제목만 대조하는 이유**: 본문은 대장으로 옮기며 다듬어지는 것이 정상이라 전문 일치를
     요구하면 오탐이 된다. 두 실측 누락은 둘 다 볼드 제목이 그대로 옮겨진 형태였다.
 
+    **제목 비교에 공백을 지우는 이유**: 같은 다듬기가 제목에 닿기 때문이다. 대장은 조사를
+    띄어 쓰고(`task 가`) `plan.md` 는 붙여 쓰는데(`task가`), 완전 일치를 요구하면 옮긴
+    항목이 안 옮긴 것으로 잡힌다(2026-09-09 실측: 등재 4건 중 2건). 공백만 무시하므로
+    문면이 실제로 바뀐 것은 여전히 걸린다.
+
+    **서식 게이트가 같은 축에 있는 이유**: 「마커를 읽을 수 있는가」는 「마커가 주장하는
+    것이 실재하는가」의 **전제**다. 볼드로 시작하는 항목(`- **`[등재]` …**`)은 위 정규식에
+    걸리지 않아 이 축이 **0항목으로 침묵**하고, 같은 이유로 `session-context` hook 은 판정을
+    마친 항목을 미판정으로 센다(2026-09-09 실측: 축 0항목 · hook 「미판정 9건」).
+
+    **절만 잘라 보는 이유**: 서식 검사는 `## Deferred / Follow-up` 안에서만 돈다. `plan.md`
+    의 작업 단계 체크박스 줄(`- [ ] **T2-1** … `[등재]` …`)이 마커 리터럴을 예시로 인용하므로
+    전문을 훑으면 그 줄들이 전부 위반이 된다. 마커 대조 쪽은 종전대로 전문 순회다.
+
     fail-open: `plan.md` 가 없으면 `([], 0)`. gitignore 대상이라 없는 것이 정상이다.
     """
     try:
@@ -924,7 +958,24 @@ def check_ledger_marker_sync():
     except OSError:
         return [], 0
     ledgers = read(LEDGER_MD) + read(LEDGER_CLOSED_MD)
+    ledgers_flat = _nospace(ledgers)
     issues, n = [], 0
+
+    # ① 서식 게이트 — 절 안에서만. 마커를 담았는데 줄 머리가 규정 서식이 아닌 항목.
+    sec = DEFERRED_SECTION_RX.search(plan)
+    if sec:
+        for line in sec.group(1).splitlines():
+            if not line.startswith("- "):
+                continue
+            if MARKER_ANY_RX.search(line) and not MARKER_HEAD_RX.match(line):
+                n += 1
+                issues.append(
+                    "Deferred 항목 서식 위반: %s — 마커는 `- ` 바로 뒤에 와야 한다"
+                    " (`- `[등재]` **제목** — 본문`). 볼드가 마커를 감싸면 이 축과"
+                    " `session-context` hook 이 그 항목을 읽지 못한다"
+                    " (형식 정본은 `plan/references/deferred-rules.md`)" % line.strip()[:70])
+
+    # ② 마커 대조 — 종전대로 전문 순회(D4). 비교할 때만 공백을 지운다.
     for line in plan.splitlines():
         m = LEDGER_MARKER_RX.match(line.strip())
         if not m:
@@ -933,7 +984,7 @@ def check_ledger_marker_sync():
         if not title:
             continue   # 제목이 없으면 대조할 키가 없다 — 세지 않는다
         n += 1
-        if title.group(1) not in ledgers:
+        if _nospace(title.group(1)) not in ledgers_flat:
             issues.append(
                 "등재 마커가 주장하는 항목이 대장에 없음: %s — `[등재]` 는 「올렸다」는 뜻이다"
                 " (`docs/plans/deferred.md` 에 넣거나 마커를 `[미등재:<사유>]` 로 바꿔라)"
