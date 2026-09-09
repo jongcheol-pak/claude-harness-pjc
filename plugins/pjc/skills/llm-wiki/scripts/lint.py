@@ -3427,6 +3427,7 @@ def main():
     #  (그 프로젝트의 ① 경로 실재 확인은 §7-10 에이전트가 폴백 수행).
     repo_cache = {}  # 허브 rel 경로 -> 레포 루트(str) 또는 None(접근 불가)
     exists_cache = {}  # (root, 상대경로) -> 실존 여부 — 여러 feature가 같은 경로를 병기할 때 중복 IO 제거
+    symbol_text_cache = {}  # (root, 상대경로) -> 본문 — §7-21 진입점 심볼 실존 검사용
     for r, (fm, typ, text) in sorted(pages.items()):
         if typ != "feature" or r.startswith("90_archive/"):
             continue
@@ -3447,6 +3448,7 @@ def main():
         # §7-21: '## 관련 파일' 섹션 판별(strip_code 사본 — 코드펜스 안 유사 헤딩 제외) +
         #  섹션 내 '- ' 항목의 백틱 경로 토큰 수집(원문 줄에서).
         rel_tokens, rel_section_found = [], False
+        rel_symbols = []       # (경로 토큰, 심볼) — §7-21 진입점 앵커
         in_rel = False
         for i, sl in enumerate(stripped_lines):
             s = sl.strip()
@@ -3457,8 +3459,16 @@ def main():
             if in_rel and s.startswith("## "):
                 in_rel = False
             if in_rel and s.startswith("-"):
-                rel_tokens += [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
-                               if "/" in t or "\\" in t]
+                line_paths = [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
+                              if "/" in t or "\\" in t]
+                rel_tokens += line_paths
+                # 진입점 심볼(선택 필드) — '(진입점: `A` · `B`)'. 그 행의 **첫 경로**에 건다:
+                #  한 행이 파일 하나를 서술하는 형식이라 그 행의 경로가 곧 심볼이 사는 파일이다.
+                #  괄호가 없으면 아무것도 모으지 않는다(미기재는 검사·신호 대상이 아니다 — §7-21).
+                m_ep = re.search(r"\(진입점:\s*([^)]*)\)", raw_lines[i])
+                if m_ep and line_paths:
+                    rel_symbols += [(line_paths[0], sym)
+                                    for sym in re.findall(r"`([^`\n]+)`", m_ep.group(1))]
         # 문구로 원인을 구분한다 — "섹션 자체 없음"과 "섹션은 있으나 백틱 경로 0개"(형식 누락:
         #  백틱 미사용·구분자 없는 토큰만 있는 경우)는 수리 방법이 달라 진단 단계를 줄인다.
         if not rel_section_found:
@@ -3500,6 +3510,31 @@ def main():
                     detail = "글롭 매치 0건 — 이동·삭제·오기 가능" if "*" in p \
                         else "이동·삭제·오기 가능 — 갱신 필요"
                     warn(f"{label} 레포에 없음: {r} -> '{t}' ({detail}, schema {sec})", r)
+
+        # §7-21 진입점 심볼 실존 — 그 파일에 **그 문자열이 나오는가**만 본다.
+        #  정의인지 호출인지 주석인지 가르지 않는다(파싱은 이 도구의 일이 아니다 — §7 결과 처리의
+        #  레포 접근 범위). 낡은 앵커는 조회를 엉뚱한 자리로 보내므로 WARN 이고, **미기재는 검사하지
+        #  않는다**(선택 필드 — 필수로 하면 기존 페이지가 전부 WARN 이 되고 INFO 로 두면 묻힌다).
+        #  본문은 (root, 경로)당 1회만 읽는다 — 한 파일에 심볼이 여럿이면 재읽기가 된다.
+        for sym_token, sym in rel_symbols:
+            sp = sym_token.replace("\\", "/").strip()
+            if sp.startswith("./"):
+                sp = sp[2:]
+            if os.path.isabs(sp) or re.match(r"^[A-Za-z]:", sp) or "*" in sp:
+                continue  # 절대경로·글롭은 대상 밖(경로 검사와 같은 기준)
+            skey = (root, sp)
+            if not exists_cache.get(skey):
+                continue  # 파일 자체가 없으면 위 경로 WARN 이 이미 알렸다 — 중복 신고하지 않는다
+            if skey not in symbol_text_cache:
+                try:
+                    with open(os.path.join(root, sp), encoding="utf-8", errors="replace") as fh:
+                        symbol_text_cache[skey] = fh.read()
+                except OSError:
+                    symbol_text_cache[skey] = None  # 읽기 실패는 fail-open(§7-20과 같은 취지)
+            body = symbol_text_cache[skey]
+            if body is not None and sym not in body:
+                warn(f"진입점 심볼 소스에 없음: {r} -> '{sym_token}'의 `{sym}` "
+                     f"(이름 변경·삭제 가능 — 조회가 엉뚱한 자리로 간다, schema §7-21)", r)
 
     # 위키 뒤처짐 (wiki-schema §7-26): 허브 synced_commit(§2.2) 이후 레포에 쌓인 커밋 수를 센다.
     #  updated는 "언제 손댔나"라서, 날짜만 갱신되고 내용이 레포를 못 따라온 상태를 그대로
