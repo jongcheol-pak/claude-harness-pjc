@@ -3,10 +3,10 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종 검사를 한 프로세스에서 수행
+## §1 guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `plugins/pjc/skills/DESIGN.md`의 hook 담당 조항 표):
 #   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신.
@@ -123,3 +123,23 @@ dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래)
 #   유일한 실행 경로다. **새 검사는 목록 끝에 더한다** — 앞에 끼우면 기존 4종의 경고 출력 순서가 바뀐다.
 ```
 
+
+## §10 block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단
+
+```powershell
+# block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단
+```
+
+**왜 차단인가.** `plan.md` 는 `.gitignore` 대상이라 잘못 쓰면 **`git show` 로 복구할 수 없다.** 2026-09-09 회차 50 이 Deferred 절을 python 으로 교체하다 `s.index("## Deferred / Follow-up")` 가 Goal 문단의 **인용 문자열**을 먼저 잡아, 그 지점부터 Progress Log 직전까지를 통째로 지웠다 — 파일이 29줄만 남았다. 그 상태로 커밋 두 개가 지나갔다: 절이 사라지자 「등재 마커 실재」 축의 서식 게이트가 `DEFERRED_SECTION_RX` 실패로 **아무것도 안 본 채 exit 0** 을 냈고, `require-task-checkbox` 도 체크박스를 못 읽어 통과했다. **경고로는 부족하다** — 자율 루프가 경고를 보고도 진행하면 같은 유실이 반복되고, 그 유실은 되돌릴 수단이 없다.
+
+**`guard-write` 가 아니라 여기인 이유.** `guard-write` 는 `Write|Edit|MultiEdit|NotebookEdit` 매처라 **스크립트 경로를 원리상 보지 못한다.** 사고 명령은 `Bash` 도구의 python 인라인이었다. 대장의 처방 후보가 hook 을 잘못 지목했고 회차 51 계획이 정정했다.
+
+**판정은 「쓰기 구문의 대상 인자가 `plan.md` 인가」 하나다.** 초안은 *"명령에 `plan.md` 언급 ∧ 쓰기 신호 존재"* 의 논리곱이었는데, 그러면 `sed -i '/plan.md …/d' docs/plans/deferred.md` 가 걸린다 — 쓰기 대상은 `deferred.md` 인데 패턴 문자열에 `plan.md` 가 있다. **대장에 리터럴 `plan.md` 가 20회 있고**, 그 줄을 지우는 것이 정상 작업이다(계획 리뷰 BLOCKER).
+
+**변수 역참조가 필요하다.** 사고 명령의 형태가 `p='plan.md'` → `open(p,'w')` 라 `open()` 의 첫 인자는 식별자였다. 리터럴만 매치하면 **재현 케이스가 그대로 샌다.** `Invoke-WarnDangerousAssignment` 가 쓰는 `$assigned` 해시 방식을 그대로 쓴다.
+
+**대상 특정 7종** — ⓐ `open(…, 'w'|'a')` 의 첫 인자 ⓑ `>`·`>>` 의 대상 ⓒ `sed -i` 의 **마지막 위치 인자**(패턴 안은 대상이 아니다) ⓓ `Set-Content`·`Out-File`·`Add-Content`·`tee` 의 대상 ⓔ `cp`·`mv` 의 마지막 인자 ⓕ `Copy-Item`·`Move-Item`·`Rename-Item`(ⓔ는 별칭 텍스트만 매치한다) ⓖ `[System.IO.File]::WriteAll*`·`AppendAllText` 의 첫 인자.
+
+**단어 경계를 두는 이유** — `plan-template.md`·`docs/plans/deferred.md` 가 부분문자열로 걸리면 정당한 작업이 막힌다. 회차 51 자신이 두 파일을 다 다뤘다.
+
+**읽기는 막지 않는다** — `grep`·`cat`·`sed -n`·`awk`, 그리고 **`plan.md` 를 읽어 다른 파일로 내보내는 형태**(`head -12 plan.md > other.txt`)까지 통과한다. 오차단이 나면 실측·조사 자체가 막힌다.

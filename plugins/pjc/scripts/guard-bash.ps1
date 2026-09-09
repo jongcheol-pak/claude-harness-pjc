@@ -1,6 +1,6 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md`의 「§1 guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 5종 검사를 한 프로세스에서 수행」
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md`의 「§1 guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행」
 
-# 아래 검사 함수 5종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
+# 아래 검사 함수 6종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
 # 결과 객체 생성기 New-HookResult 는 아래 dot-source 대상(guard-commit-secrets.ps1)에 있다 —
 #   그쪽이 이 함수를 쓰므로 정의를 그 파일에 두어야 단독 dot-source(골든 프로브)가 성립한다.
@@ -98,6 +98,60 @@ function Invoke-WarnDangerousAssignment {
     $msg = "[DANGEROUS ASSIGNMENT WARNING] 삭제 명령의 대상이 같은 줄에서 루트·홈 경로로 대입된 변수입니다 ($where) — 변수를 한 번 거치면 block-destructive의 정규식 차단을 통과하므로(의도된 미탐) 이 명령은 차단되지 않습니다."
     $ctx = "삭제 대상 변수($where)가 루트·홈·드라이브 루트를 가리킵니다. 실행하면 그 아래 전체가 지워질 수 있고 차단 hook은 이 형태를 잡지 못합니다 — 대입값이 의도한 것인지 확인하고, 아니면 대상 경로를 좁히세요."
     return New-HookResult -Stderr @($msg) -Context $ctx
+}
+
+# block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md`의 「§10 block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단」
+function Invoke-BlockPlanWrite {
+    param($data)
+    $cmd = $data.tool_input.command
+    if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
+
+    # 변수 대입 기록 — 이름을 거쳐 지시하는 형태를 역참조한다(§10).
+    $assigned = @{}
+    foreach ($m in [regex]::Matches($cmd, '(?m)^\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[''"]([^''"]*)[''"]')) {
+        $assigned[$m.Groups[1].Value] = $m.Groups[2].Value
+    }
+    # 인자가 plan.md 를 가리키는가 — 리터럴이거나 값이 plan.md 인 변수 이름이거나(§10).
+    function Test-PlanTarget([string]$arg) {
+        if ([string]::IsNullOrWhiteSpace($arg)) { return $false }
+        $a = $arg.Trim().Trim('"', "'", '(', ')', ',')
+        if ($a -match '^\$?\{?([A-Za-z_][A-Za-z0-9_]*)\}?$' -and $assigned.ContainsKey($Matches[1])) {
+            $a = $assigned[$Matches[1]]
+        }
+        return ($a -match '^(\./)?plan\.md$')
+    }
+
+    $hits = New-Object System.Collections.Generic.List[string]
+
+    # ⓐ open(…,'w') 의 첫 인자 · ⓑ 리다이렉션 대상.
+    foreach ($m in [regex]::Matches($cmd, '(?i)\bopen\s*\(\s*([^,()]+?)\s*,\s*[''"]([rwaxb+]+)[''"]')) {
+        if ($m.Groups[2].Value -match '[wa]' -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('open(w)') }
+    }
+    foreach ($m in [regex]::Matches($cmd, '>>?\s*(\S+)')) {
+        if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
+    }
+    # ⓒⓔⓕ sed -i · 복사·이동 — 세그먼트의 마지막 인자만 대상.
+    foreach ($seg in [regex]::Split($cmd, '(?:&&|\|\||;|\r?\n|\|)')) {
+        $isSedI = ($seg -match '(?i)\bsed\b') -and ($seg -match '(?i)(\s-[a-z]*i\b|--in-place)')
+        $isCopy = $seg -match '(?i)\b(cp|mv|Copy-Item|Move-Item|Rename-Item)\b'
+        if (-not ($isSedI -or $isCopy)) { continue }
+        $last = @(($seg -split '\s+') | Where-Object { $_ }) | Select-Object -Last 1
+        if (Test-PlanTarget $last) { $hits.Add($(if ($isSedI) { 'sed -i' } else { 'cp/mv' })) }
+    }
+    # ⓓⓖ 쓰기 cmdlet·tee 의 대상 · .NET 직접 쓰기의 첫 인자.
+    foreach ($m in [regex]::Matches($cmd, '(?i)\b(Set-Content|Out-File|Add-Content|tee)\b((?:\s+-\w+(?:\s+\S+)?)*)\s+(\S+)')) {
+        if (Test-PlanTarget $m.Groups[3].Value) { $hits.Add($m.Groups[1].Value) }
+    }
+    foreach ($m in [regex]::Matches($cmd, '(?i)\[System\.IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
+        if (Test-PlanTarget $m.Groups[2].Value) { $hits.Add('[System.IO.File]') }
+    }
+
+    if ($hits.Count -eq 0) { return New-HookResult }
+    $where = (($hits | Select-Object -Unique) -join ', ')
+    return New-HookResult -Block $true -Stderr @(
+        "[HARNESS] BLOCKED: plan.md 를 스크립트로 쓰려 합니다 ($where).",
+        "gitignore 라 잘못 쓰면 복구할 수 없습니다 — 전체 교체는 Write, 부분 수정은 Edit 도구로 하세요(`plan/SKILL.md` 「Step 5」). 읽기는 막지 않습니다."
+    ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
 }
 
 # ---- warn-external-ops: 외부·비가역 작업(push·merge·tag·gh release/pr·배포)·로컬 비가역(reset --hard 등) 경고 ----
@@ -313,6 +367,7 @@ function Write-DispatchEvent {
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
     @{ fn = 'Invoke-RequireTaskCheckbox'; name = 'require-task-checkbox' },
+    @{ fn = 'Invoke-BlockPlanWrite';      name = 'block-plan-write' },
     @{ fn = 'Invoke-WarnCommitSecrets';   name = 'warn-commit-secrets' },
     @{ fn = 'Invoke-WarnGlobalFind';      name = 'warn-global-find' },
     @{ fn = 'Invoke-WarnDangerousAssignment'; name = 'warn-dangerous-assignment' }
