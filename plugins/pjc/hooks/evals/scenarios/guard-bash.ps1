@@ -127,5 +127,25 @@ Assert-Case -Name "bpw: 다른 파일을 쓰는 인라인 스크립트는 통과
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '/plan.md 를 스크립트로 후편집/d' docs/plans/deferred.md")
 Assert-Case -Name "bpw: sed -i 패턴 안의 plan.md 는 대상이 아니다 (BPW5)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+# BPW6 (델타 음성 — 쓰기 동사를 본문에 담은 조회): 완료 리뷰 BLOCKER 를 고정한다.
+#   쓰기 동사를 세그먼트 어디서나 찾으면 이 조회가 막힌다. 하필 이 회차의 plan.md·rationale 이
+#   그 단어들을 담고 있어, 다음 세션이 자기 plan 을 grep 하는 순간 차단됐다(실측 5형태).
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "grep -n 'Copy-Item' plan.md")
+Assert-Case -Name "bpw: 쓰기 동사를 본문에 담은 plan.md 조회는 통과 (BPW6)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "grep -n Set-Content plan.md")
+Assert-Case -Name "bpw: 쓰기 cmdlet 이름을 찾는 조회도 통과 (BPW6b)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# BPW7~9 (양성 — 나머지 신호): 신호마다 양성이 없으면 그 분기를 지워도 전건 green 이다
+#   (완료 리뷰 MAJOR — 7신호 중 6개가 음성으로만 등장했다).
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "echo x > plan.md")
+Assert-Case -Name "bpw: 리다이렉션 대상이 plan.md 면 차단 (BPW7)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i 's/a/b/' plan.md")
+Assert-Case -Name "bpw: sed -i 의 대상이 plan.md 면 차단 (BPW8)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+# ⚠ named parameter 형이 PowerShell 표준이다 — 위치 인자만 막으면 실사용 형태가 샌다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "Set-Content -Path plan.md -Value 'x'")
+Assert-Case -Name "bpw: Set-Content -Path plan.md 차단 (BPW9)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python -c ""p='plan.md'; open(p,'w').write('x')""")
+Assert-Case -Name "bpw: 한 줄 -c 형태의 변수 대입도 역참조 (BPW10)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
 }   # ---- §8 게이트 끝 (guard-bash) ----
 

@@ -317,9 +317,12 @@ try {
     #   관측된 사고도 .md 였다. 넓히면 다른 레포 픽스처(.cs 등)까지 오탐한다(§15).
     if ($file -match '(?i)\.(md|ps1|py|json|psm1|psd1)$' -and
         $file -notmatch '(?i)[\\/]llm-wiki[\\/]evals[\\/]fixtures[\\/]') {
-        # git 추적 대상만 본다 — plan.md·notes.md 는 gitignore 라 워킹트리 규약의 대상이 아니다.
-        $tracked = & git ls-files --error-unmatch -- $file 2>$null
-        if ($LASTEXITCODE -eq 0 -and $tracked) {
+        # gitignore 가 아니면 대상이다 — 「줄바꿈 정합」 축과 같은 집합을 본다(§15).
+        #   추적 여부로 거르면 **새로 만든 파일이 통째로 빠져** 이 경고가 노리는 사고 형태
+        #   (Write 로 만든 신규 intent/*.md)에 발화하지 않는다.
+        #   exit 1 만 「repo 안이고 ignore 아님」이다 — 0 은 ignore, 128 은 repo 밖이라 둘 다 대상이 아니다.
+        $null = & git check-ignore -q -- $file 2>$null
+        if ($LASTEXITCODE -eq 1) {
             $bytes = [System.IO.File]::ReadAllBytes($file)
             $lf = 0; $crlf = 0
             for ($i = 0; $i -lt $bytes.Length; $i++) {

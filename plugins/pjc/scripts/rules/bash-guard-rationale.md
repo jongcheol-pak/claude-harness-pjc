@@ -24,7 +24,7 @@
 #   미수행된다(fail-open). 아래 로드 가드가 그 상태를 stderr로 가시화한다.
 ```
 
-## §2 검사 5종을 한 프로세스에 담는 구조
+## §2 검사 6종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
@@ -33,7 +33,7 @@ dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래)
 
 현행 구조:
 
-- **검사 5종 중 4종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+- **검사 6종 중 5종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
   `Invoke-RequireTaskCheckbox` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
   **`Invoke-WarnCommitSecrets` 하나만 `guard-commit-secrets.ps1` 에 있고 dot-source 한다** —
   그 파일이 커밋 시점 검사 전체(스캔 캡·우회 변수·시크릿 패턴 연동)를 담아 크기가 따로 놀고,
@@ -120,7 +120,7 @@ dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래)
 ```
 # 순서: 원 hooks.json 순서에서 block-destructive(독립)만 앞으로 뺀 나머지 3종 + warn-global-find(v1.183.0 신설)
 #   + warn-dangerous-assignment(v1.199.0 신설). 뒤 둘은 대응하는 독립 hook 스크립트가 없고 이 디스패처가
-#   유일한 실행 경로다. **새 검사는 목록 끝에 더한다** — 앞에 끼우면 기존 4종의 경고 출력 순서가 바뀐다.
+#   유일한 실행 경로다. **새 검사는 경고 출력 순서를 지키는 자리에 넣는다** — 경고를 내는 검사 사이에 끼우면 기존 출력 순서가 바뀐다. `block-plan-write` 는 차단 전용(경고를 내지 않는다)이라 `require-task-checkbox` 뒤에 두어도 순서가 움직이지 않는다.
 ```
 
 

@@ -301,6 +301,15 @@ Assert-Case -Name "post-write: 추적 파일이 LF 면 경고 (EOL1)" -R $r -Exp
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-b'; tool_input = @{ file_path = $eolCrlf } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: CRLF 파일은 무경고 (EOL2)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
 
+# EOL1b (양성 — 신규 미추적 파일): **이번 사고 형태가 이것이다.** 회차 50 이 Write 로 만든
+#   intent/*.md 가 LF 였다. 추적 여부로 거르면 새로 만든 파일이 통째로 빠져 그 형태에 발화하지
+#   않는다(완료 리뷰 MAJOR) — 「줄바꿈 정합」 축과 같이 gitignore 만 제외한다.
+$eolNew = Join-Path $eolRepo 'intent/2026-09-09-new.md'
+New-Item -ItemType Directory (Split-Path -Parent $eolNew) -Force | Out-Null
+[System.IO.File]::WriteAllText($eolNew, "새로 만든 intent 파일`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-d'; tool_input = @{ file_path = $eolNew } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 신규 미추적 파일이 LF 면 경고 (EOL1b)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+
 # EOL3 (델타 음성 — 픽스처 제외): llm-wiki/evals/fixtures/ 아래 LF 는 의도된 테스트 입력이다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-c'; tool_input = @{ file_path = $eolFxFile } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: llm-wiki 픽스처의 LF 는 무경고 (EOL3)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'

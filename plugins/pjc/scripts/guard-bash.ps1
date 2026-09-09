@@ -108,7 +108,7 @@ function Invoke-BlockPlanWrite {
 
     # 변수 대입 기록 — 이름을 거쳐 지시하는 형태를 역참조한다(§10).
     $assigned = @{}
-    foreach ($m in [regex]::Matches($cmd, '(?m)^\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[''"]([^''"]*)[''"]')) {
+    foreach ($m in [regex]::Matches($cmd, '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[''"]([^''"]*)[''"]')) {
         $assigned[$m.Groups[1].Value] = $m.Groups[2].Value
     }
     # 인자가 plan.md 를 가리키는가 — 리터럴이거나 값이 plan.md 인 변수 이름이거나(§10).
@@ -130,20 +130,31 @@ function Invoke-BlockPlanWrite {
     foreach ($m in [regex]::Matches($cmd, '>>?\s*(\S+)')) {
         if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
     }
-    # ⓒⓔⓕ sed -i · 복사·이동 — 세그먼트의 마지막 인자만 대상.
-    foreach ($seg in [regex]::Split($cmd, '(?:&&|\|\||;|\r?\n|\|)')) {
-        $isSedI = ($seg -match '(?i)\bsed\b') -and ($seg -match '(?i)(\s-[a-z]*i\b|--in-place)')
-        $isCopy = $seg -match '(?i)\b(cp|mv|Copy-Item|Move-Item|Rename-Item)\b'
-        if (-not ($isSedI -or $isCopy)) { continue }
-        $last = @(($seg -split '\s+') | Where-Object { $_ }) | Select-Object -Last 1
-        if (Test-PlanTarget $last) { $hits.Add($(if ($isSedI) { 'sed -i' } else { 'cp/mv' })) }
-    }
-    # ⓓⓖ 쓰기 cmdlet·tee 의 대상 · .NET 직접 쓰기의 첫 인자.
-    foreach ($m in [regex]::Matches($cmd, '(?i)\b(Set-Content|Out-File|Add-Content|tee)\b((?:\s+-\w+(?:\s+\S+)?)*)\s+(\S+)')) {
-        if (Test-PlanTarget $m.Groups[3].Value) { $hits.Add($m.Groups[1].Value) }
-    }
     foreach ($m in [regex]::Matches($cmd, '(?i)\[System\.IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
         if (Test-PlanTarget $m.Groups[2].Value) { $hits.Add('[System.IO.File]') }
+    }
+    # ⓒⓓⓔⓕ 쓰기 동사는 **세그먼트의 첫 실효 토큰일 때만** 본다 — 어디에 있든 찾으면
+    #   `grep -n 'Copy-Item' plan.md` 같은 조회가 막힌다(완료 리뷰 BLOCKER).
+    foreach ($seg in [regex]::Split($cmd, '(?:&&|\|\||;|\r?\n|\|)')) {
+        $tk = @(($seg -split '\s+') | Where-Object { $_ })
+        $i = 0
+        while ($i -lt $tk.Count -and ($tk[$i] -match '^(?i)(sudo|time|nohup|env)$' -or $tk[$i] -match '^[A-Za-z_]\w*=')) { $i++ }
+        if ($i -ge $tk.Count) { continue }
+        $verb = ($tk[$i] -replace '^.*[\\/]', '') -replace '(?i)\.exe$', ''
+        $rest = if ($i + 1 -lt $tk.Count) { @($tk[($i + 1)..($tk.Count - 1)]) } else { @() }
+        if ($verb -match '^(?i)(cp|mv|copy-item|move-item|rename-item)$') {
+            if (Test-PlanTarget (@($rest) | Select-Object -Last 1)) { $hits.Add('cp/mv') }
+        } elseif ($verb -match '^(?i)sed$') {
+            if (($seg -match '(?i)(\s-[a-z]*i\b|--in-place)') -and (Test-PlanTarget (@($rest) | Select-Object -Last 1))) { $hits.Add('sed -i') }
+        } elseif ($verb -match '^(?i)(set-content|add-content|out-file|tee)$') {
+            # PowerShell 은 named parameter 가 표준이라 -Path 계열 값을 먼저 읽는다.
+            $t = $null
+            for ($j = 0; $j -lt $rest.Count - 1; $j++) {
+                if ($rest[$j] -match '^(?i)-(Path|LiteralPath|FilePath|Destination)$') { $t = $rest[$j + 1]; break }
+            }
+            if (-not $t) { $t = @($rest | Where-Object { $_ -notmatch '^-' }) | Select-Object -First 1 }
+            if (Test-PlanTarget $t) { $hits.Add($verb) }
+        }
     }
 
     if ($hits.Count -eq 0) { return New-HookResult }
@@ -363,7 +374,7 @@ function Write-DispatchEvent {
     } catch {}
 }
 
-# 검사 5종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md`의 「§2 검사 5종을 한 프로세스에 담는 구조」
+# 검사 6종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md`의 「§2 검사 6종을 한 프로세스에 담는 구조」
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md`의 「§8 순서: 원 hooks.json 순서에서 block-destructive」
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
