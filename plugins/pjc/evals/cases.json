@@ -132,13 +132,13 @@
     ]
   },
   {
-    "id": "budget-design-over-cap",
+    "id": "budget-over-cap",
     "checker": "harness",
     "fixture": "minimal-repo",
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/pjc/skills/DESIGN.md",
+        "file": "plugins/pjc/skills/BUDGET.md",
         "find": "| `SKILL.md` | **12,000 B** | **게이트** |",
         "replace": "| `SKILL.md` | **10 B** | **게이트** |"
       }
@@ -208,14 +208,14 @@
     "expect_rc": 2,
     "mutate": [
       {
-        "file": "plugins/pjc/skills/DESIGN.md",
-        "find": "## 4. 문서 예산",
-        "replace": "## 4-1. 문서 예산"
+        "file": "plugins/pjc/skills/BUDGET.md",
+        "find": "## 예산 표",
+        "replace": "## 예산표"
       }
     ],
     "expect_keywords": [
       "ANCHOR FAIL",
-      "4. 문서 예산"
+      "예산 표"
     ]
   },
   {

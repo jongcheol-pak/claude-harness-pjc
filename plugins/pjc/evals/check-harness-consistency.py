@@ -21,7 +21,7 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
   ⑥ 추출 앵커 도달성 — `session-context.ps1`이 압축 직후 잘라 오는 절의 헤딩이 대상 문서에
      실재하고 크기 상한 안인가. 헤딩이 바뀌면 hook은 조용히 폴백해 주입이 사라지고, 그 상실은
      압축된 세션에서만 드러나 아무도 모른 채 지나간다.
-  ⑦ 문서 예산      — `DESIGN.md` 4절 표의 상한과 `harness-conventions.md` 「조건부 참조 문서
+  ⑦ 문서 예산      — `BUDGET.md` 「예산 표」의 상한과 `harness-conventions.md` 「조건부 참조 문서
      크기 임계」 표의 **기록값·상한**을 실측 파일 크기와 대조한다(표는 둘, 축은 하나).
      v1.226.0 착수 시점에
      스킬 5종 중 4종이 12,000 B 상한을 최대 2.02배 초과한 채였는데, 크기를 재는 축이 하나도
@@ -620,16 +620,19 @@ def check_compact_anchors():
 
 
 DESIGN_MD = os.path.join(ROOT, "plugins", "pjc", "skills", "DESIGN.md")
+# 예산 표의 정본. `DESIGN.md` 에서 분리됐다 — 그 파일은 폐기 식별자 축이 계속 쓴다.
+BUDGET_MD = os.path.join(ROOT, "plugins", "pjc", "skills", "BUDGET.md")
 
-# 예산 축이 보는 대상 — `DESIGN.md` 4절 표의 「대상」 열 리터럴 → 실제 파일 glob.
+# 예산 축이 보는 대상 — `BUDGET.md` 「예산 표」의 「대상」 열 리터럴 → 실제 파일 glob.
 #   표를 정본으로 읽어 값을 여기 박지 않는다. 대상 매핑만 여기 두는 이유는 표가 사람이 읽는
 #   이름("단일 `references/*.md`")을 쓰고 그것이 glob 과 1:1이 아니기 때문이다.
 BUDGET_TARGETS = [
     ("`SKILL.md`", ["plugins/pjc/skills/*/SKILL.md"]),
     ("단일 `references/*.md`", ["plugins/pjc/skills/*/references/*.md"]),
     ("에이전트 정의 `agents/*.md`", ["plugins/pjc/agents/*.md"]),
-    ("가이드 문서 (`DESIGN.md`·`AUTHORING.md`)",
-     ["plugins/pjc/skills/DESIGN.md", "plugins/pjc/skills/AUTHORING.md"]),
+    ("가이드 문서 (`DESIGN.md`·`AUTHORING.md`·`BUDGET.md`)",
+     ["plugins/pjc/skills/DESIGN.md", "plugins/pjc/skills/AUTHORING.md",
+      "plugins/pjc/skills/BUDGET.md"]),
     ("hook 스크립트 `scripts/*.ps1`", ["plugins/pjc/scripts/*.ps1"]),
     ("근거 문서 `scripts/rules/*.md`", ["plugins/pjc/scripts/rules/*.md"]),
 ]
@@ -683,14 +686,14 @@ def check_doc_budget():
 
     표를 파싱해 값을 읽는다 — 상한을 코드에 박으면 정본이 둘이 되고 한쪽만 고쳐진다.
     """
-    text = read(DESIGN_MD)
-    body = section(text, r"^## 4\. 문서 예산", label="DESIGN.md 「4. 문서 예산」")
+    text = read(BUDGET_MD)
+    body = section(text, r"^## 예산 표", label="BUDGET.md 「예산 표」")
     limits = {}
     # 등급까지 읽는다 — 게이트는 issues(exit 1), 통지는 notices(exit 0)로 간다.
     for m in re.finditer(r"^\| (.+?) \| \*\*([\d,]+) B\*\* \| \*\*(게이트|통지)\*\* \|", body, re.M):
         limits[m.group(1).strip()] = (int(m.group(2).replace(",", "")), m.group(3))
     if not limits:
-        die("[ANCHOR FAIL] DESIGN.md 4절 표에서 상한을 하나도 읽지 못했다 — 표 형식이 바뀌었다")
+        die("[ANCHOR FAIL] BUDGET.md 「예산 표」에서 상한을 하나도 읽지 못했다 — 표 형식이 바뀌었다")
 
     issues, notices, near, n = [], [], [], 0
     for label, globs in BUDGET_TARGETS:
@@ -716,7 +719,7 @@ def check_doc_budget():
                     #   여유 8 B 로 꽉 찬 SKILL.md 가 실재했고(회차 13 실측), 그 상태에서는 규칙을
                     #   한 구 고치려 해도 감량이 선행돼 본작업이 멈춘다.
                     near.append((cap - size, rel, size, cap))
-    # 조건부 참조 표 — `DESIGN.md` 4절과 **같은 축에서** 읽는다(그 절 자신이 그렇게 규정한다).
+    # 조건부 참조 표 — `BUDGET.md` 「예산 표」와 **같은 축에서** 읽는다(그 절 자신이 그렇게 규정한다).
     #   이 표만 **기록값 열**을 갖는다: 대상이 `docs/` 라 위 `BUDGET_TARGETS` 의 글로브가 닿지
     #   않고, 상시 로드가 아니라 조건부 참조라 「메인 조합」 합산에 섞으면 그 전제가 깨진다.
     #   기록값을 함께 재는 이유는 그 절이 **편집한 task 가 같은 task 안에서 갱신**하도록 규정하기
