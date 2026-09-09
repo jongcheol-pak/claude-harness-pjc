@@ -204,5 +204,28 @@ Assert-Case -Name "split: 닫히지 않은 따옴표 뒤의 동사 신호는 미
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo "unclosed; echo x > plan.md')
 Assert-Case -Name "split: 닫히지 않은 따옴표 뒤여도 리다이렉션 대상은 잡는다 (ST11)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 
+# ---- [회차 52] rules/external-ops.json 로드 실패 격리 ----
+#   판정 패턴과 경고 문면이 json 으로 내려갔다. 그 파일이 없으면 warn-external-ops **만** 꺼지고
+#   차단 게이트(require-task-checkbox·block-plan-write)는 계속 돌아야 한다. 기존 로드 가드
+#   (guard-commit-secrets 부재)는 `exit 0` 이라 6검사 전부를 끄는데, 이 가드는 그 형태를 답습하지
+#   않는다 — `Invoke-WarnExternalOps` 안의 `exit` 은 함수 스코프를 넘어 프로세스를 죽이므로
+#   `return New-HookResult` 로 그 함수만 종료한다.
+$noJson = Join-Path $work 'ops-nojson'; New-Item -ItemType Directory (Join-Path $noJson 'rules') -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noJson -Force
+Copy-Item (Join-Path $scriptsDir 'guard-commit-secrets.ps1') $noJson -Force
+Copy-Item (Join-Path $scriptsDir 'rules/*.md') (Join-Path $noJson 'rules') -Force -ErrorAction SilentlyContinue
+
+# EOJ1: json 부재 → 외부 작업 경고는 사라지고 stderr 로 그 사실이 보인다(침묵 fail-open 아님).
+$eojJson = @{ tool_name = 'Bash'; tool_input = @{ command = 'git push origin main' } } | ConvertTo-Json -Compress
+$outEoj = $eojJson | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $noJson 'guard-bash.ps1') 2>&1
+$rEoj = @{ code = $LASTEXITCODE; out = (($outEoj | Out-String)).Trim() }
+Assert-Case -Name "eoj: external-ops.json 부재 시 경고 미수행 + stderr 가시화 (EOJ1)" -R $rEoj -ExpectExit 0 -ExpectContains 'external-ops.json 로드 실패'
+
+# EOJ2: 같은 상태에서 **차단 게이트는 살아 있다** — 전체 exit 0 으로 빠져나가지 않는다.
+$eojBlock = @{ tool_name = 'Bash'; tool_input = @{ command = 'echo x > plan.md' } } | ConvertTo-Json -Compress
+$outEojB = $eojBlock | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $noJson 'guard-bash.ps1') 2>&1
+$rEojB = @{ code = $LASTEXITCODE; out = (($outEojB | Out-String)).Trim() }
+Assert-Case -Name "eoj: json 부재여도 block-plan-write 차단은 유지 (EOJ2)" -R $rEojB -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
 }   # ---- §8 게이트 끝 (guard-bash) ----
 

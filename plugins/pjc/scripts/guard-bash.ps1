@@ -217,32 +217,15 @@ function Invoke-WarnExternalOps {
         $scanCmd = $scanCmd -replace '(?i)(^|\s)(--notes|--body)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
     }
 
-    $externalOps = @(
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*push\b';   label = 'git push (원격 반영)' },
-        # merge: --abort/--continue/--quit는 복구·진행이라 병합 실행이 아님 — 제외(lookahead는 셸 구분자를 넘지 않음).
-        #   merge(?![-\w])는 하이픈 결합 plumbing(merge-base·merge-tree·merge-file·merge-index 등 — 읽기 전용 조회로 병합 아님)을 오탐하지 않게 한다(\b는 하이픈 앞도 경계로 인정해 오탐).
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*merge(?![-\w])(?![^&;|\r\n]*\s--(abort|continue|quit)\b)';  label = 'git merge (브랜치 병합)' },
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*tag\s+(--delete\b|-[asfmd]|[^\s-])';  label = 'git tag (태그 생성/삭제)' },
-        @{ rx = 'gh\s+release\s+create';          label = 'gh release create (릴리즈 발행)' },
-        @{ rx = 'gh\s+release\s+delete';          label = 'gh release delete (릴리즈 삭제 — 비가역)' },
-        @{ rx = 'gh\s+pr\s+create';               label = 'gh pr create (PR 생성)' },
-        @{ rx = 'gh\s+pr\s+merge';                label = 'gh pr merge (PR 병합)' },
-        @{ rx = '\b(npm|pnpm|yarn)\s+publish\b';  label = '패키지 배포 (npm/pnpm/yarn publish)' },
-        @{ rx = '\bdotnet\s+nuget\s+push\b';      label = 'NuGet 배포 (dotnet nuget push)' },
-        @{ rx = '(^|\s)nuget\s+push\b';           label = 'NuGet 배포 (nuget push)' },
-        @{ rx = '\bcargo\s+publish\b';            label = 'crates.io 배포 (cargo publish)' },
-        @{ rx = '\btwine\s+upload\b';             label = 'PyPI 배포 (twine upload)' },
-        @{ rx = '\bdocker\s+push\b';              label = '이미지 배포 (docker push)' }
-    )
-    $localOps = @(
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*reset\s+[^&;|\r\n]*--hard\b';   label = 'git reset --hard (워킹트리·인덱스 되돌리기)' },
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*stash\s+clear\b';              label = 'git stash clear (스태시 전체 삭제)' },
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+--\s';              label = 'git checkout -- <path> (워킹트리 변경 폐기)' },
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\S+\s+--\s';        label = 'git checkout <ref> -- <path> (워킹트리 변경 폐기)' },
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*checkout\s+\.(\s|$)';          label = 'git checkout . (워킹트리 전체 변경 폐기)' },
-        # git restore 는 checkout -- <path> 와 등가의 워킹트리 폐기다 — `--staged` 단독(인덱스만 되돌림)은 제외하고 `--staged --worktree`/`-W` 는 포함(회차 44).
-        @{ rx = 'git\s+((-c|-C)\s+\S+\s+)*restore\s+(?![^&;|\r\n]*--staged\b(?![^&;|\r\n]*(--worktree\b|\s-W\b)))\S'; label = 'git restore <path> / . (워킹트리 변경 폐기)' }
-    )
+    # 판정 패턴과 경고 문면은 `rules/external-ops.json` 이 정본이다 — 순수 데이터라 코드에 두지 않는다.
+    #   로드 실패는 **이 검사만** 건너뛴다(`return`) — `exit` 을 쓰면 함수 스코프를 넘어 프로세스가 죽어
+    #   require-task-checkbox·block-plan-write 차단 게이트까지 함께 꺼진다.
+    try {
+        $ops = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/external-ops.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
+    } catch {
+        [Console]::Error.WriteLine('[guard-bash] rules/external-ops.json 로드 실패 — 외부·비가역 작업 경고 미수행(fail-open). 나머지 검사는 계속 동작합니다.')
+        return New-HookResult
+    }
 
     # 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게).
     #   넘기는 것은 `$cmd` 가 아니라 위에서 메시지값을 스트립한 `$scanCmd` 다 — 분리기가 따옴표를 인식하므로
@@ -253,13 +236,13 @@ function Invoke-WarnExternalOps {
     foreach ($seg in $segments) {
         if ([string]::IsNullOrWhiteSpace($seg)) { continue }
         $segHasDryRun = $seg -match '--dry-run'
-        foreach ($op in $externalOps) {
+        foreach ($op in $ops.externalOps) {
             if ($seg -match $op.rx) {
                 if ($segHasDryRun) { continue }   # 조회성(실제 반영 아님) — 같은 세그먼트 dry-run만 인정
                 if (-not $hits.Contains($op.label)) { $hits.Add($op.label) }
             }
         }
-        foreach ($op in $localOps) {
+        foreach ($op in $ops.localOps) {
             if ($seg -match $op.rx -and -not $hitsLocal.Contains($op.label)) { $hitsLocal.Add($op.label) }
         }
     }
@@ -267,23 +250,19 @@ function Invoke-WarnExternalOps {
     if ($hits.Count -eq 0 -and $hitsLocal.Count -eq 0) { return New-HookResult }
 
     $lines = @()
+    $t = $ops.messages
     if ($hits.Count -gt 0) {
-        $lines += "[EXTERNAL OP WARNING] 외부·비가역 작업이 감지되었습니다:"
+        $lines += $t.externalHead
         foreach ($h in $hits) { $lines += "  - $h" }
     }
     if ($hitsLocal.Count -gt 0) {
-        $lines += "[LOCAL OP WARNING] 로컬 비가역 작업이 감지되었습니다:"
+        $lines += $t.localHead
         foreach ($h in $hitsLocal) { $lines += "  - $h" }
     }
     $lines += ""
-    if ($hits.Count -gt 0) {
-        $lines += "이 작업들은 자율 루프 권한 밖입니다 (규칙 12 — push·병합·태그·릴리즈·PR)."
-        $lines += "사용자에게 '그 행위를 이름으로 적어' 별도 승인받았는지 확인하세요. 승인 없이 실행하지 마세요."
-    }
-    if ($hitsLocal.Count -gt 0) {
-        $lines += "로컬 비가역: 미커밋 변경이 영구 소실될 수 있습니다 — reflog로는 커밋된 것만 일부 복구됩니다. 진행 전 의도된 되돌리기인지 확인하세요."
-    }
-    $lines += "이 경고는 차단이 아닙니다."
+    if ($hits.Count -gt 0) { $lines += $t.externalBody }
+    if ($hitsLocal.Count -gt 0) { $lines += $t.localBody }
+    $lines += $t.footer
     $msg = ($lines -join "`n")
     return New-HookResult -Block $false -Stderr @($msg) -Context $msg
 }
