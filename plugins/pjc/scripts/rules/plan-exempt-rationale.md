@@ -1,7 +1,7 @@
 # plan-exempt-rationale — `guard-write.ps1` 의 PLAN-EXEMPT 면제 판정 근거
 
 > `write-gate-rationale.md` 에서 분리했다 — 그 파일이 `scripts/rules/*.md` 예산 20,000 B
-> (`skills/DESIGN.md` 4절)를 넘겨서다. 이 판정만 담고, 나머지 write-gate 근거는 원본에 있다.
+> (`skills/BUDGET.md`「예산 표」)를 넘겨서다. 이 판정만 담고, 나머지 write-gate 근거는 원본에 있다.
 
 ## §23 PLAN-EXEMPT 면제 판정
 

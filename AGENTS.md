@@ -81,7 +81,7 @@
 - **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i`도 `Edit` 도구도 파일 전체를 LF로 바꿔 놓는다** — 편집 후 `git ls-files --eol`로 확인(정본은 `docs/harness-conventions.md`의 「편집 스크립트의 줄바꿈 사고」).
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **명령 출력 예산**: 판정용 명령은 **판정에 필요한 최소 형식**으로 낸다(정본은 `docs/harness-conventions.md`의 「명령 출력 예산」).
-- **파일 크기**: 문서 예산과 분할 판정은 `plugins/pjc/skills/DESIGN.md` 4절이 정본.
+- **파일 크기**: 상한 표·초과 처방(삭제→이관→항목 제거)·참조 깊이·목차 규칙은 `plugins/pjc/skills/BUDGET.md`「예산 표」가 정본. **상한을 올리는 것은 처방이 아니다.**
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**이고 그것을 내는 hook은 넷이다(`block-destructive`·`guard-bash`·`guard-write`·`guard-harness`). **우회 변수는 둘이며 서로 대체되지 않는다** — `CLAUDE_HARNESS_QUICK` / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 전용). 담당·조건부 세부·우회 범위·`[PLAN-EXEMPT]` 면제 경로는 `docs/harness-conventions.md`가 정본 — **hook 수정 전 반드시 읽을 것**.
 - **`guard-write`는 게이트 2종**(plan 존재·plan 작성)이고 **같은 정규식을 공유하므로 한쪽만 고치지 말 것** — 차이가 곧 우회 경로다. `guard-harness`는 자기보호와 AGENTS.md 내용 경계 2종이다.
 - **⚠ `llm-wiki`의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md`의 vault 예외를 함께 확인**한다 — 검사기가 못 잡는다(repo 밖). 정본은 `docs/harness-conventions.md`의 「llm-wiki ↔ 글로벌 지침 결합」.
