@@ -34,7 +34,7 @@ dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래)
 현행 구조:
 
 - **검사 6종 중 5종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
-  `Invoke-RequireTaskCheckbox` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
+  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
   **`Invoke-WarnCommitSecrets` 하나만 `guard-commit-secrets.ps1` 에 있고 dot-source 한다** —
   그 파일이 커밋 시점 검사 전체(스캔 캡·우회 변수·시크릿 패턴 연동)를 담아 크기가 따로 놀고,
   분리해 두어야 골든이 그 파일만 단독 프로브할 수 있다. 로드 실패는 침묵하지 않는다 —

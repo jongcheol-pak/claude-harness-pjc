@@ -322,7 +322,11 @@ try {
         #   (Write 로 만든 신규 intent/*.md)에 발화하지 않는다.
         #   exit 1 만 「repo 안이고 ignore 아님」이다 — 0 은 ignore, 128 은 repo 밖이라 둘 다 대상이 아니다.
         $null = & git check-ignore -q -- $file 2>$null
-        if ($LASTEXITCODE -eq 1) {
+        $notIgnored = ($LASTEXITCODE -eq 1)
+        # 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다 — CRLF 를 규약으로 단정하면
+        #   LF 규약 레포에서 새 문서마다 틀린 지시가 붙는다(2026-09-09 오탐 관측 · §15).
+        $crlfRepo = ((& git config --get core.autocrlf 2>$null) -match '^(?i)true$')
+        if ($notIgnored -and $crlfRepo) {
             $bytes = [System.IO.File]::ReadAllBytes($file)
             $lf = 0; $crlf = 0
             for ($i = 0; $i -lt $bytes.Length; $i++) {

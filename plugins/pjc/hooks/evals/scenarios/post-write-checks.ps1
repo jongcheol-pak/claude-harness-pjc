@@ -310,6 +310,19 @@ New-Item -ItemType Directory (Split-Path -Parent $eolNew) -Force | Out-Null
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-d'; tool_input = @{ file_path = $eolNew } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 신규 미추적 파일이 LF 면 경고 (EOL1b)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
 
+# EOL4 (델타 음성 — LF 규약 레포): 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다.
+#   CRLF 를 규약으로 단정하면 LF 규약 레포에서 새 문서마다 틀린 지시가 붙는다(완료 리뷰 2R 오탐 관측).
+$eolLfRepo = Join-Path $work 'eol-lf-repo'; New-Item -ItemType Directory $eolLfRepo -Force | Out-Null
+Push-Location $eolLfRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+[System.IO.File]::WriteAllText((Join-Path $eolLfRepo '.gitattributes'), "* text eol=lf`n")
+$eolLfDoc = Join-Path $eolLfRepo 'guide.md'
+[System.IO.File]::WriteAllText($eolLfDoc, "LF 가 규약인 저장소`n")
+git add -A; git commit -qm init
+Pop-Location
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolLfRepo; session_id = 'eol-e'; tool_input = @{ file_path = $eolLfDoc } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: LF 규약 레포에서는 무경고 (EOL4)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
 # EOL3 (델타 음성 — 픽스처 제외): llm-wiki/evals/fixtures/ 아래 LF 는 의도된 테스트 입력이다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-c'; tool_input = @{ file_path = $eolFxFile } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: llm-wiki 픽스처의 LF 는 무경고 (EOL3)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
