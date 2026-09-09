@@ -312,16 +312,32 @@ Assert-Case -Name "post-write: 신규 미추적 파일이 LF 면 경고 (EOL1b)"
 
 # EOL4 (델타 음성 — LF 규약 레포): 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다.
 #   CRLF 를 규약으로 단정하면 LF 규약 레포에서 새 문서마다 틀린 지시가 붙는다(완료 리뷰 2R 오탐 관측).
+#   ⚠ 두 신호를 한 케이스에 담지 않는다 — 담으면 구현이 `core.autocrlf` 로 닫았는지
+#     `.gitattributes` 로 닫았는지 판정되지 않는다(「검증 케이스의 축 분리」).
+# EOL4: core.autocrlf=false · eol 속성 없음 → 기계 설정 축.
 $eolLfRepo = Join-Path $work 'eol-lf-repo'; New-Item -ItemType Directory $eolLfRepo -Force | Out-Null
 Push-Location $eolLfRepo
 git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
-[System.IO.File]::WriteAllText((Join-Path $eolLfRepo '.gitattributes'), "* text eol=lf`n")
 $eolLfDoc = Join-Path $eolLfRepo 'guide.md'
 [System.IO.File]::WriteAllText($eolLfDoc, "LF 가 규약인 저장소`n")
 git add -A; git commit -qm init
 Pop-Location
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolLfRepo; session_id = 'eol-e'; tool_input = @{ file_path = $eolLfDoc } } | ConvertTo-Json -Compress)
-Assert-Case -Name "post-write: LF 규약 레포에서는 무경고 (EOL4)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+Assert-Case -Name "post-write: core.autocrlf=false 레포에서는 무경고 (EOL4)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
+# EOL5: core.autocrlf=**true** + `.gitattributes eol=lf` → **속성이 이긴다**.
+#   Windows 기본값과 크로스플랫폼 .gitattributes 의 흔한 조합이고, autocrlf 만 보던
+#   구현이 여기서 오탐했다(완료 리뷰 3R 관측). 따르면 eol=lf 레포를 CRLF 로 뒤집는다.
+$eolAttrRepo = Join-Path $work 'eol-attr-repo'; New-Item -ItemType Directory $eolAttrRepo -Force | Out-Null
+Push-Location $eolAttrRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf true
+[System.IO.File]::WriteAllText((Join-Path $eolAttrRepo '.gitattributes'), "* text eol=lf`n")
+$eolAttrDoc = Join-Path $eolAttrRepo 'guide.md'
+[System.IO.File]::WriteAllText($eolAttrDoc, "속성이 LF 를 규약으로 선언한다`n")
+git add -A; git commit -qm init
+Pop-Location
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolAttrRepo; session_id = 'eol-f'; tool_input = @{ file_path = $eolAttrDoc } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: .gitattributes eol=lf 가 autocrlf 를 이긴다 (EOL5)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
 
 # EOL3 (델타 음성 — 픽스처 제외): llm-wiki/evals/fixtures/ 아래 LF 는 의도된 테스트 입력이다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-c'; tool_input = @{ file_path = $eolFxFile } } | ConvertTo-Json -Compress)

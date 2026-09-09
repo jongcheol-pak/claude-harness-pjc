@@ -164,6 +164,8 @@
 
 **`core.autocrlf=true` 인 저장소에서만 발화한다.** 이 hook 은 `Write|Edit` PostToolUse 라 **플러그인이 붙은 모든 프로젝트**에서 돈다. 확장자와 ignore 여부만 보고 CRLF 를 규약으로 단정하면 **LF 규약 레포에서 새 문서마다 틀린 지시가 붙는다** — `core.autocrlf=false` + `.gitattributes: * text eol=lf` 인 저장소에서 실제로 오탐이 관측됐다(2026-09-09 완료 리뷰 2R). 게이트를 「추적 파일」에서 「비-ignore 전부」로 넓힌 것이 그 노출을 키웠다.
 
+**판정 신호는 `git check-attr eol` 이 먼저다.** `core.autocrlf` 는 **레포 규약이 아니라 기계 설정**이라 `.gitattributes` 로 규약을 선언한 레포에 진다 — `core.autocrlf=true`(Windows 기본값) + `* text eol=lf` 조합에서 오탐이 그대로 남았다(2026-09-09 3R 관측). 속성이 `lf`·`crlf` 를 명시하면 그것을 따르고, `unspecified` 일 때만 `core.autocrlf` 로 폴백한다. **골든도 두 축으로 나눈다** — EOL4(속성 없음·`autocrlf=false`) · EOL5(`autocrlf=true` + `eol=lf`). 한 케이스에 둘을 담으면 구현이 무엇을 보고 닫았는지 판정되지 않는다.
+
 **제외 정규식의 경로 구분자는 `[\\/]` 다.** `[\/]` 로 쓰면 PowerShell 정규식이 `\/` 를 `/` 로 읽어 **백슬래시 경로를 놓친다** — 그 상태로 EOL3(픽스처 무경고) 케이스가 FAIL 했다. 스크립트를 파일 경유로 패치할 때 이스케이프가 한 겹씩 줄어 생긴 일이고, 대장이 이미 같은 계열을 등재해 두었다.
 
 **디듑은 기존 마커를 그대로 쓴다**(§2) — 세션×파일당 1회. 같은 파일을 반복 편집할 때 경고가 매번 뜨면 편집 루프가 시끄러워진다.

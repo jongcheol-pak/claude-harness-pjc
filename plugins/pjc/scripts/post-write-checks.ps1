@@ -325,7 +325,11 @@ try {
         $notIgnored = ($LASTEXITCODE -eq 1)
         # 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다 — CRLF 를 규약으로 단정하면
         #   LF 규약 레포에서 새 문서마다 틀린 지시가 붙는다(2026-09-09 오탐 관측 · §15).
-        $crlfRepo = ((& git config --get core.autocrlf 2>$null) -match '^(?i)true$')
+        #   판정은 **파일 단위 권위 답**인 `check-attr eol` 이 먼저다 — `core.autocrlf` 는
+        #   레포 규약이 아니라 기계 설정이라 `.gitattributes` 로 선언한 규약에 진다.
+        $eolAttr = ((& git check-attr eol -- $file 2>$null) -join '')
+        $crlfRepo = if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') { $Matches[1] -eq 'crlf' }
+                    else { (& git config --get core.autocrlf 2>$null) -match '^(?i)true$' }
         if ($notIgnored -and $crlfRepo) {
             $bytes = [System.IO.File]::ReadAllBytes($file)
             $lf = 0; $crlf = 0
