@@ -129,6 +129,16 @@ foreach ($a in $actualSkills) {
 }
 Write-Host ""
 
+# 3-1. 가이드 문서 (설치본에 실재하는가)
+#   스킬이 SKILL.md 에서 가리키는 설계·예산 문서다. 3번은 SKILL.md 만 보므로 이 파일들이
+#   설치본에서 빠져도 잡히지 않고, 그때 포인터는 존재하는데 대상이 없는 상태가 된다.
+$guides = @('DESIGN.md', 'AUTHORING.md', 'BUDGET.md')
+Write-Host "3-1. 가이드 문서 $($guides.Count)개" -ForegroundColor Yellow
+foreach ($g in $guides) {
+    Test-Item-Exists (Join-Path $pluginRoot "skills/$g") "guide: $g" | Out-Null
+}
+Write-Host ""
+
 # 4. Agents (expected 목록 존재 + 미등록 탐지)
 $agents = @('plan-reviewer', 'completion-reviewer')
 Write-Host "4. Agents $($agents.Count)개" -ForegroundColor Yellow
