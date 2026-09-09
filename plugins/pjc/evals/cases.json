@@ -739,5 +739,32 @@
       "등재 근거 실측 2항목",
       "대조 전부 일치"
     ]
+  },
+  {
+    "id": "harness-split-helper-sync-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "분할 헬퍼 동기 2항목",
+      "대조 전부 일치"
+    ]
+  },
+  {
+    "id": "harness-split-helper-sync-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/guard-bash.ps1",
+        "find": "        } elseif ($ch -eq ';' -or $ch -eq '|') {",
+        "replace": "        } elseif ($ch -eq ';') {"
+      }
+    ],
+    "expect_keywords": [
+      "분할 헬퍼 동기: `Split-TopLevel` 본문이 갈렸다",
+      "block-destructive.ps1 ↔ guard-bash.ps1"
+    ]
   }
 ]

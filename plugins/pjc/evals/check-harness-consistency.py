@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재 · 폐기 식별자 실재 · 등재 근거 실측.
+r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · batch 차수 수열 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재 · 폐기 식별자 실재 · 등재 근거 실측 · 분할 헬퍼 동기.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
 
@@ -67,12 +67,23 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
      **어휘가 아니라 고정 형식 필드를 재는 이유**는 회차 39 의 교훈이다 — 문자열 어휘를
      세는 축은 자기 주석·골든·규약 문서에 걸린다. 필드의 **내용이 참인지**는 못 재며 그
      판정은 완료 리뷰어가 진다.
+  ⑯ 분할 헬퍼 동기  — `block-destructive.ps1` 과 `guard-bash.ps1` 의 `Split-TopLevel` 본문이
+     같은가. 이 함수만은 **의도적 복제**다 — `block-destructive` 는 `AGENTS.md` 「DO NOT」의
+     마지막 방어선이라 외부 파일 의존을 만들지 않으며, 공유 모듈로 빼면 dot-source 실패 시
+     차단이 통째로 사라지고 그 fail-open 경로를 재는 수단이 없다(`skills/DESIGN.md` 2절의
+     예외 문단이 정본). 아래 「축을 지운 이력」이 복제 감시를 접은 근거가 *"복제 자체를
+     금지해 감시할 대상이 없다"* 였으므로, 복제를 하나 만드는 순간 그 전제가 깨진다 —
+     그래서 되살린 것이 아니라 **그 하나만** 다시 감시한다. **주석은 비교에서 뺀다**
+     (한쪽은 근거 주석을 rationale 로 내렸고 그것은 로직의 차이가 아니다) · **한쪽에서
+     함수가 사라지면 통과가 아니라 불일치**다(감시 대상 소멸).
 
 **축을 지운 이력 (v1.224.0)**: 구 `plan-feature`·`implement-task`와 그 references, 리뷰어 6종이
 제거되면서 그것을 대상으로 하던 아홉 축(문서 로드 예산 · 리뷰어 각주 · 실행 예산 수치 ·
 마커 목록 · 개념 정본 · 착수 조건 동기 · 잔류 절 동기 · 복제 리터럴 동기 · 파생 수치 동기)이
 잴 대상을 잃었다. 그 축들은 **같은 사실이 여러 문서에 복제된 구조**를 감시하던 것이고,
 새 구조는 `skills/DESIGN.md` 2절로 복제 자체를 금지해 감시할 대상이 없다.
+**단 v1.265.0 이 그 금지에 예외 하나를 두었고**(안전 임계 hook 의 코드 복제), 축 ⑯ 이 그
+예외만을 감시한다 — 폐지된 「복제 리터럴 동기」의 부활이 아니라 대상이 하나인 새 축이다.
 """
 import glob
 import os
@@ -1216,6 +1227,100 @@ def check_ledger_evidence(ledger):
     return issues, n
 
 
+# 축 ⑯이 대조하는 두 사본. 순서가 곧 「어느 쪽이 원본인가」이며, 앞이 원본이다.
+#   ⚠ 이 목록을 늘리려면 복제를 늘린다는 뜻이다 — `skills/DESIGN.md` 2절의 예외 문단을 먼저 읽는다.
+SPLIT_HELPER_FILES = ("block-destructive.ps1", "guard-bash.ps1")
+SPLIT_HELPER_NAME = "Split-TopLevel"
+
+
+def _strip_ps_comment_lines(text):
+    """줄 전체가 주석인 줄을 지운다. **본문을 오려 내기 전에** 부른다.
+
+    산문 주석에는 짝이 안 맞는 따옴표가 흔하다(원본의 *"다음 ' 까지 전부 리터럴"*). 그것을
+    문자열 시작으로 읽으면 뒤따르는 중괄호를 세지 못해 **조용히 잘린 본문**을 비교하게 된다
+    — 실제로 원본이 296자에서 끊겼다.
+    """
+    return "\n".join(l for l in text.split("\n") if not l.lstrip().startswith("#"))
+
+
+def _ps_function_body(text, name):
+    """`function <name>` 부터 그 중괄호가 닫힐 때까지를 돌려준다. 못 찾으면 None.
+
+    문자열 안의 중괄호는 세지 않는다 — 지금 대상 함수에는 없지만, 없다는 전제를 코드가
+    말하지 않으면 다음에 생겼을 때 조용히 잘린 본문을 비교하게 된다.
+    """
+    text = _strip_ps_comment_lines(text)
+    i = text.find("function %s" % name)
+    if i < 0:
+        return None
+    depth, started, quote = 0, False, None
+    for j in range(i, len(text)):
+        c = text[j]
+        if quote:
+            if c == quote:
+                quote = None
+            continue
+        if c in "'\"":
+            quote = c
+        elif c == "{":
+            depth += 1
+            started = True
+        elif c == "}":
+            depth -= 1
+            if started and depth == 0:
+                return text[i:j + 1]
+    return None
+
+
+def _normalize_ps_body(body):
+    """주석 줄을 지우고 공백을 정규화한다 — 재는 것은 판정 로직이지 문면이 아니다.
+
+    한쪽(`guard-bash.ps1`)은 근거 주석을 `rules/bash-guard-rationale.md` 로 내렸고 그것은
+    설계대로다. 주석까지 비교하면 이 축이 그 이관을 드리프트로 잡아 **문서를 정리할 때마다
+    red** 가 나고, 그러면 축을 끄게 된다. 줄 전체가 주석인 것만 지운다 — 대상 함수에 줄 끝
+    주석이 없고, `#` 를 문자열 안에서 잘라 내면 없던 차이를 만든다.
+    """
+    kept = [l.strip() for l in body.splitlines() if not l.lstrip().startswith("#")]
+    return re.sub(r"\s+", " ", " ".join(k for k in kept if k)).strip()
+
+
+def check_split_helper_sync():
+    """축 ⑯ 분할 헬퍼 동기 — 두 hook 의 `Split-TopLevel` 본문이 같은가.
+
+    `block-destructive.ps1` 은 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 외부 파일 의존을
+    만들지 않는다(공유 모듈은 dot-source 실패 시 차단이 통째로 사라지고 그 경로를 재는 것이
+    없다). 그래서 이 함수는 공유가 아니라 복제이고, **복제를 허용한 대가로 여기서 감시한다** —
+    「복제 리터럴 동기」 축이 v1.224.0 에 폐지된 근거가 *"`DESIGN.md` 2절로 복제 자체를 금지해
+    감시할 대상이 없다"* 였으므로, 복제를 만드는 순간 그 전제가 깨진다.
+
+    **부재는 통과가 아니다** — 한쪽에서 함수를 지우면 드리프트가 아니라 감시 대상 소멸이고,
+    그것이 조용히 지나가면 남은 쪽이 혼자 바뀌어도 아무도 모른다.
+    """
+    scripts = os.path.join(ROOT, "plugins", "pjc", "scripts")
+    issues, bodies = [], {}
+    for name in SPLIT_HELPER_FILES:
+        path = os.path.join(scripts, name)
+        if not os.path.exists(path):
+            issues.append("분할 헬퍼 동기: 파일 없음 — plugins/pjc/scripts/%s" % name)
+            continue
+        body = _ps_function_body(open(path, encoding="utf-8-sig").read(), SPLIT_HELPER_NAME)
+        if body is None:
+            issues.append("분할 헬퍼 동기: %s 에 `function %s` 이 없다 — 복제 한쪽이 사라지면 "
+                          "남은 쪽의 드리프트를 재는 것이 없어진다" % (name, SPLIT_HELPER_NAME))
+            continue
+        bodies[name] = _normalize_ps_body(body)
+
+    if len(bodies) == len(SPLIT_HELPER_FILES):
+        src, dst = SPLIT_HELPER_FILES
+        if bodies[src] != bodies[dst]:
+            a, b = bodies[src], bodies[dst]
+            at = next((k for k in range(min(len(a), len(b))) if a[k] != b[k]), min(len(a), len(b)))
+            issues.append("분할 헬퍼 동기: `%s` 본문이 갈렸다 — %s ↔ %s. 첫 차이 %d자째: "
+                          "원본 %r / 사본 %r (주석·공백은 비교에서 제외된다)"
+                          % (SPLIT_HELPER_NAME, src, dst, at + 1, a[at:at + 40], b[at:at + 40]))
+    return issues, len(bodies)
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -1251,6 +1356,7 @@ def main():
         ("등재 마커 실재", check_ledger_marker_sync()),
         ("폐기 식별자 실재", check_deprecated_identifiers()),
         ("등재 근거 실측", check_ledger_evidence(ledger)),
+        ("분할 헬퍼 동기", check_split_helper_sync()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
