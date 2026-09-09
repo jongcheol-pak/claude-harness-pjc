@@ -62,7 +62,7 @@ RIGHT: H1의 예측("TTL=0이면 사라짐")을 검증하는 한 지점만 계�
 
 ## §8 위키 교차 검색(2-A)의 세부
 
-**스킬을 발동하지 말고 `llm-wiki/references/lookup-rules.md` 하나를 Read한다**(절차 K — read-only). vault 판정은 `../../WIKI.md` 0절이 정본이다.
+**스킬을 발동하지 말고 `../../llm-wiki/references/lookup-rules.md` 하나를 Read한다**(절차 K — read-only). vault 판정은 `../../WIKI.md` 0절이 정본이다.
 
 - `30_knowledge/patterns/`(승격된 교차 교훈) 우선, 없으면 **에러 메시지·증상 키워드로 grep**한다. **한/영·동의어 양쪽을 시도**한다 — 위키는 한글이라 영문 에러가 한글로 설명됐을 수 있다.
 - **검색 방법론**(grep 매치 페이지만 Read · 무매칭 통과 · 전체 정독 금지)은 절차 K가 정본이다.

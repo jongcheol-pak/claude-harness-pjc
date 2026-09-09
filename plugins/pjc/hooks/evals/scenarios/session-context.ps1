@@ -275,6 +275,11 @@ if (Test-HookSelected @('session-context')) {
     #      그것은 매 세션 상시 로드되므로 여기 복제하지 않는다(재진술은 예산만 늘린다).
     Assert-Case -Name "session-context: vault 라인의 허브 직행 지시 (SC18c)" -R $r -ExpectExit 0 -ExpectContains '허브를 먼저 Read'
     Assert-Case -Name "session-context: vault 라인의 글로벌 절 포인터 (SC18d)" -R $r -ExpectExit 0 -ExpectContains '위키를 먼저 본다'
+    # SC18e (**조회 정본 포인터**): 회차 46이 이 라인의 「절차 K 참조 가능」을 `skills/WIKI.md`
+    #   지목으로 바꿨다 — 계획·구현 세션은 절차 K를 로드하지 않아 그 안내가 손에 없는 규약을
+    #   가리켰다. ⚠ **그 문면을 재는 어서션이 없어 잘못된 지시가 두 커밋을 살아남았고**
+    #   골든 812/812는 그것을 잡지 못했다(사람 리뷰가 잡았다). 이 케이스가 그 자리를 메운다.
+    Assert-Case -Name "session-context: vault 라인이 조회 정본을 지목 (SC18e)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
 
     # SC21 (델타): 설정+실재인데 비 pjc cwd(plan·AGENTS 전무) → 게이팅으로 미주입.
     #   vault는 cwd와 무관한 사용자 홈 자원이라, 게이팅이 없으면 위키를 쓰는 사용자의 모든 세션에 라인이 붙는다.
@@ -487,6 +492,10 @@ if (Test-HookSelected @('session-context')) {
     $env:USERPROFILE = $isoV2
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: vault 설정 경로 부재 주입 (SC19)" -R $r -ExpectExit 0 -ExpectContains '설정 경로 부재'
+    # SC19b (**기록 형식 출처**): 부재 라인은 「1줄 기록하세요」를 지시하는데 그 **형식이 어디
+    #   있는지**가 함께 있어야 한다. 회차 46 전에는 절차 K 1 형식을 가리켜, 그 파일을 로드하지
+    #   않는 계획 세션이 형식 없이 기록하게 돼 있었다(SC18e와 같은 기전).
+    Assert-Case -Name "session-context: 부재 라인이 기록 형식 출처를 지목 (SC19b)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
 
     # SC20 (무회귀): config 없는 홈 → vault 라인 미주입. 미설정은 무출력이 설계다(노이즈 방지).
     $env:USERPROFILE = $iso
