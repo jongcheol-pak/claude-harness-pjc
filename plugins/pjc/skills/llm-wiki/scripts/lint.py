@@ -1180,7 +1180,7 @@ class SplitSession:
         self.created = set()   # 이번 실행이 **만든** 파일 — restore()가 걷는다(§4 5번)
         self.claimed = set()   # 이번 실행에서 어느 처방이 이미 맡은 파일 — claim() 참조
         self.current_claims = set()   # **지금 도는 처방이** 맡은 것 — 격리·계약 강제의 단위
-        self.actions = []      # (종류, 대상, 신설 파일 목록) — §4 7번 log 기록·사후 보고 공용
+        self.actions = []      # (종류, 대상, 신설 파일 목록) — §4 7번 log 기록용(6번은 보고 억제라 사용자에게 나가지 않는다)
         self.notes = []        # 건너뛴 사유 등 보고용 1줄들
         self.failed = False
 
@@ -1366,7 +1366,7 @@ def _append_log_entries(vault, lines):
 
     반환: `(기록한 줄 수, 실패 사유 또는 None)`. **「적을 것이 없었다」와 「적지 못했다」를
     가른다** — 종전에는 둘 다 0이라 기록 실패가 호출부의 `if written:`에서 조용히 지나갔다.
-    §4 7번 기록이 비면 6번 사후 보고와 5번 원복이 기대는 「무엇이 만들어졌는가」가 함께 빈다."""
+    §4 6번이 성공을 보고하지 않으므로 이 기록이 「무엇이 만들어졌는가」의 유일한 자리이고, 비면 5번 원복이 기댈 곳도 함께 빈다."""
     path = os.path.join(vault, "log.md")
     if not lines or not os.path.exists(path):
         return 0, None
@@ -2242,7 +2242,7 @@ def auto_split(vault, dry_run):
         ses.failed = ses.failed or recheck.failed
         ses.notes.extend(recheck.notes)
         if recheck.actions:
-            # 수행 목록과 기록에 **합류시킨다.** 종전에는 notes 1줄만 남겨 아래 사후 보고에도
+            # 수행 목록과 기록에 **합류시킨다.** 종전에는 notes 1줄만 남겨 아래 log 기록에도
             #  §4 7번 기록에도 들어가지 않았다 -- 실측으로 한 실행이 만든 파일이 13개인데
             #  `[SCHEMA]` 기록은 7건이었다. 되돌리는 방법을 알리는 것이 승인을 없앤 대가인데
             #  (§4 6번) 보고에 없는 파일은 그 대상에서 통째로 빠진다.
@@ -2253,7 +2253,7 @@ def auto_split(vault, dry_run):
                 ses.notes.append(recheck_err)
                 ses.failed = True
             # **어느 줄이 재점검 몫인지 지목한다** — 「위 N건」은 목록이 여러 줄일 때 무엇을
-            #  가리키는지 갈린다(§4 6번 사후 보고를 사람이 읽는 자리다). 재점검분은 목록의
+            #  가리키는지 갈린다(§4 7번 log 기록이 나중에 읽히는 자리다). 재점검분은 목록의
             #  끝에 붙으므로 그 대상 이름을 그대로 적는다.
             ses.notes.append(
                 "위 목록의 마지막 %d건(%s)은 log 기록 후 재점검이 수행했다"
