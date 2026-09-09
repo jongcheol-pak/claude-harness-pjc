@@ -72,8 +72,8 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 템플릿·작성 규칙은 `references/plan-template.md`다. 루트 `plan.md` 하나에 쓰고(덮어쓰기), 요구는 `references/intent-rules.md` 형식으로 `intent/` 에 쓴다.
 
 - **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 나머지는 `## Deferred / Follow-up`에 `[다음 회차]` 마커로 적는다(마커 규약은 `references/deferred-rules.md`).
-- **`plan.md`는 `Write` 1회로 쓰고 `sed`·`cp`·python으로 후편집하지 않는다** — ⓐ 편집 스크립트가 줄바꿈을 섞어 이후 `Edit`가 조용히 빗나가고(gitignore라 `git ls-files --eol`이 못 잡는다) ⓑ 도구 밖 수정이 끼면 그다음 `Write`가 *"File has been modified since read"*로 **거부된다**(터미널에는 `Error writing file`로만 보인다).
-- **쓰기가 실패하면 오류 원문을 그대로 내고 멈춘다** — 삼키고 넘어가면 **승인받은 계획이 디스크에 없다.** 원인을 모르는 채 재시도를 규정하지 않는다.
+- **`plan.md`는 `Write` 1회로 쓰고 `sed`·`cp`·python으로 후편집하지 않는다** — ⓐ 줄바꿈이 섞여 이후 `Edit`가 조용히 빗나가고(gitignore라 `git ls-files --eol`이 못 잡는다) ⓑ 도구 밖 수정이 끼면 그다음 `Write`가 *"File has been modified since read"*로 **거부된다**(터미널에는 `Error writing file`로만 보인다).
+- **쓰기가 실패하면 오류 원문을 그대로 내고 멈춘다** — 삼키면 **승인받은 계획이 디스크에 없다.**
 
 ## Step 6. 리뷰와 승인
 

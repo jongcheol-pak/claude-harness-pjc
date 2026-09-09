@@ -29,7 +29,7 @@
 
 읽은 결과를 `plan.md`의 Investigation Log에 남긴다. **건너뛴 경우에도 생략하지 않는다** — 다음 세션이 "확인했는데 없었다"와 "확인하지 않았다"를 구별해야 한다.
 
-**그리고 거기서 멈추지 않는다 — 읽은 함정을 그것이 걸리는 task의 `**함정**` 줄로 배분한다**(형식은 `plan/references/plan-template.md` 「작업 단계」). Investigation Log는 「무엇을 확인했는가」의 기록이지 실행자가 편집하는 순간 보는 자리가 아니다.
+**거기서 멈추지 않는다 — 읽은 함정을 그것이 걸리는 task의 `**함정**` 줄로 배분한다**(형식은 `plan/references/plan-template.md` 「작업 단계」). Log는 확인 기록이지 실행자가 편집할 때 보는 자리가 아니다.
 
 ```
 | 위키 참조 | `ls <vault>/20_projects/personal/<프로젝트>/` | conventions.md — <핵심 결론 1줄> |
