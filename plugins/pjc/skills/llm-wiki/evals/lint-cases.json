@@ -527,7 +527,7 @@
       "expect_keywords": [
         "예산 임박: 10_sources/personal/src-near.md 1450/1800자 (81%, 여유 350자, type=source-stub)",
         "구역화 필요: 20_projects/personal/demo/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
-        "주제별 `## ` 헤딩으로 본문을 구역화하면 이후는 자동 처리된다 (wiki-schema §2.9 처방 ⓪)",
+        "세션이 주제별 `## ` 헤딩으로 본문을 구역화한다 — 그 뒤는 자동 처리된다 (wiki-schema §2.9 처방 ⓪)",
         "이 타입에는 auto-split 처방이 없다"
       ],
       "expect_absent": [
