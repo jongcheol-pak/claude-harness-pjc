@@ -24,9 +24,9 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 
 ```
 loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
-  1. 준비  — plan의 해당 task 정독 · Files 목록 Read · 위키 확인(첫 task 또는 기능이 바뀔 때)
+  1. 준비  — plan의 해당 task 정독(`**함정**` 줄 포함) · Files 목록 Read
   2. 구현  — 최소 변경 · 첫 코드 task 전 1회 `references/code-style.md`「코드 작성 규약」 Read
-  3. 검증  — 아래 「검증」
+  3. 검증  — 아래 「검증」 · 그 task의 `**함정**` 줄을 어겼는지 1회 대조
   4. 기록  — 체크박스 [x] · 기능·UI를 바꿨으면 README 갱신 · 완료 커밋 · 2 task마다 Progress Log
 → 전 task 완료 후 최종 검증 → 최종 보고
 ```
