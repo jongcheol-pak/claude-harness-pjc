@@ -313,7 +313,10 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
 
 # H3: 저장 직후 줄바꿈 — 근거는 `rules/post-write-rationale.md`의 「§15 H3: 저장 직후 줄바꿈」
 try {
-    if ($file -notmatch '(?i)[\/]llm-wiki[\/]evals[\/]fixtures[\/]') {
+    # 대상 확장자를 좁힌다 — 워킹트리 CRLF 규약이 걸리는 것은 문서·스크립트·설정이고,
+    #   관측된 사고도 .md 였다. 넓히면 다른 레포 픽스처(.cs 등)까지 오탐한다(§15).
+    if ($file -match '(?i)\.(md|ps1|py|json|psm1|psd1)$' -and
+        $file -notmatch '(?i)[\\/]llm-wiki[\\/]evals[\\/]fixtures[\\/]') {
         # git 추적 대상만 본다 — plan.md·notes.md 는 gitignore 라 워킹트리 규약의 대상이 아니다.
         $tracked = & git ls-files --error-unmatch -- $file 2>$null
         if ($LASTEXITCODE -eq 0 -and $tracked) {
