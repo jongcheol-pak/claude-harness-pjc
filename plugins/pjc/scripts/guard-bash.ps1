@@ -49,7 +49,7 @@ function Invoke-WarnGlobalFind {
 
     $hits = New-Object System.Collections.Generic.List[string]
     # 연결·파이프로 나눈다 — `cd /tmp && find / …`처럼 뒤 세그먼트에 있는 것도 잡아야 한다.
-    foreach ($seg in [regex]::Split($cmd, '(?:&&|\|\||;|\|)')) {
+    foreach ($seg in Split-TopLevel $cmd $script:IsPsTool) {
         $t = $seg.Trim()
         if ([string]::IsNullOrWhiteSpace($t)) { continue }
         $tokens = @(($t -split '\s+') | Where-Object { $_ })
@@ -97,7 +97,7 @@ function Invoke-WarnDangerousAssignment {
 
     $assigned = @{}
     $hits = New-Object System.Collections.Generic.List[string]
-    foreach ($seg in [regex]::Split($cmd, '(?:&&|\|\||;|\r?\n|\|)')) {
+    foreach ($seg in Split-TopLevel $cmd $script:IsPsTool) {
         $t = $seg.Trim()
         if ([string]::IsNullOrWhiteSpace($t)) { continue }
 
@@ -171,7 +171,7 @@ function Invoke-BlockPlanWrite {
     }
     # ⓒⓓⓔⓕ 쓰기 동사는 **세그먼트의 첫 실효 토큰일 때만** 본다 — 어디에 있든 찾으면
     #   `grep -n 'Copy-Item' plan.md` 같은 조회가 막힌다(완료 리뷰 BLOCKER).
-    foreach ($seg in [regex]::Split($cmd, '(?:&&|\|\||;|\r?\n|\|)')) {
+    foreach ($seg in Split-TopLevel $cmd $script:IsPsTool) {
         $tk = @(($seg -split '\s+') | Where-Object { $_ })
         $i = 0
         while ($i -lt $tk.Count -and ($tk[$i] -match '^(?i)(sudo|time|nohup|env)$' -or $tk[$i] -match '^[A-Za-z_]\w*=')) { $i++ }
@@ -245,7 +245,9 @@ function Invoke-WarnExternalOps {
     )
 
     # 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게).
-    $segments = $scanCmd -split '(\|\||&&|[;|]|\r?\n)'
+    #   넘기는 것은 `$cmd` 가 아니라 위에서 메시지값을 스트립한 `$scanCmd` 다 — 분리기가 따옴표를 인식하므로
+    #   `$cmd` 를 넘기면 `git commit -m "…git push…"` 가 한 세그먼트로 보존돼 그 안의 push 에 오경고가 난다.
+    $segments = Split-TopLevel $scanCmd $script:IsPsTool
     $hits = New-Object System.Collections.Generic.List[string]
     $hitsLocal = New-Object System.Collections.Generic.List[string]
     foreach ($seg in $segments) {
@@ -386,6 +388,9 @@ try {
 } catch {
     exit 0   # 파싱 실패 시 통과 (검사 실패가 차단보다 안전)
 }
+
+# PowerShell 도구는 따옴표 규칙이 bash 와 다르다(이스케이프는 백틱, `\` 는 리터럴) — 분리기에 넘긴다(회차 44).
+$script:IsPsTool = ([string]$data.tool_name -eq 'PowerShell')
 
 . (Join-Path $PSScriptRoot 'guard-commit-secrets.ps1')
 

@@ -1442,10 +1442,18 @@
     },
     {
       "hook": "guard-bash.ps1",
-      "name": "위험값 대입: 드라이브 루트 백슬래시 C:\\ (v1.199.0)",
+      "name": "위험값 대입: PowerShell 도구의 드라이브 루트 백슬래시 C:\\ (v1.199.0 · 회차 52 에 도구 정정)",
       "command": "X=C:\\; Remove-Item -Recurse -Force $X",
       "expect_exit": 0,
-      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]"
+      "expect_contains": "[DANGEROUS ASSIGNMENT WARNING]",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "[회차 52] Bash 도구의 X=C:\\; 는 경고하지 않는다 — bash 에서 `\\;` 는 구분자가 아니라 리터럴이라 삭제 명령이 별도 세그먼트로 서지 않는다(실측: `bash -c 'X=C:\\; echo \"[$X]\"'` → `[]` 단일 명령)",
+      "command": "X=C:\\; Remove-Item -Recurse -Force $X",
+      "expect_exit": 0,
+      "expect_not_contains": "[DANGEROUS ASSIGNMENT WARNING]"
     },
     {
       "hook": "guard-bash.ps1",
