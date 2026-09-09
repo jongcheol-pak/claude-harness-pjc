@@ -34,7 +34,7 @@
 >
 > 모든 명령은 **repo 루트에서** 실행한다(상대경로 기준).
 
-**Hook 골든 회귀** — ⚠ **실행 전 `CLAUDE_HARNESS_QUICK` 을 지울 것**(남아 있으면 QUICK 분기를 쓰는 케이스가 무더기로 FAIL 한다 — 그 수는 케이스가 늘 때마다 낡아 적지 않는다(회차 44 완료 리뷰 4R). 상세는 아래 「골든 러너 운용」이 가리키는 `docs/golden-runner.md`). 케이스 정본은 `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오이고, 전부 OK면 exit 0이다. **기준선 847케이스**(2026-09-10 실측 — 회차 52 가 15건을 더했다: 따옴표 인식 분할 ST1~ST11 · json 로드 실패 EOJ1~EOJ2 · `X=C:\;` 의 Bash 음성 1건, 그리고 도구 정정 1건이 dispatch 동등성과 짝을 이뤄 2 로 센다. 직전 832 는 2026-09-09 자다. 리뷰 반영이 케이스를 더하면 이 수를 다시 잰다. **직전 값 812 는 v1.258.0 자였고 그 뒤 2건이 더해진 채 갱신되지 않아 회차 50 착수 실측 814 와 어긋나 있었다** — 계수가 기계 대조 대상이 아니라 생기는 표류다). **이 수는 기계로 세어지지 않는다** — `hook-cases.json`은 249건이고 나머지는 러너 내장 시나리오라 파일 하나를 세면 어긋난다(2026-09-08 실측). 다른 러너와 달리 여기서는 **`결과: N/N OK` 라인의 N을 눈으로 대조**하는 것이 유일한 방법이다. 부분 실행(`-Filter`)은 개발 중 반복 확인 전용이고 **검증 판정 근거로 쓸 수 없다** — 갈음 조건은 아래 「골든 부분 실행의 판정 자격 (예외 조건)」. **케이스를 추가할 때는 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다.
+**Hook 골든 회귀** — ⚠ **실행 전 `CLAUDE_HARNESS_QUICK` 을 지울 것**(남아 있으면 QUICK 분기를 쓰는 케이스가 무더기로 FAIL 한다 — 그 수는 케이스가 늘 때마다 낡아 적지 않는다(회차 44 완료 리뷰 4R). 상세는 아래 「골든 러너 운용」이 가리키는 `docs/golden-runner.md`). 케이스 정본은 `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오이고, 전부 OK면 exit 0이다. **기준선 847케이스**(2026-09-10 실측 — 회차 52 가 15건을 더했다: 시나리오 ST1~ST11(11) + EOJ1~EOJ2(2) + `hook-cases.json` 의 `X=C:\;` Bash 음성 **1건이 2로 센다**. 마지막이 둘인 것은 `guard-bash.ps1` 무상태 케이스가 **전건 dispatch 에코를 함께 돌기 때문**이고(`scenarios/stateless.ps1` 의 `$runDispatchEcho`), 같은 이유로 **기존 케이스의 `name`·`tool_name` 을 고치는 정정은 0건을 더한다**(회차 52 가 그런 정정을 1건 했다 — 완료 리뷰 MINOR). 직전 832 는 2026-09-09 자다. 리뷰 반영이 케이스를 더하면 이 수를 다시 잰다. **직전 값 812 는 v1.258.0 자였고 그 뒤 2건이 더해진 채 갱신되지 않아 회차 50 착수 실측 814 와 어긋나 있었다** — 계수가 기계 대조 대상이 아니라 생기는 표류다). **이 수는 기계로 세어지지 않는다** — `hook-cases.json`은 249건이고 나머지는 러너 내장 시나리오라 파일 하나를 세면 어긋난다(2026-09-08 실측). 다른 러너와 달리 여기서는 **`결과: N/N OK` 라인의 N을 눈으로 대조**하는 것이 유일한 방법이다. 부분 실행(`-Filter`)은 개발 중 반복 확인 전용이고 **검증 판정 근거로 쓸 수 없다** — 갈음 조건은 아래 「골든 부분 실행의 판정 자격 (예외 조건)」. **케이스를 추가할 때는 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다.
 
 **llm-wiki 상수·배치 정합 셀프체크** — 네 곳의 공유 상수·절차 배치·타입 열거 정합·트리거 유일성을 기계 대조한다(일치 exit 0 / 불일치 1 / 앵커 실패 2). 대조 항목 전문은 아래 「llm-wiki 정합 셀프체크가 대조하는 것」. **lint 검사에 제외(exemption)를 넣을 때는 「검증 케이스의 축 분리」를 먼저 본다** — 제외 기준에 걸리는 기존 골든 케이스가 다른 축을 함께 싣고 있으면 그 축이 통째로 가려진다(§7-29 타입 제외에서 실측).
 
@@ -95,7 +95,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 69,543 | 137,000 |
+| `docs/harness-conventions.md` | 69,841 | 137,000 |
 | `docs/golden-runner.md` | 16,671 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 22,703 | 37,000 |
 
@@ -314,7 +314,7 @@ plan **존재** 게이트에만 있는 경로다. plan **작성** 게이트(plan
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop/SessionStart/SessionEnd 배선
 │   ├── skills/llm-wiki/scripts/lint.py  # 검사 + `--fix`(안전 3종) + `--build-index`(index.md 생성 구역 파생 · sub-index 생성) / migrate-index-labels.py  # index 라벨 역이관(1회성, 기본 dry-run)
-│   ├── scripts/*.ps1                # hook 구현 9 + dot-source 헬퍼 8. 진입점: block-destructive(Bash 파괴적 명령 — 독립 실행, 끌 수 없음) · guard-bash(외부작업·커밋 시크릿·task 체크박스·전역 탐색·위험값 대입을 한 프로세스에서) · guard-write(plan 게이트) · guard-harness(자기보호 + AGENTS.md 내용 경계) · post-write-checks(인코딩·민감정보) · suggest-agents-record(기록 제안) · session-context(SessionStart 주입) · warn-version-drift(버전 드리프트) · session-end-cleanup(SessionEnd 회수). 헬퍼: guard-commit-secrets · secret-patterns · write-gate-trivial · write-gate-exempt · session-wiki-signals · session-ledger-signal · session-end-cleanup-lib · hook-event-log. 판정 데이터·근거는 scripts/rules/(destructive.json · harness-hooks.json · write-gate.json + *-rationale.md)가 정본이다.
+│   ├── scripts/*.ps1                # hook 구현 9 + dot-source 헬퍼 8. 진입점: block-destructive(Bash 파괴적 명령 — 독립 실행, 끌 수 없음) · guard-bash(외부작업·커밋 시크릿·task 체크박스·전역 탐색·위험값 대입을 한 프로세스에서) · guard-write(plan 게이트) · guard-harness(자기보호 + AGENTS.md 내용 경계) · post-write-checks(인코딩·민감정보) · suggest-agents-record(기록 제안) · session-context(SessionStart 주입) · warn-version-drift(버전 드리프트) · session-end-cleanup(SessionEnd 회수). 헬퍼: guard-commit-secrets · secret-patterns · write-gate-trivial · write-gate-exempt · session-wiki-signals · session-ledger-signal · session-end-cleanup-lib · hook-event-log. 판정 데이터·근거는 scripts/rules/(destructive.json · harness-hooks.json · write-gate.json · external-ops.json + *-rationale.md)가 정본이다.
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan·implement 등 (+ references/)
 ├── docs/
