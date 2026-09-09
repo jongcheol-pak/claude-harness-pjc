@@ -557,6 +557,61 @@
     ]
   },
   {
+    "id": "harness-ledger-format-bold",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- `[등재]` **첫 번째 미처리 항목**",
+        "replace": "- **`[등재]` 첫 번째 미처리 항목**"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "Deferred 항목 서식 위반"
+    ]
+  },
+  {
+    "id": "harness-ledger-title-spacing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "**첫 번째 미처리 항목**",
+        "replace": "**첫번째 미처리 항목**"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "등재 마커가 주장하는"
+    ]
+  },
+  {
+    "id": "harness-ledger-format-outside-section",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- [x] **T1** 마커를 예시로 인용하는 체크박스 줄",
+        "replace": "- [x] **T1** 마커를 예시로 인용하는 줄이 하나 더 있어도"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "Deferred 항목 서식 위반"
+    ]
+  },
+  {
     "id": "harness-critical-pointer-ok",
     "checker": "harness",
     "fixture": "minimal-repo",

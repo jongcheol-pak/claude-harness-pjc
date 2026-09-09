@@ -445,6 +445,17 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef11 } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 백틱 마커 혼재여도 마커 없는 항목은 계수 (SC40l)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
 
+    # SC40n (양성 — 볼드가 마커를 감싼 서식): `- **`[등재]` A**` 는 **미판정으로 센다**.
+    #   회차 49 가 이 형태로 써서 판정을 마친 9건이 「미판정 9건」으로 출력됐고, 회차 50 은
+    #   정규식을 넓히는 대신 **서식을 고정**해 닫았다(`plan/references/deferred-rules.md`).
+    #   ⚠ 이 케이스가 이번 처방의 방향을 고정한다 — 없으면 다음 세션이 skip 정규식에 볼드
+    #     접두를 받아들여도 전건 green 이라, 서식 정본과 hook 계수가 조용히 갈린다.
+    #     (검사기 쪽 짝은 evals 골든 `harness-ledger-format-bold` 가 red 로 잡는다.)
+    $scDef12 = Join-Path $scDefBase 'bold-wrapped-marker'; New-Item -ItemType Directory $scDef12 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', ('- **' + [char]96 + '[등재]' + [char]96 + ' A**'), '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDef12 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDef12 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 볼드가 감싼 마커는 판정으로 인정하지 않는다 (SC40n)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
+
     # SC40i (양성 — 절이 파일 마지막): `## Deferred / Follow-up` 뒤에 다른 절이 없어 종료 앵커가
     #   없는 plan → 건수 정상 산출. 구간 추출이 종료 앵커를 못 찾아 **조용히 0건**이 되는 형태는
     #   이 회차가 막으려는 실패(미판정이 있는데 부기가 안 나감)와 같다.
