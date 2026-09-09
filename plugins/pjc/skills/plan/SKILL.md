@@ -21,8 +21,6 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 
 ## Step 1. 컨텍스트 수집
 
-**읽는 순서가 정해져 있다** — 프로젝트 사실 → 위키 지식 → 미처리 항목.
-
 1. **`AGENTS.md`** — 빌드·테스트 명령, 디렉터리 구조, 프로젝트 규약. **없으면 여기서 최소 생성한다** — 아래 「AGENTS.md가 없을 때」.
 2. **위키** (vault가 설정돼 있으면) — 대상 프로젝트의 `conventions.md`(함정·규약)와 `decisions.md`(보류·기각 이력). 절차와 기록 형식은 `../WIKI.md`.
 3. **그 레포의 Deferred 대장** (있으면 — 이 레포는 `docs/plans/deferred.md`) — 이번 요청과 겹치는 미처리 항목이 있으면 이번 plan에 흡수하거나 명시적으로 제외한다. **없는 레포에서는 그 사실을 Investigation Log에 1줄 남긴다** — 「확인했더니 없음」과 「확인하지 않음」은 다르다.
@@ -73,11 +71,14 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 
 템플릿·작성 규칙은 `references/plan-template.md`다. 루트 `plan.md` 하나에 쓰고(덮어쓰기), 요구는 `references/intent-rules.md` 형식으로 `intent/` 에 쓴다.
 
-- **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 앞부분만 이번 plan에 담고 나머지는 `## Deferred / Follow-up`에 **`[다음 회차]` 마커로** 적은 뒤, 그 회차를 끝내고 다음 plan을 새로 쓴다. **그 마커가 `pjc:implement`의 인계 프롬프트를 켜므로 대장 등재(`[등재]`)로 대신하지 않는다** — 형식은 `references/deferred-rules.md`.
+- **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 나머지는 `## Deferred / Follow-up`에 `[다음 회차]` 마커로 적는다(마커 규약은 `references/deferred-rules.md`).
+- **`plan.md`는 `Write` 1회로 쓰고 `sed`·`cp`·python으로 후편집하지 않는다** — ⓐ 편집 스크립트가 줄바꿈을 섞어 이후 `Edit`가 조용히 빗나가고(gitignore라 `git ls-files --eol`이 못 잡는다) ⓑ 도구 밖 수정이 끼면 그다음 `Write`가 *"File has been modified since read"*로 **거부된다**(터미널에는 `Error writing file`로만 보인다).
+- **쓰기가 실패하면 오류 원문을 그대로 내고 멈춘다** — 삼키고 넘어가면 **승인받은 계획이 디스크에 없다.** 원인을 모르는 채 재시도를 규정하지 않는다.
 
 ## Step 6. 리뷰와 승인
 
 - **`plan-reviewer` 서브에이전트를 호출한다(최소 1회)** — 이 스킬에서 서브에이전트를 쓰는 유일한 지점이다. 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로.
+- **리뷰어는 read-only라 지적을 스스로 고치지 않는다 — 고치는 것은 이 세션이다** — 리뷰 전후로 쓰기 오류(`Error writing file`)가 보이면 그것은 설계대로 막힌 것이지 결함이 아니다.
 - **리뷰어가 호출되지 않는 환경이면 그 사실을 plan에 적고 승인 단계로 간다** — 리뷰 부재를 통과로 적지 않는다.
 - **BLOCKER·MAJOR는 plan을 고쳐 해소한 뒤 다시 호출한다** — 지적이 남은 계획을 승인받으면 그 결함이 구현 중에 드러난다. MINOR도 「지금 고칠 것인가」 3조건을 통과하면 고치고, 어긋난 것만 `## Deferred / Follow-up`에 적는다(정본 `references/deferred-rules.md`).
 - **같은 지적이 3회 연속이면 멈춘다. 고칠 때마다 새 지적이 나서 라운드가 늘어도 멈춘다** — 매 라운드 조금씩 나아지는 것은 실패로 집계되지 않아 「동일 원인 3회」에 걸리지 않는다.
