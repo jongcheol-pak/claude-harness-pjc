@@ -6,7 +6,6 @@
 #   그쪽이 이 함수를 쓰므로 정의를 그 파일에 두어야 단독 dot-source(골든 프로브)가 성립한다.
 
 # 최상위 구분자 분리(따옴표 인식) — 근거는 `rules/bash-guard-rationale.md`의 「§11 최상위 구분자 분리(따옴표 인식)」
-# 이 함수는 block-destructive.ps1 과 의도적 복제다 — 드리프트는 check-harness-consistency.py 의 「분할 헬퍼 동기」 축이 잡는다.
 function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     $parts = New-Object System.Collections.Generic.List[string]
     $cur = ''
@@ -41,6 +40,15 @@ function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     return $parts
 }
 
+# 셸 접두어를 벗긴 토큰 배열 — 근거는 `rules/bash-guard-rationale.md`의 「§12 셸 접두어를 벗긴 토큰 배열」
+function Get-EffectiveTokens([string]$seg) {
+    $tk = @(($seg -split '\s+') | Where-Object { $_ })
+    $i = 0
+    while ($i -lt $tk.Count -and ($tk[$i] -match '^(?i)(sudo|time|nohup|env)$' -or $tk[$i] -match '^[A-Za-z_]\w*=')) { $i++ }
+    if ($i -ge $tk.Count) { return @() }
+    return @($tk[$i..($tk.Count - 1)])
+}
+
 # warn-global-find: 루트 전역 탐색 경고 — 근거는 `rules/bash-guard-rationale.md`의 「§3 warn-global-find: 루트 전역 탐색 경고」
 function Invoke-WarnGlobalFind {
     param($data)
@@ -50,23 +58,15 @@ function Invoke-WarnGlobalFind {
     $hits = New-Object System.Collections.Generic.List[string]
     # 연결·파이프로 나눈다 — `cd /tmp && find / …`처럼 뒤 세그먼트에 있는 것도 잡아야 한다.
     foreach ($seg in Split-TopLevel $cmd $script:IsPsTool) {
-        $t = $seg.Trim()
-        if ([string]::IsNullOrWhiteSpace($t)) { continue }
-        $tokens = @(($t -split '\s+') | Where-Object { $_ })
+        $tokens = Get-EffectiveTokens $seg
         if ($tokens.Count -eq 0) { continue }
 
-        # 접두어를 벗긴다(sudo·time·nohup·env·VAR=값) — 그 뒤가 진짜 명령이다.
-        $i = 0
-        while ($i -lt $tokens.Count -and
-               ($tokens[$i] -match '^(?i)(sudo|time|nohup|env)$' -or $tokens[$i] -match '^[A-Za-z_][A-Za-z0-9_]*=')) { $i++ }
-        if ($i -ge $tokens.Count) { continue }
-
         # 첫 실효 토큰이 find여야 한다(경로 붙은 형태와 .exe도 인정).
-        if ($tokens[$i] -notmatch '(?i)^(.*[\/])?find(\.exe)?$') { continue }
+        if ($tokens[0] -notmatch '(?i)^(.*[\/])?find(\.exe)?$') { continue }
 
         # 그 뒤 첫 비플래그 인자가 탐색 시작점이다(`find -L / -name x`처럼 플래그가 앞설 수 있다).
         $start = $null
-        for ($j = $i + 1; $j -lt $tokens.Count; $j++) {
+        for ($j = 1; $j -lt $tokens.Count; $j++) {
             if ($tokens[$j].StartsWith('-')) { continue }
             $start = $tokens[$j].Trim('"', "'")
             break
@@ -109,15 +109,11 @@ function Invoke-WarnDangerousAssignment {
             continue
         }
 
-        # ② 사용 판정 — 접두어(sudo·time·nohup·env·VAR=값)를 벗긴 첫 토큰이 삭제 계열일 때만.
-        $tokens = @(($t -split '\s+') | Where-Object { $_ })
-        $i = 0
-        while ($i -lt $tokens.Count -and
-               ($tokens[$i] -match '^(?i)(sudo|time|nohup|env)$' -or $tokens[$i] -match '^[A-Za-z_][A-Za-z0-9_]*=')) { $i++ }
-        if ($i -ge $tokens.Count) { continue }
-        if ($tokens[$i] -notmatch $deleteRx) { continue }
+        # ② 사용 판정 — 접두어를 벗긴 첫 토큰이 삭제 계열일 때만.
+        $tokens = Get-EffectiveTokens $t
+        if ($tokens.Count -eq 0 -or $tokens[0] -notmatch $deleteRx) { continue }
 
-        for ($j = $i + 1; $j -lt $tokens.Count; $j++) {
+        for ($j = 1; $j -lt $tokens.Count; $j++) {
             foreach ($m in [regex]::Matches($tokens[$j], '\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?')) {
                 $name = $m.Groups[1].Value
                 if (-not $assigned.ContainsKey($name)) { continue }
@@ -172,12 +168,10 @@ function Invoke-BlockPlanWrite {
     # ⓒⓓⓔⓕ 쓰기 동사는 **세그먼트의 첫 실효 토큰일 때만** 본다 — 어디에 있든 찾으면
     #   `grep -n 'Copy-Item' plan.md` 같은 조회가 막힌다(완료 리뷰 BLOCKER).
     foreach ($seg in Split-TopLevel $cmd $script:IsPsTool) {
-        $tk = @(($seg -split '\s+') | Where-Object { $_ })
-        $i = 0
-        while ($i -lt $tk.Count -and ($tk[$i] -match '^(?i)(sudo|time|nohup|env)$' -or $tk[$i] -match '^[A-Za-z_]\w*=')) { $i++ }
-        if ($i -ge $tk.Count) { continue }
-        $verb = ($tk[$i] -replace '^.*[\\/]', '') -replace '(?i)\.exe$', ''
-        $rest = if ($i + 1 -lt $tk.Count) { @($tk[($i + 1)..($tk.Count - 1)]) } else { @() }
+        $tk = Get-EffectiveTokens $seg
+        if ($tk.Count -eq 0) { continue }
+        $verb = ($tk[0] -replace '^.*[\\/]', '') -replace '(?i)\.exe$', ''
+        $rest = if ($tk.Count -gt 1) { @($tk[1..($tk.Count - 1)]) } else { @() }
         if ($verb -match '^(?i)(cp|mv|copy-item|move-item|rename-item)$') {
             if (Test-PlanTarget (@($rest) | Select-Object -Last 1)) { $hits.Add('cp/mv') }
         } elseif ($verb -match '^(?i)sed$') {
@@ -217,9 +211,7 @@ function Invoke-WarnExternalOps {
         $scanCmd = $scanCmd -replace '(?i)(^|\s)(--notes|--body)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
     }
 
-    # 판정 패턴과 경고 문면은 `rules/external-ops.json` 이 정본이다 — 순수 데이터라 코드에 두지 않는다.
-    #   로드 실패는 **이 검사만** 건너뛴다(`return`) — `exit` 을 쓰면 함수 스코프를 넘어 프로세스가 죽어
-    #   require-task-checkbox·block-plan-write 차단 게이트까지 함께 꺼진다.
+    # 판정 데이터·문면 외부화와 로드 실패 격리 — 근거는 `rules/bash-guard-rationale.md`의 「§13 판정 데이터·문면 외부화와 로드 실패 격리」
     try {
         $ops = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/external-ops.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
     } catch {
@@ -228,8 +220,7 @@ function Invoke-WarnExternalOps {
     }
 
     # 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게).
-    #   넘기는 것은 `$cmd` 가 아니라 위에서 메시지값을 스트립한 `$scanCmd` 다 — 분리기가 따옴표를 인식하므로
-    #   `$cmd` 를 넘기면 `git commit -m "…git push…"` 가 한 세그먼트로 보존돼 그 안의 push 에 오경고가 난다.
+    #   넘기는 것은 `$cmd` 가 아니라 `$scanCmd` 다(근거는 위 §7 인용의 문단 끝).
     $segments = Split-TopLevel $scanCmd $script:IsPsTool
     $hits = New-Object System.Collections.Generic.List[string]
     $hitsLocal = New-Object System.Collections.Generic.List[string]

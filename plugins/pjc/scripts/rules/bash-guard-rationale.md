@@ -152,4 +152,20 @@ dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래)
 
 **분기별 근거** — 작은따옴표 안은 bash 에서 이스케이프가 없어 다음 `'` 까지 전부 리터럴이다. 인용 **밖**의 백슬래시도 다음 문자를 이스케이프한다 — `\"` 가 인용을 열어 구분자 분리를 깨뜨리던 미탐을 그 분기가 막는다.
 
-**의도적 복제** — 이 함수는 `block-destructive.ps1` 과 `guard-bash.ps1` 두 곳에 같은 본문으로 있다. `block-destructive` 는 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 **외부 파일 의존을 만들지 않는다** — 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고 그 경로를 재는 것이 없다. 복제의 드리프트는 `check-harness-consistency.py` 의 「분할 헬퍼 동기」 축이 잡는다.
+**의도적 복제** — 이 함수는 `block-destructive.ps1` 과 `guard-bash.ps1` 두 곳에 같은 본문으로 있고, `guard-bash.ps1` 쪽 정의 위에는 그 사실을 적은 주석이 없다(여기가 정본이다). `block-destructive` 는 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 **외부 파일 의존을 만들지 않는다** — 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고 그 경로를 재는 것이 없다. 복제의 드리프트는 `check-harness-consistency.py` 의 「분할 헬퍼 동기」 축이 잡는다.
+
+## §12 셸 접두어를 벗긴 토큰 배열
+
+`Get-EffectiveTokens` 는 세그먼트를 토큰으로 쪼갠 뒤 **셸 접두어**(`sudo`·`time`·`nohup`·`env`, 그리고 `VAR=값` 형태의 일회성 환경 대입)를 벗기고 **그 뒤부터**를 돌려준다. 첫 원소가 곧 진짜 명령이고, 나머지가 인자다. 실효 토큰이 없으면 빈 배열이다.
+
+**세 검사가 같은 판정을 쓴다** — `warn-global-find`(첫 토큰이 `find` 인가) · `warn-dangerous-assignment`(첫 토큰이 삭제 계열인가) · `block-plan-write`(첫 토큰이 쓰기 동사인가). 회차 52 이전에는 이 네 줄이 세 곳에 복제돼 있었고, 그중 한 곳만 `[A-Za-z_]\w*=` 로 적고 둘은 `[A-Za-z_][A-Za-z0-9_]*=` 로 적어 **같은 판정이 다른 표기로 갈려 있었다**(등가이긴 하나, 한쪽을 고칠 때 나머지가 따라가지 않는 구조다).
+
+**「첫 실효 토큰만 본다」가 이 판정의 핵심이다** — 동사를 세그먼트 어디서나 찾으면 `grep -n 'Copy-Item' plan.md` 같은 조회가 막힌다(회차 51 완료 리뷰 BLOCKER).
+
+## §13 판정 데이터·문면 외부화와 로드 실패 격리
+
+`warn-external-ops` 의 판정 패턴(`externalOps` 13 · `localOps` 6)과 경고 문면은 `rules/external-ops.json` 이 정본이다. **순수 데이터라 hook 스크립트에 두지 않는다** — 그것이 `guard-bash.ps1` 을 문서 예산 상한 위로 밀어 올렸고, 「상한을 올리는 것은 처방이 아니다」이므로 데이터를 내렸다.
+
+**로드 실패는 그 검사만 건너뛴다.** `Invoke-WarnExternalOps` 는 디스패처 안의 **함수**이므로 `catch` 에서 `exit` 을 쓰면 안 된다 — PowerShell 의 `exit` 는 함수 스코프를 무시하고 프로세스 전체를 즉시 종료하며, 디스패처의 `try { & $c.fn $data } catch {…}` 로도 가로채지지 않는다. 그러면 `require-task-checkbox`·`block-plan-write` **차단 게이트까지 함께 꺼진다**. 그래서 종료 수단은 `return New-HookResult` 다. 같은 자리의 구 가드(`guard-commit-secrets` 부재 시 `exit 0`)는 6검사 전부를 끄는 형태이며, 이 가드는 그것을 답습하지 않는다.
+
+**`-ErrorAction Stop` 이 없으면 `catch` 가 걸리지 않는다.** `Get-Content` 의 파일 부재는 non-terminating error 라 `try/catch` 를 그냥 지나가고, `$ops` 가 `$null` 이 되어 루프가 0회 돌고 **조용히 통과**한다. 회차 52 의 골든 EOJ1 이 그 침묵을 red 로 잡았다.
