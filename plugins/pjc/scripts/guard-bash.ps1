@@ -5,6 +5,42 @@
 # 결과 객체 생성기 New-HookResult 는 아래 dot-source 대상(guard-commit-secrets.ps1)에 있다 —
 #   그쪽이 이 함수를 쓰므로 정의를 그 파일에 두어야 단독 dot-source(골든 프로브)가 성립한다.
 
+# 최상위 구분자 분리(따옴표 인식) — 근거는 `rules/bash-guard-rationale.md`의 「§11 최상위 구분자 분리(따옴표 인식)」
+# 이 함수는 block-destructive.ps1 과 의도적 복제다 — 드리프트는 check-harness-consistency.py 의 「분할 헬퍼 동기」 축이 잡는다.
+function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
+    $parts = New-Object System.Collections.Generic.List[string]
+    $cur = ''
+    $q = $null
+    $chars = $s.ToCharArray()
+    for ($i = 0; $i -lt $chars.Length; $i++) {
+        $ch = $chars[$i]
+        if ($q -eq "'") {
+            $cur += $ch
+            if ($ch -eq "'") { $q = $null }
+        } elseif ($q -eq '"') {
+            $esc = if ($PsQuoting) { '`' } else { '\' }
+            if ($ch -eq $esc -and $i + 1 -lt $chars.Length) {
+                $cur += $ch; $cur += $chars[$i + 1]; $i++
+            } else {
+                $cur += $ch
+                if ($ch -eq '"') { $q = $null }
+            }
+        } else {
+            if ((-not $PsQuoting) -and $ch -eq '\' -and $i + 1 -lt $chars.Length) {
+                $cur += $ch; $cur += $chars[$i + 1]; $i++
+            } elseif ($ch -eq '"' -or $ch -eq "'") {
+                $q = $ch; $cur += $ch
+            } elseif ($ch -eq ';' -or $ch -eq '|' -or $ch -eq '&' -or $ch -eq "`n" -or $ch -eq "`r") {
+                $parts.Add($cur); $cur = ''
+            } else {
+                $cur += $ch
+            }
+        }
+    }
+    $parts.Add($cur)
+    return $parts
+}
+
 # warn-global-find: 루트 전역 탐색 경고 — 근거는 `rules/bash-guard-rationale.md`의 「§3 warn-global-find: 루트 전역 탐색 경고」
 function Invoke-WarnGlobalFind {
     param($data)

@@ -50,6 +50,8 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 **한 사실은 한 곳에만 적는다.** 같은 규정을 두 파일에 복제하면 한쪽만 고쳐져 갈린다. 다른 곳에서 필요하면 복제하지 말고 파일명으로 가리킨다.
 
+**예외 — 안전 임계 hook 의 의도적 코드 복제.** `block-destructive.ps1` 은 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 **외부 파일 의존을 만들지 않는다** — 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고, 그 fail-open 경로를 재는 수단이 없다. 그래서 `Split-TopLevel` 은 `guard-bash.ps1` 에 같은 본문으로 복제돼 있다. **이 예외는 「감시 대상 없음」이 아니라 「감시를 붙인다」로 닫는다** — 드리프트는 `check-harness-consistency.py` 의 「분할 헬퍼 동기」 축이 잡고, 근거는 `scripts/rules/bash-guard-rationale.md` 에 있다. 복제를 늘리려면 같은 자리에 축을 함께 만든다.
+
 ## 3. Opus 5 전제 — 만들지 않는 것
 
 출처: `platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5`
