@@ -147,5 +147,62 @@ Assert-Case -Name "bpw: Set-Content -Path plan.md 차단 (BPW9)" -R $r -ExpectEx
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python -c ""p='plan.md'; open(p,'w').write('x')""")
 Assert-Case -Name "bpw: 한 줄 -c 형태의 변수 대입도 역참조 (BPW10)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 
+# ---- [회차 52] 따옴표 인식 분할(Split-TopLevel 이식) ----
+#   착수 시점의 분할 넷은 전부 정규식이었고 따옴표 안의 구분자에서 쪼갰다. 그 결과 마지막 조각의
+#   첫 토큰이 `"` 가 되어, 쓰기 동사를 첫 실효 토큰으로 판정하는 block-plan-write 가 새어 나갔다.
+#   경고 검사 셋에는 이 축을 재는 케이스가 착수 0건이었다 — 아래 셋이 그 그물이다.
+
+# ST1 (양성 — ②의 본체): 회차 51 이 실측한 유일한 MISS 형태.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'sed -i "s|a|b|" plan.md')
+Assert-Case -Name "split: 따옴표 안의 | 가 든 sed -i 도 plan.md 쓰기로 차단 (ST1)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
+# ST2 (경고 축 — warn-global-find): 따옴표 안의 `;` 가 분할을 깨면 뒤 세그먼트의 find 를 놓친다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo "a;b" && find / -name x')
+Assert-Case -Name "split: 따옴표 안 ; 뒤의 루트 전역 탐색을 여전히 잡는다 (ST2)" -R $r -ExpectExit 0 -ExpectContains '[GLOBAL FIND WARNING]'
+
+# ST3 (경고 축 — warn-dangerous-assignment): 대입값 자체가 따옴표 안 구분자를 담은 형태.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo "x|y"; X=/; rm -rf $X')
+Assert-Case -Name "split: 따옴표 안 | 가 있어도 위험 대입 경고가 산다 (ST3)" -R $r -ExpectExit 0 -ExpectContains '[DANGEROUS ASSIGNMENT WARNING]'
+
+# ST4 (경고 축 — warn-external-ops): 같은 형태로 외부 작업 경고가 살아 있는지.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo "a|b" && git push origin main')
+Assert-Case -Name "split: 따옴표 안 | 뒤의 git push 를 여전히 잡는다 (ST4)" -R $r -ExpectExit 0 -ExpectContains '[EXTERNAL OP WARNING]'
+
+# ST5 (도구별 이스케이프): PowerShell 도구에서 `\` 는 리터럴이라 `"C:\"` 가 닫힌 문자열이고
+#   뒤의 `;` 가 구분자로 선다. bash 규칙으로 읽으면 인용이 열린 채 남아 분리가 안 된다(회차 44).
+$psJson = (@{ tool_name = 'PowerShell'; tool_input = @{ command = 'echo "C:\"; X=/; Remove-Item -Recurse -Force $X' } } | ConvertTo-Json -Compress)
+$r = Invoke-Hook 'guard-bash.ps1' $psJson
+Assert-Case -Name 'split: PowerShell 도구의 "C:\" 뒤 세그먼트를 잃지 않는다 (ST5)' -R $r -ExpectExit 0 -ExpectContains '[DANGEROUS ASSIGNMENT WARNING]'
+
+# ST6 (메시지 스트립 — D6): warn-external-ops 만 $cmd 가 아니라 $scanCmd 를 분할한다.
+#   $cmd 를 넘기면 따옴표 인식이 메시지를 **한 세그먼트로 보존**해 그 안의 push 에 오경고가 난다.
+#   착수 시점에 이 형태(단일 세그먼트)를 재는 케이스가 0건이었다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'git commit -m "will git push later"')
+Assert-Case -Name "split: 커밋 메시지 안의 git push 는 경고하지 않는다 (ST6)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# ST7~9 (③ 양성 — 신호 3종): cp/mv · Copy-Item 계열 · [System.IO.File]::WriteAll* 는
+#   착수 시점에 양성이 하나도 없어 **그 분기를 지워도 전건 green** 이었다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'cp notes.md plan.md')
+Assert-Case -Name "bpw: cp 의 마지막 인자가 plan.md 면 차단 (ST7)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'Copy-Item notes.md plan.md')
+Assert-Case -Name "bpw: Copy-Item 의 대상이 plan.md 면 차단 (ST8)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "pwsh -c ""[System.IO.File]::WriteAllText('plan.md','x')""")
+Assert-Case -Name "bpw: [System.IO.File]::WriteAllText 의 첫 인자가 plan.md 면 차단 (ST9)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
+# ST10 (짝 안 맞는 따옴표 — 미탐 쪽 못박기): 여는 따옴표가 닫히지 않으면 그 뒤 전부가 한
+#   세그먼트로 남고, **첫 실효 토큰으로 판정하는 동사 신호**(ⓒsed -i·ⓔcp/mv·ⓓSet-Content)는
+#   그 세그먼트의 첫 토큰이 `echo` 라 발화하지 않는다. ⚠ **block-plan-write 는 차단 게이트이므로
+#   이것은 곧 plan.md 쓰기 차단의 미탐이다.** 통과가 옳아서가 아니라 **지금 그렇다는 것을 고정**
+#   하는 케이스이고, 바꾸려면 미완결 인용의 셸 의미를 먼저 정해야 한다(실측: sed -i·cp·Set-Content
+#   세 형태 모두 exit 0).
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo "unclosed; cp notes.md plan.md')
+Assert-Case -Name "split: 닫히지 않은 따옴표 뒤의 동사 신호는 미탐이다 (ST10)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+# ST11 (같은 형태에서 리다이렉션 신호는 산다): ⓑ 는 세그먼트의 **첫 토큰**이 아니라 세그먼트 안의
+#   `>` 대상을 보므로 인용이 열려 있어도 잡힌다. ST10 과 짝을 이뤄 **미탐의 경계가 어디인지**를
+#   고정한다 — 「따옴표가 안 닫히면 다 샌다」가 아니다.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo "unclosed; echo x > plan.md')
+Assert-Case -Name "split: 닫히지 않은 따옴표 뒤여도 리다이렉션 대상은 잡는다 (ST11)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
 }   # ---- §8 게이트 끝 (guard-bash) ----
 
