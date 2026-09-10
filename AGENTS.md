@@ -41,10 +41,12 @@
   ```
   python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
   ```
-- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**·`plugins/pjc/agents/*.md`·`*.md` 문서 수정 시 필수 — **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**·`plugins/pjc/agents/*.md`·`*.md` 문서 수정 시 필수 — **exit 2는 앵커 파싱 실패이지 통과가 아니다**). **골든 케이스 수를 바꿨으면 매니페스트가 어느 것이든 필수다**(축 ⑰ 계수 정합):
   ```
   python plugins/pjc/evals/check-harness-consistency.py
+  python plugins/pjc/evals/check-harness-consistency.py --fix [--dry-run]
   ```
+  `--fix` 는 **판단이 0인 자리만** 고친다 — 「검증 명령 상세」의 매니페스트 계수와 `README.md` 버전이고, 러너 총계(hook 골든)는 내장 시나리오가 섞여 파일을 세면 어긋나므로 대상이 아니다. `--dry-run` 을 함께 주면 `[WOULD-FIX]` 로 내고 한 바이트도 쓰지 않는다.
 - **evals 골든 회귀** (`plugins/pjc/evals/**` 수정 시 필수 — **exit 2는 `cases.json` 서식 위반 또는 미추적 픽스처**라 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다):
   ```
   python plugins/pjc/evals/run-evals.py
@@ -82,6 +84,8 @@
 - **주석**: 한글, "왜"를 설명("무엇"은 코드로).
 - **명령 출력 예산**: 판정용 명령은 **판정에 필요한 최소 형식**으로 낸다(정본은 `docs/harness-conventions.md`의 「명령 출력 예산」).
 - **파일 크기**: 상한 표·초과 처방·참조 깊이·목차 규칙은 `plugins/pjc/skills/BUDGET.md`「예산 표」가 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**
+- **병행 세션의 커밋은 `git commit -- <경로…>` 다** — `git add <경로>` 로 한정해도 소용없다. add 는 **인덱스에 더하는** 것이고 commit 은 **인덱스 전체**를 담아, 상대가 이미 staged 해 둔 것이 함께 들어간다. `-A` 를 안 써도 일어난다(회차 54 `199e1e0a` · 회차 55 `d3fad946` 두 번 관측 — 두 번째는 경로 한정 규약을 지킨 상태였다).
+- **커밋 명령은 `2>&1` 로 stderr 를 함께 받고, 시크릿 스캔과 커밋을 한 명령에 이어 붙이지 않는다.** hook 경고는 stderr 로 나오므로 그것 없이는 **「경고 없음」과 「경고를 못 봄」이 구분되지 않고**, 스캔과 커밋을 이어 붙이면 *"경고가 뜨면 커밋하지 않는다"* 의 판단 지점이 사라진다. **둘은 서로 대체되지 않는다** — 회차 55 에서 두 세션이 각각 한쪽씩 어겼다(H1 은 이어 붙였고 H2 는 스트림을 안 받았다). **커밋 뒤에는 `warn-commit-secrets` 를 재현할 수 없다** — 스테이징이 비어 사후 판정은 사람의 grep 이지 하니스 판정기가 아니다.
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**이고 그것을 내는 hook은 넷이다(`block-destructive`·`guard-bash`·`guard-write`·`guard-harness`). **우회 변수는 둘이며 서로 대체되지 않는다** — `CLAUDE_HARNESS_QUICK` / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 전용). 담당·조건부 세부·우회 범위·`[PLAN-EXEMPT]` 면제 경로는 `docs/harness-conventions.md`가 정본 — **hook 수정 전 반드시 읽을 것**.
 - **`guard-write` 는 게이트 2종**(plan 존재·plan 작성)이고 **같은 정규식을 공유하므로 한쪽만 고치지 말 것** — 차이가 곧 우회 경로다. `guard-harness` 는 자기보호와 내용 경계 2종이다.
 - **⚠ `llm-wiki` 의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md` 의 vault 예외를 함께 확인**한다 — repo 밖이라 검사기가 못 잡는다. 정본은 `docs/harness-conventions.md` 의 「llm-wiki ↔ 글로벌 지침 결합」.
