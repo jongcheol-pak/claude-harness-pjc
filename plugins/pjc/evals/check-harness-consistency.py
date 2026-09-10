@@ -60,6 +60,14 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
      새 줄까지 덮는 것을 잡는다).
      **⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.
+  ⑰ 계수·버전 정합 — `harness-conventions.md` 「검증 명령 상세」가 적은 골든 케이스 수가
+     그 매니페스트의 실제 길이와 같은가, 버전 정본 두 곳(`plugin.json` · `README.md`)이
+     같은가. **종전에는 같은 수가 여러 문서에 파생돼 정본↔파생 불일치가 자기모순으로
+     드러났고 완료 리뷰가 그것을 잡았다.** 파생을 걷어 정본 한 곳으로 모은 뒤로 대조 상대가
+     사라져, 정본이 낡아도 아무것도 울지 않게 됐다 — 회차 55 착수 시점에 세 자리가 낡아
+     있었고 그중 하나는 **직전 회차가 자기 plan 에 맞는 수를 적어 놓고도** 이 줄을 지나친
+     결과였다. 러너 총계(hook 골든)는 내장 시나리오가 섞여 **파일을 세면 원리상 어긋나므로**
+     이 축이 아니라 `run-hook-evals.ps1` 자신이 자기 총계를 상수와 대조한다.
   ⑮ 등재 근거 실측  — 대장 `## 대기` 의 각 항목이 **실해 근거 필드**(`(실해: YYYY-MM-DD …)`)를
      갖는가. 등재 하한선(「실해가 관측된 것만 올린다」)의 정본은 `plan/references/deferred-rules.md`
      「Deferred / Follow-up」이고 이 축은 그것을 기계로 잰다. 하한선이 문면에만 있던 동안
@@ -86,6 +94,7 @@ r"""하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집
 예외만을 감시한다 — 폐지된 「복제 리터럴 동기」의 부활이 아니라 대상이 하나인 새 축이다.
 """
 import glob
+import json
 import os
 import re
 import subprocess
@@ -1321,6 +1330,131 @@ def check_split_helper_sync():
     return issues, len(bodies)
 
 
+# 축 ⑰이 파싱하는 세 문면. 「검증 명령 상세」 절 **안에서만** 찾는다 — 절 밖에는 회차별
+#  실측 기록·소요 시간 근거가 같은 형태로 흩어져 있어(예: `:189` 의 「748케이스」), 전역으로
+#  세면 이력 기술이 전부 오탐이 된다.
+COUNT_SECTION_HEADING = "## 검증 명령 상세"
+# ⓐ `케이스 정본은 \`<경로>\`` — 그 줄이 어느 매니페스트를 말하는지
+_RX_MANIFEST = re.compile(r"케이스 정본은 `([^`]+\.json)`")
+# ⓑ `**기준선 N케이스**` — 같은 줄의 기재값
+_RX_BASELINE = re.compile(r"\*\*기준선 (\d+)케이스\*\*")
+# ⓒ `` `<파일>`은 N건 `` — hook-cases 만 쓰는 별도 형태(그 줄의 「기준선」은 러너 총계라
+#  파일 건수가 아니다). 그래서 ⓑ 로 재면 870 ↔ 269 로 어긋난 판정이 나온다.
+_RX_FILE_COUNT = re.compile(r"`([\w.-]+\.json)`은 (\d+)건")
+# 러너 총계(hook 골든)는 내장 시나리오가 섞여 **파일을 세면 원리상 어긋난다** — 그 축은
+#  `run-hook-evals.ps1` 자신이 자기 총계를 상수와 대조한다(회차 55 T4). 여기서는 세지 않는다.
+COUNT_SKIP_BASELINE = {"hook-cases.json"}
+
+
+PLUGIN_JSON = os.path.join(ROOT, "plugins", "pjc", ".claude-plugin", "plugin.json")
+README_MD = os.path.join(ROOT, "README.md")
+# ⓒ 형태로 적힌 파일명을 레포 경로로 되돌리기 위한 목록. 문서가 파일명만 적으므로
+#  여기 없는 이름은 이 축의 대상이 아니다(다른 문맥의 json 언급을 세지 않는다).
+_MANIFEST_PATHS = (
+    "plugins/pjc/hooks/evals/hook-cases.json",
+    "plugins/pjc/skills/llm-wiki/evals/lint-cases.json",
+    "plugins/pjc/skills/record-project-fact/evals/relocation-cases.json",
+    "plugins/pjc/evals/cases.json",
+    "plugins/pjc/skills/evals/trigger-cases.json",
+)
+
+
+def _load_json(path):
+    """JSON 을 읽어 낸다. 부재·파손이면 `None` — 판정 불가와 불일치를 가른다."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def _read_json_field(path, key):
+    doc = _load_json(path)
+    return doc.get(key) if isinstance(doc, dict) else None
+
+
+def _json_case_count(rel):
+    """매니페스트의 케이스 수. 못 읽으면 `None`.
+
+    최상위가 리스트인 것과 `{"_note": …, "cases": [...]}` 형태가 섞여 있어 둘 다 받는다.
+    """
+    doc = _load_json(os.path.join(ROOT, rel))
+    if isinstance(doc, dict):
+        doc = doc.get("cases")
+    return len(doc) if isinstance(doc, list) else None
+
+
+def check_count_and_version(conv):
+    """축 ⑰ 계수·버전 정합 — 문서가 적은 수가 실제와 같은가.
+
+    **왜 필요한가**: 이 문서는 골든 케이스 수를 산문으로 적는데 어느 검사기도 그것을 읽지
+    않았다. 종전에는 같은 수가 `AGENTS.md` 등에도 파생돼 정본↔파생 불일치가 자기모순으로
+    드러났고 완료 리뷰가 그것을 잡았다. 파생을 걷어 정본 한 곳으로 모은 뒤로 **대조 상대가
+    사라져, 정본이 낡아도 아무것도 울지 않는다**. 회차 55 착수 시점에 실제로 세 자리가
+    낡아 있었고(hook-cases 263↔269 · lint 124↔125 · 러너 총계 870↔879), 그중 하나는
+    **직전 회차가 자기 plan 에 125 라고 적어 놓고도** 이 줄을 지나친 결과였다.
+
+    버전을 함께 재는 이유는 정본이 둘(`plugin.json` · `README.md`)인데 그것을 잇는 것이
+    릴리즈 절차 문면뿐이기 때문이다 — 검사기 어느 것도 `plugin.json` 을 읽지 않았다.
+    """
+    issues, n = [], 0
+    # **매니페스트가 하나도 없으면 골든 픽스처다** — 픽스처는 레포의 일부만 담으므로 없는
+    #  파일까지 세면 이 축이 픽스처에서 상시 실패한다(축 ⑭ 가 같은 이유로 스캔 실재를 본다).
+    #  그래서 실재 여부를 **먼저** 가르고, 그 뒤의 절 부재만 앵커 실패로 판정한다.
+    if not any(os.path.exists(os.path.join(ROOT, p)) for p in _MANIFEST_PATHS):
+        return issues, n
+    body = conv.split(COUNT_SECTION_HEADING, 1)
+    if len(body) < 2:
+        # 매니페스트는 있는데 절이 없다 = 헤딩이 바뀌어 축이 통째로 조용해진 것이다.
+        #  통과로 읽히면 안 되므로 다른 앵커 실패와 같은 exit 2 를 쓴다.
+        die("절을 찾지 못함: `%s` 「검증 명령 상세」 — 헤딩을 바꿨으면 "
+            "COUNT_SECTION_HEADING 을 함께 고쳐라" % os.path.relpath(CONV_MD, ROOT))
+    # 다음 `## ` 헤딩 전까지가 이 축의 사정거리다.
+    tail = body[1]
+    nxt = tail.find("\n## ")
+    section = tail[:nxt] if nxt >= 0 else tail
+
+    for line in section.split("\n"):
+        m = _RX_MANIFEST.search(line)
+        if m:
+            rel, base = m.group(1), _RX_BASELINE.search(line)
+            name = os.path.basename(rel)
+            if base and name not in COUNT_SKIP_BASELINE:
+                n += 1
+                actual = _json_case_count(rel)
+                if actual is None:
+                    issues.append("계수 정합: `%s` 를 읽지 못했다 — 경로가 바뀌었는지 확인하라" % rel)
+                elif actual != int(base.group(1)):
+                    issues.append("계수 정합: `%s` 는 %d건인데 문서는 **기준선 %s케이스**로 적었다 "
+                                  "— 케이스를 늘린 task 가 이 줄을 함께 갱신해야 한다"
+                                  % (rel, actual, base.group(1)))
+        for fm in _RX_FILE_COUNT.finditer(line):
+            hit = next((p for p in _MANIFEST_PATHS if os.path.basename(p) == fm.group(1)), None)
+            if not hit:
+                continue
+            n += 1
+            actual = _json_case_count(hit)
+            if actual is None:
+                issues.append("계수 정합: `%s` 를 읽지 못했다" % hit)
+            elif actual != int(fm.group(2)):
+                issues.append("계수 정합: `%s` 는 %d건인데 문서는 %s건으로 적었다"
+                              % (hit, actual, fm.group(2)))
+
+    # 버전 축도 같은 관용을 쓴다 — 픽스처에는 `plugin.json`·`README.md` 가 없다.
+    if not (os.path.exists(PLUGIN_JSON) and os.path.exists(README_MD)):
+        return issues, n
+    n += 1
+    plugin_v = _read_json_field(PLUGIN_JSON, "version")
+    readme_m = re.search(r"^\*\*버전\*\*:\s*(\S+)", read(README_MD), re.M)
+    if plugin_v is None or readme_m is None:
+        issues.append("버전 정합: 정본 두 곳 중 한쪽을 읽지 못했다 — `plugin.json` 의 "
+                      "`version` 과 `README.md` 상단 `**버전**:` 줄이 정본이다")
+    elif plugin_v != readme_m.group(1):
+        issues.append("버전 정합: `plugin.json` %s ↔ `README.md` %s — 버전은 한 커밋에서 "
+                      "두 곳을 함께 올린다" % (plugin_v, readme_m.group(1)))
+    return issues, n
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -1357,6 +1491,7 @@ def main():
         ("폐기 식별자 실재", check_deprecated_identifiers()),
         ("등재 근거 실측", check_ledger_evidence(ledger)),
         ("분할 헬퍼 동기", check_split_helper_sync()),
+        ("계수·버전 정합", check_count_and_version(conv)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:

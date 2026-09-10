@@ -766,5 +766,83 @@
       "분할 헬퍼 동기: `Split-TopLevel` 본문이 갈렸다",
       "block-destructive.ps1 ↔ guard-bash.ps1"
     ]
+  },
+  {
+    "id": "harness-count-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "계수·버전 정합"
+    ],
+    "expect_absent": [
+      "계수 정합:",
+      "버전 정합:"
+    ]
+  },
+  {
+    "id": "harness-count-baseline-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**기준선 2케이스**",
+        "replace": "**기준선 3케이스**"
+      }
+    ],
+    "expect_keywords": [
+      "계수 정합: `plugins/pjc/evals/cases.json` 는 2건인데 문서는 **기준선 3케이스**로 적었다"
+    ]
+  },
+  {
+    "id": "harness-count-filecount-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "`hook-cases.json`은 3건",
+        "replace": "`hook-cases.json`은 5건"
+      }
+    ],
+    "expect_keywords": [
+      "계수 정합: `plugins/pjc/hooks/evals/hook-cases.json` 는 3건인데 문서는 5건으로 적었다"
+    ]
+  },
+  {
+    "id": "harness-count-version-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "**버전**: 1.0.0",
+        "replace": "**버전**: 1.0.1"
+      }
+    ],
+    "expect_keywords": [
+      "버전 정합: `plugin.json` 1.0.0 ↔ `README.md` 1.0.1"
+    ]
+  },
+  {
+    "id": "harness-count-anchor-fail",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 2,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "## 검증 명령 상세 (무엇을 대조하는가 · 함정)",
+        "replace": "## 검증 명령 (무엇을 대조하는가 · 함정)"
+      }
+    ],
+    "expect_keywords": [
+      "절을 찾지 못함",
+      "COUNT_SECTION_HEADING"
+    ]
   }
 ]
