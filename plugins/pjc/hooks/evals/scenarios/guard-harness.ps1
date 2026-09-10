@@ -62,20 +62,26 @@ $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins
 Assert-Case -Name "guard-harness: 8.3 CLAUDE~1 개발 repo 소스(캐시 밖) 통과 (v1.90.3 F2 오탐 수정)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.90.2/scripts/block-destructive.ps1")
 Assert-Case -Name "guard-harness: 8.3 마스킹 설치본(캐시 컨텍스트) 차단 (v1.90.3 F2)" -R $r -ExpectExit 2 -ExpectContains '8.3'
-# [v1.97.2] v1.96.0 신설분의 이름 집합 합류 — warn-commit-secrets(hook)·secret-patterns(공유 헬퍼, 개조 시
+# [v1.97.2] v1.96.0 신설분의 이름 집합 합류 — commit-secrets 계열 hook·secret-patterns(공유 헬퍼, 개조 시
 #   시크릿 경고 계층 등가 무력화) 설치본 개조 차단. 집합 누락이 재발하면 이 두 케이스가 잡는다.
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/guard-bash.ps1'))
-Assert-Case -Name "guard-harness: 설치본 warn-commit-secrets Write 차단 (v1.97.2 집합 합류)" -R $r -ExpectExit 2
+#   ⚠ 당시 hook 이름은 warn-commit-secrets 였고 현행은 guard-commit-secrets 다 — v1.225.0 개명 때
+#   케이스 **대상만** guard-bash 로 바뀌고 이름이 안 따라와, 이름은 warn- 인데 대상은 guard-bash 를
+#   재는 상태로 남아 있었다(회차 54 실측 — 같은 입력 3중복의 한 자리였다).
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/guard-commit-secrets.ps1'))
+Assert-Case -Name "guard-harness: 설치본 guard-commit-secrets Write 차단 (v1.97.2 집합 합류)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/secret-patterns.ps1'))
 Assert-Case -Name "guard-harness: 설치본 secret-patterns 헬퍼 Write 차단 (v1.97.2 등가 우회 봉쇄)" -R $r -ExpectExit 2
-# [v1.99.0 T6] 디스패처·공유 lib 이름 집합 합류 — 개조 시 3 게이트가 등가로 무력화되는 자리다.
-#   당시 대상 pre-bash-dispatch(hook)·bash-hook-lib(검사 로직 헬퍼) 두 파일은 v1.225.0이 삭제했다
-#   — guard-bash.ps1 하나로 통폐합했고, 그래서 아래 두 케이스가 같은 파일을 재게 됐다.
-#   집합 누락 재발 시 이 두 케이스가 잡는다.
+# [v1.99.0 T6] 디스패처·공유 lib 이름 집합 합류 — 개조 시 게이트가 등가로 무력화되는 자리다.
+#   당시 대상 pre-bash-dispatch(hook)·bash-hook-lib(검사 로직 헬퍼) 두 파일은 v1.225.0이 삭제했고
+#   guard-bash.ps1 하나로 통폐합됐다 — 그 결과 두 케이스가 **같은 파일을 재게 되어** 한쪽이
+#   무회귀였다(회차 54). 축을 현행 구성에서 다시 골랐다: 진입점은 guard-bash, 등가 우회는
+#   guard-write 의 dot-source 헬퍼다. 짝인 write-gate-exempt 는 아래에서 이미 재고 있어,
+#   둘을 합쳐 AGENTS.md 「guard-write 는 게이트 2종이고 같은 정규식을 공유하므로 한쪽만
+#   고치지 말 것 — 차이가 곧 우회 경로다」를 양쪽에서 덮는다.
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/guard-bash.ps1'))
 Assert-Case -Name "guard-harness: 설치본 guard-bash Write 차단 (v1.99.0 T6 집합 합류)" -R $r -ExpectExit 2
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/guard-bash.ps1'))
-Assert-Case -Name "guard-harness: 설치본 guard-bash 공유 헬퍼 Write 차단 (v1.99.0 T6 등가 우회 봉쇄)" -R $r -ExpectExit 2
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/write-gate-trivial.ps1'))
+Assert-Case -Name "guard-harness: 설치본 write-gate-trivial 헬퍼 Write 차단 (게이트 2종 등가 우회 봉쇄)" -R $r -ExpectExit 2
 
 # ---- [v1.181.0 T7] 한글 경로 실증 ----
 # v1.129.0 T2의 stdin UTF-8 수정으로 이 hook도 한글이 든 보호 경로를 비로소 정확히 매치하게 됐는데,
