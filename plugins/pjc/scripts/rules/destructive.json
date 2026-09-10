@@ -175,16 +175,28 @@
       "why": "방화벽 설정 변경(show/dump/export 조회는 통과)"
     },
     {
-      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\/]\\.claude[\\/][^\\s;&|]*[\\/]scripts[\\/]rules[\\/][^\\s;&|]*\\.json",
+      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\\\/]\\.claude[\\\\/][^\\s;&|]*[\\\\/]scripts[\\\\/]rules[\\\\/][^\\s;&|]*\\.json",
       "why": "설치본 판정 데이터 삭제 (.claude/**/scripts/rules/*.json — 지우면 그 hook 의 차단이 조용히 꺼진다)"
     },
     {
-      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\/]\\.claude[\\/][^\\s;&|]*[\\/]scripts[\\/][^\\s;&|]*\\.ps1",
+      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\\\/]\\.claude[\\\\/][^\\s;&|]*[\\\\/]scripts[\\\\/][^\\s;&|]*\\.ps1",
       "why": "설치본 hook 스크립트 삭제 (.claude/**/scripts/*.ps1)"
     },
     {
-      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\/]\\.claude[\\/][^\\s;&|]*[\\/]hooks[\\/]hooks\\.json",
+      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\\\/]\\.claude[\\\\/][^\\s;&|]*[\\\\/]hooks[\\\\/]hooks\\.json",
       "why": "설치본 hook 등록표 삭제 (.claude/**/hooks/hooks.json)"
+    },
+    {
+      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\\\/]\\.claude[\\\\/][^\\s;&|]*[\\\\/]scripts[\\\\/]rules[\\\\/]?(\\s|$|[;&|])",
+      "why": "설치본 판정 데이터 디렉터리 삭제 (.claude/**/scripts/rules — 파일 하나 지우는 것과 결과가 같다)"
+    },
+    {
+      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\\\/]\\.claude[\\\\/][^\\s;&|]*[\\\\/]scripts[\\\\/]?(\\s|$|[;&|])",
+      "why": "설치본 scripts 디렉터리 삭제 (.claude/**/scripts — hook 전부가 사라진다)"
+    },
+    {
+      "rx": "(?i)(^|[\\s;&|(])(rm|Remove-Item|ri|rmdir|rd|del|erase|unlink)\\b[^;&|\\r\\n]*[\\\\/]\\.claude[\\\\/][^\\s;&|]*[\\\\/]hooks[\\\\/]?(\\s|$|[;&|])",
+      "why": "설치본 hooks 디렉터리 삭제 (.claude/**/hooks — 등록표가 사라진다)"
     }
   ]
 }

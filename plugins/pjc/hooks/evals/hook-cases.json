@@ -1715,14 +1715,14 @@
       "name": "[회차 53] 설치본 판정 데이터 rm 차단 — 지우면 그 hook 의 차단이 조용히 꺼진다",
       "command": "rm ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/rules/harness-hooks.json",
       "expect_exit": 2,
-      "expect_contains": "scripts[\\/]rules[\\/]"
+      "expect_contains": "scripts[\\\\/]rules"
     },
     {
       "hook": "block-destructive.ps1",
       "name": "[회차 53] 설치본 판정 데이터 Remove-Item 차단 (PowerShell 도구)",
       "command": "Remove-Item ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/rules/destructive.json",
       "expect_exit": 2,
-      "expect_contains": "scripts[\\/]rules[\\/]",
+      "expect_contains": "scripts[\\\\/]rules",
       "tool_name": "PowerShell"
     },
     {
@@ -1730,14 +1730,14 @@
       "name": "[회차 53] 설치본 hook 스크립트 rm 차단",
       "command": "rm ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/guard-bash.ps1",
       "expect_exit": 2,
-      "expect_contains": "[\\/]scripts[\\/][^\\s;&|]*\\.ps1"
+      "expect_contains": "scripts[\\\\/][^\\s;&|]*\\.ps1"
     },
     {
       "hook": "block-destructive.ps1",
       "name": "[회차 53] unlink 도 차단한다 — delCmdAlt 에 없던 별칭을 신규 패턴이 새로 담았다",
       "command": "unlink ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/rules/write-gate.json",
       "expect_exit": 2,
-      "expect_contains": "scripts[\\/]rules[\\/]"
+      "expect_contains": "scripts[\\\\/]rules"
     },
     {
       "hook": "block-destructive.ps1",
@@ -1752,6 +1752,60 @@
       "command": "rm ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/README.md",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 완료 리뷰] 백슬래시 경로의 설치본 판정 데이터 삭제도 차단 — 구분자 클래스를 슬래시만으로 적으면 이 형태를 놓친다",
+      "command": "Remove-Item C:\\Users\\x\\.claude\\plugins\\cache\\pjc-harness\\pjc\\1.265.0\\scripts\\rules\\harness-hooks.json",
+      "expect_exit": 2,
+      "expect_contains": "scripts[\\\\/]rules",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 완료 리뷰] 백슬래시 경로의 설치본 hook 스크립트 삭제도 차단",
+      "command": "del C:\\Users\\x\\.claude\\plugins\\cache\\pjc-harness\\pjc\\1.265.0\\scripts\\guard-harness.ps1",
+      "expect_exit": 2,
+      "expect_contains": ".ps1",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 완료 리뷰] 백슬래시 경로의 설치본 hooks.json 삭제도 차단",
+      "command": "rm C:\\Users\\x\\.claude\\plugins\\cache\\pjc-harness\\pjc\\1.265.0\\hooks\\hooks.json",
+      "expect_exit": 2,
+      "expect_contains": "hooks[\\\\/]hooks",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 완료 리뷰] 판정 데이터 디렉터리 삭제 차단 — 파일 하나 지우는 것과 결과가 같다",
+      "command": "Remove-Item -Recurse -Force ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/rules",
+      "expect_exit": 2,
+      "expect_contains": "rules[\\\\/]?(",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 완료 리뷰] scripts 디렉터리 삭제 차단 — hook 전부가 사라진다",
+      "command": "rm -rf ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts",
+      "expect_exit": 2,
+      "expect_contains": "scripts[\\\\/]?("
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 완료 리뷰] hooks 디렉터리 삭제 차단 — 등록표가 사라진다",
+      "command": "rm -rf ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/hooks",
+      "expect_exit": 2,
+      "expect_contains": "hooks[\\\\/]?("
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 완료 리뷰 델타 음성] 캐시 루트 전체 삭제는 통과 — install.ps1 의 재설치 경로다",
+      "command": "Remove-Item -Recurse -Force ~/.claude/plugins/cache/pjc-harness",
+      "expect_exit": 0,
+      "expect_silent": true,
+      "tool_name": "PowerShell"
     }
   ]
 }

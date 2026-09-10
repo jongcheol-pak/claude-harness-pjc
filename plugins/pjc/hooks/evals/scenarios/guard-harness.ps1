@@ -1,6 +1,9 @@
 ﻿# scenarios/guard-harness.ps1 — guard-harness 시나리오 (§2b — 설치본 hook·헬퍼 개조 차단, 개발 repo 무영향) (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
+# ⚠ 예외 — RM2·RM3(회차 53)은 guard-write·post-write-checks 케이스인데 이 파일에 있다. 셋 다 같은
+#   「규칙 json 부재」 사본 트리를 공유하고 그 트리를 만드는 비용이 케이스당 반복되기 때문이다.
+#   그래서 아래 게이트가 세 이름을 다 받는다 — `-Filter guard-write` 로도 RM2 가 돈다.
 # 같은 hook의 다른 파일: scenarios/guard-harness-installed.ps1 (설치본 캐시 경로 개조 차단 — 본체에서 비인접 블록이라 분리).
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
 # =====================================================================
@@ -8,7 +11,7 @@
 #   .claude 하위 설치본 hook 스크립트·hooks.json 개조만 차단.
 #   .claude 없는 개발 repo 소스·일반 .claude 설정은 통과(하니스 자기 개발은 plan 게이트로 관리).
 # =====================================================================
-if (Test-HookSelected @('guard-harness')) {
+if (Test-HookSelected @('guard-harness', 'guard-write', 'post-write-checks')) {
 $ph = Join-Path $work 'ph'; New-Item -ItemType Directory $ph -Force | Out-Null
 $fakeInstall = Join-Path $ph '.claude/plugins/cache/pjc-harness/pjc/1.89.0'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/block-destructive.ps1'))
@@ -114,6 +117,12 @@ Assert-Case -Name "guard-harness: 개발 repo session-end-cleanup-lib 통과 (T2
 #   이름 축의 그룹 경계는 경로 축이 상위집합이 되어 이 자리에서는 더 이상 잴 수 없다.
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/my-session-end-cleanup.ps1'))
 Assert-Case -Name "guard-harness: 유사 이름도 설치본 scripts/*.ps1 이면 경로 축이 잡는다 (회차 53 — 기대값 뒤집음)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
+# 이름 축의 그룹 경계는 `scripts/` **밖**에서만 잴 수 있다 — 경로 축이 그 안을 상위집합으로 덮기 때문이다.
+#   짝으로 둔다: 정확한 이름은 이름 축 양성, 접두어가 붙은 유사 이름은 음성(알터네이션 앞의 리터럴 '/'가 부분 매치를 막는다).
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/session-end-cleanup.ps1'))
+Assert-Case -Name "guard-harness: scripts/ 밖이어도 정확한 hook 이름은 이름 축이 잡는다 (회차 53 — 그룹 경계 양성)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/my-session-end-cleanup.ps1'))
+Assert-Case -Name "guard-harness: scripts/ 밖의 유사 이름은 미매치 통과 (회차 53 — 그룹 경계 음성 복원)" -R $r -ExpectExit 0 -ExpectNotContains '개조 시도 감지'
 # 델타 음성 ⓒ 캐시 밖 CLAUDE~1 — 이 repo 자신의 8.3명이라 오차단되면 하니스 자기 개발이 막힌다.
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/pjc/scripts/session-end-cleanup.ps1")
 Assert-Case -Name "guard-harness: 8.3 CLAUDE~1 개발 소스(캐시 밖) session-end-cleanup 통과 (T2 — 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
