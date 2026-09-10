@@ -1253,6 +1253,10 @@ _RX_BASELINE = re.compile(r"\*\*기준선 (\d+)케이스\*\*")
 # ⓒ `` `<파일>`은 N건 `` — hook-cases 만 쓰는 별도 형태(그 줄의 「기준선」은 러너 총계라
 #  파일 건수가 아니다). 그래서 ⓑ 로 재면 870 ↔ 269 로 어긋난 판정이 나온다.
 _RX_FILE_COUNT = re.compile(r"`([\w.-]+\.json)`은 (\d+)건")
+# ⓓ 절 안의 **모든** `N케이스` 표기. ⓐ 가 못 잡는 자리를 찾아내 표시를 강제하는 데 쓴다.
+_RX_CASE_COUNT = re.compile(r"\d+케이스")
+# 그 표시 문구. 이 자리는 사람이 러너 출력을 눈으로 대조하는 수밖에 없다는 선언이다.
+_UNMEASURED_MARK = "(기계 미대조)"
 # 러너 총계(hook 골든)는 내장 시나리오가 섞여 **파일을 세면 원리상 어긋난다** — 그 축은
 #  `run-hook-evals.ps1` 자신이 자기 총계를 상수와 대조한다(회차 55 T4). 여기서는 세지 않는다.
 COUNT_SKIP_BASELINE = {"hook-cases.json"}
@@ -1333,6 +1337,18 @@ def check_count_and_version(conv):
                     issues.append("계수 정합: `%s` 는 %d건인데 문서는 **기준선 %s케이스**로 적었다 "
                                   "— 케이스를 늘린 task 가 이 줄을 함께 갱신해야 한다"
                                   % (rel, actual, base.group(1)))
+        # 매니페스트에 기대지 않는 계수는 **「기계 미대조」로 표시하게 강제한다.**
+        #  `_RX_MANIFEST` 는 「케이스 정본은 `*.json`」 형식만 잡으므로, 그 형식을 못 쓰는 자리
+        #  (러너 내장 케이스·부분집합·소요 시간 근거)는 축이 원리상 못 본다. 표시를 요구하지
+        #  않으면 **그 자리가 낡아도 아무도 모른다** — 회차 56 착수 시 `test_exit_code.py` 가
+        #  실제 10 인데 문서는 6 이었고, 그 6 은 축 ⑰이 생긴 뒤에도 조용했다.
+        if _RX_CASE_COUNT.search(line) and not _RX_MANIFEST.search(line):
+            n += 1
+            if _UNMEASURED_MARK not in line:
+                issues.append("계수 정합: 매니페스트 없이 케이스 수를 적은 줄에 `%s` 표시가 없다 "
+                              "— 기계가 못 재는 수임을 명시하거나 「케이스 정본은 `<경로>`」 "
+                              "형식으로 고쳐 축에 흡수시켜라: %s"
+                              % (_UNMEASURED_MARK, line.strip()[:70]))
         for fm in _RX_FILE_COUNT.finditer(line):
             hit = next((p for p in _MANIFEST_PATHS if os.path.basename(p) == fm.group(1)), None)
             if not hit:

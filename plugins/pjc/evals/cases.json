@@ -829,6 +829,22 @@
     ]
   },
   {
+    "id": "harness-count-unmeasured-unmarked",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**4케이스(기계 미대조)**",
+        "replace": "**4케이스**"
+      }
+    ],
+    "expect_keywords": [
+      "매니페스트 없이 케이스 수를 적은 줄에 `(기계 미대조)` 표시가 없다"
+    ]
+  },
+  {
     "id": "harness-count-anchor-fail",
     "checker": "harness",
     "fixture": "minimal-repo",
