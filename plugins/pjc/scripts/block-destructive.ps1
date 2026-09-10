@@ -38,6 +38,9 @@ $findDangerRoot  = $rules.findDangerRoot
 $enumSource      = $rules.enumSource
 $delRecurseForce = $rules.delRecurseForce
 $patterns = @($rules.patterns | ForEach-Object { $_.rx -replace '\{dangerTarget\}', $dangerTarget })
+# 정규식 → why 사전. 차단 메시지는 정규식이 아니라 이 사유를 싣는다(사람도 골든도 정규식을 사유로 쓸 수 없다).
+$patternWhy = @{}
+foreach ($p in $rules.patterns) { $patternWhy[($p.rx -replace '\{dangerTarget\}', $dangerTarget)] = $p.why }
 
 # ---- 이벤트 로깅 (판정에 영향 없음 — 마지막 방어선에 결합하지 않도록 전면 격리) ----
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
@@ -214,7 +217,8 @@ foreach ($sub in $subs) {
 
     foreach ($pattern in $patterns) {
         if ($scan -match $pattern) {
-            Deny "파괴적 명령 패턴 감지: '$pattern'" "패턴: $pattern" $sub
+            $why = if ($patternWhy.ContainsKey($pattern) -and $patternWhy[$pattern]) { $patternWhy[$pattern] } else { $pattern }
+            Deny "파괴적 명령 패턴 감지 — $why" "패턴: $pattern" $sub
         }
     }
 }

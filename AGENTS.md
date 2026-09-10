@@ -66,8 +66,8 @@
   ```
   python plugins/pjc/skills/evals/check_wiki_circuit.py
   ```
-- **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugin.json` + `README.md` 상단 `**버전**:` 줄. **버전만 올리는 별도 커밋** → push → **곧바로 릴리즈 발행**(`gh release create v{버전} --target <full-sha>`). ⚠ 태그가 원격에만 생겨 `git tag -l`로는 안 보인다 — 확인은 `gh release list`(정본은 `docs/harness-conventions.md`의 「Release (배포·릴리즈 발행)」). push·릴리즈는 별도 승인.
+- **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다. **agent·skill·hook 을 신설하면 같은 task 에서 이 파일의 화이트리스트 배열도 갱신한다** — 빠지면 재설치 후 `[WARN] validate 미등록` 이 남는다.
+- **Release**: 버전 정본은 `plugin.json` + `README.md` 상단 `**버전**:` 줄. **버전만 올리는 별도 커밋** → push → **곧바로 릴리즈 발행**. ⚠ 태그가 원격에만 생겨 `git tag -l` 로는 안 보인다 — 확인은 `gh release list`. 절차 정본은 `docs/harness-conventions.md` 의 「Release (배포·릴리즈 발행)」이고 **push·릴리즈는 별도 승인**이다.
 - **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — PowerShell 도구 경로 보호가 오차단한다(회피법은 정본).
 
 ### 검증 매핑 (task 검증 선택)

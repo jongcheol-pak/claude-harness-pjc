@@ -1806,6 +1806,48 @@
       "expect_exit": 0,
       "expect_silent": true,
       "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 데이터-싱크 본문은 최상위 분할 대상이 아니다 (오차단 음성)",
+      "command": "cat <<'EOF' > notes.md\nhello; cp notes.md plan.md\nEOF",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 밖의 plan.md 쓰기는 그대로 차단 (양성 대조)",
+      "command": "cat <<'EOF' > notes.md\nhello\nEOF\ncp notes.md plan.md",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "실행자로 가는 heredoc 본문은 보존한다 (미탐 방지)",
+      "command": "bash <<'EOF'\nsed -i 's/a/b/' plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "차단 사유는 why 를 싣는다 (정규식 원문 금지)",
+      "command": "psql -c \"TRUNCATE users;\"",
+      "expect_exit": 2,
+      "expect_contains": "테이블 전체 비우기"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "TRUNCATE + 한글 라벨은 문서 문면이라 통과 (오탐 음성)",
+      "command": "python -c \"\nprint('TRUNCATE 행:', 1)\n\"",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "TRUNCATE <table> 생략형은 그대로 차단 (양성 대조)",
+      "command": "psql -c \"TRUNCATE public.users\"",
+      "expect_exit": 2,
+      "expect_contains": "TABLE 키워드 생략형"
     }
   ]
 }

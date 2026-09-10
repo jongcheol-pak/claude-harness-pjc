@@ -59,8 +59,8 @@
       "why": "테이블 전체 비우기"
     },
     {
-      "rx": "TRUNCATE\\s+(?!TABLE\\b)(?!-)",
-      "why": "TRUNCATE <table> (TABLE 키워드 생략형). (?!-)로 coreutils"
+      "rx": "TRUNCATE\\s+(?!TABLE\\b)(?!-)(?:(?:`|\"|\\[)?[A-Za-z_][A-Za-z0-9_$]*(?:`|\"|\\])?\\.)?(?:`|\"|\\[)?[A-Za-z_][A-Za-z0-9_$]*(?:`|\"|\\])?\\s*(?:;|$|\\s)",
+      "why": "TRUNCATE <table> (TABLE 키워드 생략형) — 뒤에 SQL 식별자가 와야 한다(가운뎃점·한글·마크다운 구분자는 문서 문면이라 통과). (?!-)로 coreutils"
     },
     {
       "rx": "DELETE\\s+FROM\\s+[^\\s;]+\\s*;",

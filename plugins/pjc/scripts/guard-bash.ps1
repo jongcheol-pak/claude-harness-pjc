@@ -1,10 +1,22 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md`의 「§1 guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행」
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md`의 「§1 검사 6종을 한 프로세스에서 수행하는 이유」
 
 # 아래 검사 함수 6종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
 # 결과 객체 생성기 New-HookResult 는 아래 dot-source 대상(guard-commit-secrets.ps1)에 있다 —
 #   그쪽이 이 함수를 쓰므로 정의를 그 파일에 두어야 단독 dot-source(골든 프로브)가 성립한다.
 
+# heredoc 데이터-싱크 본문 스트립 — 근거는 `rules/bash-guard-rationale.md`의 「§16 heredoc 본문이 분할을 깨뜨린다」
+#   `block-destructive.ps1` 의 같은 스트립을 복제 이식했다(그쪽은 최상위 인라인 코드라 「분할 헬퍼 동기」 축이 못 잰다).
+function Remove-HeredocDataSink([string]$s) {
+    if ([string]::IsNullOrEmpty($s)) { return $s }
+    $rx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
+    return [regex]::Replace($s, $rx, {
+        param($m)
+        $line = $m.Groups['line'].Value
+        $isDataSink = ($line -match '(?i)^\s*cat\b' -and $line -match '>\s*\S') -or ($line -match '(?i)^\s*tee\b')
+        if ($isDataSink) { $line } else { $m.Value }
+    })
+}
 # 최상위 구분자 분리(따옴표 인식) — 근거는 `rules/bash-guard-rationale.md`의 「§11 최상위 구분자 분리(따옴표 인식)」
 function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     $parts = New-Object System.Collections.Generic.List[string]
@@ -57,7 +69,7 @@ function Invoke-WarnGlobalFind {
 
     $hits = New-Object System.Collections.Generic.List[string]
     # 연결·파이프로 나눈다 — `cd /tmp && find / …`처럼 뒤 세그먼트에 있는 것도 잡아야 한다.
-    foreach ($seg in Split-TopLevel $cmd $script:IsPsTool) {
+    foreach ($seg in Split-TopLevel (Remove-HeredocDataSink $cmd) $script:IsPsTool) {
         $tokens = Get-EffectiveTokens $seg
         if ($tokens.Count -eq 0) { continue }
 
@@ -73,7 +85,7 @@ function Invoke-WarnGlobalFind {
         }
         if ([string]::IsNullOrWhiteSpace($start)) { continue }
 
-        # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 범위가 한정돼 통과한다. — 근거는 `rules/bash-guard-rationale.md`의 「§4 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 범위가 한정돼 통과한다.」
+        # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 범위가 한정돼 통과한다. — 근거는 `rules/bash-guard-rationale.md`의 「§4 전역 탐색 경고의 대상 범위」
         if ($start -match '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\/]?)$') { $hits.Add($start) }
     }
 
@@ -90,14 +102,14 @@ function Invoke-WarnDangerousAssignment {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # 위험값: 루트·홈 최상위·드라이브 루트. — 근거는 `rules/bash-guard-rationale.md`의 「§6 위험값: 루트·홈 최상위·드라이브 루트.」
+    # 위험값: 루트·홈 최상위·드라이브 루트. — 근거는 `rules/bash-guard-rationale.md`의 「§6 위험값의 정의」
     $dangerRx = '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\\/]?)$'
     # 삭제 계열만 본다 — chmod·chown 같은 권한 변경까지 넓히면 정상 스크립트에서 자주 발화한다.
     $deleteRx = '(?i)^(.*[\\/])?(rm|rmdir|unlink|shred|del|erase|rd|remove-item|ri)(\.exe)?$'
 
     $assigned = @{}
     $hits = New-Object System.Collections.Generic.List[string]
-    foreach ($seg in Split-TopLevel $cmd $script:IsPsTool) {
+    foreach ($seg in Split-TopLevel (Remove-HeredocDataSink $cmd) $script:IsPsTool) {
         $t = $seg.Trim()
         if ([string]::IsNullOrWhiteSpace($t)) { continue }
 
@@ -167,7 +179,7 @@ function Invoke-BlockPlanWrite {
     }
     # ⓒⓓⓔⓕ 쓰기 동사는 **세그먼트의 첫 실효 토큰일 때만** 본다 — 어디에 있든 찾으면
     #   `grep -n 'Copy-Item' plan.md` 같은 조회가 막힌다(완료 리뷰 BLOCKER).
-    foreach ($seg in Split-TopLevel $cmd $script:IsPsTool) {
+    foreach ($seg in Split-TopLevel (Remove-HeredocDataSink $cmd) $script:IsPsTool) {
         $tk = Get-EffectiveTokens $seg
         if ($tk.Count -eq 0) { continue }
         $verb = ($tk[0] -replace '^.*[\\/]', '') -replace '(?i)\.exe$', ''
@@ -202,7 +214,7 @@ function Invoke-WarnExternalOps {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게(값만 제거, 플래그 토큰 보존). — 근거는 `rules/bash-guard-rationale.md`의 「§7 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게(값만 제거, 플래그 토큰 보존).」
+    # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게(값만 제거, 플래그 토큰 보존). — 근거는 `rules/bash-guard-rationale.md`의 「§7 메시지성 값 스트립」
     $scanCmd = $cmd
     if ($scanCmd -match '(?i)(^|\s)git(\s|$)') {
         $scanCmd = $scanCmd -replace '(?i)(^|\s)(-[a-z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
@@ -221,7 +233,7 @@ function Invoke-WarnExternalOps {
 
     # 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게).
     #   넘기는 것은 `$cmd` 가 아니라 `$scanCmd` 다(근거는 위 §7 인용의 문단 끝).
-    $segments = Split-TopLevel $scanCmd $script:IsPsTool
+    $segments = Split-TopLevel (Remove-HeredocDataSink $scanCmd) $script:IsPsTool
     $hits = New-Object System.Collections.Generic.List[string]
     $hitsLocal = New-Object System.Collections.Generic.List[string]
     foreach ($seg in $segments) {
@@ -266,8 +278,7 @@ function Invoke-RequireTaskCheckbox {
 
     if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
 
-    # 완료 커밋 판정: 커밋 메시지 '제목(첫 줄)'이 `{유형}: T<N> — …`(글로벌 「Git」 다섯 유형 · 회차 44 정본) 또는 구형 `T<N>: …` 일 때만
-    #   (본문·괄호 언급 오탐 방지). 종전 정규식은 구형만 받아 최근 40커밋(전부 신형)에서 한 번도 발화하지 않았다 — 게이트가 사문화돼 있었다.
+    # 완료 커밋 제목 판정 — 근거는 `rules/bash-guard-rationale.md`의 「§14 완료 커밋 제목 판정」
     $msgMatch = [regex]::Match($cmd, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
     if (-not $msgMatch.Success) { return New-HookResult }
     $msgVal = if ($msgMatch.Groups[1].Success) { $msgMatch.Groups[1].Value }
@@ -275,7 +286,7 @@ function Invoke-RequireTaskCheckbox {
               else { $msgMatch.Groups[3].Value }
     $msgLines = @($msgVal -split '\r?\n')
     $msgTitle = $msgLines[0]
-    # `-m "$(cat <<'EOF' … EOF)"` 형태는 첫 줄이 heredoc 여는 줄이라 제목이 아니다 — 그 다음 줄이 제목이다(회차 44 실측 미탐).
+    # heredoc 여는 줄은 제목이 아니다 — 근거는 「§14 완료 커밋 제목 판정」
     if ($msgTitle -match '^\s*\$\(\s*cat\s+<<-?\s*["'']?\w+["'']?\s*$' -and $msgLines.Count -gt 1) { $msgTitle = $msgLines[1] }
     $m = [regex]::Match($msgTitle, '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T(\d+)\s*(?::|—|-)')
     if (-not $m.Success) { return New-HookResult }
@@ -301,8 +312,7 @@ function Invoke-RequireTaskCheckbox {
     }
     if ([string]::IsNullOrWhiteSpace($planText)) { return New-HookResult }
 
-    # 미완료 마커 [ ]/[/] + 해당 task 번호. 불릿은 '-'·'*' 둘 다. 템플릿 정본의 하위 항목 `- [ ] **T<N>-<M>**`(볼드)도 받는다 —
-    #   T<N> 완료 커밋의 대상은 T<N>-1…T<N>-k 전부라 하나라도 미완료면 차단한다(회차 44 D2). 'T$taskNum(-\d+)?\b'라 T1이 T10 오매치 안 함.
+    # 미완료 마커 매칭 — 근거는 `rules/bash-guard-rationale.md`의 「§15 미완료 마커 매칭」
     $unchecked = [regex]::Match($planText, "(?m)^\s*[-*]\s*\[[ /]\]\s*\**T$taskNum(-\d+)?\b")
     if (-not $unchecked.Success) { return New-HookResult }
 

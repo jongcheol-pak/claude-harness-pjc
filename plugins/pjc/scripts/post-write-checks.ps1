@@ -77,8 +77,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
     $allMsgs.Add("  설치본 hook 경로를 단축명으로 숨긴 개조 시도일 수 있습니다 — 의도된 것인지 확인하세요.")
     $allMsgs.Add("")
 } elseif ($normFileH2 -match '/\.claude/settings\.json$') {
-    # M2: 홈·프로젝트 .claude/settings.json의 enabledPlugins는 하니스 전체를 끌 수 있다(hook보다 상위 무력화면).
-    #   settings.local.json은 $ 앵커 정확 매칭이라 여기 걸리지 않는다.
+    # M2 — 근거는 `rules/post-write-rationale.md`의 「§21 settings.json 감지」
     $allMsgs.Add("[HARNESS] .claude/settings.json 변경 감지: $file")
     $allMsgs.Add("  enabledPlugins로 하니스 전체를 끄는 변경일 수 있습니다 — 의도된 설정 변경인지 확인하세요.")
     $allMsgs.Add("")
@@ -244,24 +243,21 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                         $impactWarnings = New-Object System.Collections.Generic.List[string]
                         $normalizedFile = $file -replace '\\', '/'
 
-                        # 모든 변경 심볼을 한 번의 git grep으로 검색 (심볼당 git 프로세스를 N번 띄우지 않고 1번으로 통합).
-                        # 결과는 아래서 심볼별로 재귀속한다 — 출력(심볼별 caller 목록)은 분리 hook 때와 동일하다.
+                        # 배치 grep — 근거는 `rules/post-write-rationale.md`의 「§20 caller 배치 검색」
                         $symAlt = ($symbols | ForEach-Object { [regex]::Escape($_) }) -join '|'
                         $grepOut = & git grep -n --untracked -E "\b($symAlt)\b" 2>$null
 
                         foreach ($sym in $symbols) {
-                            # 배치 grep 결과에서 이 심볼에 해당하는 caller만 추림
                             $callers = @()
                             foreach ($g in $grepOut) {
                                 if ($g -match '^([^:]+):(\d+):(.*)$') {
-                                    # -match 가 $matches 를 덮어쓰므로 그룹을 먼저 지역 변수로 보관
+                                    # $matches 덮어쓰기 방지 — 그룹을 먼저 보관
                                     $callerFileRaw = $matches[1]
                                     $callerLine = $matches[2]
                                     $callerContent = $matches[3]
 
                                     $callerFile = $callerFileRaw -replace '\\', '/'
-                                    # git grep 경로는 cwd 상대라 절대경로($normalizedFile)와 그대로 비교되지 않음 —
-                                    # 절대경로로 정규화해 비교해야 "자기 파일을 자기 caller로 오탐"하지 않는다.
+                                    # 경로 정규화 — 근거는 「§20 caller 배치 검색」
                                     $callerAbs = if ([System.IO.Path]::IsPathRooted($callerFileRaw)) { $callerFile }
                                                  else { (Join-Path (Get-Location).Path $callerFileRaw) -replace '\\', '/' }
                                     if ($callerAbs -ieq $normalizedFile) { continue }
@@ -270,7 +266,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                                     $callerExt = [System.IO.Path]::GetExtension($callerFile).ToLower()
                                     if ($codeExtsImpact -notcontains $callerExt) { continue }
 
-                                    # 배치 grep이라 한 라인이 여러 심볼을 매치할 수 있으므로, 이 라인이 현재 심볼을 포함할 때만 귀속
+                                    # 라인이 현재 심볼을 포함할 때만 귀속(「§20」)
                                     if ($callerContent -notmatch "\b$sym\b") { continue }
 
                                     $callers += "${callerFileRaw}:${callerLine}"
@@ -280,8 +276,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             if ($callers.Count -gt 0) {
                                 # 세션·파일·심볼당 1회 — 근거는 `rules/post-write-rationale.md`의 「§13 세션·파일·심볼당 1회」
                                 if (-not (Test-WarnOnce ('impact|' + $normalizedFile + '|' + $sym))) { continue }
-                                # 매치 상한 (v1.98.0): 참조 30건 초과는 흔한 이름/광범위 심볼 — caller 나열이
-                                #   무관 파일 다독을 유도하므로 나열 대신 요약 1줄만 남긴다.
+                                # 매치 상한 30 — 근거는 「§20 caller 배치 검색」
                                 if ($callers.Count -gt 30) {
                                     $impactWarnings.Add("심볼 '$sym' 참조 $($callers.Count)건 (>30) — 흔한 이름이거나 광범위 심볼로 판단해 caller 나열을 생략합니다. 시그니처·계약을 바꿨다면 직접 grep으로 확인하세요.")
                                     continue
@@ -319,10 +314,7 @@ try {
     #   관측된 사고도 .md 였다. 넓히면 다른 레포 픽스처(.cs 등)까지 오탐한다(§15).
     if ($file -match '(?i)\.(md|ps1|py|json|psm1|psd1)$' -and
         $file -notmatch '(?i)[\\/]llm-wiki[\\/]evals[\\/]fixtures[\\/]') {
-        # gitignore 가 아니면 대상이다 — 「줄바꿈 정합」 축과 같은 집합을 본다(§15).
-        #   추적 여부로 거르면 **새로 만든 파일이 통째로 빠져** 이 경고가 노리는 사고 형태
-        #   (Write 로 만든 신규 intent/*.md)에 발화하지 않는다.
-        #   exit 1 만 「repo 안이고 ignore 아님」이다 — 0 은 ignore, 128 은 repo 밖이라 둘 다 대상이 아니다.
+        # gitignore 가 아니면 대상 — exit 1 만 「repo 안이고 ignore 아님」이다(§15)
         $null = & git check-ignore -q -- $file 2>$null
         $notIgnored = ($LASTEXITCODE -eq 1)
         # 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다 — CRLF 를 규약으로 단정하면

@@ -95,7 +95,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 70,089 | 137,000 |
+| `docs/harness-conventions.md` | 70,366 | 137,000 |
 | `docs/golden-runner.md` | 16,671 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 19,565 | 37,000 |
 
@@ -314,7 +314,7 @@ plan **존재** 게이트에만 있는 경로다. plan **작성** 게이트(plan
 │   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
 │   ├── hooks/hooks.json             # PreToolUse/PostToolUse/Stop/SessionStart/SessionEnd 배선
 │   ├── skills/llm-wiki/scripts/lint.py  # 검사 + `--fix`(안전 3종) + `--build-index`(index.md 생성 구역 파생 · sub-index 생성) / migrate-index-labels.py  # index 라벨 역이관(1회성, 기본 dry-run)
-│   ├── scripts/*.ps1                # hook 구현 9 + dot-source 헬퍼 8. 진입점: block-destructive(Bash 파괴적 명령 — 독립 실행, 끌 수 없음) · guard-bash(외부작업·커밋 시크릿·task 체크박스·전역 탐색·위험값 대입을 한 프로세스에서) · guard-write(plan 게이트) · guard-harness(자기보호 + AGENTS.md 내용 경계) · post-write-checks(인코딩·민감정보) · suggest-agents-record(기록 제안) · session-context(SessionStart 주입) · warn-version-drift(버전 드리프트) · session-end-cleanup(SessionEnd 회수). 헬퍼: guard-commit-secrets · secret-patterns · write-gate-trivial · write-gate-exempt · session-wiki-signals · session-ledger-signal · session-end-cleanup-lib · hook-event-log. 판정 데이터·근거는 scripts/rules/(destructive.json · harness-hooks.json · write-gate.json · external-ops.json + *-rationale.md)가 정본이다.
+│   ├── scripts/*.ps1                # hook 구현 9 + dot-source 헬퍼 8. 진입점: block-destructive(Bash 파괴적 명령 — 독립 실행, 끌 수 없음) · guard-bash(외부작업·커밋 시크릿·task 체크박스·전역 탐색·위험값 대입을 한 프로세스에서) · guard-write(plan 게이트) · guard-harness(자기보호 + AGENTS.md 내용 경계) · post-write-checks(인코딩·민감정보) · suggest-agents-record(기록 제안) · session-context(SessionStart 주입) · warn-version-drift(버전 드리프트) · session-end-cleanup(SessionEnd 회수). 헬퍼: guard-commit-secrets · secret-patterns · write-gate-trivial · write-gate-exempt · session-wiki-signals · session-ledger-signal · session-end-cleanup-lib · hook-event-log. 판정 데이터·근거는 scripts/rules/ 가 정본이다 — 데이터 4(destructive.json · harness-hooks.json · write-gate.json · external-ops.json) + 근거 19(`*-rationale.md`). **근거 문서는 20,000 B 를 넘으면 주제로 쪼갠다**(`skills/BUDGET.md` 처방 ②) — `destructive-rationale-targets.md` · `session-context-rationale-plan.md` · `session-context-rationale-wiki.md` 가 그렇게 갈라져 나왔다.
 │   ├── agents/*.md                  # reviewer subagent 정의
 │   └── skills/*/SKILL.md            # plan·implement 등 (+ references/)
 ├── docs/
