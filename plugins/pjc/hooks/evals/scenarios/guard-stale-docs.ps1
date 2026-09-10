@@ -49,11 +49,11 @@ try {
     #      이 케이스가 없으면 층 1 코드를 통째로 지워도 이 시나리오가 green 이다.
     New-Item -ItemType Directory (Join-Path $sdRoot 'plugins/pjc/evals') -Force | Out-Null
     @'
-print("[WOULD-FIX] fixture/cases.json 기준선 1 -> 2")
+print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
 '@ | Set-Content (Join-Path $sdRoot 'plugins/pjc/evals/check-harness-consistency.py')
     Push-Location $sdRoot
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
-    Assert-Case -Name 'stale-docs: 층1 계수 불일치 고지' -R $r -ExpectExit 0 -ExpectContains '기준선 1 -> 2'
+    Assert-Case -Name 'stale-docs: 층1 계수 불일치 고지' -R $r -ExpectExit 0 -ExpectContains 'baseline 1 -> 2'
 
     # 3-c) **층 2 양성(러너 총계 갈림)** — 러너 상수와 문서 기준선이 다르면 고지한다.
     New-Item -ItemType Directory (Join-Path $sdRoot 'plugins/pjc/hooks/evals') -Force | Out-Null
