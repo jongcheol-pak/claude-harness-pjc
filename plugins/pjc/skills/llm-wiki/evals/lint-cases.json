@@ -1453,11 +1453,12 @@
       "expect_keywords": [
         "산문 분리 — 20_projects/personal/demo/feat-thing.md",
         "롤오버 — log.md: 90_archive/log/2026-06.md",
+        "index 분할 — index.md: index-personal.md",
         "재점검"
       ],
       "expect_file_count": {
         "log.md": {
-          "[SCHEMA]": 2
+          "[SCHEMA]": 3
         }
       },
       "expect_file_contains": {

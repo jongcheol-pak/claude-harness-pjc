@@ -745,6 +745,23 @@ def display_label(fm, text, fallback_field):
     return (fb or "(라벨 미정)"), True
 
 
+def display_labels(fm, text, fallback_field):
+    """표시 라벨 **목록** -> (라벨 리스트, 미역이관 여부).
+
+    `index_label`이 `[A, B]`처럼 **대괄호 리스트**면 라벨마다 한 행을 낸다 — 한 feature
+    페이지를 두 기능으로 등재하던 형상이 실 vault에 있었는데(`maid/feat-app-shell.md` —
+    「앱 껍데기」·「정보 창」) 생성기가 `index_label` 하나만 읽어 **2행이 1행으로 줄었다**.
+    대괄호가 없으면 통짜로 둔다 — 라벨 본문에 든 콤마를 구분자로 오인해 쪼개지 않기 위해서다.
+    """
+    raw = fm.get("index_label", "").strip()
+    if raw.startswith("[") and raw.endswith("]"):
+        lbls = _fm_list(fm, "index_label")
+        if lbls:
+            return lbls, False
+    lbl, todo = display_label(fm, text, fallback_field)
+    return [lbl], todo
+
+
 def _rows_projects(pages, category):
     rows, pend = [], []
     for r in sorted(pages):
@@ -770,11 +787,12 @@ def _rows_features(pages, category):
         fm, text = pages[r]
         if fm.get("type") != "feature" or fm.get("category") != category:
             continue
-        lbl, todo = display_label(fm, text, "feature_name")
+        lbls, todo = display_labels(fm, text, "feature_name")
         if todo:
             pend.append(r)
-        rows.append("| %s | %s | %s | [[%s\\|feature]] |"
-                    % (lbl, fm.get("platform", "-"), fm.get("project", "-"), r[:-3]))
+        for lbl in lbls:
+            rows.append("| %s | %s | %s | [[%s\\|feature]] |"
+                        % (lbl, fm.get("platform", "-"), fm.get("project", "-"), r[:-3]))
     return rows, pend
 
 def _rows_guides(pages):
@@ -796,12 +814,13 @@ def _rows_guides(pages):
         fm, text = pages[r]
         if fm.get("type") != "guide":
             continue
-        lbl, todo = display_label(fm, text, None)
+        lbls, todo = display_labels(fm, text, None)
         if todo:
             pend.append(r)
-        rows.append("| %s | %s | %s | [[%s\\|%s]] |"
-                    % (lbl, fm.get("guide_kind", "-"), fm.get("platform", "-"),
-                       r[:-3], fm.get("guide_kind", "guide")))
+        for lbl in lbls:
+            rows.append("| %s | %s | %s | [[%s\\|%s]] |"
+                        % (lbl, fm.get("guide_kind", "-"), fm.get("platform", "-"),
+                           r[:-3], fm.get("guide_kind", "guide")))
     return rows, pend
 
 
@@ -935,7 +954,7 @@ AUX_INDEX_GROUPS = [
 AUX_INDEX_META = {k: (n, t) for k, n, t in AUX_INDEX_GROUPS}
 
 
-def build_index(vault, dry_run):
+def build_index(vault, dry_run, report=None):
     """`index.md`의 생성 마커 사이를 frontmatter에서 파생한 6섹션으로 채우고, category별
     sub-index를 함께 생성한다. 마커 밖은 한 글자도 바꾸지 않는다.
     본체가 `INDEX_BODY_LINES`를 지나면 비분할 구역을 큰 것부터 덜어낸다(§4 1단계).
@@ -1102,6 +1121,9 @@ def build_index(vault, dry_run):
     #  한꺼번에 os.replace로 치환한다. (치환 자체는 파일 단위 원자성이라 다중 파일 전체를
     #  보장하지는 않지만, 실패가 몰리는 지점인 '쓰기'를 치환 앞으로 모아 창을 최소화한다.)
     staged = []
+    # **신설**은 「없던 파일이 생긴 것」이다 — sub-index 는 매 실행 다시 쓰이므로 갱신과
+    #  신설을 가르지 않으면 --auto-split 의 §4 7번 기록이 매번 전건을 신설로 적는다.
+    created_now = []
     try:
         for path, content in [(idx_path, new)] + [
                 (os.path.join(vault, name + ".md"), _sub_index_text(name, lines))
@@ -1109,6 +1131,8 @@ def build_index(vault, dry_run):
                 (os.path.join(vault, name + ".md"), _aux_index_text(name, title, lines))
                 for name, (title, lines) in sorted(aux_files.items())]:
             tmp = path + ".tmp-build-index"
+            if path != idx_path and not os.path.exists(path):
+                created_now.append(os.path.basename(path))
             # 신설 sub-index·aux 도 index.md 의 형상을 따른다 — 한 vault 안에서 파일마다
             #  줄바꿈이 갈리면 그 뒤의 모든 편집이 혼재를 퍼뜨린다.
             data = content.replace("\n", idx_nl).encode("utf-8")
@@ -1138,6 +1162,11 @@ def build_index(vault, dry_run):
             print("  [정리 실패] %s (%s)" % (os.path.basename(p), type(e).__name__))
     print("index.md 생성 구역 갱신 · sub-index %d개 생성" % (len(sub_files) + len(aux_files))
           + (" · stale %d개 제거(%s)" % (len(removed), "·".join(removed)) if removed else ""))
+    if report is not None:
+        # 호출측(--auto-split)이 §4 7번 기록에 합류시킨다 — 파일은 만들어졌는데 기록이 없으면
+        #  §4 5번 원복이 그 파일을 되돌릴 대상에서 통째로 빠뜨린다.
+        report["created"] = created_now
+        report["removed"] = removed
     return 0
 
 
@@ -1184,7 +1213,7 @@ class SplitSession:
         self.notes = []        # 건너뛴 사유 등 보고용 1줄들
         self.failed = False
 
-    def backup(self, *paths):
+    def backup(self, *paths, require_claim=True):
         """착수 직전 사본(§4 절차 1번·§8 `-presplit`). 실패하면 처방을 시작하지 않는다 —
         사본 없는 분할은 원복 수단이 없다. 같은 세션 2회째는 재복사하지 않는다(§8: 그 세션
         최초 상태 1부만 보존 — 재복사하면 이미 분할한 중간 상태가 원본 자리를 덮는다)."""
@@ -1192,7 +1221,7 @@ class SplitSession:
         #  바로 쓰기로 들어가면 겹침 방지·원복 범위 보장이 조용히 무너지므로, 여기서 대신
         #  claim해 보고 **다른 처방이 이미 맡았으면 예외**로 즉시 드러낸다(격리 루프가 잡아
         #  `[SPLIT-FAIL]`로 보고한다). docstring 규율만으로는 위반이 침묵한다.
-        unclaimed = [p for p in paths if p not in self.current_claims]
+        unclaimed = [p for p in paths if p not in self.current_claims] if require_claim else []
         if unclaimed and not self.claim(*unclaimed):
             raise RuntimeError(
                 "claim 없이 백업 시도 — 다른 처방이 맡은 파일: "
@@ -1868,6 +1897,21 @@ def _next_sub_index(vault, rel):
     return n + 1
 
 
+def _label_with_section(base, title):
+    """`{base} — {title}` 라벨 조립. **접미가 이미 그 제목이면 반복 대신 순번**을 붙인다.
+
+    하위가 다시 분할될 때 그 하위의 최대 절이 원본과 같은 이름이면(하위 본문의 절 제목을
+    그대로 물려받기 때문에 실제로 일어난다) 반복 조립이 `A — T — T`를 만든다. 라벨은 조회가
+    같은 문서를 가리키는 키라, 포인터 쪽과 대상 frontmatter 가 갈리면 조회가 한 문서를 둘로
+    읽는다(실 vault 실측 1건 — 사람이 ` (2)`로 손보아 두 표기가 어긋나 있었다). 그 손보정을
+    생성 규칙으로 올린다."""
+    stem = re.sub(r" \((\d+)\)$", "", base)
+    if stem == title or stem.endswith(" — " + title):
+        m = re.search(r" \((\d+)\)$", base)
+        return "%s (%d)" % (stem, int(m.group(1)) + 1 if m else 2)
+    return base + " — " + title
+
+
 def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
     """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다(D1 ⓓ).
 
@@ -1881,10 +1925,10 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
         if k == "index_label":
             continue
         head += "%s: %s\n" % (k, v)
-    head += "index_label: %s — %s\n---\n\n" % (fm.get("index_label", label), title)
+    head += "index_label: %s\n---\n\n" % _label_with_section(fm.get("index_label", label), title)
     h1 = re.search(r"(?m)^#[ \t]+(.+)$", text)
     back = "> 상위 문서: [[%s|%s]]\n\n" % (rel[:-len(".md")], label)
-    out = head + "# %s — %s\n\n" % (h1.group(1).strip() if h1 else label, title) + back
+    out = head + "# %s\n\n" % _label_with_section(h1.group(1).strip() if h1 else label, title) + back
 
     # 각주 정의는 **원본에 남기고 하위에도 복제**한다(D2) — 각주는 파일 로컬이라 본문만
     #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본의 `[^src-` 가 0이 되어
@@ -2224,6 +2268,11 @@ def auto_split(vault, dry_run):
     #  부재가 아니다(재점검 뒤에는 점검이 없으므로 기록이 다음 회를 부르지 않는다).
     #  종전 규정은 그 목적에 수단을 하나 더 얹었고, 대가가 **파일은 만들어졌는데 log에
     #  기록이 없는** 상태였다(v1.238.3 개정 -- §4 7번이 정본).
+    # **기록보다 사본이 먼저다.** 종전에는 log.md 사본이 1회차 `[SCHEMA]` append 뒤에 떠서
+    #  (재점검 롤오버가 그때 처음 백업했다) 사본에 그 기록이 이미 들어 있었다 — §4 5번대로
+    #  원복하면 **되돌려진 분할의 기록만 남은** log.md 가 된다(실측 1건). 이 쓰기는 처방이
+    #  아니라 세션이 직접 하는 것이라 맡을 처방이 없어 claim 을 면제한다.
+    ses.backup(os.path.join(vault, "log.md"), require_claim=False)
     written, log_err = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
     if log_err:
         # 기록 실패는 파일을 이미 다 쓴 뒤라 원복 대상이 아니지만, 종료 코드로는 알린다 —
@@ -2253,10 +2302,11 @@ def auto_split(vault, dry_run):
                 ses.notes.append(recheck_err)
                 ses.failed = True
             # **어느 줄이 재점검 몫인지 지목한다** — 「위 N건」은 목록이 여러 줄일 때 무엇을
-            #  가리키는지 갈린다(§4 7번 log 기록이 나중에 읽히는 자리다). 재점검분은 목록의
-            #  끝에 붙으므로 그 대상 이름을 그대로 적는다.
+            #  가리키는지 갈린다(§4 7번 log 기록이 나중에 읽히는 자리다). **위치로 지목하지
+            #  않는다** — 재점검분 뒤에 index 분할이 합류할 수 있어 「마지막 N건」이 그쪽을
+            #  가리키게 된다. 대상 이름만으로 지목하면 순서가 바뀌어도 어긋나지 않는다.
             ses.notes.append(
-                "위 목록의 마지막 %d건(%s)은 log 기록 후 재점검이 수행했다"
+                "위 목록 중 %d건(%s)은 log 기록 후 재점검이 수행했다"
                 "(§8 트리거 점검 — 재점검은 1회 고정이라 여기서 연쇄가 끊긴다)"
                 % (len(recheck.actions),
                    "·".join(f"{k} — {t}" for k, t, _c in recheck.actions)))
@@ -2264,8 +2314,20 @@ def auto_split(vault, dry_run):
     # 신설 하위를 인덱스에 등재한다 -- 이 연쇄가 없으면 분할 직후 §7-6·§7-30ⓒ가 미등록을
     #  경고하고 조회 경로가 끊긴다. 생성 마커가 없는 vault에서는 build_index가 아무것도 쓰지
     #  않고 1을 돌려주므로 **실패로 보지 않고** 등록이 수기 몫임을 알린다(§4 절차 4번).
-    if build_index(vault, False) != 0:
+    idx_report = {}
+    if build_index(vault, False, idx_report) != 0:
         ses.notes.append("생성 마커 없음 — 인덱스 등록은 수기 몫(§4 절차 4번)")
+    elif idx_report.get("created"):
+        # **index 계열 신설도 §4 7번 기록의 대상이다.** 종전에는 이 연쇄가 만든 파일이
+        #  `ses.actions` 밖이라 수행 목록에도 `[SCHEMA]` 기록에도 오르지 않았다(실측: 파일 3
+        #  생성 / 기록 2). §4 6번 사후 보고와 5번 원복이 둘 다 「무엇이 만들어졌는가」에
+        #  기대므로, 기록에서 빠진 파일은 되돌릴 대상에서도 빠진다.
+        idx_act = ("index 분할", "index.md", idx_report["created"])
+        ses.actions.append(idx_act)
+        _idx_written, idx_err = _append_log_entries(vault, [ses.log_line(*idx_act)])
+        if idx_err:
+            ses.notes.append(idx_err)
+            ses.failed = True
 
     print(f"== --auto-split: {len(ses.actions)}건 수행 ==")
     for kind, target, created in ses.actions:
