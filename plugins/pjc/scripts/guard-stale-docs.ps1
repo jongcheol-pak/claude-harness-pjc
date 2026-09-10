@@ -94,6 +94,19 @@ function Invoke-WarnStaleDocs {
         $lines.Add('[낡음] ' + ($m -replace '^\[WOULD-FIX\]\s*', '') + ' — `check-harness-consistency.py --fix` 로 갱신하세요')
     }
 
+    # --- 층 2: 러너 총계 기준선 ---
+    # 러너 자신도 실행 끝에 이것을 대조하지만(T4), **러너를 돌리지 않은 회차**에는 그 경고가
+    #   뜨지 않는다. 커밋 직전은 그 자리다 — 문서와 러너 상수가 갈린 채 커밋되는 것을 잡는다.
+    $runner = Join-Path $root 'plugins/pjc/hooks/evals/run-hook-evals.ps1'
+    $conv = Join-Path $root 'docs/harness-conventions.md'
+    if ((Test-Path -LiteralPath $runner) -and (Test-Path -LiteralPath $conv)) {
+        $rs = Select-String -LiteralPath $runner -Pattern '\$GoldenTotalBaseline\s*=\s*(\d+)' | Select-Object -First 1
+        $cs = Select-String -LiteralPath $conv -Pattern '\*\*기준선 (\d+)케이스\*\*' | Select-Object -First 1
+        if ($rs -and $cs -and $rs.Matches[0].Groups[1].Value -ne $cs.Matches[0].Groups[1].Value) {
+            $lines.Add("[낡음] hook 골든 총계가 갈립니다 — 러너 상수 $($rs.Matches[0].Groups[1].Value) ↔ 문서 $($cs.Matches[0].Groups[1].Value). 이 수는 기계로 세어지지 않아 둘을 손으로 맞춰야 합니다")
+        }
+    }
+
     # --- 층 2: 위키 격차 ---
     $vault = $env:CLAUDE_WIKI_VAULT
     if ($vault) {

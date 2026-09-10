@@ -3,10 +3,10 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 검사 6종을 한 프로세스에서 수행하는 이유
+## §1 검사 7종을 한 프로세스에서 수행하는 이유
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 7종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `plugins/pjc/skills/DESIGN.md`의 hook 담당 조항 표):
 #   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신.
@@ -24,7 +24,7 @@
 #   미수행된다(fail-open). 아래 로드 가드가 그 상태를 stderr로 가시화한다.
 ```
 
-## §2 검사 6종을 한 프로세스에 담는 구조
+## §2 검사 7종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
@@ -33,7 +33,7 @@ dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래)
 
 현행 구조:
 
-- **검사 6종 중 5종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+- **검사 7종 중 5종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
   `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
   **`Invoke-WarnCommitSecrets` 하나만 `guard-commit-secrets.ps1` 에 있고 dot-source 한다** —
   그 파일이 커밋 시점 검사 전체(스캔 캡·우회 변수·시크릿 패턴 연동)를 담아 크기가 따로 놀고,

@@ -386,4 +386,21 @@ if ($deadGroups.Count) {
     $deadSuffix = ' — ⚠ 그룹 {0}개 미완주, 분모는 실행분 기준(전체 아님)' -f $deadGroups.Count
 }
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
+
+# ---- 총계 기준선 대조 (회차 55 T4) ----
+# 이 수는 **기계로 세어지지 않는다** — `hook-cases.json` 은 선언형 케이스만 담고 나머지는
+#   러너 내장 시나리오라, 파일 하나를 세면 어긋난다. 그래서 축 ⑰(계수·버전 정합)이 이
+#   매니페스트의 기준선 줄을 건너뛰고(`COUNT_SKIP_BASELINE`), 대신 러너가 자기 총계를 여기서
+#   상수와 대조한다. 선례는 llm-wiki `check_consistency.py` 의 `TRIGGER_ALLOWLIST_BASELINE`.
+# **경고이지 게이트가 아니다** — 판정은 FAIL 수가 하고, 이 줄은 문서가 낡았음을 알린다.
+$GoldenTotalBaseline = 888
+if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
+    Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
+    # 합산 규칙을 함께 싣는다 — 이것이 없으면 어긋났을 때 「케이스가 빠졌나 / 세는 법이
+    #   달라졌나」를 사람이 매번 가려야 한다. `guard-bash.ps1` 무상태 케이스는 전건 dispatch
+    #   에코를 함께 돌아 **`hook-cases.json` 의 한 줄이 2로 세는** 자리가 있다.
+    Write-Host '        합산 규칙: 선언형(hook-cases.json) + 러너 내장 시나리오. guard-bash 무상태 케이스는 dispatch 에코를 함께 돌아 1건이 2로 셉니다.'
+    Write-Host '        정당한 증감이면 이 상수와 docs/harness-conventions.md·docs/golden-runner.md 의 기준선을 함께 갱신하세요(그 diff 가 증감의 기록입니다).'
+}
+
 exit $(if ($failCount) { 1 } else { 0 })

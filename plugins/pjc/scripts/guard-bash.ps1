@@ -1,6 +1,6 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 6종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md`의 「§1 검사 6종을 한 프로세스에서 수행하는 이유」
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 7종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md`의 「§1 검사 7종을 한 프로세스에서 수행하는 이유」
 
-# 아래 검사 함수 6종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
+# 아래 검사 함수 7종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
 # 결과 객체 생성기 New-HookResult 는 아래 dot-source 대상(guard-commit-secrets.ps1)에 있다 —
 #   그쪽이 이 함수를 쓰므로 정의를 그 파일에 두어야 단독 dot-source(골든 프로브)가 성립한다.
@@ -395,7 +395,7 @@ function Write-DispatchEvent {
     } catch {}
 }
 
-# 검사 6종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md`의 「§2 검사 6종을 한 프로세스에 담는 구조」
+# 검사 7종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md`의 「§2 검사 7종을 한 프로세스에 담는 구조」
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md`의 「§8 순서: 원 hooks.json 순서에서 block-destructive」
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },

@@ -43,6 +43,36 @@ try {
     #    이 검사는 거기 들지 않는다. 등급이 뒤집히면 커밋이 통째로 막힌다.
     Assert-Case -Name 'stale-docs: 고지는 비차단(exit 0)' -R $r -ExpectExit 0
 
+    # 3-b) **층 1 양성** — 축 ⑰ 대역이 `[WOULD-FIX]` 를 내면 그것을 고지에 싣는다.
+    #      대역을 두는 이유: 실물 검사기를 픽스처에 복사하면 레포 전체를 요구한다. 여기서
+    #      재는 것은 **「층 1 출력을 실어 나르는가」**이지 검사기의 판정이 아니다.
+    #      이 케이스가 없으면 층 1 코드를 통째로 지워도 이 시나리오가 green 이다.
+    New-Item -ItemType Directory (Join-Path $sdRoot 'plugins/pjc/evals') -Force | Out-Null
+    @'
+print("[WOULD-FIX] fixture/cases.json 기준선 1 -> 2")
+'@ | Set-Content (Join-Path $sdRoot 'plugins/pjc/evals/check-harness-consistency.py')
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 층1 계수 불일치 고지' -R $r -ExpectExit 0 -ExpectContains '기준선 1 -> 2'
+
+    # 3-c) **층 2 양성(러너 총계 갈림)** — 러너 상수와 문서 기준선이 다르면 고지한다.
+    New-Item -ItemType Directory (Join-Path $sdRoot 'plugins/pjc/hooks/evals') -Force | Out-Null
+    '$GoldenTotalBaseline = 111' | Set-Content (Join-Path $sdRoot 'plugins/pjc/hooks/evals/run-hook-evals.ps1')
+    '**기준선 222케이스**다' | Set-Content (Join-Path $sdRoot 'docs/harness-conventions.md')
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 층2 러너 총계 갈림 고지' -R $r -ExpectExit 0 -ExpectContains '러너 상수 111 ↔ 문서 222'
+
+    # 3-d) 같은 값이면 그 줄은 안 뜬다(층 2 델타 음성).
+    '**기준선 111케이스**다' | Set-Content (Join-Path $sdRoot 'docs/harness-conventions.md')
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 층2 총계 일치 시 침묵' -R $r -ExpectExit 0 -ExpectNotContains '러너 상수'
+
+    # 층 1·2 대역을 걷어 나머지 케이스를 원래 조건으로 되돌린다.
+    Remove-Item (Join-Path $sdRoot 'plugins/pjc/evals/check-harness-consistency.py') -Force
+    Remove-Item (Join-Path $sdRoot 'plugins/pjc/hooks/evals/run-hook-evals.ps1') -Force
+
     # 4) 비커밋 Bash 호출은 무출력 — 조사만 하는 턴에 발화하면 소음이 된다.
     $sdOther = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdRoot
                   tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress
