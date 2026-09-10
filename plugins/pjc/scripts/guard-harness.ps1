@@ -38,8 +38,12 @@ $norm = '/' + ($segs -join '/')
 
 # 하니스 hook·공유 헬퍼 이름 집합 — post-write-checks.ps1 H2 의 $harnessHookName 과 동일 유지(탐지↔차단 대칭). — 근거는 `rules/harness-guard-rationale.md`의 「§2 하니스 hook·공유 헬퍼 이름 집합 — post-write-checks.ps1 H2 의 $harnessHookName 과 동일 유지(탐지↔차단 대칭).」
 try {
-    $hookNames = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/harness-hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json).names
+    # `-ErrorAction Stop` 이 없으면 이 catch 는 죽은 코드다 — 파일 전역이 'SilentlyContinue' 라
+    #   Get-Content 의 파일 부재가 non-terminating 으로 지나가고, $hookNames 가 $null 이 되어
+    #   아래 폴백 대신 **빈 문자열**이 정규식에 들어간다(회차 53 실측: 규칙 json 을 지우면 무출력 통과).
+    $hookNames = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/harness-hooks.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json).names
     $harnessHookName = ($hookNames -join '|')
+    if ([string]::IsNullOrWhiteSpace($harnessHookName)) { throw '이름 집합이 비었다' }
 } catch {
     # 이름 집합을 못 읽어도 **경로 축은 그대로 검사한다** — 이름 없이도 `hooks.json`과
     #   `scripts/rules/*.json` 개조는 판정할 수 있고, 그 둘이 꺼지면 차단이 통째로 무력화된다.

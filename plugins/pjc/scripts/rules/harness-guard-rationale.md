@@ -57,3 +57,9 @@
 #     대신 오차단 0을 택했다(이 게이트는 미탐보다 오탐이 비싸다).
 ```
 
+
+## §6 이름 집합 로드 실패
+
+**`-ErrorAction Stop` 이 없으면 그 `catch` 는 죽은 코드다.** 이 파일은 머리에서 `$ErrorActionPreference = 'SilentlyContinue'` 를 세우는데, 그 상태에서 `Get-Content` 의 파일 부재는 **non-terminating error** 라 `try/catch` 를 그냥 지나간다. 변수는 `$null` 이 되고 뒤 폴백이 조용히 걸려, **검사가 사라진 것을 아무도 모른다**(회차 53 실측 — 규칙 json 을 지우고 돌리면 stderr 한 줄 없이 통과했다). `block-destructive.ps1` 만 파일 전역이 `'Stop'` 이라 같은 파이프라인 형태로도 `catch` 가 걸린다 — 그 파일의 가시화가 실제로 동작하는 이유이고, 나머지 hook 은 **지역 `-ErrorAction Stop`** 으로 같은 상태를 만든다(전역을 바꾸면 이번에 재지 않은 경로가 함께 바뀐다).
+
+**이름 집합이 비어도 `throw` 한다** — `$hookNames` 가 `$null` 이면 `-join '|'` 이 **빈 문자열**을 내고, 그것이 `'/\.claude/.*/(' + $harnessHookName + ')\.ps1$'` 에 들어가면 **빈 대안**이 되어 정규식이 무너진다. 폴백 `'(?!)'`(절대 매치 안 함)로 가는 것이 의도이므로 그 자리에서 예외로 만든다.

@@ -121,7 +121,10 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
 # ---- 항상 허용되는 파일 타입 ----
 # 문서, 설정, plan, 이미지·리소스는 plan 없이도 작성 가능
 $wgRules = $null
-try { $wgRules = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/write-gate.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
+# `-ErrorAction Stop` 없이는 이 catch 가 안 걸린다 — 파일 전역이 'SilentlyContinue' 라 파일 부재가
+#   non-terminating 으로 지나가고, 아래 `-not $wgRules` 폴백이 **경고 없이** 게이트를 통째로 끈다.
+try { $wgRules = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/write-gate.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json }
+catch { [Console]::Error.WriteLine('guard-write: 규칙 파일을 읽지 못해 쓰기 게이트를 건너뜁니다 — rules/write-gate.json') }
 if (-not $wgRules) { exit 0 }   # 목록을 못 읽으면 판정 근거가 없다 — 차단하지 않는다(fail-open)
 $alwaysAllowedExts = @($wgRules.alwaysAllowedExts)
 

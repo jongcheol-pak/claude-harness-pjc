@@ -231,3 +231,9 @@
 
 `plan-exempt-rationale.md`의 「§23 PLAN-EXEMPT 면제 판정」으로 옮겼다 — 이 파일이 예산
 20,000 B 를 넘겨서다. 판정 근거·세부·막지 못하는 것이 전부 그쪽에 있다.
+
+## §24 규칙 파일 로드 실패
+
+**`-ErrorAction Stop` 이 없으면 그 `catch` 는 죽은 코드다.** 이 파일은 머리에서 `$ErrorActionPreference = 'SilentlyContinue'` 를 세우는데, 그 상태에서 `Get-Content` 의 파일 부재는 **non-terminating error** 라 `try/catch` 를 그냥 지나간다. 변수는 `$null` 이 되고 뒤 폴백이 조용히 걸려, **검사가 사라진 것을 아무도 모른다**(회차 53 실측 — 규칙 json 을 지우고 돌리면 stderr 한 줄 없이 통과했다). `block-destructive.ps1` 만 파일 전역이 `'Stop'` 이라 같은 파이프라인 형태로도 `catch` 가 걸린다 — 그 파일의 가시화가 실제로 동작하는 이유이고, 나머지 hook 은 **지역 `-ErrorAction Stop`** 으로 같은 상태를 만든다(전역을 바꾸면 이번에 재지 않은 경로가 함께 바뀐다).
+
+**게이트는 종전대로 `exit 0` 으로 빠진다** — 목록을 못 읽으면 판정 근거가 없어 차단할 수 없다(fail-open). 바뀐 것은 **그 사실이 화면에 보인다**는 것뿐이다.

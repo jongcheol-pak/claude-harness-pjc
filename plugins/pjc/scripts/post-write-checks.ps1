@@ -51,9 +51,11 @@ $normFileH2 = $file -replace '\\', '/'
 # 이름 집합은 `rules/harness-hooks.json`이 단일 정본이다 — 탐지(이 파일)와 차단(guard-harness)이
 #   같은 값을 써야 대칭이 성립하는데, 복제하면 hook 신설 시 한쪽만 갱신돼 그 이름이 무방비가 된다.
 $harnessHookName = ''
+# `-ErrorAction Stop` 없이는 이 catch 가 안 걸린다(파일 전역이 'SilentlyContinue') — 아래 폴백이
+#   경고 없이 H2 를 끄므로, 탐지가 사라진 것을 아무도 모른다(회차 53 실측).
 try {
-    $harnessHookName = ((Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/harness-hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json).names -join '|')
-} catch {}
+    $harnessHookName = ((Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/harness-hooks.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json).names -join '|')
+} catch { [Console]::Error.WriteLine('post-write-checks: 규칙 파일을 읽지 못해 하니스 hook 개조 탐지를 건너뜁니다 — rules/harness-hooks.json') }
 # 목록을 못 읽으면 빈 문자열이 되어 아래 정규식이 **모든 `.ps1`에 매치**한다 — 그 상태의 경고는
 #   전부 오탐이므로 검사를 건너뛴다(차단 hook 인 guard-harness 도 같은 상황에서 exit 0 으로 빠진다).
 if ([string]::IsNullOrWhiteSpace($harnessHookName)) { $harnessHookName = '(?!)' }
