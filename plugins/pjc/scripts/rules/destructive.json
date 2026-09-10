@@ -16,7 +16,7 @@
     },
     {
       "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\b[^|;&\\r\\n]*\\s-[a-zA-Z]*f[a-zA-Z]*(\\s|$)",
-      "why": "git push … -f 후치·결합 단문자 force(git push origin main -f · git push -uf origin main — 회차 44 실측 미탐. \\s-[a-zA-Z]*f 라 --force 계열·feature-f 같은 인자에는 안 걸린다)"
+      "why": "git push 의 후치·결합 단문자 force 플래그"
     },
     {
       "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+\\S+\\s+\\+\\S",
@@ -60,7 +60,7 @@
     },
     {
       "rx": "TRUNCATE\\s+(?!TABLE\\b)(?!-)(?:(?:`|\"|\\[)?[A-Za-z_][A-Za-z0-9_$]*(?:`|\"|\\])?\\.)?(?:`|\"|\\[)?[A-Za-z_][A-Za-z0-9_$]*(?:`|\"|\\])?\\s*(?:;|$|\\s)",
-      "why": "TRUNCATE <table> (TABLE 키워드 생략형) — 뒤에 SQL 식별자가 와야 한다(가운뎃점·한글·마크다운 구분자는 문서 문면이라 통과). (?!-)로 coreutils"
+      "why": "TRUNCATE <table> — TABLE 키워드를 생략한 테이블 비우기"
     },
     {
       "rx": "DELETE\\s+FROM\\s+[^\\s;]+\\s*;",
@@ -76,7 +76,7 @@
     },
     {
       "rx": "UPDATE\\s+\\w+\\s+SET\\b(?![^;]*\\bWHERE\\b)",
-      "why": "UPDATE x SET ... (WHERE 절 없음 — 전체 행 변조). \\bWHERE\\b로 값 속 \"nowhere\" 등 오탐 방지"
+      "why": "UPDATE ... SET 에 WHERE 절이 없다 — 전체 행이 변조된다"
     },
     {
       "rx": "UPDATE\\s+\\w+\\s+SET\\s+.*WHERE\\s+1\\s*=\\s*1",
@@ -108,7 +108,7 @@
     },
     {
       "rx": "db\\s+push\\s+[^\\r\\n]*--force-reset",
-      "why": "prisma db push --force-reset — migrate reset과 등가 파괴(DB 초기화)인데"
+      "why": "prisma db push --force-reset — migrate reset 과 등가인 DB 초기화"
     },
     {
       "rx": "database\\s+drop",

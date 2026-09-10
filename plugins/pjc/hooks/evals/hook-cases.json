@@ -1847,7 +1847,7 @@
       "name": "TRUNCATE <table> 생략형은 그대로 차단 (양성 대조)",
       "command": "psql -c \"TRUNCATE public.users\"",
       "expect_exit": 2,
-      "expect_contains": "TABLE 키워드 생략형"
+      "expect_contains": "TABLE 키워드를 생략한 테이블 비우기"
     }
   ]
 }

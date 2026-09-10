@@ -82,6 +82,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다** |
 | `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python plugins/pjc/evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든(**exit 2 는 `cases.json` 서식 위반 또는 미추적 픽스처** — 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다)이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다). |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
+| **agent·skill·hook 신설** | 해당 행에 더해 **`validate.ps1` 의 화이트리스트 배열을 같은 task 에서 갱신한다** — 빠지면 재설치 후 통합 검증이 `[WARN] validate 미등록` 을 적재한 채로 남는다(v1.169.0 T1 이 신설한 agent 를 등재하지 않아 완료 리뷰가 BLOCKER 로 잡을 때까지 그 상태로 갔다). **워킹트리 검사기 어느 축도 이것을 잡지 못한다** — `validate.ps1` 이 보는 것은 설치 캐시다 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) + **`python plugins/pjc/evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 두 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
 | 그 외 (`*.md` 문서·`agents/*.md`·기타 skills) | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — 기본값. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 | 여기에 **`python plugins/pjc/evals/check-stale-refs.py`**를 함께 돌린다 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산(레포 루트의 `*.ps1`·`*.md` 포함)에 남았는지 본다(실행에 영향이 없어 골든이 못 잡는 축이다).
 | `plugins/pjc/skills/*/SKILL.md` 의 frontmatter **`description`** | 아래 「그 외」 행에 더해 **`python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>`** — `description` 이 트리거의 1차 메커니즘이라(`plugins/pjc/skills/AUTHORING.md` 「description 작성」) 한 구만 고쳐도 발동·미발동 경계가 함께 움직인다. 케이스 id 접두는 `plan`·`impl`·`rec`·`wiki`·`dbg`. **자수도 함께 잰다** — 운용 기준 **1,024자**를 넘으면 잘린다(회차 30 실측: `record-project-fact` 가 1,045자로 넘어 있었고 재는 축이 0건이었다). 전량 실행은 명시 호출 전용이다 |
@@ -95,7 +96,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 70,366 | 137,000 |
+| `docs/harness-conventions.md` | 70,859 | 137,000 |
 | `docs/golden-runner.md` | 16,671 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 19,565 | 37,000 |
 
