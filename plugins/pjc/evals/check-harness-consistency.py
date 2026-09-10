@@ -661,6 +661,11 @@ BUDGET_TARGETS = [
       "plugins/pjc/skills/BUDGET.md"]),
     ("hook 스크립트 `scripts/*.ps1`", ["plugins/pjc/scripts/*.ps1"]),
     ("근거 문서 `scripts/rules/*.md`", ["plugins/pjc/scripts/rules/*.md"]),
+    # 검사기 자신도 잰다 — 이 행이 없던 동안 `evals/*.py` 8개가 상한 없이 자랐고, 이 파일이
+    #   108,042 B 까지 커진 것이 그 결과다(회차 56 실측). 재는 축이 없으면 감축해도 되돌아간다.
+    ("검사기 `evals/*.py`", ["plugins/pjc/evals/*.py", "plugins/pjc/hooks/evals/*.py",
+                             "plugins/pjc/skills/evals/*.py",
+                             "plugins/pjc/skills/*/evals/*.py"]),
 ]
 
 # `llm-wiki` 트리는 예산 축의 대상이 아니다 — 회차 1~3이 Out of Scope 로 두었고(그 스킬은
