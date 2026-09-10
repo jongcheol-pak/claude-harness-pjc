@@ -1709,6 +1709,49 @@
       "command": "git restore --staged --worktree src/foo.cs",
       "expect_exit": 0,
       "expect_contains": "restore"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53] 설치본 판정 데이터 rm 차단 — 지우면 그 hook 의 차단이 조용히 꺼진다",
+      "command": "rm ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/rules/harness-hooks.json",
+      "expect_exit": 2,
+      "expect_contains": "scripts[\\/]rules[\\/]"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53] 설치본 판정 데이터 Remove-Item 차단 (PowerShell 도구)",
+      "command": "Remove-Item ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/rules/destructive.json",
+      "expect_exit": 2,
+      "expect_contains": "scripts[\\/]rules[\\/]",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53] 설치본 hook 스크립트 rm 차단",
+      "command": "rm ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/guard-bash.ps1",
+      "expect_exit": 2,
+      "expect_contains": "[\\/]scripts[\\/][^\\s;&|]*\\.ps1"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53] unlink 도 차단한다 — delCmdAlt 에 없던 별칭을 신규 패턴이 새로 담았다",
+      "command": "unlink ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/rules/write-gate.json",
+      "expect_exit": 2,
+      "expect_contains": "scripts[\\/]rules[\\/]"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 델타 음성] 레포 안 원본 삭제는 통과 — git 이 추적해 복구 경로가 있다",
+      "command": "rm plugins/pjc/scripts/rules/harness-hooks.json",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[회차 53 델타 음성] 설치본이라도 하니스 자산이 아니면 통과",
+      "command": "rm ~/.claude/plugins/cache/pjc-harness/pjc/1.265.0/README.md",
+      "expect_exit": 0,
+      "expect_silent": true
     }
   ]
 }

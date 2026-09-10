@@ -107,11 +107,56 @@ Assert-Case -Name "guard-harness: 8.3 마스킹 설치본 session-end-cleanup �
 # 델타 음성 ⓐ 개발 repo 소스(.claude 세그먼트 없음) — 이번 회차 자신이 편집한 경로와 같은 형태다.
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/pjc/scripts/session-end-cleanup-lib.ps1'))
 Assert-Case -Name "guard-harness: 개발 repo session-end-cleanup-lib 통과 (T2 — 오차단 0 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
-# 델타 음성 ⓑ 유사 이름 — 알터네이션 그룹 앞의 리터럴 '/'가 부분 매치를 막는지 실증한다.
+# ⓑ 유사 이름 — 회차 53 이 기대값을 뒤집었다. **이름 축으로는 여전히 미매치**지만(알터네이션 그룹
+#   앞의 리터럴 '/'가 부분 매치를 막는다), 같은 회차가 더한 **경로 축**(`.claude/**/scripts/*.ps1`)이
+#   그 위에서 먼저 잡는다 — 설치본 `scripts/` 아래 `.ps1` 은 hook 이든 그 헬퍼든 개조되면 안전망이
+#   함께 무너지므로 **넓게 잡는 것이 의도다**(`rules/harness-guard-rationale.md` §7).
+#   이름 축의 그룹 경계는 경로 축이 상위집합이 되어 이 자리에서는 더 이상 잴 수 없다.
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/my-session-end-cleanup.ps1'))
-Assert-Case -Name "guard-harness: 유사 이름(my-session-end-cleanup) 미매치 통과 (T2 — 그룹 경계 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "guard-harness: 유사 이름도 설치본 scripts/*.ps1 이면 경로 축이 잡는다 (회차 53 — 기대값 뒤집음)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 # 델타 음성 ⓒ 캐시 밖 CLAUDE~1 — 이 repo 자신의 8.3명이라 오차단되면 하니스 자기 개발이 막힌다.
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/pjc/scripts/session-end-cleanup.ps1")
 Assert-Case -Name "guard-harness: 8.3 CLAUDE~1 개발 소스(캐시 밖) session-end-cleanup 통과 (T2 — 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+# ---- [회차 53] 규칙 json 부재 — 로드 실패 가시화 + 이름과 독립된 경로 축 ----
+#   세 hook 다 머리에서 $ErrorActionPreference = 'SilentlyContinue' 를 세우는데, 그 상태에서
+#   Get-Content 의 파일 부재는 non-terminating error 라 try/catch 를 그냥 지나간다. 변수가 $null 이
+#   되고 폴백이 조용히 걸려 **검사가 사라진 것을 아무도 모른다**(착수 실측: 셋 다 무출력 통과).
+#   Invoke-Hook 은 $scriptsDir 고정이라 부재 상황은 사본 트리로만 재현된다.
+$noJ = Join-Path $work 'rules-missing'; New-Item -ItemType Directory (Join-Path $noJ 'rules') -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir '*.ps1') $noJ -Force
+Copy-Item (Join-Path $scriptsDir 'rules/*.md') (Join-Path $noJ 'rules') -Force -ErrorAction SilentlyContinue
+$noJFwd = ($noJ -replace '\\', '/')
+function Invoke-NoJson([string]$Script, [string]$Json) {
+    $o = $Json | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $noJ $Script) 2>&1
+    return @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
+}
+$rmWrite = { param($path) (@{ tool_name = 'Write'; tool_input = @{ file_path = $path; content = 'x' } } | ConvertTo-Json -Compress) }
+
+# RM1~3 (가시화): 규칙 json 이 없으면 **그 사실이 stderr 로 보인다** — 침묵 fail-open 이 아니다.
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/p/scripts/x.ps1")
+Assert-Case -Name "rm-json: guard-harness 로드 실패가 stderr 로 보인다 (RM1)" -R $r -ExpectExit 2 -ExpectContains 'rules/harness-hooks.json 로드 실패'
+$r = Invoke-NoJson 'guard-write.ps1' (& $rmWrite (Join-Path $noJ 'src/x.cs'))
+Assert-Case -Name "rm-json: guard-write 로드 실패가 stderr 로 보인다 (RM2)" -R $r -ExpectExit 0 -ExpectContains '쓰기 게이트를 건너뜁니다'
+$realMd = Join-Path $noJ 'real.md'; 'x' | Set-Content -LiteralPath $realMd
+$r = Invoke-NoJson 'post-write-checks.ps1' (& $rmWrite $realMd)
+Assert-Case -Name "rm-json: post-write-checks 로드 실패가 stderr 로 보인다 (RM3)" -R $r -ExpectExit 0 -ExpectContains '개조 탐지를 건너뜁니다'
+
+# RM4~5 (양성 — 이름 축이 죽은 상태에서도 경로만으로 막는다): 착수 시점엔 둘 다 rc=0 무출력이었다.
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/guard-bash.ps1")
+Assert-Case -Name "rm-json: 이름 목록 없이도 설치본 hook 스크립트 개조 차단 (RM4)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
+# ⚠ 소유를 가리지 않는 것이 의도다 — 가르려면 플러그인 이름 목록이 필요한데 그 목록이야말로
+#   로드 실패로 사라지는 바로 그것이라 자기순환이다(`rules/harness-guard-rationale.md` §7).
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/other-plugin/scripts/foo.ps1")
+Assert-Case -Name "rm-json: 비-pjc 설치본의 scripts/*.ps1 도 막는다 — 소유를 가리지 않는다 (RM5)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
+
+# RM6~8 (델타 음성 — 새 경계에서 **한 조각씩만** 어긋난 근접형): 무관 경로는 T2-1 이전에도
+#   통과했으므로 아무것도 재지 않는다. 세 케이스가 각각 `.claude` · 확장자 · `scripts/` 를 뺀다.
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/plugins/pjc/scripts/guard-bash.ps1")
+Assert-Case -Name "rm-json: 개발 repo 경로(.claude 세그먼트 없음)는 통과 (RM6)" -R $r -ExpectExit 0 -ExpectNotContains '개조 시도 감지'
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/pjc-harness/pjc/1.265.0/scripts/foo.txt")
+Assert-Case -Name "rm-json: scripts/ 아래여도 .ps1 이 아니면 통과 (RM7)" -R $r -ExpectExit 0 -ExpectNotContains '개조 시도 감지'
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/pjc-harness/pjc/1.265.0/lib/foo.ps1")
+Assert-Case -Name "rm-json: .claude 아래여도 scripts/ 하위가 아니면 통과 (RM8)" -R $r -ExpectExit 0 -ExpectNotContains '개조 시도 감지'
+
 }   # ---- §2b 게이트 끝 (guard-harness) ----
 
