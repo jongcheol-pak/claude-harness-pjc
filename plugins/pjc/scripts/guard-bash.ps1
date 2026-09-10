@@ -372,20 +372,13 @@ try {
 # PowerShell 도구는 따옴표 규칙이 bash 와 다르다(이스케이프는 백틱, `\` 는 리터럴) — 분리기에 넘긴다(회차 44).
 $script:IsPsTool = ([string]$data.tool_name -eq 'PowerShell')
 
-. (Join-Path $PSScriptRoot 'guard-commit-secrets.ps1')
-
-# 로드 가드: lib 로드 실패(파일 누락·손상) 시 5검사가 침묵 fail-open되는 것을 가시화한다 —
-#   차단 게이트(require-task-checkbox)까지 실리는 지점이라 경고 없이 통과시키지 않는다(비차단 유지).
-if (-not (Get-Command Invoke-WarnCommitSecrets -ErrorAction SilentlyContinue)) {
-    [Console]::Error.WriteLine('[guard-bash] guard-commit-secrets.ps1 로드 실패 — 커밋 시크릿 검사 미수행(fail-open) — 나머지 4검사는 이 파일 안에 있어 계속 동작합니다. 플러그인 재설치를 권장합니다.')
-    exit 0
-}
-
-# 낡음 고지도 커밋 시점 검사라 같은 형태로 분리했다 — 이 파일의 예산 여유가 264 B 뿐이었고,
-#   분리해야 골든이 그 파일만 단독 프로브할 수 있다(위 dot-source 와 같은 근거).
-. (Join-Path $PSScriptRoot 'guard-stale-docs.ps1')
-if (-not (Get-Command Invoke-WarnStaleDocs -ErrorAction SilentlyContinue)) {
-    [Console]::Error.WriteLine('[guard-bash] guard-stale-docs.ps1 로드 실패 — 커밋 직전 낡음 고지 미수행(fail-open) — 나머지 6검사는 계속 동작합니다. 플러그인 재설치를 권장합니다.')
+# 커밋 시점 검사 둘은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md`의 「§2 왜 별도 파일인가」
+foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets', $true),
+                   @('guard-stale-docs.ps1', 'Invoke-WarnStaleDocs', $false))) {
+    . (Join-Path $PSScriptRoot $lib[0])
+    if (Get-Command $lib[1] -ErrorAction SilentlyContinue) { continue }
+    [Console]::Error.WriteLine("[guard-bash] $($lib[0]) 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.")
+    if ($lib[2]) { exit 0 }   # New-HookResult 가 그 파일에 있어 나머지 검사도 못 돈다
 }
 
 # [이벤트 로깅] 차단/경고 이벤트를 오탐 리뷰 데이터로 적재 — lib 함수·얇은 래퍼는 무수정(골든 격리 유지),

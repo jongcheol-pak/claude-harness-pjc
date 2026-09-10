@@ -83,7 +83,8 @@ $scenarioGroups = @(
     @('guard-harness-installed', 'hook-event-log'),
     @('session-context'),
     @('guard-harness-content'),
-    @('session-end-cleanup')
+    @('session-end-cleanup'),
+    @('guard-stale-docs')
 )
 
 Write-Host "== pjc hook 골든 회귀 =="

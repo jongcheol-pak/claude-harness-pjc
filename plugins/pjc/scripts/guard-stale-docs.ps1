@@ -23,9 +23,13 @@ $script:StaleAxisMap = @(
 $script:StaleAxisBaseline = 4
 
 function Get-StagedPaths {
-    $out = @(& git diff --cached --name-only 2>$null)
+    param([string]$RepoRoot)
+    $out = @(& git -C $RepoRoot diff --cached --name-only 2>$null)
     if ($LASTEXITCODE -ne 0) { return $null }   # 판정 불가와 「0건」을 가른다
-    return @($out | Where-Object { $_ })
+    # ⚠ `,` 를 빼면 **빈 배열이 `$null` 로 무너져** 「스테이징 0건」이 「판정 불가」로 뒤집힌다 —
+    #   PowerShell 이 반환값의 빈 컬렉션을 풀어 버리기 때문이고, 위 `$null` 판정과 충돌한다.
+    #   델타 음성 케이스(낡음 없음 무출력)가 이것을 잡았다.
+    return ,@($out | Where-Object { $_ })
 }
 
 function Get-CountMismatchLines {
@@ -70,7 +74,14 @@ function Invoke-WarnStaleDocs {
     if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
     if ($cmd -match '--dry-run' -or $cmd -match '--help' -or $cmd -match '(^|\s)-h(\s|$)') { return New-HookResult }
 
-    $root = (& git rev-parse --show-toplevel 2>$null)
+    # **레포는 `$data.cwd` 기준으로 찾는다** — 프로세스 cwd 를 쓰면 안 된다. .NET 의
+    #   `Environment.CurrentDirectory` 는 PowerShell 의 `Set-Location`·`Push-Location` 을
+    #   따라가지 않아, 자식 프로세스가 엉뚱한 레포에서 `git` 을 돌린다(골든이 이것을 잡았다 —
+    #   다른 레포의 스테이징을 이 커밋의 것으로 읽는 오판정이 실제로 났다).
+    $cwd = [string]$data.cwd
+    if ([string]::IsNullOrWhiteSpace($cwd)) { $cwd = (Get-Location).Path }
+    if (-not (Test-Path -LiteralPath $cwd)) { return New-HookResult }
+    $root = (& git -C $cwd rev-parse --show-toplevel 2>$null)
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($root)) { return New-HookResult }
     # 하니스 레포에서만 돈다 — 마커 2종 동시 실재로 가른다(`warn-version-drift.ps1` 과 같은 판정).
     if (-not (Test-Path -LiteralPath (Join-Path $root 'plugins/pjc/.claude-plugin/plugin.json'))) { return New-HookResult }
@@ -96,7 +107,7 @@ function Invoke-WarnStaleDocs {
     if ($script:StaleAxisMap.Count -ne $script:StaleAxisBaseline) {
         $lines.Add("[내부] 경로→축 매핑이 $($script:StaleAxisMap.Count)건인데 기준선은 $($script:StaleAxisBaseline)건입니다 — 정당한 증감이면 StaleAxisBaseline 을 함께 갱신하세요(그 diff 가 목록 변화의 기록입니다)")
     }
-    $staged = Get-StagedPaths
+    $staged = Get-StagedPaths -RepoRoot $root
     if ($null -eq $staged) {
         $lines.Add('[판정불가] 스테이징 목록을 읽지 못해 기계 미커버 축을 대조하지 못했습니다')
     } elseif ($staged.Count -gt 0) {

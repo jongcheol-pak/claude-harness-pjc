@@ -20,6 +20,8 @@
 
 그리고 선례가 정확히 있다 — `Invoke-WarnCommitSecrets` 하나만 `guard-commit-secrets.ps1` 에 분리돼 dot-source 된다. `bash-guard-rationale.md` §2 의 근거가 *"그 파일이 커밋 시점 검사 전체를 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독 프로브할 수 있다"* 인데, 이 검사도 **커밋 시점 검사**라 같은 사정이다.
 
+**로드 가드는 두 파일을 한 루프로 돈다.** lib 로드 실패(파일 누락·손상)가 침묵 fail-open 되는 것을 가시화하는 자리이고 — `guard-bash.ps1` 에는 차단 게이트(`require-task-checkbox`)까지 실려 있어 경고 없이 통과시키면 안 된다 — 같은 판정을 두 벌 쓰면 한쪽만 고쳐 갈린다. **치명 여부는 다르다**: `guard-commit-secrets.ps1` 이 못 뜨면 `New-HookResult` 가 없어 나머지 검사도 못 도므로 `exit 0` 으로 끝내고, `guard-stale-docs.ps1` 은 그 검사만 빠지므로 경고만 내고 계속한다.
+
 **`New-HookResult` 를 여기서 다시 정의하지 않는다** — 디스패처가 `guard-commit-secrets.ps1` 을 먼저 dot-source 하므로 정의가 이미 있다. 둘로 두면 어느 쪽이 이겼는지 갈리고, 그 차이는 로드 순서를 바꾸는 순간 조용히 뒤집힌다.
 
 ## §3 층 1 은 왜 파일 패턴에 묶이지 않는가
