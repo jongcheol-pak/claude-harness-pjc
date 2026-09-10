@@ -1455,6 +1455,87 @@ def check_count_and_version(conv):
     return issues, n
 
 
+# `--fix` 가 절대 건드리지 않는 파일. **`.gitignore` 라 복구 경로가 없다** — 글로벌 지침의
+#  「복구 경로(git 이력·원격·사본)가 없는 파일의 덮어쓰기는 승인 또는 사전 백업」이 그대로
+#  발동하는 자리다. 지금 대상에 없지만 「계수가 plan 에도 적힌다」로 범위가 넓어지기 쉬워
+#  이름으로 막아 둔다. 나머지 대상(`harness-conventions.md`·`README.md`)은 전부 git tracked 라
+#  같은 조항의 조건절이 성립하지 않고, 그래서 이 `--fix` 는 백업을 두지 않는다.
+FIX_FORBIDDEN = ("plan.md", "notes.md")
+
+
+def _count_fix_edits():
+    """`--fix` 가 수행할 치환을 `(경로, 옛 문자열, 새 문자열, 설명)` 으로 낸다.
+
+    **판단이 필요 없는 것만 담는다** — 대조 상대가 실재하고 결정론적인 값뿐이다.
+    러너 총계(hook 골든)는 내장 시나리오가 섞여 파일을 세면 어긋나므로 여기 없다.
+    """
+    edits, conv = [], read(CONV_MD)
+    body = conv.split(COUNT_SECTION_HEADING, 1)
+    if len(body) < 2:
+        return edits
+    tail = body[1]
+    nxt = tail.find("\n## ")
+    section = tail[:nxt] if nxt >= 0 else tail
+
+    for line in section.split("\n"):
+        m = _RX_MANIFEST.search(line)
+        if m:
+            rel, base = m.group(1), _RX_BASELINE.search(line)
+            if base and os.path.basename(rel) not in COUNT_SKIP_BASELINE:
+                actual = _json_case_count(rel)
+                if actual is not None and actual != int(base.group(1)):
+                    edits.append((CONV_MD, base.group(0),
+                                  "**기준선 %d케이스**" % actual,
+                                  "%s 기준선 %s → %d" % (rel, base.group(1), actual)))
+        for fm in _RX_FILE_COUNT.finditer(line):
+            hit = next((p for p in _MANIFEST_PATHS if os.path.basename(p) == fm.group(1)), None)
+            if not hit:
+                continue
+            actual = _json_case_count(hit)
+            if actual is not None and actual != int(fm.group(2)):
+                edits.append((CONV_MD, fm.group(0),
+                              "`%s`은 %d건" % (fm.group(1), actual),
+                              "%s 파일 건수 %s → %d" % (hit, fm.group(2), actual)))
+
+    if os.path.exists(PLUGIN_JSON) and os.path.exists(README_MD):
+        plugin_v = _read_json_field(PLUGIN_JSON, "version")
+        readme_m = re.search(r"^\*\*버전\*\*:\s*(\S+)", read(README_MD), re.M)
+        if plugin_v and readme_m and plugin_v != readme_m.group(1):
+            edits.append((README_MD, readme_m.group(0),
+                          "**버전**: %s" % plugin_v,
+                          "README 버전 %s → %s" % (readme_m.group(1), plugin_v)))
+    return edits
+
+
+def run_fix(dry_run):
+    """계수·버전을 실측값으로 치환한다. `dry_run` 이면 한 바이트도 쓰지 않는다."""
+    edits = _count_fix_edits()
+    if not edits:
+        print("[FIX] 고칠 것 없음 — 계수·버전이 전부 실측과 같다.")
+        return 0
+    by_file = {}
+    for path, old, new, desc in edits:
+        if os.path.basename(path) in FIX_FORBIDDEN:
+            die("`--fix` 대상에 %s 가 들어왔다 — 복구 경로가 없는 파일이라 손대지 않는다"
+                % os.path.basename(path))
+        print("[%s] %s" % ("WOULD-FIX" if dry_run else "FIXED", desc))
+        by_file.setdefault(path, []).append((old, new))
+    if dry_run:
+        print("\n결과: %d건 — `--dry-run` 이라 쓰지 않았습니다." % len(edits))
+        return 0
+    for path, subs in by_file.items():
+        # 줄바꿈을 보존한다 — `newline=""` 없이 쓰면 CRLF 가 LF 로 눕고 「줄바꿈 정합」 축이
+        #  red 를 낸다(그 축은 `git ls-files` 로 재므로 tracked 파일에서만 드러난다).
+        with open(path, encoding="utf-8", newline="") as f:
+            text = f.read()
+        for old, new in subs:
+            text = text.replace(old, new, 1)
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+    print("\n결과: %d건 갱신했습니다 — 이어서 인자 없이 1회 더 돌려 확인하세요." % len(edits))
+    return 0
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -1466,6 +1547,11 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
     except (AttributeError, OSError):
         pass  # 재설정 불가 환경(파이프 등)에서는 그대로 진행
+
+    # `--fix` 는 축 ⑰의 결정론적 자리만 고치고 즉시 끝난다 — 다른 축은 내용 판단이 필요해
+    #  영구 제외다(llm-wiki `lint.py --fix` 와 같은 선긋기). 인자 없는 기본 실행은 불변이다.
+    if "--fix" in sys.argv:
+        sys.exit(run_fix("--dry-run" in sys.argv))
 
     conv = read(CONV_MD)
     ledger = read(LEDGER_MD)
