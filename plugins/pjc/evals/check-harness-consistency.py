@@ -1312,10 +1312,9 @@ def check_count_and_version(conv):
         #  통과로 읽히면 안 되므로 다른 앵커 실패와 같은 exit 2 를 쓴다.
         die("절을 찾지 못함: `%s` 「검증 명령 상세」 — 헤딩을 바꿨으면 "
             "COUNT_SECTION_HEADING 을 함께 고쳐라" % os.path.relpath(CONV_MD, ROOT))
-    # 다음 `## ` 헤딩 전까지가 이 축의 사정거리다.
-    tail = body[1]
-    nxt = tail.find("\n## ")
-    section = tail[:nxt] if nxt >= 0 else tail
+    # **사정거리는 문서 전체다 — 절은 앵커로만 쓴다.** 절 안으로 자르면 그 밖의 계수가
+    #  빠지고, **실측으로 낡아 있던 것이 그 밖이었다**(회차 56 리뷰: 문서 6 · 실측 10).
+    section = conv
 
     for line in section.split("\n"):
         m = _RX_MANIFEST.search(line)
@@ -1385,9 +1384,7 @@ def _count_fix_edits():
     body = conv.split(COUNT_SECTION_HEADING, 1)
     if len(body) < 2:
         return edits
-    tail = body[1]
-    nxt = tail.find("\n## ")
-    section = tail[:nxt] if nxt >= 0 else tail
+    section = conv    # 사정거리는 위 축과 같다 — 문서 전체.
 
     for line in section.split("\n"):
         m = _RX_MANIFEST.search(line)

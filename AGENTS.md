@@ -95,8 +95,8 @@
 
 ## DO NOT
 
-- **실제 자격증명을 코드·문서·notes·plan 에 기록** — 환경변수 이름만 적고 값은 `.env` 에 둔다. 금지 대상의 종류는 `docs/harness-conventions.md` 「자격증명 취급」.
-- **`block-destructive.ps1`·`guard-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(끌 수 없음). 차단 대상은 `plugins/pjc/scripts/rules/` 가 정본이고, **오탐 수정·미탐 보완만 허용되며 골든 실증이 붙는다**(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」).
+- **실제 자격증명을 코드·문서·notes·plan 에 기록** — 환경변수 이름만 적고 값은 `.env` 에 둔다. 종류는 `docs/harness-conventions.md` 「자격증명 취급」.
+- **`block-destructive.ps1`·`guard-harness.ps1`의 차단 동작 변경** — 안전 임계 hook(끌 수 없는 마지막 방어선). 차단 대상은 `plugins/pjc/scripts/rules/` 가 정본이고, **오탐 수정·미탐 보완만 허용되며 골든 실증이 붙는다**(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」).
 - 자동 생성·캐시 디렉터리(`__pycache__/`, lock 파일 등) 커밋.
 - **검증·테스트 스크립트에 평문 자격증명·창 숨김·과도한 실행정책 완화**(사유는 같은 절).
 

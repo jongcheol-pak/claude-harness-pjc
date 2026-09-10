@@ -102,4 +102,5 @@ print(tot)
 - `filter-spec.ps1` — `-Filter` 유효 이름 목록 + 정규화 규칙(부작용 없음 — 코디네이터와 `eval-common`이 함께 읽는다)
 - `eval-paths.ps1` — 격리 폴더 경로 계산(`Get-EvalRoot`) + 잔여 정리(`Invoke-EvalSweep`). `filter-spec.ps1`과 같은 이유로 분리돼 있다(양쪽이 필요로 하는 것을 복제하면 갈린다)
 - `scenarios/*.ps1` 15개 — 케이스 본문(코디네이터를 모른다). 케이스 정본은 `hook-cases.json` + 이 15개.
+- **시나리오가 만드는 대역 스텁의 출력은 ASCII 로 쓴다** — `Set-Content` 로 심은 python·ps1 스텁이 한글을 `print` 하면 콘솔 코드페이지(cp949)에서 깨져 기대 문자열 대조가 FAIL 한다. 회차 55 가 심고 회차 56 이 밟았다 — 스텁은 「무엇을 출력했는가」를 재는 대역이라 문면의 가독성이 필요 없다.
 - **그룹은 19개다**(무상태 8샤드 + 시나리오 11) — 대부분 시나리오가 독립이지만 `guard-harness-installed`와 `hook-event-log`는 `$vdCache`를 공유하고 후자가 격리 홈의 이벤트 로그 적재를 관찰하므로 **한 프로세스로 묶어** 분리 전 관찰 조건을 유지한다.
