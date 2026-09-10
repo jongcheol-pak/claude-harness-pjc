@@ -359,7 +359,10 @@ def run_case(case, config_dir, model, workspaces):
 
     if timed_out:
         # 성공으로도 실패로도 집계하지 않는다 — 판정을 못 한 것이지 결과가 아니다.
+        # **단 발동 관측은 남긴다** — `triggered` 가 이미 찼으면 스킬이 뜬 것은 본 것이고
+        #   못 본 것은 그 뒤의 턴뿐이다. summarize 의 오발동 게이트가 그 구분을 쓴다.
         base["status"] = "timeout"
+        base["fired"] = case["skill"] in base["triggered"]
         return base, init_ev
     if init_ev is None:
         base["status"] = "error"
@@ -421,7 +424,16 @@ def summarize(cases):
     pos = [c for c in cases if c["expect"] == "trigger"]
     neg = [c for c in cases if c["expect"] == "no-trigger"]
     pos_judged = [c for c in pos if c["status"] in ("pass", "fail")]
-    neg_judged = [c for c in neg if c["status"] in ("pass", "fail")]
+    # ②-b: `triggered` 가 채워진 `timeout` 은 오발동 대조에 **포함**한다 — 발동 관측이
+    #   이미 끝난 케이스라, 빼면 "발동했는데 시간 안에 못 끝낸" 진짜 오발동이 관측 실패
+    #   뒤에 숨는다(실측: impl-neg-1 이 그 형태였다). 반대로 `triggered` 가 빈 순수
+    #   timeout 은 종전대로 뺀다 — 넣으면 관측 실패가 품질 저하로 둔갑한다.
+    #   `error` 는 triggered 유무와 무관하게 제외다(세션이 성립하지 않은 것이라 관측 자체가
+    #   신뢰되지 않는다). 발동률(positive) 쪽은 종전 그대로다 — 그쪽 분모를 늘리면
+    #   "끝까지 못 간 것"이 미발동으로 집계돼 반대 방향으로 왜곡된다.
+    neg_judged = [c for c in neg
+                  if c["status"] in ("pass", "fail")
+                  or (c["status"] == "timeout" and c.get("triggered"))]
     fired_pos = [c for c in pos_judged if c.get("fired")]
     fired_neg = [c for c in neg_judged if c.get("fired")]
     return {

@@ -1,4 +1,4 @@
-"""trigger_eval.exit_code 단위 케이스 — 관측 실패(error·timeout)가 통과로 흘러가지 않는지.
+"""trigger_eval 의 순수 함수 단위 케이스 — `exit_code` 종료 코드 판정과 `summarize` 오발동 게이트.
 
 이 서브트리에는 골든 러너가 없다. `trigger_eval.py` 본체는 실제 모델을 호출해 비용이
 크므로 회귀 축으로 쓸 수 없고, 종료 코드 판정만 순수 함수로 갈라 여기서 잰다.
@@ -37,6 +37,29 @@ CASES = [
 ]
 
 
+def _neg(status, triggered, fired):
+    """should-not-trigger 케이스 1건의 summarize 관련 필드만 담은 최소 딕셔너리."""
+    return {"expect": "no-trigger", "status": status,
+            "triggered": triggered, "fired": fired}
+
+
+# 오발동 게이트 ②-b — `triggered` 가 채워진 `timeout` 을 대조에 포함하는가.
+#   그 케이스는 **발동 관측이 이미 끝났고**(스킬이 떴다) 못 끝낸 것은 그 뒤의 턴뿐이라,
+#   빼면 진짜 오발동이 관측 실패 뒤에 숨는다. 반대로 `triggered` 가 빈 순수 timeout 까지
+#   넣으면 관측 실패가 품질 저하로 둔갑하므로 그쪽은 종전대로 뺀다.
+# (이름, cases, 기대 judged_negative, 기대 false_trigger_rate)
+SUMMARIZE_CASES = [
+    ("triggered 채워진 timeout -> 대조 포함",
+     [_neg("timeout", ["pjc:plan"], True)], 1, 1.0),
+    ("triggered 빈 timeout -> 대조 제외",
+     [_neg("timeout", [], False)], 0, None),
+    ("판정된 pass + triggered 채워진 timeout -> 분모 2",
+     [_neg("pass", [], False), _neg("timeout", ["pjc:plan"], True)], 2, 0.5),
+    ("error 는 triggered 가 있어도 제외(관측 실패)",
+     [_neg("error", ["pjc:plan"], True)], 0, None),
+]
+
+
 def main():
     failed = 0
     for name, summaries, want in CASES:
@@ -44,7 +67,16 @@ def main():
         ok = got == want
         failed += 0 if ok else 1
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: exit {got} (기대 {want})")
-    print(f"\n결과: {len(CASES) - failed}/{len(CASES)} PASS")
+    for name, cases, want_n, want_rate in SUMMARIZE_CASES:
+        s = _TE.summarize(cases)
+        got_n, got_rate = s["judged_negative"], s["false_trigger_rate"]
+        ok = (got_n == want_n) and (got_rate == want_rate)
+        failed += 0 if ok else 1
+        mark = "PASS" if ok else "FAIL"
+        print(f"[{mark}] {name}: judged_negative {got_n} (기대 {want_n})"
+              f" · 오발동률 {got_rate} (기대 {want_rate})")
+    total = len(CASES) + len(SUMMARIZE_CASES)
+    print(f"\n결과: {total - failed}/{total} PASS")
     sys.exit(1 if failed else 0)
 
 
