@@ -211,14 +211,10 @@ def check_pointer_reachability():
                     target = hits[0]
             if target is None and "/" not in ref_path:
                 # **같은 스킬 폴더 기준 해석.** `references/` 안의 문서가 자기 스킬의 `SKILL.md`를
-                #   이름만으로 가리키는 표기가 흔한데, `dirname(src)`는 `references/`라 위 ②가
-                #   실패하고 동명 파일이 스킬마다 있어 접미 색인(③)도 후보 다수로 포기한다.
+                #   이름만으로 가리키는 표기가 흔한데 ②③ 이 둘 다 실패한다(사유는 rationale).
                 #   출처에서 위로 거슬러 `skills/<name>/` 경계를 찾아 그 폴더에서만 찾으면
                 #   후보가 하나로 확정된다(추측이 아니라 소속으로 정해진다).
-                #   **한계 — 이 해석은 「자기 스킬」로만 귀속시킨다.** 다른 스킬의 파일을 이름만으로
-                #   가리키는 표기가 생기면 **틀린 파일에 조용히 매칭**될 수 있다(못 찾아 issues로
-                #   뜨는 것보다 나쁘다). 현재 레포의 실사용 2건은 둘 다 자기 스킬 자기참조라
-                #   무해하지만, 그런 표기가 생기면 `by_suffix`처럼 후보 다수 시 포기하도록 좁혀야 한다.
+                #   한계는 `harness-consistency-rationale.md` 의 「축 ① — 같은 스킬 폴더 해석의 한계」.
                 skill_dir = os.path.dirname(src)
                 while True:
                     up = os.path.dirname(skill_dir)
@@ -370,8 +366,7 @@ def check_batch_number_sequence(hist):
 #  ⓑ `docs/plans/YYYY-MM-DD-*.md`는 과거 회차의 이력 자산이고 그 시점의 사실이라 고치지 않는다
 #  (`deferred.md`는 살아 있는 자산이라 **제외하지 않는다** — 가장 활발히 편집되는 문서다)
 #  ⓑ-2 `docs/.agents-presplit/`도 같은 이유로 제외한다 — 이관 전 문서 사본이라 **고칠 수 없고**,
-#  그 안의 포인터·표기를 검사하면 남은 유일한 처방이 「아카이브를 고치는 것」이 되어 그 시점의
-#  기록이 아니게 된다(v1.223.0 — 종전에는 이 관례가 plan에만 코드화돼 문서 아카이브가 빠져 있었다).
+#  (그 근거는 `harness-consistency-rationale.md` 의 「축 ③④ — 아카이브 제외의 근거」)
 #  ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
 _ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
 _LOCAL_ONLY = {"plan.md", "notes.md"}
@@ -959,8 +954,7 @@ def check_critical_pointers():
 # ─────────────────────────────────────────────────────────────
 # ⑭ 폐기 식별자 실재 — 폐기된 단계명이 살아 있는 자산에서 **현행 규정**을 가리키는가
 #   목록의 정본은 `DESIGN.md` 3-1 의 고정 형식 1줄이다 — 선언과 검사가 한 자리에 묶인다.
-#   ⑫⑬ 은 결번이다: v1.224.0 이 지운 옛 축(개념 정본 유일성 · batch 트리거 동기)을
-#   대장 대기 항목 넷이 아직 그 번호로 가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.
+#   ⑫⑬ 결번의 근거는 이 파일 머리 docstring 에 있다(여기 복제하지 않는다).
 #
 # ─────────────────────────────────────────────────────────────
 _DEPRECATED_ANCHOR = "**폐기 식별자(기계 대조)**:"
@@ -1337,11 +1331,8 @@ def check_count_and_version(conv):
                     issues.append("계수 정합: `%s` 는 %d건인데 문서는 **기준선 %s케이스**로 적었다 "
                                   "— 케이스를 늘린 task 가 이 줄을 함께 갱신해야 한다"
                                   % (rel, actual, base.group(1)))
-        # 매니페스트에 기대지 않는 계수는 **「기계 미대조」로 표시하게 강제한다.**
-        #  `_RX_MANIFEST` 는 「케이스 정본은 `*.json`」 형식만 잡으므로, 그 형식을 못 쓰는 자리
-        #  (러너 내장 케이스·부분집합·소요 시간 근거)는 축이 원리상 못 본다. 표시를 요구하지
-        #  않으면 **그 자리가 낡아도 아무도 모른다** — 회차 56 착수 시 `test_exit_code.py` 가
-        #  실제 10 인데 문서는 6 이었고, 그 6 은 축 ⑰이 생긴 뒤에도 조용했다.
+        # 매니페스트에 기대지 않는 계수는 **「기계 미대조」로 표시하게 강제한다** — 근거는
+        #  `harness-consistency-rationale.md` 의 「축 ⑰ — 미대조 표시를 강제하는 이유」.
         if _RX_CASE_COUNT.search(line) and not _RX_MANIFEST.search(line):
             n += 1
             if _UNMEASURED_MARK not in line:
