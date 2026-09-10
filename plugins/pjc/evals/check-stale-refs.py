@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """삭제 자산 참조 검출 — 회차 1·2가 없앤 것을 살아 있는 자산이 아직 가리키는가.
 
-무엇을 재는가: 아래 DEAD 26개 이름을 `plugins/**`·`docs/**` 와 **레포 루트의 `*.ps1`·`*.md`** 에서
+무엇을 재는가: 아래 DEAD 목록의 이름을 `plugins/**`·`docs/**` 와 **레포 루트의 `*.ps1`·`*.md`** 에서
 계수한다. 루트를 넣은 것은 `validate.ps1`·`install.ps1` 이 스킬·hook 이름을 배열로 담아
 **이름이 죽으면 조용히 깨지는 자리**인데 종전 범위 밖이었기 때문이다(회차 22 가 지운
 `bootstrap-agents-md` 가 `validate.ps1` 에, 회차 4 가 지운 같은 이름이 `install.ps1` 에
@@ -51,6 +51,13 @@ DEAD = [
     #  DDD 레이어 배치는 그것을 채택한 프로젝트의 AGENTS.md·위키 패턴 페이지가 받는다.
     'add-viewmodel', 'add-domain-service',
 ]
+
+# DEAD **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 목록이 곧 검사 대상이라
+#  항목이 조용히 빠지면 그 이름의 잔존이 **검출되지 않는 채 통과**한다(축이 좁아진 것과
+#  전건 통과가 구분되지 않는다). 정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가
+#  목록 변경의 기록이다(`check-harness-consistency.py` 의 허용목록 기준선과 같은 형태).
+DEAD_BASELINE = 26
+
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
 SKIP_DIRS = {'.git', '__pycache__', 'notes-archive', '.agents-presplit', 'node_modules'}
@@ -189,5 +196,15 @@ def scan_tree():
     return 0
 
 
+def check_baseline():
+    """DEAD 총량 대조 — 두 스캔 경로가 공통으로 먼저 탄다."""
+    if len(DEAD) != DEAD_BASELINE:
+        print(f'[FAIL] DEAD 총량이 기준선과 다르다: {len(DEAD)} != {DEAD_BASELINE}'
+              ' (DEAD_BASELINE — 정당한 증감이면 그 상수를 함께 갱신한다)')
+        return 1
+    return 0
+
+
 if __name__ == '__main__':
-    sys.exit(scan_ledger() if '--ledger' in sys.argv else scan_tree())
+    _rc = check_baseline()
+    sys.exit(_rc if _rc else (scan_ledger() if '--ledger' in sys.argv else scan_tree()))

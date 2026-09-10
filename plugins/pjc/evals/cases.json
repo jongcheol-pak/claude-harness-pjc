@@ -844,5 +844,58 @@
       "절을 찾지 못함",
       "COUNT_SECTION_HEADING"
     ]
+  },
+  {
+    "id": "stale-dead-baseline-drift",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/evals/check-stale-refs.py",
+        "find": "DEAD_BASELINE = 26",
+        "replace": "DEAD_BASELINE = 27"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] DEAD 총량이 기준선과 다르다: 26 != 27",
+      "DEAD_BASELINE"
+    ]
+  },
+  {
+    "id": "harness-critical-pointers-baseline-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/evals/check-harness-consistency.py",
+        "find": "CRITICAL_POINTERS_BASELINE = 1",
+        "replace": "CRITICAL_POINTERS_BASELINE = 2"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 포인터 총량이 기준선과 다르다: 1 != 2",
+      "CRITICAL_POINTERS_BASELINE"
+    ]
+  },
+  {
+    "id": "harness-deprecated-tokens-baseline-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/evals/check-harness-consistency.py",
+        "find": "DEPRECATED_TOKENS_BASELINE = 7",
+        "replace": "DEPRECATED_TOKENS_BASELINE = 8"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "폐기 식별자 토큰 수가 기준선과 다르다: 7 != 8",
+      "DEPRECATED_TOKENS_BASELINE"
+    ]
   }
 ]

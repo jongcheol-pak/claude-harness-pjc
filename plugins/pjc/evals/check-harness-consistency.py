@@ -925,6 +925,12 @@ CRITICAL_POINTERS = [
      "자율 루프 정지 판정의 유일한 방어선 — 그 판정을 하던 hook 이 v1.225.0 에 제거돼 이 문면이 대신한다"),
 ]
 
+# 핵심 포인터 **총량**의 기준선(= 목록 길이). 이 목록은 손으로 관리하는데 **줄어드는 것이
+#  더 위험하다** — 항목이 빠지면 그 포인터가 지워져도 축이 조용히 통과한다(축의 전제가
+#  「정규식이 못 세는 자리를 손으로 올린다」이므로, 손 목록이 곧 유일한 그물이다).
+#  정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가 목록 변경의 기록이다.
+CRITICAL_POINTERS_BASELINE = 1
+
 
 # 축 11이 대장 실재로 인정하는 파일. 종결된 항목은 `deferred-closed.md` 로 옮겨지므로
 #   둘 다 봐야 한다 — 대기에서만 찾으면 이미 처리된 항목이 위반으로 잡힌다.
@@ -1022,6 +1028,10 @@ def check_critical_pointers():
     수치가 안 움직인다(회차 22 계획 리뷰 BLOCKER의 근거).
     """
     issues, n = [], 0
+    if len(CRITICAL_POINTERS) != CRITICAL_POINTERS_BASELINE:
+        issues.append("핵심 포인터 총량이 기준선과 다르다: %d != %d "
+                      "(CRITICAL_POINTERS_BASELINE — 정당한 증감이면 그 상수를 함께 갱신한다)"
+                      % (len(CRITICAL_POINTERS), CRITICAL_POINTERS_BASELINE))
     for src_rel, ref_rel, why in CRITICAL_POINTERS:
         n += 1
         src_p = os.path.join(ROOT, *src_rel.split("/"))
@@ -1093,6 +1103,9 @@ DEPRECATED_QUOTE_ALLOWLIST = [
 #  픽스처는 레포의 일부만 담아 없는 파일까지 세면 축이 픽스처에서 상시 실패한다.
 DEPRECATED_ALLOWLIST_BASELINE = 7
 
+# `DESIGN.md` 3-1 정본 줄의 **백틱 토큰 수**(범위 표기를 접기 전 원문 개수).
+DEPRECATED_TOKENS_BASELINE = 7
+
 
 def _deprecated_targets():
     """스캔 대상을 `(경로, 레포 상대경로)`로 낸다 — `_scan_scope()`의 제외 술어 + 대장 3파일."""
@@ -1114,6 +1127,9 @@ def _deprecated_pattern():
 
     접두가 같고 끝자리만 다른 두 토큰이 이웃하면 **범위 표기**로 보고 한 패턴으로 접는다 —
     낱개를 코드에 나열하면 그 목록이 곧 두 번째 정본이 된다.
+
+    **원문 토큰 수를 함께 돌려준다** — 호출부가 기준선과 대조한다. 접은 패턴 수가 아니라
+    토큰 수인 이유는 정본 줄과 1:1 이라 범위 접기 규칙이 바뀌어도 흔들리지 않기 때문이다.
     """
     line = next((l for l in read(DESIGN_MD).splitlines() if _DEPRECATED_ANCHOR in l), None)
     if line is None:
@@ -1132,7 +1148,7 @@ def _deprecated_pattern():
             continue
         pats.append(re.escape(toks[i]))
         i += 1
-    return re.compile(r"(?<![0-9A-Za-z_-])(%s)(?![0-9A-Za-z_-])" % "|".join(pats))
+    return re.compile(r"(?<![0-9A-Za-z_-])(%s)(?![0-9A-Za-z_-])" % "|".join(pats)), len(toks)
 
 
 def check_deprecated_identifiers():
@@ -1141,7 +1157,15 @@ def check_deprecated_identifiers():
     허용목록이 인용을 덮고, 그 **목록 길이**를 기준선 상수와 · **적중 수**를 스캔에 실재한
     항목 수와 대조한다. 적중하지 않는 항목은 그 파일이 스캔 대상일 때만 따로 낸다.
     """
-    rx = _deprecated_pattern()
+    rx, tok_n = _deprecated_pattern()
+    # DESIGN.md 3-1 정본 줄의 **토큰 수** 대조. 줄이 통째로 사라지거나 토큰이 0이 되는 것은
+    #  `_deprecated_pattern()` 의 die() 가 이미 막는다(exit 2). 여기서 막는 것은 **일부만
+    #  조용히 빠지는 것**이다 — 정본 줄에서 단계명 하나가 지워지면 그 이름의 잔존이 검출되지
+    #  않는 채 전건 통과가 된다. 정당한 증감이면 이 상수를 함께 갱신한다.
+    if tok_n != DEPRECATED_TOKENS_BASELINE:
+        return (["DESIGN.md 3-1 폐기 식별자 토큰 수가 기준선과 다르다: %d != %d "
+                 "(DEPRECATED_TOKENS_BASELINE — 정당한 증감이면 그 상수를 함께 갱신한다)"
+                 % (tok_n, DEPRECATED_TOKENS_BASELINE)], 0)
     allow = {}
     for rel, frag in DEPRECATED_QUOTE_ALLOWLIST:
         allow.setdefault(rel, []).append(frag)

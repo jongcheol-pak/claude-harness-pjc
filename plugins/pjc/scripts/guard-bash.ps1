@@ -381,6 +381,13 @@ if (-not (Get-Command Invoke-WarnCommitSecrets -ErrorAction SilentlyContinue)) {
     exit 0
 }
 
+# 낡음 고지도 커밋 시점 검사라 같은 형태로 분리했다 — 이 파일의 예산 여유가 264 B 뿐이었고,
+#   분리해야 골든이 그 파일만 단독 프로브할 수 있다(위 dot-source 와 같은 근거).
+. (Join-Path $PSScriptRoot 'guard-stale-docs.ps1')
+if (-not (Get-Command Invoke-WarnStaleDocs -ErrorAction SilentlyContinue)) {
+    [Console]::Error.WriteLine('[guard-bash] guard-stale-docs.ps1 로드 실패 — 커밋 직전 낡음 고지 미수행(fail-open) — 나머지 6검사는 계속 동작합니다. 플러그인 재설치를 권장합니다.')
+}
+
 # [이벤트 로깅] 차단/경고 이벤트를 오탐 리뷰 데이터로 적재 — lib 함수·얇은 래퍼는 무수정(골든 격리 유지),
 #   로깅은 디스패처 수준에서 결과 객체로 수행한다. 실패는 전면 격리(검사 판정 무영향).
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
@@ -403,7 +410,8 @@ $checks = @(
     @{ fn = 'Invoke-BlockPlanWrite';      name = 'block-plan-write' },
     @{ fn = 'Invoke-WarnCommitSecrets';   name = 'warn-commit-secrets' },
     @{ fn = 'Invoke-WarnGlobalFind';      name = 'warn-global-find' },
-    @{ fn = 'Invoke-WarnDangerousAssignment'; name = 'warn-dangerous-assignment' }
+    @{ fn = 'Invoke-WarnDangerousAssignment'; name = 'warn-dangerous-assignment' },
+    @{ fn = 'Invoke-WarnStaleDocs';       name = 'warn-stale-docs' }
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {
