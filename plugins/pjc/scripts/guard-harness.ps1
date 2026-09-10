@@ -58,7 +58,8 @@ try {
 #   보호면이 데이터로 옮겨간 만큼 보호 대상도 따라가야 한다.
 $isHookScript = ($norm -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$')) -or
                 ($norm -match '/\.claude/.*/hooks\.json$') -or
-                ($norm -match '(?i)/\.claude/.*/scripts/rules/[^/]+\.json$')
+                ($norm -match '(?i)/\.claude/.*/scripts/rules/[^/]+\.json$') -or
+                ($norm -match '(?i)/\.claude/.*/scripts/[^/]+\.ps1$')
 # 규칙 — 근거는 `rules/harness-guard-rationale.md`의 「§3 규칙」
 $has83 = ($norm -match '(?i)/CLAUDE~[0-9]+(/|$)')
 $suspect83 = $has83 -and
