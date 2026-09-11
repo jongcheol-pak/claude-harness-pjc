@@ -257,8 +257,11 @@ def check_pointer_reachability():
     return issues, checked
 
 
-# 대장 항목 1건의 바이트 상한. 정본 문면은 `docs/plans/deferred.md` 머리말과
+# 대장 항목 1건의 문자 상한. 정본 문면은 `docs/plans/deferred.md` 머리말과
 #  `plugins/pjc/skills/BUDGET.md` 이고, 이 상수는 그것을 재는 쪽이다.
+#  **바이트가 아니라 문자로 재는 이유는 문서 예산 축과 같다** — 한글 1자가 3바이트라
+#  바이트로 재면 같은 정보량이 언어에 따라 다른 비용으로 계산된다(`BUDGET.md` 「예산 표」
+#  단위 문단). 785 B 로 초과를 내던 항목이 실측 391자로 상한 안이었다.
 LEDGER_ITEM_MAX = 600
 
 
@@ -304,15 +307,15 @@ def check_deferred_stats(ledger, closed):
     # 항목 상한 600 B 는 대장 머리말이 선언하지만 **재는 축이 없어 2배까지 자랐다**
     #  (2026-09-11 실측 1,175·1,160). **통지 등급인 이유**: 게이트로 두면 기존 초과분이
     #  전부 red 라 그 회차가 통째로 멈춘다 — 재는 것이 먼저이고 조이는 것은 그 다음이다.
-    over = [(l[:36], len(l.encode("utf-8"))) for l in lines[w:]
+    over = [(l[:36], len(l)) for l in lines[w:]
             if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l)
-            and len(l.encode("utf-8")) > LEDGER_ITEM_MAX]
+            and len(l) > LEDGER_ITEM_MAX]
     notices = []
     if over:
-        notices.append("대장 항목 상한 초과 %d건(상한 %d B) — 통지 등급이라 exit 0 을 "
+        notices.append("대장 항목 상한 초과 %d건(상한 %d자) — 통지 등급이라 exit 0 을 "
                        "유지합니다. 다음 편집에서 줄이세요: %s"
                        % (len(over), LEDGER_ITEM_MAX,
-                          " · ".join("%s… %d B" % (h, b) for h, b in over[:3])))
+                          " · ".join("%s… %d자" % (h, c) for h, c in over[:3])))
     return issues, wait + done, notices
 
 
