@@ -206,7 +206,7 @@ try {
             }
         }
 
-        # ---- AGENTS.md 이관처 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§35 ---- AGENTS.md 이관처 목차 주입」
+        # ---- AGENTS.md 이관처 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§36 ---- AGENTS.md 이관처 목차 주입」
         #   AGENTS.md 는 전문이 주입되지만 **그 분할본은 어느 주입 경로에도 없다** — 포인터로만 닿고,
         #   포인터는 그것이 있는 줄 알아야 따라간다. 전문(75KB)은 주입 예산의 4배라 **절 제목만** 싣는다.
         $convTocMaxBytes = 3000       # 주입 상한 — 절이 늘어도 주입이 세션을 잠식하지 않게 한다

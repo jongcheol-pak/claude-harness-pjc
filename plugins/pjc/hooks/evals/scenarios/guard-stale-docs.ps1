@@ -87,6 +87,22 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdDry } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: --dry-run 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
 
+    # 5b) heredoc **본문**의 커밋 문구는 커밋이 아니다 — `guard-commit-secrets` 와 판정을
+    #   맞춘 자리다. 두 검사가 한 프로세스에서 같은 `$cmd` 를 보므로 한쪽만 고치면
+    #   「한쪽만 도는 조합」이 생긴다(2026-09-11 완료 리뷰 MAJOR — 실제로 생겼다).
+    $sdHd = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdRoot
+               tool_input = @{ command = "cat > note.md <<EOF`n규약: git commit -- <경로>`nEOF" } } | ConvertTo-Json -Compress
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdHd } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: heredoc 본문의 커밋 문구는 커밋이 아니다' -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 5c) 델타 음성 — 같은 heredoc **뒤에** 진짜 커밋이 오면 종전대로 고지한다.
+    $sdHdReal = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdRoot
+                   tool_input = @{ command = "cat > note.md <<EOF`nx`nEOF`ngit commit -m x" } } | ConvertTo-Json -Compress
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdHdReal } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: heredoc 뒤의 진짜 커밋은 그대로 고지한다' -R $r -ExpectExit 0 -ExpectContains '산문 서술'
+
     # 6) 비하니스 레포는 무출력 — 마커 하나를 지우면 발동하지 않는다.
     Remove-Item (Join-Path $sdRoot '.claude-plugin/marketplace.json') -Force
     & git -C $sdRoot add -A 2>$null

@@ -558,8 +558,10 @@ if ($gitOk) {
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = $hdBody } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: heredoc 본문의 커밋 문구는 커밋이 아니다 (HD1, exit 0)" -R $r -ExpectExit 0 -ExpectNotContains '50개 상한'
 
-    # HD2 (델타 음성): heredoc **밖**의 진짜 커밋은 종전대로 잡힌다 — 오탐을 고치며 미탐을 만들지 않았는지를 잰다.
-    $hdReal = "python3 - <<PY`nprint(1)`nPY`ngit add -A && git commit -m x"
+    # HD2 (델타 음성): **같은 data sink 형태**를 쓰되 종료 태그 **뒤에** 진짜 커밋이 온다.
+    #   스트립이 본문만 먹고 그 뒤를 삼키지 않는지를 재는 것이라 HD1 과 같은 경로를 탄다 —
+    #   스트립이 안 도는 입력으로 음성을 세우면 그 케이스는 수정 전후가 같아 아무것도 안 잰다.
+    $hdReal = "cat > note.md <<EOF`nx`nEOF`ngit add -A && git commit -m x"
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = $hdReal } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: heredoc 밖의 진짜 커밋은 그대로 판정한다 (HD2, exit 2)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
 } else {
