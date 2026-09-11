@@ -14,7 +14,7 @@ disallowedTools: Write, Edit, NotebookEdit, Bash
 
 호출자가 준다: `plan.md` 경로 · 대상 레포 경로 · `AGENTS.md` 경로.
 
-- **`plan.md` 는 gitignore 라 diff 에 나타나지 않는다 — 파일을 직접 Read 한다.** diff 가 비었다는 것을 미작성으로 읽으면 판정이 통째로 어긋난다.
+- **`plan.md` 는 gitignore 라 diff 에 안 나오므로 파일을 직접 Read 한다** — diff 가 비었다는 것을 미작성으로 읽으면 판정이 통째로 어긋난다.
 - **메인이 돌리는 검증 러너를 겹쳐 돌리지 않는다** — 호출자가 이미 돌렸고, 같은 상태 디렉터리를 두고 겹쳐 돌리면 두 실행이 서로 정체한다(v1.182.0 실측: 세 실행이 1시간을 소진했다). 가벼운 Grep 과 정적 읽기만 쓴다.
 
 ## 검사 항목
