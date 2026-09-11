@@ -155,8 +155,8 @@
     "mutate": [
       {
         "file": "plugins/pjc/skills/BUDGET.md",
-        "find": "| `SKILL.md` | **12,000 B** | **게이트** |",
-        "replace": "| `SKILL.md` | **10 B** | **게이트** |"
+        "find": "| `SKILL.md` | **12,000자** | **게이트** |",
+        "replace": "| `SKILL.md` | **10자** | **게이트** |"
       }
     ],
     "expect_keywords": [
@@ -173,8 +173,8 @@
     "mutate": [
       {
         "file": "docs/harness-conventions.md",
-        "find": "| `docs/golden-runner.md` | 265 |",
-        "replace": "| `docs/golden-runner.md` | 138 |"
+        "find": "| `docs/golden-runner.md` | 118 |",
+        "replace": "| `docs/golden-runner.md` | 99 |"
       }
     ],
     "expect_keywords": [
@@ -191,8 +191,8 @@
     "mutate": [
       {
         "file": "docs/harness-conventions.md",
-        "find": "| `docs/golden-runner.md` | 265 | 4,000 |",
-        "replace": "| `docs/golden-runner.md` | 265 | 100 |"
+        "find": "| `docs/golden-runner.md` | 118 | 4,000 |",
+        "replace": "| `docs/golden-runner.md` | 118 | 100 |"
       }
     ],
     "expect_keywords": [

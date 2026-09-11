@@ -62,6 +62,17 @@ def read(path):
     return open(path, encoding="utf-8").read()
 
 
+def charlen(path):
+    """문서 예산의 측정 단위 — **바이트가 아니라 문자 수**다.
+
+    규약 문서는 한글이 섞여 B/문자가 군마다 1.25~1.99 로 갈린다(`BUDGET.md`「예산 표」
+    실측). 바이트로 재면 같은 정보량이 어느 파일에 있느냐로 다른 비용이 되고, 컨텍스트를
+    차지하는 것은 바이트가 아니라 내용이라 문자 수가 재려는 것에 맞다.
+    디코드 실패는 예산 판정의 관심사가 아니므로 대체 문자로 넘긴다(길이만 쓴다).
+    """
+    with open(path, encoding="utf-8", errors="replace") as f:
+        return len(f.read())
+
 def section(text, heading_re, stop_re=r"^#{1,6} ", label=""):
     """헤딩으로 시작하는 절의 본문을 잘라낸다. 못 찾으면 ANCHOR FAIL."""
     lines = text.split("\n")
@@ -664,7 +675,7 @@ def check_doc_budget():
     body = section(text, r"^## 예산 표", label="BUDGET.md 「예산 표」")
     limits = {}
     # 등급까지 읽는다 — 게이트는 issues(exit 1), 통지는 notices(exit 0)로 간다.
-    for m in re.finditer(r"^\| (.+?) \| \*\*([\d,]+) B\*\* \| \*\*(게이트|통지)\*\* \|", body, re.M):
+    for m in re.finditer(r"^\| (.+?) \| \*\*([\d,]+)자\*\* \| \*\*(게이트|통지)\*\* \|", body, re.M):
         limits[m.group(1).strip()] = (int(m.group(2).replace(",", "")), m.group(3))
     if not limits:
         die("[ANCHOR FAIL] BUDGET.md 「예산 표」에서 상한을 하나도 읽지 못했다 — 표 형식이 바뀌었다")
@@ -681,9 +692,9 @@ def check_doc_budget():
                 if rel in BUDGET_EXEMPT or rel.startswith(BUDGET_EXEMPT_PREFIX):
                     continue
                 n += 1
-                size = os.path.getsize(path)
+                size = charlen(path)
                 if size > cap:
-                    msg = ("문서 예산 초과: %s %d B > 상한 %d B (「%s」)" % (rel, size, cap, label))
+                    msg = ("문서 예산 초과: %s %d자 > 상한 %d자 (「%s」)" % (rel, size, cap, label))
                     if grade == "게이트":
                         issues.append(msg)
                     else:
@@ -704,21 +715,21 @@ def check_doc_budget():
         rec, conv_cap = int(rec_s.replace(",", "")), int(cap_s.replace(",", ""))
         n += 1
         try:
-            size = os.path.getsize(os.path.join(ROOT, *rel.split("/")))
+            size = charlen(os.path.join(ROOT, *rel.split("/")))
         except OSError:
             issues.append("조건부 참조 표: %s 가 없다 — 표에서 빼거나 경로를 고치세요" % rel)
             continue
         if size != rec:
-            issues.append("조건부 참조 표 기록값 불일치: %s 기록 %d B / 실측 %d B (%+d) — "
+            issues.append("조건부 참조 표 기록값 불일치: %s 기록 %d자 / 실측 %d자 (%+d) — "
                           "그 파일을 고친 task 가 같은 task 안에서 표를 갱신해야 합니다"
                           % (rel, rec, size, size - rec))
         if size > conv_cap:
-            issues.append("조건부 참조 표 상한 초과: %s %d B > 상한 %d B" % (rel, size, conv_cap))
+            issues.append("조건부 참조 표 상한 초과: %s %d자 > 상한 %d자" % (rel, size, conv_cap))
 
     # 임박은 건수 요약 1줄 + 여유가 가장 적은 셋만 낸다 — 전건 나열은 상시 6줄이라 읽히지 않는다.
     if near:
         near.sort()
-        head = " · ".join("%s %d/%d B(여유 %d)" % (r.split("/")[-2] + "/" + r.split("/")[-1], sz, cp, sl)
+        head = " · ".join("%s %d/%d자(여유 %d)" % (r.split("/")[-2] + "/" + r.split("/")[-1], sz, cp, sl)
                             for sl, r, sz, cp in near[:3])
         notices.append("문서 예산 임박 %d건(게이트 등급, 상한의 %d%% 이상) — 여유 최소 셋: %s"
                        % (len(near), round(BUDGET_NEAR_RATIO * 100), head))
