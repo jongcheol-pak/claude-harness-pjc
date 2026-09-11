@@ -15,6 +15,19 @@
 - **근거는 한 문장으로 쓴다** — 왜 그런지를 아는 모델이 경계 사례에서 더 정확하게 판단한다.
 - **근거가 두 문장을 넘으면 그 규칙은 `references/`로 내린다** — 근거 서사가 쌓이면 어느 문장이 구속력인지 고를 수 없게 된다.
 
+### 이 형식이 걸리는 대상
+
+**어느 파일에 걸리는지는 §6이 정한다** — 여기서 다시 정하면 두 절이 갈린다.
+
+**그 안에서도 볼드 선두 불릿이 전부 규칙은 아니다. 넷은 세지 않는다** — 상수는 `check-harness-consistency.py`에 있다.
+
+- **코드펜스 안은 예시다** — 이 레포는 자기 서식을 코드블록으로 예시하므로 펜스를 무시하면 견본이 규칙으로 잡힌다(실측 35건).
+- **`evals/fixtures/` 아래는 판정될 입력이다** — 세면 검사기가 자기 시험지를 채점한다(실측 169건).
+- **점수·등급 라벨은 척도다** — `- **5**: …`는 지시가 아니라 눈금이다.
+- **꺾쇠 자리표시자를 담은 줄은 템플릿이다** — `<기계로 판정 가능한 기준>`은 채워질 빈칸이다.
+
+**넷 밖에서 갈리면 「그 줄을 지우면 지시가 사라지는가」로 판정한다** — 아니면 서술이다(스키마 필드 정의·절차 단계가 여기 걸린다).
+
 ### WRONG / RIGHT
 
 ```
@@ -79,9 +92,7 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 ### 3-3. 작업 범위
 
-가이드가 제시한 문구를 원문 그대로 쓴다:
-
-> Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
+**가이드가 제시한 문구를 원문 그대로 쓴다 — 실물은 `implement/SKILL.md`「작업 범위」에 있다** — 실행 시점에 읽히는 자리가 정본이어야 복제본이 갈리지 않는다.
 
 ### 3-4. 진행 보고
 
