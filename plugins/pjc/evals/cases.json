@@ -241,7 +241,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "결과: 절단 0건 · 짝 전건 일치",
-      "근거 인용 주석 2건"
+      "근거 인용 주석 3건"
     ],
     "expect_absent": [
       "[FAIL]"
@@ -262,6 +262,23 @@
     "expect_keywords": [
       "[FAIL] 절단 1건",
       "sample-hook.ps1"
+    ]
+  },
+  {
+    "id": "truncation-evals-cut",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/evals/sample-checker.py",
+        "find": "# 짧은 표제 — 근거는",
+        "replace": "# 표제가 길이 캡에 눌려 단어 중간에서 끊긴 형태를 검사기 경로에서도 재는 케이스이며 종결부 없이 잘린 — 근거는"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 절단 1건",
+      "sample-checker.py"
     ]
   },
   {

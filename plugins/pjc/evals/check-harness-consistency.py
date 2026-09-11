@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 17개로 잰다.
+r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 16개로 잰다.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
        python plugins/pjc/evals/check-harness-consistency.py --fix [--dry-run]
 
 축: ① 포인터 도달성 ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ batch 차수 수열
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
-    ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 분할 헬퍼 동기 ⑰ 계수·버전 정합
+    ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 분할 헬퍼 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
     (**⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.)
 
@@ -139,10 +139,7 @@ def check_pointer_reachability():
         ("docs/plans/deferred-closed.md", "SKILL.md"),
     }
 
-    # 대장 2종은 **관측 시점의 기록**이라 이미 사라진 문서를 가리키는 것이 정상이다
-    #   (과거 plan·노트를 `_ARCHIVED_RX`로 제외하는 것과 같은 이유). 항목의 참조가 깨진 것은
-    #   그 항목이 재판정 대상이라는 신호이고, 그 신호는 대장 자신이 담는다 — 이 축이 매번
-    #   FAIL하는 방식으로 알릴 것이 아니다. 그래서 파일 단위로 통째 면제한다.
+    # 대장 2종 파일 단위 면제 — 근거는 `harness-consistency-rationale.md`의 「§5 축 ① — 대장 2종을 파일 단위로 통째 면제하는 이유」
     POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md"}
 
     # 부분 경로(`implement/SKILL.md`처럼 repo 루트 기준이 아닌 표기)를 해석하기 위한 색인.
@@ -215,12 +212,7 @@ def check_pointer_reachability():
             hs = anchors_of(target)
             if hs is None:
                 continue
-            # 대장 2종의 인용은 축 수치에서 뺀다 — 위 `named`/`unnamed` 계수와 같은 조건이다.
-            #   갈라 두면 **대장을 편집하는 것만으로 `checked` 가 움직여**, 그 수치를
-            #   acceptance 로 쓰는 회차가 자기 변경과 무관한 값을 판정 근거로 삼게 된다
-            #   (회차 21·22 가 실제로 그 값을 acceptance 로 썼고, 회차 22 의 213 → 214 는
-            #   실재 포인터가 아니라 신규 등재 항목이 인용한 크기 표기였다).
-            #   도달성 판정 자체는 계속 한다 — 끊긴 인용은 아래 `issues` 로 뜬다.
+            # 대장 2종 인용 제외 — 근거는 `harness-consistency-rationale.md`의 「§1 축 ① — 대장 2종 인용을 축 수치에서 빼는 이유」
             if rel_src not in POINTER_EXEMPT_SRC:
                 checked += 1
             # 전체 일치 또는 앵커가 그 이름으로 시작(부제·괄호 꼬리 허용).
@@ -422,10 +414,7 @@ def check_bold_pairing():
 #  앞 문장을 삼켜 *"A. A."* 같은 실제 삽입 사고에서 두 조각이 서로 달라져 **미검출**된다
 #  (v1.180.0 F-7 M1이 잡은 바로 그 형태를 초안이 놓쳤다 — 재현으로 확인).
 _SENT_SPLIT_RX = re.compile(r"(?<=[.!?])")
-# 최소 길이 — 짧은 토막을 세면 표·열거의 정상 반복이 전부 걸린다. 값의 근거는 실측이다:
-#  임계 0이면 레포 전수에서 **124건**이 걸리는데 임계 10 이상이면 **0건**이다(2026-08-19 실측).
-#  즉 오탐은 전부 아주 짧은 조각(표 셀·번호 항목)이고, 실제 삽입 사고는 문장 길이다.
-#  10~25 어디를 잡아도 현행 검출은 같아 여유를 두고 20으로 뒀다.
+# 한 줄 중복 최소 길이 — 근거는 `harness-consistency-rationale.md`의 「§2 축 ④ — 한 줄 중복 최소 길이 20 의 근거」
 _SENT_MIN_LEN = 20
 
 
@@ -562,23 +551,16 @@ BUDGET_TARGETS = [
       "plugins/pjc/skills/BUDGET.md"]),
     ("hook 스크립트 `scripts/*.ps1`", ["plugins/pjc/scripts/*.ps1"]),
     ("근거 문서 `scripts/rules/*.md`", ["plugins/pjc/scripts/rules/*.md"]),
-    # 검사기 자신도 잰다 — 이 행이 없던 동안 `evals/*.py` 8개가 상한 없이 자랐고, 이 파일이
-    #   108,042 B 까지 커진 것이 그 결과다(회차 56 실측). 재는 축이 없으면 감축해도 되돌아간다.
+    # 검사기 자신도 잰다 — 근거는 `BUDGET.md` 「예산 표」의 이 행이 정본이다.
     ("검사기 `evals/*.py`", ["plugins/pjc/evals/*.py", "plugins/pjc/hooks/evals/*.py",
                              "plugins/pjc/skills/evals/*.py",
                              "plugins/pjc/skills/*/evals/*.py"]),
 ]
 
-# `llm-wiki` 트리는 예산 축의 대상이 아니다 — 회차 1~3이 Out of Scope 로 두었고(그 스킬은
-#   vault 운영 절차 전체를 담아 다른 스킬과 성격이 다르다), 실측 9파일이 상한을 넘는다
-#   (`wiki-schema.md` 192,698 B 등). **면제이지 통과가 아니다** — 감량은 대장의
-#   「분리된 `lookup-rules.md` 의 문면 감량」 항목이 추적한다. 면제를 여기 명시해 두지
-#   않으면 다음 회차가 「왜 통과하는가」를 코드에서 되짚어야 한다.
+# `llm-wiki` 트리 면제 — 선언과 근거는 `BUDGET.md` 「예산 표」가 정본이다(면제이지 통과가 아니다).
 BUDGET_EXEMPT_PREFIX = ("plugins/pjc/skills/llm-wiki/",)
 # 초과를 면제로 숨기지 않는다 — `rules/*.md` 는 **통지 등급**이라 초과해도 exit 0 이므로,
 #   면제 없이 그대로 두면 「얼마나 넘었는가」가 매 실행에 보이면서 회차를 막지는 않는다.
-#   (v1.234.0 까지는 session-context-rationale.md 를 면제로 뺐는데, 그때는 예산 축이 한 등급뿐이라
-#   면제가 유일한 통과 수단이었다 — 등급이 갈린 지금은 그 우회가 불필요하다.)
 BUDGET_EXEMPT = set()
 
 # 게이트 등급의 임박 통지 임계. 추출 앵커 축의 80% 보다 높게 잡았다 — 실측에서 SKILL.md 6개가
@@ -711,11 +693,8 @@ def check_doc_budget():
                     #   여유 8 B 로 꽉 찬 SKILL.md 가 실재했고(회차 13 실측), 그 상태에서는 규칙을
                     #   한 구 고치려 해도 감량이 선행돼 본작업이 멈춘다.
                     near.append((cap - size, rel, size, cap))
-    # 조건부 참조 표 — `BUDGET.md` 「예산 표」와 **같은 축에서** 읽는다(그 절 자신이 그렇게 규정한다).
-    #   이 표만 **기록값 열**을 갖는다: 대상이 `docs/` 라 위 `BUDGET_TARGETS` 의 글로브가 닿지
-    #   않고, 상시 로드가 아니라 조건부 참조라 「메인 조합」 합산에 섞으면 그 전제가 깨진다.
-    #   기록값을 함께 재는 이유는 그 절이 **편집한 task 가 같은 task 안에서 갱신**하도록 규정하기
-    #   때문이다 — 그 의무를 재는 것이 없으면 값이 조용히 낡는다(회차 18 실측: +5,830 B).
+    # 조건부 참조 표 — 이 표만 **기록값 열**을 갖는다. 예산 표와 나눈 이유·기록값을 함께 재는
+    #   이유는 `harness-conventions.md` 「조건부 참조 문서 크기 임계」가 정본이다.
     conv_body = section(read(CONV_MD), r"^## 조건부 참조 문서 크기 임계",
                         label="harness-conventions.md 「조건부 참조 문서 크기 임계」")
     conv_rows = re.findall(r"^\| `([^`]+)` \| ([\d,]+) \| ([\d,]+) \|", conv_body, re.M)
@@ -832,11 +811,7 @@ def check_line_endings():
 #   하위 사유라 넣지 않는다(넣어도 기각과 중복 매치일 뿐이다). `확인 종결`·`실측 종결`은
 #   실사용 4건이 있어 인정한다 — 사유를 안 적은 것이 아니라 다른 말로 적은 것이다.
 CLOSE_REASON_RX = re.compile(r"기각|반영|병합|해소|확인 종결|실측 종결|사유 미상")
-# 인정하되 **세는** 표현. 「모른다」가 쌓이는 것은 결함이지만 red 로 막을 것은 아니다 —
-#   막으면 red 를 피하려 억지 사유를 적게 되고 그것이 더 나쁘다(회차 25 D3).
-# **백틱으로 감싼 것은 세지 않는다** — `` `사유 미상` `` 은 그 표현을 **논하는** 인용이지
-#   그 항목의 사유가 아니다. 실제 사유는 백틱 없이 적힌다(회차 24 가 쓴 `[사유 미상 — …]` 형태).
-#   회차 27 실측: 종결 파일의 매치 4건이 **전부 백틱 인용**이었다.
+# 인정하되 세는 표현 — 근거는 `harness-consistency-rationale.md`의 「§3 축 ⑨ — 인정 어휘와 백틱 인용 제외의 근거」
 VAGUE_REASON_RX = re.compile(r"(?<!`)사유 미상(?!`)")
 # 근거는 `harness-consistency-rationale.md` 의 「축 ⑨ — 종결 사유 표기와 `사유 미상`의 취급」.
 CLOSE_REASON_TAG = "**종결 사유**:"
@@ -1033,11 +1008,8 @@ DEPRECATED_QUOTE_ALLOWLIST = [
     ("plugins/pjc/skills/llm-wiki/evals/lint-cases.json", "M1이 잡은 미커버 축이다"),
 ]
 
-# 면제 **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 축의 전제가 「정규식의
-#  사각은 안 보이지만 면제가 늘어나는 것은 보인다」이다. 정당한 증감이면 **이 값을 함께
-#  올리는 것이 정답이고** 숫자를 맞추려 면제를 지우면 안 된다. 적중하지 않는 항목(문면이
-#  사라졌는데 목록에 남은 것)은 **그 파일이 스캔 대상에 실재할 때만** 따로 낸다 — 골든
-#  픽스처는 레포의 일부만 담아 없는 파일까지 세면 축이 픽스처에서 상시 실패한다.
+# 면제 **총량**의 기준선(= 목록 길이). 정당한 증감이면 이 값을 함께 올린다 — 숫자를 맞추려 면제를 지우지 않는다.
+# 면제 총량 기준선 — 근거는 `harness-consistency-rationale.md`의 「§4 축 ⑭ — 면제 총량 기준선을 숫자로 맞추지 않는 이유」
 DEPRECATED_ALLOWLIST_BASELINE = 7
 
 # `DESIGN.md` 3-1 정본 줄의 **백틱 토큰 수**(범위 표기를 접기 전 원문 개수).
@@ -1451,11 +1423,8 @@ def check_count_and_version(conv):
     return issues, n
 
 
-# `--fix` 가 절대 건드리지 않는 파일. **`.gitignore` 라 복구 경로가 없다** — 글로벌 지침의
-#  「복구 경로(git 이력·원격·사본)가 없는 파일의 덮어쓰기는 승인 또는 사전 백업」이 그대로
-#  발동하는 자리다. 지금 대상에 없지만 「계수가 plan 에도 적힌다」로 범위가 넓어지기 쉬워
-#  이름으로 막아 둔다. 나머지 대상(`harness-conventions.md`·`README.md`)은 전부 git tracked 라
-#  같은 조항의 조건절이 성립하지 않고, 그래서 이 `--fix` 는 백업을 두지 않는다.
+# `--fix` 가 절대 건드리지 않는 파일 — `plan.md` 는 gitignore 라 복구 경로가 없다(글로벌 지침
+#  「범위 확인」). 대상에 없어도 이름으로 막아 둔다. 나머지 대상은 git tracked 라 백업을 두지 않는다.
 FIX_FORBIDDEN = ("plan.md", "notes.md")
 
 
@@ -1536,7 +1505,6 @@ def main():
     # 검증 매핑에 등록된 명령은 `python <이 파일>`이라 환경변수가 붙지 않으므로, 스스로 UTF-8로
     # 재설정하지 않으면 **매 실행이 크래시해 검사 자체가 성립하지 않는다**(개발 중 `PYTHONUTF8=1`을
     # 붙여 돌리면 이 결함이 보이지 않는다 — 실제로 그렇게 놓쳤다).
-    # 자매 스크립트 `skills/llm-wiki/evals/check_consistency.py`가 쓰는 것과 같은 패턴이다.
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except (AttributeError, OSError):
