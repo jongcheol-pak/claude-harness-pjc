@@ -859,7 +859,7 @@
     "expect_keywords": [
       "frontmatter 길이:",
       "자로 상한 1024자를 넘었다",
-        "넘으면 그 스킬이 로드되지 않는다"
+      "넘으면 그 스킬이 로드되지 않는다"
     ]
   },
   {
@@ -1049,6 +1049,58 @@
       "[MISMATCH]",
       "폐기 식별자 토큰 수가 기준선과 다르다: 7 != 8",
       "DEPRECATED_TOKENS_BASELINE"
+    ]
+  },
+  {
+    "id": "harness-rule-rationale-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/SKILL.md",
+        "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
+        "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다**(핵심 포인터 축의 검사 대상이다)."
+      }
+    ],
+    "expect_keywords": [
+      "규칙 근거 보유",
+      "**1건**",
+      "plugins/pjc/skills/implement/SKILL.md:3"
+    ]
+  },
+  {
+    "id": "harness-rule-rationale-label-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/SKILL.md",
+        "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
+        "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.\r\n- **5**: 지시가 아니라 눈금이다."
+      }
+    ],
+    "expect_keywords": [
+      "규칙 근거 보유",
+      "(전건 충족)"
+    ]
+  },
+  {
+    "id": "harness-rule-rationale-placeholder-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/SKILL.md",
+        "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
+        "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.\r\n- **Files**: <경로> · <경로>"
+      }
+    ],
+    "expect_keywords": [
+      "규칙 근거 보유",
+      "(전건 충족)"
     ]
   }
 ]

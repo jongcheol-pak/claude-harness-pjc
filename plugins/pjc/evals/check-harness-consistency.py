@@ -587,35 +587,51 @@ BUDGET_EXEMPT = set()
 BUDGET_NEAR_RATIO = 0.9
 
 
-# ── 축 ⑯ 「규칙 근거 보유」 ────────────────────────────────────────────────
-# `DESIGN.md` §1 의 `- **<규칙>** — <근거>` 형식을 갖추지 못한 규칙을 센다.
-#   **사정거리는 §6 이 정본이다** — §6 이 `skills/plan/`·`skills/implement/`·`agents/`
-#   로 한정하고 나머지 셋(`llm-wiki`·`pjc-systematic-debugging`·`record-project-fact`)에는
-#   §1 을 일괄 적용하지 않는다고 선언한다. 여기서 범위를 다시 정하면 두 곳이 갈린다.
-#   (회차 59 가 §1 만 읽고 §6 을 안 읽어 대상을 18건에서 81건으로 부풀렸다 — 세 회차
-#    연속으로 나온 「조문의 적용 범위를 안 읽는」 오귀속이다.)
+# ── 축 ⑱ 「규칙 근거 보유」 ────────────────────────────────────────────────
+# **사정거리는 `DESIGN.md` 「6. 적용 범위」가 정본이다** — 여기서 다시 정하면 갈린다.
+# 배제 넷·형식 정규식의 근거는 `harness-consistency-rationale.md` 의
+#   「축 ⑱ — 규칙 근거 보유」. **배제이지 통과가 아니다.**
 RULE_SCOPE_GLOBS = [
     "plugins/pjc/skills/plan/**/*.md",
     "plugins/pjc/skills/implement/**/*.md",
     "plugins/pjc/agents/*.md",
 ]
-# 범위 안이어도 볼드 선두 불릿이 전부 규칙은 아니다. 넷을 뺀다 — **배제이지 통과가
-#   아니다**. 배제를 여기 명시해 두지 않으면 다음 회차가 「왜 안 세는가」를 코드에서
-#   되짚어야 하고, 되짚는 대신 다시 세면 계수가 또 갈린다(회차 59 실측: 같은 대상을
-#   717/718/683/514 로 네 번 다르게 셌다).
-#   ⓐ 코드펜스 안 — 이 레포는 자기 서식을 코드블록으로 예시하므로 펜스를 무시하면
-#      서식 견본이 규칙으로 잡힌다(실측 35건). 상수가 아니라 파서가 판정한다.
-#   ⓑ `evals/fixtures/` — 판정 대상이 아니라 판정될 입력이다(실측 169건, 전부 미보유로
-#      잡혔다). 세면 검사기가 자기 시험지를 채점한다.
-#   ⓒ 점수·등급 라벨(`- **5**: …`) — 지시가 아니라 채점 눈금이라 근거를 달 자리가 없다.
-#   ⓓ 꺾쇠 자리표시자를 담은 줄 — 채워질 빈칸이지 규칙이 아니다.
 RULE_EXCLUDE_FIXTURE_SEG = "/evals/fixtures/"
 RULE_EXCLUDE_LABEL_RX = re.compile(r"^- \*\*\d+\*\*[:：]")
 RULE_EXCLUDE_PLACEHOLDER_RX = re.compile(r"<[^>]{2,40}>")
-# 근거 보유 = 볼드가 닫힌 직후 공백+em-dash+공백. `—` 를 포함하기만 하면 되는 것이
-#   아니다 — 한국어 산문에서 em-dash 는 동격 연결로도 쓰여, 「대시 유무」로 재면
-#   `- **템플릿** — 절 구성과 …` 같은 목차 줄이 「근거 보유」로 잡힌다(회차 59 실측).
 RULE_FORM_RX = re.compile(r"^- \*\*.+?\*\*[^\S\n]*—[^\S\n]")
+
+
+def check_rule_rationale():
+    """규칙 근거 보유 — §6 범위의 규칙이 §1 형식(`- **<규칙>** — <근거>`)을 갖췄는가.
+
+    **통지 등급이고 0 건이어도 카운트를 낸다.** 두 선택의 근거는
+    `harness-consistency-rationale.md` 의 「축 ⑱ — 규칙 근거 보유」.
+    """
+    issues, notices, n, missing = [], [], 0, []
+    for pat in RULE_SCOPE_GLOBS:
+        for path in sorted(glob.glob(os.path.join(ROOT, pat), recursive=True)):
+            rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+            if RULE_EXCLUDE_FIXTURE_SEG in "/" + rel:
+                continue
+            in_fence = False
+            for i, line in enumerate(read(path).splitlines(), 1):
+                if line.lstrip().startswith("```"):
+                    in_fence = not in_fence
+                    continue
+                if in_fence or not line.startswith("- **"):
+                    continue
+                if RULE_EXCLUDE_LABEL_RX.match(line) or RULE_EXCLUDE_PLACEHOLDER_RX.search(line):
+                    continue
+                n += 1
+                if not RULE_FORM_RX.match(line):
+                    missing.append("%s:%d" % (rel, i))
+    notices.append(
+        "규칙 근거 보유 — §1 형식을 갖추지 못한 규칙 **%d건**%s **통지 등급이라 막지 않는다.**"
+        % (len(missing), (" — " + " / ".join(missing[:12]) +
+                          (" 외 %d" % (len(missing) - 12) if len(missing) > 12 else "") + ".")
+           if missing else " (전건 충족)."))
+    return issues, n, notices
 
 
 def check_agents_target():
@@ -1526,6 +1542,7 @@ def main():
     budget_issues, budget_n, budget_notices = check_doc_budget()
     close_issues, close_n, close_notices = check_close_reasons()
     ledger_issues, ledger_n, ledger_notices = check_deferred_stats(ledger, ledger_closed)
+    rule_issues, rule_n, rule_notices = check_rule_rationale()
     axes = [
         ("포인터 도달성", check_pointer_reachability()),
         ("Deferred 집계", (ledger_issues, ledger_n)),
@@ -1542,6 +1559,7 @@ def main():
         ("등재 근거 실측", check_ledger_evidence(ledger)),
         ("분할 헬퍼 동기", check_split_helper_sync()),
         ("계수·버전 정합", check_count_and_version(conv)),
+        ("규칙 근거 보유", (rule_issues, rule_n)),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
@@ -1550,7 +1568,8 @@ def main():
 
     print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
     # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
-    for m in check_agents_target() + budget_notices + close_notices + ledger_notices:
+    for m in (check_agents_target() + budget_notices + close_notices
+              + ledger_notices + rule_notices):
         print("[NOTICE] %s" % m)
     if all_issues:
         for m in all_issues:
