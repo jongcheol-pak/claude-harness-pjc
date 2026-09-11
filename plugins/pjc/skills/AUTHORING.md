@@ -31,16 +31,31 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 
 ③ **이 가이드는 상위 규약을 대체하지 않는다** — 글로벌 `~/.claude/CLAUDE.md`(한글·UTF-8·승인 워크플로우·정직한 보고)와 `DESIGN.md`·`BUDGET.md`가 내용의 정본이고, 이 문서는 **형식**만 권장한다. **그 규칙들을 여기 복창하지 않는다**(`BUDGET.md` 처방 ①).
 
+④ **평가를 문서보다 먼저 만든다.** 공식 권장이고(*"Create evaluations BEFORE writing extensive documentation. This ensures your Skill solves real problems rather than documenting imagined ones."*) 순서는 **결함 식별 → 평가 작성 → 기준선 측정 → 최소 문면 → 반복**이다. 스킬을 **안 붙인 상태로** 대표 작업을 돌려 무엇이 실제로 실패하는지 먼저 적고, 그 실패를 재는 케이스를 만든 뒤, 그것을 통과시킬 만큼만 쓴다. **우리 자리는 둘이다** — 발동 경계는 `skills/evals/trigger_eval.py`(실제 모델 호출), 검사기 판정은 `evals/cases.json`(모델 호출 없음). **없는 요구를 미리 문서로 막는 문면이 이 순서를 건너뛴 자리에서 나온다.**
+
 ## description 작성 (트리거 메타데이터)
 
-**공식 한도 (Agent Skills 표준 — agentskills.io/specification + code.claude.com/docs/en/plugins.md, 2026-07-08 확인)**:
-- `name`: 1-64자, 소문자·숫자·하이픈만, **스킬 디렉터리명과 일치**.
+**공식 한도 (Agent Skills 표준 — agentskills.io/specification + code.claude.com/docs/en/plugins.md, 2026-07-08 확인 · 작성 권장은 platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices, 2026-09-11 확인)**:
+- `name`: 1-64자, 소문자·숫자·하이픈만, **스킬 디렉터리명과 일치**. **XML 태그 금지 · 예약어 `anthropic`·`claude` 금지**(둘 다 하드 제약 — 넘으면 그 스킬이 로드되지 않는다).
 - `description`: **두 사양이 함께 걸린다 — 낮은 쪽이 실효 한도다.**
   - **Agent Skills 표준: 1-1,024자** (하드 제약). 표준을 따르는 다른 도구에서도 쓰려면 이 값을 지켜야 한다.
   - **Claude Code: `description` + `when_to_use` 합산이 스킬 목록에서 1,536자로 절단**된다(목록 예산은 컨텍스트의 1% — `skillListingBudgetFraction`, 항목당 캡은 `skillListingMaxDescChars`. 출처: code.claude.com/docs/en/skills, 2026-07-29 확인). 즉 Claude Code만 놓고 보면 여유가 더 있으나, **`when_to_use`를 쓰면 그 몫만큼 `description` 가용분이 줄어든다.**
   - **pjc의 운용 기준은 1,024자**다 — 두 사양 중 낮은 쪽이고, 표준 호환을 잃지 않는다. 초과분은 잘리거나 무효가 될 수 있으므로 트리거 어휘·near-miss 경계는 유지한 채 산문 연결부를 압축해 맞춘다(v1.100.0에서 1,230자로 초과된 전례 — 개정 때마다 자수 재측정).
 - SKILL.md 본문: **500줄 미만 권장**(Agent Skills 표준). **근거가 두 문장을 넘으면 `references/`로 내린다**(`DESIGN.md`「1. 규약 문면 형식」). **초과했을 때 무엇을 하는가는 `BUDGET.md`「초과했을 때」가 정본이고 이 줄은 그것을 되풀이하지 않는다** — 5,000토큰 권장도 그 파일의 예산 표가 대체한다(SKILL.md 12,000 B).
-- 측정: python으로 frontmatter `description:` 값 길이·본문 행수를 잰다(공백 포함 문자 수 기준).
+- **`description` 도 XML 태그 금지**(하드 제약).
+- 측정: **사람이 재지 않는다** — `check-harness-consistency.py` 「계수·버전 정합」 축이 길이 2종·예약어·XML 태그를 대조한다(`SKILL_FM_MAX`). ⚠ **그 축의 대상은 `plugins/pjc/skills/*/SKILL.md` 뿐이고 `plugins/pjc/agents/*.md` 는 밖이다** — 에이전트 정의는 Agent Skills 가 아니라 설계상 제외이며, 그쪽 값은 재어지지 않으므로 고칠 때 직접 센다. **단위는 바이트가 아니라 문자다**(한글에서 3배로 어긋난다).
+
+### 공식 권장 중 달리 정한 것
+
+**출처**: platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices (2026-09-11 확인). **우리 값이 있는데 근거가 없으면 다음 회차가 「공식을 안 봤나」를 다시 묻는다** — 그래서 갈린 자리마다 이유를 적는다.
+
+| 공식 | 우리 | 왜 갈렸는가 |
+|---|---|---|
+| reference 파일이 **100줄**을 넘으면 목차 | `BUDGET.md`「나눈 뒤에 지킬 것」의 **10,000 B** | 우리 참조는 한글이라 줄 수와 바이트가 3배로 갈려 같은 문서가 두 단위에서 다른 판정을 받는다. **예산 축이 이미 바이트로 재고 있어** 단위를 맞춰야 기계 대조와 한 벌이 된다 |
+| **Haiku·Sonnet·Opus 전부**로 시험 | 기준선은 **Opus 하나** | 트리거 eval 이 실제 모델 호출이라 비용이 크다. **비채택이 아니라 미수행**이고 `[다음 회차]` 의 **별도 승인 대상**이다 |
+| 스킬마다 **평가 3개 이상** | 트리거 eval 43케이스(전체) | 총량은 이미 넘지만 **스킬당 분포를 재는 축이 없다** — 한 스킬에 몰려 있어도 지금은 green 이다 |
+
+**SKILL.md 500줄과 참조 깊이 1단계는 갈리지 않았다** — 전자는 위 「description 작성」이, 후자는 `BUDGET.md` 가 같은 값으로 담는다.
 
 ### frontmatter 필드 (pjc가 쓸 수 있는 것)
 
