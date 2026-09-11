@@ -304,7 +304,7 @@ def check_deferred_stats(ledger, closed):
     if a_wait + a_done + purged != enrolled:
         issues.append("Deferred 불변식 — 대기 %d + 종결 %d + 삭제누계 %d = %d ≠ 총등재누계 %d"
                       % (a_wait, a_done, purged, a_wait + a_done + purged, enrolled))
-    # 항목 상한 600 B 는 대장 머리말이 선언하지만 **재는 축이 없어 2배까지 자랐다**
+    # 항목 상한 600자는 대장 머리말이 선언하지만 **재는 축이 없어 2배까지 자랐다**
     #  (2026-09-11 실측 1,175·1,160). **통지 등급인 이유**: 게이트로 두면 기존 초과분이
     #  전부 red 라 그 회차가 통째로 멈춘다 — 재는 것이 먼저이고 조이는 것은 그 다음이다.
     over = [(l[:36], len(l)) for l in lines[w:]
