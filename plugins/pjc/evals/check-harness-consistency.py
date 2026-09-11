@@ -1311,6 +1311,13 @@ def _json_case_count(rel):
     return len(doc) if isinstance(doc, list) else None
 
 
+# frontmatter 필드 길이 상한 — 출처는 Anthropic 공식 Agent Skills best-practices 다.
+#  **단위가 바이트가 아니라 문자**라 한글 스킬에서 바이트로 재면 3배로 어긋난다.
+#  넘으면 스킬이 로드되지 않으므로 통지가 아니라 게이트다.
+SKILL_FM_MAX = {"name": 64, "description": 1024}
+_RX_FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---", re.S)
+
+
 def check_count_and_version(conv):
     """축 ⑰ 계수·버전 정합 — 문서가 적은 수가 실제와 같은가.
 
@@ -1367,6 +1374,27 @@ def check_count_and_version(conv):
             elif actual != int(fm.group(2)):
                 issues.append("계수 정합: `%s` 는 %d건인데 문서는 %s건으로 적었다"
                               % (hit, actual, fm.group(2)))
+
+    for path in sorted(glob.glob(os.path.join(ROOT, "plugins", "pjc", "skills",
+                                               "*", "SKILL.md"))):
+        fm = _RX_FRONTMATTER.match(read(path))
+        # **frontmatter 가 없으면 스킵한다** — 픽스처의 `sample/SKILL.md` 가 그 형태이고
+        #  정상 케이스(`harness-ok`)의 픽스처라, 에러로 처리하면 그 케이스가 깨진다.
+        #  스킬이 아닌 마크다운이 그 경로에 놓일 수도 있어 관용이 안전측이다.
+        if not fm:
+            continue
+        rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+        for field, cap in sorted(SKILL_FM_MAX.items()):
+            m = re.search(r"(?ms)^%s:\s*(.*?)(?=\r?\n[a-z-]+:|\Z)" % field, fm.group(1))
+            if not m:
+                continue
+            n += 1
+            # 여러 줄 값은 로드될 때 한 줄로 접히므로 공백을 정규화한 뒤 센다.
+            val = " ".join(m.group(1).strip().strip("'\"").split())
+            if len(val) > cap:
+                issues.append("frontmatter 길이: `%s` 의 %s 가 %d자로 상한 %d자를 넘었다 "
+                              "— 넘으면 그 스킬이 로드되지 않는다(단위는 바이트가 아니라 "
+                              "문자다)" % (rel, field, len(val), cap))
 
     # 버전 축도 같은 관용을 쓴다 — 픽스처에는 `plugin.json`·`README.md` 가 없다.
     if not (os.path.exists(PLUGIN_JSON) and os.path.exists(README_MD)):
