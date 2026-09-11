@@ -1829,6 +1829,13 @@
       "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
     },
     {
+      "hook": "guard-bash.ps1",
+      "name": "실행 판정은 비-data-sink heredoc 본문도 보존한다 (회차 58 델타 음성 — 판정 전용 스트립이 실행 경로로 새지 않았는가)",
+      "command": "python3 - <<PY\nsed -i 's/a/b/' plan.md\nPY",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
       "hook": "block-destructive.ps1",
       "name": "차단 사유는 why 를 싣는다 (정규식 원문 금지)",
       "command": "psql -c \"TRUNCATE TABLE users\"",

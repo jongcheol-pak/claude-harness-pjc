@@ -103,6 +103,21 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdHdReal } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: heredoc 뒤의 진짜 커밋은 그대로 고지한다' -R $r -ExpectExit 0 -ExpectContains '산문 서술'
 
+    # 5d) 비-data-sink heredoc 도 같다 (회차 58) — `guard-commit-secrets` 의 HD3 과 짝이다.
+    #   두 검사가 같은 `$cmd` 를 보므로 **여기서도 함께** 재지 않으면 한쪽만 도는 조합이 또 생긴다.
+    $sdHdPy = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdRoot
+                 tool_input = @{ command = "python3 - <<PY`nprint('규약: git commit -- <경로>')`nPY" } } | ConvertTo-Json -Compress
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdHdPy } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 비-data-sink heredoc 본문의 커밋 문구는 커밋이 아니다' -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 5e) 델타 음성 — 같은 `python3 - <<PY` 뒤에 진짜 커밋이 오면 종전대로 고지한다.
+    $sdHdPyReal = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdRoot
+                     tool_input = @{ command = "python3 - <<PY`nprint(1)`nPY`ngit commit -m x" } } | ConvertTo-Json -Compress
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdHdPyReal } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 비-data-sink heredoc 뒤의 진짜 커밋은 그대로 고지한다' -R $r -ExpectExit 0 -ExpectContains '산문 서술'
+
     # 6) 비하니스 레포는 무출력 — 마커 하나를 지우면 발동하지 않는다.
     Remove-Item (Join-Path $sdRoot '.claude-plugin/marketplace.json') -Force
     & git -C $sdRoot add -A 2>$null

@@ -72,7 +72,7 @@ function Invoke-WarnStaleDocs {
     # 커밋 판정은 `guard-commit-secrets.ps1` 과 **같은 형태를 쓴다** — 두 검사가 같은 자리에서
     #   발화하므로 판정이 갈리면 한쪽만 도는 조합이 생긴다. **heredoc 스트립도 그 형태에
     #   포함된다** — 2026-09-11 한쪽만 고쳐 그 조합이 실제로 생겼다(완료 리뷰 MAJOR).
-    $cmdForJudge = if (Get-Command Remove-HeredocDataSink -ErrorAction SilentlyContinue) { Remove-HeredocDataSink $cmd } else { $cmd }
+    $cmdForJudge = if (Get-Command Remove-HeredocBodyForJudge -ErrorAction SilentlyContinue) { Remove-HeredocBodyForJudge $cmd } else { $cmd }
     if ($cmdForJudge -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
     if ($cmdForJudge -match '--dry-run' -or $cmdForJudge -match '--help' -or $cmdForJudge -match '(^|\s)-h(\s|$)') { return New-HookResult }
 

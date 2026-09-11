@@ -191,3 +191,5 @@ dot-source 자체는 하나 남아 있다 — `guard-commit-secrets.ps1`(아래)
 **데이터-싱크만 스트립한다.** `cat` + `>` 리다이렉트 또는 `tee` 로 가는 본문은 **기록될 데이터라 실행되지 않으므로** 여는 줄만 남기고 지운다. `bash`·`psql` 같은 **실행자로 가는 본문은 보존한다** — 허용목록 방식이라 모르는 명령은 보존이 기본이고, 그러지 않으면 미탐이 생긴다.
 
 **`block-destructive.ps1` 의 같은 스트립을 복제 이식했다.** 그쪽은 함수가 아니라 최상위 인라인 코드라 「분할 헬퍼 동기」 축(`_ps_function_body`)이 잡지 못한다. 그래서 이쪽은 별도 함수 `Remove-HeredocDataSink` 로 두었다 — `Split-TopLevel` 본문에 넣으면 그 축이 두 파일의 갈림으로 읽는다.
+
+**스트립 함수는 둘이고 합치지 않는다** — `Remove-HeredocDataSink`(실행 판정)와 `Remove-HeredocBodyForJudge`(커밋 판정 전용). 정규식은 같고 묻는 것이 다르다 — 대조표는 `commit-secrets-rationale.md`「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」가 정본이다.

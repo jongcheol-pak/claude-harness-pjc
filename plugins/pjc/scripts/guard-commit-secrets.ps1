@@ -31,7 +31,7 @@ function Invoke-WarnCommitSecrets {
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
     # **커밋 판정은 heredoc 본문을 뺀 뒤에 한다** — 근거는 `rules/commit-secrets-rationale.md`의 「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」.
-    $cmdForJudge = if (Get-Command Remove-HeredocDataSink -ErrorAction SilentlyContinue) { Remove-HeredocDataSink $cmd } else { $cmd }
+    $cmdForJudge = if (Get-Command Remove-HeredocBodyForJudge -ErrorAction SilentlyContinue) { Remove-HeredocBodyForJudge $cmd } else { $cmd }
     if ($cmdForJudge -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
     if ($cmdForJudge -match '--dry-run' -or $cmdForJudge -match '--help' -or $cmdForJudge -match '(^|\s)-h(\s|$)') { return New-HookResult }
 

@@ -17,6 +17,18 @@ function Remove-HeredocDataSink([string]$s) {
         if ($isDataSink) { $line } else { $m.Value }
     })
 }
+# heredoc 본문 전량 스트립 (**판정 전용**) — 근거는 `rules/bash-guard-rationale.md`의 「§16 heredoc 본문이 분할을 깨뜨린다」
+#   위 `Remove-HeredocDataSink` 와 **일부러 나눠 둔다**. 그쪽의 판정 축은 「본문이 파일로 가는가」라
+#   `python3 - <<PY` 처럼 본문을 **실행**하는 형태는 남겨야 옳다 — 실행 판정은 그 본문을 봐야 한다.
+#   반면 「이 명령이 커밋인가」를 묻는 검사에는 태그 종류가 아무 의미가 없다: 본문은 데이터든
+#   코드든 **그 자리에서 git 이 도는 것이 아니다**. 그래서 여기서는 싱크 여부를 보지 않고 전부 지운다.
+#   회차 55 실해: 커밋 규약 문구를 `python3 - <<PY` 본문에 담은 호출이 커밋으로 읽혀 50파일 상한에
+#   걸렸고, 사유가 「커밋 파일이 많다」로 나와 오탐이 보이지 않았다.
+function Remove-HeredocBodyForJudge([string]$s) {
+    if ([string]::IsNullOrEmpty($s)) { return $s }
+    $rx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
+    return [regex]::Replace($s, $rx, { param($m) $m.Groups['line'].Value })
+}
 # 최상위 구분자 분리(따옴표 인식) — 근거는 `rules/bash-guard-rationale.md`의 「§11 최상위 구분자 분리(따옴표 인식)」
 function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     $parts = New-Object System.Collections.Generic.List[string]

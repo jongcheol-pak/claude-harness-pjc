@@ -564,6 +564,20 @@ if ($gitOk) {
     $hdReal = "cat > note.md <<EOF`nx`nEOF`ngit add -A && git commit -m x"
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = $hdReal } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: heredoc 밖의 진짜 커밋은 그대로 판정한다 (HD2, exit 2)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
+
+    # ---- HD3·HD4 (회차 58 — skill-feedback ② 잔여분): **비-data-sink** heredoc 도 같다.
+    #   회차 57 은 `Remove-HeredocDataSink` 로 `cat >`·`tee` 만 닫았다. 그 헬퍼는 설계상
+    #   data sink 만 본문을 지워, 회차 55 의 **실제 형태**인 `python3 - <<PY` 는 그대로 남았다.
+    #   HD1 과 같은 repo(캡 도달 상태)를 쓰므로 판정이 살아 있으면 exit 2 가 된다 — 그것이 red 다.
+    $hdPy = "python3 - <<PY`nprint('규약: git add -A && git commit -m x 를 한 호출에 잇지 않는다')`nPY"
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = $hdPy } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 비-data-sink heredoc 본문의 커밋 문구도 커밋이 아니다 (HD3, exit 0)" -R $r -ExpectExit 0 -ExpectNotContains '50개 상한'
+
+    # HD4 (델타 음성): 같은 `python3 - <<PY` 형태를 쓰되 종료 태그 **뒤에** 진짜 커밋이 온다.
+    #   스트립이 본문만 먹고 그 뒤를 삼키지 않는지를 잰다 — HD3 과 같은 경로를 타야 의미가 있다.
+    $hdPyReal = "python3 - <<PY`nprint(1)`nPY`ngit add -A && git commit -m x"
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = $hdPyReal } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 비-data-sink heredoc 밖의 진짜 커밋은 그대로 판정한다 (HD4, exit 2)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
 } else {
     Write-Host "[SKIP] warn-commit-secrets 시나리오 (git 없음)"
 }
