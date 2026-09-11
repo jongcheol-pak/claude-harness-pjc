@@ -27,3 +27,10 @@ notes-archive/
 !plugins/pjc/evals/fixtures/**/notes.md
 # 같은 이유로 골든 픽스처의 plan.md 도 추적한다 — 축 11(등재 마커 실재)의 입력이다.
 !plugins/pjc/evals/fixtures/**/plan.md
+
+# CI 워크플로 — **전역 `~/.gitignore_global` 이 `.github/` 를 무시한다**(이 레포 것이 아니다).
+#   전역 설정은 건드리지 않고 이 레포에서만 되살린다. 디렉터리를 먼저 풀지 않으면
+#   그 안의 파일에 대한 예외가 git 에서 효력이 없다.
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml

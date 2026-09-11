@@ -1,0 +1,84 @@
+# 하니스 검사기 13종을 CI 에서 돌린다.
+#
+# **windows-latest 인 이유**: hook 스크립트가 PowerShell 이고 `run-hook-evals.ps1` 이
+#   pwsh 로 골든을 돌린다. 검증 환경은 Windows 이고(`AGENTS.md` 「OS/플랫폼」)
+#   macOS/Linux 는 실험적이라 CI 를 그쪽에 맞추면 재는 것과 쓰는 것이 갈린다.
+#
+# **명령은 `AGENTS.md` 「Build & Test」에서 그대로 옮긴다** — 문자열을 여기서 고쳐 쓰면
+#   정본이 둘이 되고 한쪽만 갱신된다.
+#
+# **순서는 싼 것부터다** — 구문 검사·매니페스트가 먼저 깨지면 뒤 검사기는 볼 필요가 없다.
+#
+# **넣지 않는 둘**:
+#   - `skills/evals/trigger_eval.py` — 실제 Claude CLI 를 43회 띄운다. CI 가 매 push 마다
+#     모델 호출 비용을 무는 것은 이 레포가 그것을 「명시 호출 전용」으로 둔 이유와 어긋난다
+#     (`skills/evals/README.md`).
+#   - `validate.ps1` — 설치 캐시(`~/.claude/plugins/cache/`)를 보므로 CI 러너에는 잴 대상이
+#     없다. 재설치 후에만 유효하다(`AGENTS.md` 「통합 검증」).
+#
+# ⚠ **exit 2 는 통과가 아니다** — `check-harness-consistency.py` 는 앵커 파싱 실패,
+#   `run-evals.py` 는 `cases.json` 서식 위반·미추적 픽스처에서 2 를 낸다. Actions 는
+#   0 이 아닌 종료 코드를 실패로 잡으므로 별도 처리가 필요 없다.
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # ── 인라인 pwsh 2종 ──────────────────────────────────────────────
+      - name: Build — 전 ps1 구문 검사
+        shell: pwsh
+        run: >
+          $f=0; Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object { $e=$null;
+          $null=[System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$null,[ref]$e);
+          if($e.Count){$f++; Write-Host ('PARSE FAIL ' + $_.Name + ': ' + $e.Count)} };
+          if($f){exit 1}; 'parse OK'
+
+      - name: Test — JSON 매니페스트 유효성
+        shell: pwsh
+        run: '@(''plugins/pjc/.claude-plugin/plugin.json'',''plugins/pjc/hooks/hooks.json'',''.claude-plugin/marketplace.json'') | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + '' OK'') }'
+
+      # ── python 검사기 10종 ───────────────────────────────────────────
+      - name: 하니스 정합 셀프체크
+        run: python plugins/pjc/evals/check-harness-consistency.py
+
+      - name: evals 골든 회귀
+        run: python plugins/pjc/evals/run-evals.py
+
+      - name: 삭제 자산 참조 검사
+        run: python plugins/pjc/evals/check-stale-refs.py
+
+      - name: 잘린 주석 검사
+        run: python plugins/pjc/evals/check-comment-truncation.py
+
+      - name: 차단 경로 커버리지
+        run: python plugins/pjc/hooks/evals/check-block-coverage.py
+
+      - name: 위키 회로 검사
+        run: python plugins/pjc/skills/evals/check_wiki_circuit.py
+
+      - name: 트리거 러너 종료 코드
+        run: python plugins/pjc/skills/evals/test_exit_code.py
+
+      - name: llm-wiki 상수·배치 정합
+        run: python plugins/pjc/skills/llm-wiki/evals/check_consistency.py
+
+      - name: llm-wiki lint 골든 회귀
+        run: python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
+
+      - name: AGENTS.md 이관 골든
+        run: python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
+
+      # ── pwsh 검사기 1종 ─────────────────────────────────────────────
+      - name: Hook 골든 회귀
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
