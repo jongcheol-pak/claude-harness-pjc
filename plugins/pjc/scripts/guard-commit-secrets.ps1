@@ -6,6 +6,15 @@ function New-HookResult {
     return @{ Block = $Block; Stderr = $Stderr; Context = $Context }
 }
 
+# heredoc 본문 전량 스트립 (커밋 판정 전용) — 근거는 `rules/commit-secrets-rationale.md`의 「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」
+#   `New-HookResult` 와 같은 이유로 이 파일에 둔다 — 쓰는 쪽이 이 파일과 `guard-stale-docs.ps1` 둘뿐이고,
+#   dot-source 순서상 이 파일이 먼저라 뒤쪽도 받는다. 정규식은 `guard-bash.ps1` 의 `$script:HeredocBlockRx` 를 공유한다.
+function Remove-HeredocBodyForJudge([string]$s) {
+    if ([string]::IsNullOrEmpty($s)) { return $s }
+    if (-not $script:HeredocBlockRx) { return $s }   # 단독 dot-source 시 fail-open(보수측: 스트립 없이 판정)
+    return [regex]::Replace($s, $script:HeredocBlockRx, { param($m) $m.Groups['line'].Value })
+}
+
 function Get-DiffHeadAdded {
     param([string[]]$PathArgs = @())
     $out = if ($PathArgs.Count) { @(& git diff HEAD --unified=0 -- $PathArgs 2>$null) }

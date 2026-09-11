@@ -101,14 +101,8 @@ def check_pointer_reachability():
     대상으로 삼는 이유는, 경로 없는 「…」는 강조 표기와 구분되지 않아 오탐이 크기 때문이다.
     """
     # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 왜 「절 이름 동반」만 포인터로 세는가」.
-    #
-    # ⚠ 배제 문자를 늘리지 말 것. 한때 `·`와 `*`를 배제했더니 이 문서군에서 흔한
-    # `` `경로`의 **「앵커」** `` 볼드-랩 스타일이 **매치 자체에서 빠져 무음 누락**됐다
-    # (정당한 포인터 2건이 `[NOTE]`에도 안 잡히고 사라졌다 — 검사 축소가 침묵으로 나타난 사례).
-    # 12자 창만으로 위 오탐은 이미 걸러진다(그 문장은 경로에서 「」까지 12자를 훨씬 넘는다).
-    # 절 이름 상한이 60자였을 때 **기계 생성 포인터 16건이 매치 자체에서 빠졌다** — 근거를
-    #   `rules/*-rationale.md`로 내리며 붙은 `§N ` 접두 때문에 62~64자에 몰렸기 때문이다.
-    #   상한을 120자로 올리고 비교 전 양쪽을 strip 한다(후행 공백 차이로 갈리지 않게).
+    # ⚠ **배제 문자를 늘리거나 절 이름 상한을 내리지 말 것** — 둘 다 무음 누락을 낸 전례가 있다.
+    #   사유는 같은 문서의 「축 ① — 정규식을 좁히면 침묵한다」.
     pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
     # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 「절 이름 없는 참조」를 판정이 아니라 범위로 내는 이유」.
     pat_any = re.compile(r"`([A-Za-z0-9_./-]+\.md)`")
@@ -1285,10 +1279,8 @@ def _json_case_count(rel):
 #  **단위가 바이트가 아니라 문자**라 한글 스킬에서 바이트로 재면 3배로 어긋난다.
 #  넘으면 스킬이 로드되지 않으므로 통지가 아니라 게이트다.
 SKILL_FM_MAX = {"name": 64, "description": 1024}
-# 같은 출처의 **하드 제약 2종** — 길이와 달리 「얼마나」가 아니라 「있으면 안 된다」다.
-#  `name` 예약어는 그 두 낱말이 **들어 있기만 해도** 걸린다(공식: *"Cannot contain
-#  reserved words"*). XML 태그는 두 필드에 같이 걸리므로 필드별로 나누지 않는다 —
-#  대신 골든은 필드마다 둔다(한 필드만 특례로 빠지는 구현 오류는 케이스가 가른다).
+# 같은 출처의 **하드 제약 2종** — 근거는 `harness-consistency-rationale.md` 의
+#  「축 ⑰ — frontmatter 하드 제약 2종」.
 SKILL_FM_RESERVED = ("anthropic", "claude")
 _RX_FM_XML = re.compile(r"<[A-Za-z/!]")
 _RX_FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---", re.S)
@@ -1371,8 +1363,7 @@ def check_count_and_version(conv):
                 issues.append("frontmatter 길이: `%s` 의 %s 가 %d자로 상한 %d자를 넘었다 "
                               "— 넘으면 그 스킬이 로드되지 않는다(단위는 바이트가 아니라 "
                               "문자다)" % (rel, field, len(val), cap))
-            # 예약어는 `name` 에만 걸린다 — `description` 은 스킬을 설명하는 산문이라
-            #   그 낱말이 정당하게 들어갈 수 있다(이 파일 자신이 그렇다).
+            # 예약어는 `name` 에만 걸린다 — 사유는 위 상수가 가리키는 rationale 절.
             if field == "name":
                 hit = next((w for w in SKILL_FM_RESERVED if w in val.lower()), None)
                 if hit:

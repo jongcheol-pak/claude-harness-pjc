@@ -86,7 +86,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | **agent·skill·hook 신설** | 해당 행에 더해 **`validate.ps1` 의 화이트리스트 배열을 같은 task 에서 갱신한다** — 빠지면 재설치 후 통합 검증이 `[WARN] validate 미등록` 을 적재한 채로 남는다(v1.169.0 T1 이 신설한 agent 를 등재하지 않아 완료 리뷰가 BLOCKER 로 잡을 때까지 그 상태로 갔다). **워킹트리 검사기 어느 축도 이것을 잡지 못한다** — `validate.ps1` 이 보는 것은 설치 캐시다 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) + **`python plugins/pjc/evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 두 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
 | **모든 `*.md` 변경 (공통 — 다른 행에 걸려도 **더해진다**)** · `agents/*.md` · 기타 skills | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — **행 이름이 「그 외」였을 때 배타로 오독됐다**(2026-09-11 2R 리뷰가 판정을 유보했다). 머리말대로 **합집합**이라, `*.md` 를 고치는 task 는 다른 행에 걸리더라도 이 행을 함께 돈다. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(「문서 표기 축」 절). md를 고치면 그 두 축의 대상이 된다 | 여기에 **`python plugins/pjc/evals/check-stale-refs.py`**를 함께 돌린다 — 회차 1·2·22가 없앤 26개 이름이 살아 있는 자산(레포 루트의 `*.ps1`·`*.md` 포함)에 남았는지 본다(실행에 영향이 없어 골든이 못 잡는 축이다).
-| `plugins/pjc/skills/*/SKILL.md` 의 frontmatter **`description`** | 아래 「그 외」 행에 더해 **`python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>`** — `description` 이 트리거의 1차 메커니즘이라(`plugins/pjc/skills/AUTHORING.md` 「description 작성」) 한 구만 고쳐도 발동·미발동 경계가 함께 움직인다. 케이스 id 접두는 `plan`·`impl`·`rec`·`wiki`·`dbg`. **자수도 함께 잰다** — 운용 기준 **1,024자**를 넘으면 잘린다(회차 30 실측: `record-project-fact` 가 1,045자로 넘어 있었고 재는 축이 0건이었다). 전량 실행은 명시 호출 전용이다 |
+| `plugins/pjc/skills/*/SKILL.md` 의 frontmatter **`description`** | 위 「모든 `*.md` 변경」 행에 더해 **`python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>`** — `description` 이 트리거의 1차 메커니즘이라(`plugins/pjc/skills/AUTHORING.md` 「description 작성」) 한 구만 고쳐도 발동·미발동 경계가 함께 움직인다. 케이스 id 접두는 `plan`·`impl`·`rec`·`wiki`·`dbg`. **자수도 함께 잰다** — 운용 기준 **1,024자**를 넘으면 잘린다(회차 30 실측: `record-project-fact` 가 1,045자로 넘어 있었고 재는 축이 0건이었다). 전량 실행은 명시 호출 전용이다 |
 | 위키 회로 6파일 — `implement/SKILL.md` · `plugins/pjc/skills/WIKI.md` · `plan/SKILL.md` · `plugins/pjc/skills/llm-wiki/**` | 해당 행에 더해 **`python plugins/pjc/skills/evals/check_wiki_circuit.py`**(7단계, 모델 호출 없음 · 1초 미만) — 「같은 함정에 두 번 걸리지 않는다」가 성립하려면 기록 → 소비 → 조회가 한 줄로 이어져야 하는데, 어느 한 곳을 고쳐도 다른 다섯은 그대로 통과한다. **비용이 없으므로 스모크가 아니라 전량이 기본이다** |
 | **`session-context` 발췌 절 3곳** — `implement/SKILL.md` 「자율 루프」~「검증」 · `plan/SKILL.md` 「Step 3. 영향 범위 실측」~「Step 4. 작업 분해」 · `plugins/pjc/skills/llm-wiki/references/queue-rules.md` 「K 5-2. 결정 큐잉 ([DECISION])」~「K 5-4. 미스 큐잉 ([K-MISS])」 의 **헤딩·본문** | 해당 행에 더해 **Hook 골든 회귀** — `session-context.ps1` 이 압축 직후 그 절을 `Get-SkillSection` 으로 잘라 주입하고, `hooks/evals/scenarios/session-context.ps1` 은 그 절의 **본문 문자열**을 앵커로 삼아 주입을 잰다. 회차 41 이 `plan/SKILL.md` Step 3 의 한 불릿을 지웠는데 이 표에 행이 없어 골든을 돌리지 않았고, SC41·SC41e 2건 FAIL 이 하루 뒤 회차 44 검토에서 드러났다. 헤딩을 바꾸면 「추출 앵커 도달성」 축이 잡지만 **본문만 바뀌면 골든이 유일한 그물**이다 |
 | `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | **`python plugins/pjc/skills/evals/test_exit_code.py`**(종료 코드 판정 **10케이스(기계 미대조)** — 모델 호출 없음·1초) + 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·최종 검증에 포함하지 않는다**(실제 모델 호출이라 비용이 크다). **`rubric_eval.py`·`compare_evals.py` 에 이 표의 행이 없는 것은 누락이 아니다** — 전자의 입력은 `docs/plans/` 의 plan 이고 후자는 두 결과 JSON 이라, 레포 소스를 고치는 것이 그 둘의 트리거가 아니다(회차 30 판정). **케이스 수를 바꿨으면 `python plugins/pjc/evals/check-harness-consistency.py`(축 ⑰ 계수 정합)도 필수다** — 「검증 명령 상세」의 기준선이 이 매니페스트를 적고 있어, 안 부르면 그 드리프트가 커밋까지 통과한다. |
@@ -97,7 +97,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 바이트 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 82,721 | 137,000 |
+| `docs/harness-conventions.md` | 83,134 | 137,000 |
 | `docs/golden-runner.md` | 17,059 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 19,565 | 37,000 |
 
@@ -354,14 +354,15 @@ plan **존재** 게이트에만 있는 경로다. plan **작성** 게이트(plan
 
 **hook 우회 변수는 둘이고 서로 대체되지 않는다** — `CLAUDE_HARNESS_QUICK`(골든 QUICK 분기) / `CLAUDE_HARNESS_ALLOW_SECRET`(커밋 시크릿 검사 전용). **Claude 가 Bash 도구로 설정해도 hook 프로세스에 전파되지 않아 무효다** — 사용자가 세션 시작 전 터미널에서 설정해야 한다.
 
-## `Invalid tool parameters` 는 하니스가 관측할 수 없다 (2026-09-11 조사)
+## 도구 인자 검증 오류는 전사에 남는다 — 검색어는 `InputValidationError` 다 (2026-09-11 정정)
 
-**결론: 하니스 안에 관측 지점이 없다.** 다음 회차가 같은 조사를 반복하지 않도록 근거를 남긴다.
+> **⚠ 이 절은 2026-09-11 회차 58 이 정정했다.** 회차 57 은 *"하니스가 관측할 수 없다 · 전수 0건"* 으로 판정하고 그 결론을 이 자리에 절로 남겼는데, **틀렸다.** 원인은 **검색어를 `Invalid tool parameters` 하나로 잡은 것**이다 — 화면에 뜨는 문구와 전사에 적히는 문구가 다르다.
 
-- **transcript 에 남지 않는다** — `~/.claude/projects` 전수 스캔에서 `tool_result` 로 기록된 실제 오류 레코드가 **0건**이다 — 세션 전사 **444** + 서브에이전트 전사 **2,890** = **3,334 파일**(2026-09-11 완료 리뷰 재측. 최초 조사는 최상위 443 만 훑었고, 범위를 넓혀도 0건이라 결론이 더 강해졌다). 매치되는 몇 건은 전부 이 조사 자신의 출력이다.
-- **hook 도 못 잡는다** — 이 오류는 **도구 스키마 검증 단계**에서 나므로 그 도구가 실행되지 않고, 따라서 `PreToolUse` 가 돌지 않는다. `hook-event-log.ps1` 은 hook 이 발동해야 쓰이는 헬퍼라 그 앞 단계를 볼 수 없다.
-- **그래서 로거에 필드를 더해도 그 오류는 안 잡힌다** — 회차 57 이 그 수단을 검토했다가 이 근거로 폐기했다. 필드를 더하는 것은 **재는 것이 없는 코드**를 늘리는 것이다.
-- **관측이 필요하면 사용자 쪽에서 잡는다** — 그 오류를 본 시점의 **도구 이름과 화면 문구**가 유일한 단서다. 하니스가 대신 남길 자리가 없다.
+- **전사에 남는다** — `~/.claude/projects` 전수(**3,327 파일**)에서 `tool_result` 의 `is_error` 레코드로 **172건 / 156 파일**이 나온다. 도구별로 `Read` **124** · 스키마 위반(도구명 없는 형태) **28** · `AskUserQuestion` **20**.
+- **검색어가 갈린다** — 전 프로젝트에서 `InputValidationError` 는 **219 파일**, `Invalid tool parameters` 는 **5 파일**이다. 후자로만 찾으면 사실상 0 이 나온다.
+- **판정 방법**: `tool_result` 이면서 `is_error` 인 레코드의 본문에 `InputValidationError` 가 있는가. 단순 `grep` 은 **이 조사 자신의 출력과 회차 문서**를 함께 세므로 레코드 단위로 걸러야 한다.
+- **hook 은 여전히 못 잡는다** — 이 오류는 **도구 스키마 검증 단계**에서 나므로 그 도구가 실행되지 않고 `PreToolUse` 가 돌지 않는다. 관측 경로는 **hook 이 아니라 전사**다.
+- **교훈**: *"「없다」를 결론으로 쓸 때는 검색어 2개 이상으로 확인한다"*(`plan/SKILL.md` Step 3)를 **회차 57 이 지키지 않았고, 그 결론이 문서로 굳어 다음 회차의 조사를 막을 뻔했다.** 「관측 경로가 원리상 없다」는 강한 주장이라 **검색어 하나로 낼 수 없다.**
 
 ## 병행 세션의 커밋 (경로 한정이 왜 안 통하는가)
 
