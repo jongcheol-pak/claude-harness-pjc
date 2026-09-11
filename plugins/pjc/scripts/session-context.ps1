@@ -206,6 +206,32 @@ try {
             }
         }
 
+        # ---- AGENTS.md 이관처 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§35 ---- AGENTS.md 이관처 목차 주입」
+        #   AGENTS.md 는 전문이 주입되지만 **그 분할본은 어느 주입 경로에도 없다** — 포인터로만 닿고,
+        #   포인터는 그것이 있는 줄 알아야 따라간다. 전문(75KB)은 주입 예산의 4배라 **절 제목만** 싣는다.
+        $convTocMaxBytes = 3000       # 주입 상한 — 절이 늘어도 주입이 세션을 잠식하지 않게 한다
+        $convPath = Join-Path $cwd 'docs/harness-conventions.md'
+        $convInfo = Get-Item -LiteralPath $convPath -ErrorAction SilentlyContinue
+        # 파일이 없으면 조용히 생략한다 — 이 hook 은 다른 레포에서도 돈다.
+        if ($convInfo -and -not $convInfo.PSIsContainer -and $convInfo.Length -gt 0) {
+            $convText = $null
+            try { $convText = Get-Content -LiteralPath $convPath -Raw -Encoding UTF8 } catch {}
+            if (-not [string]::IsNullOrWhiteSpace($convText)) {
+                # 코드펜스 안의 `## ` 는 절이 아니다 — AGENTS.md 목차 폴백과 같은 처리다.
+                $convSrc = [regex]::Replace($convText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
+                $convHeads = @([regex]::Matches($convSrc, '(?m)^## .+') | ForEach-Object { ($_.Value -replace '^##\s*', '').Trim() })
+                if ($convHeads.Count -gt 0) {
+                    $convToc = $convHeads -join ' · '
+                    # 절단은 절 경계가 아니라 문자 수로 한다 — 상한의 목적이 바이트 방어라
+                    #   경계를 맞추려 다시 세면 상한을 넘길 수 있다.
+                    if ([System.Text.Encoding]::UTF8.GetByteCount($convToc) -gt $convTocMaxBytes) {
+                        $convToc = $convToc.Substring(0, [Math]::Min($convToc.Length, $convTocMaxBytes / 3)) + ' …(이하 생략 — 전문을 Read하세요)'
+                    }
+                    $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 이관처 docs/harness-conventions.md ($($convInfo.Length)B) — 전문은 주입되지 않습니다. 아래 절이 그 안에 있으니 **해당 절이 필요하면 그 파일을 Read**하세요. AGENTS.md 의 포인터가 가리키는 곳이 여기입니다.`n절: ${convToc}")
+                }
+            }
+        }
+
         # ---- vault 라인 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§34 ---- vault 라인 주입」
         if ($vaultLine -and ($lines.Count -gt $cwdBaseCount)) {
             $lines.Insert([Math]::Min($vaultInsertAt, $lines.Count), $vaultLine)

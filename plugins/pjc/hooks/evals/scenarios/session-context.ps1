@@ -914,6 +914,37 @@ if (Test-HookSelected @('session-context')) {
 
     Remove-Item -Recurse -Force $scLed, $scLedNoHarn -ErrorAction SilentlyContinue
 
+    # ---- SC45: AGENTS.md 이관처 목차 주입 (회차 57 T3)
+    #   AGENTS.md 는 전문이 주입되지만 그 분할본은 어느 주입 경로에도 없었다 —
+    #   포인터는 그것이 있는 줄 알아야 따라간다. 네 케이스가 양성 2 · 델타 음성 2 다.
+    $scToc = Join-Path $work 'sc-toc'
+    New-Item -ItemType Directory (Join-Path $scToc 'docs') -Force | Out-Null
+    @('# Guide', '', '## Build & Test') | Set-Content -Encoding UTF8 (Join-Path $scToc 'AGENTS.md')
+    $scTocConv = Join-Path $scToc 'docs/harness-conventions.md'
+    $scTocInvoke = { Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scToc } | ConvertTo-Json -Compress) }
+
+    # SC45a (양성): 이관처가 있으면 그 절 제목이 주입된다.
+    @('# 상세', '', '## 첫째 절', '', '본문', '', '## 둘째 절') | Set-Content -Encoding UTF8 $scTocConv
+    $r = & $scTocInvoke
+    Assert-Case -Name "session-context: 이관처 목차 주입 (SC45a)" -R $r -ExpectExit 0 -ExpectContains '첫째 절 · 둘째 절'
+
+    # SC45b (양성): 코드펜스 안의 `## ` 는 절이 아니다 — AGENTS.md 목차 폴백과 같은 축.
+    @('# 상세', '', '## 진짜 절', '', '``````', '## 펜스 안 가짜', '``````') | Set-Content -Encoding UTF8 $scTocConv
+    $r = & $scTocInvoke
+    Assert-Case -Name "session-context: 목차는 코드펜스 안을 세지 않는다 (SC45b)" -R $r -ExpectExit 0 -ExpectNotContains '펜스 안 가짜'
+
+    # SC45c (델타 음성): 이관처가 없으면 조용히 생략한다 — 이 hook 은 다른 레포에서도 돈다.
+    Remove-Item -Force $scTocConv -ErrorAction SilentlyContinue
+    $r = & $scTocInvoke
+    Assert-Case -Name "session-context: 이관처 부재 시 침묵 (SC45c)" -R $r -ExpectExit 0 -ExpectNotContains '이관처'
+
+    # SC45d (델타 음성): `## ` 헤딩이 하나도 없으면 빈 목차를 내지 않는다.
+    @('# 상세', '', '헤딩 없는 산문뿐이다.') | Set-Content -Encoding UTF8 $scTocConv
+    $r = & $scTocInvoke
+    Assert-Case -Name "session-context: 절이 0건이면 미주입 (SC45d)" -R $r -ExpectExit 0 -ExpectNotContains '이관처'
+
+    Remove-Item -Recurse -Force $scToc -ErrorAction SilentlyContinue
+
     Remove-Item -Recurse -Force $isoV, $isoV2, $scHarn -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 
