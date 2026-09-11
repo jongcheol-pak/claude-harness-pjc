@@ -600,6 +600,21 @@ RULE_EXCLUDE_FIXTURE_SEG = "/evals/fixtures/"
 RULE_EXCLUDE_LABEL_RX = re.compile(r"^- \*\*\d+\*\*[:：]")
 RULE_EXCLUDE_PLACEHOLDER_RX = re.compile(r"<[^>]{2,40}>")
 RULE_FORM_RX = re.compile(r"^- \*\*.+?\*\*[^\S\n]*—[^\S\n]")
+# 자리표시자를 **담기만 한** 줄은 템플릿이 아니다 — 규칙이 꺾쇠를 예시로 인용할 수 있다
+#   (`설정: intent — <제목>` 제목으로 커밋한다). 줄 전체에 `search` 를 걸면 그런 규칙이
+#   영구히 배제돼 축이 침묵한다(회차 59 완료 리뷰 실측 1건). 볼드를 닫은 뒤 남는 것이
+#   **자리표시자와 구두점뿐일 때만** 템플릿으로 본다.
+TEMPLATE_RESIDUE_MAX = 10
+
+
+def is_template_line(line):
+    """볼드 뒤 본문이 사실상 자리표시자뿐인가 — 그때만 템플릿으로 배제한다."""
+    if not RULE_EXCLUDE_PLACEHOLDER_RX.search(line):
+        return False
+    m = re.match(r"^- \*\*.+?\*\*", line)
+    rest = line[m.end():] if m else line
+    rest = RULE_EXCLUDE_PLACEHOLDER_RX.sub("", rest)
+    return len(re.sub(r"[\s\W_]+", "", rest, flags=re.UNICODE)) < TEMPLATE_RESIDUE_MAX
 
 
 def check_rule_rationale():
@@ -621,7 +636,7 @@ def check_rule_rationale():
                     continue
                 if in_fence or not line.startswith("- **"):
                     continue
-                if RULE_EXCLUDE_LABEL_RX.match(line) or RULE_EXCLUDE_PLACEHOLDER_RX.search(line):
+                if RULE_EXCLUDE_LABEL_RX.match(line) or is_template_line(line):
                     continue
                 n += 1
                 if not RULE_FORM_RX.match(line):
