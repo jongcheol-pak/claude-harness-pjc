@@ -569,6 +569,13 @@ BUDGET_TARGETS = [
     ("검사기 `evals/*.py`", ["plugins/pjc/evals/*.py", "plugins/pjc/hooks/evals/*.py",
                              "plugins/pjc/skills/evals/*.py",
                              "plugins/pjc/skills/*/evals/*.py"]),
+    # 검사기에서 내린 근거 산문의 수령처. **글롭을 위 `*.py` 행과 대칭으로 둔다** —
+    #   갈라 두면 새로 생긴 md 가 어느 쪽에도 안 걸려 재는 축 밖에 남는다(그 자리가
+    #   실제로 있었다: `harness-consistency-rationale.md` 가 이 행이 생기기 전까지
+    #   예산 표 어느 행에도 없었다). `fixtures/` 는 한 단계 더 아래라 `*` 에 안 걸린다.
+    ("근거 문서 `evals/*.md`", ["plugins/pjc/evals/*.md", "plugins/pjc/hooks/evals/*.md",
+                                "plugins/pjc/skills/evals/*.md",
+                                "plugins/pjc/skills/*/evals/*.md"]),
 ]
 
 # `llm-wiki` 트리 면제 — 선언과 근거는 `BUDGET.md` 「예산 표」가 정본이다(면제이지 통과가 아니다).
