@@ -129,4 +129,4 @@ RIGHT: (판정 기준은 `wiki-sync.md`에 있다)
 
 ## 6. 적용 범위
 
-`skills/plan/` · `skills/implement/` · `agents/`. **§2·§3도 같은 범위다**(**§4가 가리키는 예산 표와 §5는 스킬 트리 전체가 대상이다** — 예산 표는 `skills/*/SKILL.md` 를, hook 표는 그 밖의 스킬까지 잰다) — 다만 §2가 막는 것은 **편집으로 밀리는 번호**라, 번호가 기계 대조의 키인 참조(`wiki-schema` §7-N ↔ `lint.py`)와 **번호가 헤딩에 박힌 이름**인 참조(`## §1 Iron Law이 …` — 위치 파생이 아니라 표제의 일부라 절을 넣어도 밀리지 않는다)는 그 대상이 아니다. 나머지 셋에 §1 형식을 일괄 적용하지 않는다 — `llm-wiki`·`pjc-systematic-debugging` 은 전수 판정을 마친 결과이고, `record-project-fact` 는 **미판정**이다.
+`skills/plan/` · `skills/implement/` · `agents/`. **§2·§3도 같은 범위다**(**§4가 가리키는 예산 표와 §5는 스킬 트리 전체가 대상이다** — 예산 표는 `skills/*/SKILL.md` 를, hook 표는 그 밖의 스킬까지 잰다) — 다만 §2가 막는 것은 **편집으로 밀리는 번호**라, 번호가 기계 대조의 키인 참조(`wiki-schema` §7-N ↔ `lint.py`)와 **번호가 헤딩에 박힌 이름**인 참조(`## §1 Iron Law이 …` — 위치 파생이 아니라 표제의 일부라 절을 넣어도 밀리지 않는다)는 그 대상이 아니다. **나머지 셋(`llm-wiki`·`pjc-systematic-debugging`·`record-project-fact`)은 전수 판정 결과 §1 형식의 대상이 아니다** — 근거는 그 회차 커밋 본문에 있다.
