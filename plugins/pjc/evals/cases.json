@@ -879,6 +879,57 @@
     ]
   },
   {
+    "id": "harness-fm-name-reserved",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: claude-sample"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter 예약어:",
+      "예약어 `claude` 를 담았다"
+    ]
+  },
+  {
+    "id": "harness-fm-name-xml",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: <b>fm</b>"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter XML 태그:",
+      "의 name 가 `<` 로 시작하는 태그꼴을 담았다"
+    ]
+  },
+  {
+    "id": "harness-fm-desc-xml",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/fm-sample/SKILL.md",
+        "find": "description: frontmatter",
+        "replace": "description: <tag>frontmatter"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter XML 태그:",
+      "의 description 가 `<` 로 시작하는 태그꼴을 담았다"
+    ]
+  },
+  {
     "id": "harness-fm-no-frontmatter-skipped",
     "checker": "harness",
     "fixture": "minimal-repo",

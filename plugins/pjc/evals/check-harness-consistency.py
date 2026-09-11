@@ -1285,6 +1285,12 @@ def _json_case_count(rel):
 #  **단위가 바이트가 아니라 문자**라 한글 스킬에서 바이트로 재면 3배로 어긋난다.
 #  넘으면 스킬이 로드되지 않으므로 통지가 아니라 게이트다.
 SKILL_FM_MAX = {"name": 64, "description": 1024}
+# 같은 출처의 **하드 제약 2종** — 길이와 달리 「얼마나」가 아니라 「있으면 안 된다」다.
+#  `name` 예약어는 그 두 낱말이 **들어 있기만 해도** 걸린다(공식: *"Cannot contain
+#  reserved words"*). XML 태그는 두 필드에 같이 걸리므로 필드별로 나누지 않는다 —
+#  대신 골든은 필드마다 둔다(한 필드만 특례로 빠지는 구현 오류는 케이스가 가른다).
+SKILL_FM_RESERVED = ("anthropic", "claude")
+_RX_FM_XML = re.compile(r"<[A-Za-z/!]")
 _RX_FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---", re.S)
 
 
@@ -1365,6 +1371,17 @@ def check_count_and_version(conv):
                 issues.append("frontmatter 길이: `%s` 의 %s 가 %d자로 상한 %d자를 넘었다 "
                               "— 넘으면 그 스킬이 로드되지 않는다(단위는 바이트가 아니라 "
                               "문자다)" % (rel, field, len(val), cap))
+            # 예약어는 `name` 에만 걸린다 — `description` 은 스킬을 설명하는 산문이라
+            #   그 낱말이 정당하게 들어갈 수 있다(이 파일 자신이 그렇다).
+            if field == "name":
+                hit = next((w for w in SKILL_FM_RESERVED if w in val.lower()), None)
+                if hit:
+                    issues.append("frontmatter 예약어: `%s` 의 name `%s` 이 예약어 `%s` 를 "
+                                  "담았다 — 공식이 금지하는 낱말이라 그 스킬이 로드되지 "
+                                  "않는다" % (rel, val, hit))
+            if _RX_FM_XML.search(val):
+                issues.append("frontmatter XML 태그: `%s` 의 %s 가 `<` 로 시작하는 태그꼴을 "
+                              "담았다 — 공식이 두 필드 모두에 금지한다" % (rel, field))
 
     # 버전 축도 같은 관용을 쓴다 — 픽스처에는 `plugin.json`·`README.md` 가 없다.
     if not (os.path.exists(PLUGIN_JSON) and os.path.exists(README_MD)):
