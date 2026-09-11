@@ -151,9 +151,14 @@ def scan_tree():
     #   루트를 재귀하면 .git·node_modules 배제를 새로 관리해야 하는데 얻는 것이 없다.
     for pat in ('*.ps1', '*.md'):
         targets.extend(p for p in ROOT.glob(pat) if p.is_file())
-    for base in ('plugins', 'docs'):
+    # `.github` 만 **선택**이다 — CI 없는 레포가 정상이라 부재를 앵커 실패로 보면
+    #   이 검사기가 그 레포에서 통째로 exit 2 가 된다(골든 픽스처도 그 상태였다).
+    #   `plugins`·`docs` 는 없으면 잴 것이 없다는 뜻이라 종전대로 앵커 실패다.
+    for base in ('plugins', 'docs', '.github'):
         d = ROOT / base
         if not d.is_dir():
+            if base == '.github':
+                continue
             print(f'[ANCHOR FAIL] 대상 없음: {d}')
             return 2
         for p in d.rglob('*'):

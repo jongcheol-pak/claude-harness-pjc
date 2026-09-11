@@ -363,6 +363,35 @@
     ]
   },
   {
+    "id": "stale-no-github-ok",
+    "checker": "stale",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 살아 있는 자산의 삭제 자산 참조 0건"
+    ],
+    "expect_absent": [
+      "[ANCHOR FAIL]"
+    ]
+  },
+  {
+    "id": "stale-github-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": ".github/workflows/checks.yml",
+        "find": "이 워크플로에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 hook protect-harness 를 돌린다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에",
+      "checks.yml"
+    ]
+  },
+  {
     "id": "stale-root-hit",
     "checker": "stale",
     "fixture": "refs-repo",

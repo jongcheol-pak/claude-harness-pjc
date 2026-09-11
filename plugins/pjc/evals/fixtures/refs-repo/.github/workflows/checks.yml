@@ -1,0 +1,8 @@
+# 픽스처 — `.github/` 가 내용 축 스캔 대상인지 재는 자리다.
+name: checks
+on: [push]
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '이 워크플로에는 삭제된 자산의 이름이 없다.'
