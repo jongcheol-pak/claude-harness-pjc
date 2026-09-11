@@ -278,6 +278,11 @@ def check_pointer_reachability():
     return issues, checked
 
 
+# 대장 항목 1건의 바이트 상한. 정본 문면은 `docs/plans/deferred.md` 머리말과
+#  `plugins/pjc/skills/BUDGET.md` 이고, 이 상수는 그것을 재는 쪽이다.
+LEDGER_ITEM_MAX = 600
+
+
 def check_deferred_stats(ledger, closed):
     """대기(`deferred.md`)와 종결(`deferred-closed.md`) 두 파일을 합산해 앵커와 대조한다.
 
@@ -317,7 +322,19 @@ def check_deferred_stats(ledger, closed):
     if a_wait + a_done + purged != enrolled:
         issues.append("Deferred 불변식 — 대기 %d + 종결 %d + 삭제누계 %d = %d ≠ 총등재누계 %d"
                       % (a_wait, a_done, purged, a_wait + a_done + purged, enrolled))
-    return issues, wait + done
+    # 항목 상한 600 B 는 대장 머리말이 선언하지만 **재는 축이 없어 2배까지 자랐다**
+    #  (2026-09-11 실측 1,175·1,160). **통지 등급인 이유**: 게이트로 두면 기존 초과분이
+    #  전부 red 라 그 회차가 통째로 멈춘다 — 재는 것이 먼저이고 조이는 것은 그 다음이다.
+    over = [(l[:36], len(l.encode("utf-8"))) for l in lines[w:]
+            if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l)
+            and len(l.encode("utf-8")) > LEDGER_ITEM_MAX]
+    notices = []
+    if over:
+        notices.append("대장 항목 상한 초과 %d건(상한 %d B) — 통지 등급이라 exit 0 을 "
+                       "유지합니다. 다음 편집에서 줄이세요: %s"
+                       % (len(over), LEDGER_ITEM_MAX,
+                          " · ".join("%s… %d B" % (h, b) for h, b in over[:3])))
+    return issues, wait + done, notices
 
 
 def check_batch_number_sequence(hist):
@@ -1471,9 +1488,10 @@ def main():
     #  종전에는 배너가 별도 리터럴이라 축을 늘려도 그대로 남았다(이 회차가 실제로 겪었다).
     budget_issues, budget_n, budget_notices = check_doc_budget()
     close_issues, close_n, close_notices = check_close_reasons()
+    ledger_issues, ledger_n, ledger_notices = check_deferred_stats(ledger, ledger_closed)
     axes = [
         ("포인터 도달성", check_pointer_reachability()),
-        ("Deferred 집계", check_deferred_stats(ledger, ledger_closed)),
+        ("Deferred 집계", (ledger_issues, ledger_n)),
         ("볼드 마커 짝", check_bold_pairing()),
         ("한 줄 문장 중복", check_line_dup()),
         ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
@@ -1495,7 +1513,7 @@ def main():
 
     print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
     # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
-    for m in check_agents_target() + budget_notices + close_notices:
+    for m in check_agents_target() + budget_notices + close_notices + ledger_notices:
         print("[NOTICE] %s" % m)
     if all_issues:
         for m in all_issues:

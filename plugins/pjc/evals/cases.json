@@ -47,6 +47,22 @@
     ]
   },
   {
+    "id": "harness-ledger-item-over-cap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "**첫 번째 미처리 항목** — 착수 조건 없음.",
+        "replace": "**첫 번째 미처리 항목** — 착수 조건 없음. 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"
+      }
+    ],
+    "expect_keywords": [
+      "대장 항목 상한 초과 1건(상한 600 B)"
+    ]
+  },
+  {
     "id": "deferred-wait-drift",
     "checker": "harness",
     "fixture": "minimal-repo",
