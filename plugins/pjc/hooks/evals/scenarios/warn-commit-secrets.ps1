@@ -548,6 +548,20 @@ if ($gitOk) {
     Remove-Item (Join-Path $wcsCapU $capNames[50]) -Force
     $r = Invoke-Hook 'guard-bash.ps1' $capUJson
     Assert-Case -Name "commit-secrets: untracked 50개는 무차단(T1 ⓑ-음성, 경계값)" -R $r -ExpectExit 0
+
+    # ---- HD1·HD2 (회차 57 T7 — skill-feedback ②): heredoc 본문의 커밋 문구는 커밋이 아니다.
+    #   회차 55 실해: 위키 큐에 커밋 규약을 적으려고 그 문구를 heredoc 본문에 담은 호출이
+    #   커밋으로 판정돼 50파일 상한 차단에 걸렸다. 사유가 「커밋 파일이 많다」로 나와 오탐이 안 보였다.
+    #   같은 repo(캡 도달 상태)를 그대로 쓰므로, 판정이 살아 있으면 exit 2 가 된다 — 그것이 이 케이스의 red 다.
+    foreach ($n in $capNames) { 'v=1' | Set-Content (Join-Path $wcsCapU $n) }   # 51개로 되돌린다
+    $hdBody = "cat > note.md <<EOF`n규약: git add -A && git commit -m x 를 한 호출에 잇지 않는다`nEOF"
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = $hdBody } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: heredoc 본문의 커밋 문구는 커밋이 아니다 (HD1, exit 0)" -R $r -ExpectExit 0 -ExpectNotContains '50개 상한'
+
+    # HD2 (델타 음성): heredoc **밖**의 진짜 커밋은 종전대로 잡힌다 — 오탐을 고치며 미탐을 만들지 않았는지를 잰다.
+    $hdReal = "python3 - <<PY`nprint(1)`nPY`ngit add -A && git commit -m x"
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = $hdReal } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: heredoc 밖의 진짜 커밋은 그대로 판정한다 (HD2, exit 2)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
 } else {
     Write-Host "[SKIP] warn-commit-secrets 시나리오 (git 없음)"
 }

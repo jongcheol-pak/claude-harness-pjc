@@ -30,8 +30,10 @@ function Invoke-WarnCommitSecrets {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
-    if ($cmd -match '--dry-run' -or $cmd -match '--help' -or $cmd -match '(^|\s)-h(\s|$)') { return New-HookResult }
+    # **커밋 판정은 heredoc 본문을 뺀 뒤에 한다** — 근거는 `rules/commit-secrets-rationale.md`의 「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」.
+    $cmdForJudge = if (Get-Command Remove-HeredocDataSink -ErrorAction SilentlyContinue) { Remove-HeredocDataSink $cmd } else { $cmd }
+    if ($cmdForJudge -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
+    if ($cmdForJudge -match '--dry-run' -or $cmdForJudge -match '--help' -or $cmdForJudge -match '(^|\s)-h(\s|$)') { return New-HookResult }
 
     # cwd로 이동해 git 명령 실행. Set-Location이 caller(디스패처)·다른 검사에 잔존하지 않게 finally로 복원.
     $origLoc = Get-Location
