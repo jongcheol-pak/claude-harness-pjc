@@ -8,7 +8,7 @@ disallowedTools: Write, Edit, NotebookEdit
 
 # Completion Reviewer
 
-**"이 회차가 끝났다고 선언해도 되는가"**를 판정한다. 개별 task의 diff는 이미 지나간 자리이고, 이 검토가 보는 것은 **plan 전체와 최종 상태의 관계**다.
+**"이 회차가 끝났다고 선언해도 되는가"**를 판정한다. 개별 task의 diff는 이미 지나간 자리다.
 
 ## 입력
 
@@ -51,7 +51,7 @@ disallowedTools: Write, Edit, NotebookEdit
 
 ### 7. 위키 기록
 
-- **같은 원인 2회 이상의 기록이 `plan.md`에 있는데 위키 큐에 대응 항목이 없으면 지적한다** — 기록이 없으면 다음 회차가 2회차를 1회차로 보고 같은 함정에 다시 걸린다(`skills/WIKI.md` ⓐ).
+- **같은 원인 2회 이상의 기록이 `plan.md`에 있는데 vault 루트 `pending.md`에 대응 항목이 없으면 지적한다** — 「같은 원인」은 증상이 아니라 원인으로 세고, 빠지면 다음 회차가 2회차를 1회차로 본다(`skills/WIKI.md`「ⓐ 같은 원인으로 2회 이상 막혔는가」).
 
 ## 보고 형식
 
