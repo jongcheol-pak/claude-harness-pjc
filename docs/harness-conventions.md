@@ -19,6 +19,7 @@
 
 - **재지 않은 축은 「없음」이 아니라 「미측정」으로 적는다** — 실패를 통과로 읽으면 그 구간의 판정이 통째로 사라지고 아무도 모른다(`guard-stale-docs` 의 `[판정불가]` 와 같은 취지).
 - **재는 자리는 계획의 Investigation Log 다** — 서식은 `plugins/pjc/skills/plan/references/plan-template.md` 가 정본이다. **명령 없이 적은 축은 잰 것이 아니다.**
+- **기재 여부는 `plugins/pjc/evals/check-harness-consistency.py` 의 「영향 검토 3축」 축이 잰다(v1.277.0)** — 게이트는 그 계획의 `- **Files**:` 줄이 hook(`plugins/pjc/scripts/`)·스킬·에이전트·검사기·hook 자산·이 문서·`AGENTS.md` 중 하나를 담는가이고, **부분 기재도 red** 다(한 축만 실으면 나머지 둘이 「없음」으로 읽혀 바로 위 규칙이 무너진다). **축은 라벨만 보고 내용은 보지 않는다** — 「미측정」이 정당한 기재라 내용을 재면 이 절이 허용한 것을 검사기가 막는다. **못 잡는 것은 발화 시점이다** — `plan.md` 는 계획 단계에 검증 단계가 없어 이 축은 `pjc:implement` 의 task 검증에서 처음 돈다(승인 전이 아니라 커밋 전 차단이고, 그 사이는 `plan-reviewer` 가 맡는다).
 - **이 절은 「착수 전에 무엇을 재는가」이고, 잰 뒤 개정안을 어떻게 제시하는가는 아래 「규약 개정 요청의 취급」이다** — 순서로 이어지되 겹치지 않는다.
 
 ## 규약 개정 요청의 취급
@@ -97,7 +98,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다). **케이스 수를 바꿨으면 `python plugins/pjc/evals/check-harness-consistency.py`(축 ⑰ 계수 정합)도 필수다** — 「검증 명령 상세」의 기준선이 이 매니페스트를 적고 있어, 안 부르면 그 드리프트가 커밋까지 통과한다. |
 | `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든**이 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint → **2회째 수행(「수행 대상 없음」 요구)**을 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다**. **케이스 수를 바꿨으면 `python plugins/pjc/evals/check-harness-consistency.py`(축 ⑰ 계수 정합)도 필수다** — 「검증 명령 상세」의 기준선이 이 매니페스트를 적고 있어, 안 부르면 그 드리프트가 커밋까지 통과한다. |
-| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python plugins/pjc/evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든(**exit 2 는 `cases.json` 서식 위반 또는 미추적 픽스처** — 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다)이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다). |
+| `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python plugins/pjc/evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든(**exit 2 는 `cases.json` 서식 위반 또는 미추적 픽스처** — 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다)이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다).. 이 정합 검사는 **그 회차 `plan.md` 의 영향 검토 3축 기재도 함께 잰다** — `plan.md` 는 gitignore 라 「변경 파일 패턴」이 될 수 없어 이 표에 자기 행을 갖지 못하지만, 축은 그 파일을 직접 읽으므로 **이 행이 실행되는 순간 함께 판정된다**(부재 시 fail-open). |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | **agent·skill·hook 신설** | 해당 행에 더해 **`validate.ps1` 의 화이트리스트 배열을 같은 task 에서 갱신한다** — 빠지면 재설치 후 통합 검증이 `[WARN] validate 미등록` 을 적재한 채로 남는다(v1.169.0 T1 이 신설한 agent 를 등재하지 않아 완료 리뷰가 BLOCKER 로 잡을 때까지 그 상태로 갔다). **워킹트리 검사기 어느 축도 이것을 잡지 못한다** — `validate.ps1` 이 보는 것은 설치 캐시다 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) + **`python plugins/pjc/evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 두 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
@@ -113,7 +114,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 41,815 | 137,000 |
+| `docs/harness-conventions.md` | 42,461 | 137,000 |
 | `docs/golden-runner.md` | 9,871 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 10,074 | 37,000 |
 
