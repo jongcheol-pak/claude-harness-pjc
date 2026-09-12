@@ -1304,5 +1304,106 @@
     "expect_absent": [
       "[FAIL] 산문이 가리키는 심볼이 없습니다"
     ]
+  },
+  {
+    "id": "harness-impact-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "영향 검토 3축 3항목"
+    ],
+    "expect_absent": [
+      "영향 검토 3축 미기재"
+    ]
+  },
+  {
+    "id": "harness-impact-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "영향 검토 3축 미기재: `병목` 행이",
+      "Files 가 plugins/pjc/evals/ 를 담아 대상이다"
+    ]
+  },
+  {
+    "id": "harness-impact-gate-only",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "| **① 충돌** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n| **② 도달성** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "영향 검토 3축 미기재: `충돌` 행이",
+      "영향 검토 3축 미기재: `도달성` 행이",
+      "영향 검토 3축 미기재: `병목` 행이",
+      "Files 가 plugins/pjc/evals/ 를 담아 대상이다"
+    ]
+  },
+  {
+    "id": "harness-impact-no-gate",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `plugins/pjc/evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `README.md`"
+      },
+      {
+        "file": "plan.md",
+        "find": "| **② 도달성** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      },
+      {
+        "file": "plan.md",
+        "find": "| **① 충돌** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "영향 검토 3축 0항목"
+    ],
+    "expect_absent": [
+      "영향 검토 3축 미기재"
+    ]
+  },
+  {
+    "id": "harness-impact-partial-no-gate",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `plugins/pjc/evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `README.md`"
+      },
+      {
+        "file": "plan.md",
+        "find": "| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "영향 검토 3축 미기재: `병목` 행이",
+      "다른 축(도달성 · 충돌)이 이미 실려 있다"
+    ]
   }
 ]
