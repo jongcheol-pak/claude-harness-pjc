@@ -729,6 +729,43 @@ if (Test-HookSelected @('session-context')) {
     $iStale2 = $r.out.IndexOf('위키 뒤처짐')
     if (($r.code -eq 0) -and ($iVault2 -ge 0) -and ($iQueue -gt $iVault2) -and ($iStale2 -gt $iQueue)) {
         $script:results.Add(@{ ok = $true; line = "[PASS] session-context: 큐 라인 동반 시 뒤처짐이 그 뒤 (SC36b)" })
+    # SC33e/SC33f — 뒤처진 feature 표적. **이 묶음의 맨 끝에 둔다**: 아래에서 커밋을 하나 더
+    #   만들므로 HEAD~30 / HEAD~29 기준을 쓰는 케이스보다 뒤여야 한다.
+    # 픽스처 레포는 빈 커밋만 쌓아 **커밋된 파일이 없고**, 경로 토큰은 구분자를 포함해야
+    #   후보가 되므로(무구분자 토큰은 클래스·멤버명이라 오탐), 하위 경로 파일을 만들어 커밋한다.
+    $scFeatDir = Join-Path $scHubDir 'scwiki'
+    New-Item -ItemType Directory $scFeatDir -Force | Out-Null
+    New-Item -ItemType Directory (Join-Path $scRepo 'docs') -Force | Out-Null
+    'x' | Set-Content -Encoding UTF8 (Join-Path $scRepo 'docs/thing.md')
+    Push-Location $scRepo
+    try { & git add docs/thing.md 2>$null; & git commit -q -m 'feat-src' 2>$null } finally { Pop-Location }
+    $scSha31 = $null
+    Push-Location $scRepo
+    try { $scSha31 = (& git rev-parse 'HEAD~31' 2>$null | Select-Object -First 1) } finally { Pop-Location }
+    @('---', 'type: feature', 'updated: 2020-01-01', '---', '', '## 관련 파일',
+      '- `docs/thing.md` — 커밋된 하위 경로') | Set-Content -Encoding UTF8 (Join-Path $scFeatDir 'feat-sc.md')
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha31 -DaysAgo 0
+    Remove-Item -Force $scPendPath -ErrorAction SilentlyContinue
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 뒤처진 feature 표적 표기 (SC33e)" -R $r -ExpectExit 0 -ExpectContains '뒤처진 feature 1건: feat-sc.md'
+
+    # SC33f (G7 — 부작용 없음): 3축 전부 미달이면 feature 폴더가 있든 없든 **출력이 바이트로 같다**.
+    #   `ExpectNotContains` 로는 「그 표식이 안 보인다」만 재어 SC33c 의 동어반복이 된다 —
+    #   여기서 재는 것은 **출력 전체의 동일성**이라 `Add-EvalResult` 를 직접 부른다
+    #   (`Assert-Case` 에는 정확 일치 파라미터가 없다).
+    $scHeadNow = $null
+    Push-Location $scRepo
+    try { $scHeadNow = (& git rev-parse HEAD 2>$null | Select-Object -First 1) } finally { Pop-Location }
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadNow -DaysAgo 0
+    $rWithFeat = Invoke-ScRepoHook
+    Remove-Item -Recurse -Force $scFeatDir -ErrorAction SilentlyContinue
+    $rNoFeat = Invoke-ScRepoHook
+    $scNm = 'session-context: 미달 경로 출력 불변 (SC33f)'
+    if (($rWithFeat.out -ceq $rNoFeat.out) -and ($rWithFeat.code -eq $rNoFeat.code)) {
+        Add-EvalResult $true "[PASS] $scNm" $scNm
+    } else {
+        Add-EvalResult $false "[FAIL] $scNm — feature 유무로 출력이 갈립니다" $scNm
+    }
     } else {
         $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36b 순서 위반 (exit=$($r.code), vault=$iVault2, queue=$iQueue, stale=$iStale2)" })
     }
