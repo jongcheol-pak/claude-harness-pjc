@@ -1,4 +1,4 @@
-﻿# guard-stale-docs.ps1 — PreToolUse/Bash: 커밋 직전 참고 문서 낡음 고지 (비차단) — 근거는 `rules/stale-docs-rationale.md`
+﻿﻿# guard-stale-docs.ps1 — PreToolUse/Bash: 커밋 직전 참고 문서 낡음 고지 (비차단) — 근거는 `rules/stale-docs-rationale.md`
 #
 # `guard-bash.ps1` 이 dot-source 한다. 별도 파일인 이유는 그 파일의 예산 여유가 264 B 뿐이고,
 #   분리해 두어야 골든이 이 파일만 단독 프로브할 수 있기 때문이다(`guard-commit-secrets.ps1` 선례).
@@ -30,7 +30,7 @@ $script:StaleAxisBaseline = 3
 
 function Test-AxisVerifiedFresh {
     <#
-      축에 TTL 이 걸려 있고 그 파일의 erified 표기가 아직 신선하면 $true — 그때만 고지를
+      축에 TTL 이 걸려 있고 그 파일의 verified 표기가 아직 신선하면 $true — 그때만 고지를
       건너뛴다. **나머지는 전부 $false 다**(fail-closed): TTL 미설정 축 · 파일 부재 ·
       표기 부재 · 날짜 파싱 실패. 부재를 침묵으로 처리하면 표기를 지우는 것이 축을 끄는
       수단이 되고, 그러면 이 축이 재는 「외부 사실이 낡았는가」를 아무도 안 보게 된다.
