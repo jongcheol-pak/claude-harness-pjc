@@ -998,6 +998,78 @@ def check_critical_pointers():
 
 
 # ─────────────────────────────────────────────────────────────
+# ⑲ 영향 검토 3축 기재 — 대상 회차의 계획이 충돌·도달성·병목을 실제로 실었는가
+#   규약 정본은 `docs/harness-conventions.md` 「개정·개선 전 영향 검토 (3축)」이고
+#   기재 의무는 `plan/references/plan-template.md` 의 Investigation Log 절이 규정한다.
+#   왜 이 형태인가는 `harness-consistency-rationale.md` 의 「축 ⑲ — 영향 검토 3축 기재」.
+# ─────────────────────────────────────────────────────────────
+# 게이트 — 이 접두 중 하나라도 계획의 Files 에 있으면 3축 대상이다. 정본 문면이 대상을
+#   *"hook·스킬 로직 또는 규약 문서"* 로 쓰는데, 이 레포에서 그 셋이 사는 자리가 아래다.
+#   검사기(`evals/`)를 넣은 것은 그것이 판정 로직이어서다 — 축을 늘리고 줄이는 변경이
+#   충돌·병목을 가장 자주 만든다.
+IMPACT_GATE_PREFIXES = (
+    "plugins/pjc/scripts/", "plugins/pjc/skills/", "plugins/pjc/agents/",
+    "plugins/pjc/evals/", "plugins/pjc/hooks/",
+    "docs/harness-conventions.md", "AGENTS.md",
+)
+# **라벨만 본다 — 내용은 보지 않는다.** 정본이 *"재지 않은 축은 「없음」이 아니라 「미측정」으로
+#   적는다"* 라 「미측정」도 정당한 기재이고, 내용을 재면 그것을 red 로 만든다.
+IMPACT_AXIS_LABELS = ("충돌", "도달성", "병목")
+IMPACT_FILES_RX = re.compile(r"^\s*-\s*\*\*Files\*\*\s*:(.*)$")
+IMPACT_SECTION_RX = re.compile(r"(?ms)^## Investigation Log\s*?$(.*?)(?=^## |\Z)")
+
+
+def _impact_labels_present(section):
+    """Investigation Log 안에서 **표 행 형태로** 등장한 축 라벨을 낸다.
+
+    줄 머리가 `|` 인 것만 세는 이유: 산문이 「충돌이 없었다」처럼 라벨 단어를 지나가듯
+    쓰는 일이 흔한데, 그것까지 기재로 세면 아래 부분 기재 판정이 오탐을 낸다. 3축은
+    정본에서도 표로 제시되므로 행 형태를 요구하는 것이 기재의 실제 모습과 같다.
+    """
+    rows = [ln for ln in section.splitlines() if ln.lstrip().startswith("|")]
+    return {lab for lab in IMPACT_AXIS_LABELS if any(lab in ln for ln in rows)}
+
+
+def check_impact_axes():
+    """영향 검토 3축 기재 — 대상 회차의 `plan.md` 가 세 축을 전부 실었는가.
+
+    요구 조건은 **둘의 OR** 이다. ⓐ 게이트 — Files 에 `IMPACT_GATE_PREFIXES` 가 걸린다
+    ⓑ 부분 기재 — 셋 중 하나라도 실려 있다. ⓑ 를 둔 이유는 **부분 기재가 미기재보다
+    나쁘기 때문**이다: 한 축만 실으면 나머지 둘이 「없음」으로 읽히는데 정본은 그 자리에
+    「미측정」을 요구한다. 게이트가 못 잡는 회차라도 셋 중 하나를 쓴 이상 나머지를 묻는다.
+
+    fail-open: `plan.md` 가 없으면 `([], 0)`. gitignore 대상이라 없는 것이 정상이고,
+    골든 픽스처의 추적본(`.gitignore` 의 `!…/fixtures/**/plan.md` 예외)이 대신 잰다.
+    """
+    try:
+        plan = open(PLAN_MD, encoding="utf-8").read()
+    except OSError:
+        return [], 0
+
+    gated = []
+    for line in plan.splitlines():
+        m = IMPACT_FILES_RX.match(line)
+        if m:
+            gated += [p for p in IMPACT_GATE_PREFIXES if p in m.group(1)]
+    sec = IMPACT_SECTION_RX.search(plan)
+    present = _impact_labels_present(sec.group(1)) if sec else set()
+
+    if not gated and not present:
+        return [], 0
+    issues = []
+    for lab in IMPACT_AXIS_LABELS:
+        if lab in present:
+            continue
+        why = ("Files 가 %s 를 담아 대상이다" % gated[0]) if gated else \
+              ("다른 축(%s)이 이미 실려 있다" % " · ".join(sorted(present)))
+        issues.append(
+            "영향 검토 3축 미기재: `%s` 행이 Investigation Log 에 없다 — %s."
+            " 재지 않았으면 「없음」이 아니라 **「미측정」**으로 적는다"
+            " (`docs/harness-conventions.md` 「개정·개선 전 영향 검토 (3축)」)" % (lab, why))
+    return issues, len(IMPACT_AXIS_LABELS)
+
+
+# ─────────────────────────────────────────────────────────────
 # ⑭ 폐기 식별자 실재 — 폐기된 단계명이 살아 있는 자산에서 **현행 규정**을 가리키는가
 #   목록의 정본은 `DESIGN.md` 3-1 의 고정 형식 1줄이다 — 선언과 검사가 한 자리에 묶인다.
 #   ⑫⑬ 결번의 근거는 이 파일 머리 docstring 에 있다(여기 복제하지 않는다).
@@ -1564,6 +1636,7 @@ def main():
         ("분할 헬퍼 동기", check_split_helper_sync()),
         ("계수·버전 정합", check_count_and_version(conv)),
         ("규칙 근거 보유", (rule_issues, rule_n)),
+        ("영향 검토 3축", check_impact_axes()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
