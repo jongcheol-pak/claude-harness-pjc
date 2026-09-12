@@ -108,7 +108,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
 | `docs/harness-conventions.md` | 38,400 | 137,000 |
-| `docs/golden-runner.md` | 9,425 | 28,000 |
+| `docs/golden-runner.md` | 9,460 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 10,074 | 37,000 |
 
 > **단위는 문자 수다(v1.273.0)** — 근거는 `plugins/pjc/skills/BUDGET.md`「예산 표」의 단위 문단이다. **아래 도출 근거의 수치는 전부 바이트 실측이고 그대로 둔다** — *"그때 그렇게 정했다"*는 기록이라 낡지 않으며, **상한 숫자는 바이트 시절 값을 단위만 옮긴 것**이다(그래서 실질 여유가 늘었다 — 이 표의 파일은 B/문자가 1.8~2.0이다).
