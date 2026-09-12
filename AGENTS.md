@@ -5,7 +5,7 @@
 
 ## 위키
 
-- **프로젝트 페이지**: `20_projects/personal/claude-harness-pjc.md` (LLM WIKI vault)
+- **프로젝트 페이지**: 20_projects/personal/claude-harness-pjc.md (LLM WIKI vault)
 - 프로젝트 성격·기술 스택·구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다(단 `## Conventions` 의 아키텍처 선언 1줄은 남는다).
 - 작업 규약·함정: 같은 폴더의 `conventions.md`(+ `conventions-*.md` 하위)
 
@@ -91,20 +91,20 @@
 
 ## 산출물·파일 관리
 
-- 캐시 `__pycache__/`·`.state` 는 커밋 금지.
+- 캐시 __pycache__/·`.state` 는 커밋 금지.
 - 설치본: `~/.claude/plugins/cache/pjc-harness/` (`validate.ps1` 이 검사하는 대상)
 
 ## DO NOT
 
 - **실제 자격증명을 코드·문서·notes·plan 에 기록** — 환경변수 이름만 적고 값은 `.env` 에 둔다. 종류는 `docs/harness-conventions.md` 「자격증명 취급」.
 - **`exit 2` 를 내는 넷의 차단 동작 변경** — `block-destructive.ps1`·`guard-harness.ps1`·`guard-bash.ps1`(**dot-source 하는 `guard-commit-secrets`·`guard-stale-docs` 의 커밋 판정 포함**)·`guard-write.ps1`. 안전 임계 hook(끌 수 없는 마지막 방어선)이고 차단 대상은 `plugins/pjc/scripts/rules/` 가 정본이다. **넷 전부에 오탐 수정·미탐 보완만 허용되며 골든 실증이 붙는다**(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」).
-- 자동 생성·캐시 디렉터리(`__pycache__/`, lock 파일 등) 커밋.
+- 자동 생성·캐시 디렉터리(__pycache__/, lock 파일 등) 커밋.
 - **검증·테스트 스크립트에 평문 자격증명·창 숨김·과도한 실행정책 완화**(사유는 같은 절).
 
 ## Plan Location
 
 - **plan은 루트 `plan.md` 하나**다(덮어쓰기). 선택지가 없어 `Plan Location:` 선언을 두지 않는다.
-- **`plan.md`·`notes.md`·`notes-archive/`는 `.gitignore`(`intent/`는 추적)** — **영구 기록은 git 커밋**이고 미처리 Deferred 는 **대장 3파일**이 담는다(`deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 연산 규칙은 그 머리말이 정본).
+- **`plan.md`·`notes.md`·notes-archive/는 `.gitignore`(`intent/`는 추적)** — **영구 기록은 git 커밋**이고 미처리 Deferred 는 **대장 3파일**이 담는다(`deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 연산 규칙은 그 머리말이 정본).
 - **PRD는 쓰지 않는다** — 요구는 `intent/`, 결정은 위키 `decisions.md`, 미착수는 대장이 담는다.
 
 ## OS/플랫폼

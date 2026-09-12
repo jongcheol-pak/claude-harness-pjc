@@ -439,7 +439,7 @@ Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요. 그래�
 
 하니스의 hook은 항상 켜져 있어 끌 수 없습니다. 정상 작업인데 막혔다면, 계획(plan)을 먼저 만들거나 명령을 더 구체적으로(예: 삭제 명령에 `WHERE 조건` 추가) 바꾸면 통과합니다. 위험한 명령 차단(파일 삭제·DB 삭제 등)은 안전을 위한 것이니, 정말 필요한 작업이면 더 좁은 범위로 나눠 실행하세요.
 
-> 다음 정상 작업들은 계획 없이 통과합니다 — 임시 폴더 정리(`$env:TEMP\...` 하위 — `Join-Path`로 조립한 하위 폴더 경로 포함), 프로젝트 내 단일 파일 `chmod +x`, 현재 폴더 상대 정리(`Get-ChildItem . -Recurse | ...`), **상위 폴더 정리(`rm -rf ../build` 류)**, 테스트/재현용 신규 파일(`tests/`·`repro*`, 30줄 이하), 마크업·스타일 파일(`.xml`/`.html`/`.css`). 위험 차단(홈·시스템 삭제, DB 파괴 등)은 그대로이며, 여기에 **경로가 상위로 올라가기만 하다 끝나는 형태**(`..`가 연달아 이어져 드라이브 루트에 닿는 것)와 **루트 전체 글롭**이 포함됩니다.
+> 다음 정상 작업들은 계획 없이 통과합니다 — 임시 폴더 정리(`$env:TEMP\...` 하위 — `Join-Path`로 조립한 하위 폴더 경로 포함), 프로젝트 내 단일 파일 `chmod +x`, 현재 폴더 상대 정리(`Get-ChildItem . -Recurse | ...`), **상위 폴더 정리(`rm -rf ../build` 류)**, 테스트/재현용 신규 파일(tests/·`repro*`, 30줄 이하), 마크업·스타일 파일(`.xml`/`.html`/`.css`). 위험 차단(홈·시스템 삭제, DB 파괴 등)은 그대로이며, 여기에 **경로가 상위로 올라가기만 하다 끝나는 형태**(`..`가 연달아 이어져 드라이브 루트에 닿는 것)와 **루트 전체 글롭**이 포함됩니다.
 >
 > 알려진 한계: 인자가 3개 이상인 경로 조립(`Join-Path a b c`)은 아직 커버하지 않아 막힐 수 있습니다 — 그때는 경로를 한 문자열로 이어 쓰면 통과합니다.
 
@@ -461,16 +461,16 @@ pjc는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 | 구성 | OS 의존 | 설명 |
 |---|---|---|
 | **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 |
-| **Hooks** (위험 명령 차단·권한/보안 변경 차단·외부 작업(push·릴리즈) 경고·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 우선·5.1 폴백** | hook 스크립트는 Claude Code가 띄운 PowerShell에서 직접 실행(자식 셸 재기동 없음). 실행 셸은 Claude Code의 powershell 해석을 따르며(실측: pwsh 7 있으면 `pwsh` 우선), 스크립트는 내장 `powershell.exe`(5.1) 호환을 유지; macOS/Linux는 `pwsh` 7 |
+| **Hooks** (위험 명령 차단·권한/보안 변경 차단·외부 작업(push·릴리즈) 경고·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 우선·5.1 폴백** | hook 스크립트는 Claude Code가 띄운 PowerShell에서 직접 실행(자식 셸 재기동 없음). 실행 셸은 Claude Code의 powershell 해석을 따르며(실측: pwsh 7 있으면 `pwsh` 우선), 스크립트는 내장 powershell.exe(5.1) 호환을 유지; macOS/Linux는 `pwsh` 7 |
 
 | 항목 | 지원 |
 |---|---|
 | OS | **Windows 10/11**: 완전 지원·검증. **macOS/Linux**: pwsh 7 설치 시 동작하도록 구현됐으나 **실제 환경 미검증(실험적)** |
-| 런타임 | **Windows**: 추가 설치 불요 — 실행 셸은 Claude Code가 결정(실측: pwsh 7 있으면 그쪽 우선), 스크립트는 내장 `powershell.exe`(5.1) 호환 유지. **macOS/Linux**: pwsh 7 필요(`brew install powershell` 등) |
+| 런타임 | **Windows**: 추가 설치 불요 — 실행 셸은 Claude Code가 결정(실측: pwsh 7 있으면 그쪽 우선), 스크립트는 내장 powershell.exe(5.1) 호환 유지. **macOS/Linux**: pwsh 7 필요(`brew install powershell` 등) |
 | Claude Code | **최소 v2.0** · **권장 v2.1.219+** — 이 버전부터 `opus` 별칭이 Claude Opus 5로 해소돼 완료 검토자(`completion-reviewer`)가 최신 세대로 실행된다. 미만에서도 동작하나 이전 세대 Opus로 돈다 |
 | 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 표식 파일로 자동 감지·자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 빌드/테스트 명령만 입력하면 동일하게 작동 |
 
-> **요약**: 자동 안전망(hook)은 OS에 무관하게 동작하도록 구현됐습니다. **Windows는 검증 완료** — pwsh 7이 있으면 그쪽에서, 없으면 내장 `powershell.exe`(5.1)에서 동작해 **추가 설치 없이 안전망이 항상 동작**합니다. **macOS/Linux는 pwsh 7 필요·실험적(미검증)** 입니다(`brew install powershell` 등).
+> **요약**: 자동 안전망(hook)은 OS에 무관하게 동작하도록 구현됐습니다. **Windows는 검증 완료** — pwsh 7이 있으면 그쪽에서, 없으면 내장 powershell.exe(5.1)에서 동작해 **추가 설치 없이 안전망이 항상 동작**합니다. **macOS/Linux는 pwsh 7 필요·실험적(미검증)** 입니다(`brew install powershell` 등).
 
 ---
 

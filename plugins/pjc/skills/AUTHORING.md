@@ -39,7 +39,7 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 - `name`: 1-64자, 소문자·숫자·하이픈만, **스킬 디렉터리명과 일치**. **XML 태그 금지 · 예약어 `anthropic`·`claude` 금지**(둘 다 하드 제약 — 넘으면 그 스킬이 로드되지 않는다).
 - `description`: **두 사양이 함께 걸린다 — 낮은 쪽이 실효 한도다.**
   - **Agent Skills 표준: 1-1,024자** (하드 제약). 표준을 따르는 다른 도구에서도 쓰려면 이 값을 지켜야 한다.
-  - **Claude Code: `description` + `when_to_use` 합산이 스킬 목록에서 1,536자로 절단**된다(목록 예산은 컨텍스트의 1% — `skillListingBudgetFraction`, 항목당 캡은 `skillListingMaxDescChars`. 출처: code.claude.com/docs/en/skills, 2026-07-29 확인). 즉 Claude Code만 놓고 보면 여유가 더 있으나, **`when_to_use`를 쓰면 그 몫만큼 `description` 가용분이 줄어든다.**
+  - **Claude Code: `description` + when_to_use 합산이 스킬 목록에서 1,536자로 절단**된다(목록 예산은 컨텍스트의 1% — `skillListingBudgetFraction`, 항목당 캡은 `skillListingMaxDescChars`. 출처: code.claude.com/docs/en/skills, 2026-07-29 확인). 즉 Claude Code만 놓고 보면 여유가 더 있으나, **when_to_use를 쓰면 그 몫만큼 `description` 가용분이 줄어든다.**
   - **pjc의 운용 기준은 1,024자**다 — 두 사양 중 낮은 쪽이고, 표준 호환을 잃지 않는다. 초과분은 잘리거나 무효가 될 수 있으므로 트리거 어휘·near-miss 경계는 유지한 채 산문 연결부를 압축해 맞춘다(v1.100.0에서 1,230자로 초과된 전례 — 개정 때마다 자수 재측정).
 - SKILL.md 본문: **500줄 미만 권장**(Agent Skills 표준). **근거가 두 문장을 넘으면 `references/`로 내린다**(`DESIGN.md`「1. 규약 문면 형식」). **초과했을 때 무엇을 하는가는 `BUDGET.md`「초과했을 때」가 정본이고 이 줄은 그것을 되풀이하지 않는다** — 5,000토큰 권장도 그 파일의 예산 표가 대체한다(SKILL.md 12,000자).
 - **`description` 도 XML 태그 금지**(하드 제약).
@@ -67,7 +67,7 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 |---|---|
 | `name` | 스킬 이름 — 디렉터리명과 일치해야 한다 |
 | `description` | 트리거 메타데이터 (위 한도 참조) |
-| `when_to_use` | 트리거 조건을 `description`에서 분리 — 목록 예산은 둘의 **합산**으로 잡힌다 |
+| when_to_use | 트리거 조건을 `description`에서 분리 — 목록 예산은 둘의 **합산**으로 잡힌다 |
 | `argument-hint` | `/skill` 입력 시 보이는 인자 힌트 |
 | `arguments` | 이름 있는 위치 인자 선언 — 본문에서 `$name`으로 치환 |
 | `allowed-tools` | 이 스킬이 쓸 도구를 화이트리스트로 한정 |
