@@ -1895,6 +1895,18 @@
       "name": "PowerShell $db 접두 변수 통과 (오탐 통제 — 단서 어휘가 변수명에 섞여도)",
       "command": "$dbLines.RemoveRange(0,1)",
       "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "같은 줄 앞쪽 db 토큰이 리스트 호출을 오차단하지 않는다 (2R MINOR)",
+      "command": "Get-Content db.txt | ForEach-Object { $lines.RemoveRange(0,1) }",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "단서 어휘 밖 수신자는 통과한다 (의도된 미탐 — 계약 고정)",
+      "command": "_repo.RemoveRange(items)",
+      "expect_exit": 0
     }
   ]
 }

@@ -83,7 +83,7 @@
       "why": "UPDATE ... WHERE 1=1 = 전체 변조"
     },
     {
-      "rx": "(?i)(?<![\\w$])[_a-z]*(?:db|context|dbset|ctx)\\w*\\s*\\.(?:[^;\\n]*\\.)?\\s*RemoveRange\\s*\\(",
+      "rx": "(?i)(?<![\\w$])[_a-z]*(?:db|context|dbset|ctx)\\w*\\s*\\.(?:[\\w<>\\[\\]().]*\\.)?\\s*RemoveRange\\s*\\(",
       "why": "EF Core 대량 삭제"
     },
     {
