@@ -1,4 +1,4 @@
-﻿﻿# guard-stale-docs.ps1 — PreToolUse/Bash: 커밋 직전 참고 문서 낡음 고지 (비차단) — 근거는 `rules/stale-docs-rationale.md`
+﻿# guard-stale-docs.ps1 — PreToolUse/Bash: 커밋 직전 참고 문서 낡음 고지 (비차단) — 근거는 `rules/stale-docs-rationale.md`
 #
 # `guard-bash.ps1` 이 dot-source 한다. 별도 파일인 이유는 그 파일의 예산 여유가 264 B 뿐이고,
 #   분리해 두어야 골든이 이 파일만 단독 프로브할 수 있기 때문이다(`guard-commit-secrets.ps1` 선례).
