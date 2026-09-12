@@ -91,6 +91,9 @@ OPS_RULES_MD = os.path.join(SKILL_DIR, "references", "wiki-ops-rules.md")
 TEMPLATES_MD = os.path.join(SKILL_DIR, "references", "templates.md")
 LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
 CONTENT_MD = os.path.join(SKILL_DIR, "references", "procedures-content.md")
+# 회차 65 에서 `procedures-content.md` 의 B-1 0(큐 태그별 소비 규칙)이 갈라져 나온 파일.
+#  그 절차 하나가 절차 B 의 38% 였고 B 를 여는 Read 가 매번 상한에 걸렸다.
+QUEUE_CONSUME_MD = os.path.join(SKILL_DIR, "references", "queue-consume-rules.md")
 LINT_CASES_JSON = os.path.join(EVALS_DIR, "lint-cases.json")
 
 # schema §2.x 헤딩 → 예산 키 (### 2.N 뒤 첫 토큰이 타입명)
@@ -868,7 +871,7 @@ TRIGGER_ALLOWLIST = [
     # ── 예산과 무관한 「초과」·「넘」 — 축어 정규식이 넓어 걸리지만 트리거 서술이 아니다
     (SCHEMA_MD, ["7. **기록**: `log.md`에", "(사유: 임계 초과)`"], "log 기록 형식의 `(사유: 임계 초과)` 예시 문자열"),
     (SCHEMA_MD, ["19. **log 아카이브 인덱스 정합**", "영영 아카이브로 넘어가지 않고"], "§7-19 검사 항목 본문 — 오배치 항목이 아카이브로 「넘어가지 않는다」는 결과 서술이지 예산 조건이 아니다"),
-    (CONTENT_MD, ["그 파일은 프로젝트 단위 규약", "프로젝트·스택을 넘는 일반 패턴", "절차 I(가이드/레시피)로 넘긴다"], "「스택을 넘는 일반 패턴」 — 귀속 판정이지 예산 아님"),
+    (QUEUE_CONSUME_MD, ["그 파일은 프로젝트 단위 규약", "프로젝트·스택을 넘는 일반 패턴", "절차 I(가이드/레시피)로 넘긴다"], "「스택을 넘는 일반 패턴」 — 귀속 판정이지 예산 아님"),
     (CONTENT_MD, ["5. **델타 신뢰도 점검**", "**30일 초과**면"], "허브 `updated` 30일 초과 = ingest 델타 신뢰도 축"),
     (CONTENT_MD, ["> **축소 조건 (소규모 갱신)**", "14일을 넘거나 변경 파일이 5개를 초과하면"], "변경 파일 5개 초과 = 개수 조건, 예산 무관"),
     (LOOKUP_RULES_MD, ['**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "프로젝트 경계를 넘는 지식이라"], "절차 K 조회 순서 — 「경계를 넘는 지식」"),

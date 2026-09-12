@@ -36,6 +36,7 @@ description: >
 | J. 빈 위키 부트스트랩 | `references/wiki-ops-rules.md` |
 | K. 작업 참조 (코드 작업 세션 read-only 조회) | `references/lookup-rules.md` |
 | K 5~6. 큐 기록 규약 (코드 세션 배치 시점) | `references/queue-rules.md` |
+| 큐 태그별 소비 규칙 (B-1 0 · F-2 · M 공용 — 위키 세션) | `references/queue-consume-rules.md` |
 | L. 복구 (백업 되돌리기) | `references/procedures-ops.md` |
 | M. 큐 소비 (경량) | `references/procedures-ops.md` |
 | 체크리스트 (작업 완료 전) | `references/procedures-content.md` |
