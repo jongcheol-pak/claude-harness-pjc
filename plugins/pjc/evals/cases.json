@@ -1156,12 +1156,12 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 경로 실존 ==",
+      "대상 9문서",
       "docs/harness-conventions.md — 후보 4건 · 미실존 0건",
-      "결과: 후보 4건 전부 실재"
+      "결과: 후보 5건 전부 실재"
     ],
     "expect_absent": [
-      "[FAIL] 산문이 가리키는 경로가 없습니다",
-      "[SKIP] 산문 대상 없음"
+      "[FAIL] 산문이 가리키는 경로가 없습니다"
     ]
   },
   {
@@ -1212,7 +1212,8 @@
       }
     ],
     "expect_keywords": [
-      "[SKIP] 산문 대상 없음: docs/harness-conventions.md"
+      "[SKIP] 산문 대상 없음: docs/harness-conventions.md",
+      "README.md — 후보 1건"
     ],
     "expect_absent": [
       "[FAIL] 산문이 가리키는 경로가 없습니다"
@@ -1242,12 +1243,12 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 심볼 실존 ==",
+      "대상 9문서",
       "docs/harness-conventions.md — 후보 3건 · 미실존 0건",
-      "결과: 후보 3건 전부 실재"
+      "결과: 후보 5건 전부 실재"
     ],
     "expect_absent": [
-      "[FAIL] 산문이 가리키는 심볼이 없습니다",
-      "[SKIP] 산문 대상 없음"
+      "[FAIL] 산문이 가리키는 심볼이 없습니다"
     ]
   },
   {
@@ -1299,7 +1300,8 @@
     ],
     "expect_keywords": [
       "== 산문 심볼 실존 ==",
-      "[SKIP] 산문 대상 없음: docs/harness-conventions.md"
+      "[SKIP] 산문 대상 없음: docs/harness-conventions.md",
+      "README.md — 후보 2건"
     ],
     "expect_absent": [
       "[FAIL] 산문이 가리키는 심볼이 없습니다"
@@ -1404,6 +1406,61 @@
       "[MISMATCH]",
       "영향 검토 3축 미기재: `병목` 행이",
       "다른 축(도달성 · 충돌)이 이미 실려 있다"
+    ]
+  },
+  {
+    "id": "stale-prose-multi-doc",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "- 정상 경로: `plugins/pjc/skills/sample/SKILL.md`",
+        "replace": "- 정상 경로: `plugins/pjc/skills/gone-second/SKILL.md`"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다 — 1건",
+      "README.md -> `plugins/pjc/skills/gone-second/SKILL.md`"
+    ]
+  },
+  {
+    "id": "stale-prose-fp-numeric",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 글롭: `plugins/pjc/evals/*.json`",
+        "replace": "- 글롭: `plugins/pjc/evals/*.json`\r\n- 분수·비율(경로가 아니다): `29/30` · `13/14`"
+      }
+    ],
+    "expect_keywords": [
+      "docs/harness-conventions.md — 후보 4건 · 미실존 0건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다"
+    ]
+  },
+  {
+    "id": "stale-prose-fp-url",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 글롭: `plugins/pjc/evals/*.json`",
+        "replace": "- 글롭: `plugins/pjc/evals/*.json`\r\n- URL(레포 밖이다): `platform.claude.com/docs/ko/nowhere`"
+      }
+    ],
+    "expect_keywords": [
+      "docs/harness-conventions.md — 후보 4건 · 미실존 0건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다"
     ]
   }
 ]

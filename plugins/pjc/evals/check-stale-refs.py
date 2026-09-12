@@ -140,6 +140,18 @@ PROSE_PATH_CHARS = re.compile(r'^[A-Za-z0-9_.\-*/]+$')
 PROSE_NUMERIC_RX = re.compile(r'^\d+(?:/\d+)+$')
 PROSE_URL_RX = re.compile(r'^[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.(?:com|org|net|dev|io|ai)/')
 
+# **폐기 식별자 선언 줄은 두 축의 대상이 아니다** — 그 줄이 담는 이름은 **정의상 「지금 없는
+#   것」**이라 실존을 묻는 것이 모순이고, 그것을 재는 축이 따로 있다
+#   (`check-harness-consistency.py` 의 「폐기 식별자 실재」 — 살아 있는 자산이 그 이름으로
+#   현행 규정을 가리키는가를 본다). 줄 단위 제외이지 토큰 목록이 아니다.
+#   앵커 문자열은 그 검사기의 `_DEPRECATED_ANCHOR` 와 같은 값이다 — 선언 서식이 하나라서다.
+PROSE_SKIP_LINE_RX = re.compile(r'\*\*폐기 식별자\(기계 대조\)\*\*:')
+
+
+def prose_lines(text):
+    """후보를 뽑을 줄만 낸다 — 위 제외 규칙을 적용한 뒤의 본문."""
+    return [ln for ln in text.split('\n') if not PROSE_SKIP_LINE_RX.search(ln)]
+
 
 # --- 산문 심볼 축 (회차 66) ---------------------------------------------------
 # 경로 축이 **구분자를 담은** 토큰을 보는 자리에서, 이 축은 **구분자 없는** 토큰을 본다.
@@ -316,7 +328,7 @@ def prose_path_rx(token):
 def prose_candidates(text):
     """백틱 토큰에서 경로 후보만 남긴다. 정렬·중복 제거해 출력이 실행마다 같게 한다."""
     out = []
-    for t in sorted(set(PROSE_TOKEN_RX.findall(text))):
+    for t in sorted(set(PROSE_TOKEN_RX.findall("\n".join(prose_lines(text))))):
         if '/' not in t or not PROSE_PATH_CHARS.match(t):
             continue
         if t.startswith(('/', '~')):
@@ -386,7 +398,7 @@ def build_symbol_corpus(index, targets):
 def prose_symbol_candidates(text):
     """백틱 토큰에서 심볼 후보만 남긴다 — 구조 규칙 넷을 전부 통과한 것."""
     out = []
-    for t in sorted(set(PROSE_TOKEN_RX.findall(text))):
+    for t in sorted(set(PROSE_TOKEN_RX.findall("\n".join(prose_lines(text))))):
         if '/' in t or '*' in t or not PROSE_PATH_CHARS.match(t):
             continue   # 구분자·글롭이 있으면 경로 축의 몫이다
         if PROSE_SYMBOL_HEX_RX.match(t) or t.startswith(PROSE_SYMBOL_FLAG_PREFIX):
