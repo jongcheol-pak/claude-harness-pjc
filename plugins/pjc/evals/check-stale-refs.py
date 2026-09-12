@@ -8,11 +8,13 @@
 살아 있었고 검사기는 계속 exit 0 이었다).
 `--ledger` 를 주면 대신 `docs/plans/deferred.md` 의 `## 대기` 구간만 본다(T9 용).
 
-**축이 둘이다 — 트리 경로에서는 둘 다 돈다.** 위가 「죽은 이름이 살아 있는 자산에 남았는가」라면
-아래 **산문 경로 축**은 반대 방향이다: `PROSE_TARGETS` 의 문서가 **백틱으로 인용한 경로가
-지금도 실재하는가**. 이름 목록을 미리 적어 둘 수 없는 자리라 목록 대신 문서 본문을 모집단으로
-쓴다(회차 65). 그 전까지 이 자리는 `guard-stale-docs` 층 3 이 *"어느 검사기도 재지 않는다"* 로
-사람에게 넘기던 축이었다.
+**축이 셋이다 — 트리 경로에서는 전부 돈다.** 위가 「죽은 이름이 살아 있는 자산에 남았는가」라면
+아래 **산문 두 축**은 반대 방향이다: `PROSE_TARGETS` 의 문서가 **백틱으로 인용한 것이 지금도
+실재하는가**. 이름 목록을 미리 적어 둘 수 없는 자리라 목록 대신 문서 본문을 모집단으로 쓴다.
+둘을 가르는 것은 **구분자**다 — 경로 축(회차 65)은 `/` 를 담은 토큰을, 심볼 축(회차 66)은
+담지 않은 토큰을 본다. 그 전까지 이 자리는 `guard-stale-docs` 층 3 이 *"어느 검사기도 재지
+않는다"* 로 사람에게 넘기던 축이었고, 두 축이 생긴 뒤 사람에게 남는 것은 「동작이 이렇게
+돈다」는 문장의 진위와 **구분자 없는 순수 식별자**뿐이다.
 
 왜 필요한가: 회차 1이 스킬 절차를, 회차 2가 hook 을 갈아엎었는데 그 이름들이
 케이스 이름·시나리오 파일명·근거 문서에 남아 있으면 그 이름으로 검색하는 다음
@@ -24,7 +26,7 @@
 표제만 보고 옛 hook 이름으로 오인하면 이 검사의 0건이 구조상 도달 불가가 된다.
 
 exit 0 = 참조 0건 / 1 = 남아 있음 / 2 = 대상 디렉터리 없음
-**산문 경로 축의 「대상 문서 부재」는 이 셋 어디에도 들지 않는다** — `[SKIP]` 1줄로 알리고
+**산문 두 축의 「대상 문서 부재」는 이 셋 어디에도 들지 않는다** — `[SKIP]` 1줄로 알리고
 exit 에 기여하지 않는다. 「0건」(잴 것을 재서 아무것도 안 나왔다)과 「대상 없음」(잴 것 자체가
 없었다)을 가르되, 이 검사기가 다른 레포·골든 픽스처에서도 돌아야 해서 앵커 실패로는 못 본다.
 """
@@ -116,6 +118,25 @@ PROSE_TOKEN_RX = re.compile(r'`([^`\n]+)`')
 #   **남은 1 은 오탐이 아니라 진짜 양성이었다** — gitignore 대상이라 클론에는 없는 경로를
 #   산문이 가리키고 있었고, 회차 65 가 그 서술을 고쳐 닫았다.
 PROSE_PATH_CHARS = re.compile(r'^[A-Za-z0-9_.\-*/]+$')
+
+
+# --- 산문 심볼 축 (회차 66) ---------------------------------------------------
+# 경로 축이 **구분자를 담은** 토큰을 보는 자리에서, 이 축은 **구분자 없는** 토큰을 본다.
+#   회차 65 가 이것을 미룬 이유는 *"면제 규칙 자체가 또 하나의 「낡을 목록」이 된다"* 였다 —
+#   그때 관측된 오탐 4건이 전부 이력 인용이라, 토큰을 하나씩 적어 빼면 그 목록이 낡는다.
+# **그래서 아래 셋은 전부 구조 규칙이고 개별 토큰 목록이 아니다.** 회차 66 실측(후보 115 기준):
+#   기준 8 → hex 제외 5 → `--` 제외 2 → 구분자 요구 **1**. 남은 1 은 제거된 파일명을 백틱으로
+#   인용한 이력 서술이었고 **문서에서 백틱을 벗겨** 닫았다(백틱은 실재 주장이고, 제거된 이름을
+#   논할 때는 감싸지 않는다 — `docs/plans/deferred-closed.md` 머리말의 `사유 미상` 규약과 같다).
+# 커밋 SHA — 이력 인용의 대부분이 이 형태다. 짧은 해시 7자부터 전체 40자까지 받는다.
+PROSE_SYMBOL_HEX_RX = re.compile(r'^[0-9a-f]{7,40}$')
+# CLI 플래그 — `--json`·`--porcelain` 처럼 **외부 도구의 옵션**이라 이 레포에 실재할 상대가 없다.
+PROSE_SYMBOL_FLAG_PREFIX = '--'
+# 구분자 하나 이상을 요구한다 — 레포의 심볼은 파일명(`lint.py`)·훅 이름(`guard-write`)·
+#   상수명(`HISTORY_VERB_RX`)처럼 거의 예외 없이 `.`·`-`·`_` 를 담는다. 순수 영숫자 토큰은
+#   언어 빌트인(`SyntaxError`)·일반명사가 섞여 판정이 서지 않으므로 **사람 몫으로 남긴다**
+#   (`guard-stale-docs` 층 3 축 1 이 그 잔여를 고지한다).
+PROSE_SYMBOL_SEP_RX = re.compile(r'[.\-_]')
 
 
 def excused(rel):
@@ -312,6 +333,76 @@ def scan_prose_paths():
     return 0
 
 
+def build_symbol_corpus(index, targets):
+    """심볼의 실존 모집단 — **추적본의 basename 집합과 본문**을 낸다.
+
+    **모집단이 `git ls-files` 인 이유는 경로 축과 같다**(`build_path_index` 참조) — 워킹트리를
+    순회하면 `plan.md`·`notes.md` 같은 gitignore 대상이 실존 근거가 되어 같은 커밋이
+    로컬 exit 0 · 프레시 체크아웃 exit 1 로 갈린다.
+
+    **대상 문서 자신은 뺀다** — 자기 인용은 실존 근거가 아니다. 빼지 않으면 모든 후보가
+    자기 자신에 매치해 이 축이 영구히 0건이 된다.
+
+    본문까지 보는 것은 심볼의 실존처가 파일명만이 아니기 때문이다 — 함수·상수·훅 이름은
+    코드나 문서 **안**에 산다. 대가는 판정이 느슨해지는 것이고(이력 서술에 이름만 남아도
+    실존으로 본다), 이 축이 잡으려는 것은 「이름이 통째로 사라진 자리」라 그 대가를 받는다.
+    """
+    names = set()
+    body = []
+    for rel in index:
+        names.add(rel.rsplit('/', 1)[-1])
+        if rel in targets:
+            continue
+        try:
+            body.append((ROOT / rel).read_text(encoding='utf-8-sig', errors='replace'))
+        except OSError:
+            continue   # 바이너리·권한 문제는 실존 판정에 기여하지 않는다(없는 셈)
+    return names, '\n'.join(body)
+
+
+def prose_symbol_candidates(text):
+    """백틱 토큰에서 심볼 후보만 남긴다 — 구조 규칙 넷을 전부 통과한 것."""
+    out = []
+    for t in sorted(set(PROSE_TOKEN_RX.findall(text))):
+        if '/' in t or '*' in t or not PROSE_PATH_CHARS.match(t):
+            continue   # 구분자·글롭이 있으면 경로 축의 몫이다
+        if PROSE_SYMBOL_HEX_RX.match(t) or t.startswith(PROSE_SYMBOL_FLAG_PREFIX):
+            continue
+        if not PROSE_SYMBOL_SEP_RX.search(t):
+            continue
+        out.append(t)
+    return out
+
+
+def scan_prose_symbols():
+    """`PROSE_TARGETS` 산문의 백틱 심볼이 레포에 실재하는가."""
+    index = build_path_index()
+    if index is None:
+        print('\n== 산문 심볼 실존 ==\n  [SKIP] 인덱스 판정 불가 — `git ls-files` 실패')
+        return 0
+    print(f'\n== 산문 심볼 실존 ==\n대상 {len(PROSE_TARGETS)}문서 · 인덱스 {len(index)}건')
+    names, body = build_symbol_corpus(index, set(PROSE_TARGETS))
+    total, miss = 0, []
+    for rel in PROSE_TARGETS:
+        p = ROOT / rel
+        if not p.is_file():
+            # 경로 축과 같은 취급 — 「대상 없음」은 앵커 실패도 0건도 아니다.
+            print(f'  [SKIP] 산문 대상 없음: {rel}')
+            continue
+        cand = prose_symbol_candidates(p.read_text(encoding='utf-8-sig', errors='replace'))
+        total += len(cand)
+        gone = [t for t in cand if t not in names and t not in body]
+        print(f'  {rel} — 후보 {len(cand)}건 · 미실존 {len(gone)}건')
+        miss += [(rel, t) for t in gone]
+    if miss:
+        print(f'\n[FAIL] 산문이 가리키는 심볼이 없습니다 — {len(miss)}건')
+        for rel, t in miss:
+            print(f'  {rel} -> `{t}` (개명·삭제 가능 — 서술을 갱신하거나 백틱을 벗기세요)')
+        return 1
+    print(f'결과: 후보 {total}건 전부 실재')
+    return 0
+
+
 def check_baseline():
     """DEAD 총량 대조 — 두 스캔 경로가 공통으로 먼저 탄다."""
     if len(DEAD) != DEAD_BASELINE:
@@ -322,15 +413,18 @@ def check_baseline():
 
 
 def run_tree():
-    """트리 경로 — 축 둘을 **둘 다 돌리고** 나쁜 쪽을 낸다.
+    """트리 경로 — 축 셋을 **전부 돌리고** 가장 나쁜 쪽을 낸다.
 
     앞 축이 2(앵커 실패)면 거기서 멈춘다 — 대상 디렉터리가 없는 레포에서는 산문 축도
     판정 불가라, 돌려서 나오는 「0건」이 통과로 읽히면 안 된다.
+
+    **산문 두 축은 한쪽이 red 여도 나머지를 돌린다** — 먼저 멈추면 한 번에 하나씩만 드러나
+    같은 문서를 고치는 회차가 두 번 돌게 된다.
     """
     rc = scan_tree()
     if rc == 2:
         return 2
-    return max(rc, scan_prose_paths())
+    return max(rc, scan_prose_paths(), scan_prose_symbols())
 
 
 if __name__ == '__main__':
