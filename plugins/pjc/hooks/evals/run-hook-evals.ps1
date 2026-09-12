@@ -57,6 +57,24 @@ param(
 $ErrorActionPreference = 'Continue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
+# ---- 실행 소요·규모 계측 ([TIMING]) ----
+# `docs/golden-runner.md` 의 소요·케이스 수 실측값이 사람이 손으로 옮긴 값이라 낡았다(회차 64
+#   착수 시점: 문서 최신 769케이스 ↔ 러너 상수 902 — 133 갈림). 러너가 직접 찍으면 그 값을
+#   그대로 문서에 옮길 수 있고, `guard-stale-docs` 가 케이스 수로 낡음을 기계 판정한다.
+# **mode 를 각인하는 이유**: `-Filter`·`-Resume` 실행은 판정 자격이 없어(같은 문서의 「골든 부분
+#   실행의 판정 자격」) 문서 갱신 근거로 쓸 수 없다 — 그 사실이 값 자체에 남아야 한다.
+$script:TimingWatch = [System.Diagnostics.Stopwatch]::StartNew()
+function Write-TimingLine {
+    param([int]$Total)
+    # 판정 우선순위: filter > resume > sequential > parallel. 부분 실행이 다른 스위치와
+    #   겹치면 **자격 없음이 이기는 쪽**으로 각인한다(겹칠 때 관대하게 적으면 그 값이 문서로 샌다).
+    $mode = if ($script:NormalizedFilter) { 'filter' }
+            elseif ($Resume) { 'resume' }
+            elseif ($Sequential) { 'sequential' }
+            else { 'parallel' }
+    Write-Host ("[TIMING] mode={0} cases={1} sec={2}" -f $mode, $Total, [int]$script:TimingWatch.Elapsed.TotalSeconds)
+}
+
 $evalsDirTop = $PSScriptRoot
 
 # ---- 시나리오 그룹 정의 ----
@@ -179,6 +197,7 @@ if ($Sequential) {
     }
     Write-Host "[MODE] 순차 실행 (-Sequential)"
     Write-Host ("결과: {0}/{1} OK (FAIL {2})" -f ($total - $failCount), $total, $failCount)
+    Write-TimingLine -Total $total
     exit $(if ($failCount) { 1 } else { 0 })
 }
 
@@ -386,6 +405,7 @@ if ($deadGroups.Count) {
     $deadSuffix = ' — ⚠ 그룹 {0}개 미완주, 분모는 실행분 기준(전체 아님)' -f $deadGroups.Count
 }
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
+Write-TimingLine -Total $total
 
 # ---- 총계 기준선 대조 (회차 55 T4) ----
 # 이 수는 **기계로 세어지지 않는다** — `hook-cases.json` 은 선언형 케이스만 담고 나머지는
