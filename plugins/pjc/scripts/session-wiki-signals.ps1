@@ -34,10 +34,20 @@ function Get-StaleFeatures {
         $sec = [regex]::Match($body, '(?ms)^##\s*관련 파일\b(.*?)(?=^##\s|\z)')
         if (-not $sec.Success) { continue }
         $paths = New-Object System.Collections.Generic.List[string]
-        foreach ($pm in [regex]::Matches($sec.Groups[1].Value, '`([^`\r\n]+)`')) {
-            $tok = $pm.Groups[1].Value
-            if ($tok -notmatch '[/\\]') { continue }
-            if (Test-Path -LiteralPath (Join-Path $RepoRoot $tok)) { $paths.Add($tok) }
+        # **`lint.py` 의 §7-21 과 같은 것을 읽어야 한다** — 정본 서식이 `- ` 목록이라
+        #   ⓐ `- ` 로 시작하는 줄만 보고 ⓑ 코드펜스 안은 뺀다. 회차 67 전까지 이쪽은 섹션
+        #   전체의 백틱을 전부 모으고 펜스를 무시해 두 구현이 갈려 있었다(드리프트 2건 실측).
+        #   갈리면 lint 가 WARN 을 안 내는 자리에서 이 신호만 뜨거나 그 반대가 된다.
+        #   재발은 `check-harness-consistency.py` 의 「관련 파일 파서 동기」 축이 잡는다.
+        $inFence = $false
+        foreach ($rawLine in ($sec.Groups[1].Value -split "\n")) {
+            if ($rawLine.TrimStart() -like '```*') { $inFence = -not $inFence; continue }
+            if ($inFence -or $rawLine.TrimStart() -notlike '-*') { continue }
+            foreach ($pm in [regex]::Matches($rawLine, '`([^`\r\n]+)`')) {
+                $tok = $pm.Groups[1].Value
+                if ($tok -notmatch '[/\\]') { continue }
+                if (Test-Path -LiteralPath (Join-Path $RepoRoot $tok)) { $paths.Add($tok) }
+            }
         }
         if ($paths.Count -eq 0) { continue }
         # 경로 전체를 **한 번의 git log** 로 잰다 — 하나씩 재면 호출이 N배가 된다.

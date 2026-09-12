@@ -1462,5 +1462,35 @@
     "expect_absent": [
       "[FAIL] 산문이 가리키는 경로가 없습니다"
     ]
+  },
+  {
+    "id": "harness-parser-sync-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "관련 파일 파서 동기 4항목"
+    ],
+    "expect_absent": [
+      "관련 파일 파서 동기:"
+    ]
+  },
+  {
+    "id": "harness-parser-sync-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/session-wiki-signals.ps1",
+        "find": "$inFence",
+        "replace": "$fenceState"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "관련 파일 파서 동기: `코드펜스 제외` 판정이",
+      "session-wiki-signals.ps1` 에만 없다"
+    ]
   }
 ]

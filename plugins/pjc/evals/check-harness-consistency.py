@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 17개로 잰다.
+r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 18개로 잰다.
 
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
        python plugins/pjc/evals/check-harness-consistency.py --fix [--dry-run]
@@ -7,7 +7,7 @@ r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것�
 축: ① 포인터 도달성 ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ batch 차수 수열
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
     ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 분할 헬퍼 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
-    ⑲ 영향 검토 3축
+    ⑲ 영향 검토 3축 ⑳ 관련 파일 파서 동기
     (**⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.)
 
@@ -1071,6 +1071,56 @@ def check_impact_axes():
 
 
 # ─────────────────────────────────────────────────────────────
+# ⑳ 관련 파일 파서 동기 — 같은 규약(`wiki-schema` §7-21)을 읽는 두 구현이 갈리지 않았는가
+#   왜 이 형태인가는 `harness-consistency-rationale.md` 의 「축 ⑳ — 관련 파일 파서 동기」.
+# ─────────────────────────────────────────────────────────────
+# 대조 요소 넷. **문자열 동일성이 아니라 「그 판정이 있는가」를 잰다** — 두 구현이 다른
+#   언어라 문면이 같을 수 없다. 요소마다 언어별 패턴을 쌍으로 두고 **한쪽에만 있으면**
+#   MISMATCH 다. 회차 67 착수 시점에 ⓑⓒ 가 실제로 한쪽에만 있었다(드리프트 2건).
+PARSER_SYNC_FILES = ("plugins/pjc/scripts/session-wiki-signals.ps1",
+                     "plugins/pjc/skills/llm-wiki/scripts/lint.py")
+PARSER_SYNC_ELEMENTS = [
+    ("섹션 앵커 정규식", r"\^##\\s\*관련 파일", r"\^##\\s\*관련 파일"),
+    ("`- ` 항목 한정", r"-notlike '-\*'", r'startswith\("-"\)'),
+    ("코드펜스 제외", r"\$inFence", r"stripped_lines"),
+    ("구분자 필터", r"-notmatch '\[/", r'"/" in t or'),
+]
+
+
+def check_parser_sync():
+    """관련 파일 파서 동기 — ps1·py 두 구현에 같은 판정 요소가 다 있는가.
+
+    **fail-closed 로 읽는다** — 파일을 못 읽으면 「요소 없음」이라 MISMATCH 가 난다.
+    두 파일 다 이 레포의 자산이라 부재가 정상인 경우가 없다(골든 픽스처에도 없으면
+    그 픽스처가 이 축의 대상이 아니라는 뜻이므로 아래 fail-open 이 따로 있다).
+
+    **픽스처 fail-open**: 두 파일이 **둘 다** 없으면 `([], 0)` 이다 — 축소 픽스처에는
+    그 트리가 통째로 없고, 그때 red 를 내면 무관한 케이스가 전부 깨진다.
+    """
+    bodies = {}
+    for rel in PARSER_SYNC_FILES:
+        p = os.path.join(ROOT, rel)
+        bodies[rel] = read(p) if os.path.isfile(p) else None
+    if all(v is None for v in bodies.values()):
+        return [], 0
+
+    ps1, py = PARSER_SYNC_FILES
+    issues, n = [], 0
+    for label, ps_rx, py_rx in PARSER_SYNC_ELEMENTS:
+        n += 1
+        have = {ps1: bodies[ps1] is not None and re.search(ps_rx, bodies[ps1]) is not None,
+                py: bodies[py] is not None and re.search(py_rx, bodies[py]) is not None}
+        if have[ps1] == have[py]:
+            continue
+        missing = ps1 if not have[ps1] else py
+        issues.append(
+            "관련 파일 파서 동기: `%s` 판정이 `%s` 에만 없다 — 같은 규약"
+            "(`wiki-schema` §7-21)을 읽는 두 구현이라 한쪽만 고치면 lint 와 세션 신호가"
+            " 다른 것을 본다" % (label, missing))
+    return issues, n
+
+
+# ─────────────────────────────────────────────────────────────
 # ⑭ 폐기 식별자 실재 — 폐기된 단계명이 살아 있는 자산에서 **현행 규정**을 가리키는가
 #   목록의 정본은 `DESIGN.md` 3-1 의 고정 형식 1줄이다 — 선언과 검사가 한 자리에 묶인다.
 #   ⑫⑬ 결번의 근거는 이 파일 머리 docstring 에 있다(여기 복제하지 않는다).
@@ -1638,6 +1688,7 @@ def main():
         ("계수·버전 정합", check_count_and_version(conv)),
         ("규칙 근거 보유", (rule_issues, rule_n)),
         ("영향 검토 3축", check_impact_axes()),
+        ("관련 파일 파서 동기", check_parser_sync()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
