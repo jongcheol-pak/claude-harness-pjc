@@ -118,16 +118,30 @@ def check_pointer_reachability():
     pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
     # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 「절 이름 없는 참조」를 판정이 아니라 범위로 내는 이유」.
     pat_any = re.compile(r"`([A-Za-z0-9_./-]+\.md)`")
+    # 자기 파일 내부 참조 — 대상이 **그 파일 자신**이라 경로가 선행하지 않는다. 위 `pat` 에도
+    #   `pat_any` 에도 안 걸려 **계수조차 되지 않던 사각지대**였다(회차 66). 절을 지우는 회차가
+    #   축 ① 로 재확인하면 끊긴 참조가 있어도 「0건」으로 통과했다.
+    # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 자기 파일 내부 참조를 같은 축에 넣는 이유」.
+    pat_self = re.compile(r"(?:아래|위|같은 문서)(?:의)?\s*「([^」\n]{2,120})」")
     heading_cache = {}
     issues, checked, skipped, exempt = [], 0, [], []
     unnamed, named = 0, 0
 
     def anchors_of(path):
-        """도달 대상 = 헤딩 ∪ 굵은 텍스트.
+        """도달 대상 = 헤딩 ∪ 굵은 텍스트 ∪ 불릿 항목 ∪ 표 셀.
 
         이 repo는 절 앵커로 헤딩만 쓰지 않는다 — `**카운트 기준 …**`,
         `**▶ 현행 잔량(기계 대조 대상)**`, `**판정 3축**` 처럼
         굵은 텍스트를 앵커로 삼는 관례가 실재한다. 헤딩만 보면 그 참조가 전부 오탐이 된다.
+
+        불릿·표 셀을 넣는 이유는 자기 파일 참조(`아래 「…」`)가 그 둘을 자주 가리키기
+        때문이다 — 실측 3건이 그 형태였다(`README.md` 의 불릿 「위험한 명령 차단」,
+        `golden-runner.md` 의 표 열 「명령」, `harness-conventions.md` 의 표 행
+        「모든 `*.md` 변경」). 넓히지 않으면 **정당한 참조가 끊김으로 잡히고**, 그것을
+        화이트리스트로 막으면 또 하나의 「낡을 목록」이 생긴다.
+
+        헤딩의 `§N ---- ` 접두를 벗긴 형태도 함께 등록한다 — 그 접두는 v1.225.0 이
+        근거 주석을 rationale 로 내리며 **기계가 붙인 것**이라 참조 쪽이 알 이유가 없다.
         """
         if path not in heading_cache:
             try:
@@ -139,8 +153,25 @@ def check_pointer_reachability():
             for line in txt.split("\n"):
                 mm = re.match(r"^#{1,6} +(.+?)\s*$", line)
                 if mm:
-                    hs.add(mm.group(1).strip())
+                    h = mm.group(1).strip()
+                    hs.add(h)
+                    bare = _HEADING_PREFIX_RX.sub("", h).strip()
+                    if bare:
+                        hs.add(bare)
+                    continue
+                s = line.strip()
+                bm = re.match(r"^[-*] +(.+?)\s*$", s)
+                if bm:
+                    # 괄호 꼬리는 부기이지 이름의 일부가 아니다 — `- 위험한 명령 차단 (끌 수 없음)`
+                    #   을 「위험한 명령 차단」으로도 가리킨다.
+                    hs.add(re.sub(r"\s*\(.*$", "", bm.group(1)).strip())
+                elif s.startswith("|"):
+                    for cell in s.strip("|").split("|"):
+                        c = cell.strip().strip("*").strip("`").strip()
+                        if 2 <= len(c) <= 80:
+                            hs.add(c)
             hs.update(b.strip() for b in re.findall(r"\*\*([^*\n]{2,80})\*\*", txt))
+            hs.discard("")
             heading_cache[path] = hs
         return heading_cache[path]
 
@@ -174,7 +205,8 @@ def check_pointer_reachability():
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
         # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
         # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
-        if _ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
+        if (_ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY
+                or _POINTER_SKIP_RX.match(rel_src)):
             continue
         text = open(src, encoding="utf-8-sig", errors="replace").read()
         # 대장 2종은 위에서 이미 파일 단위 면제라 계수에서도 뺀다 — 그 둘은 관측 시점의
@@ -235,6 +267,26 @@ def check_pointer_reachability():
                 if rel_src not in POINTER_EXEMPT_SRC:
                     issues.append("포인터 끊김: %s → `%s` 「%s」 (대상에 그 헤딩 없음)"
                                   % (rel_src, ref_path, sec_name))
+
+        # ---- 자기 파일 내부 참조(`아래/위/같은 문서 「절」`) ----
+        # 대상은 **이 파일 자신**이라 경로 해석이 없다. 면제·아카이브 규칙은 위와 같은 것을
+        #   쓴다(대장 2종은 산문 언급이 많아 파일 단위 면제).
+        # ⚠ **양방향 부분 일치(`_sn in h`)를 쓰지 않는다** — 참조 문장 자신이 80자 이내
+        #   굵은 텍스트면 그것이 앵커로 잡혀 **자기 자신에 도달했다고 판정된다**. 실측:
+        #   `golden-runner.md` 의 `⚠ 아래 「명령」 열은 … 아래 「실행·대기 절차 (정본)」이
+        #   정본이다.` 가 그 형태라, 낡은 절 이름(실제 헤딩은 `실행 절차 (정본)`)이 조용히
+        #   통과했다. 근거는 `harness-consistency-rationale.md` 의
+        #   「축 ① — 양방향 부분 일치를 기각한 이유」.
+        if rel_src not in POINTER_EXEMPT_SRC:
+            self_hs = anchors_of(src)
+            if self_hs is not None:
+                for sec_name in pat_self.findall(text):
+                    checked += 1
+                    _sn = sec_name.strip()
+                    if not any(h.strip() == _sn or h.strip().startswith(_sn)
+                               for h in self_hs):
+                        issues.append("포인터 끊김: %s → 자기 파일 「%s」 (그 파일에 그 앵커 없음)"
+                                      % (rel_src, sec_name))
     if checked == 0:
         die("포인터 도달성: 검사 대상 포인터를 하나도 찾지 못함 (패턴이 낡았는지 확인)")
     if unnamed:
@@ -369,7 +421,18 @@ def check_batch_number_sequence(hist):
 #  (그 근거는 `harness-consistency-rationale.md` 의 「축 ③④ — 아카이브 제외의 근거」)
 #  ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
 _ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
+# `intent/` 는 **승인 시점의 요구 기록**이라 대상 문서의 절 이름이 나중에 바뀌어도 고치지
+#   않는다(`AGENTS.md` 「Plan Location」 — *"요구는 `intent/`"*). 그래서 **축 ① 에서만** 뺀다 —
+#   `_ARCHIVED_RX` 에 합치면 줄바꿈·예산처럼 intent 에도 적용돼야 할 축까지 함께 꺼진다.
+# 회차 66 실측: 이 회차의 intent 가 ⓐ 정규식 형태를 설명하는 인용(`아래/위/같은 문서 「절
+#   이름」`)과 ⓑ 아직 없는 절(`wiki-schema.md`「사실 오기 정정」 — 같은 회차가 만든다)로
+#   끊김 2건을 냈는데, 둘 다 고칠 대상이 아니다.
+_POINTER_SKIP_RX = re.compile(r"^intent/")
 _LOCAL_ONLY = {"plan.md", "notes.md"}
+# `## §2 ---- 릴리즈 누락 감지` 처럼 rationale 문서의 헤딩에 기계가 붙인 접두. 참조 쪽은
+#   절 이름만 적으므로(`위 「릴리즈 누락 감지」`) 이것을 벗긴 형태도 앵커로 등록해야
+#   정당한 참조가 끊김으로 잡히지 않는다. 축 ① `anchors_of` 가 쓴다.
+_HEADING_PREFIX_RX = re.compile(r"^§\d+\s*-*\s*")
 _INLINE_CODE_RX = re.compile(r"`[^`\n]*`")
 
 

@@ -1492,5 +1492,102 @@
       "관련 파일 파서 동기: `코드펜스 제외` 판정이",
       "session-wiki-signals.ps1` 에만 없다"
     ]
+  },
+  {
+    "id": "harness-self-ref-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "자기 파일"
+    ]
+  },
+  {
+    "id": "harness-self-ref-dead",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "위 「위험한 명령 차단」이 정본이다",
+        "replace": "위 「사라진 절 이름」이 정본이다"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「사라진 절 이름」"
+    ]
+  },
+  {
+    "id": "harness-self-ref-bullet-anchor",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "- 위험한 명령 차단 (끌 수 없음)",
+        "replace": "- 다른 이름의 항목 (끌 수 없음)"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「위험한 명령 차단」"
+    ]
+  },
+  {
+    "id": "harness-self-ref-table-anchor",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "| 모드 | 명령 |",
+        "replace": "| 모드 | 호출 |"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「명령」"
+    ]
+  },
+  {
+    "id": "harness-self-ref-heading-prefix",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "## §3 ---- 접두 달린 절",
+        "replace": "## §3 ---- 이름이 바뀐 절"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「접두 달린 절」"
+    ]
+  },
+  {
+    "id": "harness-self-ref-no-bidirectional-match",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "> 차단 목록은 위 「위험한 명령 차단」이 정본이다.",
+        "replace": "> **차단 목록은 위 「없는 절 이름」이 정본이다.**"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「없는 절 이름」"
+    ]
   }
 ]
