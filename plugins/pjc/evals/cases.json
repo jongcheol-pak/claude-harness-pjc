@@ -1234,5 +1234,75 @@
       "[FAIL] 산문이 가리키는 경로가 없습니다 — 1건",
       "docs/harness-conventions.md -> `docs/plans/`"
     ]
+  },
+  {
+    "id": "stale-symbol-ok",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "== 산문 심볼 실존 ==",
+      "docs/harness-conventions.md — 후보 3건 · 미실존 0건",
+      "결과: 후보 3건 전부 실재"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 심볼이 없습니다",
+      "[SKIP] 산문 대상 없음"
+    ]
+  },
+  {
+    "id": "stale-symbol-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 루트 파일명: `setup.ps1`",
+        "replace": "- 루트 파일명: `gone-setup.ps1`"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 산문이 가리키는 심볼이 없습니다 — 1건",
+      "docs/harness-conventions.md -> `gone-setup.ps1`"
+    ]
+  },
+  {
+    "id": "stale-symbol-fp-control",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 루트 파일명: `setup.ps1`",
+        "replace": "- 루트 파일명: `setup.ps1`\r\n\r\n아래 세 줄은 백틱 안에 있으나 심볼이 아니다 — 후보 수가 3 그대로여야 한다.\r\n\r\n- 커밋 SHA: `d3fad946`\r\n- CLI 플래그: `--porcelain`\r\n- 구분자 없는 식별자: `SyntaxError`"
+      }
+    ],
+    "expect_keywords": [
+      "docs/harness-conventions.md — 후보 3건 · 미실존 0건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 심볼이 없습니다"
+    ]
+  },
+  {
+    "id": "stale-symbol-no-target",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "delete": true
+      }
+    ],
+    "expect_keywords": [
+      "== 산문 심볼 실존 ==",
+      "[SKIP] 산문 대상 없음: docs/harness-conventions.md"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 심볼이 없습니다"
+    ]
   }
 ]
