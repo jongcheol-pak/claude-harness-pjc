@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.278.0
+**버전**: 1.279.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 **Claude Code**: 최소 v2.0 · **권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이다. 그 미만에서도 동작하지만 부분 실행 필터가 조용히 0건을 돌 수 있다. <!-- verified: 2026-09-12 -->
 
