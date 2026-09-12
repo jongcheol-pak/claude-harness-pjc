@@ -14,13 +14,44 @@ $script:StaleAxisMap = @(
     @{ Pattern = '^docs/harness-conventions\.md$'
        Axis    = '산문 서술 — 경로·심볼 실존은 check-stale-refs.py 가 재고, 남는 것은 「동작이 이렇게 돈다」는 문장의 진위와 구분자 없는 순수 식별자다' }
     @{ Pattern = '^AGENTS\.md$'
-       Axis    = '외부 사실(권장 Claude Code 버전 등) — 레포 안에 대조 상대가 없다' }
+       Axis    = '외부 사실(권장 Claude Code 버전 등) — 레포 안에 대조 상대가 없다'
+       # 이 축만 TTL 을 갖는다. 다른 둘은 「고칠 때마다 다시 봐야 하는 서술」이라 상시 고지가
+       #   맞지만, 외부 사실은 **마지막 확인 시점**이 있어 그 뒤로는 물을 것이 없다. 표기가
+       #   없거나 못 읽으면 종전대로 고지한다(fail-closed) — 부재를 침묵으로 처리하면
+       #   표기를 안 다는 것이 축을 끄는 수단이 된다.
+       TtlFile = 'AGENTS.md'
+       TtlDays = 90 }
     @{ Pattern = '^plugins/pjc/skills/llm-wiki/'
        Axis    = '위키 feature 서술 ↔ 코드 — 경로·심볼 실존은 lint 가 재지만 서술 내용은 표본 판정뿐이다' }
 )
 # 4 -> 3: `docs/golden-runner.md` 의 소요 실측 축이 **층 2 의 케이스 수 대조로 승격**돼
 #   빠졌다(회차 64). 근거 문서 §5 의 「감소에도 정당한 형태가 하나 있다」가 이 자리다.
 $script:StaleAxisBaseline = 3
+
+function Test-AxisVerifiedFresh {
+    <#
+      축에 TTL 이 걸려 있고 그 파일의 erified 표기가 아직 신선하면 $true — 그때만 고지를
+      건너뛴다. **나머지는 전부 $false 다**(fail-closed): TTL 미설정 축 · 파일 부재 ·
+      표기 부재 · 날짜 파싱 실패. 부재를 침묵으로 처리하면 표기를 지우는 것이 축을 끄는
+      수단이 되고, 그러면 이 축이 재는 「외부 사실이 낡았는가」를 아무도 안 보게 된다.
+      표기는 HTML 주석이다 — AGENTS.md 는 세션 시작에 전문이 주입되므로 본문에 보이는
+      표기를 더하면 매 세션 그 바이트가 실린다.
+    #>
+    param($Entry, [string]$RepoRoot)
+    if (-not $Entry.TtlFile -or -not $Entry.TtlDays) { return $false }
+    $p = Join-Path $RepoRoot $Entry.TtlFile
+    if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { return $false }
+    $body = $null
+    try { $body = Get-Content -LiteralPath $p -Raw -Encoding UTF8 } catch { return $false }
+    if (-not $body) { return $false }
+    $m = [regex]::Match($body, 'verified:\s*(\d{4}-\d{2}-\d{2})')
+    if (-not $m.Success) { return $false }
+    $d = [datetime]::MinValue
+    if (-not [datetime]::TryParseExact($m.Groups[1].Value, 'yyyy-MM-dd',
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::None, [ref]$d)) { return $false }
+    return ((Get-Date) - $d).TotalDays -lt $Entry.TtlDays
+}
 
 function Get-StagedPaths {
     param([string]$RepoRoot)
@@ -162,6 +193,7 @@ function Invoke-WarnStaleDocs {
     } elseif ($staged.Count -gt 0) {
         foreach ($entry in $script:StaleAxisMap) {
             $hit = @($staged | Where-Object { $_ -match $entry.Pattern })
+            if ($hit.Count -gt 0 -and (Test-AxisVerifiedFresh -Entry $entry -RepoRoot $root)) { continue }
             if ($hit.Count -gt 0) {
                 $lines.Add("[고지] $($entry.Axis) — 이번 커밋의 $($hit.Count)개 파일이 여기 걸립니다: $(($hit | Select-Object -First 3) -join ', ')")
             }

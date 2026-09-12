@@ -137,6 +137,38 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdHdPyReal } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 비-data-sink heredoc 뒤의 진짜 커밋은 그대로 고지한다' -R $r -ExpectExit 0 -ExpectContains '산문 서술'
 
+    # 7) 층 3 축 2(외부 사실) TTL — 케이스를 셋으로 가른다. 「신선」과 「표기 없음」은 둘 다
+    #    정상 입력이라 한 케이스로는 fail-closed 가 fail-open 으로 뒤집혀도 green 이다.
+    #    먼저 언스테이징해 축 1 고지를 떼고 축 2 만 남긴다.
+    & git -C $sdRoot reset -q 2>$null
+
+    # 7a) 표기가 신선하면(오늘) 고지하지 않는다.
+    $fresh = (Get-Date).ToString('yyyy-MM-dd')
+    "# 가이드$([Environment]::NewLine)- 권장 버전 <!-- verified: $fresh -->" | Set-Content (Join-Path $sdRoot 'AGENTS.md')
+    & git -C $sdRoot add AGENTS.md 2>$null
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 외부 사실 축 — 표기 신선하면 미발화' -R $r -ExpectExit 0 -ExpectNotContains '외부 사실'
+
+    # 7b) 91일 전이면 고지한다 — TTL 90일 경계 바깥.
+    $stale = (Get-Date).AddDays(-91).ToString('yyyy-MM-dd')
+    "# 가이드$([Environment]::NewLine)- 권장 버전 <!-- verified: $stale -->" | Set-Content (Join-Path $sdRoot 'AGENTS.md')
+    & git -C $sdRoot add AGENTS.md 2>$null
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 외부 사실 축 — 표기 만료면 발화' -R $r -ExpectExit 0 -ExpectContains '외부 사실'
+
+    # 7c) **표기가 아예 없으면 발화한다(fail-closed)** — 부재를 침묵으로 처리하면 표기를
+    #     지우는 것이 축을 끄는 수단이 된다. 이 케이스가 없으면 그 뒤집힘이 green 이다.
+    "# 가이드$([Environment]::NewLine)- 권장 버전(표기 없음)" | Set-Content (Join-Path $sdRoot 'AGENTS.md')
+    & git -C $sdRoot add AGENTS.md 2>$null
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 외부 사실 축 — 표기 없으면 발화(fail-closed)' -R $r -ExpectExit 0 -ExpectContains '외부 사실'
+
+    # 7 뒤처리 — 언스테이징만 한다. 파일을 남겨도 다음 케이스는 스테이징 목록만 본다.
+    & git -C $sdRoot reset -q 2>$null
+
     # 6) 비하니스 레포는 무출력 — 마커 하나를 지우면 발동하지 않는다.
     Remove-Item (Join-Path $sdRoot '.claude-plugin/marketplace.json') -Force
     & git -C $sdRoot add -A 2>$null
