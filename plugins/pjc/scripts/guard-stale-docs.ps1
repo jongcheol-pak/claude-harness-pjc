@@ -12,7 +12,7 @@
 #   그 결함을 고치면서 같은 결함을 하나 더 만든다.
 $script:StaleAxisMap = @(
     @{ Pattern = '^docs/harness-conventions\.md$'
-       Axis    = '산문 서술 — 이 문서가 코드 동작을 서술하는 자리는 어느 검사기도 재지 않는다' }
+       Axis    = '산문 서술 — 경로 실존은 check-stale-refs.py 가 재고, 남는 것은 「동작이 이렇게 돈다」는 문장의 진위와 무구분자 심볼이다' }
     @{ Pattern = '^AGENTS\.md$'
        Axis    = '외부 사실(권장 Claude Code 버전 등) — 레포 안에 대조 상대가 없다' }
     @{ Pattern = '^plugins/pjc/skills/llm-wiki/'
