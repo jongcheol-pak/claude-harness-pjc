@@ -29,9 +29,9 @@ exit 에 기여하지 않는다. 「0건」(잴 것을 재서 아무것도 안 �
 없었다)을 가르되, 이 검사기가 다른 레포·골든 픽스처에서도 돌아야 해서 앵커 실패로는 못 본다.
 """
 import fnmatch
-import os
 import pathlib
 import re
+import subprocess
 import sys
 from collections import Counter
 
@@ -113,13 +113,9 @@ PROSE_TOKEN_RX = re.compile(r'`([^`\n]+)`')
 #   정규식·환경변수·설명용 리터럴이 섞여 있고, 구분자 포함만으로 거르면 미실존이 58 로 튄다
 #   (회차 65 실측). 공백을 빼면 명령 조각(`python …/x.py`)과 산문 리터럴이, 백슬래시를 빼면
 #   정규식(`\r\n`)이, `<>` 를 빼면 자리표시(`skills/<name>/`)가 함께 떨어져 58 → 1 이 된다.
-#   남은 1 은 gitignore 된 실재 디렉터리였고 그것은 아래 인덱스가 푼다.
+#   **남은 1 은 오탐이 아니라 진짜 양성이었다** — gitignore 대상이라 클론에는 없는 경로를
+#   산문이 가리키고 있었고, 회차 65 가 그 서술을 고쳐 닫았다.
 PROSE_PATH_CHARS = re.compile(r'^[A-Za-z0-9_.\-*/]+$')
-
-# 인덱스에서 제외할 디렉터리. **`SKIP_DIRS` 를 재사용하지 않는다** — 그쪽은 「죽은 이름을 찾을
-#   대상」이라 `notes-archive`·`.agents-presplit` 을 빼는데, 실존 판정에서는 디스크에 있으면
-#   실존이다. `docs/.agents-presplit/` 은 gitignore 지만 실재하고 이 문서가 그것을 가리킨다.
-PROSE_INDEX_SKIP = {'.git', '__pycache__', 'node_modules'}
 
 
 def excused(rel):
@@ -238,18 +234,22 @@ def scan_tree():
 
 
 def build_path_index():
-    """레포의 모든 파일·디렉터리를 레포 상대 posix 경로로 모은다.
+    """**추적본**의 레포 상대 posix 경로를 모은다. 못 얻으면 `None`(판정 불가).
 
-    디렉터리도 넣는 것은 문서가 `docs/plans/` 처럼 디렉터리를 가리키기 때문이다.
+    **파일시스템 순회가 아니라 `git ls-files` 다.** 순회로 지으면 작성자 디스크에만 있는
+    gitignore 대상이 실존으로 잡혀, **같은 커밋이 로컬에서는 exit 0 이고 프레시 체크아웃에서는
+    exit 1** 이 된다 — 회차 65 완료 리뷰가 CI(`.github/workflows/checks.yml`)에서 그 갈림을
+    실측했다. 산문이 가리키는 대상이 「읽는 사람에게 있는가」를 재는 축이므로 **모집단은
+    클론이 받는 것**이어야 한다.
+
+    디렉터리를 따로 넣지 않는 것은 매치가 접미형이라 `docs/plans` 가 그 아래 파일 경로에
+    이미 걸리기 때문이다(빈 디렉터리는 git 이 애초에 추적하지 않는다).
     """
-    paths = []
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        dirnames[:] = [d for d in dirnames if d not in PROSE_INDEX_SKIP]
-        rel = pathlib.Path(dirpath).relative_to(ROOT).as_posix()
-        base = '' if rel == '.' else rel + '/'
-        paths.extend(base + n for n in dirnames)
-        paths.extend(base + n for n in filenames)
-    return paths
+    out = subprocess.run(['git', '-C', str(ROOT), 'ls-files'],
+                         capture_output=True, text=True, encoding='utf-8', errors='replace')
+    if out.returncode != 0:
+        return None
+    return [ln for ln in out.stdout.split('\n') if ln]
 
 
 def prose_path_rx(token):
@@ -286,6 +286,10 @@ def prose_candidates(text):
 def scan_prose_paths():
     """`PROSE_TARGETS` 산문의 백틱 경로가 레포에 실재하는가."""
     index = build_path_index()
+    if index is None:
+        # git 을 못 부르면 「0건」이 아니라 판정 불가다 — 막지는 않는다(다른 축은 git 없이 돈다).
+        print('\n== 산문 경로 실존 ==\n  [SKIP] 인덱스 판정 불가 — `git ls-files` 실패')
+        return 0
     print(f'\n== 산문 경로 실존 ==\n대상 {len(PROSE_TARGETS)}문서 · 인덱스 {len(index)}건')
     total, miss = 0, []
     for rel in PROSE_TARGETS:

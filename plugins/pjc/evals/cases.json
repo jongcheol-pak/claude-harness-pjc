@@ -1217,5 +1217,22 @@
     "expect_absent": [
       "[FAIL] 산문이 가리키는 경로가 없습니다"
     ]
+  },
+  {
+    "id": "stale-prose-untracked",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": ".gitignore",
+        "find": "#PLACEHOLDER",
+        "replace": "docs/plans/"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다 — 1건",
+      "docs/harness-conventions.md -> `docs/plans/`"
+    ]
   }
 ]
