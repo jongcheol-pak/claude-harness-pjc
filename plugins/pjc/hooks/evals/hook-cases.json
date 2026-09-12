@@ -1868,6 +1868,33 @@
       "command": "context.Users.RemoveRange(oldUsers)",
       "expect_exit": 2,
       "expect_contains": "EF Core 대량 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "EF Core DbContext.RemoveRange(IEnumerable) 1단 호출 차단 (완료 리뷰 MAJOR)",
+      "command": "context.RemoveRange(entities)",
+      "expect_exit": 2,
+      "expect_contains": "EF Core 대량 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "EF Core DbSet.RemoveRange() 1단 호출 차단 (완료 리뷰 MAJOR)",
+      "command": "dbSet.RemoveRange(items)",
+      "expect_exit": 2,
+      "expect_contains": "EF Core 대량 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "EF Core ctx 약어 수신자 차단 (단서 어휘 확장)",
+      "command": "ctx.Users.RemoveRange(all)",
+      "expect_exit": 2,
+      "expect_contains": "EF Core 대량 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "PowerShell $db 접두 변수 통과 (오탐 통제 — 단서 어휘가 변수명에 섞여도)",
+      "command": "$dbLines.RemoveRange(0,1)",
+      "expect_exit": 0
     }
   ]
 }

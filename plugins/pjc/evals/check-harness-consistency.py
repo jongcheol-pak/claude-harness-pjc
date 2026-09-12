@@ -205,8 +205,7 @@ def check_pointer_reachability():
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
         # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
         # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
-        if (_ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY
-                or _POINTER_SKIP_RX.match(rel_src)):
+        if _ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
             continue
         text = open(src, encoding="utf-8-sig", errors="replace").read()
         # 대장 2종은 위에서 이미 파일 단위 면제라 계수에서도 뺀다 — 그 둘은 관측 시점의
@@ -277,7 +276,7 @@ def check_pointer_reachability():
         #   정본이다.` 가 그 형태라, 낡은 절 이름(실제 헤딩은 `실행 절차 (정본)`)이 조용히
         #   통과했다. 근거는 `harness-consistency-rationale.md` 의
         #   「축 ① — 양방향 부분 일치를 기각한 이유」.
-        if rel_src not in POINTER_EXEMPT_SRC:
+        if rel_src not in POINTER_EXEMPT_SRC and not _POINTER_SKIP_RX.match(rel_src):
             self_hs = anchors_of(src)
             if self_hs is not None:
                 for sec_name in pat_self.findall(text):
@@ -422,8 +421,11 @@ def check_batch_number_sequence(hist):
 #  ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
 _ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
 # `intent/` 는 **승인 시점의 요구 기록**이라 대상 문서의 절 이름이 나중에 바뀌어도 고치지
-#   않는다(`AGENTS.md` 「Plan Location」 — *"요구는 `intent/`"*). 그래서 **축 ① 에서만** 뺀다 —
-#   `_ARCHIVED_RX` 에 합치면 줄바꿈·예산처럼 intent 에도 적용돼야 할 축까지 함께 꺼진다.
+#   않는다(`AGENTS.md` 「Plan Location」 — *"요구는 `intent/`"*). 그래서 **자기 파일 참조
+#   판정에서만** 뺀다 — 두 겹으로 좁힌 것이다. ⓐ `_ARCHIVED_RX` 에 합치면 줄바꿈·예산처럼
+#   intent 에도 적용돼야 할 축까지 함께 꺼지고, ⓑ 축 ① 루프 선두에서 `continue` 하면
+#   **경로 동반 참조(`pat`) 22건의 커버리지가 같이 꺼진다**(회차 66 완료 리뷰 MINOR — 그
+#   22건은 BASE 까지 이 축이 재고 있던 것이다). 끄려던 것은 자기 참조 오탐 2건뿐이다.
 # 회차 66 실측: 이 회차의 intent 가 ⓐ 정규식 형태를 설명하는 인용(`아래/위/같은 문서 「절
 #   이름」`)과 ⓑ 아직 없는 절(`wiki-schema.md`「사실 오기 정정」 — 같은 회차가 만든다)로
 #   끊김 2건을 냈는데, 둘 다 고칠 대상이 아니다.

@@ -50,12 +50,18 @@
    종전 정규식 `\.RemoveRange\(` 는 수신자를 가리지 않아 **PowerShell 리스트 조작을
    EF Core 로 오차단**했다 — 실해: `$lines.RemoveRange($idx, 2)` 가 막혀 같은 편집을
    다른 수단으로 다시 짰다(2026-09-12, 두 세션에서 관측).
-   현행은 `db|context|dbset` 로 시작하는 식별자 뒤에 **점이 두 번** 오는 형태만 본다
-   (`context.Users.RemoveRange(`). 점 하나짜리 `$dbLines.RemoveRange(` 는 미매치다.
+   현행은 `db|context|dbset|ctx` 를 품은 식별자가 수신자일 때 잡되, **`$` 로 시작하는
+   PowerShell 변수는 lookbehind 로 제외**한다. 중간 체인은 선택이라 1단·2단을 모두 본다
+   (`context.RemoveRange(` · `context.Users.RemoveRange(` 둘 다 차단).
 
-   남는 미탐: **단서 없는 진짜 EF Core 호출**(지역 변수에 DbSet 을 받아 곧바로 부르는
-   형태). 그 자리는 pjc:plan 승인 게이트와 완료 리뷰가 받는다 — 바로 위 한계와 같은
-   취지이고, 차단을 넓혀 오탐을 되살리는 것보다 낫다는 판단이다.
+   ⚠️ **처음 좁힐 때 점을 두 번 요구했다가 EF Core 정본 API 를 통째로 놓쳤다**(회차 66
+   완료 리뷰 MAJOR). `DbContext.RemoveRange(IEnumerable)` 과 `DbSet<T>.RemoveRange(...)`
+   는 수신자 바로 뒤에서 부르는 것이 표준 형태라 점이 1단이다 — 단서를 달고 있는데도
+   빠졌다. 경계를 바꿀 때는 **잡아야 할 형태를 먼저 열거해 돌려 보고** 고친다.
+
+   남는 미탐: 단서 어휘 밖 이름을 쓴 수신자(`repo.RemoveRange(` 처럼). 그 자리는
+   pjc:plan 승인 게이트와 완료 리뷰가 받는다 — 바로 위 한계와 같은 취지이고, 어휘를
+   더 넓히면 PowerShell 오탐이 되살아난다.
    골든이 양방향을 잰다 — 오탐 통과 케이스와 **차단 유지 음성 대조** 케이스가 짝이다.
    음성 대조가 없으면 이 수정은 차단을 통째로 지운 것과 골든상 구분되지 않는다.
 

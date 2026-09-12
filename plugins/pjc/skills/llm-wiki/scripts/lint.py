@@ -3259,8 +3259,11 @@ def main():
         #  항목 불변의 예외라 **표기가 곧 감사 기록**이다 — 「정정」을 적었는데 형식이
         #  어긋나면 무엇이 언제 왜 바뀌었는지가 남지 않아 불변 규칙을 우회하는 수단이 된다.
         #  「정정」이 든 항목만 보므로 정정하지 않은 기존 항목은 모집단 밖이다.
+        #  ⚠ 모집단은 **`(정정 ` 접두**이지 「정정」 글자가 아니다 — 「…를 정정한다」처럼
+        #    정정이 **결정의 내용**인 항목이 실 vault 에 있어(회차 66 완료 리뷰 MINOR:
+        #    `90_archive/…/maid/decisions.md` 2건), 글자만 보면 그것들이 형식 위반으로 잡힌다.
         badfix = sum(1 for ln in text.splitlines()
-                     if dec_item_rx.match(ln) and "정정" in ln
+                     if dec_item_rx.match(ln) and "(정정 " in ln
                      and not DECISION_FIX_RX.search(ln))
         if badfix:
             warn(f"decision-log 정정 표기 형식 위반: {r} {badfix}건 — "
