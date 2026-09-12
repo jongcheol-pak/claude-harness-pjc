@@ -82,6 +82,7 @@
 - **SKILL 문서**: 형식은 `skills/AUTHORING.md`, **설계 원칙은 `skills/DESIGN.md` 가 정본**이다.
 - **위키 연동**: `plugins/pjc/skills/WIKI.md` 가 정본.
 - **README.md 갱신 규약**: changelog 기재 **금지**(현재 기능 설명만) · 버전 표기는 상단 1곳. 정본은 `docs/harness-conventions.md` 「README.md 갱신 규약」.
+- **개정·개선 전 영향 검토**: hook·스킬·규약 수정 전 **충돌·도달성·병목**을 잰다(`docs/harness-conventions.md`).
 - **규약 개정 요청**: 「규약이 금지한다」로 제외·전환하지 않고 **현행 규약 안의 안**과 **규약을 함께 고치는 안**을 둘 다 낸다(정본은 `docs/harness-conventions.md` 의 「규약 개정 요청의 취급」).
 
 ## 데이터 접근
