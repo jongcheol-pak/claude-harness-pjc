@@ -1855,6 +1855,19 @@
       "command": "psql -c \"TRUNCATE public.users\"",
       "expect_exit": 2,
       "expect_contains": "TABLE 키워드를 생략한 테이블 비우기"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "PowerShell 리스트 .RemoveRange() 통과 (오탐 수정 — 회차 66)",
+      "command": "$lines.RemoveRange($idx, 2)",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "EF Core DbContext .RemoveRange() 차단 유지 (음성 대조 — 차단 사유 문구 고정)",
+      "command": "context.Users.RemoveRange(oldUsers)",
+      "expect_exit": 2,
+      "expect_contains": "EF Core 대량 삭제"
     }
   ]
 }

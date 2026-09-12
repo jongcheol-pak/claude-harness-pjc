@@ -83,7 +83,7 @@
       "why": "UPDATE ... WHERE 1=1 = 전체 변조"
     },
     {
-      "rx": "\\.RemoveRange\\(",
+      "rx": "(?i)(?:db|context|dbset)\\w*\\s*\\.[^;\\n]*\\.RemoveRange\\s*\\(",
       "why": "EF Core 대량 삭제"
     },
     {
