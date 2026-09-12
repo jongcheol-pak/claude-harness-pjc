@@ -57,8 +57,12 @@ def main() -> int:
         wiki = read("WIKI.md")
         impl = read("implement/SKILL.md")
         plan = read("plan/SKILL.md")
-        # llm-wiki 의 큐 소비 절차 — 이 레포에서 유일한 소비 측 정본
-        consume = read("llm-wiki/references/procedures-content.md")
+        # llm-wiki 의 큐 소비 절차 — **태그별 소비 규칙의 정본**이다.
+        #  회차 65 에 `procedures-content.md` 의 B-1 0 에서 갈라져 나왔고, 그 전까지
+        #  이 변수는 `procedures-content.md` 를 읽었다. 그때 check 4 는 거짓 통과였다 —
+        #  A-2(:50) 가 두 문자열을 함께 담고 있어 **라우팅 규칙이 그 파일을 떠나도**
+        #  `in` 판정이 참으로 남았다. 소비 규칙이 사는 파일을 직접 읽어야 그 회로를 잰다.
+        consume = read("llm-wiki/references/queue-consume-rules.md")
         queue_rules = read("llm-wiki/references/queue-rules.md")
     except FileNotFoundError as e:
         print(f"FAIL  파일 로드: {e}")

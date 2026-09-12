@@ -375,6 +375,15 @@ def check_f1_schema7(ops_text, schema_text):
 #   라벨만 있거나 파일만 있는 언급, 범위 서술(`…md`(A~E·I) 처럼 괄호 안 나열)은 skip(오탐 방지).
 #   base 절차 문자 단위로만 대조 — 재분할 시 '절차가 다른 파일로 갔는데 포인터가 옛 파일 지칭'을 잡는 게 목적.
 # 경로는 문서 지배 관례가 백틱 래핑(`…md`)이라 선택적 백틱을 허용한다(안 그러면 L2F 다수를 놓침 — B1).
+# ⚠ `queue-consume-rules.md`(회차 65 신설)는 **의도적으로 넣지 않는다.**
+#  이 축의 모델은 「라벨 → 그 절차의 `### X.` 헤딩이 있는 파일」이다. 그런데 그 파일이
+#  담는 것은 **절차 B 의 하위 단계(B-1 0) 본문**이라 `### B.` 헤딩을 갖지 않는다 —
+#  넣으면 `B-1 0(…queue-consume-rules.md)` 같은 **정당한 포인터가 전부 오귀속으로 잡힌다**
+#  (실측: procedures-ops 4건 · wiki-schema 2건 · queue-rules 1건이 red).
+#  그래서 **새 파일로 가는 포인터는 이 축의 사각지대로 남는다** — 대신 그 정합은
+#  G7(`grep -rh "B-1 0" … | grep -c "procedures-content.md"` → 0건)이 회차마다 잰다.
+#  하위 단계 본문의 이동을 일반적으로 재려면 축의 모델 자체를 「라벨 → 본문 파일」로
+#  바꿔야 하고, 그것은 이 회차의 범위가 아니다.
 _PROC_FILE = r"`?references/procedures-(?:content|ops)\.md`?"
 # base 문자는 [A-Z] 동적 캡처 — [A-L] 하드코딩 금지(파일 상단 ROUTING_LETTER_RX 원칙과 일관 — 절차 M+
 #   추가 시에도 매치되게, 미정의 문자는 letter_file.get()이 None이라 자연히 skip). 하위라벨(B-1 0·A-3a·B-2 3-1·K 5-1).
@@ -384,7 +393,7 @@ POINTER_F2L_RX = re.compile(_PROC_FILE + r'(?:의)?\s*"?\s*' + _LABEL)
 # 라벨→파일: `B-1 0(`…md`)`, `B-1 0 — `…md``, `L(`…md`)`, `F-2(`…md`)` (라벨 뒤 괄호/대시 뒤 바로 파일, 백틱 포함)
 POINTER_L2F_RX = re.compile(r"(?<![A-Za-z0-9])" + _LABEL + r"\s*[(—-]\s*(?:—\s*)?" + _PROC_FILE)
 # 매치 문자열에서 '어느 파일'인지 되뽑기(content|ops)
-_WHICH_FILE_RX = re.compile(r"references/procedures-(content|ops)\.md")
+_WHICH_FILE_RX = re.compile(r"references/(procedures-content|procedures-ops)\.md")
 
 
 def build_letter_file_map():
@@ -406,6 +415,7 @@ def build_letter_file_map():
         "references/procedures-ops.md": read(OPS_MD),
         "references/lookup-rules.md": read(LOOKUP_RULES_MD),
         "references/queue-rules.md": read(QUEUE_RULES_MD),
+        "references/queue-consume-rules.md": read(QUEUE_CONSUME_MD),
     }
     for fname, text in sources.items():
         for hm in PROC_HEADING_RX.finditer(text):
@@ -451,7 +461,7 @@ def check_prose_pointers(skill_text, schema_text):
                 if not actual:
                     continue  # 헤딩 못 찾음(J/K는 본체 SKILL.md, 또는 미정의) — 대조 대상 아님
                 checked += 1
-                claimed = "references/procedures-%s.md" % which
+                claimed = "references/%s.md" % which
                 if claimed not in actual:
                     issues.append(
                         f"{fname} 산문 포인터: 절차 {letter}를 '{claimed}'로 귀속하나 "
