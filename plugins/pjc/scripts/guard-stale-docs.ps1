@@ -17,10 +17,10 @@ $script:StaleAxisMap = @(
        Axis    = '외부 사실(권장 Claude Code 버전 등) — 레포 안에 대조 상대가 없다' }
     @{ Pattern = '^plugins/pjc/skills/llm-wiki/'
        Axis    = '위키 feature 서술 ↔ 코드 — 경로·심볼 실존은 lint 가 재지만 서술 내용은 표본 판정뿐이다' }
-    @{ Pattern = '^docs/golden-runner\.md$'
-       Axis    = '소요 시간 실측값 — 실행마다 편차가 커 자동 갱신 대상이 아니다' }
 )
-$script:StaleAxisBaseline = 4
+# 4 -> 3: `docs/golden-runner.md` 의 소요 실측 축이 **층 2 의 케이스 수 대조로 승격**돼
+#   빠졌다(회차 64). 근거 문서 §5 의 「감소에도 정당한 형태가 하나 있다」가 이 자리다.
+$script:StaleAxisBaseline = 3
 
 function Get-StagedPaths {
     param([string]$RepoRoot)
@@ -45,6 +45,34 @@ function Get-CountMismatchLines {
     $out = @(& python $checker --fix --dry-run 2>$null)
     if ($LASTEXITCODE -ne 0) { return @() }
     return @($out | Where-Object { $_ -match '^\[WOULD-FIX\]' })
+}
+
+function Get-GoldenTimingLag {
+    <#
+      층 2 — `docs/golden-runner.md` 의 소요 실측이 현재 규모보다 낡았는가. **층 3 의 축 4 를
+        대신한다** — 그쪽은 「사람이 보라」였고 이쪽은 기계가 잰다.
+      **대조 키는 「소요 초」가 아니라 「케이스 수」다** — 같은 문서가 *"소요 시간을 완료 판정에
+        쓰지 말 것(19분 6초 ↔ 27분 14초로 실측)"* 이라 적어 초로는 임계를 세울 수 없다. 케이스
+        수는 편차가 0이고 `$GoldenTotalBaseline` 이라는 대조 상대가 있다.
+      표에 이력이 누적되므로 **위치가 아니라 값의 최댓값**으로 최신을 가린다.
+    #>
+    param([string]$RepoRoot)
+    $doc = Join-Path $RepoRoot 'docs/golden-runner.md'
+    $runner = Join-Path $RepoRoot 'plugins/pjc/hooks/evals/run-hook-evals.ps1'
+    if (-not (Test-Path -LiteralPath $doc) -or -not (Test-Path -LiteralPath $runner)) { return $null }
+    $text = Get-Content -LiteralPath $doc -Raw -ErrorAction SilentlyContinue
+    if (-not $text) { return $null }
+    $docMax = 0
+    foreach ($m in [regex]::Matches($text, '(\d+)\s*케이스')) {
+        $v = [int]$m.Groups[1].Value
+        if ($v -gt $docMax) { $docMax = $v }
+    }
+    if ($docMax -le 0) { return $null }   # 문서에 실측이 없다 — 판정 불가이지 「최신」이 아니다
+    $rs = Select-String -LiteralPath $runner -Pattern '\$GoldenTotalBaseline\s*=\s*(\d+)' | Select-Object -First 1
+    if (-not $rs) { return $null }
+    $base = [int]$rs.Matches[0].Groups[1].Value
+    if ($docMax -eq $base) { return $null }
+    return @{ Doc = $docMax; Base = $base }
 }
 
 function Get-WikiLag {
@@ -107,6 +135,12 @@ function Invoke-WarnStaleDocs {
         if ($rs -and $cs -and $rs.Matches[0].Groups[1].Value -ne $cs.Matches[0].Groups[1].Value) {
             $lines.Add("[낡음] hook 골든 총계가 갈립니다 — 러너 상수 $($rs.Matches[0].Groups[1].Value) ↔ 문서 $($cs.Matches[0].Groups[1].Value). 이 수는 기계로 세어지지 않아 둘을 손으로 맞춰야 합니다")
         }
+    }
+
+    # --- 층 2: 골든 실측 낡음 ---
+    $gl = Get-GoldenTimingLag -RepoRoot $root
+    if ($null -ne $gl) {
+        $lines.Add("[낡음] 골든 실측이 낡았습니다 — 문서 최신 $($gl.Doc)케이스 ↔ 러너 상수 $($gl.Base)케이스. 전량 실행의 [TIMING] 값으로 golden-runner.md 를 갱신하세요")
     }
 
     # --- 층 2: 위키 격차 ---

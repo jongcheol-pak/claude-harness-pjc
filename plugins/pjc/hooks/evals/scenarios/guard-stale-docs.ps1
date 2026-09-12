@@ -69,6 +69,25 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 층2 총계 일치 시 침묵' -R $r -ExpectExit 0 -ExpectNotContains '러너 상수'
 
+    # 3-c2) **층 2 양성(골든 실측 낡음)** — `golden-runner.md` 의 케이스 수 **최댓값**과 러너
+    #       상수가 갈리면 고지한다. **이력을 순서 뒤섞어 넣는 것이 이 케이스의 축**이다 —
+    #       구현이 「첫 매치」나 「마지막 매치」를 쓰면 300/200 이 나와 red 가 된다. 재는 것은
+    #       「최댓값을 고르는가」이지 정규식이 매치하는가가 아니다(구현과 다른 축).
+    @'
+| 병렬 | run | **300초** — 300케이스, 2026-01-01 실측 / **9초** — 555케이스, 2026-02-02 실측 / **7초** — 200케이스, 2026-03-03 실측 |
+'@ | Set-Content (Join-Path $sdRoot 'docs/golden-runner.md')
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 층2 골든 실측 낡음 고지' -R $r -ExpectExit 0 -ExpectContains '문서 최신 555케이스 ↔ 러너 상수 111케이스'
+
+    # 3-d2) 최댓값이 러너 상수와 같으면 그 줄은 안 뜬다(층 2 델타 음성).
+    @'
+| 병렬 | run | **9초** — 111케이스, 2026-02-02 실측 / **7초** — 100케이스, 2026-03-03 실측 |
+'@ | Set-Content (Join-Path $sdRoot 'docs/golden-runner.md')
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 층2 골든 실측 일치 시 침묵' -R $r -ExpectExit 0 -ExpectNotContains '골든 실측'
+
     # 층 1·2 대역을 걷어 나머지 케이스를 원래 조건으로 되돌린다.
     Remove-Item (Join-Path $sdRoot 'plugins/pjc/evals/check-harness-consistency.py') -Force
     Remove-Item (Join-Path $sdRoot 'plugins/pjc/hooks/evals/run-hook-evals.ps1') -Force
