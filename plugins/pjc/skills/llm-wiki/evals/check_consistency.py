@@ -378,10 +378,11 @@ def check_f1_schema7(ops_text, schema_text):
 # ⚠ `queue-consume-rules.md`(회차 65 신설)는 **의도적으로 넣지 않는다.**
 #  이 축의 모델은 「라벨 → 그 절차의 `### X.` 헤딩이 있는 파일」이다. 그런데 그 파일이
 #  담는 것은 **절차 B 의 하위 단계(B-1 0) 본문**이라 `### B.` 헤딩을 갖지 않는다 —
-#  넣으면 `B-1 0(…queue-consume-rules.md)` 같은 **정당한 포인터가 전부 오귀속으로 잡힌다**
-#  (실측: procedures-ops 4건 · wiki-schema 2건 · queue-rules 1건이 red).
-#  그래서 **새 파일로 가는 포인터는 이 축의 사각지대로 남는다** — 대신 그 정합은
-#  G7(`grep -rh "B-1 0" … | grep -c "procedures-content.md"` → 0건)이 회차마다 잰다.
+#  넣으면 `B-1 0(…queue-consume-rules.md)` 같은 **정당한 포인터가 오귀속으로 잡힌다**
+#  (실측 **5건** — `procedures-ops.md` 4 · `wiki-schema.md` 1. `queue-rules.md` 는
+#  `check_prose_pointers` 의 `docs` 넷에 없어 **이 축의 모집단 밖**이다).
+#  그래서 **새 파일로 가는 포인터는 이 축의 사각지대로 남고**, 그 자리는
+#  **축 ⑫ `check_consume_pointer_freshness`** 가 받는다(옛 파일을 가리키는 줄 0건).
 #  하위 단계 본문의 이동을 일반적으로 재려면 축의 모델 자체를 「라벨 → 본문 파일」로
 #  바꿔야 하고, 그것은 이 회차의 범위가 아니다.
 _PROC_FILE = r"`?references/procedures-(?:content|ops)\.md`?"
@@ -1083,6 +1084,38 @@ ROW_SHAPE_LINE_RX = re.compile(
     r"(?m)^>\s*\*\*§7-16 대상 토큰\(기계 대조\)\*\*:\s*(.+?)\s*$")
 
 
+def check_consume_pointer_freshness():
+    """⑫ 큐 소비 규칙 포인터의 실재 — 옛 파일을 정본으로 가리키는 줄이 없는가.
+
+    회차 65 가 `procedures-content.md` 의 B-1 0(큐 태그별 소비 규칙)을
+    `queue-consume-rules.md` 로 갈라내면서, **축 ⑧ 이 그 자리를 못 보게 됐다** —
+    그 축의 모델은 「라벨 → 그 절차의 `### X.` 헤딩이 있는 파일」인데 새 파일은
+    절차 B 의 **하위 단계 본문**이라 `### B.` 헤딩을 갖지 않는다(넣으면 정당한
+    포인터가 오귀속 red 가 된다). 착수 시점에는 같은 7개 포인터가
+    `procedures-content.md` 를 가리켜 축 ⑧ 이 실제로 검사하고 있었으므로,
+    **대체 축이 없으면 커버리지가 순감한다.** 그 자리를 이 축이 받는다.
+
+    판정: `references/*.md` 에서 **한 줄 안에 `B-1 0` 과 `procedures-content.md` 가
+    함께 오면** 불일치다. 소비 규칙 본문이 그 파일을 떠났으므로 그런 줄은
+    옛 위치를 가리키는 스테일 포인터다. 경로가 아니라 **줄 내용**만 본다
+    (`grep -rn | grep` 형태는 경로 매치가 섞여 0 에 도달할 수 없고,
+    `sed` 로 경로를 지우는 형태는 Windows 드라이브 콜론에 어긋난다 — 실측 7↔9).
+    반환: (불일치 목록, 대조 항목 수)."""
+    issues = []
+    checked = 0
+    ref_dir = os.path.join(SKILL_DIR, "references")
+    for name in sorted(os.listdir(ref_dir)):
+        if not name.endswith(".md"):
+            continue
+        checked += 1
+        for no, line in enumerate(read(os.path.join(ref_dir, name)).splitlines(), 1):
+            if "B-1 0" in line and "procedures-content.md" in line:
+                issues.append(
+                    f"{name}:{no}: 소비 규칙을 옛 파일로 가리킨다 — 정본은 "
+                    f"references/queue-consume-rules.md 다")
+    return issues, checked
+
+
 def check_row_shape_sync(schema_text, lint):
     """§7-16이 「기능별 인덱스 유형 행」으로 인정하는 대상 토큰이 §3 서술과 같은지 본다.
 
@@ -1387,6 +1420,11 @@ def main():
     checked += row_checked
     mismatches.extend(row_issues)
     axes.append(("행 대상 조건", row_checked, "항목"))
+
+    consume_issues, consume_checked = check_consume_pointer_freshness()
+    checked += consume_checked
+    mismatches.extend(consume_issues)
+    axes.append(("소비 포인터 실재", consume_checked, "파일"))
 
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
