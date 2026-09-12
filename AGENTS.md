@@ -71,7 +71,7 @@
 
 - **아키텍처**: 계층 없음 — 실행 단위가 hook 스크립트와 Markdown 지침이라 도메인/UI/인프라로 가를 대상이 없다(글로벌 「단순 스크립트·유틸리티는 대상이 아니다」).
 - **인코딩**: `.ps1` 은 **UTF-8 BOM 필수**(PS 5.1 한글 호환), 그 외는 **BOM 없음**.
-- **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i` 도 `Edit` 도구도 python 텍스트 쓰기(`open(p,'w')`)도 파일 전체를 LF 로 바꿔 놓는다** — 편집 후 `git ls-files --eol` 로 확인(정본은 `docs/harness-conventions.md` 의 「편집 스크립트의 줄바꿈 사고」).
+- **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i` 도 `Edit` 도구도 python 텍스트 쓰기(`open(p,'w')`)도 파일 전체를 LF 로 바꿔 놓는다** — 편집 후 `git ls-files --eol` 로 확인(정본은 `docs/harness-conventions.md` 의 「편집 스크립트 사고」).
 - **주석**: 한글, "왜"를 설명한다.
 - **명령 출력 예산**: 판정용 명령은 **최소 형식**으로 낸다(정본은 `docs/harness-conventions.md` 「명령 출력 예산」).
 - **파일 크기**: 상한 표·초과 처방·참조 깊이·목차 규칙은 `plugins/pjc/skills/BUDGET.md`「예산 표」가 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**

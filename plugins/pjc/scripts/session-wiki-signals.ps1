@@ -52,6 +52,8 @@ function Get-StaleFeatures {
             #   그 경로에서 이 축이 통째로 죽는다. 문자열 `Arguments` 는 양쪽에 다 있다.
             # 경로에 공백이 있으므로 전부 큰따옴표로 감싼다. `"` 를 품은 토큰은 인용이 깨지므로
             #   버린다 — 조용한 오판정보다 누락이 낫다.
+            #   ⚠ **역슬래시로 끝나는 토큰**은 `\"` 가 이스케이프된 따옴표로 읽혀 인용이 깨지고
+            #   git 이 exit≠0 을 내 건너뛰어진다 — 두 셸이 같게 동작하므로 폴백 격차는 아니다(실측).
             $gitArgs = @('-C', $RepoRoot, 'log', '-1', '--format=%cI', '--') + @($paths)
             $psi.Arguments = (($gitArgs | Where-Object { $_ -notmatch '"' } | ForEach-Object { '"' + $_ + '"' }) -join ' ')
             $psi.RedirectStandardOutput = $true
