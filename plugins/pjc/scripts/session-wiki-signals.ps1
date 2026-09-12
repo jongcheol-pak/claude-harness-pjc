@@ -45,8 +45,15 @@ function Get-StaleFeatures {
         try {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = 'git'
-            foreach ($arg in @('-C', $RepoRoot, 'log', '-1', '--format=%cI', '--')) { $null = $psi.ArgumentList.Add($arg) }
-            foreach ($tok in $paths) { $null = $psi.ArgumentList.Add($tok) }
+            # ⚠ `$psi.ArgumentList` 를 쓰지 않는다 — **.NET Framework 에 없는 멤버**라 Windows
+            #   PowerShell 5.1 에서 null 이고, `.Add()` 가 던지는 예외를 아래 catch 가 삼켜
+            #   **feature 전건이 조용히 건너뛰어진다**(경고도 판정불가 표시도 없이 0건). 이 hook 은
+            #   pwsh 7 이 없으면 5.1 로 폴백하므로(`hooks.json` 의 「스크립트는 5.1 호환 유지」)
+            #   그 경로에서 이 축이 통째로 죽는다. 문자열 `Arguments` 는 양쪽에 다 있다.
+            # 경로에 공백이 있으므로 전부 큰따옴표로 감싼다. `"` 를 품은 토큰은 인용이 깨지므로
+            #   버린다 — 조용한 오판정보다 누락이 낫다.
+            $gitArgs = @('-C', $RepoRoot, 'log', '-1', '--format=%cI', '--') + @($paths)
+            $psi.Arguments = (($gitArgs | Where-Object { $_ -notmatch '"' } | ForEach-Object { '"' + $_ + '"' }) -join ' ')
             $psi.RedirectStandardOutput = $true
             $psi.RedirectStandardError = $true
             $psi.UseShellExecute = $false

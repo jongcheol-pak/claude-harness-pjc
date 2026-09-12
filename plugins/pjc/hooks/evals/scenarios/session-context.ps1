@@ -729,6 +729,10 @@ if (Test-HookSelected @('session-context')) {
     $iStale2 = $r.out.IndexOf('위키 뒤처짐')
     if (($r.code -eq 0) -and ($iVault2 -ge 0) -and ($iQueue -gt $iVault2) -and ($iStale2 -gt $iQueue)) {
         $script:results.Add(@{ ok = $true; line = "[PASS] session-context: 큐 라인 동반 시 뒤처짐이 그 뒤 (SC36b)" })
+    } else {
+        $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36b 순서 위반 (exit=$($r.code), vault=$iVault2, queue=$iQueue, stale=$iStale2)" })
+    }
+
     # SC33e/SC33f — 뒤처진 feature 표적. **이 묶음의 맨 끝에 둔다**: 아래에서 커밋을 하나 더
     #   만들므로 HEAD~30 / HEAD~29 기준을 쓰는 케이스보다 뒤여야 한다.
     # 픽스처 레포는 빈 커밋만 쌓아 **커밋된 파일이 없고**, 경로 토큰은 구분자를 포함해야
@@ -765,9 +769,6 @@ if (Test-HookSelected @('session-context')) {
         Add-EvalResult $true "[PASS] $scNm" $scNm
     } else {
         Add-EvalResult $false "[FAIL] $scNm — feature 유무로 출력이 갈립니다" $scNm
-    }
-    } else {
-        $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36b 순서 위반 (exit=$($r.code), vault=$iVault2, queue=$iQueue, stale=$iStale2)" })
     }
 
     # SC37~SC37d: 허브 매칭의 **URL 축** (v1.206.0 T3).
