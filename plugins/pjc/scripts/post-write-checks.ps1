@@ -24,6 +24,13 @@ if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { exit 0 }
 # 두 검사의 경고를 합쳐 단일 stderr + 단일 additionalContext로 출력한다(모델 수신 정보는 분리 hook 때와 동일).
 $allMsgs = New-Object System.Collections.Generic.List[string]
 
+# 섹션 1·2가 나눠 쓰는 `git diff` 결과 — 근거는 `rules/post-write-rationale.md`의 「§2-1 섹션 1·2가 나눠 쓰는 `git diff` 결과」
+#   두 섹션이 같은 파일에 같은 diff를 따로 불러 코드 파일 편집마다 git 호출이 1회 낭비였다.
+#   **두 try 블록 밖에서 초기화한다** — 섹션 1이 통째로 실패해도 섹션 2가 $false를 보고
+#   자기 호출로 폴백해야 하고, try 안에서만 선언하면 그 경로에서 변수가 없다.
+$sharedDiffLines = $null
+$sharedDiffOk = $false
+
 # 경고 디듑 마커 — 근거는 `rules/post-write-rationale.md`의 「§2 경고 디듑 마커」
 $pwStateDir = Join-Path $env:USERPROFILE '.claude/.state/post-write-warn'
 try { New-Item -Force -ItemType Directory -Path $pwStateDir | Out-Null } catch {}
@@ -153,6 +160,10 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                         $diffOut = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null)
                         # diff 성공 여부를 반드시 확인한다 — 근거는 `rules/post-write-rationale.md`의 「§9 diff 성공 여부를 반드시 확인한다」
                         if ($LASTEXITCODE -eq 0) {
+                            # 섹션 2의 심볼 추출이 같은 diff를 다시 부르지 않도록 원본 줄을 넘긴다 —
+                            #   `+` 를 벗기기 전 형태여야 한다(저쪽 정규식이 `^\+` 로 시작한다).
+                            $sharedDiffLines = $diffOut
+                            $sharedDiffOk = $true
                             $added = @($diffOut |
                                 Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } |
                                 ForEach-Object { $_.Substring(1) })
@@ -200,8 +211,16 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             $gitDir = & git rev-parse --git-dir 2>$null
             if ($gitDir -and $LASTEXITCODE -eq 0) {
                 # ---- 변경된 public/internal 심볼 추출 (git diff의 + 라인) ----
-                $diffLines = & git diff HEAD -- $file 2>$null
-                if ($diffLines -and $LASTEXITCODE -eq 0) {
+                # 섹션 1이 이미 같은 파일의 diff를 떴으면 그것을 쓴다 — 근거는 `rules/post-write-rationale.md`의 「§11-1 섹션 1의 diff 재사용과 폴백」
+                #   못 떴을 때만 자기가 부르고, 그래서 두 섹션의 격리가 유지된다. 폴백도 `--unified=0` 이다
+                #   — 심볼 추출은 `+` 라인만 보므로 컨텍스트 줄이 필요 없다.
+                $diffOk = $sharedDiffOk
+                $diffLines = $sharedDiffLines
+                if (-not $diffOk) {
+                    $diffLines = & git diff HEAD --unified=0 -- $file 2>$null
+                    $diffOk = ($LASTEXITCODE -eq 0)
+                }
+                if ($diffLines -and $diffOk) {
                     $symbols = New-Object System.Collections.Generic.HashSet[string]
 
                     foreach ($line in $diffLines) {
