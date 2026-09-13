@@ -214,8 +214,17 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                 # 섹션 1이 이미 같은 파일의 diff를 떴으면 그것을 쓴다 — 근거는 `rules/post-write-rationale.md`의 「§11-1 섹션 1의 diff 재사용과 폴백」
                 #   못 떴을 때만 자기가 부르고, 그래서 두 섹션의 격리가 유지된다. 폴백도 `--unified=0` 이다
                 #   — 심볼 추출은 `+` 라인만 보므로 컨텍스트 줄이 필요 없다.
-                $diffOk = $sharedDiffOk
-                $diffLines = $sharedDiffLines
+                # **공유 값은 파일이 cwd 트리 안일 때만 쓴다** — 섹션 1은 `git -C $fileDir`, 여기는
+                #   cwd 기준이라 둘이 다른 레포면 「파일 레포의 diff로 뽑은 심볼을 cwd 레포에서 caller
+                #   검색」하게 되어 기준이 섞인다. 종전 동작은 그때 cwd 기준 diff가 실패해 침묵이었고,
+                #   폴백이 그것을 그대로 복원한다.
+                $cwdPrefix = (((Get-Location).Path -replace '\\', '/').TrimEnd('/')) + '/'
+                $diffOk = $false
+                $diffLines = $null
+                if ($sharedDiffOk -and ($file -replace '\\', '/').StartsWith($cwdPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $diffOk = $true
+                    $diffLines = $sharedDiffLines
+                }
                 if (-not $diffOk) {
                     $diffLines = & git diff HEAD --unified=0 -- $file 2>$null
                     $diffOk = ($LASTEXITCODE -eq 0)
