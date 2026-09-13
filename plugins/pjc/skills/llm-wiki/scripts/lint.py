@@ -359,10 +359,21 @@ def fenced_interior_chars(text):
     return 0 if in_fence else interior
 
 
-def section(text, heading):
+def section(text, heading, probe=None):
     """본문에서 '## {heading}' 섹션(헤딩 줄부터 다음 '## ' 헤딩 또는 문서 끝까지)을 반환, 없으면 None.
     기능별 인덱스(§7-6·14)·레포 정보(§7-20)·아카이브 인덱스(§7-19)·미해결 질문(§7-23) 공용 —
-    섹션 경계 규칙(다음 ## 또는 \\Z)이 검사마다 어긋나지 않게 한 곳에서 유지한다."""
+    섹션 경계 규칙(다음 ## 또는 \\Z)이 검사마다 어긋나지 않게 한 곳에서 유지한다.
+
+    **판정은 `strip_code` 사본으로 한다 — `_md_sections`와 같은 경계를 쓰기 위해서다.**
+    원문에 직접 걸면 **코드펜스 안의 `## `를 헤딩으로 오인**해 ⓐ 펜스 안의 가짜 절을 반환하고
+    ⓑ 진짜 절을 놓친다. 규약 문서는 서식 예시를 펜스로 적으므로 드문 형상이 아니다(회차 71
+    실측: 그 형상 하나가 '목록 깨짐'과 '목록 누락' 오탐을 동시에 냈다). 사본은 **길이를 보존**
+    하므로 거기서 얻은 오프셋을 원문에 그대로 쓴다.
+
+    `probe`를 받으면 그것을 쓴다 — 호출부가 같은 사본을 이미 만들었을 때 두 번 만들지 않기
+    위해서다(`_md_sections`와 같은 이유·같은 계약)."""
+    if probe is None:
+        probe = strip_code(text)
     # 헤딩 끝을 못박는다 — `\b`만으로는 `## 아카이브`가 `## 아카이브 인덱스`를 먼저 물어,
     #  롤오버 포인터를 넣으려던 코드가 **다른 섹션을 통째로 교체**한다(실측).
     #  **괄호 부기는 받는다** — `## 기술 스택 지식 (tech/)`처럼 경로·범위를 괄호로 덧붙인
@@ -374,18 +385,27 @@ def section(text, heading):
     #  절**이 된다. 그 반환값으로 `_replace_section` 이 통째 치환하니 절 하나를 고치려던 편집이
     #  문서 뒷부분을 통째로 지운다(회차 45 완료 리뷰 2R 실측).
     m = re.search(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\([^\n]*)?$.*?(?=^##\s|\Z)",
-                  text, re.M | re.S)
-    return m.group(0) if m else None
+                  probe, re.M | re.S)
+    return text[m.start():m.end()] if m else None
 
 
-def without_section(text, heading):
+def without_section(text, heading, probe=None):
     """'## {heading}' 섹션(헤딩~다음 '## ' 또는 \\Z)을 제거한 사본. section()의 역(逆).
     증상별 인덱스(§6)는 행 형상이 기능별 인덱스와 겹치지만(첫 컬럼 평문 + feat/recipe 링크,
     is_feat_recipe_row가 True) 의미가 달라(첫 컬럼이 '증상' 관찰 표현) 한/영 병기(§7-16)·등록
     (§7-6) 검사 대상이 아니다 — 스캔 텍스트에서 이 섹션을 뺀다. §7-14 행수는 section('기능별
-    인덱스')로 이미 스코프돼 영향 없고, 행 wikilink의 깨진 링크는 §7-1이 전 페이지에서 잡는다."""
-    return re.sub(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\([^\n]*)?$.*?(?=^##\s|\Z)",
-                  "", text, flags=re.M | re.S)
+    인덱스')로 이미 스코프돼 영향 없고, 행 wikilink의 깨진 링크는 §7-1이 전 페이지에서 잡는다.
+
+    **역함수이므로 경계 판정도 section()과 같아야 한다** — 한쪽만 펜스를 세면 「뽑은 절」과
+    「뺀 나머지」가 서로의 여집합이 아니게 되고, 그 차이가 §7-6·§7-16 스코프에 조용히 남는다.
+    제거는 **뒤에서부터** 한다 — 앞을 먼저 지우면 뒤 매치의 오프셋이 밀린다."""
+    if probe is None:
+        probe = strip_code(text)
+    pat = re.compile(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\([^\n]*)?$.*?(?=^##\s|\Z)",
+                     re.M | re.S)
+    for m in reversed(list(pat.finditer(probe))):
+        text = text[:m.start()] + text[m.end():]
+    return text
 
 
 def wikilink_targets(text):
@@ -2547,7 +2567,7 @@ def apply_fixes(vault, dry_run=False):
     elif "index.md" in pages:
         try:
             inorm = pages["index.md"][2]
-            q_sec = section(strip_code(inorm), "미해결 질문") or ""
+            q_sec = section(inorm, "미해결 질문", probe=strip_code(inorm)) or ""
             q_listed = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(q_sec)}
             to_add, stale_keys = [], set()
             for qr, (qfm, qtyp, qnorm) in sorted(pages.items()):
@@ -3114,7 +3134,7 @@ def main():
         #  질문 '유실'(등록 누락으로 잊힘)과 'stale'(해결됐는데 미해결 목록 잔존)을 기계로 잡는다.
         #  resolved 페이지의 '삭제' 자체는 스냅샷 검사로 탐지 불가 — 삭제 금지는 절차 규칙
         #  (§2.7·SKILL 사전 준수)이 담당한다.
-        q_section = section(strip_code(itext), "미해결 질문") or ""
+        q_section = section(itext, "미해결 질문", probe=strip_code(itext)) or ""
         # 등록 판정: 규약(§3)은 무확장자 경로 링크가 원칙이나, `.md` 포함·파일명만 링크도 등록으로
         #  인정한다 — 그 형식 위반은 §7-1 링크 검사가 별도 보고하므로 여기서 겹치면 '미등록' 오탐.
         q_listed = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(q_section)}
