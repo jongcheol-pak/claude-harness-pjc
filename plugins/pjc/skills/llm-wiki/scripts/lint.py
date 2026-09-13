@@ -644,7 +644,7 @@ def git_commits_behind(repo_root, sha):
     try:
         proc = subprocess.run(
             ["git", "-C", repo_root, "rev-list", "--count", f"{sha}..HEAD"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10,
             stdin=subprocess.DEVNULL,  # 자격증명·에디터 프롬프트로 매달리지 않게 입력을 닫는다
         )
     except (OSError, subprocess.SubprocessError):
@@ -1253,11 +1253,20 @@ def _git(repo_root, *args):
     """git 명령 1회 — 성공하면 stdout(문자열), 실패·부재·타임아웃이면 None.
 
     `git_commits_behind`와 같은 계약이고(입력을 닫아 자격증명·에디터 프롬프트에 매달리지
-    않는다) 호출부가 None을 「git으로 처리할 수 없음」으로 읽는다."""
+    않는다) 호출부가 None을 「git으로 처리할 수 없음」으로 읽는다.
+
+    **`encoding`을 명시하지 않으면 Windows에서 cp949로 디코딩해 한글 출력에서 죽는다.**
+    커밋 메시지가 한글이고(이 레포 규약) git이 그것을 stdout에 echo하므로 **체크포인트
+    커밋이 매번 그 자리에 걸린다.** 더 나쁜 것은 실패 형태다 — git은 커밋을 **실제로
+    수행하는데** 그 출력을 읽는 reader 스레드가 `UnicodeDecodeError`로 죽어 stdout이
+    None이 되고, 호출부가 그것을 「커밋 실패」로 읽어 뒤 단계를 막는다(회차 71 실측:
+    성공한 커밋 `27308ef` 를 실패로 판정해 `--auto-split` 처방이 통째로 미수행됐다).
+    그 예외는 reader 스레드에서 나므로 아래 `except` 절로도 잡히지 않는다 —
+    `errors="replace"` 로 **디코딩 단계에서** 막는 것이 유일한 자리다."""
     try:
         proc = subprocess.run(
             ["git", "-C", repo_root] + list(args),
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
             stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError):
