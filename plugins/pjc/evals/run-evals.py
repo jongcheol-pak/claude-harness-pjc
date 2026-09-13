@@ -31,6 +31,7 @@
 전 case PASS면 exit 0, 하나라도 FAIL이면 1.
 """
 import argparse
+import concurrent.futures
 import io
 import json
 import os
@@ -197,10 +198,43 @@ def check_fixture_tracking():
     return sorted(on_disk - tracked), None
 
 
+def default_jobs():
+    """기본 동시 수 — 논리 코어 수와 8 중 작은 값.
+
+    상한을 두는 것은 케이스마다 `git init` + 검사기 subprocess 가 도는 I/O 부하라
+    코어를 전부 쓰면 디스크가 먼저 막히기 때문이다. hook 골든 러너가 같은 이유로
+    동시 상한을 둔다(`run-hook-evals.ps1`).
+    """
+    return min(8, os.cpu_count() or 1)
+
+
+def run_all(cases, jobs):
+    """케이스를 돌리고 **입력 순서 그대로** 결과 리스트를 낸다.
+
+    병렬이 성립하는 근거: `run_case()` 는 `tempfile.mkdtemp` 로 자기 트리를 만들고
+    `finally` 에서 자기 것만 지워 케이스 간 공유 상태가 없다. 대기의 대부분이
+    subprocess I/O 라 스레드로 충분하다(GIL 이 병목이 아니다).
+
+    **순서를 고정하는 것이 이 함수의 핵심이다** — 출력이 완료 순이면 `--sequential`
+    결과와 diff 로 등가를 대조할 수 없고, 등가를 못 재면 병렬화가 무회귀인지
+    아무도 확인하지 못한다. `Executor.map` 은 입력 순서로 돌려준다.
+    """
+    if jobs <= 1:
+        return [run_case(c) for c in cases]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
+        return list(pool.map(run_case, cases))
+
+
 def main():
     ap = argparse.ArgumentParser(description="pjc evals 골든 러너")
     ap.add_argument("--filter", help="checker 필드로 좁힌다 (harness | truncation | stale)")
     ap.add_argument("--verbose", action="store_true", help="FAIL 케이스의 전체 출력을 낸다")
+    # 순차 경로를 남기는 것은 등가 대조 기준이자 폴백이다 — 병렬이 의심스러울 때
+    #   둘의 출력을 diff 해 차이가 병렬 때문인지 가른다(v1.159.0 이 hook 골든
+    #   병렬화에서 `-Sequential` 을 같은 이유로 남겼다).
+    ap.add_argument("--sequential", action="store_true", help="병렬을 끄고 한 건씩 돈다 (등가 대조 기준)")
+    ap.add_argument("--jobs", type=int, default=default_jobs(),
+                    help="동시 실행 수 (기본: 논리 코어 수와 8 중 작은 값)")
     a = ap.parse_args()
 
     with io.open(CASES, encoding="utf-8") as fh:
@@ -239,9 +273,10 @@ def main():
         print("케이스 없음 — --filter 값을 확인하세요 (harness | truncation | stale)")
         return 1
 
+    # 서식·픽스처 검사는 위에서 이미 끝났다 — 그 둘은 케이스를 돌리기 전 exit 2 라
+    #   병렬 구간 안으로 들이면 그 종료 코드가 케이스 실패에 섞인다.
     failed = 0
-    for c in cases:
-        ok, msg, out = run_case(c)
+    for c, (ok, msg, out) in zip(cases, run_all(cases, 1 if a.sequential else a.jobs)):
         print("%s %-28s %s" % ("[PASS]" if ok else "[FAIL]", c["id"], msg))
         if not ok:
             failed += 1

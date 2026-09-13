@@ -18,7 +18,7 @@ Author: 사용자. Status: approved.
 
 ## Constraints
 
-**`exit 2` 를 내는 넷의 차단 동작은 건드리지 않는다** — 이번 대상 중 hook 은 `post-write-checks`(PostToolUse 경고)와 `session-context`(SessionStart)뿐이라 그 넷에 들지 않는다. **hook 골든은 부분 실행으로 갈음하고 마지막 task 에서 무인자 전체를 1회 돈다**(`harness-conventions.md` 「골든 부분 실행의 판정 자격」 ⓐ — 이 문장이 그 사전 기재다). **`post-write-checks.ps1` 의 섹션 1/섹션 2 격리를 깨지 않는다** — 한쪽 실패가 다른 쪽을 막지 않는 것이 그 파일의 설계다. **`git` 호출은 `$data.cwd` 기준을 유지한다**(위키 conventions-verification 「hook 검사·차단」 2026-09-10 실해 — 프로세스 cwd 로 돌리면 엉뚱한 레포를 읽는다). **절 단위 읽기 수단의 문면을 두 곳에 두지 않는다** — 주입 줄 하나에만 둔다(회차 68 이 같은 이유로 `WIKI.md` 단일 정본을 택했다). **hook 골든 케이스 수를 바꾸면 `docs/golden-runner.md` 의 기준선 줄을 함께 갱신한다.**
+**`exit 2` 를 내는 넷의 차단 동작은 건드리지 않는다** — 이번 대상 중 hook 은 `post-write-checks`(PostToolUse 경고)와 `session-context`(SessionStart)뿐이라 그 넷에 들지 않는다. **hook 골든은 부분 실행으로 갈음하고 마지막 task 에서 무인자 전체를 1회 돈다**(`docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」 ⓐ — 이 문장이 그 사전 기재다). **`post-write-checks.ps1` 의 섹션 1/섹션 2 격리를 깨지 않는다** — 한쪽 실패가 다른 쪽을 막지 않는 것이 그 파일의 설계다. **`git` 호출은 `$data.cwd` 기준을 유지한다**(위키 conventions-verification 「hook 검사·차단」 2026-09-10 실해 — 프로세스 cwd 로 돌리면 엉뚱한 레포를 읽는다). **절 단위 읽기 수단의 문면을 두 곳에 두지 않는다** — 주입 줄 하나에만 둔다(회차 68 이 같은 이유로 `WIKI.md` 단일 정본을 택했다). **hook 골든 케이스 수를 바꾸면 `docs/golden-runner.md` 의 기준선 줄을 함께 갱신한다.**
 
 ## Open questions
 
