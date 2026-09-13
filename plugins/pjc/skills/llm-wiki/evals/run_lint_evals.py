@@ -116,6 +116,10 @@ def prepare_backup_cleanup_vault(fixture_dir):
         #  남아 있는 것은 그 전에 쌓인 잔여물이고, 지우는 것은 사용자 판단이라 보존 특례로 넘어갔다.
         "D1-presplit": d1 + "-presplit",     # 남는다 — 보존 특례
         "D31-presplit": d31 + "-presplit",   # 남는다 — 보존 특례(종전에는 30일 경과로 제거)
+        # §4 분할 사본의 **현행 이름** — 시각 접미사라 회수 대상이다. `-presplit` 꼬리를
+        #  떼면서 「문자 접미사 = 보존 특례」에 잘못 걸려 영구 누적되던 자리(회차 70 완료 리뷰).
+        "D1-TIME": d1 + "-123456789",        # 제거 — 이전 날짜 분할 사본
+        "TODAY-TIME": today.isoformat() + "-987654321",   # 남는다 — 오늘 것(복구 창)
         "NOTADATE": "manual-note",           # 남는다 — 날짜로 읽히지 않는 임의 폴더
     }
     root = os.path.join(dest, "90_archive", "backup")

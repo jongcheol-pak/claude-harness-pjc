@@ -674,10 +674,19 @@ def cleanup_backups(vault, today):
         if day is None:   # 2026-13-45 같은 형식만 맞는 이름 — 판정 불가라 건드리지 않는다
             continue
         suffix = m.group(2) or ""
+        # 회수 대상은 둘이다 — 접미사 없는 `{YYYY-MM-DD}/`(세션 사전·`--fix` 백업)와
+        #  **시각 접미사** `{날짜}-{HHMMSSmmm}/`(§4 분할 사본 — `_presession_dir`).
+        #  뒤쪽을 빼면 그 사본이 영구 누적된다: 종전에는 `-presplit` 이름이라 30일 정리가
+        #  걷었는데, 이름에서 그 꼬리를 뗀 순간 「문자 접미사 = 보존 특례」에 걸려 남았다.
+        #  보존 특례는 `-deleted`(유일 사본)·`-pre-restore`(복구 재백업) **문자** 접미사뿐이다.
         if suffix == "":
             if day == today:
                 continue
             reason = "이전 날짜 — 누적 금지"
+        elif re.fullmatch(r"-\d+(?:-\d+)?", suffix):
+            if day == today:
+                continue
+            reason = "이전 날짜 분할 사본 — 누적 금지"
         else:
             continue   # -deleted·-pre-restore 등 보존 특례
         try:
