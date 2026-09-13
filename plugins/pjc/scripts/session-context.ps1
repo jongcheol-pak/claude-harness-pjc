@@ -232,9 +232,9 @@ try {
                     if ([System.Text.Encoding]::UTF8.GetByteCount($convToc) -gt $convTocMaxBytes) {
                         # 접미가 「전문을 Read하세요」이면 같은 줄의 절 추출 지시와 정면으로 갈린다 —
                         #   목록이 잘렸을 때의 처방은 전문 읽기가 아니라 순번을 직접 얻는 것이다.
-                        $convToc = $convToc.Substring(0, [Math]::Min($convToc.Length, $convTocMaxBytes / 3)) + " …(이하 생략 — 나머지 순번은 grep -n '^## ' docs/harness-conventions.md 로 얻으세요)"
+                        $convToc = $convToc.Substring(0, [Math]::Min($convToc.Length, $convTocMaxBytes / 3)) + " …(이하 생략 — 나머지 순번은 awk '/^(``````|~~~)/{f=!f} !f&&/^## /{c++; print c`": `"`$0}' docs/harness-conventions.md 로 얻으세요)"
                     }
-                    $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 이관처 docs/harness-conventions.md ($($convInfo.Length)B) — 전문은 주입되지 않습니다. **전문을 Read하지 말고 필요한 절만 뽑아 읽으세요** — awk -v n=<순번> '/^## /{c++} c==n' docs/harness-conventions.md. 순번은 아래 목록의 것입니다. AGENTS.md 의 포인터가 가리키는 곳이 여기입니다.`n절: ${convToc}")
+                    $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 이관처 docs/harness-conventions.md ($($convInfo.Length)B) — 전문은 주입되지 않습니다. **전문을 Read하지 말고 필요한 절만 뽑아 읽으세요** — awk -v n=<순번> '/^(``````|~~~)/{f=!f} !f&&/^## /{c++} c==n' docs/harness-conventions.md. 순번은 아래 목록의 것입니다. AGENTS.md 의 포인터가 가리키는 곳이 여기입니다.`n절: ${convToc}")
                 }
             }
         }

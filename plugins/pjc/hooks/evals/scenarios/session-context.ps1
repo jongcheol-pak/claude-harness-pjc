@@ -994,6 +994,28 @@ if (Test-HookSelected @('session-context')) {
     $r = & $scTocInvoke
     Assert-Case -Name "session-context: 목차는 코드펜스 안을 세지 않는다 (SC45b)" -R $r -ExpectExit 0 -ExpectNotContains '펜스 안 가짜'
 
+    # SC45f (양성 — 회차 71): 순번을 **내는 쪽**과 **쓰는 쪽**이 같은 경계를 쓴다.
+    #   SC45b 는 이 축의 절반만 잰다 — 목차(`$convHeads`)는 펜스를 거르는데 같은 줄이
+    #   안내하는 추출 명령이 펜스를 세면, 세션이 받은 순번 n 과 그 명령이 뽑는 절이
+    #   어긋난다. 절반만 재는 축은 나머지 절반이 깨져도 green 이다.
+    #   ⚠ 앵커는 「펜스 토글 형태가 있다」가 아니라 **정본(`skills/WIKI.md`)과 바이트
+    #   동일한 구간**이다 — 느슨하게 잡으면 사본이 *여전히 토글하면서* 정본과 다른
+    #   정규식으로 갈릴 때 그 드리프트를 못 잡는다. 그 드리프트가 곧 우회 경로다.
+    Assert-Case -Name "session-context: 추출 명령도 코드펜스를 센다 (SC45f)" -R $r -ExpectExit 0 -ExpectContains "/^(``````|~~~)/{f=!f} !f&&/^## /{c++} c==n"
+
+    # SC45g (양성 — 회차 71): 목차가 상한을 넘어 잘리는 폴백에서도 같은 경계를 안내한다.
+    #   `$convTocMaxBytes`(3,000) 초과 분기는 **회차 71 전까지 어느 케이스도 태우지
+    #   않았다** — 그 분기의 안내 명령이 옛 `grep -n '^## '` 로 남아도 아무것도 안 걸렸다.
+    #   절 제목을 길게 반복해 상한을 넘긴다(제목당 약 60B × 80 절 ≫ 3,000B).
+    $scTocLines = @('# 상세', '')
+    1..80 | ForEach-Object { $scTocLines += "## 아주 길게 늘여 쓴 절 제목으로 목차 상한을 넘긴다 $_"; $scTocLines += '' }
+    $scTocLines | Set-Content -Encoding UTF8 $scTocConv
+    $r = & $scTocInvoke
+    Assert-Case -Name "session-context: 목차 절단 폴백도 펜스를 센다 (SC45g)" -R $r -ExpectExit 0 -ExpectContains "/^(``````|~~~)/{f=!f} !f&&/^## /{c++; print c"
+    # 델타 음성 — 실제로 절단 분기를 탔는지 확인한다. 이것이 없으면 상한을 못 넘겨
+    #   폴백이 안 돌았는데 위 케이스가 주 안내 문구로 통과할 수 있다.
+    Assert-Case -Name "session-context: 목차 절단 분기 진입 확인 (SC45g2)" -R $r -ExpectExit 0 -ExpectContains '이하 생략'
+
     # SC45c (델타 음성): 이관처가 없으면 조용히 생략한다 — 이 hook 은 다른 레포에서도 돈다.
     Remove-Item -Force $scTocConv -ErrorAction SilentlyContinue
     $r = & $scTocInvoke
