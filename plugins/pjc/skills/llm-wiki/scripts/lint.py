@@ -2527,8 +2527,20 @@ def apply_fixes(vault, dry_run=False):
         kept = [ln for ln in raw_seg.splitlines(keepends=True) if not pred(ln)]
         return "".join(kept), len(raw_seg.splitlines()) - len(kept)
 
-    def section_span(raw, heading):
-        return re.search(r"(?m)^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)", raw, re.S)
+    def section_span(raw, heading, probe=None):
+        """섹션의 (시작, 끝) 오프셋. 없으면 None.
+
+        **`section()`과 같은 경계를 쓴다** — 이쪽은 `--fix`의 **쓰기** 경로다. 한쪽만 펜스를
+        세면 「읽기는 없다고 보고 쓰기는 펜스 안에 넣는」 상태가 되어 같은 수정이 2회째에도
+        수렴하지 않는다. 판정은 `strip_code` 사본에서 하고 **오프셋은 길이 보존이라 원문에
+        그대로 쓴다**(`section()`·`_md_sections`와 같은 계약).
+
+        Match가 아니라 오프셋 쌍을 돌려주는 이유는 `group(0)`이 사본의 조각이 되기 때문이다 —
+        호출부가 원문을 잘라 쓰도록 반환형으로 못박는다."""
+        if probe is None:
+            probe = strip_code(raw)
+        m = re.search(r"(?m)^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)", probe, re.S)
+        return (m.start(), m.end()) if m else None
 
     def insert_into_section(raw, heading, new_line, cell=None):
         """섹션 끝(후행 공백줄 앞)에 행 삽입. 섹션이 없으면 문서 끝에 신설(기계적 — 골격 규약 준수).
@@ -2538,11 +2550,11 @@ def apply_fixes(vault, dry_run=False):
         new_line(불릿) 그대로 — 기존 불릿형 vault 하위호환(§7-24 포인터 추가도 불릿 경로).
         반환: (새 텍스트, 섹션 신설 여부)."""
         nl = nl_of(raw)
-        m = section_span(raw, heading)
-        if not m:
+        span = section_span(raw, heading)
+        if not span:
             base = raw if raw.endswith("\n") else raw + nl
             return base + nl + "## " + heading + nl + new_line + nl, True
-        seg = m.group(0)
+        seg = raw[span[0]:span[1]]
         body = seg.rstrip("\r\n")
         trail = seg[len(body):]
         insert = new_line
@@ -2552,7 +2564,7 @@ def apply_fixes(vault, dry_run=False):
                 ncols = max(1, len(header.strip().strip("|").split("|")))
                 insert = "| " + cell + " |" + " |" * (ncols - 1)
         new_seg = body + nl + insert + (trail if trail else nl)
-        return raw[:m.start()] + new_seg + raw[m.end():], False
+        return raw[:span[0]] + new_seg + raw[span[1]:], False
 
     # ── ① §7-23 미해결 질문 인덱스 동기 ──────────────────────────────
     # 생성 마커가 있는 vault에서는 이 항목을 건너뛴다 -- `## 미해결 질문`이 `--build-index`의
@@ -2585,14 +2597,14 @@ def apply_fixes(vault, dry_run=False):
                 backup("index.md")
                 bom, raw = raws["index.md"]
                 if stale_keys:
-                    m = section_span(raw, "미해결 질문")
-                    if m:   # 섹션 '안'의 행만 제거 — 다른 섹션의 정당한 링크 보존
+                    span = section_span(raw, "미해결 질문")
+                    if span:   # 섹션 '안'의 행만 제거 — 다른 섹션의 정당한 링크 보존
                         def is_stale_row(ln):
                             return any((t[:-3] if t.endswith(".md") else t) in stale_keys
                                        for t in wikilink_targets(ln))
-                        new_seg, n = remove_lines(m.group(0), is_stale_row)
+                        new_seg, n = remove_lines(raw[span[0]:span[1]], is_stale_row)
                         if n:
-                            raw = raw[:m.start()] + new_seg + raw[m.end():]
+                            raw = raw[:span[0]] + new_seg + raw[span[1]:]
                             fixed.append(f"index.md: 해결된 질문 행 {n}개 제거 (§7-23)")
                 for path_noext, title in to_add:
                     # 제목의 `|`는 표 셀·wikilink 표시명을 깨뜨리므로 치환(표시용 텍스트라 무손실 아님을 감수)
@@ -2620,12 +2632,12 @@ def apply_fixes(vault, dry_run=False):
                 # 제거는 '## 아카이브' 섹션 안 행만 — 결정 항목 본문이 깨진 아카이브 경로를 인용해도
                 #   지우지 않는다(§2.8 항목 불변·수정 삭제 금지). 섹션 밖 깨진 포인터는 제거 0건으로
                 #   남고 본 lint의 §7-24 WARN이 계속 가리킨다(검출 광역·수정 보수 — §7-19 '제거만' 동형).
-                m = section_span(raw, "아카이브")
-                if m:
-                    new_seg, n = remove_lines(m.group(0), lambda ln: any(b in ln for b in broken))
+                span = section_span(raw, "아카이브")
+                if span:
+                    new_seg, n = remove_lines(raw[span[0]:span[1]], lambda ln: any(b in ln for b in broken))
                     if n:
                         backup(r)
-                        raws[r] = (bom, raw[:m.start()] + new_seg + raw[m.end():])
+                        raws[r] = (bom, raw[:span[0]] + new_seg + raw[span[1]:])
                         acted = True
                         fixed.append(f"{r}: 깨진 decisions 아카이브 포인터 {n}행 제거 (§7-24 — '## 아카이브' 섹션 내)")
             arch = "90_archive/" + r
@@ -2654,11 +2666,11 @@ def apply_fixes(vault, dry_run=False):
             if stale:
                 backup("log.md")
                 bom, raw = raws["log.md"]
-                m = section_span(raw, "아카이브 인덱스")
-                if m:
-                    new_seg, n = remove_lines(m.group(0), lambda ln: any((ym + ".md") in ln for ym in stale))
+                span = section_span(raw, "아카이브 인덱스")
+                if span:
+                    new_seg, n = remove_lines(raw[span[0]:span[1]], lambda ln: any((ym + ".md") in ln for ym in stale))
                     if n:
-                        write("log.md", raw[:m.start()] + new_seg + raw[m.end():])
+                        write("log.md", raw[:span[0]] + new_seg + raw[span[1]:])
                         fixed.append(f"log.md: stale 아카이브 인덱스 행 {n}개 제거 (§7-19 — 누락 행 추가는 수동)")
         except OSError as e:
             failed.append(f"log.md 수정 실패({type(e).__name__}) — 건너뜀")

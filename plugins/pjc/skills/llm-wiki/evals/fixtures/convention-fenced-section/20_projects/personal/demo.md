@@ -12,7 +12,7 @@ tags: [project, personal, demo]
 ---
 # Demo
 
-conventions.md 예산 초과 픽스처(§7-2 축 전용).
+`section()` 코드펜스 인식 픽스처(§2.9 하위 문서 목록 축 전용).
 
 ## 기능 목록
 | 기능 | 설명 | 상세 |
