@@ -112,8 +112,10 @@ def prepare_backup_cleanup_vault(fixture_dir):
         "D31": d31,                          # 제거 — 같은 규칙(30일보다 먼저 걸린다)
         "D1-deleted": d1 + "-deleted",       # 남는다 — 유일 사본
         "D1-pre-restore": d1 + "-pre-restore",  # 남는다 — 복구 재백업
-        "D1-presplit": d1 + "-presplit",     # 남는다 — 30일 이내
-        "D31-presplit": d31 + "-presplit",   # 제거 — 30일 경과
+        # `-presplit`은 더 이상 생성되지 않는다(git vault는 체크포인트 커밋이 대신한다).
+        #  남아 있는 것은 그 전에 쌓인 잔여물이고, 지우는 것은 사용자 판단이라 보존 특례로 넘어갔다.
+        "D1-presplit": d1 + "-presplit",     # 남는다 — 보존 특례
+        "D31-presplit": d31 + "-presplit",   # 남는다 — 보존 특례(종전에는 30일 경과로 제거)
         "NOTADATE": "manual-note",           # 남는다 — 날짜로 읽히지 않는 임의 폴더
     }
     root = os.path.join(dest, "90_archive", "backup")
@@ -755,29 +757,10 @@ def check_case(case):
         #  두 번 해야 드러난다(1회 실행에서는 26케이스 중 25개가 이미 수렴해 조용했다).
         #  **맨 끝에 두는 이유**: 위 expect_file_contains·expect_file_count는 **1회 수행 후
         #  상태**를 재는 판정이라, 2회째를 앞에 두면 그 판정들이 다른 상태를 보게 된다.
-        # **사본이 세션마다 고유한가**(§8) — 날짜만으로 이름 지으면 뒤에 뜨는 세션이 앞
-        #  세션의 결과를 「그 세션 최초 상태」로 보존해, 원복이 앞 세션 반영분까지 남긴다.
-        #  한 번의 `--auto-split`도 본 pass와 재점검 pass가 각자 세션을 만든다.
-        #  폴더 개수만 세지 않고 **내용이 다른지**까지 본다 — 같은 파일을 두 번 복사해도
-        #  개수는 2가 되기 때문이다.
-        want_dirs = case.get("expect_presplit_dirs")
-        if want_dirs:
-            broot = os.path.join(dest, "90_archive", "backup")
-            dirs = sorted(d for d in (os.listdir(broot) if os.path.isdir(broot) else [])
-                          if d.endswith("-presplit"))
-            if len(dirs) != want_dirs:
-                undo_split_failures(restore)
-                shutil.rmtree(tmp, ignore_errors=True)
-                return False, "-presplit 폴더 %d개(기대 %d): %s" % (
-                    len(dirs), want_dirs, ", ".join(dirs) or "(없음)")
-            snaps = [_snapshot_md(os.path.join(broot, d)) for d in dirs]
-            if len(dirs) > 1 and all(s == snaps[0] for s in snaps[1:]):
-                undo_split_failures(restore)
-                shutil.rmtree(tmp, ignore_errors=True)
-                return False, "-presplit 사본 %d개의 내용이 모두 같다 — 실행이 갈리지 않았다" % len(dirs)
-            undo_split_failures(restore)
-            shutil.rmtree(tmp, ignore_errors=True)
-            return True, "-presplit 사본 %d개가 서로 다른 상태를 담았다" % len(dirs)
+        # 종전에 여기 있던 `expect_presplit_dirs` 축은 **사본이 세션마다 고유한가**를 폴더
+        #  개수와 내용으로 쟀다. `-presplit` 사본이 없어지고 그 격리를 「pass 당 1회」 체크포인트
+        #  커밋이 담당하게 되면서 잴 대상이 사라졌다(§4 1번). 같은 픽스처의 `재점검` 키워드
+        #  판정은 그대로 남아 재점검 pass가 실제로 도는지를 계속 잰다.
         if want_rc != 0:
             # 실패 주입 케이스는 2회째도 같은 실패라 「수렴」이 성립하지 않는다.
             undo_split_failures(restore)

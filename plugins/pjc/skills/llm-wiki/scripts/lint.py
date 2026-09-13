@@ -84,11 +84,6 @@ BUDGET_NEAR_RATIO = 0.8
 BUDGET_CRITICAL_RATIO = 0.95
 BUDGET_CRITICAL_SLACK = 500
 
-# 백업 자동 정리 임계(§8) — `-presplit` 사본을 며칠까지 보존하는가.
-#  §8의 "30일 지난 폴더는 삭제한다"를 그대로 쓴다. 접미사 없는 `{YYYY-MM-DD}/`는 이 값과 무관하게
-#  「오늘 것만 남긴다」로 더 빨리 회수된다(위키 decisions [2026-08-13] 채택 — 아래 cleanup_backups).
-BACKUP_KEEP_DAYS = 30
-
 # 「분리 불가 판정」(frontmatter budget_split) — 나눌 하위 주제가 없는 페이지(단일 주제 recipe·concept)는
 #  §4의 이동·분리 처방이 성립하지 않는다. 판정을 기록하면 임박 WARN을 「분리 불가 판정 유지」 INFO로 강등한다.
 #  판정 시점 문자 수(budget_split_chars) 대비 이 마진을 넘게 자라면 억제가 풀려 재판정을 강제한다 —
@@ -654,14 +649,13 @@ def repo_root_for_hub(hub_text):
 
 
 def cleanup_backups(vault, today):
-    """§8 백업 정리 — `--fix`가 새 백업을 만들기 **전에** 1회 호출된다. 두 규칙을 함께 집행한다:
-      ① **접미사 없는 `{YYYY-MM-DD}/` 중 오늘이 아닌 것 제거** — git vault는 사전 백업이 면제인데
-         `--fix` 자동 백업만 쌓이는 것을 막는다. 제거 시점을 「세션 종료」가 아니라 「다음 --fix 시작」으로
-         두는 이유: 미커밋 상태로 세션이 끝나면 git 복구(checkout은 미커밋을 못 되돌린다)와 백업이
-         동시에 없어져 복구 수단이 0이 된다. 한 세션분을 남기면 복구 창이 유지되고 누적은 1개로 상한된다.
-      ② **`{YYYY-MM-DD}[-{HHMMSS}]-presplit/` 중 BACKUP_KEEP_DAYS 경과분 제거** — 원본이 vault에 그대로 있는
-         수정 백업 성격이라 30일 정리 대상이다(§8 — `-deleted`·`-pre-restore` 같은 보존 특례가 없다).
-    **`-deleted`(삭제 백업 = 유일 사본)와 `-pre-restore`(복구 재백업)는 어느 규칙에도 걸리지 않는다** —
+    """§8 백업 정리 — `--fix`가 새 백업을 만들기 **전에** 1회 호출된다. **비 git vault 전용이다**:
+      **접미사 없는 `{YYYY-MM-DD}/` 중 오늘이 아닌 것 제거** — 비 git vault는 사전 백업·`--fix` 백업이
+      계속 생기므로 그것이 쌓이는 것을 막는다. 제거 시점을 「세션 종료」가 아니라 「다음 --fix 시작」으로
+      두는 이유: 세션이 끝난 자리에서 백업까지 없애면 그 vault는 복구 수단이 0이 된다. 한 세션분을
+      남기면 복구 창이 유지되고 누적은 1개로 상한된다. **git vault는 애초에 이 폴더를 만들지 않는다** —
+      착수 직전 상태를 체크포인트 커밋이 잡으므로(§4 1번) 정리할 대상이 없다.
+    **`-deleted`(삭제 백업 = 유일 사본)와 `-pre-restore`(복구 재백업)는 이 규칙에 걸리지 않는다** —
     지우면 복구가 영구 불가해진다. 날짜로 읽히지 않는 이름(사람이 만든 임의 폴더)도 건드리지 않는다.
     반환: `(제거 목록, 실패 목록)` — 둘 다 호출부가 `--fix` 헤더 **아래**에서 [CLEANUP]·[CLEANUP-FAIL]로
     보고한다(여기서 바로 print하면 그 줄만 헤더 밖으로 나가 [FIXED]/[FIX-FAIL]과 형식이 어긋난다)."""
@@ -684,10 +678,6 @@ def cleanup_backups(vault, today):
             if day == today:
                 continue
             reason = "이전 날짜 — 누적 금지"
-        elif suffix.endswith("-presplit"):   # `-{HHMMSS}-presplit` — 실행마다 고유
-            if (today - day).days <= BACKUP_KEEP_DAYS:
-                continue
-            reason = f"{BACKUP_KEEP_DAYS}일 경과"
         else:
             continue   # -deleted·-pre-restore 등 보존 특례
         try:
@@ -1176,28 +1166,74 @@ def build_index(vault, dry_run, report=None):
     return 0
 
 
-def _presplit_dir(vault):
-    """이번 실행 전용 사본 폴더 경로 — `{YYYY-MM-DD}-{HHMMSS…}-presplit`.
+def _presession_dir(vault):
+    """**비 git vault 전용** — 이번 실행 전용 사본 폴더 경로 `{YYYY-MM-DD}-{HHMMSS…}`.
+
+    git vault는 이 함수를 부르지 않는다(착수 직전 상태를 체크포인트 커밋이 잡는다 — §4 1번).
 
     **날짜만 쓰면 같은 날 두 번째 실행이 첫 실행의 사본을 재사용한다**: `backup()`의
     미덮어쓰기 규정(§8 「그 세션 최초 상태 1부」)이 그때는 **1회째 분할 결과를 「원본」으로
     보존**해, 원복해도 1회째가 반영된 상태로 돌아간다(되돌릴 수 없는 구간이 생긴다).
-    날짜를 앞에 두는 것은 `cleanup_backups`의 30일 판정이 그 자리를 읽기 때문이다.
+    날짜를 앞에 두는 것은 `cleanup_backups`가 그 자리를 읽기 때문이다.
 
     시각은 고정 장치를 두지 않는다 — `_today()`와 달리 이 값을 기대값으로 삼는 골든이
     없고(폴더는 개수와 내용으로 판정한다), 고정하면 같은 초 재실행이 다시 겹친다.
     **한 실행 안에서도 본 pass와 재점검 pass가 각자 세션을 만든다**(auto_split) — 그 둘도
     갈려야 하므로 밀리초까지 쓰고, 그래도 겹치면 순번을 붙인다(시계 해상도에 기대지 않는다).
-    순번은 `-presplit` **앞**에 넣는다 — 뒤에 붙이면 `cleanup_backups`의 접미 판정이 놓친다."""
+    **git vault에서 이 pass 격리를 담당하는 것이 「pass 당 1회」 체크포인트 커밋이다.**"""
     root = os.path.join(vault, "90_archive", "backup")
     stamp = "%s-%s" % (_today().isoformat(),
                        datetime.datetime.now().strftime("%H%M%S%f")[:9])
-    path = os.path.join(root, stamp + "-presplit")
+    path = os.path.join(root, stamp)
     n = 2
     while os.path.exists(path):
-        path = os.path.join(root, "%s-%d-presplit" % (stamp, n))
+        path = os.path.join(root, "%s-%d" % (stamp, n))
         n += 1
     return path
+
+
+def git_vault_root(vault):
+    """vault가 **git 보호를 실제로 제공하는** 저장소면 그 경로, 아니면 None(§8 git 여부 확인).
+
+    커밋이 0건인 vault(`git init`만 한 상태)는 `checkout` 복구가 무력하므로 **비 git vault로
+    취급**한다 — 그 판정이 schema §8에 이미 있고 여기서 코드로 집행한다.
+    fail-open이 아니다 — 판정이 서지 않으면 **비 git**으로 떨어뜨려 사본 경로를 태운다
+    (보호를 잃는 쪽이 아니라 더 보수적인 쪽으로 기운다)."""
+    if not os.path.isdir(os.path.join(vault, ".git")):
+        return None
+    return vault if _git(vault, "log", "-1", "--format=%H") is not None else None
+
+
+def _checkpoint_commit(git_root, label):
+    """착수 직전 체크포인트 커밋 1회(§4 절차 1번 · git vault 전용). 성공 여부를 낸다.
+
+    변경이 없으면 커밋할 것이 없으므로 성공으로 본다 — HEAD 자체가 이미 기준점이다.
+    `-A`를 쓰는 것은 「git 자동 반영」과 같은 이유(사용자 수기 편집이 미커밋으로 남으면
+    원복 기준점 밖에 놓인다)이고, 그 구간은 lock이 덮는다.
+    **호출 지점이 곧 단위다** — `--auto-split`은 `SplitSession`마다(= pass 당 1회),
+    `--fix`는 실행당 1회. 합치면 뒤 pass의 실패가 앞 pass의 성공분까지 되돌린다."""
+    if _git(git_root, "add", "-A") is None:
+        return False
+    if not (_git(git_root, "status", "--porcelain") or "").strip():
+        return True   # 변경 0건 — HEAD가 그대로 기준점이다
+    msg = "문서: %s 직전 체크포인트 [%d]" % (label, os.getpid())
+    return _git(git_root, "commit", "-m", msg) is not None
+
+
+def _git(repo_root, *args):
+    """git 명령 1회 — 성공하면 stdout(문자열), 실패·부재·타임아웃이면 None.
+
+    `git_commits_behind`와 같은 계약이고(입력을 닫아 자격증명·에디터 프롬프트에 매달리지
+    않는다) 호출부가 None을 「git으로 처리할 수 없음」으로 읽는다."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", repo_root] + list(args),
+            capture_output=True, text=True, timeout=30,
+            stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return proc.stdout if proc.returncode == 0 else None
 
 
 class SplitSession:
@@ -1210,7 +1246,15 @@ class SplitSession:
     def __init__(self, vault, dry_run):
         self.vault = vault
         self.dry_run = dry_run
-        self.backup_dir = _presplit_dir(vault)
+        # 착수 직전 상태를 잡는 수단이 둘로 갈린다(§4 1번) — git vault면 체크포인트 커밋,
+        #  아니면 파일 사본. `git_root`가 그 분기의 단일 판정점이고 `backup_dir`은 후자 전용이다.
+        self.git_root = git_vault_root(vault)
+        self.backup_dir = None if self.git_root else _presession_dir(vault)
+        self.checkpoint_failed = False
+        if self.git_root and not dry_run:
+            # **pass 당 1회** — 이 클래스가 pass 하나의 실행 컨텍스트라 여기가 그 자리다.
+            #  호출당으로 합치면 재점검 pass 실패가 본 pass 성공분까지 되돌린다.
+            self.checkpoint_failed = not _checkpoint_commit(self.git_root, "auto-split")
         self.backed_up = set()
         self.created = set()   # 이번 실행이 **만든** 파일 — restore()가 걷는다(§4 5번)
         self.claimed = set()   # 이번 실행에서 어느 처방이 이미 맡은 파일 — claim() 참조
@@ -1220,9 +1264,13 @@ class SplitSession:
         self.failed = False
 
     def backup(self, *paths, require_claim=True):
-        """착수 직전 사본(§4 절차 1번·§8 `-presplit`). 실패하면 처방을 시작하지 않는다 —
-        사본 없는 분할은 원복 수단이 없다. 같은 세션 2회째는 재복사하지 않는다(§8: 그 세션
-        최초 상태 1부만 보존 — 재복사하면 이미 분할한 중간 상태가 원본 자리를 덮는다)."""
+        """착수 직전 상태 확보(§4 절차 1번). 실패하면 처방을 시작하지 않는다 — 기준점 없는
+        분할은 원복 수단이 없다.
+
+        **git vault에서는 파일을 복사하지 않는다** — `__init__`의 체크포인트 커밋이 이미
+        그 상태를 잡았고, 여기서 하는 일은 **claim 계약 강제와 원복 대상 등록**뿐이다.
+        비 git vault에서는 종전대로 사본을 뜨며, 같은 세션 2회째는 재복사하지 않는다
+        (§8: 그 세션 최초 상태 1부만 보존 — 재복사하면 분할한 중간 상태가 원본 자리를 덮는다)."""
         # 계약 강제: 백업하려는 파일은 이 처방이 맡은 것이어야 한다. 처방이 claim을 잊고
         #  바로 쓰기로 들어가면 겹침 방지·원복 범위 보장이 조용히 무너지므로, 여기서 대신
         #  claim해 보고 **다른 처방이 이미 맡았으면 예외**로 즉시 드러낸다(격리 루프가 잡아
@@ -1234,8 +1282,15 @@ class SplitSession:
                 + ", ".join(sorted(os.path.relpath(p, self.vault) for p in unclaimed)))
         if self.dry_run:
             return True
+        if self.checkpoint_failed:
+            self.notes.append("체크포인트 커밋 실패 — 처방 미수행(되돌릴 기준점이 없다)")
+            self.failed = True
+            return False
         for p in paths:
             if not os.path.exists(p) or p in self.backed_up:
+                continue
+            if self.git_root:
+                self.backed_up.add(p)   # 원복 대상 등록만 — 상태는 체크포인트 커밋이 잡았다
                 continue
             rel = os.path.relpath(p, self.vault)
             dest = os.path.join(self.backup_dir, rel)
@@ -1271,7 +1326,14 @@ class SplitSession:
         return True
 
     def restore(self, only=None):
-        """`-presplit` 사본으로 되돌린다(§4 절차 5번 원복).
+        """착수 직전 상태로 되돌린다(§4 절차 5번 원복) — git vault면 `git checkout -- <대상>`,
+        비 git vault면 사본 복원.
+
+        **되돌림은 언제나 대상 목록으로 한정한다 — `git reset --hard`·`git clean -fd`를 쓰지
+        않는다.** 세션 중 사용자가 Obsidian으로 편집하는 것이 설계 전제인데(「git 자동 반영」)
+        lock은 스킬 세션 간 배타 장치라 그것을 막지 못한다 — 전역 명령은 그 사이에 생긴
+        미추적 파일을 영구 삭제한다. lint ERR의 원인이 예상 밖 구조라는 점도 반경을 좁히는
+        근거다(§4 5번에 둘 다 적혀 있다).
 
         **`only`로 범위를 좁힌다 — 기본값(None)은 세션 전체다.** 처방 단위 격리에서는
         **그 처방이 맡은 파일만**(`claim`) 전달한다. `claim`이 겹침을 막으므로 그 집합은
@@ -1284,7 +1346,15 @@ class SplitSession:
         다음 실행이 그것을 이미 있던 파일로 보고 append한다.
         반환: 되돌린 파일 수(복원 + 제거)."""
         n = 0
-        for p in sorted(self.backed_up if only is None else (only & self.backed_up)):
+        targets = sorted(self.backed_up if only is None else (only & self.backed_up))
+        if self.git_root and targets:
+            rels = [os.path.relpath(p, self.vault) for p in targets]
+            if _git(self.git_root, "checkout", "--", *rels) is None:
+                self.notes.append("원복 실패(git checkout): " + ", ".join(rels))
+            else:
+                n += len(rels)
+            targets = []   # git 경로에서 처리 완료 — 아래 사본 루프는 비 git 전용이다
+        for p in targets:
             src = os.path.join(self.backup_dir, os.path.relpath(p, self.vault))
             if not os.path.exists(src):
                 continue
@@ -2340,7 +2410,9 @@ def auto_split(vault, dry_run):
         print(f"  {kind} — {target}: {'·'.join(created) if created else '(신설 없음)'}")
     for n in ses.notes:
         print(f"  {n}")
-    print(f"  사본: {ses.backup_dir}")
+    # 되돌림 수단을 한 줄로 알린다 — 「보고 억제」(§4 6번)는 성공한 분할의 내역을 가리는
+    #  것이고, 되돌리는 법은 그 대상이 아니다(그것을 못 찾으면 억제가 곧 유실이 된다).
+    print("  되돌림: 직전 체크포인트 커밋" if ses.git_root else f"  사본: {ses.backup_dir}")
     return 1 if ses.failed else 0
 
 
@@ -2366,7 +2438,12 @@ def apply_fixes(vault, dry_run=False):
     (정리는 폴더를 지우는 파괴적 동작이라 「미리보기」에 섞이면 안 된다). 판정 로직은 같은
     것을 그대로 태운다 — 미리보기 전용 경로를 따로 만들면 그것이 실제 수정과 갈린다."""
     today = _today()
-    cleaned, cleanup_failed = ([], []) if dry_run else cleanup_backups(vault, today)
+    # git vault면 체크포인트 커밋이 착수 직전 상태를 잡으므로 사본도, 그 정리도 필요 없다.
+    git_root = git_vault_root(vault)
+    if git_root and not dry_run and not _checkpoint_commit(git_root, "--fix"):
+        print("[FIX-FAIL] 체크포인트 커밋 실패 — --fix 미수행(되돌릴 기준점이 없다)")
+        return
+    cleaned, cleanup_failed = ([], []) if (dry_run or git_root) else cleanup_backups(vault, today)
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
     raws, pages = {}, {}   # rel -> (bom, 원본 텍스트) / rel -> (fm, type, 정규화 텍스트)
@@ -2387,7 +2464,9 @@ def apply_fixes(vault, dry_run=False):
     backed = set()
 
     def backup(r):
-        if r in backed or dry_run:
+        # git vault는 사본을 만들지 않는다 — 착수 직전 상태를 체크포인트 커밋이 잡는다(§4 1번).
+        #  비 git vault에서는 이 사본이 유일한 복구 수단이라 그대로 둔다.
+        if r in backed or dry_run or git_root:
             return
         src = os.path.join(vault, r.replace("/", os.sep))
         dst = os.path.join(vault, "90_archive", "backup", today.isoformat(), r.replace("/", os.sep))
@@ -2569,10 +2648,12 @@ def apply_fixes(vault, dry_run=False):
             print(("[WOULD-FIX] " if dry_run else "[FIXED] ") + f)
         if dry_run:
             print("파일을 바꾸지 않았다 — 그대로 적용하려면 `--dry-run` 없이 다시 실행한다")
+        elif git_root:
+            print("되돌림: 직전 체크포인트 커밋 (복구는 절차 L)")
         else:
             print(f"백업: 90_archive/backup/{today.isoformat()}/ (원본 보존 — 복구는 절차 L)")
     else:
-        print("수정 대상 없음 (파일 무변경·백업 미생성)")
+        print("수정 대상 없음 (파일 무변경)")
     for f in failed:
         print("[FIX-FAIL] " + f)
     print()
