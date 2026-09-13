@@ -413,7 +413,7 @@ Write-TimingLine -Total $total
 #   매니페스트의 기준선 줄을 건너뛰고(`COUNT_SKIP_BASELINE`), 대신 러너가 자기 총계를 여기서
 #   상수와 대조한다. 선례는 llm-wiki `check_consistency.py` 의 `TRIGGER_ALLOWLIST_BASELINE`.
 # **경고이지 게이트가 아니다** — 판정은 FAIL 수가 하고, 이 줄은 문서가 낡았음을 알린다.
-$GoldenTotalBaseline = 917
+$GoldenTotalBaseline = 919
 if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
     # 합산 규칙을 함께 싣는다 — 이것이 없으면 어긋났을 때 「케이스가 빠졌나 / 세는 법이
