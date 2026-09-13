@@ -223,13 +223,16 @@ try {
                 $convSrc = [regex]::Replace($convText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
                 $convHeads = @([regex]::Matches($convSrc, '(?m)^## .+') | ForEach-Object { ($_.Value -replace '^##\s*', '').Trim() })
                 if ($convHeads.Count -gt 0) {
-                    $convToc = $convHeads -join ' · '
+                    # 절 제목에 순번을 붙인다 — 근거는 `rules/session-context-rationale-wiki.md`의 「§36-1 절 제목에 순번을 붙인다」
+                    #   제목만 주면 "그 파일을 Read" 외에 할 수 있는 것이 없어 82KB 전문이 실렸다.
+                    #   순번은 아래 추출 명령의 인자라, 목차와 명령이 함께 있어야 둘 다 쓸모가 생긴다.
+                    $convToc = (0..($convHeads.Count - 1) | ForEach-Object { "$($_ + 1) $($convHeads[$_])" }) -join ' · '
                     # 절단은 절 경계가 아니라 문자 수로 한다 — 상한의 목적이 바이트 방어라
                     #   경계를 맞추려 다시 세면 상한을 넘길 수 있다.
                     if ([System.Text.Encoding]::UTF8.GetByteCount($convToc) -gt $convTocMaxBytes) {
                         $convToc = $convToc.Substring(0, [Math]::Min($convToc.Length, $convTocMaxBytes / 3)) + ' …(이하 생략 — 전문을 Read하세요)'
                     }
-                    $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 이관처 docs/harness-conventions.md ($($convInfo.Length)B) — 전문은 주입되지 않습니다. 아래 절이 그 안에 있으니 **해당 절이 필요하면 그 파일을 Read**하세요. AGENTS.md 의 포인터가 가리키는 곳이 여기입니다.`n절: ${convToc}")
+                    $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 이관처 docs/harness-conventions.md ($($convInfo.Length)B) — 전문은 주입되지 않습니다. **전문을 Read하지 말고 필요한 절만 뽑아 읽으세요** — awk -v n=<순번> '/^## /{c++} c==n' docs/harness-conventions.md. 순번은 아래 목록의 것입니다. AGENTS.md 의 포인터가 가리키는 곳이 여기입니다.`n절: ${convToc}")
                 }
             }
         }

@@ -979,10 +979,15 @@ if (Test-HookSelected @('session-context')) {
     $scTocConv = Join-Path $scToc 'docs/harness-conventions.md'
     $scTocInvoke = { Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scToc } | ConvertTo-Json -Compress) }
 
-    # SC45a (양성): 이관처가 있으면 그 절 제목이 주입된다.
+    # SC45a (양성): 이관처가 있으면 그 절 제목이 **순번과 함께** 주입된다 (순번은 회차 69 T3).
     @('# 상세', '', '## 첫째 절', '', '본문', '', '## 둘째 절') | Set-Content -Encoding UTF8 $scTocConv
     $r = & $scTocInvoke
-    Assert-Case -Name "session-context: 이관처 목차 주입 (SC45a)" -R $r -ExpectExit 0 -ExpectContains '첫째 절 · 둘째 절'
+    Assert-Case -Name "session-context: 이관처 목차 주입 (SC45a)" -R $r -ExpectExit 0 -ExpectContains '1 첫째 절 · 2 둘째 절'
+
+    # SC45e (양성): 순번과 짝인 추출 명령이 같은 줄에 실린다 (회차 69 T3).
+    #   SC45a 와 축을 나눈다 — 순번만 재면 명령이 빠져도 green 이고, 그러면 세션이 순번을
+    #   받고도 쓸 곳이 없어 전문 Read 로 돌아간다. 둘이 짝이라야 목록이 라우터가 된다.
+    Assert-Case -Name "session-context: 절 추출 명령 동반 (SC45e)" -R $r -ExpectExit 0 -ExpectContains 'awk -v n='
 
     # SC45b (양성): 코드펜스 안의 `## ` 는 절이 아니다 — AGENTS.md 목차 폴백과 같은 축.
     @('# 상세', '', '## 진짜 절', '', '``````', '## 펜스 안 가짜', '``````') | Set-Content -Encoding UTF8 $scTocConv
