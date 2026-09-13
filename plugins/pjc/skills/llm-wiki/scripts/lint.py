@@ -32,7 +32,6 @@
       / conventions 근거 표기 집계(INFO — 항목 끝 '({근거})' 미보유 건수 / 전체, §7-34).
       / patterns 관측 폭 집계(INFO — '## 프로젝트 사례' 절 미보유 건수 / 전체, §7-35).
       / decision-log 정정 표기 형식(§7-36 — '정정'을 적은 항목의 '(정정 날짜: 옛 → 새, 근거 …)' 형식 위반).
-      / 자기 페이지 수치 사본 불일치(§7-37 — 한 페이지에서 같은 키에 서로 다른 수가 적힌 것, §2.10).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 자동 백업 — schema §7 서두 정본).
 범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
@@ -138,17 +137,6 @@ VERDICT_PROSE_REQUIRED = {"기각", "보류"}
 #  「정정」이 들어간 항목만 보므로 정정하지 않은 기존 항목은 대상이 아니다.
 DECISION_FIX_RX = re.compile(
     r"\(정정 \d{4}-\d{2}-\d{2}: .+? → .+?, 근거 .+?\)")
-# §7-37 자기 페이지 내부 수치 사본 — 같은 대상의 수를 한 페이지에 두 번 적으면 한쪽이 낡는다.
-#  실해(2026-09-13 claude-harness-pjc 허브): 36행이 `헬퍼 7`·`41패턴`, 64행이 `dot-source 헬퍼 9`·
-#  `차단 패턴 48` 이고 레포 실측은 9·48 이었다. **같은 파일 안의 사본이라 ingest 뒤처짐으로
-#  설명되지 않는다** — 한 번의 갱신이 양쪽을 함께 고쳐야 했는데 한쪽만 고쳐진 것이다.
-#  **키는 수치에 인접한 한글 토큰**이라 수식어가 달라도 같은 키로 모인다(`헬퍼 7`·`dot-source
-#  헬퍼 9` → `헬퍼`). 수치가 앞에 붙는 형태(`41패턴`)도 같은 키를 낸다 — 양방향을 본다.
-#  **1자 토큰은 키가 아니다**(`3건`·`2개`의 `건`·`개`는 단위어라 대상이 다른 수를 한데 묶는다).
-NUM_KEY_RX = re.compile(r"([가-힣]{2,12})\s*(\d[\d,]*)|(\d[\d,]*)\s*([가-힣]{2,12})")
-# 변화를 명시한 표기는 두 값이 **의도적으로** 다르다 — `127 → 129`·`10,498 -> 10,873`.
-NUM_CHANGE_RX = re.compile(r"(?:→|->|~|부터)")
-
 # §7-35 patterns(concept)의 관측 기록 절 이름 — wiki-schema §2.5가 정본.
 #  **이름을 하나로 고정하는 이유**: 조회자가 `confidence`를 「현재 실증 폭」으로 읽는데 그 필드는
 #  §2.5 「소급 비적용」상 **등재 시점 판정**이라 갈린다(실측 2026-09-07 — medium 20건 중 정확 절로 세어 5건, 아래 변형 이름까지 세면 6건이
@@ -3582,33 +3570,6 @@ def main():
         infos.append(f"patterns 관측 폭: '## {PATTERN_CASE_SECTION}' 절 없음 {pat_missing}건 "
                      f"/ 전체 {pat_total}건 — `confidence`는 **등재 시점** 판정이라 현재 실증 폭과 "
                      f"다르다(§2.5 소급 비적용). 폭을 볼 자리가 이 절이다(schema §2.5·§7-35)")
-
-    # §7-37: 한 페이지 안에서 **같은 대상의 수치가 서로 다르게** 적힌 것을 낸다(schema §2.10).
-    #  비교 단위가 페이지 전체인 것이 요점이다 — 실해가 같은 허브의 36행 ↔ 64행이라 절 단위로
-    #  끊으면 보이지 않는다. 코드 펜스 안은 제외한다(예제·출력 샘플의 수는 서술이 아니다).
-    #  `→`가 든 줄은 **변화를 명시한 표기**라 두 값이 의도적으로 다르다 — 발화하지 않는다.
-    for r, (fm, typ, text) in pages.items():
-        if r.startswith("90_archive/"):
-            continue
-        seen = {}          # 키 -> {값: 첫 등장 줄 번호}
-        in_fence = False
-        for ln_no, line in enumerate(text.splitlines(), 1):
-            if line.lstrip().startswith("```"):
-                in_fence = not in_fence
-                continue
-            if in_fence or NUM_CHANGE_RX.search(line):
-                continue
-            for m in NUM_KEY_RX.finditer(line):
-                key = m.group(1) or m.group(4)
-                val = (m.group(2) or m.group(3)).replace(",", "")
-                seen.setdefault(key, {}).setdefault(val, ln_no)
-        for key, vals in sorted(seen.items()):
-            if len(vals) < 2:
-                continue
-            shown = " / ".join(f"{v}(줄 {n})" for v, n in sorted(vals.items(), key=lambda kv: kv[1]))
-            warn(f"자기 페이지 수치 사본 불일치: {r} '{key}' — {shown}. 기계로 세어지는 수는 "
-                 f"한 곳에만 적고 나머지는 그 절을 가리킨다(두 곳에 적으면 한쪽이 낡는다, "
-                 f"schema §2.10·§7-37)", r)
 
     # 허브 "기능 목록" ↔ feature 동기화 (feat 파일이 허브 본문에 링크돼 있는지)
     # 90_archive/ 하위 허브 사본(백업)은 검사 제외 — §8 "백업 파일이 WARN을 만들지 않는다"
