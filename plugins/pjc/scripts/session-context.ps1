@@ -90,6 +90,8 @@ try {
                         if ($defLine -match ('^- ' + [char]96 + '?\[미등재:[^\]]+\]')) { continue }
                         # `[다음 회차]`도 판정을 마친 상태다 — 대장이 아니라 인계 프롬프트가 받는 — 근거는 `rules/session-context-rationale.md`의 「§36 `[다음 회차]`도 판정을 마친 상태다 — 대장이 아니라 인계 프롬프트가 받는」
                         if ($defLine -match ('^- ' + [char]96 + '?\[다음 회차\]')) { continue }
+                        # `[1회 실패]`는 등재 판정 대상이 아니라 재발 판정용 기록이다 — 세지 — 근거는 `rules/session-context-rationale.md`의 「§37 `[1회 실패]`는 등재 판정 대상이 아니라 재발 판정용 기록이다 — 세지」
+                        if ($defLine -match ('^- ' + [char]96 + '?\[1회 실패\]')) { continue }
                         $defUnjudged++
                     }
                 }

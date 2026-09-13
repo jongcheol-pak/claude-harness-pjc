@@ -380,6 +380,24 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDefN2 } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: [다음 회차]와 무마커가 섞이면 무마커만 센다 (SC40m2)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
 
+    # SC40p: `[1회 실패]`도 세지 않는다 — 등재 판정 대상이 아니라 재발 판정용 기록이다.
+    #   그 표식은 `WIKI.md` §3 ⓐ·`implement/SKILL.md` 「실패 처리」가 이 절에 두도록 **의무로**
+    #   규정했는데 마커 4종에는 없어 skip 셋에서 빠져 있었다 — 회차 68이 그 줄을 실제로 놓아
+    #   「미판정 1건」이 발화했다(완료 리뷰 MAJOR · 실측 defUnjudged=1). §36과 같은 형태다.
+    #   ⚠ SC40m과 같은 이유로 백틱 있는/없는 형태를 섞는다 — 무백틱만 재면 백틱 옵셔널을
+    #   떼도 통과하고 실 plan.md만 깨진다.
+    $scDefF = Join-Path $scDefBase 'firstfail'; New-Item -ItemType Directory $scDefF -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- [1회 실패] 원인 A — 이렇게 풀었다', '- `[1회 실패]` 원인 B — 이렇게 풀었다', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDefF 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDefF } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: [1회 실패]는 미판정으로 세지 않는다 (SC40p)" -R $r -ExpectExit 0 -ExpectContains '미완료 1' -ExpectNotContains 'Deferred 미판정'
+
+    # SC40p2 (양성 대조): 회차 68의 실제 형상 — `[미등재:…]` 2건 + `[1회 실패]` 1건 + 무마커 1건.
+    #   위 케이스만 있으면 「절에 [1회 실패]가 있으면 통째로 skip」으로 구현해도 green이다.
+    $scDefF2 = Join-Path $scDefBase 'firstfail-mixed'; New-Item -ItemType Directory $scDefF2 -Force | Out-Null
+    @('# Plan', '## Tasks', '- [ ] T1. todo', '', '## Deferred / Follow-up', '- `[미등재:실해 미관측]` **A**', '- `[미등재:Out of Scope]` **B**', '- `[1회 실패]` 원인 C — 이렇게 풀었다', '- **D** 마커 없음', '', '## Out of Scope') | Set-Content -Encoding UTF8 (Join-Path $scDefF2 'plan.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDefF2 } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: [1회 실패]와 무마커가 섞이면 무마커만 센다 (SC40p2)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
+
     # SC40c (델타 음성): `## Deferred / Follow-up` 절 자체가 없는 plan → 부기 미발화·오류 없음.
     #   기존 픽스처 대부분이 이 형태라 무회귀의 근거이기도 하다.
     $scDef3 = Join-Path $scDefBase 'nosection'; New-Item -ItemType Directory $scDef3 -Force | Out-Null
