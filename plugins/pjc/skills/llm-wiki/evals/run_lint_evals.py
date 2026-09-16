@@ -188,6 +188,34 @@ def undo_split_failures(restore):
             pass
 
 
+def setup_git_vault(dest, dirty_rels):
+    """**이미 복사된 vault 사본을 git 저장소로 만든다** — `git init` + 전량 커밋 1회.
+    `dirty_rels`가 있으면 커밋 **뒤에** 그 파일들에 1줄을 덧붙여 미커밋 상태를 만든다.
+    성공하면 True, git이 없거나 실패하면 False(호출부가 케이스를 SKIP한다).
+
+    **`prepare_git_repo_vault`와 대상이 다르다** — 그쪽은 vault **옆에** 코드 레포를 만들어
+    §7-26 뒤처짐 계산을 재고, 이쪽은 **vault 자신**에 `.git`을 둬 `git_vault_root`가 참이
+    되게 한다. 그 분기가 참이어야 체크포인트 커밋·진입 가드 경로가 돈다 — 그 전에는 골든
+    전 케이스가 비 git vault 경로만 태워 **체크포인트가 절차 편집을 삼키는 결함을 재는 축이
+    하나도 없었다**(2026-09-16 실측: 같은 결함이 2회 재발할 때까지 골든은 green).
+
+    복사가 끝난 뒤의 폴더를 받는 것은 두 핸들러(auto_split·fix_mode)가 각자 사본을 뜨기
+    때문이다 — 사본 생성까지 이 함수가 맡으면 그 관용구가 두 곳으로 갈린다."""
+    git = ["git", "-c", "user.name=lint-eval", "-c", "user.email=lint-eval@example.invalid"]
+    try:
+        subprocess.run(["git", "init", "-q", dest], check=True, capture_output=True, timeout=20)
+        subprocess.run(git + ["-C", dest, "add", "-A"], check=True, capture_output=True, timeout=20)
+        subprocess.run(git + ["-C", dest, "commit", "-q", "-m", "vault init"],
+                       check=True, capture_output=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    for rel in dirty_rels:
+        p = os.path.join(dest, rel.replace("/", os.sep))
+        with open(p, "a", encoding="utf-8") as fh:
+            fh.write("\n<!-- 사용자 수기 편집(미커밋) -->\n")
+    return True
+
+
 def prepare_git_repo_vault(fixture_dir, synced_mode):
     """fixture를 임시 폴더로 복사하고, 그 옆에 **커밋 3개짜리 임시 git 레포**를 만들어
     허브의 `__REPO_ROOT__`·`__SYNCED_SHA__`를 실제 값으로 치환한다(§7-26 골든).
@@ -648,6 +676,11 @@ def check_case(case):
         tmp = tempfile.mkdtemp(prefix="lint-eval-split-")
         dest = os.path.join(tmp, os.path.basename(vault))
         shutil.copytree(vault, dest)
+        # git vault 케이스는 사본을 저장소로 만든 뒤에 돈다 — 체크포인트 커밋·진입 가드가
+        #  `vault/.git` 유무로 갈리므로, 이 한 줄이 그 경로 전체의 스위치다.
+        if case.get("git_vault") and not setup_git_vault(dest, case.get("git_vault_dirty", [])):
+            shutil.rmtree(tmp, ignore_errors=True)
+            return True, "SKIP (git 미설치·실행 실패 — git vault 골든은 git 필요)"
         dry_before = _snapshot_md(dest)
         out_dry, rc_dry, err_dry = run_lint(dest, ["--auto-split", "--dry-run"])
         dry_after = _snapshot_md(dest)
@@ -827,12 +860,40 @@ def check_case(case):
         tmp = tempfile.mkdtemp(prefix="lint-eval-fix-")
         dest = os.path.join(tmp, os.path.basename(vault))
         shutil.copytree(vault, dest)
+        if case.get("git_vault") and not setup_git_vault(dest, case.get("git_vault_dirty", [])):
+            shutil.rmtree(tmp, ignore_errors=True)
+            return True, "SKIP (git 미설치·실행 실패 — git vault 골든은 git 필요)"
+        # F-2는 한 절차 안에서 `--auto-split` 뒤에 `--fix`를 부른다(`procedures-ops.md` :63·:65).
+        #  그 연쇄에서 **두 번째 호출이 첫 번째의 미커밋 산출물 때문에 오차단되지 않는지**를
+        #  재려면 선행 호출을 실제로 태워야 한다 — 상태를 손으로 흉내 내면 그 경로가 아니다.
+        if case.get("pre_auto_split"):
+            run_lint(dest, ["--auto-split"])
+        # 거부 케이스의 「한 바이트도 안 바뀜」은 rmtree 전에 읽어 둬야 판정할 수 있다 —
+        #  auto_split 핸들러의 `unchanged_before`와 같은 축이고 같은 헬퍼를 쓴다.
+        unchanged_before = {rel: _read_bytes(dest, rel)
+                            for rel in case.get("expect_unchanged", [])}
         out1, rc1, err1 = run_lint(dest, ["--fix"])
         out2, rc2, err2 = run_lint(dest)
+        unchanged_after = {rel: _read_bytes(dest, rel)
+                           for rel in case.get("expect_unchanged", [])}
         shutil.rmtree(tmp, ignore_errors=True)
-        if "== llm-wiki Lint:" not in out1 or "== llm-wiki Lint:" not in out2:
-            tail = (err1 or err2).strip().splitlines()[-1] if (err1 or err2).strip() else "(stderr 없음)"
-            return False, f"lint.py 비정상 종료(fix={rc1}/재실행={rc2}): {tail}"
+        want_rc = case.get("expect_rc", 0)
+        if rc1 != want_rc:
+            tail = err1.strip().splitlines()[-1] if err1.strip() else "(stderr 없음)"
+            return False, f"--fix 종료 코드 불일치 — 기대 {want_rc} / 실제 {rc1}: {tail}"
+        # **거부는 본 lint를 이어 돌리지 않는다** — 「수행하지 않았다」인데 수정 후 상태를
+        #  보고하면 「고쳐졌나」가 흐려지기 때문이다(lint.py `main()`). 그 케이스에서는 이
+        #  헤더가 없는 것이 정상이므로 `expect_lint_output: false`로 가른다. 재실행(out2)은
+        #  언제나 read-only라 헤더가 항상 나온다 — 그쪽은 조건 없이 잰다.
+        if case.get("expect_lint_output", True) and "== llm-wiki Lint:" not in out1:
+            tail = err1.strip().splitlines()[-1] if err1.strip() else "(stderr 없음)"
+            return False, f"lint.py 비정상 종료(fix={rc1}): {tail}"
+        if "== llm-wiki Lint:" not in out2:
+            tail = err2.strip().splitlines()[-1] if err2.strip() else "(stderr 없음)"
+            return False, f"lint.py 비정상 종료(재실행={rc2}): {tail}"
+        for rel, before in unchanged_before.items():
+            if unchanged_after.get(rel) != before:
+                return False, "--fix 미수행인데 변경됐다: " + rel
         missing = [kw for kw in case.get("expect_keywords", []) if kw not in out1]
         if missing:
             return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
