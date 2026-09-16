@@ -1845,6 +1845,59 @@ def check_queue_tag_enum():
     return issues, n, notices
 
 
+# ── 축 ㉑ 하위 「큐 태그 수 표현」 ────────────────────
+# 위 축과 **서로 다른 자리를 덮는다** — `queue-consume-rules.md:16` 은 태그 리터럴이
+#  셋이라 위 게이트를 빠지지만 「다섯 태그」를 담아 이 축이 잡는다. 한쪽을 지우면 그
+#  자리가 사각이 된다(중복이 아니라 분담이다).
+# **한 음절 수사(한·두·세·네)와 아라비아 숫자는 쓰지 않는다** — 전자는 「선**두 태그**」처럼
+#  낱말 안에서 잘려 붙고, 후자는 「v3.**4.5 태그**」(git 태그)를 잡는다. 둘 다 실측된 오탐이다.
+_QUEUE_COUNT_WORDS = {"하나": 1, "둘": 2, "셋": 3, "넷": 4, "다섯": 5, "여섯": 6, "일곱": 7}
+_RX_QUEUE_COUNT = re.compile(
+    r"(?<![\w가-힣])(" + "|".join(sorted(_QUEUE_COUNT_WORDS, key=len, reverse=True)) + r")\s*개?\s*태그"
+)
+# 그 줄이 **큐 이야기인지**를 함께 본다 — 수사 하나만으로는 무관한 「태그」와 갈리지 않는다.
+#  큐 파일 이름·「큐」만으로 좁히면 `check_wiki_circuit.py` 처럼 **태그 리터럴만 든 줄**이
+#  빠지므로 리터럴도 문맥으로 인정한다(실측 — 그 한 줄이 미검출로 남았다).
+_RX_QUEUE_CONTEXT = re.compile(r"pending\.md|skill-feedback\.md|큐|"
+                               + "|".join(sorted(QUEUE_TAGS_ALL, key=len, reverse=True)))
+
+
+def check_queue_tag_count_words():
+    """「다섯 태그」류 수 표현이 그 줄이 지목한 큐 파일의 정본 크기와 맞는지 본다.
+
+    지목이 없으면 전체(6)와 견준다 — 파일을 안 적은 열거는 집합 전체를 뜻한다.
+    """
+    issues, n = [], 0
+    for path in _scan_files(_QUEUE_TAG_EXTS):
+        rel = os.path.relpath(path, ROOT).replace("\\", "/")
+        if rel in _QUEUE_TAG_SKIP_RELS or rel.startswith(_QUEUE_TAG_SKIP_PREFIXES):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                lines = f.read().split("\n")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for i, line in enumerate(lines, 1):
+            m = _RX_QUEUE_COUNT.search(line)
+            if not m or not _RX_QUEUE_CONTEXT.search(line):
+                continue
+            n += 1
+            said = _QUEUE_COUNT_WORDS[m.group(1)]
+            # **정본 셋의 크기 중 아무것과도 안 맞을 때만** 잡는다. 줄에 적힌 파일 이름으로
+            #  집합을 고르려 하면 어긋난다 — `queue-rules.md:16` 은 `skill-feedback.md` 를
+            #  말하면서 「다른 다섯 태그」로 pending 을 가리킨다(실측 오탐). 태그가 늘면 세
+            #  크기가 함께 움직이므로, 낡은 수는 여전히 「어느 것과도 안 맞음」으로 걸린다.
+            if said in {len(canon) for _, canon in _QUEUE_TAG_CANON}:
+                continue
+            sizes = ", ".join("%s %d" % (label, len(canon)) for label, canon in _QUEUE_TAG_CANON)
+            issues.append(
+                "큐 태그 수 표현 불일치: %s:%d 이 「%s 태그」(%d)라 적는데 정본 집합 크기 어느 것과도 "
+                "다르다(%s) — 태그를 더했으면 이 수 표현도 함께 고친다"
+                % (rel, i, m.group(1), said, sizes)
+            )
+    return issues, n
+
+
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -1893,6 +1946,7 @@ def main():
         ("영향 검토 3축", check_impact_axes()),
         ("관련 파일 파서 동기", check_parser_sync()),
         ("큐 태그 열거 정합", (tagenum_issues, tagenum_n)),
+        ("큐 태그 수 표현", check_queue_tag_count_words()),
     ]
     all_issues, parts = [], []
     for label, (issues, n) in axes:
