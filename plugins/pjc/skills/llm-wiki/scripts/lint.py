@@ -1233,12 +1233,37 @@ def git_vault_root(vault):
     return vault if _git(vault, "log", "-1", "--format=%H") is not None else None
 
 
+def _require_clean_worktree(git_root):
+    """처방 진입 직전 워킹트리가 깨끗한지 본다. 반환: 미커밋 경로 목록(빈 리스트면 clean).
+
+    **왜 필요한가**: 아래 `_checkpoint_commit`이 `-A`로 그 시점의 **모든** 미커밋 변경을
+    담으므로, 절차가 편집만 해 두고 커밋 없이 처방을 부르면 그 편집이 통째로
+    `문서: … 직전 체크포인트`라는 이름의 커밋에 들어간다. 절차 본 커밋에는 그 뒤 손댄 것만
+    남아, 커밋을 절차 단위로 나눈 목적(무엇이 무엇을 바꿨는지 이력에서 읽히게)이 깨진다
+    (2026-09-16 두 번 관측 — 체크포인트 `8e87b13`가 6파일, 본 커밋 `fb85314`는 2파일).
+
+    **진입 시 1회만 부른다** — pass별 체크포인트에서 부르면 pass 1의 처방 결과(스크립트
+    자신이 만든 dirty)가 pass 2를 막아 정상 흐름이 서지 않는다.
+
+    `_git`이 None을 내는 것은 실행 실패이지 clean이 아니다 — 빈 문자열(clean)과 갈라야
+    하므로 `is None`으로 받고, 판정이 서지 않으면 **처방을 막는 쪽**으로 기운다
+    (`git_vault_root`와 같은 보수 방향)."""
+    out = _git(git_root, "status", "--porcelain")
+    if out is None:
+        return ["(git status 실행 실패 — 판정 불가)"]
+    # porcelain 한 줄은 `XY <경로>` — 상태 2글자와 공백을 떼 경로만 낸다.
+    return [ln[3:] for ln in out.splitlines() if ln.strip()]
+
+
 def _checkpoint_commit(git_root, label):
     """착수 직전 체크포인트 커밋 1회(§4 절차 1번 · git vault 전용). 성공 여부를 낸다.
 
     변경이 없으면 커밋할 것이 없으므로 성공으로 본다 — HEAD 자체가 이미 기준점이다.
     `-A`를 쓰는 것은 「git 자동 반영」과 같은 이유(사용자 수기 편집이 미커밋으로 남으면
-    원복 기준점 밖에 놓인다)이고, 그 구간은 lock이 덮는다.
+    원복 기준점 밖에 놓인다)이고, 그 구간은 lock이 덮는다. **진입 가드
+    (`_require_clean_worktree`)가 선 뒤로 이 `-A`가 담는 것은 「처방 자신이 만든 변경」
+    뿐이다** — 절차의 미커밋 편집은 진입에서 이미 걸러지므로, 「무엇을 담는가」가
+    호출 시점마다 달라지지 않는다.
     **호출 지점이 곧 단위다** — `--auto-split`은 `SplitSession`마다(= pass 당 1회),
     `--fix`는 실행당 1회. 합치면 뒤 pass의 실패가 앞 pass의 성공분까지 되돌린다."""
     if _git(git_root, "add", "-A") is None:
@@ -2352,6 +2377,17 @@ def auto_split(vault, dry_run):
       ⑤ 등록 -- ①의 연쇄로 신설 하위가 인덱스에 오른다(등록이 빠지면 분할이 곧 유실이다)
 
     반환: 종료 코드(0 정상 / 1 처방 실패)."""
+    # 진입 가드 — `SplitSession` 생성 **전**이다. 그 생성자가 체크포인트 커밋을 찍으므로,
+    #  뒤에 두면 삼킬 것을 이미 삼킨 뒤가 된다.
+    guard_root = git_vault_root(vault) if not dry_run else None
+    if guard_root:
+        dirty = _require_clean_worktree(guard_root)
+        if dirty:
+            print("[SPLIT-FAIL] 미커밋 변경 %d건 — 절차 커밋을 먼저 하라 "
+                  "(체크포인트가 그것까지 삼킨다)" % len(dirty))
+            for p in dirty:
+                print("  %s" % p)
+            return 1
     ses = SplitSession(vault, dry_run)
     if not dry_run:
         cleaned, cleanup_failed = cleanup_backups(vault, _today())
@@ -2471,6 +2507,8 @@ def apply_fixes(vault, dry_run=False):
       (그 파일만 [FIX-FAIL] 보고 후 계속). 위반 0이면 파일 무변경·백업 미생성.
     **백업 정리는 새 백업을 만들기 전에 1회 수행한다**(cleanup_backups — §8 누적 금지·30일 정리).
       순서가 중요하다: 나중에 하면 방금 만든 오늘 백업을 지울 판정을 다시 하게 된다.
+    **반환: 수행했으면 True, 미수행이면 False** — 미수행은 둘이다(진입 시 dirty 거부 ·
+    체크포인트 커밋 실패). `main()`이 False를 종료 코드 1로 옮기고 본 lint를 건너뛴다.
     플래그 없는 기본 실행은 이 함수를 타지 않는다 — read-only 계약 불변(정리도 여기서만 일어난다).
     **`dry_run`이면 무엇을 고칠지만 보고하고 한 바이트도 쓰지 않는다** — 백업·정리도 건너뛴다
     (정리는 폴더를 지우는 파괴적 동작이라 「미리보기」에 섞이면 안 된다). 판정 로직은 같은
@@ -2478,9 +2516,18 @@ def apply_fixes(vault, dry_run=False):
     today = _today()
     # git vault면 체크포인트 커밋이 착수 직전 상태를 잡으므로 사본도, 그 정리도 필요 없다.
     git_root = git_vault_root(vault)
-    if git_root and not dry_run and not _checkpoint_commit(git_root, "--fix"):
-        print("[FIX-FAIL] 체크포인트 커밋 실패 — --fix 미수행(되돌릴 기준점이 없다)")
-        return
+    if git_root and not dry_run:
+        # `--auto-split`과 같은 가드다 — 근거는 `_require_clean_worktree`.
+        dirty = _require_clean_worktree(git_root)
+        if dirty:
+            print("[FIX-FAIL] 미커밋 변경 %d건 — 절차 커밋을 먼저 하라 "
+                  "(체크포인트가 그것까지 삼킨다)" % len(dirty))
+            for p in dirty:
+                print("  %s" % p)
+            return False
+        if not _checkpoint_commit(git_root, "--fix"):
+            print("[FIX-FAIL] 체크포인트 커밋 실패 — --fix 미수행(되돌릴 기준점이 없다)")
+            return False
     cleaned, cleanup_failed = ([], []) if (dry_run or git_root) else cleanup_backups(vault, today)
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
@@ -2707,6 +2754,10 @@ def apply_fixes(vault, dry_run=False):
     for f in failed:
         print("[FIX-FAIL] " + f)
     print()
+    # 수행했음을 낸다 — 위 두 미수행 경로(dirty 거부·체크포인트 실패)가 False를 내고,
+    #  `main()`이 그것을 종료 코드로 옮긴다. 항목별 [FIX-FAIL] 격리는 미수행이 아니므로
+    #  여기서 True다(그 실패는 본 lint가 잔존 위반으로 다시 보고한다).
+    return True
 
 
 def _normalize_vault(arg):
@@ -2743,7 +2794,11 @@ def main():
             sys.exit(1)
         sys.exit(auto_split(vault, "--dry-run" in sys.argv[2:]))
     if "--fix" in sys.argv[2:]:
-        apply_fixes(vault, "--dry-run" in sys.argv[2:])
+        # **미수행이면 본 lint를 이어 돌리지 않는다** — 이어 돌리면 「수정 후 상태」로 읽혀
+        #  고쳐지지 않았다는 사실이 흐려지고, 그 자리에서 rc도 0이 된다(아래 종료 코드는
+        #  ERR만 보는데 `--fix` 대상 3종은 전부 WARN이다).
+        if not apply_fixes(vault, "--dry-run" in sys.argv[2:]):
+            sys.exit(1)
     # L-3: vault 경로에 glob 메타문자([ ] * ? 등)가 있어도 리터럴로 취급 — glob.escape로 감싸지 않으면
     #   'D:\wiki[2026]' 같은 경로에서 md 목록이 0개가 되어 대부분 검사가 공허 통과한다.
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
