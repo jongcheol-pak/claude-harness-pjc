@@ -115,7 +115,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 45,190 | 137,000 |
+| `docs/harness-conventions.md` | 45,376 | 137,000 |
 | `docs/golden-runner.md` | 9,979 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 11,880 | 37,000 |
 
