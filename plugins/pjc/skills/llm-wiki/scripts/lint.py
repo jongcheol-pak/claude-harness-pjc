@@ -12,7 +12,7 @@
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
       / 큐 잔량 집계(INFO — 절차 K 큐, **두 파일을 각각 별도 줄로**, §7-25)
-        · pending.md: [K-DRIFT]/[DECISION]/[PROJECT-FACT]/[K-MISS]/[SYMPTOM] 태그별
+        · pending.md: [K-DRIFT]/[DECISION]/[PROJECT-FACT]/[K-MISS]/[SYMPTOM]/[K-ROUTE] 태그별
         · skill-feedback.md: [SKILL-IMPROVE] (플러그인 개선 후보 — SKILL K 5-1)
         + 형식 위반(WARN — 태그는 있으나 날짜 선두가 아니라 집계에서 누락되는 줄, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
@@ -3273,6 +3273,8 @@ def main():
     #  [PROJECT-FACT]는 해당 프로젝트 conventions.md(§2.9)에 반영 후 제거(자가 소비),
     #  [K-MISS]는 레포 근거 대조 후 feature/recipe 반영 또는 기각 보고 후 제거(수요 신호 — 자동 생성 아님),
     #  [SYMPTOM]은 증상별 인덱스(§6)에 등재 게이트 검증 후 반영 또는 보류(해법 페이지 부재)·기각(미검증 원인) 후 제거.
+    #  [K-ROUTE]는 「절 단위 읽기」가 전문 Read 로 폴백한 자리 — 항목이 지목한 절 제목을 §2.9 의
+    #   「언제 읽는지」 규칙으로 고친 뒤 제거(vault 경로), repo 경로 항목은 하네스 세션 몫이라 큐에 유지.
     #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
     if "pending.md" in pages:
         pend_text = pages["pending.md"][2]
@@ -3282,7 +3284,8 @@ def main():
                      ("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비, 구현 완료 시점는 대상 프로젝트분 자동 소비)"),
                      ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — conventions.md 반영 대상(§2.9), 소비 주체·게이트는 DECISION 동형)"),
                      ("K-MISS", "K-MISS {n}건(참조 미스 = 수요 신호 — ingest에서 feature/recipe 반영·기각 판정)"),
-                     ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)"))
+                     ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)"),
+                     ("K-ROUTE", "K-ROUTE {n}건(절 라우팅 미스 — 지목된 절 제목을 §2.9 규칙으로 고친 뒤 제거, repo 경로 항목은 하네스 세션 몫이라 유지)"))
         parts = []
         for tag, label in pend_tags:
             n = sum(1 for line in pend_text.splitlines()
