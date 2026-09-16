@@ -12,6 +12,11 @@
   4. llm-wiki 가 그 태그를 conventions.md 로 라우팅한다
   5. WIKI.md 가 계획 단계에 conventions.md 를 읽으라고 지시한다
   6. plan/SKILL.md 가 WIKI.md 를 가리킨다
+  7. plan/SKILL.md 가 **소비 전** pending.md 조회도 지시한다
+
+7 이 없으면 회로는 「소비가 끝난 뒤」에만 닫힌다 — 소비 시점은 사용자가 위키
+세션을 열 때라 규약이 정하지 못한다. 실측(2026-09-16)으로 그 사이에
+[PROJECT-FACT] 43 건이 잠겨 있었고 다른 다섯 태그는 전부 0 건이었다.
 
 실행: python plugins/pjc/skills/evals/check_wiki_circuit.py [--skills <경로>]
 종료 코드: 0 통과 / 1 실패
@@ -95,6 +100,18 @@ def main() -> int:
     checks.append((
         "6. plan 이 WIKI.md 를 가리킨다",
         "WIKI.md" in plan,
+    ))
+    # 7. 소비 전 조회 경로. **한 줄 안에 두 키워드가 함께 있는지**를 본다 —
+    #  파일 전체 `in` 판정이면 `pending.md` 와 `PROJECT-FACT` 가 서로 다른
+    #  맥락에 따로 있어도 참이 되고, 이 검사기는 실제로 그 형태의 거짓 통과를
+    #  낸 전력이 있다(위 consume 주석의 A-2 사건). 둘이 같은 줄에 있다는 것은
+    #  「그 큐 파일에서 그 태그를 읽으라」는 한 규정이 실재한다는 뜻이다.
+    checks.append((
+        "7. plan 이 소비 전 pending.md 의 [PROJECT-FACT] 조회를 지시",
+        any(
+            "pending.md" in line and "PROJECT-FACT" in line
+            for line in plan.splitlines()
+        ),
     ))
 
     failed = 0
