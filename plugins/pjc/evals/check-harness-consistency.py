@@ -1763,6 +1763,19 @@ def _scan_files(exts):
                 yield os.path.join(base, n)
 
 
+def _queue_tags_of(line):
+    """그 줄의 태그 집합. **면제 표식 구간은 빼고 센다.**
+
+    면제 사유를 쓰는 가장 자연스러운 방식이 「빠진 태그 이름을 대는 것」인데, 그대로
+    세면 그 단위가 스스로 완전해져 **표식을 떼어도 불일치가 안 난다** — D9 의 「사유 없는
+    면제는 면제가 아니다」 게이트가 그 자리에서 무력해진다(회차 72 완료 리뷰 실측).
+    """
+    m = _RX_TAG_ENUM_EXEMPT.search(line)
+    if m:
+        line = line[:m.start()] + line[m.end():]
+    return set(_RX_QUEUE_TAG.findall(line))
+
+
 def _queue_tag_blocks(lines):
     """빈 줄로 끊은 블록을 `(시작줄(1-based), 줄 목록)` 으로 낸다."""
     cur, start = [], 1
@@ -1795,13 +1808,15 @@ def check_queue_tag_enum():
             continue
         gated_lines = set()
         units = []
+        seen_partials = set()
         for i, line in enumerate(lines, 1):
-            found = set(_RX_QUEUE_TAG.findall(line))
+            found = _queue_tags_of(line)
             if len(found) >= _QUEUE_TAG_GATE:
                 units.append((i, found, [line]))
                 gated_lines.add(i)
             elif 2 <= len(found) <= _QUEUE_TAG_GATE - 1:
                 partials.append("%s:%d(%d종)" % (rel, i, len(found)))
+                seen_partials.add(i)
         for start, block in _queue_tag_blocks(lines):
             if len(block) > _QUEUE_TAG_BLOCK_MAX:
                 continue
@@ -1809,9 +1824,15 @@ def check_queue_tag_enum():
                 continue
             found = set()
             for line in block:
-                found |= set(_RX_QUEUE_TAG.findall(line))
+                found |= _queue_tags_of(line)
             if len(found) >= _QUEUE_TAG_GATE:
                 units.append((start, found, block))
+            # **부분 열거도 블록 단위로 모은다** — 줄만 모으면 게이트가 D8 로 막은 사각이
+            #  조회 목록 쪽에 그대로 남는다. 「한 줄에 하나씩」 나열한 2~3종 자리는 어느
+            #  줄도 2종에 닿지 않아 줄 루프로는 원리상 안 잡힌다(실측 3자리).
+            elif 2 <= len(found) <= _QUEUE_TAG_GATE - 1 and not (seen_partials
+                                                                & set(range(start, start + len(block)))):
+                partials.append("%s:%d(%d종 · 블록)" % (rel, start, len(found)))
         for line_no, found, body in units:
             # 면제한 단위도 **분모에는 남긴다** — 분모에서 빼면 면제를 늘릴수록 축이
             #  조용해져 면제가 곧 은폐가 된다.
