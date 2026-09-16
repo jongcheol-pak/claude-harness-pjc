@@ -18,7 +18,7 @@
 
 7 이 없으면 회로는 「소비가 끝난 뒤」에만 닫힌다 — 소비 시점은 사용자가 위키
 세션을 열 때라 규약이 정하지 못한다. 실측(2026-09-16)으로 그 사이에
-[PROJECT-FACT] 43 건이 잠겨 있었고 다른 다섯 태그는 전부 0 건이었다.
+[PROJECT-FACT] 43 건이 잠겨 있었고 다른 여섯 태그는 전부 0 건이었다.
 
 실행: python plugins/pjc/skills/evals/check_wiki_circuit.py [--skills <경로>]
 종료 코드: 0 통과 / 1 실패
