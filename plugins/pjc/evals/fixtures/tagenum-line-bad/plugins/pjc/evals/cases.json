@@ -1,0 +1,10 @@
+[
+  {
+    "id": "fixture-a",
+    "checker": "harness"
+  },
+  {
+    "id": "fixture-b",
+    "checker": "harness"
+  }
+]
