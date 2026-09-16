@@ -216,6 +216,21 @@ def setup_git_vault(dest, dirty_rels):
     return True
 
 
+def commit_git_vault(dest, msg):
+    """git vault 사본의 미커밋 변경을 커밋한다 — 변경이 없으면 아무것도 하지 않는다.
+
+    **처방 호출 사이에 두는 「절차 커밋」의 재현이다**(`wiki-ops-rules.md` 「커밋 시점」 ①).
+    `lint.py`가 진입 시 dirty를 거부하므로, 앞 호출의 산출물을 커밋하지 않고 다음 호출로
+    넘기면 **규약을 어긴 상태를 재게 된다** — 골든이 재야 하는 것은 규약을 지킨 절차다."""
+    git = ["git", "-c", "user.name=lint-eval",
+           "-c", "user.email=lint-eval@example.invalid", "-C", dest]
+    subprocess.run(git + ["add", "-A"], check=True, capture_output=True, timeout=20)
+    if subprocess.run(git + ["status", "--porcelain"], capture_output=True,
+                      text=True, timeout=20).stdout.strip():
+        subprocess.run(git + ["commit", "-q", "-m", msg],
+                       check=True, capture_output=True, timeout=20)
+
+
 def prepare_git_repo_vault(fixture_dir, synced_mode):
     """fixture를 임시 폴더로 복사하고, 그 옆에 **커밋 3개짜리 임시 git 레포**를 만들어
     허브의 `__REPO_ROOT__`·`__SYNCED_SHA__`를 실제 값으로 치환한다(§7-26 골든).
@@ -804,6 +819,10 @@ def check_case(case):
             shutil.rmtree(tmp, ignore_errors=True)
             return True, "--auto-split 실패 경로 확인(rc=%d): %s" % (
                 rc, ", ".join(case.get("expect_keywords", [])))
+        # git vault면 1회째 산출물을 먼저 커밋한다 — 처방 호출 사이의 「절차 커밋」이고,
+        #  빠뜨리면 진입 가드가 2회째를 거부해 **수렴 계약이 아니라 규약 위반을 재게 된다**.
+        if case.get("git_vault"):
+            commit_git_vault(dest, "문서: 1회째 처방 결과")
         out3, rc3, err3 = run_lint(dest, ["--auto-split"])
         if rc3 != 0:
             tail = err3.strip().splitlines()[-1] if err3.strip() else "(stderr 없음)"
@@ -864,10 +883,17 @@ def check_case(case):
             shutil.rmtree(tmp, ignore_errors=True)
             return True, "SKIP (git 미설치·실행 실패 — git vault 골든은 git 필요)"
         # F-2는 한 절차 안에서 `--auto-split` 뒤에 `--fix`를 부른다(`procedures-ops.md` :63·:65).
-        #  그 연쇄에서 **두 번째 호출이 첫 번째의 미커밋 산출물 때문에 오차단되지 않는지**를
-        #  재려면 선행 호출을 실제로 태워야 한다 — 상태를 손으로 흉내 내면 그 경로가 아니다.
+        #  그 연쇄를 **규약대로**(「커밋 시점」 ① — 부르기 직전마다 커밋) 재현한다: 선행 호출을
+        #  실제로 태우고 그 산출물을 커밋한 뒤 `--fix`로 넘긴다. 상태를 손으로 흉내 내면 그
+        #  경로가 아니다.
+        #  **커밋까지 해야 G2b를 잰다** — 재는 것은 「규약을 지켰는데도 막히는가」이기 때문이다.
+        #  커밋을 빼면 그냥 dirty 거부라 `fix-dirty-reject`와 같은 축이 된다. 선행 처방이
+        #  미커밋을 실제로 남기는지는 픽스처마다 갈린다(재점검 pass가 돌면 그 진입 체크포인트가
+        #  앞 pass 결과를 담아 워킹트리가 깨끗해진다 — 2026-09-16 실측: log-guard는 clean,
+        #  prose-split은 미커밋 3건). 갈리는 쪽을 골라야 이 커밋이 실제로 일을 한다.
         if case.get("pre_auto_split"):
             run_lint(dest, ["--auto-split"])
+            commit_git_vault(dest, "문서: 선행 처방 결과")
         # 거부 케이스의 「한 바이트도 안 바뀜」은 rmtree 전에 읽어 둬야 판정할 수 있다 —
         #  auto_split 핸들러의 `unchanged_before`와 같은 축이고 같은 헬퍼를 쓴다.
         unchanged_before = {rel: _read_bytes(dest, rel)
