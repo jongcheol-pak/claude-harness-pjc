@@ -142,3 +142,44 @@ python compare_evals.py <before.json> <after.json>
 - **`trigger_eval.py`를 파일 리다이렉트로 돌리면 진행이 안 보인다** — python 이 stdout 을 블록 버퍼링해 케이스가 다 끝날 때까지 파일이 `START` 한 줄에서 자라지 않는다. **파일 mtime 으로 「정체」를 판정하면 오탐**이며(실측: 정상 실행 중인데 5분 무출력으로 정체 경보), 판정은 `python.exe` 프로세스 생존이나 `claude.exe --plugin-dir` 자식 존재로 한다. 진행을 보려면 래퍼에 `$env:PYTHONUNBUFFERED = '1'` 을 넣는다.
 - **설치·push 가 필요 없다** — 러너가 `claude --plugin-dir <워킹트리>` 로 스킬을 직접 로드하므로 워킹트리 변경이 그대로 측정된다. `init` 이벤트에서 pjc 로드를 단언하고 실패 시 exit 2 로 즉시 멈춘다.
 - **환경의 `CLAUDE_HARNESS_QUICK` 을 래퍼에서 지울 것** — hook 이 얽힌 케이스가 우회되면 측정이 교란된다(hook 골든의 같은 함정: `docs/golden-runner.md` 「⚠ 우회 변수 오염 — 실행 전에 `CLAUDE_HARNESS_QUICK`을 지울 것」).
+
+## 네이티브 `claude plugin eval` 과의 관계
+
+> **실측 2026-09-17 · Claude Code v2.1.274.** 이 절이 재는 것은 *"이 폴더의 러너 셋을 네이티브로 갈음할 수 있는가"* 하나다. **판정에 쓴 명령을 항목마다 적는다** — 갈음 여부는 CC 판이 올라갈 때마다 바뀌므로, 다시 잴 때 같은 명령을 돌려 대조한다.
+
+`claude plugin eval` 은 `<eval dir>/**/case.yaml`(또는 `prompt.md` + `graders/*.md`)을 읽어 플러그인을 로드한 채 케이스를 돌리고 점수를 낸다. 판정 근거: `claude plugin eval --help` · `code.claude.com/docs/en/plugin-evals`.
+
+### 대응되는 것 — 네이티브가 같거나 더 넓게 한다
+
+| 이 폴더의 것 | 네이티브 대응물 | 비고 |
+|---|---|---|
+| `trigger_eval.py` 의 **발동 관측** | `tool_used` 그레이더(`tool: Skill` · `input_match` · `min`/`max`) | `Skill` 호출을 세는 방식이 같다 |
+| **오발동 관측**(`expect: no-trigger`) | 같은 그레이더에 `min: 0` · `max: 0` · `arm: both` | 문서가 *"must not invoke the skill" 체크* 용도로 이 조합을 명시한다 |
+| **격리 모드**(`CLAUDE_CONFIG_DIR` 비우기) | **기본 동작** — *"user settings, hooks, `CLAUDE.md` files, MCP servers, other installed plugins, memory, and skills are absent"* | 이 폴더가 손으로 만드는 격리가 네이티브에서는 끄는 쪽이 불가능한 기본값이다 |
+| **watchdog**(케이스당 180초) | `timeout_seconds`(기본 300 · 상한 3600) · `max_turns`(기본 10 · 상한 200) | 프로세스 트리 정리까지 러너가 진다 |
+| **픽스처**(`plan.md` 유무 워크스페이스) | `context.scaffold_script` + `--scaffold` | 케이스 디렉터리의 bash 스크립트가 빈 작업 폴더를 채운다 |
+| `compare_evals.py` 의 **증감 대조** | `--ablation with-without` | **네이티브가 더 넓다** — 두 run 을 사람이 짝지어 비교하는 것이 아니라, 같은 실행 안에서 플러그인 유/무 두 arm 을 돌려 케이스별 `delta` 와 improved/flat/regressed 집계를 낸다 |
+| **공통 출력 계약**(`run_id`·`summary`·`cases[]`) | `--json` 의 `aggregate-result.json` + 자체 포함 HTML 리포트 | 케이스별 `aggregates.score`·`aggregates.delta`·run 별 `error` 를 담는다 |
+| `rubric_eval.py` 의 **8항목 채점** | `llm` 그레이더(`criteria` · 3표 중 2표 PASS) · `baseline` 그레이더(기준 transcript 대비) | 심사 모델은 `--judge-model`(기본 haiku) |
+| **`PYTHONUTF8=1` 강제** | — | 러너가 python 이라 생긴 문제다. 네이티브는 python 을 거치지 않아 **원인이 소멸**한다 |
+
+### 비대응 — 이관하면 잃는 것
+
+| # | 잃는 것 | 판정 근거 | 대가 |
+|---|---|---|---|
+| 1 | **`inconclusive` 분모 제외** | 문서의 `max_turns` 항: *"Hitting it is recorded as a run error and usually lowers the score"* — 네이티브는 턴 소진을 **점수를 깎는 오류**로 센다. 이 폴더는 *"스킬을 안 쓰기로 판단한 것이 아니라 호출 기회 자체가 없었던 것"* 이라 **분모에서 뺀다** | **현행 기준선과 대조 자격을 잃는다** — 발동률의 분모 정의가 달라진다. 완화책은 `max_turns` 를 넉넉히 주어 소진 자체를 줄이는 것이고(현행 러너는 8, 네이티브 기본 10 · 상한 200), 그래도 *같은 정의로 잰 값* 이 아니므로 **재기준선이 필요하다** |
+| 2 | **비격리 모드** | 네이티브는 개인·프로젝트 설정을 항상 배제한다(위 표) — 끄는 옵션이 없다 | *실사용 환경의 발동률* 을 재는 축이 사라진다. 이 폴더는 격리 0.6 / 비격리 0.9 로 갈린 실측을 갖고 있고, 그 차이가 글로벌 지침의 기여분이다 |
+| 3 | **exit 2 즉시 중단형 로드 단언** | 네이티브는 케이스에 `plugins: ["../.."]` 를 적고, 해소되지 않으면 *"ablation requested but no plugin resolved"* 로 **그 케이스가 실패**한다 | 은닉 실패 방어는 있으나 **등급이 다르다** — 전 케이스가 조용히 「미발동」으로 집계되는 것은 막히지만, 첫 케이스에서 즉시 멈추는 대신 스위트를 끝까지 돌린다 |
+| 4 | **미발동 진단**(`tool_calls` 순서 · `stop_reason` · `final_text` 앞 300자) | `--json` 문서가 명시하는 run 단위 필드는 `error`·`aborted`·`skippedPaidGraders` 뿐이다 | 미발동의 네 원인(되물음·픽스처 어긋남·턴 소진·description 불일치)을 가르는 정보가 줄어든다. HTML 리포트가 transcript 를 담는지는 **미측정** |
+| 5 | **1회 실행 기본** | `--runs` 기본값이 `case.runs ?? 3` 이다 | 같은 케이스를 3회 돌리므로 **비용이 3배**다. `--runs 1` 로 되돌릴 수 있으나 그러면 네이티브가 주는 편차 정보를 버린다 |
+
+### `evals/` 이름 충돌 — 이관 전에 정할 것
+
+네이티브의 기본 eval 디렉터리는 **플러그인 아래 `evals/`**, 곧 `plugins/pjc/evals/` 다. 그 자리는 이미 **python 정합 검사기 셋과 그 골든**(`cases.json` 98케이스 · `run-evals.py`)이 쓰고 있어, 케이스 디렉터리를 그 아래 두면 두 체계가 한 폴더를 공유한다.
+
+해소 경로는 둘이고 **양립하지 않는다 — 하나를 고른다**:
+
+- `plugins/pjc/.claude-plugin/plugin.json` 에 `"experimental": { "evals": "<경로>" }` 를 둔다 — 매니페스트가 정본이 되어 `claude plugin eval` 과 `claude plugin eval init` 이 인자 없이 같은 곳을 본다
+- 매번 `--eval-dir <경로>` 를 준다 — 두 명령 **모두에** 줘야 하고, 빠뜨린 호출이 기본 `evals/` 를 보게 된다
+
+**전자가 낫다** — 후자는 인자를 빠뜨린 한 번이 조용히 다른 디렉터리를 만든다.
