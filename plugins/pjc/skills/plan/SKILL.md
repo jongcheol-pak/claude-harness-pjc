@@ -37,7 +37,7 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 
 - **읽은 결과는 Investigation Log에 남긴다** — 다음 세션이 같은 근거를 재조회 없이 쓴다.
 
-- **2번에서 읽은 함정(`conventions.md`·feature 절·`[PROJECT-FACT]`)은 Log에 적고 끝내지 말고 그것이 걸리는 task의 `함정` 줄로 배분한다** — Log는 확인 기록이라 실행자가 편집하는 순간에는 보지 않는다(의무의 정본은 `../WIKI.md` §1·§2).
+- **2번에서 읽은 함정(`conventions.md`·feature 절·`[PROJECT-FACT]`)은 Log에 적고 끝내지 말고 그것이 쓰이는 시점의 자리로 보낸다** — 명령·acceptance·task 분해를 바꾸는 것은 `## 계획 함정` 절로, 파일을 고치는 손에 걸리는 것은 그 task의 `함정` 줄로 간다. Log는 확인 기록이라 그것을 쓰는 순간에는 보지 않는다(가르는 기준과 의무의 정본은 `../WIKI.md` §1·§2, 서식은 `references/plan-template.md`).
 
 ### AGENTS.md가 없을 때
 
