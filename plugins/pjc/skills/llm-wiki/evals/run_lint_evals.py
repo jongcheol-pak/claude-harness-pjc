@@ -216,6 +216,27 @@ def setup_git_vault(dest, dirty_rels):
     return True
 
 
+def rmtree_force(path):
+    """임시 폴더를 지운다 — **read-only 파일을 해제하고 재시도한다.**
+
+    `shutil.rmtree(..., ignore_errors=True)` 로는 **git object 가 남는다** — git 이 object
+    파일을 read-only 로 만들고 Windows 는 그런 파일의 삭제를 거부하는데, `ignore_errors` 가
+    그 실패를 삼켜 폴더가 조용히 누적된다(2026-09-17 실측: `/tmp/lint-eval-*` 1,826건 ·
+    33일치 · 실행마다 +9). 케이스가 vault 사본을 `git init` 하면서 그 경로가 늘었다.
+
+    `onexc` 는 3.12+ 이름이고 그 아래는 `onerror` 다 — 둘 다 받도록 갈라 둔다."""
+    def _clear_readonly(func, p, _exc):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except OSError:
+            pass   # 그래도 못 지우면 넘어간다 — 정리 실패가 판정을 막지는 않는다
+    try:
+        shutil.rmtree(path, onexc=_clear_readonly)
+    except TypeError:
+        shutil.rmtree(path, onerror=_clear_readonly)
+
+
 def commit_git_vault(dest, msg):
     """git vault 사본의 미커밋 변경을 커밋한다 — 변경이 없으면 아무것도 하지 않는다.
 
@@ -261,7 +282,7 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
                                  check=True, capture_output=True, text=True, timeout=20)
             shas.append(out.stdout.strip())
     except (OSError, subprocess.SubprocessError):
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         return None, None  # git 미설치·실행 실패 → 케이스 SKIP
     # "first" = 첫 커밋 기준 → 이후 2커밋이 미반영. "missing" = 이력에 없는 sha(rebase 소실 재현).
     synced = shas[0] if synced_mode == "first" else "0" * 40
@@ -468,7 +489,7 @@ def check_case(case):
                 b = fh.read()
             shapes[name] = (b.startswith(b"\xef\xbb\xbf"), b"\r\n" in b,
                             b"\r\n" not in b and b"\n" in b)
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         if rc != 0:
             return False, "build-index 종료코드 %d: %s" % (rc, out.strip()[:120])
         want_bom = case.get("expect_bom", True)
@@ -501,7 +522,7 @@ def check_case(case):
         for n in subs:
             with open(os.path.join(dest, n), "rb") as fh:
                 sub_text += fh.read().decode("utf-8")
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         if err.strip():
             return False, "stderr 발생: " + err.strip().splitlines()[-1]
         if rc != 0:
@@ -544,7 +565,7 @@ def check_case(case):
         before = _snapshot_md(dest)
         out, rc, err = run_lint(dest, ["--build-index", "--dry-run"])
         after = _snapshot_md(dest)
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         if err.strip():
             return False, "stderr 발생: " + err.strip().splitlines()[-1]
         if before != after:
@@ -569,7 +590,7 @@ def check_case(case):
         after_ro = sorted(os.listdir(root))
         out1, rc1, err1 = run_lint(dest, ["--fix"])
         kept = sorted(os.listdir(root))
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         if "== llm-wiki Lint:" not in out0 or "== llm-wiki Lint:" not in out1:
             tail = (err0 or err1).strip().splitlines()[-1] if (err0 or err1).strip() else "(stderr 없음)"
             return False, f"lint.py 비정상 종료(무플래그={rc0}/fix={rc1}): {tail}"
@@ -624,7 +645,7 @@ def check_case(case):
         for kw in case.get("after_expect_absent", []):
             if kw in out2:
                 problems.append("수행 후 재lint에 위반 잔존: " + kw)
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         if problems:
             return False, " / ".join(problems)
         return True, ("본체 %d줄(임계 %d 이하) · 덜어낸 구역 %d개 · §7-23 오탐 0"
@@ -675,7 +696,7 @@ def check_case(case):
         for keep in case.get("expect_kept", []):
             if not os.path.exists(os.path.join(dest, keep)):
                 problems.append("생성물이 아닌 파일이 삭제됨(델타 음성 실패): " + keep)
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         if problems:
             return False, " / ".join(problems)
         return True, ("순번 분할 %d개·행 %d 보존·임계 %d 준수·stale %d 제거·델타 음성 유지"
@@ -694,13 +715,13 @@ def check_case(case):
         # git vault 케이스는 사본을 저장소로 만든 뒤에 돈다 — 체크포인트 커밋·진입 가드가
         #  `vault/.git` 유무로 갈리므로, 이 한 줄이 그 경로 전체의 스위치다.
         if case.get("git_vault") and not setup_git_vault(dest, case.get("git_vault_dirty", [])):
-            shutil.rmtree(tmp, ignore_errors=True)
+            rmtree_force(tmp)
             return True, "SKIP (git 미설치·실행 실패 — git vault 골든은 git 필요)"
         dry_before = _snapshot_md(dest)
         out_dry, rc_dry, err_dry = run_lint(dest, ["--auto-split", "--dry-run"])
         dry_after = _snapshot_md(dest)
         if dry_before != dry_after:
-            shutil.rmtree(tmp, ignore_errors=True)
+            rmtree_force(tmp)
             changed = sorted(k for k in set(dry_before) | set(dry_after)
                              if dry_before.get(k) != dry_after.get(k))
             return False, "--auto-split --dry-run이 파일을 변경함: " + ", ".join(changed)
@@ -830,7 +851,7 @@ def check_case(case):
             #  보장이 사라졌다 — 쌓인 사유가 있는데 여기서 성공을 내면 **변이를 걸어도 PASS**가
             #  되어 이 회차가 세우려는 검증이 통째로 거짓이 된다.
             undo_split_failures(restore)
-            shutil.rmtree(tmp, ignore_errors=True)
+            rmtree_force(tmp)
             return True, "--auto-split 실패 경로 확인(rc=%d): %s" % (
                 rc, ", ".join(case.get("expect_keywords", [])))
         # git vault면 1회째 산출물을 먼저 커밋한다 — 처방 호출 사이의 「절차 커밋」이고,
@@ -841,6 +862,10 @@ def check_case(case):
         if rc3 != 0:
             tail = err3.strip().splitlines()[-1] if err3.strip() else "(stderr 없음)"
             problems.append(f"2회째 --auto-split 비정상 종료({rc3}): {tail}")
+        # **여기만 `elif` 인 것은 축 억제가 아니라 근거 부재다** — 2회째가 비정상 종료하면
+        #  `out3` 자체가 판정 근거가 못 되므로(출력이 잘렸거나 아예 없다) 수렴 축은 잴 대상이
+        #  없다. 위 「조기 종료로 남는 것은 둘뿐」과 어긋나 보이지만, 그쪽은 **잴 수 있는데
+        #  끊는 것**을 막는 규칙이다.
         elif "수행 대상 없음" not in out3:
             # 어느 처방이 수렴하지 않았는지가 판정 근거다 — 건수만으로는 원인을 못 가른다.
             #  **`== --auto-split:` 배너 뒤만 본다** — 그 앞에는 연쇄 호출한 build_index의
@@ -855,7 +880,7 @@ def check_case(case):
                             + ("; ".join(did) if did else out3.strip()))
         # 정리는 여기 한 자리다 — 위 판정들이 각자 되돌리고 나가던 것을 모았다.
         undo_split_failures(restore)
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         if problems:
             return False, " / ".join(problems)
         return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
@@ -874,7 +899,7 @@ def check_case(case):
         after = _snapshot_md(dest)
         broot = os.path.join(dest, "90_archive", "backup")
         made = sorted(os.listdir(broot)) if os.path.isdir(broot) else []
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         if before != after:
             changed = sorted(k for k in set(before) | set(after)
                              if before.get(k) != after.get(k))
@@ -896,7 +921,7 @@ def check_case(case):
         dest = os.path.join(tmp, os.path.basename(vault))
         shutil.copytree(vault, dest)
         if case.get("git_vault") and not setup_git_vault(dest, case.get("git_vault_dirty", [])):
-            shutil.rmtree(tmp, ignore_errors=True)
+            rmtree_force(tmp)
             return True, "SKIP (git 미설치·실행 실패 — git vault 골든은 git 필요)"
         # F-2는 한 절차 안에서 `--auto-split` 뒤에 `--fix`를 부른다(`procedures-ops.md` :63·:65).
         #  그 연쇄를 **규약대로**(「커밋 시점」 ① — 부르기 직전마다 커밋) 재현한다: 선행 호출을
@@ -918,7 +943,7 @@ def check_case(case):
         out2, rc2, err2 = run_lint(dest)
         unchanged_after = {rel: _read_bytes(dest, rel)
                            for rel in case.get("expect_unchanged", [])}
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
         # auto_split 핸들러와 같은 수집형이다 — 앞 축이 뒤 축을 가리지 않게 한다.
         #  **정리는 여기서 옮기지 않는다** — 이 핸들러는 판정에 쓸 값을 모두 먼저 읽어 두고
         #  (`out1`·`out2`·`unchanged_after`) `rmtree` 를 그 뒤에 두는 구조라, 임시 경로에
@@ -970,7 +995,7 @@ def check_case(case):
         tmp, vault = prepare_bad_index_vault(vault)
     out, rc, err = run_lint(vault)
     if tmp:
-        shutil.rmtree(tmp, ignore_errors=True)
+        rmtree_force(tmp)
     # lint.py는 ERR가 있으면 exit 1(L-5 — A-4/B-3 자동 게이트용), 없으면 0, 사용법 오류 2다.
     #  정상 실행은 stdout에 리포트 헤더('== llm-wiki Lint:')를 내므로, 헤더가 있으면 rc와 무관하게
     #  결과를 파싱한다(exit 1이 곧 ERR 검출이라 위반 fixture는 정상이다). 헤더가 없는 종료만
