@@ -351,7 +351,7 @@ $legacyPlansDir = Join-Path $projectRoot 'docs/plans'
 if (Test-Path -LiteralPath $legacyPlansDir -PathType Container) {
     [Console]::Error.WriteLine("")
     [Console]::Error.WriteLine("※ plan 위치는 루트 plan.md 하나입니다 — docs/plans/ 의 날짜별 파일은 완료된")
-    [Console]::Error.WriteLine("   과거 회차의 기록이라 plan 판정에 쓰이지 않습니다(그 디렉터리는 Deferred 대장 전용).")
+    [Console]::Error.WriteLine("   과거 회차의 기록이라 plan 판정에 쓰이지 않습니다(그 디렉터리는 대장·기록 파일 전용).")
 }
 [Console]::Error.WriteLine("")
 [Console]::Error.WriteLine("해결 방법:")
