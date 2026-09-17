@@ -919,32 +919,40 @@ def check_case(case):
         unchanged_after = {rel: _read_bytes(dest, rel)
                            for rel in case.get("expect_unchanged", [])}
         shutil.rmtree(tmp, ignore_errors=True)
+        # auto_split 핸들러와 같은 수집형이다 — 앞 축이 뒤 축을 가리지 않게 한다.
+        #  **정리는 여기서 옮기지 않는다** — 이 핸들러는 판정에 쓸 값을 모두 먼저 읽어 두고
+        #  (`out1`·`out2`·`unchanged_after`) `rmtree` 를 그 뒤에 두는 구조라, 임시 경로에
+        #  의존하는 판정이 남아 있지 않다. auto_split 쪽과 다른 것은 결함이 아니라 구조다.
+        problems = []
         want_rc = case.get("expect_rc", 0)
         if rc1 != want_rc:
             tail = err1.strip().splitlines()[-1] if err1.strip() else "(stderr 없음)"
-            return False, f"--fix 종료 코드 불일치 — 기대 {want_rc} / 실제 {rc1}: {tail}"
+            problems.append(f"--fix 종료 코드 불일치 — 기대 {want_rc} / 실제 {rc1}: {tail}")
         # **거부는 본 lint를 이어 돌리지 않는다** — 「수행하지 않았다」인데 수정 후 상태를
         #  보고하면 「고쳐졌나」가 흐려지기 때문이다(lint.py `main()`). 그 케이스에서는 이
         #  헤더가 없는 것이 정상이므로 `expect_lint_output: false`로 가른다. 재실행(out2)은
         #  언제나 read-only라 헤더가 항상 나온다 — 그쪽은 조건 없이 잰다.
         if case.get("expect_lint_output", True) and "== llm-wiki Lint:" not in out1:
             tail = err1.strip().splitlines()[-1] if err1.strip() else "(stderr 없음)"
-            return False, f"lint.py 비정상 종료(fix={rc1}): {tail}"
+            problems.append(f"lint.py 비정상 종료(fix={rc1}): {tail}")
         if "== llm-wiki Lint:" not in out2:
             tail = err2.strip().splitlines()[-1] if err2.strip() else "(stderr 없음)"
-            return False, f"lint.py 비정상 종료(재실행={rc2}): {tail}"
+            problems.append(f"lint.py 비정상 종료(재실행={rc2}): {tail}")
         for rel, before in unchanged_before.items():
             if unchanged_after.get(rel) != before:
-                return False, "--fix 미수행인데 변경됐다: " + rel
+                problems.append("--fix 미수행인데 변경됐다: " + rel)
         missing = [kw for kw in case.get("expect_keywords", []) if kw not in out1]
         if missing:
-            return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
+            problems.append("--fix 출력 미검출 키워드: " + ", ".join(missing))
         residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
         if residual:
-            return False, "수정 후 재lint에 위반 잔존: " + ", ".join(residual)
+            problems.append("수정 후 재lint에 위반 잔존: " + ", ".join(residual))
         missing2 = [kw for kw in case.get("after_expect_keywords", []) if kw not in out2]
         if missing2:
-            return False, "수정 후 재lint 기대 키워드 미검출(비제거 대상이 사라짐 의심): " + ", ".join(missing2)
+            problems.append("수정 후 재lint 기대 키워드 미검출(비제거 대상이 사라짐 의심): "
+                            + ", ".join(missing2))
+        if problems:
+            return False, " / ".join(problems)
         return True, "--fix 적용·재lint 해소 확인: " + ", ".join(case.get("expect_keywords", []))
 
     tmp = None
