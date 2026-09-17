@@ -7,6 +7,9 @@
 #   .\install.ps1 -Scope project                     # 프로젝트별 설치 (.claude/settings.json)
 #   .\install.ps1 -Uninstall                         # 제거만
 #   .\install.ps1 -KeepExisting                      # 이미 설치되어 있으면 그대로 둠
+#   .\install.ps1 -PruneCache                        # 구버전 캐시 열거만 (한 바이트도 지우지 않음)
+#   .\install.ps1 -PruneCache -ConfirmPrune          # 열거한 구버전을 실제로 회수
+#   .\install.ps1 -PruneCache -KeepVersions 5        # 보존할 최신 버전 수를 바꿈 (기본 3)
 #
 # 모드 차이:
 #   로컬 모드  - 이 폴더가 plugin 본체로 참조됨. 폴더를 삭제/이동하면 plugin이 깨짐.
@@ -24,7 +27,18 @@ param(
 
     [switch]$SkipVerification,
 
-    [switch]$KeepExisting
+    [switch]$KeepExisting,
+
+    # 구버전 캐시 회수. 단독으로는 열거만 하고 -ConfirmPrune 이 있어야 지운다 —
+    #   설치본은 실행 중인 세션의 hook 이 사는 곳이라 오삭제가 그 세션을 fail-open 으로 떨어뜨린다.
+    [switch]$PruneCache,
+
+    # 실삭제 스위치. 이름을 -Confirm 으로 두지 않는 것은 그것이 PowerShell 공통 파라미터라
+    #   CmdletBinding 을 붙이는 순간 의미가 갈리기 때문이다.
+    [switch]$ConfirmPrune,
+
+    # 보존할 최신 버전 수. 되돌릴 자리를 남기려고 1 이 아니라 3 이다.
+    [int]$KeepVersions = 3
 )
 
 $ErrorActionPreference = 'Stop'
@@ -118,6 +132,89 @@ if ($Uninstall) {
 
     Write-Host ""
     Write-Host "Uninstall complete." -ForegroundColor Green
+    Write-Host ""
+    return
+}
+
+# ---- 3-2. 구버전 캐시 회수 모드 ----
+# 무엇을: ~/.claude/plugins/cache/pjc-harness/pjc/ 아래 버전 폴더 중 오래된 것을 지운다.
+# 왜: /plugin update 가 버전마다 폴더를 새로 만들고 예전 것을 지우지 않아 단조 증가한다
+#     (2026-09-17 실측 55버전·36,718파일·192.1MB — 다른 플러그인 캐시 전체 합의 2.6배).
+# 안전: 기본은 열거만이고 -ConfirmPrune 이 있어야 지운다. 보존 대상은 「최신 N개」에 더해
+#     repo plugin.json 의 현행 버전이며, 후자는 N 이 작아도 절대 빠지지 않는다 —
+#     지금 돌고 있는 세션의 hook 이 그 폴더에 살아 있어 지우면 그 세션이 fail-open 으로 떨어진다.
+if ($PruneCache) {
+    Write-Section "Pruning old plugin cache"
+
+    $pjcCacheRoot = Join-Path $homeBase ".claude/plugins/cache/pjc-harness/pjc"
+    if (-not (Test-Path -LiteralPath $pjcCacheRoot)) {
+        Write-Info "회수할 캐시가 없습니다: $pjcCacheRoot"
+        Write-Host ""
+        return
+    }
+
+    # 현행 버전은 repo 의 plugin.json 이 정본이다(AGENTS.md 「Release」).
+    #   못 읽으면 보존 목록을 세울 수 없으므로 열거도 하지 않고 멈춘다 — fail-closed.
+    $currentVersion = $null
+    $manifest = Join-Path $PSScriptRoot "plugins/pjc/.claude-plugin/plugin.json"
+    if (Test-Path -LiteralPath $manifest) {
+        try { $currentVersion = (Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json).version } catch { }
+    }
+    if (-not $currentVersion) {
+        Write-Err "plugin.json 의 현행 버전을 읽지 못해 회수를 중단합니다: $manifest"
+        Write-Info "보존 대상을 세울 수 없는 상태에서 지우면 실행 중인 세션의 hook 이 사라질 수 있습니다."
+        exit 1
+    }
+
+    # 문자열이 아니라 [version] 으로 정렬한다 — 문자열 정렬은 1.9.0 을 1.10.0 보다 뒤에 둔다.
+    $dirs = @(Get-ChildItem -LiteralPath $pjcCacheRoot -Directory -ErrorAction SilentlyContinue)
+    $parsed = @($dirs | ForEach-Object {
+        $v = $null
+        if ([version]::TryParse($_.Name, [ref]$v)) { [pscustomobject]@{ Dir = $_; Ver = $v } }
+        else { Write-Warn "버전으로 읽히지 않아 보존합니다: $($_.Name)" }
+    })
+
+    $keepNames = @($parsed | Sort-Object Ver -Descending | Select-Object -First $KeepVersions | ForEach-Object { $_.Dir.Name })
+    if ($keepNames -notcontains $currentVersion) { $keepNames += $currentVersion }
+
+    $targets = @($parsed | Where-Object { $keepNames -notcontains $_.Dir.Name } | Sort-Object Ver)
+    if ($targets.Count -eq 0) {
+        Write-Ok "회수할 구버전이 없습니다 (보존 $($keepNames.Count)개)."
+        Write-Host ""
+        return
+    }
+
+    $files = 0
+    $bytes = 0
+    foreach ($t in $targets) {
+        $f = @(Get-ChildItem -LiteralPath $t.Dir.FullName -Recurse -File -ErrorAction SilentlyContinue)
+        $files += $f.Count
+        $bytes += ($f | Measure-Object Length -Sum).Sum
+    }
+
+    Write-Info "보존: $($keepNames -join ', ')  (현행 $currentVersion 포함)"
+    Write-Info "회수 대상: $($targets.Count)개 버전 · $files 파일 · $([Math]::Round($bytes / 1MB, 1)) MB"
+    Write-Info "  $(($targets | ForEach-Object { $_.Dir.Name }) -join ', ')"
+
+    if (-not $ConfirmPrune) {
+        Write-Host ""
+        Write-Warn "열거만 했습니다 — 한 바이트도 지우지 않았습니다."
+        Write-Info "실제로 회수하려면: .\install.ps1 -PruneCache -ConfirmPrune"
+        Write-Host ""
+        return
+    }
+
+    $removed = 0
+    foreach ($t in $targets) {
+        try {
+            Remove-Item -Recurse -Force -LiteralPath $t.Dir.FullName -ErrorAction Stop
+            $removed++
+        } catch {
+            Write-Warn "삭제 실패: $($t.Dir.Name) — $($_.Exception.Message)"
+        }
+    }
+    Write-Ok "$removed/$($targets.Count)개 버전 회수 완료 ($([Math]::Round($bytes / 1MB, 1)) MB)"
+    Write-Info "구버전이 다시 필요하면 GitHub 태그에서 재설치합니다."
     Write-Host ""
     return
 }

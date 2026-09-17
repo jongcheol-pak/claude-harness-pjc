@@ -434,6 +434,28 @@ git add -A && git commit -m "변경 내용" && git push
 
 </details>
 
+<details>
+<summary>구버전 캐시 회수</summary>
+
+`/plugin update`는 버전마다 `~/.claude/plugins/cache/pjc-harness/pjc/<버전>/` 을 새로 만들고 예전 것을 지우지 않아 캐시가 단조 증가합니다. `-PruneCache`가 오래된 버전 폴더를 회수합니다.
+
+```powershell
+# 열거만 — 한 바이트도 지우지 않고 대상 버전·파일 수·크기만 보여준다
+.\install.ps1 -PruneCache
+
+# 실제 회수 (-ConfirmPrune 이 있어야 지운다)
+.\install.ps1 -PruneCache -ConfirmPrune
+
+# 보존할 최신 버전 수를 바꾼다 (기본 3)
+.\install.ps1 -PruneCache -KeepVersions 5 -ConfirmPrune
+```
+
+**보존 대상은 「최신 N개」에 더해 `plugin.json`의 현행 버전이며, 후자는 `-KeepVersions`가 작아도 빠지지 않습니다** — 지금 돌고 있는 세션의 hook이 그 폴더에 살아 있어, 지우면 그 세션의 안전장치가 통째로 사라집니다. `plugin.json`을 읽지 못하면 열거도 하지 않고 멈춥니다.
+
+회수한 구버전이 다시 필요하면 GitHub 태그에서 재설치합니다.
+
+</details>
+
 ---
 
 ## 트러블슈팅
