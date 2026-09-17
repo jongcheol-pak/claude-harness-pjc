@@ -1319,6 +1319,9 @@ class SplitSession:
             #  호출당으로 합치면 재점검 pass 실패가 본 pass 성공분까지 되돌린다.
             self.checkpoint_failed = not _checkpoint_commit(self.git_root, "auto-split")
         self.backed_up = set()
+        # 원복 대상의 BOM·줄바꿈 — **git 경로 전용**이다(사본 복원은 바이트를 그대로 옮긴다).
+        #  왜 필요한지는 `_restore_shape`.
+        self.shape = {}
         self.created = set()   # 이번 실행이 **만든** 파일 — restore()가 걷는다(§4 5번)
         self.claimed = set()   # 이번 실행에서 어느 처방이 이미 맡은 파일 — claim() 참조
         self.current_claims = set()   # **지금 도는 처방이** 맡은 것 — 격리·계약 강제의 단위
@@ -1353,7 +1356,12 @@ class SplitSession:
             if not os.path.exists(p) or p in self.backed_up:
                 continue
             if self.git_root:
-                self.backed_up.add(p)   # 원복 대상 등록만 — 상태는 체크포인트 커밋이 잡았다
+                # 원복 대상 등록만 — 상태는 체크포인트 커밋이 잡았다. **형상은 따로 기록한다**:
+                #  체크포인트가 담는 것은 인덱스 내용이고 그것은 줄바꿈이 LF 로 정규화된 판이라,
+                #  원복이 워킹트리 바이트를 그대로 돌려주지 않는다(`_restore_shape`).
+                _text, bom, nl = _read_page(p)
+                self.shape[p] = (bom, nl)
+                self.backed_up.add(p)
                 continue
             rel = os.path.relpath(p, self.vault)
             dest = os.path.join(self.backup_dir, rel)
@@ -1415,6 +1423,9 @@ class SplitSession:
             if _git(self.git_root, "checkout", "--", *rels) is None:
                 self.notes.append("원복 실패(git checkout): " + ", ".join(rels))
             else:
+                # **성공한 대상만** 형상을 보정한다 — 원복이 안 된 파일에 줄바꿈만 맞추면
+                #  반쯤 고쳐진 상태가 되고, 그것은 원복 실패보다 진단하기 어렵다.
+                self._restore_shape(targets)
                 n += len(rels)
             targets = []   # git 경로에서 처리 완료 — 아래 사본 루프는 비 git 전용이다
         for p in targets:
@@ -1436,6 +1447,30 @@ class SplitSession:
             except OSError:
                 self.notes.append(f"신설물 제거 실패: {os.path.relpath(p, self.vault)}")
         return n
+
+    def _restore_shape(self, paths):
+        """`git checkout`이 눕힌 BOM·줄바꿈을 `backup()`이 기록한 형상으로 되쓴다.
+
+        **git 원복은 워킹트리 바이트를 그대로 돌려주지 않는다** — 되쓰는 것은 인덱스 내용이고
+        인덱스는 줄바꿈을 LF로 정규화하므로, `core.autocrlf=true`(Windows git 설치 기본값)면
+        체크아웃이 그것을 CRLF로 되돌린다. 원래 LF였던 페이지는 그 왕복에서 CRLF가 되어
+        (2026-09-17 실측: 커밋 후 `CRLF 0 / LF 3` → `git checkout --` 뒤 `CRLF 3 / LF 0`)
+        `_read_page`/`_atomic_write`가 지켜 온 형상 보존이 원복 한 번에 깨진다. **사본 복원은
+        `shutil.copy2`로 바이트를 그대로 옮기므로 이 보정이 필요 없다 — 갈리는 것은 git 경로
+        하나다.**
+
+        **BOM도 함께 되쓴다** — `_atomic_write`가 BOM을 별도 인자로 받으므로 줄바꿈만 전달하면
+        BOM 있는 페이지가 그 자리에서 BOM을 잃는다."""
+        for p in paths:
+            want = self.shape.get(p)
+            if want is None:
+                continue        # 사본 경로에서 온 대상 — 기록이 없는 것이 정상이다
+            text, now_bom, now_nl = _read_page(p)
+            if text is None or (now_bom, now_nl) == want:
+                continue
+            if not _atomic_write(p, text, bom=want[0], newline=want[1]):
+                self.notes.append(
+                    "형상 복원 실패(BOM·줄바꿈): " + os.path.relpath(p, self.vault))
 
     def mark_created(self, *paths):
         """이번 실행이 새로 만든 파일을 등록한다 — 원복이 지울 대상이다(§4 5번).
