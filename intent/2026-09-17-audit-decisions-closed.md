@@ -7,11 +7,11 @@ Author: 사용자. Status: approved.
 
 ## Proposed outcome
 
-`DESIGN.md` 의 「의도적 이중화」 예외가 개수 갈림을 **의도적 차이로 판정**하고, 축 신설 트리거가 「개수 갈림」이 아니라 「내용 모순」을 가리킨다. `evals/README.md` 가 이관 **보류** 판정을 명시해, 「이관 전에 정할 것」이 미결 과제가 아니라 재검토 시의 조사 결과로 읽힌다.
+`DESIGN.md` 「2. 자기참조 금지」의 의도적 이중화 예외가 개수 갈림을 **의도적 차이로 판정**하고, 축 신설 트리거가 「개수 갈림」이 아니라 「내용 모순」을 가리킨다. `evals/README.md` 가 이관 **보류** 판정을 명시해, 「이관 전에 정할 것」이 미결 과제가 아니라 재검토 시의 조사 결과로 읽힌다.
 
 ## Affected users and systems
 
-`pjc` 하니스를 고치는 세션(사람·모델). 걸리는 파일은 `plugins/pjc/skills/DESIGN.md` 와 `plugins/pjc/skills/evals/README.md` 둘이고, `BUDGET.md`:31 이 「의도적 이중화」를 이름으로 인용하므로 그 이름은 바꾸지 않는다.
+`pjc` 하니스를 고치는 세션(사람·모델). 걸리는 파일은 `plugins/pjc/skills/DESIGN.md` 와 `plugins/pjc/skills/evals/README.md` 둘이고, `BUDGET.md`:31 이 그 예외를 *의도적 이중화*라는 이름으로 인용하므로 그 이름은 바꾸지 않는다.
 
 ## Constraints
 
