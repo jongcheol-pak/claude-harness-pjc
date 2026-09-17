@@ -715,39 +715,42 @@ def check_case(case):
         #  내는 값이라 골든 픽스처에서는 나올 이유가 없는데, 종전 판정이 0과 1을 함께 통과시켜
         #  **`ses.failed`가 종료 코드로 나가는 경로 전체가 골든 밖**이었다(실측: 재점검 실패를
         #  합류시키는 한 줄을 지워도 전건 PASS였다). 당시 27케이스 전부 rc 0임을 실측하고 좁혔다. **지금은 케이스가 기대 종료 코드를 직접 적는다**(`expect_rc`) — 회차 45가 실패 주입 경로를 열면서 rc 1이 정상인 케이스가 생겼고, 0 고정으로 두면 그 케이스가 통과할 수 없다.
+        # **여기서부터 핸들러 끝까지 실패를 즉시 내지 않고 `problems`에 모은다.**
+        #  앞 축이 뒤 축을 가리면 그 뒤 축은 **어떤 변이를 걸어도 검증되지 않는다** — rc 판정이
+        #  먼저 끊어 파일 축(`expect_unchanged`·`expect_absent_files`)이 실제로 무는지가
+        #  한 번도 확인되지 않은 채로 있었다(2026-09-17 회차가 그것을 고친다). 수집형이면
+        #  변이 하나로 걸리는 축이 **전부** 드러난다.
+        #  **조기 종료로 남는 것은 둘뿐이다** — 위 SKIP(git 미설치)과 dry-run 무변경 위반.
+        #  후자는 그 시점에 파일이 이미 오염돼 이후 판정이 무의미하다.
+        #  정리(`undo_split_failures`·`rmtree`)는 각 판정에 붙이지 않고 **끝 한 자리**로 모은다.
+        problems = []
         want_rc = case.get("expect_rc", 0)
         if rc != want_rc:
             tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
-            undo_split_failures(restore)
-            shutil.rmtree(tmp, ignore_errors=True)
-            return False, f"--auto-split 종료 코드 불일치 — 기대 {want_rc} / 실제 {rc}: {tail}"
+            problems.append(f"--auto-split 종료 코드 불일치 — 기대 {want_rc} / 실제 {rc}: {tail}")
         # **원본이 그대로인가** — 처방이 실패했는데 원본만 갱신되면 항목이 어디에도 없다.
         #  출력에 `[SPLIT-FAIL]`이 있는 것만으로는 그 유실이 걸러지지 않는다.
         for rel, before in unchanged_before.items():
             if _read_bytes(dest, rel) != before:
-                undo_split_failures(restore)
-                shutil.rmtree(tmp, ignore_errors=True)
-                return False, "처방 실패인데 변경됐다: " + rel
+                problems.append("처방 실패인데 변경됐다: " + rel)
         # **원복이 신설물을 걷었는가**(§4 5번) — 사본으로 되돌릴 수 있는 것은 이미 있던
         #  파일뿐이라, 신설된 하위·아카이브는 지우지 않으면 원복 뒤에도 남는다. 그 상태는
         #  「원본은 되돌아갔는데 그것이 가리키던 파일은 그대로」다.
         for rel in case.get("expect_absent_files", []):
             if _read_bytes(dest, rel) is not None:
-                undo_split_failures(restore)
-                shutil.rmtree(tmp, ignore_errors=True)
-                return False, "원복 후에도 신설물이 남았다: " + rel
+                problems.append("원복 후에도 신설물이 남았다: " + rel)
         missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
         if missing:
-            return False, "--auto-split 출력 미검출 키워드: " + ", ".join(missing)
+            problems.append("--auto-split 출력 미검출 키워드: " + ", ".join(missing))
         present = [kw for kw in case.get("expect_absent", []) if kw in out]
         if present:
-            return False, "--auto-split 출력에 금지 키워드: " + ", ".join(present)
+            problems.append("--auto-split 출력에 금지 키워드: " + ", ".join(present))
         residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
         if residual:
-            return False, "수행 후 재lint에 위반 잔존: " + ", ".join(residual)
+            problems.append("수행 후 재lint에 위반 잔존: " + ", ".join(residual))
         missing2 = [kw for kw in case.get("after_expect_keywords", []) if kw not in out2]
         if missing2:
-            return False, "수행 후 재lint 기대 키워드 미검출: " + ", ".join(missing2)
+            problems.append("수행 후 재lint 기대 키워드 미검출: " + ", ".join(missing2))
         # **롤오버 방향 검증** — 출력 키워드만 보면 「오래된 것부터」인지 알 수 없다.
         #  log.md는 최신이 위라, 위치로 고르는 구현은 정반대(최신부터)로 옮기면서도
         #  "롤오버 — log.md"라는 같은 줄을 낸다. 남은 월·옮겨진 월을 직접 센다.
@@ -770,38 +773,44 @@ def check_case(case):
             arch_months = sorted(os.path.basename(f)[:-3] for f in
                                  glob.glob(os.path.join(dest, "90_archive", "log", "*.md")))
             if want_kept is not None and kept_months != want_kept:
-                return False, "남은 월 불일치 — 기대 %s / 실제 %s(오래된 것부터가 아닐 수 있다)" % (want_kept, kept_months)
+                problems.append("남은 월 불일치 — 기대 %s / 실제 %s(오래된 것부터가 아닐 수 있다)"
+                                % (want_kept, kept_months))
             if want_arch is not None and arch_months != want_arch:
-                return False, "아카이브 월 불일치 — 기대 %s / 실제 %s" % (want_arch, arch_months)
+                problems.append("아카이브 월 불일치 — 기대 %s / 실제 %s" % (want_arch, arch_months))
             # 이동 대상이 아닌 항목이 **남아 있는가**(유실 가드). 초기 구현은 날짜 없는 항목을
             #  이동 목록에 담았다가 월 분배에서 빼면서 어느 파일에도 쓰지 않아 통째로 잃었다.
             for kw in case.get("expect_kept_contains", []):
                 if kw not in lt:
-                    return False, "남아야 할 항목이 사라짐(유실): " + kw
+                    problems.append("남아야 할 항목이 사라짐(유실): " + kw)
         # 수행 **결과 파일**의 내용을 직접 대조한다. stdout 키워드는 처방이 「돌았다」만 말하고
         #  「옳게 썼다」는 말하지 않는다 — 코드 경로 도달과 결과 정확성은 다른 것이라,
         #  경로만 태우는 케이스는 버그를 되돌려도 그대로 통과한다(T5 quality 2R M1).
         for rel, needles in (case.get("expect_file_contains") or {}).items():
             fp = os.path.join(dest, rel.replace("/", os.sep))
             if not os.path.exists(fp):
-                return False, "결과 파일 없음: " + rel
+                # 사유만 쌓고 **이 파일은 건너뛴다** — 없는 파일을 열면 그 자리에서 죽어
+                #  나머지 축이 또 가려진다(수집형으로 바꾸는 목적과 정반대다).
+                problems.append("결과 파일 없음: " + rel)
+                continue
             with open(fp, encoding="utf-8-sig") as fh:
                 ft = fh.read()
             missing_n = [n for n in needles if n not in ft]
             if missing_n:
-                return False, "%s에 기대 문자열 없음: %s" % (rel, ", ".join(missing_n))
+                problems.append("%s에 기대 문자열 없음: %s" % (rel, ", ".join(missing_n)))
         # **개수**를 대조한다. 중복 등록은 존재 여부로 잡히지 않는다 — 있기는 있기 때문이다.
         #  재분할이 이전 회차 하위를 허브 표에 다시 넣는 회귀가 정확히 그 형태였다.
         for rel, wants in (case.get("expect_file_count") or {}).items():
             fp = os.path.join(dest, rel.replace("/", os.sep))
             if not os.path.exists(fp):
-                return False, "결과 파일 없음: " + rel
+                problems.append("결과 파일 없음: " + rel)
+                continue
             with open(fp, encoding="utf-8-sig") as fh:
                 ft = fh.read()
             for needle, want in wants.items():
                 got = ft.count(needle)
                 if got != want:
-                    return False, "%s의 '%s' 개수 불일치 — 기대 %d / 실제 %d" % (rel, needle, want, got)
+                    problems.append("%s의 '%s' 개수 불일치 — 기대 %d / 실제 %d"
+                                    % (rel, needle, want, got))
         # **2회째 실행은 아무것도 수행하지 않아야 한다 — 케이스마다 붙는 무조건 계약이다.**
         #  `--auto-split`은 반복 호출이 전제이고 「수렴하면 수행 대상 없음」이 그 계약인데,
         #  1회만 도는 검사는 **호출 간에 지속되지 않는 상태에 기댄 가드**의 결함을 원리상
@@ -813,8 +822,13 @@ def check_case(case):
         #  개수와 내용으로 쟀다. `-presplit` 사본이 없어지고 그 격리를 「pass 당 1회」 체크포인트
         #  커밋이 담당하게 되면서 잴 대상이 사라졌다(§4 1번). 같은 픽스처의 `재점검` 키워드
         #  판정은 그대로 남아 재점검 pass가 실제로 도는지를 계속 잰다.
-        if want_rc != 0:
+        if want_rc != 0 and not problems:
             # 실패 주입 케이스는 2회째도 같은 실패라 「수렴」이 성립하지 않는다.
+            # **`not problems` 가 함께 걸리는 이유**: `want_rc != 0` 은 「기대한 실패였다」를
+            #  뜻할 뿐 「그 밖은 다 옳았다」를 보장하지 않는다. 위 판정들이 즉시 `return` 하던
+            #  동안에는 여기 도달한다는 것 자체가 그 보장이었는데, 수집형으로 바꾸면서 그
+            #  보장이 사라졌다 — 쌓인 사유가 있는데 여기서 성공을 내면 **변이를 걸어도 PASS**가
+            #  되어 이 회차가 세우려는 검증이 통째로 거짓이 된다.
             undo_split_failures(restore)
             shutil.rmtree(tmp, ignore_errors=True)
             return True, "--auto-split 실패 경로 확인(rc=%d): %s" % (
@@ -826,9 +840,8 @@ def check_case(case):
         out3, rc3, err3 = run_lint(dest, ["--auto-split"])
         if rc3 != 0:
             tail = err3.strip().splitlines()[-1] if err3.strip() else "(stderr 없음)"
-            shutil.rmtree(tmp, ignore_errors=True)
-            return False, f"2회째 --auto-split 비정상 종료({rc3}): {tail}"
-        if "수행 대상 없음" not in out3:
+            problems.append(f"2회째 --auto-split 비정상 종료({rc3}): {tail}")
+        elif "수행 대상 없음" not in out3:
             # 어느 처방이 수렴하지 않았는지가 판정 근거다 — 건수만으로는 원인을 못 가른다.
             #  **`== --auto-split:` 배너 뒤만 본다** — 그 앞에는 연쇄 호출한 build_index의
             #  출력이 같은 들여쓰기로 섞여 있어, 들여쓰기만으로 거르면 무관한 줄이 판정
@@ -838,10 +851,13 @@ def check_case(case):
                          if ln.startswith("== --auto-split:")), len(lines))
             did = [ln.strip() for ln in lines[head + 1:]
                    if ln.startswith("  ") and ln.strip() and not ln.strip().startswith("사본:")]
-            shutil.rmtree(tmp, ignore_errors=True)
-            return False, "2회째 --auto-split이 수렴하지 않음: " + ("; ".join(did) if did else out3.strip())
+            problems.append("2회째 --auto-split이 수렴하지 않음: "
+                            + ("; ".join(did) if did else out3.strip()))
+        # 정리는 여기 한 자리다 — 위 판정들이 각자 되돌리고 나가던 것을 모았다.
         undo_split_failures(restore)
         shutil.rmtree(tmp, ignore_errors=True)
+        if problems:
+            return False, " / ".join(problems)
         return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
 
     # fix_dry_run 케이스: `--fix --dry-run`이 **무엇을 고칠지만** 내는가.
