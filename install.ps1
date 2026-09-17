@@ -38,6 +38,9 @@ param(
     [switch]$ConfirmPrune,
 
     # 보존할 최신 버전 수. 되돌릴 자리를 남기려고 1 이 아니라 3 이다.
+    #   하한이 1 인 것은 0 이 보존 목록을 비워 「최신도 지운다」가 되기 때문이다 —
+    #   Select-Object -First 0 은 빈 집합이라 그 순간 설치본이 회수 대상에 들어간다.
+    [ValidateRange(1, 1000)]
     [int]$KeepVersions = 3
 )
 
@@ -141,8 +144,10 @@ if ($Uninstall) {
 # 왜: /plugin update 가 버전마다 폴더를 새로 만들고 예전 것을 지우지 않아 단조 증가한다
 #     (2026-09-17 실측 55버전·36,718파일·192.1MB — 다른 플러그인 캐시 전체 합의 2.6배).
 # 안전: 기본은 열거만이고 -ConfirmPrune 이 있어야 지운다. 보존 대상은 「최신 N개」에 더해
-#     repo plugin.json 의 현행 버전이며, 후자는 N 이 작아도 절대 빠지지 않는다 —
-#     지금 돌고 있는 세션의 hook 이 그 폴더에 살아 있어 지우면 그 세션이 fail-open 으로 떨어진다.
+#     repo plugin.json 의 현행 버전과 installed_plugins.json 의 **설치본** 버전 둘이며,
+#     뒤의 둘은 N 이 작아도 절대 빠지지 않는다 — 지금 돌고 있는 세션의 hook 이 설치본 폴더에
+#     살아 있어 지우면 그 세션이 fail-open 으로 떨어진다. 둘을 따로 세는 것은 **갈리기 때문이다**:
+#     버전을 올린 커밋 뒤 /plugin update 전까지가 그 창이고, warn-version-drift 가 재는 것이 그 차다.
 if ($PruneCache) {
     Write-Section "Pruning old plugin cache"
 
@@ -176,6 +181,25 @@ if ($PruneCache) {
 
     $keepNames = @($parsed | Sort-Object Ver -Descending | Select-Object -First $KeepVersions | ForEach-Object { $_.Dir.Name })
     if ($keepNames -notcontains $currentVersion) { $keepNames += $currentVersion }
+
+    # 설치본 버전은 레포 버전과 다를 수 있다 — 버전을 올린 커밋 뒤 /plugin update 전까지가 그 창이고,
+    #   그 사이 회수하면 지금 돌고 있는 세션의 hook 이 사라진다(warn-version-drift 가 재는 바로 그 드리프트).
+    #   정본은 Claude Code 의 installed_plugins.json 이며, 못 읽으면 보존만 못 할 뿐 회수를 막지는 않는다
+    #   — 최신 N개(N>=1)가 이미 보존되므로 설치본이 캐시의 최신인 통상 경로는 그것으로 덮인다.
+    $installedJson = Join-Path $homeBase ".claude/plugins/installed_plugins.json"
+    if (Test-Path -LiteralPath $installedJson) {
+        try {
+            $entries = (Get-Content -LiteralPath $installedJson -Raw | ConvertFrom-Json).plugins.'pjc@pjc-harness'
+            foreach ($e in @($entries)) {
+                if ($e.version -and $keepNames -notcontains $e.version) {
+                    $keepNames += $e.version
+                    Write-Info "설치본 v$($e.version) 을 보존 목록에 더했습니다 (레포 v$currentVersion 과 다름)."
+                }
+            }
+        } catch {
+            Write-Warn "설치본 버전을 읽지 못했습니다 — 최신 $KeepVersions 개 보존으로만 진행합니다: $($_.Exception.Message)"
+        }
+    }
 
     $targets = @($parsed | Where-Object { $keepNames -notcontains $_.Dir.Name } | Sort-Object Ver)
     if ($targets.Count -eq 0) {

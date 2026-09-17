@@ -450,7 +450,7 @@ git add -A && git commit -m "변경 내용" && git push
 .\install.ps1 -PruneCache -KeepVersions 5 -ConfirmPrune
 ```
 
-**보존 대상은 「최신 N개」에 더해 `plugin.json`의 현행 버전이며, 후자는 `-KeepVersions`가 작아도 빠지지 않습니다** — 지금 돌고 있는 세션의 hook이 그 폴더에 살아 있어, 지우면 그 세션의 안전장치가 통째로 사라집니다. `plugin.json`을 읽지 못하면 열거도 하지 않고 멈춥니다.
+**보존 대상은 「최신 N개」에 더해 레포 `plugin.json`의 현행 버전과 Claude Code가 기록한 설치본 버전이며, 뒤의 둘은 `-KeepVersions`가 작아도 빠지지 않습니다** — 지금 돌고 있는 세션의 hook이 설치본 폴더에 살아 있어, 지우면 그 세션의 안전장치가 통째로 사라집니다. **둘을 따로 세는 것은 갈리기 때문입니다** — 버전을 올린 뒤 `/plugin update` 전까지 레포가 설치본보다 앞섭니다. `-KeepVersions`의 하한은 1이고, 레포 `plugin.json`을 읽지 못하면 열거도 하지 않고 멈춥니다.
 
 회수한 구버전이 다시 필요하면 GitHub 태그에서 재설치합니다.
 
