@@ -196,6 +196,10 @@ $r = Invoke-Hook 'guard-write.ps1' (New-PlanEditJson $pg $peFile '# 그냥 메�
 Assert-Case -Name "plan게이트: 체크박스 도입 Edit + pjc:implement 흔적 통과 (PE2)" -R $r -ExpectExit 0
 # PE3: MultiEdit 순차 적용 우회 — edit#1이 도입, edit#2가 그 체크박스를 old로 참조.
 #   합산 판정이면 old에 체크박스가 섞여 통과했을 것(false-negative). edit 단위 판정이라 차단된다.
+#   ⚠ 이 케이스가 재는 입력은 **지금 일어날 수 없다** — MultiEdit 은 CC v2.1.274 기준 모델에
+#   제공되지 않는다(근거 셋은 `rules/write-gate-rationale.md` 의 §5 뒤 문단). 그래도 남기는 것은
+#   판정 분기가 코드에 살아 있어서이고, 케이스를 지우면 그 분기가 재는 것 없이 남는다.
+#   분기를 지우는 안은 차단 표면 변경이라 규약 개정과 별도 승인이 붙는다(v1.292.0 판정).
 $peMulti = @{ tool_name = 'MultiEdit'; cwd = $pg; transcript_path = $trPlanNo; tool_input = @{
     file_path = $pgPlan
     edits = @(
