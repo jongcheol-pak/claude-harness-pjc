@@ -89,6 +89,7 @@ RIGHT: (판정 기준은 wiki-sync.md에 있다)
 > Delegate to a subagent only for large tasks that are genuinely independent and parallelizable, such as a wide multi-file investigation. Do not delegate work you can finish yourself in a handful of tool calls, and do not use subagents to verify or double-check your own work. If one subagent can complete the task, use one rather than several, and keep spawn counts low.
 
 - **리뷰어는 2종·호출 2곳을 넘지 않는다** — 계획 완성 후 1회, 전 task 완료 후 1회. task마다 리뷰어를 부르면 왕복과 요약 손실이 작업량에 비례해 늘어난다.
+- **리뷰어에 남기는 것은 「계획과의 계약 감사」뿐이고 코드 자체의 재검토는 빼다** — 가이드가 금지하는 *자기 작업 재검증*이 정확히 후자다. 가르는 기준은 **그 판정에 `plan.md` 가 필요한가**이며, 필요하면 감사다(그 파일은 `.gitignore` 라 커밋 diff 밖이고, 각 task 를 지나온 쪽은 자기가 무엇을 승인받았는지를 이미 자기 서사로 읽는다). v1.292.0 이 이 기준으로 `completion-reviewer` 의 **회귀**(다른 사용처 Grep)와 **코드 품질**(주석 어긋남·불필요한 추상화) 둘을 뺐다 — 전자는 「검증」 4번의 전체 빌드·테스트가, 후자는 `implement/references/code-style.md` 와 모델 자신의 자기 검증이 받는다.
 - **리뷰 프롬프트에 심각도 억제 문구를 넣지 않는다** — 가이드에 따르면 "심각도가 높은 문제만 보고하라"·"보수적으로 판단하라"를 넣으면 모델이 문자 그대로 따라 **더 적게** 보고한다. 전부 보고하게 하고 걸러내는 쪽을 호출자가 맡는다.
 - **그 「걸러내는 쪽」의 절차는 `implement/references/final-review.md`「필터 패스」다** — 선언만 두고 절차를 두지 않으면 리뷰어의 보고가 그대로 대장이 된다(2026-09-10 실측: 대장 순증 전량이 「리뷰 반영」 커밋에서 나왔고 지적 1건당 2.0건이 올라갔다). 종결로는 **「고친다 / 버린다」 둘**이고 등재는 종결로가 아니다.
 
