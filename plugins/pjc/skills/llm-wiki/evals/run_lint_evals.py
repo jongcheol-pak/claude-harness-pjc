@@ -179,6 +179,37 @@ def inject_split_failures(dest, case):
     return restore
 
 
+def apply_lf_paths(dest, lf_rels):
+    """사본의 지정 파일을 **LF로 눕힌다** — `git init` **전**에 부른다.
+
+    **왜 픽스처가 아니라 사본인가**: 이 레포의 워킹트리 규약이 CRLF이고
+    (`AGENTS.md` 「줄바꿈」) `check-harness-consistency.py`의 「줄바꿈 정합」 축이 tracked
+    파일의 전면 LF를 red로 낸다. LF 픽스처를 커밋하면 그 축과 싸우게 되므로
+    `bad_encoding_paths`와 같은 방식 — **파일 쪽 조건을 사본에 심는다**.
+
+    무엇을 재려고 심는가: `core.autocrlf=true`면 인덱스가 줄바꿈을 LF로 담고 체크아웃이
+    그것을 CRLF로 되돌리므로, **원래 LF였던 페이지만** git 원복에서 형상을 잃는다
+    (2026-09-17 실측: 커밋 후 `CRLF 0 / LF 3` → `git checkout --` 뒤 `CRLF 3 / LF 0`).
+    픽스처가 전부 CRLF면 그 왕복이 항등이라 결함이 드러나지 않는다."""
+    for rel in lf_rels:
+        p = os.path.join(dest, rel.replace("/", os.sep))
+        with open(p, "rb") as fh:
+            b = fh.read()
+        with open(p, "wb") as fh:
+            fh.write(b.replace(b"\r\n", b"\n"))
+
+
+def eol_of(root, rel):
+    """vault 상대경로의 줄바꿈 종류 — `"crlf"` · `"lf"` · 파일이 없으면 None.
+
+    CRLF가 하나라도 있으면 `crlf`로 본다 — 원복이 형상을 갈아치우면 전면 변환이라
+    혼재를 따로 가를 필요가 없고, 혼재 자체를 잡는 것은 이 축의 목적이 아니다."""
+    b = _read_bytes(root, rel)
+    if b is None:
+        return None
+    return "crlf" if b"\r\n" in b else "lf"
+
+
 def undo_split_failures(restore):
     """read-only를 되돌린다 — 그대로 두면 `shutil.rmtree`가 임시 폴더를 지우지 못한다."""
     for p, mode in restore:
@@ -712,6 +743,9 @@ def check_case(case):
         tmp = tempfile.mkdtemp(prefix="lint-eval-split-")
         dest = os.path.join(tmp, os.path.basename(vault))
         shutil.copytree(vault, dest)
+        # **`git init` 전**이다 — 커밋이 담는 것이 LF여야 원복 왕복(인덱스 LF → 체크아웃
+        #  CRLF)이 재현된다. 뒤에 두면 커밋에는 CRLF가 들어가 그 왕복이 항등이 된다.
+        apply_lf_paths(dest, case.get("lf_paths", []))
         # git vault 케이스는 사본을 저장소로 만든 뒤에 돈다 — 체크포인트 커밋·진입 가드가
         #  `vault/.git` 유무로 갈리므로, 이 한 줄이 그 경로 전체의 스위치다.
         if case.get("git_vault") and not setup_git_vault(dest, case.get("git_vault_dirty", [])):
@@ -760,6 +794,16 @@ def check_case(case):
         for rel in case.get("expect_absent_files", []):
             if _read_bytes(dest, rel) is not None:
                 problems.append("원복 후에도 신설물이 남았다: " + rel)
+        # **원복이 형상을 지켰는가** — git 원복은 워킹트리 바이트가 아니라 인덱스 내용을
+        #  되쓰므로 줄바꿈이 갈아치워질 수 있다. `expect_unchanged`가 못 잡는 자리다:
+        #  그쪽은 **처방이 실패한 대상**(원복이 손대지 않는 파일)을 재고, 이 축은
+        #  **원복이 실제로 되쓴 대상**을 잰다.
+        for rel, want in (case.get("expect_eol") or {}).items():
+            got = eol_of(dest, rel)
+            if got is None:
+                problems.append("줄바꿈 판정 대상 파일 없음: " + rel)
+            elif got != want:
+                problems.append("줄바꿈 불일치 — %s: 기대 %s / 실제 %s" % (rel, want, got))
         missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
         if missing:
             problems.append("--auto-split 출력 미검출 키워드: " + ", ".join(missing))
