@@ -1619,7 +1619,13 @@ def _run_prescriptions(ses):
             del ses.actions[before_actions:]
             ses.notes.append(
                 f"[SPLIT-FAIL] {getattr(prescribe, '__name__', prescribe)}: "
-                f"{type(e).__name__}({e}) — 사본에서 {restored}개 파일 원복 후 다음 처방 계속")
+                # **원복 수단을 경로대로 부른다** — git vault 에는 사본이 없고 되돌린 것은
+                #  체크포인트 커밋이다. 「사본에서」로 고정하면 그 보고가 거짓이고, 사용자가
+                #  없는 `90_archive/backup/` 을 찾게 된다(§4 6번이 이 줄을 되돌리는 수단의
+                #  안내로 쓴다).
+                f"{type(e).__name__}({e}) — "
+                f"{'체크포인트에서' if ses.git_root else '사본에서'} "
+                f"{restored}개 파일 원복 후 다음 처방 계속")
             ses.failed = True
 
 
