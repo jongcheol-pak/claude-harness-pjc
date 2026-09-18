@@ -831,11 +831,17 @@ def _line_ending_targets():
     처음 들어오는 외부 프로세스 의존이라 실패 경로를 명시한다.
     """
     try:
+        # `timeout` + `stdin` 차단: 상한이 없으면 매달린 git 이 이 검사기를 무한 대기시키고,
+        #   그때 강제로 끊으면 git 이 고아로 남는다. `stdin` 을 닫는 것은 자격증명 프롬프트가
+        #   입력을 기다리며 상한까지 버티는 것을 막기 위해서다.
         out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z",
                               "--cached", "--others", "--exclude-standard"],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             timeout=30, stdin=subprocess.DEVNULL)
     except OSError as e:
         die("[ANCHOR FAIL] git 을 실행할 수 없어 줄바꿈 축이 대상을 열거하지 못했다 — %s" % e)
+    except subprocess.TimeoutExpired:
+        die("[ANCHOR FAIL] git ls-files 가 30초를 넘겨 줄바꿈 축이 대상을 열거하지 못했다")
     if out.returncode != 0:
         die("[ANCHOR FAIL] git ls-files 실패(rc=%d) — 줄바꿈 축이 대상을 열거하지 못했다"
             % out.returncode)

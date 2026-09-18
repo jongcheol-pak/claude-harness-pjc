@@ -98,7 +98,15 @@ def build_tree(case):
                GIT_AUTHOR_NAME="eval", GIT_AUTHOR_EMAIL="eval@local",
                GIT_COMMITTER_NAME="eval", GIT_COMMITTER_EMAIL="eval@local")
     for args in (["init", "-q"], ["add", "-A"]):
-        r = subprocess.run(["git", "-C", root] + args, capture_output=True, env=env)
+        # `timeout` + `stdin` 차단: 상한이 없으면 매달린 git 하나가 러너 전체를 무한 대기시키고,
+        #   그때 러너를 강제로 끊으면 git 이 고아로 남는다. `stdin` 을 닫는 것은 자격증명·에디터
+        #   프롬프트가 입력을 기다리며 상한까지 버티는 것을 막기 위해서다(`llm-wiki/scripts/lint.py`
+        #   가 같은 이유로 `DEVNULL` 을 쓴다). 20초는 `git init`·`add` 단발 호출의 상한이다.
+        try:
+            r = subprocess.run(["git", "-C", root] + args, capture_output=True, env=env,
+                               timeout=20, stdin=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            return None, "git %s 20초 초과 — 케이스를 실패로 돌린다" % args[0]
         if r.returncode != 0:
             return None, "git %s 실패: %s" % (args[0], r.stderr.decode("utf-8", "replace")[:120])
     return root, None
@@ -111,9 +119,16 @@ def run_case(case):
     try:
         checker = os.path.join(root, "plugins", "pjc", "evals", CHECKERS[case["checker"]])
         env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
-        r = subprocess.run([sys.executable, checker] + case.get("cli_args", []),
-                           capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", env=env, cwd=root)
+        # 검사기는 git 을 부르고 레포 전수를 훑으므로 단발 git 보다 상한을 넉넉히 잡는다.
+        #   초과는 러너를 죽이지 않고 **그 케이스만 실패**로 돌린다 — 예외가 `main()` 까지
+        #   올라가면 이미 돈 케이스의 판정까지 함께 사라진다.
+        try:
+            r = subprocess.run([sys.executable, checker] + case.get("cli_args", []),
+                               capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", env=env, cwd=root,
+                               timeout=120, stdin=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            return False, "검사기 120초 초과 — 매달렸다", None
         out = (r.stdout or "") + (r.stderr or "")
         want = case.get("expect_rc", 0)
         if r.returncode != want:
@@ -189,9 +204,12 @@ def check_fixture_tracking():
             on_disk.add(rel.replace(os.sep, "/"))
     try:
         out = subprocess.run(["git", "ls-files", "plugins/pjc/evals/fixtures"],
-                             cwd=repo, capture_output=True, text=True)
+                             cwd=repo, capture_output=True, text=True,
+                             timeout=20, stdin=subprocess.DEVNULL)
     except OSError as e:
         return [], "git 을 실행할 수 없다 — %s" % e
+    except subprocess.TimeoutExpired:
+        return [], "git ls-files 20초 초과"
     if out.returncode != 0:
         return [], "git ls-files 실패(rc=%d)" % out.returncode
     tracked = {l.strip() for l in out.stdout.splitlines() if l.strip()}
