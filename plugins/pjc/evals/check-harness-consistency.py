@@ -626,9 +626,10 @@ BUDGET_TARGETS = [
     ("`SKILL.md`", ["plugins/pjc/skills/*/SKILL.md"]),
     ("단일 `references/*.md`", ["plugins/pjc/skills/*/references/*.md"]),
     ("에이전트 정의 `agents/*.md`", ["plugins/pjc/agents/*.md"]),
-    ("가이드 문서 (`DESIGN.md`·`AUTHORING.md`·`BUDGET.md`)",
-     ["plugins/pjc/skills/DESIGN.md", "plugins/pjc/skills/AUTHORING.md",
-      "plugins/pjc/skills/BUDGET.md"]),
+    # 글롭 하나로 잡는다 — 파일을 이름으로 열거하면 `WIKI.md` 처럼 나중에 온 것이
+    #  어느 행에도 안 걸린 채 상한 없이 자란다(2026-09-18 실측: 10,529자).
+    ("스킬 트리 최상위 `skills/*.md`", ["plugins/pjc/skills/*.md"]),
+    ("스킬 스크립트 `skills/*/scripts/*.py`", ["plugins/pjc/skills/*/scripts/*.py"]),
     ("hook 스크립트 `scripts/*.ps1`", ["plugins/pjc/scripts/*.ps1"]),
     ("근거 문서 `scripts/rules/*.md`", ["plugins/pjc/scripts/rules/*.md"]),
     # 검사기 자신도 잰다 — 근거는 `BUDGET.md` 「예산 표」의 이 행이 정본이다.

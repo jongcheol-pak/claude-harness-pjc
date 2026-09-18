@@ -1642,5 +1642,22 @@
     "expect_absent": [
       "결과: 대조 전부 일치"
     ]
+  },
+  {
+    "id": "budget-skill-script-glob",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/BUDGET.md",
+        "find": "| 스킬 스크립트 `skills/*/scripts/*.py` | **25,000자** | **통지** |",
+        "replace": "| 스킬 스크립트 `skills/*/scripts/*.py` | **10자** | **통지** |"
+      }
+    ],
+    "expect_keywords": [
+      "문서 예산 초과",
+      "fm-sample/scripts/sample-tool.py"
+    ],
+    "why": "**새 행이 실제로 파일을 잡는지 잰다.** 예산 표에 행을 더해도 글롭이 어긋나 있으면 그 행은 0건을 재며 조용히 통과한다 — 라벨만 맞으면 검사기가 `issues` 를 내지 않기 때문이다. 상한을 10자로 낮춰 픽스처의 `skills/fm-sample/scripts/sample-tool.py` 가 초과로 잡히는지 본다. **`expect_rc` 를 두지 않는 것이 이 케이스의 축이다** — 이 행은 **통지** 등급이라 초과가 `notices` 로만 가고 종료 코드는 0 이다(게이트 등급인 `budget-over-cap` 의 `expect_rc: 1` 을 복제하면 항상 FAIL 한다)."
   }
 ]
