@@ -957,6 +957,33 @@ CRITICAL_POINTERS = [
 CRITICAL_POINTERS_BASELINE = 1
 
 
+# 같은 축이 검사하는 **리터럴 문면**. 위 목록이 재는 것은 「그 파일을 가리키는가」이고
+#   여기가 재는 것은 「그 규약을 **부르는 문면이 살아 있는가**」다. 둘을 갈라 둔 이유는
+#   basename 검사가 *파일째 지움* 만 잡기 때문이다 — 규약 정본을 가리키는 경로를 남긴 채
+#   **호출 문면만 지우면** 위 루프는 조용히 통과한다(v1.298.0 삭제 회차가 남긴 결함 3·4·5).
+#   리터럴은 **그 파일에서 유일한 형태**로 잡는다. `> BASE:` 나 `({근거})` 처럼 짧게 잡으면
+#   같은 파일의 *규칙 서술 줄*이 함께 매치돼 **슬롯만 지워도 통과**한다(각각 실측 2건).
+CRITICAL_LITERALS = [
+    ("plugins/pjc/skills/plan/references/plan-template.md",
+     "> BASE: <승인 직후 intent 커밋의 SHA>",
+     "회차 BASE 를 적을 자리 — 서식에 슬롯이 없으면 규약이 요구해도 빠지고, 그 회차는 diff 범위를 되찾을 수단을 잃는다"),
+    ("plugins/pjc/skills/WIKI.md",
+     "무엇을 해야 하는가} ({근거})",
+     "`[PROJECT-FACT]` 큐 항목의 근거 꼬리 — 이 꼬리가 없으면 소비된 뒤에도 근거 미보유로 집계돼, 그 줄을 얼마나 믿을지 정할 근거가 사라진다"),
+    ("plugins/pjc/skills/implement/SKILL.md",
+     "K 5-2",
+     "구현 종료 시점의 `[DECISION]` 일괄 큐잉 호출 — 규약이 지목하는 배치 시점 둘 중 하나라, 부르는 자리가 없으면 결정이 대화에만 남는다"),
+    ("plugins/pjc/skills/plan/SKILL.md",
+     "K 5-2",
+     "plan 승인 시점의 `[DECISION]` 일괄 큐잉 호출 — 위와 짝인 나머지 한 배치 시점이다"),
+]
+
+# 리터럴 **총량**의 기준선. 위 `CRITICAL_POINTERS_BASELINE` 과 같은 이유로 둔다 —
+#   **줄어드는 것이 더 위험하다**. 항목을 빼면 그 문면이 지워져도 축이 조용히 통과하고,
+#   손 목록이 곧 유일한 그물이라 목록의 소실은 그물의 소실이다.
+CRITICAL_LITERALS_BASELINE = 4
+
+
 # 축 11이 대장 실재로 인정하는 파일. 종결된 항목은 `deferred-closed.md` 로 옮겨지므로
 #   둘 다 봐야 한다 — 대기에서만 찾으면 이미 처리된 항목이 위반으로 잡힌다.
 LEDGER_MARKER_RX = re.compile(r"^-\s*`?\[등재[^\]]*\]`?\s*(.*)$")
@@ -1040,19 +1067,39 @@ def check_ledger_marker_sync():
 
 
 def check_critical_pointers():
-    """핵심 포인터 실재 — 「절 이름」이 없어도 이 참조들은 검사한다.
+    """핵심 포인터 실재 — 「절 이름」이 없어도 이 참조들은 검사한다. **리터럴 문면도 함께 잰다.**
 
     포인터 도달성 축의 정규식은 경로 뒤에 「절 이름」이 붙은 형태만 세므로 경로만 적은
     참조가 판정 밖이다(회차 24 마감 실측 758건 — 문서를 고칠 때마다 움직이는 **관측값**이라
     acceptance 로 쓰지 않는다. 현재값은 실행 출력의 `[NOTE]` 줄이 낸다). 대부분은 파일 전체를 가리킨 정당한 표기라 전부 올리면
     오탐이 대량 발생하지만, **그 안에 「유일한 방어선」급이 섞여 있다** — 지워져도 축
     수치가 안 움직인다(회차 22 계획 리뷰 BLOCKER의 근거).
+
+    **리터럴을 함께 재는 이유** — basename 대조는 *파일째 지움* 만 잡고 *호출 문면만 지움* 은
+    통과시킨다. 결함 5 가 정확히 그 형태다: 두 SKILL.md 가 `queue-rules.md` 경로는 남긴 채
+    `K 5-2` 호출만 잃으면, 위 루프는 basename 이 그대로라 **조용히 exit 0** 이다. 그래서
+    같은 축이 `CRITICAL_LITERALS` 로 「부르는 문면 자체」를 한 번 더 본다 —
+    두 목록을 한 축에 두는 것은 재는 질문이 *「유일한 방어선이 살아 있는가」* 로 같기 때문이다.
     """
     issues, n = [], 0
     if len(CRITICAL_POINTERS) != CRITICAL_POINTERS_BASELINE:
         issues.append("핵심 포인터 총량이 기준선과 다르다: %d != %d "
                       "(CRITICAL_POINTERS_BASELINE — 정당한 증감이면 그 상수를 함께 갱신한다)"
                       % (len(CRITICAL_POINTERS), CRITICAL_POINTERS_BASELINE))
+    if len(CRITICAL_LITERALS) != CRITICAL_LITERALS_BASELINE:
+        issues.append("핵심 리터럴 총량이 기준선과 다르다: %d != %d "
+                      "(CRITICAL_LITERALS_BASELINE — 정당한 증감이면 그 상수를 함께 갱신한다)"
+                      % (len(CRITICAL_LITERALS), CRITICAL_LITERALS_BASELINE))
+    for src_rel, lit, why in CRITICAL_LITERALS:
+        n += 1
+        src_p = os.path.join(ROOT, *src_rel.split("/"))
+        if not os.path.exists(src_p):
+            # 포인터 루프와 같은 fail-open — 출처가 없는 레포는 이 축의 관심사가 아니다
+            #   (골든 픽스처 `minimal-repo` 에는 네 자리 중 하나만 있다).
+            n -= 1
+            continue
+        if lit not in read(src_p):
+            issues.append("핵심 리터럴이 출처에서 사라졌다: %s → `%s` (%s)" % (src_rel, lit, why))
     for src_rel, ref_rel, why in CRITICAL_POINTERS:
         n += 1
         src_p = os.path.join(ROOT, *src_rel.split("/"))
