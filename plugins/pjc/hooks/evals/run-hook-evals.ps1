@@ -279,49 +279,69 @@ function Test-GroupDone([string]$Path) {
 }
 
 $jobs = @()
-$skipped = @()
-foreach ($g in $scenarioGroups) {
-    $gf = Get-GroupFile $g
-    if ($Resume -and (Test-GroupDone $gf)) {
-        $skipped += ($g -join '+')
-        continue
-    }
-    Remove-Item -LiteralPath $gf -ErrorAction SilentlyContinue   # 미완료 잔여분은 버린다(부분 재사용 금지)
-    # **경로 인자는 반드시 큰따옴표로 감싼다** — Start-Process는 -ArgumentList 배열을 공백으로 이어
-    # 붙이기만 하고 자동 인용을 하지 않아, 레포 경로에 공백이 있으면(이 repo가 그렇다:
-    # "…\Personal Project\…") `-File D:\Personal` 로 잘려 자식이 시작조차 못 한다. 이 증상은
-    # "판정 파일이 없다"로만 드러나 원인이 보이지 않으므로 여기 근거를 남긴다.
-    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass',
-        '-File', ('"' + (Join-Path $evalsDirTop 'run-scenario.ps1') + '"'),
-        '-Names', ($g -join ','),
-        '-OutJson', ('"' + $gf + '"'),
-        # 자식이 이 PID를 감시해 **부모가 죽으면 스스로 끝낸다**(고아 방지). 정수라 위 경로 인자와
-        #   달리 인용이 필요 없다 — 공백이 섞일 수 없기 때문이다.
-        '-ParentPid', $PID)
-    if ($Filter -and @($Filter).Count) { $argList += @('-Filter', ($Filter -join ',')) }
+# **왜 try/finally 인가**: Ctrl+C 로 러너를 끊으면 이미 띄운 자식 pwsh 가 별도 콘솔에 남는다
+#   (`Start-Process -WindowStyle Hidden`). 정상 완료 경로는 아래 WaitForExit 가 이미 보장하므로
+#   이 블록이 닫는 것은 **중단 경로 하나**다.
+# ⚠ **이것은 보완이지 본체가 아니다** — `Stop-Process -Force`·도구 타임아웃·크래시로 죽은
+#   pwsh 에서는 `finally` 가 아예 실행되지 않는 것이 실측이다(2026-09-18). 그 경로를 닫는 것은
+#   자식 쪽 워치독(`run-scenario.ps1` 의 `-ParentPid`)이고, 둘은 대체 관계가 아니다.
+try {
+    $skipped = @()
+    foreach ($g in $scenarioGroups) {
+        $gf = Get-GroupFile $g
+        if ($Resume -and (Test-GroupDone $gf)) {
+            $skipped += ($g -join '+')
+            continue
+        }
+        Remove-Item -LiteralPath $gf -ErrorAction SilentlyContinue   # 미완료 잔여분은 버린다(부분 재사용 금지)
+        # **경로 인자는 반드시 큰따옴표로 감싼다** — Start-Process는 -ArgumentList 배열을 공백으로 이어
+        # 붙이기만 하고 자동 인용을 하지 않아, 레포 경로에 공백이 있으면(이 repo가 그렇다:
+        # "…\Personal Project\…") `-File D:\Personal` 로 잘려 자식이 시작조차 못 한다. 이 증상은
+        # "판정 파일이 없다"로만 드러나 원인이 보이지 않으므로 여기 근거를 남긴다.
+        $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', ('"' + (Join-Path $evalsDirTop 'run-scenario.ps1') + '"'),
+            '-Names', ($g -join ','),
+            '-OutJson', ('"' + $gf + '"'),
+            # 자식이 이 PID를 감시해 **부모가 죽으면 스스로 끝낸다**(고아 방지). 정수라 위 경로 인자와
+            #   달리 인용이 필요 없다 — 공백이 섞일 수 없기 때문이다.
+            '-ParentPid', $PID)
+        if ($Filter -and @($Filter).Count) { $argList += @('-Filter', ($Filter -join ',')) }
 
-    # 동시 실행 상한 — 슬롯이 빌 때까지 기다린다.
-    # 폴링 400ms: 그룹 하나가 최소 수십 초라 이 간격이 총 시간에 미치는 영향은 무시할 수 있고,
-    # 더 짧게 잡으면 13그룹 대기 동안 폴링 자체가 CPU를 잠식해 자식과 경합한다.
-    while (@($jobs | Where-Object { -not $_.Proc.HasExited }).Count -ge $MaxParallel) {
-        Start-Sleep -Milliseconds 400
+        # 동시 실행 상한 — 슬롯이 빌 때까지 기다린다.
+        # 폴링 400ms: 그룹 하나가 최소 수십 초라 이 간격이 총 시간에 미치는 영향은 무시할 수 있고,
+        # 더 짧게 잡으면 13그룹 대기 동안 폴링 자체가 CPU를 잠식해 자식과 경합한다.
+        while (@($jobs | Where-Object { -not $_.Proc.HasExited }).Count -ge $MaxParallel) {
+            Start-Sleep -Milliseconds 400
+        }
+        # 출력 리다이렉트는 쓰지 않는다 — `-RedirectStandardOutput` + `-NoNewWindow` 조합이 정상 종료에도
+        # 0바이트 파일을 남기는 것이 이 환경에서 실측됐다(`docs/golden-runner.md` 「골든 러너 운용」).
+        # 진단이 필요한 정보는
+        # 자식이 판정 파일에 직접 쓰므로(예외도 FAIL 레코드로 기록) stdout을 신뢰하지 않는다.
+        $proc = Start-Process pwsh -ArgumentList $argList -PassThru -WindowStyle Hidden
+        $jobs += [pscustomobject]@{ Group = ($g -join '+'); File = $gf; Proc = $proc }
     }
-    # 출력 리다이렉트는 쓰지 않는다 — `-RedirectStandardOutput` + `-NoNewWindow` 조합이 정상 종료에도
-    # 0바이트 파일을 남기는 것이 이 환경에서 실측됐다(`docs/golden-runner.md` 「골든 러너 운용」).
-    # 진단이 필요한 정보는
-    # 자식이 판정 파일에 직접 쓰므로(예외도 FAIL 레코드로 기록) stdout을 신뢰하지 않는다.
-    $proc = Start-Process pwsh -ArgumentList $argList -PassThru -WindowStyle Hidden
-    $jobs += [pscustomobject]@{ Group = ($g -join '+'); File = $gf; Proc = $proc }
-}
 
-if ($skipped.Count) {
-    # 스코프를 함께 낸다 — 무엇을 재사용했는지가 보이지 않으면 "몇 그룹 건너뜀"만으로는 그 판정이
-    # 이번 조건에서 유효한지 알 수 없다(스코프 격리가 잘못된 재사용을 이미 막지만, 재사용 사실 자체는
-    # 판정 근거로 남아야 한다).
-    Write-Host ("[RESUME] 완료된 그룹 {0}개 건너뜀 (스코프 {1}): {2}" -f $skipped.Count, $scopeKey, ($skipped -join ', '))
-}
+    if ($skipped.Count) {
+        # 스코프를 함께 낸다 — 무엇을 재사용했는지가 보이지 않으면 "몇 그룹 건너뜀"만으로는 그 판정이
+        # 이번 조건에서 유효한지 알 수 없다(스코프 격리가 잘못된 재사용을 이미 막지만, 재사용 사실 자체는
+        # 판정 근거로 남아야 한다).
+        Write-Host ("[RESUME] 완료된 그룹 {0}개 건너뜀 (스코프 {1}): {2}" -f $skipped.Count, $scopeKey, ($skipped -join ', '))
+    }
 
 foreach ($j in $jobs) { $j.Proc.WaitForExit() }
+} finally {
+    # 살아남은 자식을 트리째 걷는다. 자식이 hook 을 또 띄우므로 프로세스 하나만 죽이면
+    #   손자가 남는다 — Windows 는 `taskkill /T`, 그 밖은 `Kill($true)` 가 트리 킬이다.
+    foreach ($j in @($jobs | Where-Object { $_.Proc -and -not $_.Proc.HasExited })) {
+        try {
+            if ($IsWindows -or $null -eq $IsWindows) {
+                $null = & taskkill /F /T /PID $j.Proc.Id 2>&1
+            } else {
+                $j.Proc.Kill($true)
+            }
+        } catch {}
+    }
+}
 
 # ---- 판정 취합 (그룹 정의 순서 = 종전 dot-source 순서) ----
 $allResults = New-Object System.Collections.Generic.List[object]
