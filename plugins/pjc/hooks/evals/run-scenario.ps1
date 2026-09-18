@@ -56,17 +56,22 @@ $EvalHomeSuffix = (($Names -join '+') -replace '[^\w+-]', '') + '-' + [guid]::Ne
 #   `session-end-cleanup-lib.ps1`이 CIM 경로에서 `ParentStartTime` 비교로 막는 것과 같은 위험).
 #   비용도 그쪽이 낫다: `.HasExited` 923회 16ms ↔ `Get-Process -Id` 923회 약 1.4초(실측).
 $script:EvalParentProc = $null
-if ($ParentPid -gt 0) {
-    try {
-        $script:EvalParentProc = [System.Diagnostics.Process]::GetProcessById($ParentPid)
-    } catch {
-        # 시작 시점에 이미 부모가 없다 — 판정 파일을 남기고 끝낸다(아래 catch가 사유를 적는다).
-        throw "코디네이터(PID $ParentPid)가 이미 종료됐다 — 고아로 남지 않도록 중단한다"
-    }
-}
 
 $exitCode = 0
 try {
+    # **부모 핸들 선취는 이 `try` 안이어야 한다** — 밖에 두면 "시작 시점에 이미 부모가 없다"는
+    #   경로가 아래 `catch`(판정 파일에 사유 기록)도 `finally`(격리 홈 원복 · $EvalIso/$EvalWork
+    #   삭제)도 타지 못해, 사유 없이 죽으면서 격리 폴더 2개를 남긴다. `eval-common.ps1`은 위
+    #   dot-source 시점에 이미 그 폴더를 만들고 $env:USERPROFILE을 바꿔 둔 상태다.
+    #   이 경로는 가상이 아니다 — 코디네이터가 자식을 띄우자마자 죽으면 그대로 밟힌다.
+    if ($ParentPid -gt 0) {
+        try {
+            $script:EvalParentProc = [System.Diagnostics.Process]::GetProcessById($ParentPid)
+        } catch {
+            throw "코디네이터(PID $ParentPid)가 이미 종료됐다 — 고아로 남지 않도록 중단한다"
+        }
+    }
+
     foreach ($n in $Names) {
         # 시나리오 경계의 백스톱 — 시나리오 6곳이 `Invoke-Hook`을 우회해 직접 pwsh 파이프를
         #   쓰므로(guard-bash 3 · guard-harness 1 · warn-commit-secrets 2) 그 구간에는
