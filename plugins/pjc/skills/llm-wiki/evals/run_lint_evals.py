@@ -62,13 +62,24 @@ def run_lint(vault_path, extra_args=None):
     """lint.py를 subprocess로 실행하고 (stdout, returncode, stderr)를 반환한다.
     returncode를 함께 넘겨, lint.py 자체 크래시와 '위반 검출 결과'를 호출부가 구분하게 한다.
     extra_args: --fix 등 추가 인자(fix_mode 케이스용)."""
-    proc = subprocess.run(
-        [sys.executable, LINT_PY, vault_path] + (extra_args or []),
-        capture_output=True, text=True, encoding="utf-8",
-        # 기준일을 고정해 넘긴다(FIXTURE_TODAY 주석 참조). 바깥 환경에 이미 값이 있어도 덮는다 —
-        #  골든 결과가 호출자의 환경에 좌우되면 재현성이 없다.
-        env={**os.environ, "LLM_WIKI_TODAY": FIXTURE_TODAY},
-    )
+    # 상한 180초 — lint.py 는 vault 전수를 훑으므로 이 파일의 다른 git 단발 호출(20초)보다
+    #  성격이 다르다. `stdin` 을 닫는 것은 자격증명·에디터 프롬프트가 입력을 기다리며 상한까지
+    #  버티는 것을 막기 위해서다(`llm-wiki/scripts/lint.py` 가 자기 git 호출에 쓰는 것과 같다).
+    try:
+        proc = subprocess.run(
+            [sys.executable, LINT_PY, vault_path] + (extra_args or []),
+            capture_output=True, text=True, encoding="utf-8",
+            # 기준일을 고정해 넘긴다(FIXTURE_TODAY 주석 참조). 바깥 환경에 이미 값이 있어도 덮는다 —
+            #  골든 결과가 호출자의 환경에 좌우되면 재현성이 없다.
+            env={**os.environ, "LLM_WIKI_TODAY": FIXTURE_TODAY},
+            timeout=180, stdin=subprocess.DEVNULL,
+        )
+    except subprocess.TimeoutExpired:
+        # **예외를 올려보내지 않는다** — 이 함수의 호출부 20여 곳과 `main()` 루프 어디에도
+        #  `TimeoutExpired` 를 잡는 자리가 없어, 그대로 두면 러너 전체가 미포착 traceback 으로
+        #  죽고 **이미 돈 케이스의 판정까지 사라진다**(「매달림」이 「커버리지 소실」로 바뀐다).
+        #  기대 rc 로 쓰이지 않는 -9 를 돌려주면 호출부의 rc 대조가 그 케이스만 FAIL 로 처리한다.
+        return "", -9, "lint.py 180초 초과 — 매달렸다"
     return proc.stdout, proc.returncode, proc.stderr
 
 

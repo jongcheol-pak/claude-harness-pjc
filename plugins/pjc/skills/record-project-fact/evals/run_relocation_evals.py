@@ -58,8 +58,16 @@ def run_case(mod, case):
             args = [sys.executable, os.path.normpath(SCRIPT)] + \
                 [a.replace("{fx}", dest) for a in case["cli_args"]]
             env = dict(os.environ, PYTHONIOENCODING="utf-8")
-            r = subprocess.run(args, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", env=env)
+            # 상한 60초 + `stdin` 차단. **예외를 올려보내지 않는 것이 요점이다** — 이 함수와
+            #  `main()` 루프 어디에도 `TimeoutExpired` 를 잡는 자리가 없어, 그대로 두면 러너가
+            #  미포착 traceback 으로 죽고 이미 돈 케이스의 판정까지 사라진다. 아래 `finally` 의
+            #  임시 폴더 정리는 이 경로에서도 그대로 돈다.
+            try:
+                r = subprocess.run(args, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", env=env,
+                                   timeout=60, stdin=subprocess.DEVNULL)
+            except subprocess.TimeoutExpired:
+                return False, "relocate-agents.py 60초 초과 — 매달렸다"
             out = (r.stdout or "") + (r.stderr or "")
             if r.returncode != case.get("expect_rc", 0):
                 return False, "종료 코드 불일치 — 기대 %d / 실제 %d (%s)" % (
