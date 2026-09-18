@@ -209,7 +209,9 @@ def relocate(root, dry_run=False):
     log = []
     agents = os.path.join(root, "AGENTS.md")
     if not os.path.exists(agents):
-        return 1, ["[ERROR] AGENTS.md가 없다: " + agents]
+        # 파일 부재는 **입력 오류(2)**다 — 1로 내면 호출부가 「검증 실패로 원복했다」로 읽어
+        #  되돌릴 것이 없는데 원복을 보고하게 된다(이 docstring의 종료 코드 규약).
+        return 2, ["[ERROR] AGENTS.md가 없다: " + agents]
     hook = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "..", "..", "..", "scripts", "session-context.ps1")
     limit, ratio, slack = load_limit(os.path.normpath(hook))
