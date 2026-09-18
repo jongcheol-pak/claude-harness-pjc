@@ -84,6 +84,7 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 - **승인이 필요한 항목(파괴적·외부 비가역 작업, 대량 삭제)이 `## 승인 필요 항목`에 있는지 확인한다** — `plan-reviewer`의 검사 항목에 없는 자리라, 여기서 빠지면 실행 시점에 루프가 멈춘다.
 - **`plan.md`를 쓴 뒤 화면에 요약을 내고 승인을 받는다** — 서식은 `references/interview.md`의 「승인 제시」.
 - **승인 직후 `references/intent-rules.md`의 커밋 절차를 실행한다** — 승인 시점의 요구를 이력에 남긴다.
+- **같은 자리에서 `[DECISION]`을 1회 일괄 큐잉한다 — 이 plan의 기능 채택 · `## Out of Scope` 기각 · `## Deferred / Follow-up` 보류가 대상이고, 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약이 지목하는 배치 시점 둘 중 하나가 여기인데 호출하는 자리가 없어, 결정이 대화에만 남고 위키로 가지 않는다.
 - **커밋을 마치면 같은 turn에서 `pjc:implement`로 넘어간다** — 승인이 곧 실행 요청이라 「구현」을 다시 받지 않는다. 실행 중 멈추는 자리는 `pjc:implement`의 「멈추는 넷」이 가른다.
 
 ## See also
