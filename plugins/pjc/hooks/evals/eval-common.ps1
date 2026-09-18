@@ -136,8 +136,22 @@ function New-TranscriptLine {
     return ($entry | ConvertTo-Json -Compress -Depth 10)
 }
 
+function Assert-EvalParentAlive {
+    # 코디네이터가 살아 있는지 본다 — 죽었으면 throw 해서 호출측의 `finally`(격리 홈 원복 +
+    #   임시 폴더 정리)를 태운다. `exit`를 쓰지 않는 이유가 그것이다.
+    # `$script:EvalParentProc`는 `run-scenario.ps1`이 `-ParentPid`를 받았을 때만 채운다 —
+    #   비어 있으면 직접 실행이라 감시할 부모가 없다(무조건 통과).
+    if ($null -eq $script:EvalParentProc) { return }
+    if ($script:EvalParentProc.HasExited) {
+        throw "코디네이터(PID $($script:EvalParentProc.Id))가 종료됐다 — 고아로 남지 않도록 중단한다"
+    }
+}
+
 function Invoke-Hook {
     param([string]$ScriptName, [string]$InputJson)
+    # 자식 pwsh를 띄우기 직전에 부모 생존을 확인한다 — 케이스 대부분이 이 함수를 지나므로
+    #   폴링 지점으로 가장 촘촘하다(`run-scenario.ps1`의 시나리오 루프가 성긴 백스톱이다).
+    Assert-EvalParentAlive
     # 자식 프로세스 출력을 **UTF-8로 디코딩**한다(v1.182.0). `2>&1`이 stderr를 이미 $R.out에
     #   합치지만, 콘솔 코드페이지가 UTF-8이 아닌 기동 경로(러너는 Start-Process로 새 콘솔에서
     #   뜬다 — 실측 ks_c_5601-1987)에서는 hook의 한글 경고가 `?패`처럼 깨져 들어와

@@ -23,7 +23,10 @@ param(
     # 판정을 JSON 라인으로 append할 경로. 코디네이터가 그룹별로 다른 경로를 준다.
     [Parameter(Mandatory = $true)][string]$OutJson,
     # 부분 실행 필터 — 코디네이터가 그대로 전달한다.
-    [string[]]$Filter
+    [string[]]$Filter,
+    # 감시할 코디네이터 PID. 0이면 감시하지 않는다 — 이 스크립트는 **직접 실행도 가능**해야 하고
+    #   (위 사용법 주석) 그때는 감시할 부모가 없다. 필수로 만들면 그 경로가 깨진다.
+    [int]$ParentPid = 0
 )
 
 # -Names 정규화 — `pwsh -File`로 넘어온 `a,b`는 **단일 문자열**이다(PowerShell CLI가 콤마를
@@ -42,9 +45,33 @@ $EvalHomeSuffix = (($Names -join '+') -replace '[^\w+-]', '') + '-' + [guid]::Ne
 
 . (Join-Path $PSScriptRoot 'eval-common.ps1')
 
+# ---- 코디네이터 감시 (고아 방지) ----
+# **왜 자식이 감시하는가**: 코디네이터가 강제 종료되면 이 프로세스는 부모를 잃고도 계속 돈다 —
+#   `Start-Process -WindowStyle Hidden`으로 뜬 별도 콘솔이라 Ctrl+C도 부모의 죽음도 전달되지
+#   않는다. 코디네이터 쪽 `finally` 정리만으로는 못 닫는다: **`Stop-Process -Force`로 죽인
+#   pwsh에서 `finally`는 실행되지 않는 것이 실측이고**(2026-09-18), 도구 타임아웃·크래시가 바로
+#   그 경로다. 부모가 어떻게 죽든 자식이 스스로 끝나는 것이 유일한 방어다.
+# **왜 `Process` 객체를 미리 잡는가**: 핸들 기반이라 PID 재사용에 속지 않는다(`Get-Process -Id`를
+#   매번 부르면 죽은 부모의 PID를 재할당받은 무관한 프로세스를 「생존」으로 읽는다 —
+#   `session-end-cleanup-lib.ps1`이 CIM 경로에서 `ParentStartTime` 비교로 막는 것과 같은 위험).
+#   비용도 그쪽이 낫다: `.HasExited` 923회 16ms ↔ `Get-Process -Id` 923회 약 1.4초(실측).
+$script:EvalParentProc = $null
+if ($ParentPid -gt 0) {
+    try {
+        $script:EvalParentProc = [System.Diagnostics.Process]::GetProcessById($ParentPid)
+    } catch {
+        # 시작 시점에 이미 부모가 없다 — 판정 파일을 남기고 끝낸다(아래 catch가 사유를 적는다).
+        throw "코디네이터(PID $ParentPid)가 이미 종료됐다 — 고아로 남지 않도록 중단한다"
+    }
+}
+
 $exitCode = 0
 try {
     foreach ($n in $Names) {
+        # 시나리오 경계의 백스톱 — 시나리오 6곳이 `Invoke-Hook`을 우회해 직접 pwsh 파이프를
+        #   쓰므로(guard-bash 3 · guard-harness 1 · warn-commit-secrets 2) 그 구간에는
+        #   함수 쪽 확인이 걸리지 않는다. 그룹당 1~2회라 비용이 없다.
+        Assert-EvalParentAlive
         $sh = Resolve-ScenarioShard $n
         $script:ShardIndex = $sh.Index; $script:ShardCount = $sh.Count
         $path = Join-Path $evalsDir ('scenarios/' + $sh.File + '.ps1')

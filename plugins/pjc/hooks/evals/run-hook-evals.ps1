@@ -294,7 +294,10 @@ foreach ($g in $scenarioGroups) {
     $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass',
         '-File', ('"' + (Join-Path $evalsDirTop 'run-scenario.ps1') + '"'),
         '-Names', ($g -join ','),
-        '-OutJson', ('"' + $gf + '"'))
+        '-OutJson', ('"' + $gf + '"'),
+        # 자식이 이 PID를 감시해 **부모가 죽으면 스스로 끝낸다**(고아 방지). 정수라 위 경로 인자와
+        #   달리 인용이 필요 없다 — 공백이 섞일 수 없기 때문이다.
+        '-ParentPid', $PID)
     if ($Filter -and @($Filter).Count) { $argList += @('-Filter', ($Filter -join ',')) }
 
     # 동시 실행 상한 — 슬롯이 빌 때까지 기다린다.
