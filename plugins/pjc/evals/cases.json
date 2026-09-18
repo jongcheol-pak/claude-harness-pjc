@@ -1080,6 +1080,53 @@
     ]
   },
   {
+    "id": "harness-critical-literal-lost",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/SKILL.md",
+        "find": "K 5-2가 정본이다",
+        "replace": "K 5-9가 정본이다"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 리터럴이 출처에서 사라졌다"
+    ]
+  },
+  {
+    "id": "harness-critical-literal-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "핵심 포인터 실재"
+    ],
+    "expect_absent": [
+      "핵심 리터럴이"
+    ]
+  },
+  {
+    "id": "harness-critical-literals-baseline-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/evals/check-harness-consistency.py",
+        "find": "CRITICAL_LITERALS_BASELINE = 4",
+        "replace": "CRITICAL_LITERALS_BASELINE = 5"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 리터럴 총량이 기준선과 다르다: 4 != 5",
+      "CRITICAL_LITERALS_BASELINE"
+    ]
+  },
+  {
     "id": "harness-deprecated-tokens-baseline-drift",
     "checker": "harness",
     "fixture": "minimal-repo",
