@@ -77,7 +77,7 @@
 
 **위키 회로 검사** — `plugins/pjc/skills/evals/check_wiki_circuit.py`. 기록 → 소비 → 조회 **12단계**가 이어져 있는가를 본다 — 어느 한 곳을 고쳐도 나머지 열하나는 그대로 통과하므로 이 검사가 그 연결을 잰다. **모델 호출이 없어 1초 미만**이라 스모크가 아니라 전량이 기본이다. `implement/SKILL.md`·`skills/WIKI.md`·`plan/SKILL.md`·`skills/llm-wiki/**` 를 고쳤으면 필수다.
 
-**하니스 정합 셀프체크** — **축 목록·번호·수의 정본은 `plugins/pjc/evals/check-harness-consistency.py` 의 모듈 docstring 이다.** 여기에 열거하지 않는다 — 열거를 두면 축을 늘릴 때마다 두 곳이 갈리고, 실제로 2026-09-04 까지 낡은 수가 남아 있었다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). 축마다 **판정 규칙·근거가 어디에 있는가**는 다음과 같다 — **볼드 마커 짝·한 줄 문장 중복**은 그 검사기의 함수 주석과 `harness-consistency-rationale.md` 「축 ③④ — 번호 이력과 필요성」, **문서 예산**은 `plugins/pjc/skills/BUDGET.md`「예산 표」, **폐기 식별자 실재**는 **대상 목록**이 같은 문서 3-1 의 고정 형식 1줄이고(판정·면제는 함수 주석), **등재 근거 실측**은 등재 하한선의 정본이 `plan/references/deferred-rules.md` 이며(필드 형식 `(실해: YYYY-MM-DD <관측>)`), **Deferred 집계**는 대장 자신의 「카운트 기준」 블록, **종결 사유 명시**는 규약 문면이 `deferred-closed.md` 머리말이고 **인정 표현·판정 규칙은 `CLOSE_REASON_RX` 와 `check_close_reasons()` 주석**이며, **분할 헬퍼 동기**는 복제를 허용한 예외 문단이 `plugins/pjc/skills/DESIGN.md` 2절이고(대상 목록은 `SPLIT_HELPER_FILES`), 그 밖의 축은 판정 규칙이 곧 코드라 그 함수 주석이 정본이다(회차 24 가 더한 **핵심 포인터 실재**의 대상 목록은 `CRITICAL_POINTERS` 상수다).
+**하니스 정합 셀프체크** — **축 목록·번호·수의 정본은 `plugins/pjc/evals/check-harness-consistency.py` 의 모듈 docstring 이다.** 여기에 열거하지 않는다 — 열거를 두면 축을 늘릴 때마다 두 곳이 갈리고, 실제로 2026-09-04 까지 낡은 수가 남아 있었다. **exit 0 일치 / 1 불일치 / 2 앵커 파싱 실패**(2는 통과가 아니다). 축마다 **판정 규칙·근거가 어디에 있는가**는 다음과 같다 — **볼드 마커 짝·한 줄 문장 중복**은 그 검사기의 함수 주석과 `harness-consistency-rationale.md` 「축 ③④ — 번호 이력과 필요성」, **문서 예산**은 `plugins/pjc/skills/BUDGET.md`「예산 표」, **폐기 식별자 실재**는 **대상 목록**이 같은 문서 3-1 의 고정 형식 1줄이고(판정·면제는 함수 주석), **등재 근거 실측**은 등재 하한선의 정본이 `plan/references/deferred-rules.md` 이며(필드 형식 `(실해: YYYY-MM-DD <관측>)`), **Deferred 집계**는 대장 자신의 「카운트 기준」 블록, **종결 사유 명시**는 규약 문면이 `deferred-closed.md` 머리말이고 **인정 표현·판정 규칙은 `CLOSE_REASON_RX` 와 `check_close_reasons()` 주석**이며, **분할 헬퍼 동기**는 복제를 허용한 예외 문단이 `plugins/pjc/skills/DESIGN.md` 2절이고(대상 목록은 `SPLIT_HELPER_FILES`), 그 밖의 축은 판정 규칙이 곧 코드라 그 함수 주석이 정본이다(회차 24 가 더한 **핵심 포인터 실재**의 대상 목록은 **손목록 둘**이다 — `CRITICAL_POINTERS` 가 「그 파일을 가리키는가」를, 회차 81 이 더한 `CRITICAL_LITERALS` 가 「그 규약을 **부르는 문면이 살아 있는가**」를 잰다. 갈라 둔 이유는 basename 대조가 *파일째 지움* 만 잡고 *호출 문면만 지움* 은 통과시키기 때문이다).
 
 **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 내장 경로 보호가 같은 명령 문자열 안 다른 따옴표 경로를 집어 오차단한다(하니스 hook과 무관). 조건·회피법은 아래 「검증 배치의 `Remove-Item` 오차단」.
 
@@ -115,7 +115,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 46,392 | 137,000 |
+| `docs/harness-conventions.md` | 46,546 | 137,000 |
 | `docs/golden-runner.md` | 12,176 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 12,310 | 37,000 |
 
