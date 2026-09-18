@@ -359,6 +359,31 @@ def fenced_interior_chars(text):
     return 0 if in_fence else interior
 
 
+def strip_scaffold(text, probe=None):
+    """예산 판정용: **분할이 만들어 낸 비계**를 걷어내고 `(산문, 비계 문자 수)`를 돌려준다.
+
+    비계는 둘이다 — ⓐ 절을 옮긴 자리에 남는 **정본 포인터 줄** ⓑ 조회 홉 1을 보장하려고
+    유지하는 **`## 하위 문서` 목록**. 둘 다 산문이 아니라 `--auto-split` 자신의 산출물이라
+    **사람이 줄일 수 없고 분할할수록 늘어난다.** 예산이 재는 것은 「산문이 비대한가」이므로
+    여기서 뺀다(§2.6·§4 — guide의 코드 펜스 제외와 같은 축).
+
+    빼지 않으면 처방이 증상을 악화시킨다: 실측된 concept 허브는 5,715자 중 4,688자(82%)가
+    이 둘이었고 본문이 전부 포인터 스텁이라 `--auto-split`이 「수행 대상 없음」을 냈다 —
+    신호는 영구히 남는데 더 나눌수록 비계가 늘어 예산에서 더 멀어지는 상태였다.
+
+    **문자 수가 아니라 산문까지 돌려주는 이유**: guide의 펜스 계수를 **비계를 걷어낸 본문**
+    에서 해야 겹치는 자리가 두 번 빠지지 않는다. 포인터 줄은 `## 하위 문서` 섹션을 먼저
+    덜어낸 뒤에 센다(같은 이유 — 목록 안에 포인터 형상이 섞여도 이중 계상되지 않는다).
+    판정에 쓰는 정규식·섹션 경계는 `_pick_relocatable`·`section()`과 같은 것을 쓴다 —
+    「무엇이 비계인가」가 두 벌이 되면 한쪽만 고쳐지는 드리프트가 생긴다.
+    줄바꿈 1자를 더해 `len(text)`와 같은 기준으로 센다."""
+    sub = section(text, "하위 문서", probe)
+    prose = text.replace(sub, "", 1) if sub else text
+    ptr = sum(len(m.group(0)) + 1 for m in PTR_ONLY_LINE_RX.finditer(prose))
+    prose = PTR_ONLY_LINE_RX.sub("", prose)
+    return prose, ptr + (len(sub) if sub else 0)
+
+
 def section(text, heading, probe=None):
     """본문에서 '## {heading}' 섹션(헤딩 줄부터 다음 '## ' 헤딩 또는 문서 끝까지)을 반환, 없으면 None.
     기능별 인덱스(§7-6·14)·레포 정보(§7-20)·아카이브 인덱스(§7-19)·미해결 질문(§7-23) 공용 —
@@ -456,7 +481,7 @@ def budget_split_suppressed(fm, chars):
 
 BudgetState = collections.namedtuple(
     "BudgetState",
-    "typ budget chars eff_chars fence_note over near critical suppressed target stage")
+    "typ budget chars eff_chars eff_note over near critical suppressed target stage")
 
 
 def rollover_target(rel_path, typ, budget):
@@ -503,19 +528,24 @@ def budget_state(rel_path, fm, text):
         손실이 없다 -- 제거 대신 분리하면 내용이 남을 뿐이다. 나머지 타입은 단계가 하나다."""
     chars = len(text)
     if rel_path in SPECIAL_BUDGET:
-        budget, typ, eff_chars, fence_note = SPECIAL_BUDGET[rel_path], "log", chars, ""
+        budget, typ, eff_chars, eff_note = SPECIAL_BUDGET[rel_path], "log", chars, ""
     else:
         typ = fm.get("type", "")
-        eff_chars, fence_note = chars, ""
+        # 분할이 만든 비계(정본 포인터·`## 하위 문서`)는 전 타입에서 뺀다 — 산문이 아니라
+        #  처방의 산출물이라 세면 「나눌수록 예산에서 멀어지는」 상태가 만들어진다(strip_scaffold).
+        prose, scaffold = strip_scaffold(text)
+        eff_chars = chars - scaffold
+        eff_note = f", 비계 {scaffold}자 제외" if scaffold else ""
         if typ == "guide":
             gk = fm.get("guide_kind", "")
             budget = GUIDE_BUDGET.get(gk, 9000)
             # platform-bootstrap·ui-ux는 펜스 내부를 뺀 유효 문자 수로 잰다(§2.6 예산 판정 방식).
+            #  **비계를 걷어낸 본문에서 센다** — 전체 텍스트에서 각각 빼면 겹치는 자리가 두 번 빠진다.
             if gk in ("platform-bootstrap", "ui-ux"):
-                fenced = fenced_interior_chars(text)
+                fenced = fenced_interior_chars(prose)
                 if fenced:
-                    eff_chars = chars - fenced
-                    fence_note = f", 코드 펜스 {fenced}자 제외"
+                    eff_chars -= fenced
+                    eff_note += f", 코드 펜스 {fenced}자 제외"
         elif typ in BUDGET:
             budget = BUDGET[typ]
         else:
@@ -526,7 +556,7 @@ def budget_state(rel_path, fm, text):
     critical = near and (eff_chars >= budget * BUDGET_CRITICAL_RATIO
                          or budget - eff_chars < BUDGET_CRITICAL_SLACK)
     return BudgetState(
-        typ=typ, budget=budget, chars=chars, eff_chars=eff_chars, fence_note=fence_note,
+        typ=typ, budget=budget, chars=chars, eff_chars=eff_chars, eff_note=eff_note,
         over=eff_chars > budget, near=near, critical=critical,
         suppressed=budget_split_suppressed(fm, eff_chars),
         target=rollover_target(rel_path, typ, budget),
@@ -2985,7 +3015,7 @@ def main():
             st = budget_state(r, fm, text)
             budget = st.budget if st else None
             eff_chars = st.eff_chars if st else 0
-            fence_note = st.fence_note if st else ""
+            eff_note = st.eff_note if st else ""
             # L-2: lint 리포트(questions/lint-YYYYMMDD.md)는 발견 다건이면 길어지는 게 정상이라
             #   예산 검사에서 제외한다(§7-12/23 집계·등록 제외와 동일 기준) — 자기 리포트가 다음 lint에서
             #   영구 '예산 초과' WARN을 만드는 것을 막는다.
@@ -2997,7 +3027,7 @@ def main():
                     "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약은 conventions.md로 분리 (wiki-schema §2.2·§2.9)",
                     "convention": " — 주제별 `## ` 헤딩으로 구역화 → 무효 항목 제거 → 주제별 하위 파일(conventions-{주제}.md) 분리 + '## 하위 문서' 목록 갱신 (wiki-schema §2.9)",
                 }.get(typ, "")
-                warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{fence_note}){hint}", r)
+                warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{eff_note}){hint}", r)
             elif budget and st.near and not is_lint_report(r) and not st.suppressed:
                 # v1.207.0 — 임박 계층을 **처방 가능 여부**로 가른다(§7-2 발동 ⓐ/ⓑ).
                 #  판정 술어는 `relocatable`이며 그것은 `relocate_sections`가 실제로 쓰는
