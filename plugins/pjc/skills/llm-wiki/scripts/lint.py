@@ -2201,6 +2201,15 @@ def _register_feature_rows(vault, rel, entries):
     return hub_rel, hub_text.replace(sec, sec.rstrip("\n") + "\n" + rows + "\n", 1)
 
 
+def _relocation_pointer(sub_rel, label, title, moved):
+    """이동 자리에 남기는 정본 포인터 줄을 합성한다(§4 ③-1).
+
+    **합성하는 쪽과 「그 줄보다 본문이 큰가」를 재는 쪽이 이 하나를 쓴다** — 서식을 한쪽에만
+    두면 포인터가 길어져도 판정이 옛 길이로 남아, 옮길수록 커지는 절을 다시 옮기게 된다."""
+    return ("**정본은 [[%s|%s — %s]]의 「%s」이다** — 본문 %d자를 옮겼다(§7-2 발동 처방).\n\n"
+            % (sub_rel[:-len(".md")], label, title, title, moved))
+
+
 def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra_keep=()):
     """이 상태에서 **실제로 옮길 수 있는 섹션**을 고른다. 없으면 None.
 
@@ -2239,6 +2248,13 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
         #  정의만으로는 옮길 실 내용이 아니다. 빼지 않으면 그 스텁이 다음 라운드에 다시 최대
         #  후보로 잡혀, 각주를 데리고 하위로 갔다가 §7-18ⓑ 위반이 되돌아온다.
         if not FOOTNOTE_DEF_RX.sub("", PTR_ONLY_LINE_RX.sub("", c_body)).strip():
+            continue
+        # **옮겨도 문서가 줄지 않는 절은 후보에서 뺀다.** 이동 자리에는 정본 포인터가 남는데,
+        #  그 줄이 본문보다 길면 옮길수록 파일이 커진다 — 실측된 concept 허브는 127~314자짜리
+        #  절 8개가 약 200자 포인터로 바뀌며 하위 13개까지 번졌고, 그때 허브는 예산의 82%가
+        #  비계였다. 위의 스텁 판정과 축이 다르다: 저쪽은 「옮길 실 내용이 없다」이고 이쪽은
+        #  「내용은 있지만 옮기면 손해다」라, 합치면 한쪽 사유가 다른 쪽에 가려진다.
+        if len(c_body) <= len(_relocation_pointer(sub_rel, label, c_title, len(c_body))):
             continue
         sub_text = _sub_page_text(text, fm, typ, c_title, c_body, label, rel, nl, secmap)
         sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
@@ -2340,8 +2356,7 @@ def relocate_sections(ses):
                 break
             (title, s0, s1), body, sub_text = pick
             hd_end = cur.index("\n", s0) + 1
-            ptr = ("**정본은 [[%s|%s — %s]]의 「%s」이다** — 본문 %d자를 옮겼다(§7-2 발동 처방).\n\n"
-                   % (sub_rel[:-len(".md")], label, title, title, len(body)))
+            ptr = _relocation_pointer(sub_rel, label, title, len(body))
             # **본문 안의 각주 정의는 원본에 남긴다**(D2) — 각주는 파일 로컬이라, 정의가
             #  옮기는 절 안에 있으면 본문과 함께 빠져 **원본의 `[^src-` 가 0이 된다**(§7-18ⓑ가
             #  곧바로 새 위반을 낸다). 하위에는 body 에 이미 딸려 가므로 여기서 복제하지 않는다.
