@@ -50,7 +50,7 @@ try:
 except Exception:
     pass
 
-# 시간 기반 판정(미래 날짜 · 백업 30일 정리)의 「오늘」. 골든 픽스처는 날짜가 고정 커밋돼
+# 시간 기반 판정(미래 날짜 · 백업 회수의 「오늘 것은 남긴다」)의 「오늘」. 골든 픽스처는 날짜가 고정 커밋돼
 #  있어 실제 today로 재면 시간이 지나며 기대 결과가 조용히 뒤집힌다 — 러너가 이 환경변수로
 #  기준일을 고정한다. (v1.238.0 전에는 폐지된 신선도 60·90일 축도 이 「오늘」을 썼고, 그 축이
 #  2026-09에 `orphan-lint-report`를 실제로 FAIL시킨 것이 이 고정 장치의 계기였다.)
@@ -696,7 +696,7 @@ def cleanup_backups(vault, today):
         suffix = m.group(2) or ""
         # 회수 대상은 둘이다 — 접미사 없는 `{YYYY-MM-DD}/`(세션 사전·`--fix` 백업)와
         #  **시각 접미사** `{날짜}-{HHMMSSmmm}/`(§4 분할 사본 — `_presession_dir`).
-        #  뒤쪽을 빼면 그 사본이 영구 누적된다: 종전에는 `-presplit` 이름이라 30일 정리가
+        #  뒤쪽을 빼면 그 사본이 영구 누적된다: 종전에는 `-presplit` 이름이라 이 정리가
         #  걷었는데, 이름에서 그 꼬리를 뗀 순간 「문자 접미사 = 보존 특례」에 걸려 남았다.
         #  보존 특례는 `-deleted`(유일 사본)·`-pre-restore`(복구 재백업) **문자** 접미사뿐이다.
         if suffix == "":
@@ -2433,7 +2433,7 @@ def auto_split(vault, dry_run):
     if not dry_run:
         cleaned, cleanup_failed = cleanup_backups(vault, _today())
         if cleaned:
-            print(f"백업 정리: {cleaned}건 제거 (§8 30일)")
+            print(f"백업 정리: {cleaned}건 제거 (§8 누적 금지)")
         for f in cleanup_failed:
             print(f"  [정리 실패] {f}")
 
@@ -2546,7 +2546,7 @@ def apply_fixes(vault, dry_run=False):
     안전장치: 수정 전 원본을 90_archive/backup/{오늘}/ 원경로에 백업(목적지 존재 시 미덮어쓰기 — §8,
       복구는 절차 L 그대로 적용). 인코딩(BOM)·줄바꿈은 원본 상태를 보존한다. 항목별 실패는 격리
       (그 파일만 [FIX-FAIL] 보고 후 계속). 위반 0이면 파일 무변경·백업 미생성.
-    **백업 정리는 새 백업을 만들기 전에 1회 수행한다**(cleanup_backups — §8 누적 금지·30일 정리).
+    **백업 정리는 새 백업을 만들기 전에 1회 수행한다**(cleanup_backups — §8 누적 금지 · 오늘 것만 남긴다).
       순서가 중요하다: 나중에 하면 방금 만든 오늘 백업을 지울 판정을 다시 하게 된다.
     **반환: 수행했으면 True, 미수행이면 False** — 미수행은 둘이다(진입 시 dirty 거부 ·
     체크포인트 커밋 실패). `main()`이 False를 종료 코드 1로 옮기고 본 lint를 건너뛴다.
