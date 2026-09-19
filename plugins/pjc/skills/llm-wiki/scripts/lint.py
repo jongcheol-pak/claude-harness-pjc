@@ -65,9 +65,7 @@ def _today():
                   file=sys.stderr)
     return datetime.date.today()
 
-# 임박 판정의 선행 게이트 — 자체 신호를 내지 않는 내부 임계였으나, v1.207.0부터
-#  **convention의 「구역화 필요」 WARN이 이 비율부터 난다**(§7-2 발동 ⓑ). 구역화는
-#  auto-split이 대신할 수 없는 세션 판단이라 임박까지 기다리면 늦기 때문이다.
+# 임박 판정의 선행 게이트 — 자체 신호를 내지 않는 내부 임계다.
 #  이 상수를 지우면 안 되는 이유: 임박은 `이 비율 이상 AND (비율 조건 OR 잔여 조건)`이라,
 #  선행 게이트가 빠지면 예산이 작은 타입(source-stub 1800)에서 72%짜리가 잔여 조건만으로 임박이 된다.
 BUDGET_NEAR_RATIO = 0.8
@@ -78,7 +76,7 @@ BUDGET_NEAR_RATIO = 0.8
 #  왜 단일 단계인가: 80% INFO를 함께 내던 때는 여유 28자와 1,624자가 같은 줄로 나와 정작 급한 것이
 #  INFO 더미에 묻혔다(실측 INFO 99건 중 10건). 묻히는 층을 없애고 하나만 남긴다.
 #  **v1.207.0부터 이 계층이 곧 WARN은 아니다** — auto-split이 실제로 옮길 수 있으면(`relocatable`)
-#  침묵하고, 옮길 경계가 없을 때만 신호가 난다(§7-2 발동 ⓐ/ⓑ). 사람이 할 일이 없는데
+#  침묵하고, 옮길 경계가 없을 때만 신호가 난다(§7-2 발동 ⓐ). 사람이 할 일이 없는데
 #  「초과까지 몇 % 남았다」를 반복하는 것이 소음이었기 때문이다.
 BUDGET_CRITICAL_RATIO = 0.95
 BUDGET_CRITICAL_SLACK = 500
@@ -97,10 +95,20 @@ BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 —
     "source-stub": 1800, "project": 13000, "feature": 22000,
     "entity": 6000, "concept": 5000, "question": 3500,
     "decision-log": 6000,  # 결정 이력 (wiki-schema §2.8 — §7-2 발동 시 90_archive 원경로 이동)
-    #  작업 규약 (§2.9 — §7-2 발동 시 ① 무효 항목 제거 → ② ①로도 해소 안 되면 하위 분리 → 재분할. 아카이브 롤오버는 안 한다:
-    #  절차 K가 매 작업 전에 읽으므로 아카이브로 옮기면 조회 경로 밖이 되어 이동이 곧 유실이다)
+    #  작업 규약 (§2.9 — §7-2 발동 시 무효 항목 제거. 분리·재분할은 하지 않는다: 아래 BUDGET_OVER_ONLY_TYPES.
+    #  아카이브 롤오버도 안 한다: 절차 K가 매 작업 전에 읽으므로 아카이브로 옮기면 조회 경로 밖이 되어 이동이 곧 유실이다)
     "convention": 12000,
 }
+# 예산 값은 두되 **초과 신호만** 내는 타입 — 근접·임박 계층과 `--auto-split` 분할에서 빠진다.
+#  왜 값을 지우지 않는가: `BUDGET`에서 빼면 `budget_state`가 None을 돌려 초과 WARN까지 함께 죽는다.
+#  절차 K가 `conventions.md` 본문을 매 작업 전에 읽으므로 크기 신호는 남겨야 한다 — 실측으로
+#  본체 평균이 9,420B(2026-08-19) → 13,250B(09-04)로 자랐다가 분리로 10,950B(09-19)까지 내려왔다.
+#  왜 분할을 뺐는가: vault 산문 분리 47건 중 24건이 convention이라 파편과 세션 손작업의 절반이
+#  이 한 타입에서 나오는데, 근접 계층의 「구역화 필요」 WARN은 실제로 한 번도 발화한 적이 없다
+#  (근접 이상 8건이 전부 처방 가능이라 침묵). 없애서 잃는 신호가 없고 줄어드는 것은 분할 자체다.
+#  **이 상수가 단일 출처다** — 근접 분기와 `RELOCATE_TYPES`가 각자 조건을 쓰지 않고 여기서 파생한다.
+#  신호 술어와 처방 술어가 갈리면 *조용한데 처리도 안 되는* 파일이 생긴다(`prescribable` docstring).
+BUDGET_OVER_ONLY_TYPES = ("convention",)
 GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
 # §7-16(병기)·§7-14(행수)가 「기능별 인덱스 유형 행」으로 인정하는 **대상 토큰**.
 #  (feature 파일명 접두, guide 경로 조각) 순이며 매칭 방식이 서로 다르다 -- 앞은 basename
@@ -479,7 +487,7 @@ def budget_split_suppressed(fm, chars):
 
 BudgetState = collections.namedtuple(
     "BudgetState",
-    "typ budget chars eff_chars eff_note over near critical suppressed target stage")
+    "typ budget chars eff_chars eff_note over near critical suppressed target")
 
 
 def rollover_target(rel_path, typ, budget):
@@ -520,10 +528,7 @@ def budget_state(rel_path, fm, text):
         **`--auto-split`은 이 페이지를 건드리지 않는다** -- 규정이 「더 나눌 것이 없다」고
         판정한 것을 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다.
       target -- 처방을 어디까지 수행하고 멈추는가. 타입별 더 낮은 목표치가 있으면 그 값,
-        없으면 None(그 경우 종료 기준은 「발동이 풀릴 때까지」이지 「예산 이내」가 아니다).
-      stage -- 다단 처방의 진입 단계. convention은 ①(무효 항목 제거)이 「무엇이 무효인가」를
-        묻는 판단이라 자동 경로가 수행할 수 없어 **2부터 시작**한다(하위 분리). ①을 건너뛰어도
-        손실이 없다 -- 제거 대신 분리하면 내용이 남을 뿐이다. 나머지 타입은 단계가 하나다."""
+        없으면 None(그 경우 종료 기준은 「발동이 풀릴 때까지」이지 「예산 이내」가 아니다)."""
     chars = len(text)
     if rel_path in SPECIAL_BUDGET:
         budget, typ, eff_chars, eff_note = SPECIAL_BUDGET[rel_path], "log", chars, ""
@@ -557,8 +562,7 @@ def budget_state(rel_path, fm, text):
         typ=typ, budget=budget, chars=chars, eff_chars=eff_chars, eff_note=eff_note,
         over=eff_chars > budget, near=near, critical=critical,
         suppressed=budget_split_suppressed(fm, eff_chars),
-        target=rollover_target(rel_path, typ, budget),
-        stage=2 if typ == "convention" else 1)
+        target=rollover_target(rel_path, typ, budget))
 
 
 def budget_resolved(state):
@@ -2053,7 +2057,11 @@ TYPE_REQUIRED_SECTIONS = {
 #  위반을 만드는 자리라 문자 축 처방을 두지 않는다(§4 표 project 행 — 그 자리는 사람이 하는
 #  정리 §2.9가 맡는다). `TYPE_REQUIRED_SECTIONS`에는 남긴다 — 그 dict 는 필수 섹션의 정의이지
 #  분리 대상 목록이 아니다.
-RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS if t != "project")
+# **`BUDGET_OVER_ONLY_TYPES`(convention)도 같은 이유로 빠진다** — 그 타입은 초과 신호만 내고
+#  분할 처방을 갖지 않으므로, 여기 남겨 두면 `relocatable`이 참을 돌려 근접 분기와 갈린다.
+#  조건을 여기 다시 쓰지 않고 그 상수에서 파생하는 것이 단일 출처를 지키는 방법이다.
+RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS
+                       if t != "project" and t not in BUDGET_OVER_ONLY_TYPES)
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
 
 
@@ -2212,7 +2220,7 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
     """이 상태에서 **실제로 옮길 수 있는 섹션**을 고른다. 없으면 None.
 
     `relocate_sections`의 반복문 안에 있던 판정을 그대로 뽑은 것이며, 그 함수와
-    **예산 분기(§7-2 발동 ⓐ/ⓑ)가 이 하나를 공유**한다 -- 「신호를 낼지」와 「옮길지」가
+    **예산 분기(§7-2 발동 ⓐ/ⓑ′)가 이 하나를 공유**한다 -- 「신호를 낼지」와 「옮길지」가
     다른 술어를 쓰면 *조용한데 처리도 안 되는* 파일이 생긴다(그것이 이 추출의 이유다).
     개수 비교(`movable >= 1`)로 근사할 수 없다: 전체 섹션이 하나뿐이거나, 옮겨도 하위가
     곧바로 발동하거나, 본문이 비어 있으면 후보가 없는데 개수만으로는 그것이 안 보인다."""
@@ -2263,7 +2271,7 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
 
 
 def relocatable(rel, fm, text, nl):
-    """auto-split이 이 파일에서 **실제로 옮길 수 있는가**(§7-2 발동 ⓐ/ⓑ 판정용).
+    """auto-split이 이 파일에서 **실제로 옮길 수 있는가**(§7-2 발동 ⓐ/ⓑ′ 판정용).
 
     하위 파일명은 예산 판정에 개입하지 않으므로(`budget_state`가 `rel`을 쓰는 곳은
     `SPECIAL_BUDGET`·`BUDGET_ROLLOVER_TARGET` 조회뿐이다) 순번을 조회하지 않고 `-1`을
@@ -2289,7 +2297,7 @@ def _rollover_movable(items, keep_min=1):
 
 
 def prescribable(rel, fm, text, nl):
-    """`--auto-split`이 이 파일에 **수행할 처방을 갖는가**(§7-2 발동 ⓐ/ⓑ 판정용).
+    """`--auto-split`이 이 파일에 **수행할 처방을 갖는가**(§7-2 발동 ⓐ/ⓑ′ 판정용).
 
     `relocatable`만으로는 부족하다 — auto-split의 처방은 넷인데(§8 log 롤오버 · §2.8
     decision-log 롤오버 · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리) 그 함수는 마지막
@@ -3038,11 +3046,12 @@ def main():
                 hint = {
                     "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)",
                     "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약은 conventions.md로 분리 (wiki-schema §2.2·§2.9)",
-                    "convention": " — 주제별 `## ` 헤딩으로 구역화 → 무효 항목 제거 → 주제별 하위 파일(conventions-{주제}.md) 분리 + '## 하위 문서' 목록 갱신 (wiki-schema §2.9)",
+                    "convention": " — 무효 항목을 제거한다 (wiki-schema §2.9)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{eff_note}){hint}", r)
-            elif budget and st.near and not is_lint_report(r) and not st.suppressed:
-                # v1.207.0 — 임박 계층을 **처방 가능 여부**로 가른다(§7-2 발동 ⓐ/ⓑ).
+            elif (budget and st.near and not is_lint_report(r) and not st.suppressed
+                  and st.typ not in BUDGET_OVER_ONLY_TYPES):
+                # v1.207.0 — 임박 계층을 **처방 가능 여부**로 가른다(§7-2 발동 ⓐ/ⓑ′).
                 #  판정 술어는 `relocatable`이며 그것은 `relocate_sections`가 실제로 쓰는
                 #  게이트를 그대로 뽑은 것이다 — 「신호를 낼지」와 「옮길지」가 다른 술어를
                 #  쓰면 *조용한데 처리도 안 되는* 파일이 생긴다.
@@ -3054,18 +3063,10 @@ def main():
                 if can:
                     # ⓐ auto-split이 처리할 수 있다 → **아무 신호도 내지 않는다.**
                     #  사람이 할 일이 없는데 「초과까지 몇 % 남았다」를 내면 그것은 소음이고,
-                    #  정작 세션이 손대야 하는 ⓑ가 그 더미에 묻힌다(80% INFO를 폐지한 것과 같은 이유).
+                    #  정작 세션이 손대야 하는 ⓑ′가 그 더미에 묻힌다(80% INFO를 폐지한 것과 같은 이유).
                     pass
-                elif typ == "convention":
-                    # ⓑ 옮길 경계가 없다 → 세션이 구역화한다(§2.9 처방 ⓪ · 「세션 처방 둘」 ⓔ).
-                    #  `critical`이 아니라 `near`부터 내는 이유: 구역화는 auto-split이 대신할 수
-                    #  없는 세션 판단이라, 95%에서 알리면 그 사이 편집 한 번이 곧 초과가 된다.
-                    warn(f"구역화 필요: {r} {eff_chars}/{budget}자 "
-                         f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ}) "
-                         f"— auto-split이 옮길 경계가 없다(`## ` 섹션 0~1개). "
-                         f"세션이 주제별 `## ` 헤딩으로 본문을 구역화한다 — 그 뒤는 자동 처리된다 (wiki-schema §2.9 처방 ⓪)", r)
                 elif st.critical:
-                    # ⓑ' 처방이 없는데 convention도 아니다 → **종전 임박 WARN을 그대로 낸다.**
+                    # ⓑ' 처방이 없다 → **종전 임박 WARN을 그대로 낸다.**
                     #  침묵은 「auto-split이 맡았다」는 뜻이지 「무시해도 된다」가 아니므로, 맡을
                     #  주체가 없는 파일까지 조용해지면 초과 직전까지 아무도 모른다. 발화선을
                     #  `critical`로 두는 것은 이 갈래가 v1.207.0 이전과 **완전히 같은 동작**이기
@@ -3081,10 +3082,14 @@ def main():
                     warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
                          f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
                          f"{np_hint}", r)
-            elif budget and st.critical and not is_lint_report(r):
+            elif (budget and st.critical and not is_lint_report(r)
+                  and st.typ not in BUDGET_OVER_ONLY_TYPES):
                 # ⓒ L-4: 위 분기가 budget_split 억제로 건너뛴 파일이 여기로 내려온다.
                 #   침묵시키지 않는 이유: 억제를 영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어
                 #   판정 자체가 사각이 된다. 상태는 보이되 수리 의무는 없으므로 WARN이 아니라 INFO다.
+                #   **`BUDGET_OVER_ONLY_TYPES`는 여기서도 빠진다** — 그 타입에 근접·임박 계층이
+                #   없으므로 「억제로 강등된 임박」이라는 상태 자체가 성립하지 않는다. 위 근접
+                #   분기만 막으면 임박인 파일이 이 갈래로 흘러 같은 신호가 이름만 바꿔 되살아난다.
                 infos.append(f"예산 임박(분리 불가 판정 유지): {r} {eff_chars}/{budget}자 "
                              f"({eff_chars / budget * 100:.0f}%, type={typ}) "
                              f"— 재판정 마진 초과 시 자동 재발화")
