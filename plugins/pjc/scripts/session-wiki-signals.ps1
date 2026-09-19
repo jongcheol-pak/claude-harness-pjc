@@ -142,6 +142,9 @@ function Get-WikiSignals {
                                         try { $hubText = Get-Content -LiteralPath $hubFile.FullName -Raw -Encoding UTF8 } catch { continue }
                                         if (-not $hubText) { continue }
 
+                                        # 분할 조각은 허브가 아니다 — 근거는 `rules/session-context-rationale-wiki.md`의 「§37 분할 조각은 허브가 아니다」
+                                        if ($hubText -match '(?m)^>\s*상위 문서:') { continue }
+
                                         # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. — 근거는 `rules/session-context-rationale-wiki.md`의 「§28 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다.」
                                         $hubUrl = ''
                                         if ($cwdUrl) {

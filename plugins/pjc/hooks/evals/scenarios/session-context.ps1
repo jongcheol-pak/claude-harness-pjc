@@ -844,8 +844,53 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scSubDir } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 하위 폴더 cwd 도 URL 로 매칭 (SC37d)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
 
+    # SC37e/SC37f: 분할 조각(`> 상위 문서:`)은 허브가 아니다 (v1.301.0 T3).
+    #   §4 산문 분할이 만든 조각은 원본과 같은 타입이라 `repo_url` 을 그대로 물려받아 URL 축을
+    #   통과하고, 열거가 하이픈 우선이라(`scwiki-2.md` < `scwiki.md`) 첫 매치에서 `break` 하는
+    #   구현은 **부모 대신 조각을 집는다**. 실측으로 Karina 조각이 「130커밋 미반영」을 냈다(실제 0).
+    $scFragPath = Join-Path $scHubDir 'scwiki-2.md'
+    # 조각을 쓰는 지역 헬퍼 — 실제 조각과 같은 형상이다(부모의 frontmatter 를 물려받고
+    #   `## 레포 정보` 도 함께 딸려 있다 — vault 실측: karina-2~5 넷 모두 그 절을 갖는다).
+    #   그래서 이 조각은 URL 축·경로 축 **둘 다** 통과하며, 배제 줄이 없으면 반드시 허브로 잡힌다.
+    function Write-ScFragment {
+        param([string]$Path, [string]$RepoPath, [string]$Sha, [int]$DaysAgo, [string]$RepoUrl)
+        $upd = (Get-Date).AddDays(-$DaysAgo).ToString('yyyy-MM-dd')
+        @('---', 'type: project', 'project: SCWiki', "updated: $upd", "synced_commit: $Sha",
+          "repo_url: `"$RepoUrl`"", '---', '', '# SCWiki — 온보딩 가이드', '',
+          '> 상위 문서: [[20_projects/personal/scwiki|SCWiki]]', '', '## 레포 정보',
+          ('- **경로**: `' + ($RepoPath -replace '\\', '/') + '`')) | Set-Content -Encoding UTF8 $Path
+    }
+
+    # SC37e (양성 — 이 묶음의 핵심): 조각은 **최신**(0커밋·오늘) · 부모는 **30커밋 뒤처짐**.
+    #   기대값을 「뒤처짐 발화」가 아니라 **`30커밋 미반영` 수치**로 잡는 이유는 그것이
+    #   「어느 허브를 집었나」의 유일한 직접 증거이기 때문이다 — 조각을 집으면 3축 전부
+    #   미달이라 미발화하고, 부모를 집어야만 이 문자열이 나온다.
+    #   ⚠ `$scSha30` 을 쓰지 않는다 — SC33e 가 그 사이에 커밋을 하나 더 만들어(`docs/thing.md`)
+    #     이 시점에는 그 sha 가 HEAD~31 이다(SC33e 가 `$scSha31` 을 따로 구하는 것과 같은 이유).
+    #     수치를 기대값으로 삼는 케이스라 여기서 다시 센다.
+    $scHeadForFrag = $null; $scSha30Now = $null
+    Push-Location $scRepo
+    try {
+        $scHeadForFrag = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
+        $scSha30Now    = (& git rev-parse 'HEAD~30' 2>$null | Select-Object -First 1)
+    } finally { Pop-Location }
+    Write-ScFragment -Path $scFragPath -RepoPath $scRepo -Sha $scHeadForFrag -DaysAgo 0 -RepoUrl $scRepoUrl
+    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha30Now -DaysAgo 0 -RepoUrl $scRepoUrl
+    Remove-Item -Force $scPendPath -ErrorAction SilentlyContinue
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 분할 조각을 건너뛰고 부모 허브로 판정 (SC37e)" -R $r -ExpectExit 0 -ExpectContains '30커밋 미반영'
+
+    # SC37f (델타 음성 — 축이 다르다): 조각만 있고 **부모가 없다** → 허브 없음이라 미발화.
+    #   SC37e 는 「둘 중 어느 쪽을 집나」를, 이쪽은 「조각 단독으로는 허브가 아니다」를 잰다.
+    #   이 케이스가 없으면 「조각을 뒤로 미루고 부모가 있으면 그쪽을 쓴다」는 구현도 green 이다.
+    Remove-Item -Force $scHubPath -ErrorAction SilentlyContinue
+    Write-ScFragment -Path $scFragPath -RepoPath $scRepo -Sha $scSha30Now -DaysAgo 30 -RepoUrl $scRepoUrl
+    $r = Invoke-ScRepoHook
+    Assert-Case -Name "session-context: 조각 단독이면 허브 없음·미발화 (SC37f)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
+    Remove-Item -Force $scFragPath -ErrorAction SilentlyContinue
+
     Remove-Item -Recurse -Force $scRepo, $scHarnRepo, $scRepoNoRemote -ErrorAction SilentlyContinue
-    }   # ---- git 게이트 끝 (SC32~SC37d)
+    }   # ---- git 게이트 끝 (SC32~SC37f)
 
     # SC44~SC44n: Deferred 대장(docs/plans/deferred.md) 최고령 「마지막 판정일」 주입 (v1.221.0 T1).
     #   착수 조건 축 ②의 값이 손계산이라 같은 오산이 2회 났다(v1.188.0 부기 형식 미인식 /
