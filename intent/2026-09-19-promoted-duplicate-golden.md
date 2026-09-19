@@ -3,7 +3,7 @@ Author: 사용자. Status: approved.
 
 ## Problem
 
-Deferred 대장의 [2026-09-17] 항목이 검증 자산 71항목으로 남아 있다. 원문 요청은 *"검증 자산 71항목도 계획 세워줘"* 이고, 인터뷰에서 **주제 단위 2회차**로 끊기로 해 이번은 「골든 러너 운용·픽스처」 24 + 「hook 검사·차단」 7 = **31항목**이다(직전 회차 32와 같은 규모라 오판률을 재현할 수 있다). 조사 중 `docs/golden-runner.md` 가 「현행 **925**케이스」를 기준선으로 담는 것을 확인했는데 위키에는 **923·643 두 옛 값**이 남아 있다 — 중복이면서 동시에 낡았다.
+Deferred 대장의 [2026-09-17] 항목이 검증 자산 71항목으로 남아 있다. 원문 요청은 *"검증 자산 71항목도 계획 세워줘"* 이고, 인터뷰에서 **주제 단위 2회차**로 끊기로 해 이번은 「골든 러너 운용·픽스처」 24 + 「hook 검사·차단」 7 = **31항목**이다(직전 회차 32와 같은 규모라 오판률을 재현할 수 있다). 조사 중 `docs/golden-runner.md` 의 회귀 기준선 줄이 현행 값을 담는 것을 확인했는데 위키에는 **923·643 두 옛 값**이 남아 있다 — 중복이면서 동시에 낡았다.
 
 ## Proposed outcome
 
@@ -11,7 +11,7 @@ Deferred 대장의 [2026-09-17] 항목이 검증 자산 71항목으로 남아 �
 
 ## Affected users and systems
 
-위키 `conventions-verification-3.md`(21) · `conventions-verification-2.md` 의 「골든을 돌리거나 픽스처를 고칠 때」(3) · `conventions-verification.md` 의 「hook 검사·차단」(7). 레포는 `docs/plans/deferred.md` 항목 요지와 `docs/plans/wiki-usage.md` 1줄.
+위키 `conventions-verification-3.md`(21) · `conventions-verification-2.md` 의 골든·픽스처 절(3) · `conventions-verification.md` 의 hook 검사·차단 절(7). 레포는 `docs/plans/deferred.md` 항목 요지와 `docs/plans/wiki-usage.md` 1줄.
 
 ## Constraints
 
