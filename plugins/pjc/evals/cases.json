@@ -674,6 +674,41 @@
     ]
   },
   {
+    "id": "harness-next-round-evidence-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- `[미등재:이번 회차가 처리]` **픽스처 미등재 항목** — 대장에 없는 것이 정상이라 대조 대상이 아니다.",
+        "replace": "- `[다음 회차]` **근거 없는 이월 항목** — 근거 필드가 없어 이 줄은 걸려야 한다."
+      }
+    ],
+    "expect_keywords": [
+      "`[다음 회차]` 에 근거 필드 없음"
+    ]
+  },
+  {
+    "id": "harness-next-round-evidence-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- `[미등재:이번 회차가 처리]` **픽스처 미등재 항목** — 대장에 없는 것이 정상이라 대조 대상이 아니다.",
+        "replace": "- `[다음 회차]` **근거 있는 이월 항목** — T7 은 다음 회차가 이어받는다 (근거: a1b2c3d `git log` 로 미착수 확인)."
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "근거 필드 없음"
+    ]
+  },
+  {
     "id": "harness-critical-pointer-ok",
     "checker": "harness",
     "fixture": "minimal-repo",
