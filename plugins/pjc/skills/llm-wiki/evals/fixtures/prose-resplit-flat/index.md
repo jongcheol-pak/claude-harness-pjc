@@ -14,6 +14,8 @@ updated: 2026-07-02
 | 기능 | 플랫폼 | 프로젝트 | 상세 |
 |---|---|---|---|
 | 것 (thing) | windows-desktop | Demo | [[20_projects/personal/demo/feat-thing\|feature]] |
+| 것 — 옛 절 (thing old) | windows-desktop | Demo | [[20_projects/personal/demo/feat-thing-2\|feature]] |
+| 것 — 다른 절 (thing other) | windows-desktop | Demo | [[20_projects/personal/demo/feat-thing-3\|feature]] |
 
 <!-- AUTO-INDEX:END -->
 

@@ -1,0 +1,29 @@
+---
+type: feature
+project: Demo
+category: personal
+platform: windows-desktop
+origin: agent-synthesized
+confidence: medium
+updated: 2026-07-02
+index_label: 것 (Thing) — 다른 절
+tags: [feature, demo]
+---
+# 것 — 다른 절
+
+> 상위 문서: [[20_projects/personal/demo/feat-thing|것 (Thing)]]
+
+## 개요
+
+[개요] 이 문단은 예산 발동 구간을 만들기 위한 본문이다. 내용 자체는 판정에 쓰이지 않지만 원문 무변조를 확인할 수 있도록 섹션마다 다른 표지를 둔다.
+
+## 관련 파일
+
+- `src/Demo/Other.cs` — 다른 절 본체
+
+## 구현 방법
+
+[구현 방법] 이 문단은 예산 발동 구간을 만들기 위한 본문이다. 내용 자체는 판정에 쓰이지 않지만 원문 무변조를 확인할 수 있도록 섹션마다 다른 표지를 둔다.
+
+[구현 방법] 이 문단은 예산 발동 구간을 만들기 위한 본문이다. 내용 자체는 판정에 쓰이지 않지만 원문 무변조를 확인할 수 있도록 섹션마다 다른 표지를 둔다.
+[^src-demo]: [[10_sources/personal/src-demo|소스: Demo]] — `src/Demo/Other.cs`

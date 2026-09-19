@@ -7,17 +7,15 @@ updated: 2026-08-13
 ## 개인 프로젝트
 | 프로젝트 | 상태 | 허브 |
 |---|---|---|
-| Demo | active | [[20_projects/personal/demo\|Demo]] |
-| Demo2 | active | [[20_projects/personal/demo2\|Demo2]] |
 
 ## 기능별 인덱스
 | 기능 | 플랫폼 | 프로젝트 | 상세 |
 |---|---|---|---|
+| 펜스 분할 (Fence split) | web | Demo | [[40_guides/ui-ux/fence-split\|펜스 분할 (Fence split)]] |
 
-## 가이드 / 레시피
-| 가이드 | 설명 |
-|---|---|
-| [[40_guides/ui-ux/fence-split\|UI 가이드 (UI guide)]] | 펜스 제외 억제 픽스처 |
+## 지식·패턴
+- [[30_knowledge/patterns/split-suppressed|억제 유지 개념 (Suppressed)]]
+- [[30_knowledge/patterns/split-rejudge|재판정 개념 (Rejudge)]]
 
 ## 미해결 질문
 (없음)

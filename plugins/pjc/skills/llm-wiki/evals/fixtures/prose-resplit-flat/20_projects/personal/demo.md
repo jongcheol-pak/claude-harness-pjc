@@ -20,9 +20,8 @@ tags: [project, personal, demo]
 | 기능 | 설명 | 링크 |
 |---|---|---|
 | 것 | 데모 기능 | [[20_projects/personal/demo/feat-thing\|것]] |
+| 옛 절 | 것 (Thing)의 「옛 절」 절 | [[20_projects/personal/demo/feat-thing-2\|것 (Thing) — 옛 절]] |
+| 다른 절 | 것 (Thing)의 「다른 절」 절 | [[20_projects/personal/demo/feat-thing-3\|것 (Thing) — 다른 절]] |
 
 ## 레포 정보
 - **경로**: `D:/none-existent-repo`
-
-## 관련 위키 지식
-- [[20_projects/personal/demo/conventions|참조]]

@@ -470,14 +470,16 @@
     {
       "fixture": "convention-over",
       "expect_keywords": [
-        "예산 초과",
-        "conventions.md",
-        "13059/12000",
-        "type=convention",
-        "무효 항목 제거",
-        "하위 파일"
+        "예산 초과: 20_projects/personal/demo/conventions.md 13059/12000자 (type=convention)",
+        "무효 항목을 제거한다"
       ],
-      "rationale": "§7-2 convention 예산(12000자) 초과 WARN + 처방 힌트 — 신규 타입이 BUDGET에 편입돼 문자 수로 판정되고, 초과 시점에 수리 경로(무효 항목 제거 → 하위 파일 분리)를 안내하는지 함께 실증한다(wiki-schema §2.9·§4·§7-2). 수리 경로가 정해진 타입은 임박 WARN과 초과 WARN 양쪽에 힌트를 병기해야 하며, 초과 시점에 침묵하면 정작 고쳐야 할 때 방법을 못 받는다. (v1.238.0 전에는 신선도 60/90일 오탐 가드로 expect_absent 2줄을 함께 실었으나, 그 축이 폐지돼 두 줄이 영원히 자명하게 통과하는 상태가 됐으므로 걷어냈다.)"
+      "rationale": "§7-2 convention 예산(12000자) **초과 WARN + 처방 힌트**와 그 **델타 음성**을 한 픽스처에서 잰다. 양성 `demo/conventions.md`는 13,059자로 초과라 WARN이 나고 힌트가 「무효 항목을 제거한다」 하나로 좁혀진다 — v1.303.0이 구역화·하위 분리·재분할을 없앴으므로 남는 처방이 그것뿐이고, 옛 힌트의 「하위 파일」이 되살아나면 expect_absent에서 FAIL한다. 델타 음성 `demo2/conventions.md`는 **11,520자(96%)로 임박 구간인데 아무 신호도 나지 않는다** — convention은 근접·임박·억제 세 갈래(ⓑ·ⓑ′·ⓒ)에서 모두 빠지고 초과에서만 발화하기 때문이다. 「한계를 이미 넘은 대상은 처방 가능 여부와 무관하게 알린다」가 이 케이스의 양성이고, 「그 아래에서는 조용하다」가 음성이다. 근접 분기만 막고 ⓒ(분리 불가 판정 유지) 갈래를 남긴 구현은 이 음성에서 FAIL한다(실제로 T1이 그 상태를 한 번 만들었다).",
+      "expect_absent": [
+        "예산 임박: 20_projects/personal/demo2/conventions.md",
+        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo2/conventions.md",
+        "구역화 필요",
+        "하위 파일"
+      ]
     },
     {
       "fixture": "convention-legacy-hub",
@@ -519,51 +521,45 @@
       "fixture": "budget-critical",
       "expect_keywords": [
         "예산 임박: 10_sources/personal/src-near.md 1450/1800자 (81%, 여유 350자, type=source-stub)",
-        "구역화 필요: 20_projects/personal/demo/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
-        "세션이 주제별 `## ` 헤딩으로 본문을 구역화한다 — 그 뒤는 자동 처리된다 (wiki-schema §2.9 처방 ⓪)",
-        "이 타입에는 auto-split 처방이 없다"
+        "이 타입에는 auto-split 처방이 없다",
+        "예산 임박: 20_projects/personal/demo.md 12480/13000자 (96%, 여유 520자, type=project)",
+        "'최근 주요 변경'이 5개 이하라"
       ],
       "expect_absent": [
+        "예산 임박: 20_projects/personal/demo/feat-silent.md",
+        "예산 초과: 20_projects/personal/demo/feat-silent.md",
+        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo/feat-silent.md",
         "예산 임박(분리 불가 판정 유지): 10_sources/personal/src-near.md",
-        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo/conventions.md",
-        "예산 임박: log.md"
+        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo.md",
+        "예산 임박: log.md",
+        "구역화 필요"
       ],
-      "rationale": "§7-2 발동 판정의 **OR 두 항**과 **처방 가능 여부에 따른 신호 층위**를 한 픽스처에서 함께 잰다. OR 두 항: `src-near`는 81%로 비율 조건(95%) 미충족이나 여유 350자<500이라 「잔여 조건」만으로 발화하고, `conventions.md`는 여유가 정확히 500자라 잔여 조건(< 500) 미충족이나 96%라 「비율 조건」만으로 발화한다 — 한 축만 구현하면 둘 중 하나가 반드시 빠진다. **신호 층위**(v1.207.0): 같은 임박이어도 `--auto-split`이 처리할 수 있으면 침묵하고 아닐 때만 신호가 나므로, 이 픽스처의 두 파일은 각각 다른 이름의 신호를 받는다 — `src-near`(source-stub)는 **어느 처방도 없는 타입**이라 종전 「예산 임박」 WARN을 그대로 받고(ⓑ′), `conventions.md`는 `## ` 섹션이 0개라 사람이 구역화해야 하므로 「구역화 필요」 WARN을 받는다(ⓑ). **`log.md`가 expect_absent로 옮겨간 것이 이 회차의 반전이다** — 그 경로의 처방은 §8 월별 롤오버이고 `rollover_log`가 자동 수행하므로 임박에서 침묵한다(ⓐ). 초과 WARN은 그대로 남으므로 침묵 범위가 초과까지 번지지 않는지는 `log-guard`가 잰다. expect_absent의 「분리 불가 판정 유지」 두 줄은 elif 체인 확인이다 — budget_split 판정이 없는 파일이 억제 INFO로 내려가지 않는지 고정한다."
+      "rationale": "§7-2 발동 판정의 **OR 두 항**과 **처방 가능 여부에 따른 신호 층위**(양성 + 델타 음성)를 한 픽스처에서 함께 잰다. OR 두 항: `src-near`는 81%로 비율 조건(95%) 미충족이나 여유 350자<500이라 「잔여 조건」만으로 발화하고, `demo.md`는 96%지만 여유가 520자라 잔여 조건(<500) 미충족이라 「비율 조건」만으로 발화한다 — 한 축만 구현하면 둘 중 하나가 반드시 빠진다. 예산이 13,000자 이상인 타입만 96%에서 여유 500자를 넘기므로 비율 축의 운반체는 project 허브다(`## 최근 주요 변경` 5항목이라 §2.2 롤오버 처방도 없어 ⓑ′로 떨어진다). **신호 층위**: `feat-silent.md`는 **더 큰 96%인데도 완전히 침묵한다**(ⓐ) — keep 밖 섹션 둘에 실 본문이 있어 `--auto-split`이 처리할 수 있기 때문이다. 「작아서 조용한 것」과 「처방이 있어서 조용한 것」이 겉으로 같으므로 이 델타 음성이 없으면 「크기가 아니라 구조가 신호를 가른다」가 실증되지 않는다(v1.303.0이 폐지한 `budget-no-sections`에서 이관한 축이다). `구역화 필요`가 expect_absent에 있는 이유는 v1.303.0이 convention을 근접·임박 계층에서 빼면서 그 갈래를 없앴기 때문이다 — 문구가 되살아나면 여기서 FAIL한다."
     },
     {
       "fixture": "budget-split-none",
       "expect_keywords": [
-        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo/conventions.md 11500/12000자 (96%, type=convention)",
-        "구역화 필요: 20_projects/personal/demo2/conventions.md 11500/12000자 (96%, 여유 500자, type=convention)",
+        "예산 임박: 30_knowledge/patterns/split-rejudge.md 4800/5000자 (96%, 여유 200자, type=concept)",
+        "예산 임박(분리 불가 판정 유지): 30_knowledge/patterns/split-suppressed.md 4800/5000자 (96%, type=concept)",
         "예산 임박(분리 불가 판정 유지): 40_guides/ui-ux/fence-split.md 5670/6000자 (94%, type=guide)"
       ],
       "expect_absent": [
-        "구역화 필요: 20_projects/personal/demo/conventions.md",
+        "예산 임박: 30_knowledge/patterns/split-suppressed.md",
         "예산 임박: 40_guides/ui-ux/fence-split.md"
       ],
-      "rationale": "「분리 불가 판정」(budget_split) 억제와 재판정 임계 — 두 파일은 문자 수·타입·예산이 모두 같고 budget_split_chars만 다르다(demo=11500=현재값 / demo2=10000). demo는 판정 시점 이내라 임박 WARN이 억제되고 「분리 불가 판정 유지」 INFO로 강등되며(expect_absent가 WARN 부재를, keyword가 INFO 발화를 각각 고정한다 — 두 문자열은 콜론 앞 괄호 유무로 갈려 부분 매칭이 겹치지 않는다), demo2는 10000*1.10=11000 < 11500이라 억제가 풀려 임박이 재발화한다. 억제를 영구 면제로 만들면 이 재발화가 사라져 '한 번 판정하면 초과까지 무신호'가 된다. 세 번째 파일 `fence-split.md`는 **펜스 제외 판정 타입(ui-ux guide)**의 회귀다 — 유효 문자 수 5,670/6,000(94%, 여유 330<500)이라 임박 조건을 충족하는데 억제로 「분리 불가 판정 유지」 INFO에 머문다. **이 케이스가 고정하는 것은 「코드가 `eff_chars`를 넘기는가」다** — 헬퍼에 파일 전체 `chars`를 넘기도록 바꾸면 이 파일만 임박 WARN을 내며 FAIL한다(다른 예산 픽스처는 전부 `eff==chars` 타입이라 그 변조를 잡지 못하는 유일한 판별자다). **반대로 페이지가 `budget_split_chars`에 잘못된 기준의 값(파일 전체 길이)을 적는 것은 이 케이스가 잡지 못한다** — lint은 기록값의 옳음을 검증하지 않기 때문이며, 그 공백은 Deferred 대장에 등재돼 있다."
-    },
-    {
-      "fixture": "budget-no-sections",
-      "expect_keywords": [
-        "구역화 필요: 20_projects/personal/demo/conventions.md 10180/12000자 (85%, 여유 1820자, type=convention)",
-        "auto-split이 옮길 경계가 없다"
-      ],
-      "expect_absent": [
-        "구역화 필요: 20_projects/personal/demo2/conventions.md",
-        "예산 임박: 20_projects/personal/demo2/conventions.md"
-      ],
-      "rationale": "§7-2 발동 ⓑ(구역화 필요)의 **양성 + 델타 음성**을 한 픽스처에 넣었다. 양성 `conventions.md`는 `## ` 섹션이 0개라 `--auto-split`이 옮길 경계가 없고, 그 상태는 lint이 아무리 돌아도 스스로 풀리지 않는다 — 사람이 주제별 헤딩을 넣어야 한다. **발화선이 근접(85%)인 것이 이 케이스의 핵심이다**: 구역화는 사람 판단이라 임박(95%)에서 알리면 그 사이 편집 한 번이 곧 초과가 된다. 임박에서만 내는 구현은 85%인 이 파일에 침묵해 FAIL한다. 델타 음성 `demo2/conventions.md`는 **같은 타입·더 큰 96%**인데 keep 밖 `## ` 섹션이 2개라 auto-split이 처리할 수 있고, 그래서 **어떤 신호도 나지 않는다**(ⓐ). 이 파일이 expect_absent에 있는 이유는 그것이 이 회차 변경의 본체이기 때문이다 — 「처방 가능 여부로 가른다」를 빼고 임계만으로 신호를 내던 구현은 96%인 이 파일에 WARN을 내며 FAIL한다. **별도 프로젝트로 둔 이유**: `conventions-{주제}.md`로 두면 §2.9 하위 문서로 읽혀 「하위 문서 목록 누락」 WARN이 따라붙고, 그것이 부재 가드를 오염시킨다(실측). 두 파일이 한 픽스처에 있어야 **크기가 아니라 구조가 신호를 가른다**는 것이 한 실행에서 대조된다."
+      "rationale": "「분리 불가 판정」(budget_split) 억제와 재판정 임계 — 두 concept 페이지는 문자 수·타입·예산이 모두 같고 `budget_split_chars`만 다르다(suppressed=4800=현재값 / rejudge=4000). suppressed는 판정 시점 이내라 임박 WARN이 억제되고 「분리 불가 판정 유지」 INFO로 강등되며(expect_absent가 WARN 부재를, keyword가 INFO 발화를 각각 고정한다 — 두 문자열은 콜론 앞 괄호 유무로 갈려 부분 매칭이 겹치지 않는다), rejudge는 4000*1.10=4400 < 4800이라 억제가 풀려 임박이 재발화한다. 억제를 영구 면제로 만들면 이 재발화가 사라져 '한 번 판정하면 초과까지 무신호'가 된다. 두 페이지가 `## 개요` 하나뿐이라(`len(secs) < 2`) auto-split 처방이 없어 ⓐ 침묵으로 새지 않는다. 세 번째 파일 `fence-split.md`는 **펜스 제외 판정 타입(ui-ux guide)**의 회귀다 — 유효 문자 수 5,670자로 억제가 유지되는지를 같은 실행에서 본다. **v1.303.0에서 운반 타입을 convention에서 concept으로 옮겼다** — 재는 축은 타입 무관인데 convention이 근접·임박 계층에서 빠지면서 그 운반체로는 축이 통째로 꺼지기 때문이다."
     },
     {
       "fixture": "budget-single-section",
       "expect_keywords": [
-        "구역화 필요: 20_projects/personal/demo/conventions.md 11516/12000자 (96%, 여유 484자, type=convention)"
+        "예산 임박: 20_projects/personal/demo/feat-mono.md 21120/22000자 (96%, 여유 880자, type=feature)",
+        "auto-split이 옮길 `## ` 경계가 없다"
       ],
       "expect_absent": [
-        "예산 임박: 20_projects/personal/demo/conventions.md"
+        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo/feat-mono.md",
+        "구역화 필요"
       ],
-      "rationale": "**개수 근사로는 못 잡는 경계**를 고정한다. 이 `conventions.md`는 `## ` 섹션이 **정확히 1개**이고 그 섹션은 keep 밖이라, 판정을 「keep 밖 섹션이 1개 이상인가」로 근사한 구현은 처방 가능으로 보고 **침묵한다**. 그러나 `relocate_sections`의 실제 게이트는 `len(secs) >= 2`이므로 auto-split은 이 파일을 건드리지 않는다 — 하나뿐인 섹션을 옮기면 원본이 껍데기만 남기 때문이다(정지 가드). 즉 근사 구현에서는 **조용한데 처리도 안 되는** 파일이 되며, 그것이 이 회차가 술어를 `relocate_sections`에서 그대로 추출한 이유다. 섹션 0개짜리(`budget-no-sections`)는 이 경계를 잡지 못한다 — 그쪽은 어떤 근사로도 0이라 침묵 분기에 안 들어간다."
+      "rationale": "**개수 근사로는 못 잡는 경계**를 고정한다. 이 `feat-mono.md`는 `## ` 섹션이 **정확히 1개**이고 그 섹션은 keep 밖이라, 판정을 「keep 밖 섹션이 1개 이상인가」로 근사한 구현은 처방 가능으로 보고 **침묵한다**. 그러나 `_pick_relocatable`의 실제 게이트는 `len(secs) >= 2`이므로 auto-split은 이 파일을 건드리지 않는다 — 하나뿐인 섹션을 옮기면 원본이 껍데기만 남기 때문이다(정지 가드). 즉 근사 구현에서는 **조용한데 처리도 안 되는** 파일이 되며, 그것이 술어를 `relocate_sections`에서 그대로 추출한 이유다. **v1.303.0에서 운반 타입을 convention에서 feature로 옮겼다** — 이 축은 타입 무관인데 convention이 근접·임박 계층에서 빠져 운반체 자격을 잃었다. feature는 필수 섹션이 셋이라 섹션 1개 형상에서 `## 개요`·`## 관련 파일` 누락 WARN이 함께 나지만, 그 둘은 이 케이스가 재는 축이 아니므로 expect에 싣지 않는다(축을 하나만 판정한다)."
     },
     {
       "fixture": "backup-cleanup",
@@ -1267,39 +1263,6 @@
       ]
     },
     {
-      "fixture": "prose-convention",
-      "auto_split": true,
-      "expect_keywords": [
-        "산문 분리 — 20_projects/personal/demo/conventions.md",
-        "20_projects/personal/demo/conventions-2.md"
-      ],
-      "expect_absent": [
-        "[SPLIT-FAIL]"
-      ],
-      "after_expect_absent": [
-        "예산 임박: 20_projects/personal/demo/conventions.md",
-        "예산 초과: 20_projects/personal/demo/conventions.md",
-        "예산 임박: 20_projects/personal/demo/conventions-2.md",
-        "예산 초과: 20_projects/personal/demo/conventions-2.md",
-        "하위 문서 목록",
-        "분리한 본문이 조회 경로 밖",
-        "정본 포인터 깨짐",
-        "정본 포인터 절 없음",
-        "하위 문서 목록 깨짐"
-      ],
-      "rationale": "convention(예산 12,000자) 경로. **하위 파일명이 순번**인지를 고정한다(D1 ⓐ) — §2.9는 `conventions-{주제}.md`를 규정하지만 위키 본문은 한글이 원칙이라 제목 전사가 §3 네이밍(영문소문자 하이픈)을 어기고, `## 주의점 / 함정`처럼 경로 구분자를 포함한 제목이 실재해 경로가 깨진다. 주제 정보는 `## 하위 문서` 목록의 담당 범위 줄이 담고 §7-30ⓑ가 그 목록↔실파일 양방향을 기계 검사한다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
-      "expect_file_contains": {
-        "20_projects/personal/demo/conventions.md": [
-          "## 하위 문서",
-          "- [[20_projects/personal/demo/conventions-2|Demo 작업 규약 (Demo Conventions) — 릴리즈 절차]] — 릴리즈 절차"
-        ],
-        "20_projects/personal/demo/conventions-2.md": [
-          "> 상위 문서: [[20_projects/personal/demo/conventions|Demo 작업 규약 (Demo Conventions)]]",
-          "index_label: Demo 작업 규약 (Demo Conventions) — 릴리즈 절차"
-        ]
-      }
-    },
-    {
       "fixture": "prose-guide",
       "auto_split": true,
       "expect_keywords": [
@@ -1578,6 +1541,36 @@
         }
       },
       "rationale": "**두 소비처의 차이를 고정한다.** 재분할은 `## 하위 문서` 목록에 이전 회차 형제를 다시 적어야 하지만(그 목록은 매 회차 전량을 담는다), 허브 `## 기능 목록`은 **신설분만** 받아야 한다 — 형제는 지난 회차에 이미 등재됐다. 두 소비처에 같은 목록을 전달하면 허브 표에 같은 기능이 두 줄로 쌓이는데, **존재 여부로는 잡히지 않아**(있기는 있다) 개수를 센다. 이 픽스처는 허브에 형제가 **이미 등록된** 상태에서 시작해 그 차이를 드러낸다 — `prose-resplit`은 허브가 비어 있어 중복이 처음 등록처럼 보인다."
+    },
+    {
+      "fixture": "prose-resplit-flat",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing-2.md",
+        "20_projects/personal/demo/feat-thing-4.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "20_projects/personal/demo/feat-thing-2-2.md",
+        "20_projects/personal/demo/feat-thing-2-3.md",
+        "예산 임박: 20_projects/personal/demo/feat-thing-2.md",
+        "예산 초과: 20_projects/personal/demo/feat-thing-2.md",
+        "하위 문서 목록 누락",
+        "하위 문서 목록 깨짐",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음"
+      ],
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing-4.md": [
+          "상위 문서: [[20_projects/personal/demo/feat-thing-2"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "20_projects/personal/demo/feat-thing-4"
+        ]
+      },
+      "rationale": "**순번 접미가 중첩되지 않는지**를 고정한다(v1.303.0). 픽스처는 루트 `feat-thing.md`와 이미 분할된 형제 `-2`·`-3`을 담고, 그중 `-2`가 예산 96%로 §7-2 발동 중이다. 종전 구현은 분할 대상의 경로에 순번을 그대로 이어 `feat-thing-2-2.md`를 만들었고, 실 vault에 그렇게 3단까지 자란 것이 3건 있었다(`conventions-verification-2-2`·`karina/conventions-testing-5-2`·`karina/conventions-ui-2-2`). `_root_stem`이 후행 `(-N)+`를 벗기므로 순번은 루트 family 기준이 되고, `-2`·`-3`이 이미 있으므로 신설은 **평면 `-4`**다. **세 자리를 함께 고쳐야 한다**: 순번 계산만 바꾸고 파일명 조립(`sub_rel`)을 원본 stem에 두면 `n=4`가 나와도 이름은 `feat-thing-2-4.md`가 되어 중첩이 이름만 바꿔 되살아난다 — `after_expect_absent`의 `-2-2`·`-2-3`만으로는 그 형태를 못 잡으므로 `expect_file_contains`가 신설 파일의 복귀 링크와 원본의 `## 하위 문서` 등재를 함께 본다. 조회 계층이 파일명이 아니라 복귀 링크로 유지된다는 것(§7-30 ⓔ)도 그 두 검사가 실증한다 — 하위가 루트와 형제 이름을 가져도 양방향 정합이 성립한다."
     },
     {
       "fixture": "guide-shortlink",

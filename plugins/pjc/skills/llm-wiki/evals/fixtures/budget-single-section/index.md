@@ -12,6 +12,7 @@ updated: 2026-08-13
 ## 기능별 인덱스
 | 기능 | 플랫폼 | 프로젝트 | 상세 |
 |---|---|---|---|
+| 통짜 기능 (Monolithic) | windows-desktop | Demo | [[20_projects/personal/demo/feat-mono\|통짜 기능 (Monolithic)]] |
 
 ## 미해결 질문
 (없음)
