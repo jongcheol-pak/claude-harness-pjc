@@ -1673,32 +1673,6 @@
     ]
   },
   {
-    "id": "harness-tagenum-line-bad",
-    "checker": "harness",
-    "fixture": "tagenum-line-bad",
-    "expect_rc": 1,
-    "expect_keywords": [
-      "큐 태그 열거 불일치",
-      "docs/queue-tags.md:3"
-    ],
-    "expect_absent": [
-      "결과: 대조 전부 일치"
-    ]
-  },
-  {
-    "id": "harness-tagenum-block-bad",
-    "checker": "harness",
-    "fixture": "tagenum-block-bad",
-    "expect_rc": 1,
-    "expect_keywords": [
-      "큐 태그 열거 불일치",
-      "docs/queue-tags.md:3"
-    ],
-    "expect_absent": [
-      "결과: 대조 전부 일치"
-    ]
-  },
-  {
     "id": "harness-tagenum-ok",
     "checker": "harness",
     "fixture": "tagenum-ok",

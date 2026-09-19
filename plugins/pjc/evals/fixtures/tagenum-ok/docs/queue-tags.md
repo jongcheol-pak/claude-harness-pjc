@@ -1,3 +1,3 @@
-# 큐 태그 (픽스처 — 음성: 정상적인 pending 여섯 열거)
+# 큐 태그 (픽스처 — 음성: 정상적인 pending 세 열거)
 
-`pending.md` 는 `[K-DRIFT]`·`[DECISION]`·`[PROJECT-FACT]`·`[K-MISS]`·`[SYMPTOM]`·`[K-ROUTE]` 여섯 태그를 담는다.
+`pending.md` 는 `[DECISION]`·`[PROJECT-FACT]`·`[SYMPTOM]` 세 태그를 담는다.

@@ -1797,23 +1797,18 @@ def run_fix(dry_run):
 # 왜 필요한가·무엇을 못 잡는가는 `harness-consistency-rationale.md` 의 「축 ㉑ — 큐 태그
 #  열거 정합」이 정본이다. 여기 복제하지 않는다.
 #
-# 정본 집합이 **셋**인 것이 이 축의 핵심이다 — `pending.md` 가 담는 여섯과
-#  `skill-feedback.md` 가 담는 하나가 갈리므로, 「일곱이 아니면 틀렸다」로 재면
-#  `lint.py` 의 정상적인 여섯 열거가 곧바로 오탐이 된다.
-# **이 선언은 한 줄을 유지한다** — 줄 게이트(≥4종)가 먼저 걸리므로 여러 줄로 나누면 첫 줄이
-#  부분 집합으로 잡혀 자기 자신이 불일치가 된다(2026-09-16 실측: 5+1 로 나눴더니 이 줄이 5종으로 red).
-QUEUE_TAGS_PENDING = frozenset({"DECISION", "PROJECT-FACT", "K-DRIFT", "K-MISS", "SYMPTOM", "K-ROUTE"})
-QUEUE_TAGS_FEEDBACK = frozenset({"SKILL-IMPROVE"})
-QUEUE_TAGS_ALL = QUEUE_TAGS_PENDING | QUEUE_TAGS_FEEDBACK
+# 큐는 `pending.md` 한 파일 세 태그다(2026-09-19 — 하니스 자기개선 큐 넷 폐지).
+#  종전에는 정본 집합이 셋이었다(pending 여섯 + skill-feedback 하나 + 전체 일곱).
+# **이 선언은 한 줄을 유지한다** — 줄 게이트가 먼저 걸리므로 여러 줄로 나누면 첫 줄이
+#  부분 집합으로 잡혀 자기 자신이 불일치가 된다(2026-09-16 실측).
+QUEUE_TAGS_PENDING = frozenset({"DECISION", "PROJECT-FACT", "SYMPTOM"})
+QUEUE_TAGS_ALL = QUEUE_TAGS_PENDING
 _QUEUE_TAG_CANON = (
     ("pending", QUEUE_TAGS_PENDING),
-    ("skill-feedback", QUEUE_TAGS_FEEDBACK),
-    ("전체", QUEUE_TAGS_ALL),
 )
 
-# 대괄호형(`[K-DRIFT]`)과 맨이름형(`K-DRIFT·DECISION·…`)을 함께 잡는다 —
-#  `procedures-ops.md` 가 대괄호 없이 일곱을 열거해, 대괄호형만 보면 그 줄이 네 종으로
-#  잘못 세어져 **오탐**이 된다(회차 71 2R 이 놓친 자리가 그 형태다).
+# 대괄호형(`[DECISION]`)과 맨이름형(`DECISION·PROJECT-FACT·…`)을 함께 잡는다 —
+#  대괄호 없이 열거하는 자리가 있어 대괄호형만 보면 그 줄이 잘못 세어져 **오탐**이 된다.
 # **대소문자를 구분한다** — `re.IGNORECASE` 를 붙이면 `decision-log`(64파일 196회)가
 #  통째로 `DECISION` 으로 잡혀 축이 무의미해진다.
 _RX_QUEUE_TAG = re.compile(
@@ -1824,9 +1819,14 @@ _RX_QUEUE_TAG = re.compile(
 #  주석이 아닌 자리(JSON 문자열 등)에는 닫는 기호가 없어 줄 끝까지 빨려 들어간다.
 _RX_TAG_ENUM_EXEMPT = re.compile(r"tag-enum:\s*exempt\s+(\S.{0,119}?)\s*(?:-->|$)")
 
-# 게이트 임계. 4 종 이상이면 「집합을 열거한 자리」로 본다 — 3 으로 내리면 이력 서술과
-#  「등」이 붙은 부분 열거가 함께 걸린다(실측: 3종 4줄 중 2줄이 오탐).
-_QUEUE_TAG_GATE = 4
+# 게이트 임계. **태그가 셋으로 줄어 3 이 곧 전체 집합이다**(2026-09-19 큐 4종 폐기).
+#  종전 4 를 유지하면 어떤 열거도 게이트를 넘지 못해 축이 죽는다.
+# **3종 구간에서 이 축은 양성을 낼 수 없다** — 열거가 정본과 어긋나려면 태그 이름이
+#  틀려야 하는데, 틀린 이름은 정규식(정본 집합으로 만든다)이 아예 못 잡아 2종으로
+#  세어지고 게이트에 걸리지 않는다. 2 로 내리는 것은 실측 기각이다 — 정당한 부분 열거
+#  17자리가 전부 red 가 된다. 그래서 **양성 골든을 두지 않고 음성(tagenum-ok)만 남긴다** —
+#  태그가 4종 이상으로 늘면 이 축은 저절로 되살아나고, 그때 양성 골든을 함께 세운다.
+_QUEUE_TAG_GATE = 3
 # 블록 길이 상한. 빈 줄이 없는 `lint-cases.json`(1,721줄)이 통째로 한 블록이 되는 것을 막는다.
 #  이 상한으로 빠지는 진짜 열거는 없다 — 초과 블록 둘은 줄 게이트가 덮는다(정본의 실측).
 _QUEUE_TAG_BLOCK_MAX = 30
@@ -1956,7 +1956,7 @@ def check_queue_tag_enum():
 
 # ── 축 ㉑ 하위 「큐 태그 수 표현」 ────────────────────
 # 위 축과 **서로 다른 자리를 덮는다** — `queue-consume-rules.md:16` 은 태그 리터럴이
-#  셋이라 위 게이트를 빠지지만 「여섯 태그」를 담아 이 축이 잡는다. 한쪽을 지우면 그
+#  둘이라 위 게이트를 빠지지만 「세 태그」류 수 표현을 담아 이 축이 잡는다. 한쪽을 지우면 그
 #  자리가 사각이 된다(중복이 아니라 분담이다).
 # **한 음절 수사(한·두·세·네)와 아라비아 숫자는 쓰지 않는다** — 전자는 「선**두 태그**」처럼
 #  낱말 안에서 잘려 붙고, 후자는 「v3.**4.5 태그**」(git 태그)를 잡는다. 둘 다 실측된 오탐이다.
@@ -1972,9 +1972,9 @@ _RX_QUEUE_CONTEXT = re.compile(r"pending\.md|skill-feedback\.md|큐|"
 
 
 def check_queue_tag_count_words():
-    """「여섯 태그」류 수 표현이 그 줄이 지목한 큐 파일의 정본 크기와 맞는지 본다.
+    """「세 태그」류 수 표현이 그 줄이 지목한 큐 파일의 정본 크기와 맞는지 본다.
 
-    지목이 없으면 전체(7)와 견준다 — 파일을 안 적은 열거는 집합 전체를 뜻한다.
+    지목이 없으면 전체(3)와 견준다 — 파일을 안 적은 열거는 집합 전체를 뜻한다.
     """
     issues, n = [], 0
     for path in _scan_files(_QUEUE_TAG_EXTS):
@@ -1992,10 +1992,8 @@ def check_queue_tag_count_words():
                 continue
             n += 1
             said = _QUEUE_COUNT_WORDS[m.group(1)]
-            # **정본 셋의 크기 중 아무것과도 안 맞을 때만** 잡는다. 줄에 적힌 파일 이름으로
-            #  집합을 고르려 하면 어긋난다 — `queue-rules.md:16` 은 `skill-feedback.md` 를
-            #  말하면서 「다른 여섯 태그」로 pending 을 가리킨다(실측 오탐). 태그가 늘면 세
-            #  크기가 함께 움직이므로, 낡은 수는 여전히 「어느 것과도 안 맞음」으로 걸린다.
+            # **정본 크기와 안 맞을 때만** 잡는다. 태그가 늘면 그 크기가 함께 움직이므로,
+            #  낡은 수는 여전히 「안 맞음」으로 걸린다.
             if said in {len(canon) for _, canon in _QUEUE_TAG_CANON}:
                 continue
             sizes = ", ".join("%s %d" % (label, len(canon)) for label, canon in _QUEUE_TAG_CANON)
