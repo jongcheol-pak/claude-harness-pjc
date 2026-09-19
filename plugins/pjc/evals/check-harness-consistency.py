@@ -1967,7 +1967,7 @@ _RX_QUEUE_COUNT = re.compile(
 # 그 줄이 **큐 이야기인지**를 함께 본다 — 수사 하나만으로는 무관한 「태그」와 갈리지 않는다.
 #  큐 파일 이름·「큐」만으로 좁히면 `check_wiki_circuit.py` 처럼 **태그 리터럴만 든 줄**이
 #  빠지므로 리터럴도 문맥으로 인정한다(실측 — 그 한 줄이 미검출로 남았다).
-_RX_QUEUE_CONTEXT = re.compile(r"pending\.md|skill-feedback\.md|큐|"
+_RX_QUEUE_CONTEXT = re.compile(r"pending\.md|큐|"
                                + "|".join(sorted(QUEUE_TAGS_ALL, key=len, reverse=True)))
 
 

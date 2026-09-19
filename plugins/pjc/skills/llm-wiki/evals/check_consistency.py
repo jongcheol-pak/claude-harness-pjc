@@ -387,7 +387,7 @@ def check_f1_schema7(ops_text, schema_text):
 #  바꿔야 하고, 그것은 이 회차의 범위가 아니다.
 _PROC_FILE = r"`?references/procedures-(?:content|ops)\.md`?"
 # base 문자는 [A-Z] 동적 캡처 — [A-L] 하드코딩 금지(파일 상단 ROUTING_LETTER_RX 원칙과 일관 — 절차 M+
-#   추가 시에도 매치되게, 미정의 문자는 letter_file.get()이 None이라 자연히 skip). 하위라벨(B-1 0·A-3a·B-2 3-1·K 5-1).
+#   추가 시에도 매치되게, 미정의 문자는 letter_file.get()이 None이라 자연히 skip). 하위라벨(B-1 0·A-3a·B-2 3-1·K 5-2).
 _LABEL = r"([A-Z])(?:[-\s]\d+[a-z]?)*"
 # 파일→라벨: `…md의 B-1`, `…md "G"`, `…md F-1` (파일 뒤 구분자는 의/따옴표/공백만 — 괄호 불가로 `(A~E·I)` 범위서술 제외)
 POINTER_F2L_RX = re.compile(_PROC_FILE + r'(?:의)?\s*"?\s*' + _LABEL)
@@ -433,7 +433,7 @@ def check_prose_pointers(skill_text, schema_text):
     안 걸려 차기 재분할 시 조용히 재발한다(회귀 가드 공백).
 
     보수적 스코프(오탐 방지): 파일명 AND 라벨이 '인접'(의·따옴표·괄호·대시로 직접 연결)할 때만
-    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 5-1(references/queue-rules.md)·
+    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 5-2(references/queue-rules.md)·
     B-1 0(references/procedures-content.md)`처럼 서로 다른 귀속이 한 줄에 있어도 B만 content로
     대조하고 K는 (procedures-*.md가 아니라 references/queue-rules.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
     — 하위라벨(B-1 0의 '1 0')까지 검증하진 않는다(재분할 파일 오귀속 포착이 목적).

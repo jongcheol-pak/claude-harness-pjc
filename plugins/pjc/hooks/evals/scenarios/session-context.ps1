@@ -189,7 +189,7 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 큐 기록 규약 절 주입 (SC42)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고'
     # SC42b (발췌 표기): SC41b와 같은 이유 — 주입분이 전문이 아니라 발췌임을 밝힌다.
     Assert-Case -Name "session-context: 큐 규약 주입에 발췌 표기 (SC42b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/references/queue-rules.md'
-    # SC42f (경계 계약): 추출 구간이 **K 5-3까지** 닿는다 — 종료 앵커가 `### K 5-4.`임을 고정한다.
+    # SC42f (경계 계약): 추출 구간이 **K 5-3까지** 닿는다 — 종료 앵커가 `### K 5-5.`임을 고정한다.
     #   SC42는 K 5-2 본문만 보므로 앵커를 5-3 앞으로 잘못 옮겨도 그대로 통과한다.
     Assert-Case -Name "session-context: 큐 규약 주입이 K 5-3까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '레포 귀속 실행 사실'
     # SC42c (델타 음성): startup엔 주입하지 않는다(SC41c와 같은 취지).
@@ -673,23 +673,6 @@ if (Test-HookSelected @('session-context')) {
         $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36 순서 위반 (exit=$($r.code), vault=$iVault, stale=$iStale, agents=$iMarker)" })
     }
 
-    # SC36b (순서 — 하네스 cwd, 큐 라인 동반): vault < 큐 < 뒤처짐.
-    #   **SC36 만으로는 $feedbackLine 이 항상 $null 인 구간만 돈다** — 오프셋 식의
-    #   `[int][bool]$feedbackLine == 1` 분기를 밟는 케이스가 여기뿐이라, `+1` 하드코딩
-    #   (큐 라인과 순서가 뒤바뀜)은 이 케이스가 없으면 아무도 못 잡는다.
-    $scHarnRepo = Join-Path $work ("sc-wiki-harness-" + $suffix)
-    New-Item -ItemType Directory -Path (Join-Path $scHarnRepo 'plugins/pjc/.claude-plugin') -Force | Out-Null
-    '{ "name": "pjc" }' | Set-Content -Encoding UTF8 (Join-Path $scHarnRepo 'plugins/pjc/.claude-plugin/plugin.json')
-    @('# Guide', 'SC_STALE_HARNESS_MARKER') | Set-Content -Encoding UTF8 (Join-Path $scHarnRepo 'AGENTS.md')
-    Push-Location $scHarnRepo
-    try {
-        & git init -q 2>$null
-        & git config user.email 't@t' 2>$null
-        & git config user.name 't' 2>$null
-        & git commit -q --allow-empty -m 'base' 2>$null
-        $scHarnSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
-    } finally { Pop-Location }
-
     # SC33e/SC33f — 뒤처진 feature 표적. **이 묶음의 맨 끝에 둔다**: 아래에서 커밋을 하나 더
     #   만들므로 HEAD~30 / HEAD~29 기준을 쓰는 케이스보다 뒤여야 한다.
     # 픽스처 레포는 빈 커밋만 쌓아 **커밋된 파일이 없고**, 경로 토큰은 구분자를 포함해야
@@ -828,7 +811,7 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: 조각 단독이면 허브 없음·미발화 (SC37f)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
     Remove-Item -Force $scFragPath -ErrorAction SilentlyContinue
 
-    Remove-Item -Recurse -Force $scRepo, $scHarnRepo, $scRepoNoRemote -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $scRepo, $scRepoNoRemote -ErrorAction SilentlyContinue
     }   # ---- git 게이트 끝 (SC32~SC37f)
 
     # SC44~SC44n: Deferred 대장(docs/plans/deferred.md) 최고령 「마지막 판정일」 주입 (v1.221.0 T1).

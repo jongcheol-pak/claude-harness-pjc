@@ -10,7 +10,7 @@
 
 ## 위키·주입 신호 — 별도 문서
 
-§23~§35(vault 설정 판정 · 스킬 개선 큐 · 위키 뒤처짐 알림 · AGENTS.md 전문 주입 · vault 라인)의 근거는 `session-context-rationale-wiki.md`「위키·AGENTS.md 주입 판정 근거」가 정본이다.
+§23~§37(vault 설정 판정 · 위키 뒤처짐 알림 · AGENTS.md 전문 주입 · vault 라인)의 근거는 `session-context-rationale-wiki.md`「위키·AGENTS.md 주입 판정 근거」가 정본이다.
 
 ## §1 session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단)
 
