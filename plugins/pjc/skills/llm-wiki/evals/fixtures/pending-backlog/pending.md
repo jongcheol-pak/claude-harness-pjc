@@ -1,5 +1,3 @@
 - [2026-07-05] [PROJECT-FACT] demo: 버전 업 커밋 push 후 곧바로 릴리즈 발행.
 - [2026-07-06] [DECISION] demo: 다크 모드 — 보류: 수요 확인 후 재논의.
-- [2026-07-07] [K-MISS] demo: 결제 모듈 재시도 정책 recipe 찾았으나 없음.
 - [2026-07-08] [SYMPTOM] demo: 메일 알림 토스트가 안 뜬다 | 재접속 시 POP3 UID 재발급으로 새 메일 오판 | [[40_guides/recipes/demo/gone-recipe|없는 recipe]]
-- [2026-07-09] [K-ROUTE] demo: 20_projects/personal/demo/conventions.md#기타 — 절 제목만으로 걸리는지 갈리지 않음
