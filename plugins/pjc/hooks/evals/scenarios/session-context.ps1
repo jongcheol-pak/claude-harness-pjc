@@ -531,49 +531,10 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미설정 홈은 vault 라인 미주입 (SC20)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains '위키 vault'
 
-    # SC24~SC27: 스킬 개선 큐 잔량 주입 — [SKILL-IMPROVE] 큐가 하네스 세션마다 보이게 하는 축.
-    #   구성은 SC18~SC23과 같은 원리다: 주입 1건(SC24) + 델타 3건(SC25 파일 부재·SC26 비하네스
-    #   cwd 과다 주입·SC27 상위 탐색 금지). 통과만 확인하는 케이스는 게이팅을 고정하지 못한다.
-    #   SC27이 특히 중요하다 — 상위 탐색을 넣으면 하네스 repo 하위 폴더에서 연 무관한 세션까지
-    #   하네스로 오판하는데, pjc:plan Step 1도 같은 기준이라 둘이 함께 어긋난다.
-    $scHarn = Join-Path $work ("sc-harness-" + $suffix)
-    New-Item -ItemType Directory -Path (Join-Path $scHarn 'plugins/pjc/.claude-plugin') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $scHarn 'sub') -Force | Out-Null
-    '{ "name": "pjc" }' | Set-Content -Encoding UTF8 (Join-Path $scHarn 'plugins/pjc/.claude-plugin/plugin.json')
-    "- [ ] T1. 미완료`n- [ ] T2. 미완료" | Set-Content -Encoding UTF8 (Join-Path $scHarn 'plan.md')
-    "- [ ] T1. 미완료`n- [ ] T2. 미완료" | Set-Content -Encoding UTF8 (Join-Path $scHarn 'sub/plan.md')
-    "- [2026-07-22] [SKILL-IMPROVE] pjc:implement: 요지 1.`n- [2026-08-02] [SKILL-IMPROVE] pjc:plan: 요지 2." |
-        Set-Content -Encoding UTF8 (Join-Path $isoVault 'skill-feedback.md')
-    $env:USERPROFILE = $isoV
-
-    # SC24: 하네스 repo cwd + 큐 2건 → 건수·최고령이 1줄로 주입된다(본문은 미주입 — 예산 보호).
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarn } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 스킬 개선 큐 잔량 주입 (SC24)" -R $r -ExpectExit 0 -ExpectContains '스킬 개선 큐'
-    Assert-Case -Name "session-context: 큐 건수 집계 (SC24b)" -R $r -ExpectExit 0 -ExpectContains '대기 2건'
-    # 체류 축은 D9ⓑ의 "append 시점에만 평가되는 사각"을 닫으려고 넣은 것이라, 문자열이 사라지거나
-    #   형식이 깨지면 그 취지가 조용히 죽는다. 값은 날짜 의존이지만 '최고령' 라벨은 고정 가능하다.
-    Assert-Case -Name "session-context: 큐 체류(최고령) 축 (SC24d)" -R $r -ExpectExit 0 -ExpectContains '최고령'
-    Assert-Case -Name "session-context: 큐 본문 미주입 (SC24c)" -R $r -ExpectExit 0 -ExpectNotContains '요지 1'
-
-    # SC26 (델타): 비하네스 cwd(plugin.json 없음) + 큐 존재 → vault 라인은 나오되 큐 라인은 미주입.
-    #   게이팅이 없으면 위키를 쓰는 모든 프로젝트 세션에 하네스 개선 항목이 끌려온다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 비하네스 cwd는 큐 라인 미주입 (SC26)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
-
-    # SC27 (델타): 하네스 repo의 **서브디렉터리** cwd → 상위 탐색을 하지 않으므로 큐 라인 미주입.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = (Join-Path $scHarn 'sub') } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 서브디렉터리 cwd는 상위 탐색 안 함 (SC27)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
-
-    # SC25 (델타): 하네스 cwd인데 큐 파일 부재 → 큐 라인만 미주입(vault 라인은 유지, fail-open).
-    #   **번호와 실행 순서가 다른 이유**: 이 케이스만 큐 파일을 삭제하는 파괴적 조작이라 SC24·26·27이
-    #   그 파일을 쓰고 난 뒤 마지막에 둔다(순서를 번호대로 바꾸면 뒤 케이스들이 파일 없는 상태를 본다).
-    Remove-Item -Force (Join-Path $isoVault 'skill-feedback.md') -ErrorAction SilentlyContinue
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarn } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 큐 파일 부재 시 미주입 (SC25)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '스킬 개선 큐'
 
 
     # SC32~SC36b: 위키 뒤처짐 알림 — cwd 에 대응하는 허브를 vault 에서 찾아 OR 3축
-    #   (커밋 30 · 경과일 14 · [K-DRIFT] 1건)으로 발화한다.
+    #   (커밋 30 · 경과일 14)로 발화한다.
     #   **축마다 단독 양성을 두는 것이 이 묶음의 요점이다** — 한 축만 양성으로 걸면 나머지
     #   축이 죽어도(날짜 파싱 실패 fail-open · AND 오구현) 전건이 통과한다. 경계 케이스
     #   (29/30커밋 · 13/14일)는 `-ge` ↔ `-gt` off-by-one 을 잡는 유일한 그물이다.
@@ -640,14 +601,14 @@ if (Test-HookSelected @('session-context')) {
 
     $env:USERPROFILE = $isoV
 
-    # SC32 (양성 — 커밋 축 단독): 30커밋 · updated 오늘 · K-DRIFT 0
+    # SC32 (양성 — 커밋 축 단독): 30커밋 · updated 오늘
     Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha30 -DaysAgo 0
     Remove-Item -Force $scPendPath -ErrorAction SilentlyContinue
     $r = Invoke-ScRepoHook
     Assert-Case -Name "session-context: 위키 뒤처짐 커밋 축 발화 (SC32)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐'
     Assert-Case -Name "session-context: 뒤처짐 커밋 수 표기 (SC32b)" -R $r -ExpectExit 0 -ExpectContains '30커밋 미반영'
 
-    # SC32c (양성 — 일수 축 단독): 커밋 0 · updated 15일 전 · K-DRIFT 0.
+    # SC32c (양성 — 일수 축 단독): 커밋 0 · updated 15일 전.
     #   이 케이스가 없으면 경과일 판정이 죽어도 나머지가 전부 통과한다.
     Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadSha -DaysAgo 15
     $r = Invoke-ScRepoHook
@@ -671,18 +632,8 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-ScRepoHook
     Assert-Case -Name "session-context: 일수 축 경계 13 미발화 (SC32e2)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
 
-    # SC33 (양성 — K-DRIFT 축 단독): 커밋·일수 둘 다 미달인데 잔량 1건 → 잔량만 실은 라인.
-    #   뒤처짐 수치를 싣지 않는 것이 이 축의 계약이다("0커밋 미반영"은 사실이 아니다).
-    "- [2026-08-01] [K-DRIFT] SCWiki: 무언가 어긋났다" | Set-Content -Encoding UTF8 $scPendPath
-    $r = Invoke-ScRepoHook
-    Assert-Case -Name "session-context: K-DRIFT 축 단독 발화 (SC33)" -R $r -ExpectExit 0 -ExpectContains '미반영 발견 1건'
-    Assert-Case -Name "session-context: 잔량 단독이면 커밋 수치 미표기 (SC33b)" -R $r -ExpectExit 0 -ExpectNotContains '커밋 미반영'
-    # 잔량 단독 문구 자체를 고정한다 — 이 문면을 재는 케이스가 없으면 바뀌어도 아무도 모른다
-    #   (F-7 m1: 종전 문구는 뒤에 붙는 부기와 "미반영 발견"이 겹쳐 같은 말이 한 줄에 두 번 나왔다).
-    Assert-Case -Name "session-context: 잔량 단독 문구 고정 (SC33d)" -R $r -ExpectExit 0 -ExpectContains '반영이 밀려'
-
-    # SC33c (델타 음성 — 3축 전부 미달): 커밋 0 · updated 오늘 · 잔량 0 → 미발화.
-    #   **세 축을 전부 이 자리에서 다시 세운다** — 앞 케이스가 남긴 상태(13일·잔량 1건)를
+    # SC33c (델타 음성 — 2축 전부 미달): 커밋 0 · updated 오늘 → 미발화.
+    #   **두 축을 전부 이 자리에서 다시 세운다** — 앞 케이스가 남긴 상태(13일·잔량 1건)를
     #   물려받으면 이 케이스가 무엇을 눌러 둔 것인지 읽는 쪽에서 알 수 없고, 경계값(13일)과
     #   중복 커버리지가 되어 「임계에서 멀리 떨어진 값」이 검증되지 않는다.
     Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadSha -DaysAgo 0
@@ -738,18 +689,6 @@ if (Test-HookSelected @('session-context')) {
         & git commit -q --allow-empty -m 'base' 2>$null
         $scHarnSha = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
     } finally { Pop-Location }
-    # 큐 라인이 뜨려면 skill-feedback.md 가 있어야 한다(SC25 가 지운 뒤라 다시 만든다).
-    "- [2026-07-22] [SKILL-IMPROVE] pjc:implement: 요지." | Set-Content -Encoding UTF8 (Join-Path $isoVault 'skill-feedback.md')
-    Write-ScHub -Path (Join-Path $scHubDir 'scharn.md') -RepoPath $scHarnRepo -Sha $scHarnSha -DaysAgo 20 -Project 'SCHarn'
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scHarnRepo } | ConvertTo-Json -Compress)
-    $iVault2 = $r.out.IndexOf('위키 vault: 설정됨')
-    $iQueue  = $r.out.IndexOf('스킬 개선 큐')
-    $iStale2 = $r.out.IndexOf('위키 뒤처짐')
-    if (($r.code -eq 0) -and ($iVault2 -ge 0) -and ($iQueue -gt $iVault2) -and ($iStale2 -gt $iQueue)) {
-        $script:results.Add(@{ ok = $true; line = "[PASS] session-context: 큐 라인 동반 시 뒤처짐이 그 뒤 (SC36b)" })
-    } else {
-        $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36b 순서 위반 (exit=$($r.code), vault=$iVault2, queue=$iQueue, stale=$iStale2)" })
-    }
 
     # SC33e/SC33f — 뒤처진 feature 표적. **이 묶음의 맨 끝에 둔다**: 아래에서 커밋을 하나 더
     #   만들므로 HEAD~30 / HEAD~29 기준을 쓰는 케이스보다 뒤여야 한다.
@@ -1073,6 +1012,6 @@ if (Test-HookSelected @('session-context')) {
 
     Remove-Item -Recurse -Force $scToc -ErrorAction SilentlyContinue
 
-    Remove-Item -Recurse -Force $isoV, $isoV2, $scHarn -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $isoV, $isoV2 -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 

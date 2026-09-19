@@ -142,7 +142,7 @@ try {
             }
 
             # 같은 분기에서 큐 기록 규약도 넣는다 — 계획 세션의 배치 시점 — 근거는 `rules/session-context-rationale-plan.md`의 「§21 같은 분기에서 큐 기록 규약도 넣는다 — 계획 세션의 배치 시점」
-            $secQueueRules = Get-SkillSection -Path (Join-Path $skillsDir 'llm-wiki/references/queue-rules.md') -StartHeading '### K 5-2. 결정 큐잉 ([DECISION])' -StopHeading '### K 5-4. 미스 큐잉 ([K-MISS])'
+            $secQueueRules = Get-SkillSection -Path (Join-Path $skillsDir 'llm-wiki/references/queue-rules.md') -StartHeading '### K 5-2. 결정 큐잉 ([DECISION])' -StopHeading '### K 5-5. 증상 큐잉 ([SYMPTOM])'
             if ($secQueueRules) {
                 $lines.Add("[pjc 세션 컨텍스트] 압축 직후 큐 기록 규약 (원문 발췌 — llm-wiki/references/queue-rules.md 「K 5-2~5-3」)`n$secQueueRules")
                 # 위 주입과 같은 짝 — 줄 1개 추가 = 기준선 1 증가(SC41e가 고정한 계약).
@@ -164,7 +164,6 @@ try {
         $wikiSig = Get-WikiSignals -cwd $cwd
         $vaultLine = $wikiSig.VaultLine
         $staleLine = $wikiSig.StaleLine
-        $feedbackLine = $wikiSig.FeedbackLine
 
         # ---- AGENTS.md 전문 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§31 ---- AGENTS.md 전문 주입」
         $agentsMaxBytes = 16384      # 전문 주입 상한 — 하니스 생성 템플릿·이 repo가 모두 전문 주입 범위에 들어가는 값 (v1.135.0 기준 실측 최대 약 12KB)
@@ -242,14 +241,9 @@ try {
         # ---- vault 라인 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§34 ---- vault 라인 주입」
         if ($vaultLine -and ($lines.Count -gt $cwdBaseCount)) {
             $lines.Insert([Math]::Min($vaultInsertAt, $lines.Count), $vaultLine)
-            # 스킬 개선 큐 라인은 vault 라인 바로 뒤에 둔다 — 같은 게이팅(cwd 수집분 존재)을
-            #   공유하며, vault 라인 없이 단독으로 나오지 않는다(큐는 vault 안에 있으므로).
-            if ($feedbackLine) {
-                $lines.Insert([Math]::Min($vaultInsertAt + 1, $lines.Count), $feedbackLine)
-            }
-            # 뒤처짐 라인은 큐 라인 **다음**이다. — 근거는 `rules/session-context-rationale-wiki.md`의 「§35 뒤처짐 라인은 큐 라인 **다음**이다.」
+            # 뒤처짐 라인은 vault 라인 다음이다.
             if ($staleLine) {
-                $lines.Insert([Math]::Min($vaultInsertAt + 1 + [int][bool]$feedbackLine, $lines.Count), $staleLine)
+                $lines.Insert([Math]::Min($vaultInsertAt + 1, $lines.Count), $staleLine)
             }
         }
     }
