@@ -6,6 +6,10 @@
          축 ⑪(예산 트리거 조건 어휘 유일성)의 위반·화이트리스트·차집합·면제 잔여 목록만
          출력한다. 정합 대조는 돌지 않고 exit 0으로 끝난다(위반·면제 잔여는 인자 없는 기본
          실행이 exit 1로 판정한다 — 여기는 그것이 어느 줄의 무엇인지 펼쳐 보는 상세 리포트다).
+       python check_consistency.py --route-report
+         축 ⑬의 라우팅 표대로 **절차별 로드 문자 수**를 낸다. 정합 대조는 돌지 않고 exit 0이다.
+         축 ⑬은 절 이름의 실재만 보므로 표가 전 절을 지목해도 통과한다 — 라우팅이 실제로
+         비용을 줄이는지는 이 값으로만 보인다.
 
 무엇을: llm-wiki의 공유 상수(파일 예산·통제 어휘)는 네 곳에 존재한다 —
   ① lint.py 상수(BUDGET·GUIDE_BUDGET·SPECIAL_BUDGET·INDEX_*·*_VOCAB)
@@ -53,6 +57,14 @@ schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.
 연속 드리프트를 낸 원인이다(헤딩은 「임박」인데 본문은 「초과」 같은 반쪽 상태). 조건이 한 곳에만
 있으면 그 상태를 만들 수 없다. **면제로 덮인 줄에 남은 조건어(면제 잔여)도 위반이며**, 어느
 줄의 무엇인지는 `--trigger-report`가 차집합과 함께 펼친다.
+
+⑬ 쓰기 규칙 절 라우팅 — SKILL.md '## 쓰기 규칙 절 라우팅' 표가 지목한 절 이름이
+references/wiki-ops-rules.md에 실재하는가. v1.304.0이 그 표를 만들며 신설했다 — 표가 절
+**이름**으로 범위를 주는데 이름이 바뀌어도 잡는 축이 없었다(⑧은 procedures-*.md + **절차
+라벨** 인접쌍만 보고 절 이름은 사정거리 밖이다). **방향은 한쪽이다**: 표에만 있는 이름은
+FAIL(그 절차의 범위가 통째로 빈다), 헤딩에만 있는 이름은 통과(아무 절차도 안 읽는 절이
+있을 수 있다). 절 이름은 **범례(`① 「…」`)에서만** 뽑는다 — 절 전체에서 「…」를 훑으면
+표 뒤 산문의 인용까지 절 이름으로 잡힌다(신설 당일 실측 2건).
 
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
@@ -1328,9 +1340,119 @@ def parse_schema_vocab(text):
     return out
 
 
+# ── 축 ⑬ 「쓰기 규칙 절 라우팅」 ────────────────────────────────────────────
+# `SKILL.md` 「쓰기 규칙 절 라우팅」 표가 지목한 절 이름이 `wiki-ops-rules.md` 에 실재하는가.
+#  v1.304.0 이 그 표를 만들며 신설했다 — 표가 절 **이름**으로 범위를 주는데 이름이 바뀌어도
+#  잡는 축이 없었다(축 ⑧ 은 `procedures-*.md` + **절차 라벨** 인접쌍만 보고 절 이름은
+#  사정거리 밖이다). 표가 낡으면 세션이 잘못된 절을 읽거나 아무것도 못 읽는다.
+#
+# **방향은 한쪽이다** — 표에만 있는 이름은 FAIL(낡은 포인터), 헤딩에만 있는 이름은 통과다.
+#  어느 절차도 안 읽는 절이 있을 수 있고(그 자체가 결함은 아니다), 반대로 없는 절을 가리키는
+#  표는 그 절차의 범위가 통째로 비는 것이라 뜻이 다르다.
+ROUTE_SECTION_RX = re.compile(r"^## 쓰기 규칙 절 라우팅$", re.M)
+# **범례에서만 절 이름을 뽑는다** — `「…」` 를 절 전체에서 훑으면 표 뒤 산문의 인용(「비 git
+#  vault 사전 백업」 등)까지 절 이름으로 잡혀 없는 헤딩을 요구한다(신설 당일 실측 2건).
+#  번호↔이름 대응이 곧 표가 쓰는 어휘라, 그 대응만이 검사 대상이다.
+ROUTE_LEGEND_RX = re.compile(r"([①-⑳])\s*「([^」]+)」")
+ROUTE_ROW_RX = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([①-⑳]+)\s*\|$", re.M)
+
+
+def _md_headings(text):
+    """`## `·`### ` 헤딩 이름 집합. **코드펜스 안은 세지 않는다** — 이 레포의 규약 문서는
+    자기 서식을 펜스로 예시하는 것이 관례라, 토글하지 않으면 견본이 절로 잡힌다(회차 30 이
+    같은 형태로 두 번 걸렸다)."""
+    out, fence = set(), False
+    for line in text.splitlines():
+        if line.startswith("```") or line.startswith("~~~"):
+            fence = not fence
+            continue
+        if fence:
+            continue
+        m = re.match(r"^(#{2,3})\s+(.*\S)\s*$", line)
+        if m:
+            out.add(m.group(2))
+    return out
+
+
+def check_route_table(skill_text, ops_rules_text):
+    """⑬ 라우팅 표가 지목한 절이 `wiki-ops-rules.md` 에 실재하는가.
+
+    반환: (불일치 목록, 대조 항목 수 = 표가 지목한 절 이름 수)."""
+    m = ROUTE_SECTION_RX.search(skill_text)
+    if not m:
+        die("SKILL.md '## 쓰기 규칙 절 라우팅' 절을 찾지 못함")
+    tail = skill_text[m.end():]
+    nxt = re.search(r"^## ", tail, re.M)
+    block = tail[:nxt.start()] if nxt else tail
+
+    legend = dict(ROUTE_LEGEND_RX.findall(block))
+    if not legend:
+        die("SKILL.md 라우팅 표에서 `① 「절 이름」` 형태의 범례를 찾지 못함")
+
+    heads = _md_headings(ops_rules_text)
+    issues = [
+        f"SKILL.md 라우팅 표가 지목한 절 「{n}」 이 wiki-ops-rules.md 에 없다 — "
+        f"실재 헤딩: {sorted(heads)}"
+        for n in sorted(legend.values()) if n not in heads
+    ]
+    # 표 행이 쓰는 번호가 범례에 없으면 그 절차의 범위가 조용히 비고, 범례에만 있고 어느
+    #  행도 안 쓰는 번호는 **그 절을 아무 절차도 안 읽는다**는 뜻이라 통과시킨다(방향이 다르다).
+    used = set()
+    for label, marks in ROUTE_ROW_RX.findall(block):
+        for c in marks:
+            used.add(c)
+            if c not in legend:
+                issues.append(
+                    f"SKILL.md 라우팅 표 '{label}' 행의 번호 {c} 가 범례에 없다 — "
+                    f"그 절차의 범위가 통째로 빈다")
+    return issues, len(legend) + len(used)
+
+
+def route_report(skill_text, ops_rules_text):
+    """`--route-report` — 절차별로 읽을 절의 **문자 수 합**을 낸다.
+
+    라우팅이 실제로 비용을 줄이는지는 절 이름 실재(축 ⑬)만으로는 알 수 없다 — 표가
+    전 절을 지목해도 축은 통과한다. 그 값을 사람이 보는 자리가 여기다."""
+    sizes = {}
+    cur, buf = None, []
+    fence = False
+    for line in ops_rules_text.splitlines():
+        if line.startswith("```") or line.startswith("~~~"):
+            fence = not fence
+        h = None if fence else re.match(r"^(#{2,3})\s+(.*\S)\s*$", line)
+        if h:
+            if cur:
+                sizes[cur] = len("\n".join(buf))
+            cur, buf = h.group(2), [line]
+        elif cur:
+            buf.append(line)
+    if cur:
+        sizes[cur] = len("\n".join(buf))
+
+    m = ROUTE_SECTION_RX.search(skill_text)
+    if not m:
+        die("SKILL.md '## 쓰기 규칙 절 라우팅' 절을 찾지 못함")
+    tail = skill_text[m.end():]
+    nxt = re.search(r"^## ", tail, re.M)
+    block = tail[:nxt.start()] if nxt else tail
+
+    # 범례: `① 「이름」` — 번호와 절 이름의 대응
+    legend = dict(re.findall(r"([①-⑳])\s*「([^」]+)」", block))
+    print("== 쓰기 규칙 절 라우팅 — 절차별 로드 (문자 수) ==")
+    for row in re.finditer(r"^\|\s*([^|]+?)\s*\|\s*([①-⑳]+)\s*\|$", block, re.M):
+        label, marks = row.group(1), row.group(2)
+        names = [legend[c] for c in marks if c in legend]
+        total = sum(sizes.get(n, 0) for n in names)
+        print(f"  {label:<26} {total:>7,}자  ({len(names)}절)")
+    print(f"  {'(파일 전체)':<26} {len(ops_rules_text):>7,}자")
+
+
 def main():
     if "--trigger-report" in sys.argv[1:]:
         report_trigger_locality()  # exit 0으로 끝난다
+    if "--route-report" in sys.argv[1:]:
+        route_report(read(SKILL_MD), read(OPS_RULES_MD))
+        sys.exit(0)
     skill_text = read(SKILL_MD)
     ops_rules_text = read(OPS_RULES_MD)
     schema_text = read(SCHEMA_MD)
@@ -1449,6 +1571,11 @@ def main():
     checked += consume_checked
     mismatches.extend(consume_issues)
     axes.append(("소비 포인터 실재", consume_checked, "파일"))
+
+    route_issues, route_checked = check_route_table(skill_text, ops_rules_text)
+    checked += route_checked
+    mismatches.extend(route_issues)
+    axes.append(("쓰기 규칙 절 라우팅", route_checked, "항목"))
 
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:
