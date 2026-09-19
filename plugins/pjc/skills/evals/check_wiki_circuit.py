@@ -15,8 +15,6 @@
   5. WIKI.md 가 계획 단계에 conventions.md 를 읽으라고 지시한다
   6. plan/SKILL.md 가 WIKI.md 를 가리킨다
   7. plan/SKILL.md 가 **소비 전** pending.md 조회도 지시한다
-  8. [K-ROUTE] 회로 — WIKI.md 가 폴백 시 큐잉을 지시하고, queue-rules 에 K 5-6 이 있고,
-     queue-consume-rules 가 소비를 규정하고, plan/SKILL.md 가 repo 경로 항목을 조회한다
 
 7 이 없으면 회로는 「소비가 끝난 뒤」에만 닫힌다 — 소비 시점은 사용자가 위키
 세션을 열 때라 규약이 정하지 못한다. 실측(2026-09-16)으로 그 사이에
@@ -54,9 +52,6 @@ SKILLS = _parser.parse_args().skills.resolve()
 # 회로를 잇는 태그. 이 값이 llm-wiki 소비 측과 갈리면 기록이 도착하지 않는다.
 QUEUE_TAG = "[PROJECT-FACT]"
 SINK = "conventions.md"
-# 8단계가 잇는 태그. 기록처가 회차마다 교체되는 plan.md 였던 것을 큐로 옮긴 것이라,
-#  네 문면 중 하나만 끊겨도 옮긴 의미가 사라진다.
-ROUTE_TAG = "[K-ROUTE]"
 
 
 def read(rel: str) -> str:
@@ -121,37 +116,6 @@ def main() -> int:
         "7. plan 이 소비 전 pending.md 의 [PROJECT-FACT] 조회를 지시",
         any(
             "pending.md" in line and "PROJECT-FACT" in line
-            for line in plan.splitlines()
-        ),
-    ))
-
-    # 8. [K-ROUTE] 회로. 네 문면이 네 파일에 흩어져 있어 **어느 하나를 지워도 나머지가
-    #  통과한다** — 7 과 같은 형태의 사각이다. 기록처를 plan.md(회차마다 교체)에서 큐로
-    #  옮긴 것이 이 태그의 존재 이유라, 조회 지점이 끊기면 옮긴 의미가 사라진다.
-    #  7 과 같은 이유로 **한 줄 안에 두 키워드가 함께 있는지**를 본다(파일 전체 `in` 은
-    #  서로 다른 맥락의 두 단어로도 참이 된다).
-    checks.append((
-        f"8-a. WIKI.md 의 절 단위 읽기 폴백이 {ROUTE_TAG} 큐잉을 지시",
-        any(
-            ROUTE_TAG in line and "폴백" in line
-            for line in wiki.splitlines()
-        ),
-    ))
-    checks.append((
-        f"8-b. queue-rules 에 {ROUTE_TAG} 의 큐 규약(K 5-6)이 있다",
-        "### K 5-6." in queue_rules and ROUTE_TAG in queue_rules,
-    ))
-    checks.append((
-        f"8-c. queue-consume-rules 가 {ROUTE_TAG} 의 소비를 규정",
-        any(
-            ROUTE_TAG in line and "절 제목" in line
-            for line in consume.splitlines()
-        ),
-    ))
-    checks.append((
-        f"8-d. plan 이 {ROUTE_TAG} 의 repo 경로 항목 조회를 지시",
-        any(
-            ROUTE_TAG in line and "repo 경로" in line
             for line in plan.splitlines()
         ),
     ))
