@@ -63,6 +63,8 @@
 
 **Release (배포·릴리즈 발행)** — 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 하나이고 `README.md` 상단 `**버전**:` 줄을 함께 갱신한다(`marketplace.json`에는 버전 필드가 없다 — `source: ./plugins/pjc`로 참조한다). 회차를 마감할 때 **버전만 올리는 별도 커밋**을 만들고 제목은 `설정: v{버전} — {회차 요약}`. **push 뒤 곧바로 릴리즈를 발행한다** — `gh release create v{버전} --target <full-sha>`(**short sha는 거부된다**). ⚠ **그 태그는 원격에만 생겨** `git tag -l`로는 안 보인다 — 확인은 `gh release list`. **로컬 태그만 보고 「안 만드는 관행」으로 역추론하면 누락된다**: `ef38a8fd`가 실제로 그렇게 판단해 규약에 「태그도 릴리즈도 만들지 않는다」를 적었고, 그 오기를 따라 v1.247.0·v1.248.0 두 배포가 릴리즈 없이 끝났다(회차 35가 소급 발행). 설치본 반영은 사용자가 `/plugin update`를 실행할 때 일어난다. push·릴리즈는 별도 승인 대상이다.
 
+**판정 시점 — 「이번 push 에 버전이 올랐는가」로 재지 않는다.** 그 기준은 **버전을 올린 회차**만 잡아, 반대 방향(플러그인을 고쳤는데 버전을 안 올린 경우)을 통째로 놓친다. **재는 것은 `git log <마지막 v 커밋>..HEAD -- plugins/` 이고 거기 커밋이 있으면 발행 대상이다.** `warn-version-drift.ps1` 도 이 사각을 메우지 못한다 — 그 hook 은 *"origin/main 에 올라간 버전의 태그가 없으면"* 을 보므로 **버전이 올라간 뒤**에만 발화한다. **실해(2026-09-19)**: 한 회차의 첫 작업이 `skills/llm-wiki/references/queue-consume-rules.md` 를 고쳤는데 그 뒤 세 회차가 위키 vault·`docs/plans/`·`intent/` 만 건드려, 매 회차의 「이번 push 에 `plugin.json` 변경이 있는가」 판정이 연속으로 「없음」을 냈다. **사용자가 묻지 않았으면 그 변경은 미배포로 남았다** — 그 사이 병행 세션이 옛 문면으로 큐를 소비해 `lint §7-33` 위반을 실제로 냈다.
+
 **차단 경로 커버리지** — `plugins/pjc/hooks/evals/check-block-coverage.py`. **차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다** — 차단 hook 이나 그 골든 케이스를 고쳤으면 필수다.
 
 **잘린 주석 검사** — `plugins/pjc/evals/check-comment-truncation.py`. 두 축이다: 근거 인용 주석의 **절단**과 `rules/*-rationale.md` 헤딩과의 **짝**. `scripts/*.ps1`·`scripts/rules/*-rationale.md` 를 고쳤으면 필수다.
@@ -115,7 +117,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 47,475 | 137,000 |
+| `docs/harness-conventions.md` | 48,054 | 137,000 |
 | `docs/golden-runner.md` | 12,295 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 12,310 | 37,000 |
 
