@@ -2098,13 +2098,31 @@ def _md_sections(text, probe=None):
     return out
 
 
+def _root_stem(rel):
+    """분할 family 의 **루트 stem** — 경로에서 `.md`와 후행 순번 접미(`-2`·`-2-2`)를 뗀다.
+
+    **왜 순번을 벗기는가**: 이미 `-2`인 하위가 다시 나뉠 때 그 이름에 순번을 또 이으면
+    `-2-2`·`-2-2-2`로 중첩된다. 실 vault 에서 3단까지 자란 것이 3건 실측됐고
+    (`conventions-verification-2-2` 등), 이름이 길어질수록 조회가 어느 갈래인지 읽어야 한다.
+    루트 family 로 순번을 매기면 하위는 항상 `{루트}-{n}` 한 단계다.
+
+    **조회 계층은 파일명이 아니라 복귀 링크가 유지한다** — §7-30 ⓔ 는 파일명 접두를 요구하지
+    않고 「이 파일이 가리키는 상위」를 복귀 링크로 확정한다. 그래서 `-2`의 하위가 `-4`라는
+    형제 이름을 가져도 `## 하위 문서` 양방향 정합은 그대로 성립한다.
+
+    하이픈 없는 숫자 꼬리(`feat-oauth2`)는 벗기지 않는다 — 패턴이 `-\\d+`를 요구한다."""
+    return re.sub(r"(-\d+)+$", "", rel[:-len(".md")])
+
+
 def _next_sub_index(vault, rel):
-    """`{stem}-{n}.md`의 다음 순번. 이미 있는 최대값 + 1이고 없으면 2다.
+    """`{루트 stem}-{n}.md`의 다음 순번. 이미 있는 최대값 + 1이고 없으면 2다.
 
     **섹션 제목을 파일명에 전사하지 않는다**(D1 ⓐ) — §3 네이밍이 전 타입에 영문소문자
     하이픈을 요구하는데 위키 본문은 한글이 원칙이고 `## 주의점 / 함정`처럼 경로 구분자를
-    포함한 제목이 실재한다. 순번은 결정론이면서 네이밍 규칙을 항상 만족한다."""
-    stem = rel[:-len(".md")]
+    포함한 제목이 실재한다. 순번은 결정론이면서 네이밍 규칙을 항상 만족한다.
+
+    순번을 **루트 family 기준으로** 세는 이유는 `_root_stem` docstring 에 있다."""
+    stem = _root_stem(rel)
     n = 1
     for f in glob.glob(os.path.join(glob.escape(vault), stem.replace("/", os.sep) + "-*.md")):
         m = re.match(r"^\d+$", os.path.basename(f)[len(os.path.basename(stem)) + 1:-len(".md")])
@@ -2353,7 +2371,9 @@ def relocate_sections(ses):
         cur = text
         while True:
             n = _next_sub_index(ses.vault, rel) + len(created)
-            sub_rel = "%s-%d.md" % (rel[:-len(".md")], n)
+            # 이름도 **루트 stem**에 잇는다 — 순번만 루트 기준으로 세고 이름은 원본에 이으면
+            #  `-2`를 나눌 때 `-2-4`가 되어 중첩을 막으려던 것이 이름만 바꿔 되살아난다.
+            sub_rel = "%s-%d.md" % (_root_stem(rel), n)
             sub_path = os.path.join(ses.vault, sub_rel.replace("/", os.sep))
             # 판정은 `_pick_relocatable`이 하고 여기서는 그 결과만 쓴다 — 예산 분기(§7-2 발동)와
             #  **같은 술어를 공유**하기 위해서다(둘이 갈리면 조용한데 처리도 안 되는 파일이 생긴다).
@@ -2395,8 +2415,10 @@ def relocate_sections(ses):
         already = set(wikilink_targets(section(cur, "하위 문서") or ""))
         made = {c[1] for c in created}
         siblings = []
+        # 후보는 **루트 family** 전체에서 모은다 — 하위 이름이 평면이라 원본 stem 으로
+        #  좁히면 방금 만든 형제가 후보에서 빠진다. 소속 판정은 아래 복귀 링크가 한다.
         for f in sorted(glob.glob(os.path.join(
-                glob.escape(ses.vault), rel[:-len(".md")].replace("/", os.sep) + "-*.md"))):
+                glob.escape(ses.vault), _root_stem(rel).replace("/", os.sep) + "-*.md"))):
             srel = os.path.relpath(f, ses.vault).replace("\\", "/")
             # 순번 접두를 요구하지 않는다 — ⓔ가 복귀 링크 단일 신호로 바뀌었으므로 여기도 맞춘다.
             #  두 자리가 갈리면 「경고는 나는데 자동 수정은 못 하는」 구간이 생긴다(수기 하위가
