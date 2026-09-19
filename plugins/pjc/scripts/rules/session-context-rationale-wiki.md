@@ -1,6 +1,6 @@
 # session-context — 위키·AGENTS.md 주입 판정 근거
 
-> `session-context-rationale.md`「위키·주입 신호 — 별도 문서」에서 갈라져 나왔다. §23~§35 — vault 설정 판정 · 스킬 개선 큐 · 위키 뒤처짐 알림 · AGENTS.md 전문 주입 · vault 라인의 근거를 담는다.
+> `session-context-rationale.md`「위키·주입 신호 — 별도 문서」에서 갈라져 나왔다. §23~§37 — vault 설정 판정 · 위키 뒤처짐 알림 · AGENTS.md 전문 주입 · vault 라인의 근거를 담는다.
 
 ## 위키·AGENTS.md 주입 판정 근거
 

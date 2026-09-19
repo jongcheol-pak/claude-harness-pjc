@@ -600,7 +600,7 @@ tags: [convention, 프로젝트태그]
 22. **시크릿 의심 스캔** — WARN. 판정 기준·오탐 사례·경계 조건은 `references/lint-rationale.md` 「§7-22」.
 23. **미해결 질문 인덱스 동기** — WARN. 판정 기준·오탐 사례·경계 조건은 `references/lint-rationale.md` 「§7-23」.
 24. **decision-log 정합** — WARN. 판정 기준·오탐 사례·경계 조건은 `references/lint-rationale.md` 「§7-24」.
-25. **큐 잔량 집계 (두 파일)** — WARN. 판정 기준·오탐 사례·경계 조건은 `references/lint-rationale.md` 「§7-25」.
+25. **큐 잔량 집계** — WARN. 판정 기준·오탐 사례·경계 조건은 `references/lint-rationale.md` 「§7-25」.
 
 26. **위키 뒤처짐 (레포 대비)** — INFO. 판정 기준·오탐 사례·경계 조건은 `references/lint-rationale.md` 「§7-26」.
 27. **~~가이드/레시피 섹션 가이드 행 한/영 병기~~ — 폐지 (§7-16에 흡수)** — 상세 문서 참조. 판정 기준·오탐 사례·경계 조건은 `references/lint-rationale.md` 「§7-27」.
