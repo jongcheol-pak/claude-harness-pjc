@@ -85,7 +85,12 @@ function Get-GoldenTimingLag {
       **대조 키는 「소요 초」가 아니라 「케이스 수」다** — 같은 문서가 *"소요 시간을 완료 판정에
         쓰지 말 것(19분 6초 ↔ 27분 14초로 실측)"* 이라 적어 초로는 임계를 세울 수 없다. 케이스
         수는 편차가 0이고 `$GoldenTotalBaseline` 이라는 대조 상대가 있다.
-      표에 이력이 누적되므로 **위치가 아니라 값의 최댓값**으로 최신을 가린다.
+      **최신값은 「현행 N케이스가 회귀 기준선」 앵커로 가린다 — 최댓값이 아니다.** 그 문서는
+        과거 실측을 이력으로 누적 보존하므로, 케이스가 **줄어든** 회차 뒤에는 옛 항목이
+        최댓값으로 남아 정확히 갱신해도 경고가 영구히 뜬다(2026-09-19 실해: 923 -> 914 로
+        줄인 뒤 `문서 최신 923 <-> 러너 상수 914` 가 매 커밋에 붙었다).
+      **앵커가 없을 때만 최댓값으로 폴백한다** — 폴백을 지우면 그 문서에서 판정이 통째로
+        사라진다. 첫 매치·마지막 매치를 쓰지 않는 것은 이력의 순서가 보장되지 않아서다.
     #>
     param([string]$RepoRoot)
     $doc = Join-Path $RepoRoot 'docs/golden-runner.md'
@@ -93,10 +98,16 @@ function Get-GoldenTimingLag {
     if (-not (Test-Path -LiteralPath $doc) -or -not (Test-Path -LiteralPath $runner)) { return $null }
     $text = Get-Content -LiteralPath $doc -Raw -ErrorAction SilentlyContinue
     if (-not $text) { return $null }
-    $docMax = 0
-    foreach ($m in [regex]::Matches($text, '(\d+)\s*케이스')) {
-        $v = [int]$m.Groups[1].Value
-        if ($v -gt $docMax) { $docMax = $v }
+    # 현행값을 명시한 앵커가 있으면 그것이 최신이다 — 이력 최댓값보다 우선한다.
+    $cur = [regex]::Match($text, '현행\s*(\d+)\s*케이스가 회귀 기준선')
+    if ($cur.Success) {
+        $docMax = [int]$cur.Groups[1].Value
+    } else {
+        $docMax = 0
+        foreach ($m in [regex]::Matches($text, '(\d+)\s*케이스')) {
+            $v = [int]$m.Groups[1].Value
+            if ($v -gt $docMax) { $docMax = $v }
+        }
     }
     if ($docMax -le 0) { return $null }   # 문서에 실측이 없다 — 판정 불가이지 「최신」이 아니다
     $rs = Select-String -LiteralPath $runner -Pattern '\$GoldenTotalBaseline\s*=\s*(\d+)' | Select-Object -First 1
