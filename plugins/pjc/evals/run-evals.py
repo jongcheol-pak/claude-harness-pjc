@@ -37,6 +37,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -61,11 +62,37 @@ CHECKERS = {
 }
 
 
+def rmtree_force(path):
+    """임시 폴더를 지운다 — **read-only 파일을 해제하고 재시도한다.**
+
+    `shutil.rmtree(..., ignore_errors=True)` 로는 **git object 가 남는다** — `build_tree` 가
+    복사본을 `git init` 하면서 object 파일이 read-only 로 박히고, Windows 는 그런 파일의
+    삭제를 거부하는데 `ignore_errors` 가 그 실패를 삼켜 폴더가 조용히 누적된다
+    (2026-09-21 실측: `%TEMP%/pjc-evals-*` 9,319건 · 778MB · 5일치). 형제 러너
+    `llm-wiki/evals/run_lint_evals.py` 가 2026-09-17 같은 결함을 같은 관용구로 메웠다.
+
+    `onexc` 는 3.12+ 이름이고 그 아래는 `onerror` 다 — 둘 다 받도록 갈라 둔다."""
+    def _clear_readonly(func, p, _exc):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except OSError:
+            pass   # 그래도 못 지우면 넘어간다 — 정리 실패가 판정을 막지는 않는다
+    try:
+        shutil.rmtree(path, onexc=_clear_readonly)
+    except TypeError:
+        shutil.rmtree(path, onerror=_clear_readonly)
+
+
 def build_tree(case):
-    """픽스처를 임시 디렉터리로 복사하고 검사기 사본과 git 저장소를 놓는다."""
+    """픽스처를 임시 디렉터리로 복사하고 검사기 사본과 git 저장소를 놓는다.
+
+    반환은 `(root, err, tmp)` 다 — **실패 경로에서도 `tmp` 를 돌려준다.** 성공했을 때만
+    지우면 변이 앵커 불일치·git 실패로 중도 반환한 케이스의 트리가 그대로 남는다 —
+    `root` 가 None 이라 호출부가 경로를 역산할 수도 없다."""
     fx = os.path.join(FIXTURES, case["fixture"])
     if not os.path.isdir(fx):
-        return None, "픽스처 없음: " + case["fixture"]
+        return None, "픽스처 없음: " + case["fixture"], None
     tmp = tempfile.mkdtemp(prefix="pjc-evals-")
     root = os.path.join(tmp, "repo")
     shutil.copytree(fx, root)
@@ -78,7 +105,7 @@ def build_tree(case):
     for mut in case.get("mutate", []):
         p = os.path.join(root, mut["file"].replace("/", os.sep))
         if not os.path.exists(p):
-            return None, "변이 대상 없음: " + mut["file"]
+            return None, "변이 대상 없음: " + mut["file"], tmp
         # 파일 삭제 변이 — 참조 대상의 **부재**를 재는 축(핵심 포인터 실재의 ⓐ 분기)은
         #   치환으로 표현할 수 없다. `find`/`replace` 없이 `delete` 만 적는다.
         if mut.get("delete"):
@@ -89,7 +116,7 @@ def build_tree(case):
         with io.open(p, encoding="utf-8", newline="") as fh:
             body = fh.read()
         if mut["find"] not in body:
-            return None, "변이 앵커 불일치: %s / %r" % (mut["file"], mut["find"][:40])
+            return None, "변이 앵커 불일치: %s / %r" % (mut["file"], mut["find"][:40]), tmp
         body = body.replace(mut["find"], mut["replace"])
         with io.open(p, "w", encoding="utf-8", newline="") as fh:
             fh.write(body)
@@ -106,15 +133,18 @@ def build_tree(case):
             r = subprocess.run(["git", "-C", root] + args, capture_output=True, env=env,
                                timeout=20, stdin=subprocess.DEVNULL)
         except subprocess.TimeoutExpired:
-            return None, "git %s 20초 초과 — 케이스를 실패로 돌린다" % args[0]
+            return None, "git %s 20초 초과 — 케이스를 실패로 돌린다" % args[0], tmp
         if r.returncode != 0:
-            return None, "git %s 실패: %s" % (args[0], r.stderr.decode("utf-8", "replace")[:120])
-    return root, None
+            return None, "git %s 실패: %s" % (args[0], r.stderr.decode("utf-8", "replace")[:120]), tmp
+    return root, None, tmp
 
 
 def run_case(case):
-    root, err = build_tree(case)
+    root, err, tmp = build_tree(case)
     if err:
+        # 실패 케이스도 자기 트리를 치운다 — 이 가지가 `finally` 밖에 있어 누수가 생겼다.
+        if tmp:
+            rmtree_force(tmp)
         return False, err, None
     try:
         checker = os.path.join(root, "plugins", "pjc", "evals", CHECKERS[case["checker"]])
@@ -141,7 +171,7 @@ def run_case(case):
             return False, "출력에 금지 문구: " + " · ".join(bad), out
         return True, "rc=%d" % r.returncode, out
     finally:
-        shutil.rmtree(os.path.dirname(root), ignore_errors=True)
+        rmtree_force(tmp)
 
 
 # 케이스 블록은 **두 줄 계약**이다 — `  {` 가 자기 줄에 홀로 있고 **다음 줄이 `    "` 로 시작**한다.
