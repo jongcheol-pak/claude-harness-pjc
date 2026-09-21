@@ -88,6 +88,29 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 층2 골든 실측 일치 시 침묵' -R $r -ExpectExit 0 -ExpectNotContains '골든 실측'
 
+    # 3-c3) **층 2 양성(현행 앵커 우선)** — `현행 N케이스가 회귀 기준선` 이 있으면 **그것이
+    #       최신값**이고 이력 최댓값은 무시한다. **앵커(222)와 최댓값(999)을 일부러 갈라 둔
+    #       것이 이 케이스의 축**이다 — 구현이 최댓값을 쓰면 999 가 나와 red 가 된다.
+    @'
+- **현행 222케이스가 회귀 기준선이다 — 케이스를 추가·삭제하면 이 값을 함께 갱신할 것.**
+| 병렬 | run | **9초** — 999케이스, 2026-01-01 실측 / **7초** — 100케이스, 2026-02-02 실측 |
+'@ | Set-Content (Join-Path $sdRoot 'docs/golden-runner.md')
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 층2 현행 앵커가 이력 최댓값을 이긴다' -R $r -ExpectExit 0 -ExpectContains '문서 최신 222케이스 ↔ 러너 상수 111케이스'
+
+    # 3-d3) **층 2 음성(케이스 수가 줄어든 회차)** — 현행 앵커가 러너 상수와 같으면 이력에 더
+    #       큰 값이 남아 있어도 침묵한다. **2026-09-19 오탐의 재현이다** — 그 회차가 923 -> 914
+    #       로 줄이고 넷을 정확히 갱신했는데, 최댓값 판정이 옛 923 을 최신으로 읽어 경고가
+    #       매 커밋에 붙었다. 이 케이스가 없으면 그 회귀가 다시 들어와도 골든이 green 이다.
+    @'
+- **현행 111케이스가 회귀 기준선이다 — 케이스를 추가·삭제하면 이 값을 함께 갱신할 것.**
+| 병렬 | run | **9초** — 999케이스, 2026-01-01 실측 / **7초** — 100케이스, 2026-02-02 실측 |
+'@ | Set-Content (Join-Path $sdRoot 'docs/golden-runner.md')
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 층2 감소 회차에서 침묵' -R $r -ExpectExit 0 -ExpectNotContains '골든 실측'
+
     # 층 1·2 대역을 걷어 나머지 케이스를 원래 조건으로 되돌린다.
     Remove-Item (Join-Path $sdRoot 'plugins/pjc/evals/check-harness-consistency.py') -Force
     Remove-Item (Join-Path $sdRoot 'plugins/pjc/hooks/evals/run-hook-evals.ps1') -Force
