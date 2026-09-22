@@ -129,6 +129,20 @@ CONFIDENCE_VOCAB = {"high", "medium", "low"}
 # vault 루트 소비 대기 큐 (wiki-schema §6·§7-1·§9 — 지식 페이지가 아니라 검사 대상에서 제외되는 축).
 #  위키 세션이 반영 후 제거한다.
 ROOT_QUEUE_FILES = {"pending.md"}
+# 생성기가 소유하는 폴더 — vault 안에 있으나 **위키 콘텐츠가 아니다**. 모델이 만든 카드·개념·
+#  대화 기록이라 사람이 쓴 페이지의 규약(frontmatter `type`·인덱스 등록·경로 명시 wikilink)을
+#  따르지 않고, 배제하지 않으면 그 산출물이 지식 페이지로 검사돼 실제 결함을 덮는다.
+#  **`90_archive/`(검사별 제외)와 축이 다르다** — 여기는 md 목록 자체에서 빼 `existing`(링크
+#  대상 우주)에도 안 들어간다. 생성물은 사람이 쓴 페이지의 참조 대상이 아니라는 뜻이고,
+#  경로형 wikilink 로 가리키면 §7-1 이 깨진 링크로 잡는다(근거는 `lint-rationale.md`).
+GENERATED_DIRS = ("gemma-wiki/",)
+
+
+def is_generated(rel):
+    """생성기가 소유해 lint 가 보지 않는 자리인가 (rel 은 vault 상대경로, 슬래시 구분)."""
+    return rel.startswith(GENERATED_DIRS)
+
+
 # 큐 항목의 정상 접두 — `[YYYY-MM-DD] ` 하나뿐이다(§7-25 형식 규약). 형식 위반 판정이
 #  이 정규식과 어긋나는 접두를 위반으로 센다: 날짜 누락(`- [TAG]`)·형식 불일치(`[2026-7-2]`)·
 #  대괄호 없음(`- 2026-07-02 [TAG]`) 셋 다 여기서 걸린다.
@@ -773,7 +787,8 @@ def scan_index_pages(vault):
     pages = {}
     for p in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True):
         r = os.path.relpath(p, vault).replace("\\", "/")
-        if r.startswith("90_archive/") or r in ROOT_QUEUE_FILES or r.startswith("index"):
+        if (r.startswith("90_archive/") or r in ROOT_QUEUE_FILES
+                or r.startswith("index") or is_generated(r)):
             continue
         try:
             with open(p, "rb") as fh:
@@ -1921,7 +1936,7 @@ def _decision_log_paths(vault):
     out = []
     for p in glob.glob(os.path.join(glob.escape(vault), "**", "decisions.md"), recursive=True):
         rel = os.path.relpath(p, vault).replace("\\", "/")
-        if rel.startswith("90_archive/"):
+        if rel.startswith("90_archive/") or is_generated(rel):
             continue
         text, _bom, _nl = _read_page(p)
         if text is not None and frontmatter(text).get("type") == "decision-log":
@@ -2070,7 +2085,8 @@ def _prose_page_paths(vault):
     out = []
     for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True):
         rel = os.path.relpath(f, vault).replace("\\", "/")
-        if rel.startswith("90_archive/") or os.path.basename(rel).startswith("index"):
+        if (rel.startswith("90_archive/") or os.path.basename(rel).startswith("index")
+                or is_generated(rel)):
             continue
         text, _bom, _nl = _read_page(f)
         if text is not None and frontmatter(text).get("type") in RELOCATE_TYPES:
@@ -2644,7 +2660,9 @@ def apply_fixes(vault, dry_run=False):
             return False
     cleaned, cleanup_failed = ([], []) if (dry_run or git_root) else cleanup_backups(vault, today)
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
-    md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
+    # 생성물 폴더는 --fix 대상이 아니다 — 본 lint 가 보지 않는 자리를 고칠 수 없다.
+    md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)
+          if not is_generated(rel(f))]
     raws, pages = {}, {}   # rel -> (bom, 원본 텍스트) / rel -> (fm, type, 정규화 텍스트)
     for p in md:
         try:
@@ -2917,6 +2935,10 @@ def main():
     #   'D:\wiki[2026]' 같은 경로에서 md 목록이 0개가 되어 대부분 검사가 공허 통과한다.
     md = [f for f in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True)]
     rel = lambda p: os.path.relpath(p, vault).replace("\\", "/")
+    # 생성물 폴더를 여기서 뺀다 — **`existing` 계산 앞이어야 한다.** 아래 루프 안에서
+    #   건너뛰면 링크 대상 우주에는 남아 「검사만 면제」가 되고, 생성물을 경로형 wikilink 로
+    #   가리키는 것이 조용히 허용된다.
+    md = [p for p in md if not is_generated(rel(p))]
     existing = {rel(p)[:-3] for p in md}  # 확장자 제거한 상대경로 집합
     existing_cf = {e.casefold() for e in existing}  # L-1: 대소문자 무시 비교용(Windows/Obsidian 정합)
     today = _today()
