@@ -72,6 +72,7 @@ try {
                 # task 라인만 카운트 — 템플릿 정본(plan-template.md 「작업 단계」)은 `- [ ] **T1-1** …`(볼드 하위 항목)이고 구형 `- [x] T1: …` 도 받는다.
                 #   통과 체크리스트 등 다른 체크박스는 제외. 종전 정규식은 볼드를 못 받아 현행 plan 에서 0건으로 떨어졌다(대장 2026-09-06·09-08 등재분 — 회차 44 해소).
                 $all = [regex]::Matches($planText, '(?m)^- \[[ /x]\] \**T\d+').Count
+                # loop-continue.ps1 의 Get-OpenTaskIds 가 이 식에 ID 캡처만 더해 쓴다 — 한쪽만 고치면 세션 안내와 계속 주입이 다른 미완 수를 본다
                 $open = [regex]::Matches($planText, '(?m)^- \[[ /]\] \**T\d+').Count
 
                 # ---- Deferred 미판정 계수 — 근거는 `rules/session-context-rationale.md`의 「§7 ---- Deferred 미판정 계수」

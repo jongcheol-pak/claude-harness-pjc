@@ -45,6 +45,17 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/loop-continue.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -103,6 +114,31 @@
             "type": "command",
             "shell": "powershell",
             "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/session-end-cleanup.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptExpansion": [
+      {
+        "matcher": "implement|plan",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/loop-continue.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/loop-continue.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
