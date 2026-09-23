@@ -947,7 +947,7 @@ def check_close_reasons():
 CRITICAL_POINTERS = [
     ("plugins/pjc/skills/implement/SKILL.md",
      "plugins/pjc/skills/implement/references/loop-stop-patterns.md",
-     "자율 루프 정지 판정의 유일한 방어선 — 그 판정을 하던 hook 이 v1.225.0 에 제거돼 이 문면이 대신한다"),
+     "자율 루프 정지 형태 판정의 정본(1차 방어선) — loop-continue hook 은 plan 미완만 보고 형태를 가르지 않는다"),
 ]
 
 # 핵심 포인터 **총량**의 기준선(= 목록 길이). 이 목록은 손으로 관리하는데 **줄어드는 것이

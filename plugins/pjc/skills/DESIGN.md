@@ -125,7 +125,7 @@ RIGHT: (판정 기준은 wiki-sync.md에 있다)
 | E9 | 세션 시작에 plan 상태와 `AGENTS.md`를 안다 | `plan` Step 1 | `session-context` | 모델 자율에 맡기면 새 세션·압축 후에 빠진다 |
 | E10 | 설치본과 레포 버전이 어긋난 것을 안다 | (운용) | `warn-version-drift` | 워킹트리를 고쳐도 설치본이 구버전이면 검증이 헛돈다 |
 | E11 | 확인된 실행 사실을 `AGENTS.md`에 기록한다 | `record-project-fact` | `suggest-agents-record` | 재확인 비용을 다음 세션이 다시 치른다 |
-| E12 | 자율 루프를 중간에 멈추지 않는다 | `implement` 「진행 중 사용자와의 소통」 | **없음 — 문면 전담** | 정지 의도는 turn이 끝났다는 사실에 있고, 한국어 어미 조합은 무한해 정규식이 수렴하지 않는다 |
+| E12 | 자율 루프를 중간에 멈추지 않는다 | `implement` 「진행 중 사용자와의 소통」 | `loop-continue` **+ 문면** | 형태 판정은 문면이 한다 — 정지 의도는 turn이 끝났다는 사실에 있고, 한국어 어미 조합은 무한해 정규식이 수렴하지 않는다. hook 은 문면·transcript 를 보지 않고 **implement 발동 세션 · plan.md 미완 체크박스 · Stop 페이로드**만으로 계속을 주입한다(`exit 0` + `additionalContext`, 같은 미완 집합 2회 상한) |
 | E13 | 검증 4단계를 실행한다 | `implement` 「검증」 | **없음 — 문면 전담** | 실행 결과가 곧 증거라 hook이 따로 판정할 것이 없다 |
 | E14 | `plan.md` 를 스크립트로 쓰지 않는다 | `plan` 「Step 5」 | `guard-bash` | gitignore 라 잘못 쓰면 복구할 수 없다 — 회차 50 이 절 교체 스크립트로 파일을 29줄만 남기고 잘랐고, 그 상태로 커밋 둘이 지나갔다. **읽기는 막지 않는다** |
 

@@ -117,7 +117,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 49,736 | 137,000 |
+| `docs/harness-conventions.md` | 49,855 | 137,000 |
 | `docs/golden-runner.md` | 12,535 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 11,564 | 37,000 |
 
@@ -209,9 +209,10 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 ## `guard-write`의 PLAN-EXEMPT 면제 경로
 
-> **차단의 두 번째 형태는 폐기됐다** — `stdout JSON`(`{"decision":"block",…}`) + `exit 0` 은
+> **차단의 두 번째 형태는 쓰이지 않는다** — `stdout JSON`(`{"decision":"block",…}`) + `exit 0` 은
 > Stop hook 전용으로 종료를 막고 `reason` 을 모델에 전달하는 수단이었고, v1.225.0 이 그 hook 을
-> 제거하며 사용처가 사라졌다. **다시 Stop hook 이 필요해지면 이 형태가 유일한 수단이다.**
+> 제거하며 사용처가 사라졌다. Stop hook 은 `loop-continue` 로 돌아왔으나 **`additionalContext`(비차단)**
+> 로 계속을 주입하므로 이 형태를 되살리지 않았다(근거 `plugins/pjc/scripts/rules/loop-continue-rationale.md` §1).
 
 > `AGENTS.md` 「Conventions」의 hook 출력 규약이 지목하는 정본이다. **코드 쪽 근거는 `plugins/pjc/scripts/rules/plan-exempt-rationale.md`의 「§23 PLAN-EXEMPT 면제 판정」**이고, 여기는 **규약으로서 무엇이 허용되는가**를 적는다.
 

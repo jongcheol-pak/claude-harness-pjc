@@ -12,7 +12,7 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 - **자율 루프 안에서는 turn을 끝내는 중간 업데이트를 내지 않는다 — 상태 메모는 한 줄로, 다음 도구 호출과 같은 메시지에 둔다** — 사용자가 개입할 지점이 없는 구간의 서술은 결정에 쓰이지 않으면서 컨텍스트를 소모해 후반 task의 품질을 떨어뜨린다. 남길 것은 `plan.md`에 쓰고, 사용자가 알아야 할 것은 최종 보고에 모은다. Claude Code가 「몇 마디로 말하고 계속하라」고 알려 와도 같다 — 한 줄을 도구 호출과 함께 내고 이어 간다.
 - **화면에 내는 것은 task당 한 줄이다** — `T<N> 시작 — <무엇을>`. 그 줄은 같은 turn의 다음 도구 호출과 한 묶음이어야 한다. 줄만 내고 turn을 끝내면 거기서 루프가 멈춘다.
 
-- **루프를 멈추는 다섯 형태와 그 문구 목록은 `references/loop-stop-patterns.md`에 있다** — 정지 의도는 어휘가 아니라 turn이 끝났다는 사실에 있어 기계가 판정할 수 없다. 이 문면이 유일한 방어선이다.
+- **루프를 멈추는 다섯 형태와 그 문구 목록은 `references/loop-stop-patterns.md`에 있다** — 정지 의도는 어휘가 아니라 turn이 끝났다는 사실에 있어 형태 판정은 이 문면이 맡는다. plan에 미완 task가 남은 채 turn이 끝나면 `loop-continue` hook이 남은 ID를 적어 계속을 주입한다 — 그 안내가 오면 이어서 진행하고, 규약이 지목한 정지면 막힌 이유를 한 줄로 말한다.
 
 가이드 원문(`platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5-5` 「무인 에이전트 실행」):
 
