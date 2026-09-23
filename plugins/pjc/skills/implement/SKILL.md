@@ -9,10 +9,16 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 
 ## 진행 중 사용자와의 소통
 
-- **자율 루프 안에서는 중간 업데이트를 내지 않는다** — 사용자가 개입할 지점이 없는 구간의 서술은 결정에 쓰이지 않으면서 컨텍스트를 소모해 후반 task의 품질을 떨어뜨린다. 남길 것은 `plan.md`에 쓰고, 사용자가 알아야 할 것은 최종 보고에 모은다.
+- **자율 루프 안에서는 turn을 끝내는 중간 업데이트를 내지 않는다 — 상태 메모는 한 줄로, 다음 도구 호출과 같은 메시지에 둔다** — 사용자가 개입할 지점이 없는 구간의 서술은 결정에 쓰이지 않으면서 컨텍스트를 소모해 후반 task의 품질을 떨어뜨린다. 남길 것은 `plan.md`에 쓰고, 사용자가 알아야 할 것은 최종 보고에 모은다. Claude Code가 「몇 마디로 말하고 계속하라」고 알려 와도 같다 — 한 줄을 도구 호출과 함께 내고 이어 간다.
 - **화면에 내는 것은 task당 한 줄이다** — `T<N> 시작 — <무엇을>`. 그 줄은 같은 turn의 다음 도구 호출과 한 묶음이어야 한다. 줄만 내고 turn을 끝내면 거기서 루프가 멈춘다.
 
 - **루프를 멈추는 다섯 형태와 그 문구 목록은 `references/loop-stop-patterns.md`에 있다** — 정지 의도는 어휘가 아니라 turn이 끝났다는 사실에 있어 기계가 판정할 수 없다. 이 문면이 유일한 방어선이다.
+
+가이드 원문(`platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5-5` 「무인 에이전트 실행」):
+
+> A standing instruction from the user, the person you are working for. It is about how your turns end. A message with no tool call in it ends your turn, and the work stops there until you are asked to continue. The user has seen you end turns in four ways while work they asked for was still owed, and does not want any of them. One: a long summary of what was done that closes by announcing the next step and has no tool call, so the next thing never starts. Two: an offer to carry on with something unless the user would prefer otherwise, which stops to wait for an answer the user was not going to give. Three: a list of decisions for the user when, by your own account, none of them blocks the rest of the work. Four: deciding that this is a good place to report, because the turn has been long or a milestone is done. Status notes are welcome, and so are your recommendations on open decisions, but put them in the same message as your next tool call and carry on with whatever does not depend on the user's answer. If you notice yourself inviting the user to redirect you or offering to wait, delete it and do the next thing. The stops the user does want are the ones where nothing can move without them, or where the thing blocking you is deliberately protected from you. This does not override the need for confirmation on risky or destructive actions.
+
+- **이 단락이 말하는 「원하는 정지」(the stops the user does want)는 아래 「멈추는 넷」과 「목록 밖의 넷」이다** — 승인된 `plan.md`가 전체 작업의 위임장이라 루프 안은 이 단락이 전제한 무인 실행이고, 그 여덟 밖에서 turn을 끝내면 이 단락이 든 넷 중 하나다.
 
 ## 작업 범위
 
@@ -50,7 +56,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - **눈으로 봐야 하는 것은 `HUMAN-VERIFY`로 표기하고 계속 간다** — GUI 조작감·시각 확인은 최종 보고에서 사용자가 한 번에 확인한다. 이 표기는 정직한 보고 수단이지 정지 신호가 아니다.
 - **컨텍스트가 차 가도 멈추지 않는다** — 현재 task를 끝내고 `plan.md`에 상태를 쓴 뒤 계속 진행한다. 압축이 일어나면 첫 행동은 이 SKILL.md와 `plan.md`를 다시 읽는 것이다 — **`AGENTS.md`는 다시 읽지 않는다.** SessionStart 가 `compact` 에도 전문을 재주입하고 그 줄이 「재Read 불필요」라고 적는다.
 
-단 **plan에 없던 기능 변경이 필요해지면 멈춘다** — 근본 해결이 요구 범위 밖의 동작 변경을 요구하는 상황이며, **멈추는 네 경우 어디에도 없지만 승인이 필요하다** — plan 승인이 덮지 않는 변경이기 때문이다. 무엇이 왜 필요한지와 대안을 함께 보고한다.
+단 **plan에 없던 기능 변경이 필요해지면 그 변경에 의존하지 않는 task를 먼저 끝낸 뒤 멈춘다** — 근본 해결이 요구 범위 밖의 동작 변경을 요구하는 상황이며, **멈추는 네 경우 어디에도 없지만 승인이 필요하다** — plan 승인이 덮지 않는 변경이기 때문이다. 무엇이 왜 필요한지와 대안을 함께 보고한다.
 
 ## 검증
 
