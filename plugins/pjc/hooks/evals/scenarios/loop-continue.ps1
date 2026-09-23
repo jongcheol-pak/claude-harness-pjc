@@ -81,4 +81,16 @@ $null = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-c1' $lcProj2)
 $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-c1' $lcProj2)
 Assert-Case -Name "loop-continue: 집합이 바뀌면 다시 주입" -R $r -ExpectExit 0 -ExpectContains 'T1-2'
 
+# ---- 배선 — 위 케이스는 스크립트에 JSON 을 직접 넣어 hooks.json matcher 를 거치지 않는다 ----
+#   matcher 가 글자·|만으로 쓰이면 「정확 일치 목록」으로 판정돼 pjc: 접두 형태를 떨어뜨린다(hooks 문서 「Matcher patterns」 —
+#   완료 리뷰 BLOCKER). 그래서 UserPromptExpansion matcher 를 두 이름 형태에 직접 대 본다. 정규식 경로 판정은 JS RegExp 이나
+#   이 식(앵커·그룹·알터네이션)은 .NET 과 뜻이 같다. 글자·|만으로 된 matcher 는 정확 일치로 흉내 낸다.
+$lcHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$lcUpeMatcher = [string]($lcHooks.hooks.UserPromptExpansion | Where-Object { ($_.hooks.command -join ' ') -match 'loop-continue' } | Select-Object -First 1).matcher
+$lcExactOnly = $lcUpeMatcher -match '^[A-Za-z0-9_ ,|-]*$'
+$lcHit = @('pjc:implement', 'implement', 'pjc:plan', 'plan' | Where-Object {
+    if ($lcExactOnly) { ($lcUpeMatcher -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $_ } else { $_ -match $lcUpeMatcher }
+})
+Assert-Case -Name "loop-continue: UserPromptExpansion matcher 가 pjc: 접두·무접두 두 형태를 모두 받는다" -R @{ code = 0; out = "hits=$($lcHit.Count)" } -ExpectContains 'hits=4'
+
 }

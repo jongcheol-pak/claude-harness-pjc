@@ -121,7 +121,7 @@
     ],
     "UserPromptExpansion": [
       {
-        "matcher": "implement|plan",
+        "matcher": "^(pjc:)?(implement|plan)$",
         "hooks": [
           {
             "type": "command",

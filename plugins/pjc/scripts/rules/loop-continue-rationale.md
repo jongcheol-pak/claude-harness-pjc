@@ -37,5 +37,5 @@ stdin 파싱 실패 · `session_id` 부재 · `cwd` 부재 · plan.md 읽기 실
 마커는 **`pjc:implement` 가 이 세션에서 발동했다**는 사실만 기록한다.
 
 - **`PreToolUse` · `tool_name` = `Skill`** — 모델이 Skill 도구로 스킬을 부를 때다. `tool_input.skill` 이 `implement` 또는 `pjc:implement` 이면 마커를 세운다
-- **`UserPromptExpansion`** — 사용자가 `/pjc:implement` 를 직접 쳐서 Skill 도구를 거치지 않는 경로다(공식 문서: 「typing `/skillname` directly bypasses `PreToolUse`」). `command_name` 에 플러그인 접두가 붙는지는 문서에 없어 두 형태를 다 받는다
+- **`UserPromptExpansion`** — 사용자가 `/pjc:implement` 를 직접 쳐서 Skill 도구를 거치지 않는 경로다(공식 문서: 「typing `/skillname` directly bypasses `PreToolUse`」). `command_name` 에 플러그인 접두가 붙는지는 문서에 없어 두 형태를 다 받는다. **hooks.json matcher 도 `^(pjc:)?(implement|plan)$` 정규식으로 둔다** — 글자·`|` 만으로 쓰면 「정확 일치 목록」으로 판정돼(hooks 문서 「Matcher patterns」) 접두 형태가 스크립트에 닿기 전에 떨어진다(완료 리뷰 BLOCKER)
 - **`pjc:plan` 이 발동하면 마커를 지운다** — 같은 세션에서 새 계획을 쓰기 시작하면 plan.md 의 미완 task 는 **승인 전 계획**의 것이다. 마커가 남아 있으면 승인 대기 turn 에 「이어서 진행하라」를 주입해 승인 없는 실행을 부추긴다. 승인 뒤 `pjc:implement` 가 다시 발동하면 마커가 다시 선다
