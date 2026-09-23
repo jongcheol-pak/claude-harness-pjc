@@ -69,6 +69,14 @@ $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins
 Assert-Case -Name "guard-harness: 8.3 경로 설치본 loop-continue.ps1 Write 차단 (이름 집합 등재)" -R $r -ExpectExit 2 -ExpectContains '8.3'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.90.2/scripts/guard-stale-docs.ps1")
 Assert-Case -Name "guard-harness: 8.3 경로 설치본 guard-stale-docs.ps1 Write 차단 (이름 집합 등재)" -R $r -ExpectExit 2 -ExpectContains '8.3'
+# 전수 — 이름 집합의 정본 조건은 「plugins/pjc/scripts/*.ps1 전량」(harness-hooks.json _note)이다. 목록 자신이 아니라
+#   실제 스크립트 파일을 기준으로 8.3 경로를 하나씩 대 보므로, 스크립트를 더하고 목록을 빠뜨리면 여기서 red 가 난다.
+$ghMissing = @(Get-ChildItem -LiteralPath $scriptsDir -Filter *.ps1 | ForEach-Object {
+    $rr = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.90.2/scripts/$($_.Name)")
+    if ($rr.code -ne 2) { $_.BaseName }
+})
+$ghMissingOut = if ($ghMissing.Count -eq 0) { 'missing=none' } else { 'missing=' + ($ghMissing -join ',') }
+Assert-Case -Name "guard-harness: scripts/*.ps1 전량이 이름 집합에 있다 (8.3 경로 전수)" -R @{ code = 0; out = $ghMissingOut } -ExpectExit 0 -ExpectContains 'missing=none'
 # [v1.97.2] v1.96.0 신설분의 이름 집합 합류 — commit-secrets 계열 hook·secret-patterns(공유 헬퍼, 개조 시
 #   시크릿 경고 계층 등가 무력화) 설치본 개조 차단. 집합 누락이 재발하면 이 두 케이스가 잡는다.
 #   ⚠ 당시 hook 이름은 warn-commit-secrets 였고 현행은 guard-commit-secrets 다 — v1.225.0 개명 때
