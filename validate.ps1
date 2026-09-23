@@ -158,7 +158,7 @@ foreach ($a in $actualAgents) {
 Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
-$hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1')
+$hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'loop-continue.ps1')
 # hook 아닌 스크립트(미등록 탐지 경고 제외) — dot-source 헬퍼 8종: secret-patterns(시크릿 패턴)·
 #   guard-commit-secrets(커밋 시크릿 검사 — guard-bash 가 부른다)·write-gate-trivial(작은 변경 통과 판정)·write-gate-exempt(PLAN-EXEMPT 면제 판정 —
 #   guard-write 가 부른다)·session-wiki-signals·session-ledger-signal(세션 주입 신호 — session-context 가

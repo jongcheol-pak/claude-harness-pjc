@@ -62,6 +62,13 @@ $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins
 Assert-Case -Name "guard-harness: 8.3 CLAUDE~1 개발 repo 소스(캐시 밖) 통과 (v1.90.3 F2 오탐 수정)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.90.2/scripts/block-destructive.ps1")
 Assert-Case -Name "guard-harness: 8.3 마스킹 설치본(캐시 컨텍스트) 차단 (v1.90.3 F2)" -R $r -ExpectExit 2 -ExpectContains '8.3'
+# [v1.308.x] 이름 집합(rules/harness-hooks.json)의 등재를 이름별로 잰다 — 설치본 경로 판정은 scripts/*.ps1 전체를 막아
+#   이름과 무관하지만, 8.3 짧은 경로(CLAUDE~1) 우회 판정은 이름으로만 선다. 그래서 그 경로로 잰다
+#   (guard-stale-docs 가 실제로 빠져 있었다). 미탐 보완이라 양성 2건이고, 델타 음성은 위 캐시 밖 CLAUDE~1 케이스다.
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.90.2/scripts/loop-continue.ps1")
+Assert-Case -Name "guard-harness: 8.3 경로 설치본 loop-continue.ps1 Write 차단 (이름 집합 등재)" -R $r -ExpectExit 2 -ExpectContains '8.3'
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/pjc-harness/pjc/1.90.2/scripts/guard-stale-docs.ps1")
+Assert-Case -Name "guard-harness: 8.3 경로 설치본 guard-stale-docs.ps1 Write 차단 (이름 집합 등재)" -R $r -ExpectExit 2 -ExpectContains '8.3'
 # [v1.97.2] v1.96.0 신설분의 이름 집합 합류 — commit-secrets 계열 hook·secret-patterns(공유 헬퍼, 개조 시
 #   시크릿 경고 계층 등가 무력화) 설치본 개조 차단. 집합 누락이 재발하면 이 두 케이스가 잡는다.
 #   ⚠ 당시 hook 이름은 warn-commit-secrets 였고 현행은 guard-commit-secrets 다 — v1.225.0 개명 때
