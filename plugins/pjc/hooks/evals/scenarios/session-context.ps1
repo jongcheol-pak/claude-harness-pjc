@@ -138,6 +138,21 @@ if (Test-HookSelected @('session-context')) {
     # SC7g: CLAUDE.md 가 AGENTS.md 를 import 하면 Claude Code 가 그 경로로 싣는다 — 전문을 또 실으면 이중이다.
     $r = Invoke-ScStart (New-ScAgentsCm 'sc-agents-cm-import' 'CLAUDE.md' @('# 프로젝트 지침', '@AGENTS.md'))
     Assert-Case -Name "session-context: CLAUDE.md 가 AGENTS.md 를 import 하면 목차만 (SC7g)" -R $r -ExpectExit 0 -ExpectContains '섹션:' -ExpectNotContains 'SC_AGENTS_UNIQUE_MARKER'
+    # SC7g2: import 로 로드되는 레포에 「CLAUDE.md 가 없어」라고 말하면 세션마다 거짓 사실이 들어간다.
+    Assert-Case -Name "session-context: import 로드는 import 라고 알린다 (SC7g2)" -R $r -ExpectExit 0 -ExpectContains 'import' -ExpectNotContains 'CLAUDE.md 가 없어'
+
+    # SC7j: 상위 CLAUDE.md 의 `@AGENTS.md` 는 **그 폴더의** AGENTS.md 다 — cwd 의 AGENTS.md 는 여전히 안 실린다.
+    $scImpParent = Join-Path $work 'sc-agents-cm-import-parent'; New-Item -ItemType Directory $scImpParent -Force | Out-Null
+    @('# 상위 지침', '@AGENTS.md') | Set-Content -Encoding UTF8 (Join-Path $scImpParent 'CLAUDE.md')
+    @('# Root Guide') | Set-Content -Encoding UTF8 (Join-Path $scImpParent 'AGENTS.md')
+    $scImpChild = Join-Path $scImpParent 'pkg'; New-Item -ItemType Directory $scImpChild -Force | Out-Null
+    $scAgentsBody | Set-Content -Encoding UTF8 (Join-Path $scImpChild 'AGENTS.md')
+    $r = Invoke-ScStart $scImpChild
+    Assert-Case -Name "session-context: 상위 CLAUDE.md 가 자기 AGENTS.md 를 import 해도 cwd 전문 주입 (SC7j)" -R $r -ExpectExit 0 -ExpectContains 'SC_AGENTS_UNIQUE_MARKER'
+
+    # SC7k: import 경로는 그 CLAUDE.md 위치 기준이다 — .claude/CLAUDE.md 의 `@../AGENTS.md` 가 cwd 의 AGENTS.md 다.
+    $r = Invoke-ScStart (New-ScAgentsCm 'sc-agents-cm-import-rel' '.claude/CLAUDE.md' @('# 프로젝트 지침', '@../AGENTS.md'))
+    Assert-Case -Name "session-context: .claude/CLAUDE.md 의 상대 import 도 로드로 본다 (SC7k)" -R $r -ExpectExit 0 -ExpectContains '섹션:' -ExpectNotContains 'SC_AGENTS_UNIQUE_MARKER'
 
     # SC7h: 홈의 .claude/CLAUDE.md 는 사용자 지침이라 세지 않는다 — 가짜 홈으로 그 호출만 격리한다.
     #   가짜 홈이 cwd 의 상위여야 상위 탐색이 그 파일을 실제로 지나간다.

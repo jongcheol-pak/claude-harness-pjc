@@ -167,6 +167,9 @@
                         # 판정 기준은 code.claude.com/docs/en/memory 「When Claude Code reads AGENTS.md」 원문이다 —
                         #   cwd 와 그 위 모든 디렉터리의 CLAUDE.md · .claude/CLAUDE.md · CLAUDE.local.md 가 세어지고,
                         #   ~/.claude/CLAUDE.md 는 세지 않으며, CLAUDE.md 가 @AGENTS.md 를 import 하면 그 경로로 실린다.
+                        # import 는 그 CLAUDE.md 위치 기준으로 풀어 cwd 의 AGENTS.md 와 같을 때만 「로드됨」이다 — 상위 CLAUDE.md 의
+                        #   `@AGENTS.md` 는 상위 폴더 것이라 「하나라도 import 하면」으로 판정하면 모노레포 하위의 AGENTS.md 가
+                        #   빠진 채 로드됐다고 안내된다(v1.313.0 완료 리뷰 재현). 그때 문구도 「CLAUDE.md 가 없어」가 아니라 import 라고 적는다.
                         # 홈을 셋(USERPROFILE · $HOME · GetFolderPath)으로 보는 이유: 골든은 USERPROFILE 만 격리하고
                         #   작업 폴더($EvalWork)는 %LOCALAPPDATA% — 실제 홈 아래다. 격리 홈만 빼면 실제 홈의
                         #   .claude/CLAUDE.md 가 상위 파일로 세어져 CLAUDE.md 없는 픽스처가 전문 분기로 뒤집힌다.

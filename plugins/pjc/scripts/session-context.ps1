@@ -209,8 +209,22 @@ try {
                             if (-not $parentDir -or $parentDir -eq $probeDir) { break }
                             $probeDir = $parentDir
                         }
-                        # CLAUDE.md 가 @AGENTS.md 를 import 하면 Claude Code 가 그 경로로 싣는다
-                        $agentsImported = @($claudeFiles | Where-Object { (Get-Content -LiteralPath $_ -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) -match '(?m)@(\./)?AGENTS\.md\b' }).Count -gt 0
+                        # CLAUDE.md 가 **이 cwd 의** AGENTS.md 를 import 하면 Claude Code 가 그 경로로 싣는다.
+                        #   import 경로는 그 CLAUDE.md 위치 기준이라 풀어서 비교한다 — 상위 CLAUDE.md 의 `@AGENTS.md` 는
+                        #   상위 폴더의 AGENTS.md 이고, .claude/CLAUDE.md 는 `@../AGENTS.md` 로 가리킨다.
+                        $agentsFull = [System.IO.Path]::GetFullPath($agentsPath)
+                        $agentsImported = $false
+                        foreach ($cf in $claudeFiles) {
+                            $cfText = Get-Content -LiteralPath $cf -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+                            if (-not $cfText) { continue }
+                            foreach ($m in [regex]::Matches($cfText, '@([^\s`''"()<>]*AGENTS\.md)\b')) {
+                                # 절대경로·`~` 경로는 합치면 풀리지 않는 문자열이 된다 — 예외는 불일치로 본다
+                                $target = $null
+                                try { $target = [System.IO.Path]::GetFullPath((Join-Path (Split-Path $cf -Parent) $m.Groups[1].Value)) } catch {}
+                                if ($target -and $target -eq $agentsFull) { $agentsImported = $true; break }
+                            }
+                            if ($agentsImported) { break }
+                        }
                         $agentsSelfLoaded = ($claudeFiles.Count -eq 0) -or $agentsImported
                         $agentsNotLoadedMsg = "CLAUDE.md 가 있어 AGENTS.md 는 자동 로드되지 않습니다 — "
 
@@ -227,7 +241,8 @@ try {
                             $agentsNear = ($agentsBytes -ge ($agentsMaxBytes * $agentsNearRatio)) -or ($agentsSlack -lt $agentsNearSlack)
                             $agentsNearMsg = if ($agentsNear) { " ⚠ 주입 상한 임박(${agentsBytes}/${agentsMaxBytes}B · 여유 ${agentsSlack}B) — 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기세요." } else { "" }
                             if ($agentsSelfLoaded) {
-                                $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — CLAUDE.md 가 없어 Claude Code(v2.1.277+)가 프로젝트 지침으로 불러오므로 전문은 여기 다시 싣지 않습니다. ${agentsToc}${agentsReadMsg}${agentsNearMsg}")
+                                $agentsLoadedBy = if ($agentsImported) { "CLAUDE.md 가 AGENTS.md 를 import 해 Claude Code 가 함께 불러오므로" } else { "CLAUDE.md 가 없어 Claude Code(v2.1.277+)가 프로젝트 지침으로 불러오므로" }
+                                $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — ${agentsLoadedBy} 전문은 여기 다시 싣지 않습니다. ${agentsToc}${agentsReadMsg}${agentsNearMsg}")
                             } else {
                                 $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) 전문 — ${agentsNotLoadedMsg}이 전문이 이 repo 프로젝트 가이드의 정본입니다(재Read 불필요). AGENTS.md에 관한 판단은 아래 전문을 근거로 하세요 — '관련 내용이 없다'고 말하려면 아래 전문 전체를 근거로만 단정하고, 앞부분만 보고 단정하지 마세요.${agentsNearMsg}`n---`n${agentsText}`n---")
                             }
