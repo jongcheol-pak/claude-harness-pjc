@@ -111,4 +111,4 @@
 ## OS/플랫폼
 
 - Windows 검증 · macOS/Linux 실험적(hooks 는 pwsh 7 cross-platform 의도).
-- **Claude Code**: 최소 v2.0 · **권장 v2.1.269+**(`--filter` 이름 검증·골든 러너 병렬 모드가 안정된 판). <!-- verified: 2026-09-12 -->
+- **Claude Code**: 최소 v2.0 · **권장 v2.1.269+**(`--filter` 이름 검증·골든 러너 병렬 모드가 안정된 판) · AGENTS.md 자체 로드는 **v2.1.277+**(CLAUDE.md 없는 레포 — 미만이면 `session-context` 목차 줄의 Read 지시가 폴백). <!-- verified: 2026-09-27 -->

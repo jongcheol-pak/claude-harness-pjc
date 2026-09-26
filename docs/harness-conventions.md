@@ -119,7 +119,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 50,590 | 137,000 |
+| `docs/harness-conventions.md` | 50,657 | 137,000 |
 | `docs/golden-runner.md` | 12,597 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 11,564 | 37,000 |
 
@@ -143,7 +143,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 > 위 「조건부 참조 문서 크기 임계」가 **상한을 넘겼는지 재는** 장치라면, 이 절은 **넘기기 전에 알리고 넘겼을 때 해소하는** 경로다. 둘의 관계는 계측과 처방이다. **무엇을 담는가는 `plugins/pjc/skills/AGENTS-BOUNDARY.md`의 「AGENTS.md 내용 경계」가 정본**이다(위 절은 그 포인터다).
 
-**왜 상한 안에 있어야 하는가.** `AGENTS.md`는 Claude Code 가 **매 세션 전문을 프로젝트 지침으로 로드**하고(SessionStart `session-context.ps1` 은 v1.310.0 부터 목차만 싣는다), 로드된 바이트는 그대로 세션 컨텍스트를 차지한다. 상한은 이제 주입 분기가 아니라 **이관 판정(`record-project-fact` Step 5 · `relocate-agents.py`)의 기준**이다 — 넘기 전에 큰 절을 옮겨 상시 비용을 묶는다. (v1.309.0 까지는 hook 이 전문을 주입해 넘기면 목차만 들어갔다 — 대장 `[2026-08-19]`.)
+**왜 상한 안에 있어야 하는가.** `AGENTS.md`는 **매 세션 전문이 컨텍스트에 실리고** — CLAUDE.md 가 없으면 Claude Code(v2.1.277+)가 불러오고, 있으면 SessionStart `session-context.ps1` 이 싣는다(v1.313.0 — 그 사이 v1.310.0~v1.312.0 은 조건 없이 목차만 실었다), 로드된 바이트는 그대로 세션 컨텍스트를 차지한다. 상한은 이제 주입 분기가 아니라 **이관 판정(`record-project-fact` Step 5 · `relocate-agents.py`)의 기준**이다 — 넘기 전에 큰 절을 옮겨 상시 비용을 묶는다. (v1.309.0 까지는 hook 이 전문을 주입해 넘기면 목차만 들어갔다 — 대장 `[2026-08-19]`.)
 
 **임계는 세 곳이 같은 값을 쓴다.** 상한 `$agentsMaxBytes`(16,384B)의 **95% 이상 또는 여유 500B 미만**이면 임박이다. 이 2축은 `llm-wiki` 예산 신호(`BUDGET_CRITICAL_RATIO`·`BUDGET_CRITICAL_SLACK`)에서 가져왔고, `session-context.ps1`의 경고 판정과 `record-project-fact` Step 5의 발동 조건이 같은 값을 쓴다 — **세 곳이 갈리면 "임박"이 한 뜻으로 읽히지 않는다.**
 
