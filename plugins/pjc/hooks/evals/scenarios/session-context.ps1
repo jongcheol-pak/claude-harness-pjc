@@ -939,7 +939,7 @@ if (Test-HookSelected @('session-context')) {
     Remove-Item -Recurse -Force $scLed, $scLedNoHarn -ErrorAction SilentlyContinue
 
     # ---- SC45: AGENTS.md 이관처 목차 주입 (회차 57 T3)
-    #   AGENTS.md 는 전문이 주입되지만 그 분할본은 어느 주입 경로에도 없었다 —
+    #   AGENTS.md 는 Claude Code 가 자체 로드하지만 그 분할본은 어느 로드 경로에도 없었다 —
     #   포인터는 그것이 있는 줄 알아야 따라간다. 네 케이스가 양성 2 · 델타 음성 2 다.
     $scToc = Join-Path $work 'sc-toc'
     New-Item -ItemType Directory (Join-Path $scToc 'docs') -Force | Out-Null
