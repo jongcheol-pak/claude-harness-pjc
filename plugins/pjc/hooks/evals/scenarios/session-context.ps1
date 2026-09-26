@@ -274,7 +274,7 @@ if (Test-HookSelected @('session-context')) {
     #   ② 글로벌 절 포인터 — 판정 규칙(인덱스 경유·낡음·코드 정본)은 글로벌 지침이 정본이고
     #      그것은 매 세션 상시 로드되므로 여기 복제하지 않는다(재진술은 예산만 늘린다).
     Assert-Case -Name "session-context: vault 라인의 허브 직행 지시 (SC18c)" -R $r -ExpectExit 0 -ExpectContains '허브를 먼저 Read'
-    Assert-Case -Name "session-context: vault 라인의 글로벌 절 포인터 (SC18d)" -R $r -ExpectExit 0 -ExpectContains '위키를 먼저 본다'
+    Assert-Case -Name "session-context: vault 라인의 글로벌 절 포인터 (SC18d)" -R $r -ExpectExit 0 -ExpectContains '「프로젝트 맥락」'
     # SC18e (**조회 정본 포인터**): 회차 46이 이 라인의 「절차 K 참조 가능」을 `skills/WIKI.md`
     #   지목으로 바꿨다 — 계획·구현 세션은 절차 K를 로드하지 않아 그 안내가 손에 없는 규약을
     #   가리켰다. ⚠ **그 문면을 재는 어서션이 없어 잘못된 지시가 두 커밋을 살아남았고**
