@@ -59,7 +59,7 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' ''
     Assert-Case -Name "session-context: 빈 stdin 무출력 fail-open (SC6)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-    # SC7~SC9: AGENTS.md 전문 주입 (v1.135.0) — 전용 픽스처(기존 $scProj 오염 방지, 4-C)
+    # SC7~SC9: AGENTS.md 목차 주입 — 전문은 Claude Code 가 자체 로드하므로 hook 은 목차만 싣는다. 전용 픽스처(기존 $scProj 오염 방지, 4-C)
     $scAgents = Join-Path $work 'sc-agents'; New-Item -ItemType Directory $scAgents -Force | Out-Null
     @(
         '---', 'type: x', '---',
@@ -69,7 +69,8 @@ if (Test-HookSelected @('session-context')) {
     ) | Set-Content -Encoding UTF8 (Join-Path $scAgents 'AGENTS.md')
     @('# Plan', '- [ ] T1: todo') | Set-Content -Encoding UTF8 (Join-Path $scAgents 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scAgents } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: AGENTS.md 전문 주입 (SC7)" -R $r -ExpectExit 0 -ExpectContains 'SC_AGENTS_UNIQUE_MARKER'
+    # SC7: 목차는 싣고(헤딩 'Agent Guide') 본문 줄은 싣지 않는다 — 본문을 다시 실으면 자체 로드와 이중이 된다.
+    Assert-Case -Name "session-context: AGENTS.md 목차만 주입 — 본문 미주입 (SC7)" -R $r -ExpectExit 0 -ExpectContains 'Agent Guide' -ExpectNotContains 'SC_AGENTS_UNIQUE_MARKER'
     Assert-Case -Name "session-context: AGENTS.md 근거 요구 문구 (SC8)" -R $r -ExpectExit 0 -ExpectContains '단정'
 
     # SC9: 16KB 초과 AGENTS.md → 전문 대신 섹션 목차 폴백 (헤딩 포함, 바이트로 상한 초과)
@@ -84,13 +85,13 @@ if (Test-HookSelected @('session-context')) {
     #   임계는 llm-wiki 예산 신호와 같은 2축(95% OR 여유 500B)이지만, 16KB 예산에서는 **잔여축이 비율축에
     #   항상 포함된다**(여유 500B 미만 = 15,885B 이상 = 이미 96.9%). 그래서 양성 케이스는 비율축 하나만
     #   고정하고, 임계 자체가 살아 있는지는 아래 음성 케이스(SC9c)가 지킨다.
-    # SC9a (양성): 상한의 95% 이상 — 전문은 그대로 주입되고 꼬리에 임박 경고가 붙는다.
+    # SC9a (양성): 상한의 95% 이상 — 목차 줄 꼬리에 임박 경고가 붙는다.
     $scNear = Join-Path $work 'sc-agents-near'; New-Item -ItemType Directory $scNear -Force | Out-Null
     # '가나다라마 반복 채우기 줄'은 UTF-8 36B + CRLF 2B = 38B/줄. 헤더 2줄 30B + 410줄 = 15,610B(실측, 95.3%)
     (@('# Near Guide', '## Section One') + (1..410 | ForEach-Object { '가나다라마 반복 채우기 줄' })) | Set-Content -Encoding UTF8 (Join-Path $scNear 'AGENTS.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scNear } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: AGENTS.md 주입 상한 임박 경고 — 비율축 (SC9a)" -R $r -ExpectExit 0 -ExpectContains '주입 상한 임박'
-    Assert-Case -Name "session-context: 임박이어도 전문은 그대로 주입 (SC9b)" -R $r -ExpectExit 0 -ExpectContains 'Near Guide' -ExpectNotContains '섹션:'
+    Assert-Case -Name "session-context: 상한 이하도 목차만 — 본문 미주입 (SC9b)" -R $r -ExpectExit 0 -ExpectContains '섹션:' -ExpectNotContains '반복 채우기 줄'
 
     # SC9c (음성·델타): 상한의 80%대 — 어느 축도 안 걸려 경고가 없어야 한다.
     #   이 케이스가 없으면 "항상 경고"로 바꿔도 SC9a가 통과해 임계 판정이 무력화된다.
@@ -494,9 +495,9 @@ if (Test-HookSelected @('session-context')) {
     #   ① 게이팅을 AGENTS 진입 전 시점에 판정하면 이 케이스가 억제된다(과억제 검출).
     #   ② 순서 단정은 Assert-Case로 불가하다 — ExpectContains가 [regex]::Escape를 거쳐 전후 관계를 비교할 수단이 없으므로
     #      IndexOf 비교 후 결과를 직접 push한다(§11 (b) 패턴과 동일).
-    #   기존 AGENTS 단독 픽스처($scBig 등)는 16KB 초과·비UTF-8이라 전문이 아니라 폴백을 출력하므로 소형 픽스처를 따로 둔다.
+    #   마커는 헤딩에 둔다 — hook 이 목차만 실으므로 본문 줄 마커는 출력에 나오지 않는다.
     $scVOnly = Join-Path $work 'sc-agents-only'; New-Item -ItemType Directory $scVOnly -Force | Out-Null
-    @('# Guide', 'SC_VAULT_ORDER_MARKER 전문 주입 대상') | Set-Content -Encoding UTF8 (Join-Path $scVOnly 'AGENTS.md')
+    @('# SC_VAULT_ORDER_MARKER Guide', '본문') | Set-Content -Encoding UTF8 (Join-Path $scVOnly 'AGENTS.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scVOnly } | ConvertTo-Json -Compress)
     $iVault  = $r.out.IndexOf('위키 vault: 설정됨')
     $iAgents = $r.out.IndexOf('SC_VAULT_ORDER_MARKER')
@@ -507,12 +508,12 @@ if (Test-HookSelected @('session-context')) {
     }
 
     # SC22b/SC22c: 위 SC22와 **같은 조건을 source=fork로** 한 번 더 — fork 경로에서 vault 라인과
-    #   AGENTS.md 전문이 함께 주입되는지 고정한다. 앞의 SC2b는 plan 축만 보는데, fork matcher를 넣은
+    #   AGENTS.md 목차가 함께 주입되는지 고정한다. 앞의 SC2b는 plan 축만 보는데, fork matcher를 넣은
     #   목적은 그 세션에 plan·vault·AGENTS 셋이 다 들어가게 하는 것이라 나머지 두 축도 골든에 박아 둔다
     #   ($source는 이 두 블록을 게이팅하지 않으므로 startup과 결과가 같아야 한다 — 그 사실 자체가 검증 대상).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'fork'; cwd = $scVOnly } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: fork도 vault 라인 주입 (SC22b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
-    Assert-Case -Name "session-context: fork도 AGENTS 전문 주입 (SC22c)" -R $r -ExpectExit 0 -ExpectContains 'SC_VAULT_ORDER_MARKER'
+    Assert-Case -Name "session-context: fork도 AGENTS 목차 주입 (SC22c)" -R $r -ExpectExit 0 -ExpectContains 'SC_VAULT_ORDER_MARKER'
 
     # SC19: 설정됐으나 폴더 부재(이동·삭제) → 부재 문구 주입 (경로 재확인 신호)
     $isoV2 = Join-Path $EvalRunTemp ("pjc-hook-evals-vault-gone-" + $suffix)
@@ -577,7 +578,7 @@ if (Test-HookSelected @('session-context')) {
     # 게이팅 충족용 — 삽입은 `if ($vaultLine -and ($lines.Count -gt $cwdBaseCount))` 안에서만
     #   일어나므로, plan·AGENTS 가 없는 cwd 에서는 양성이 전건 FAIL 하고 음성은 공허하게 통과한다.
     #   이 마커는 SC36 의 순서 비교 대상이기도 하다.
-    @('# Guide', 'SC_STALE_ORDER_MARKER 전문 주입 대상') | Set-Content -Encoding UTF8 (Join-Path $scRepo 'AGENTS.md')
+    @('# SC_STALE_ORDER_MARKER Guide', '본문') | Set-Content -Encoding UTF8 (Join-Path $scRepo 'AGENTS.md')
 
     $scHubDir = Join-Path $isoVault '20_projects/personal'
     New-Item -ItemType Directory $scHubDir -Force | Out-Null
@@ -659,7 +660,7 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: 축 하나만 계산돼도 발화 (SC35b)" -R $r -ExpectExit 0 -ExpectContains '15일째 미반영'
     Assert-Case -Name "session-context: 미계산 sentinel 미노출 (SC35b2)" -R $r -ExpectExit 0 -ExpectNotContains '-1커밋'
 
-    # SC36 (순서 — 비하네스 cwd): vault < 뒤처짐 < AGENTS 전문.
+    # SC36 (순서 — 비하네스 cwd): vault < 뒤처짐 < AGENTS 목차.
     #   Assert-Case 는 순서를 못 보므로 IndexOf 로 직접 판정한다(SC22 와 같은 패턴).
     #   비하네스라 $feedbackLine 이 $null 이고, 오프셋을 `+2` 로 못박았으면 여기서 밀려난다.
     Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha30 -DaysAgo 0

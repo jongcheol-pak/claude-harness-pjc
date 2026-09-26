@@ -166,8 +166,8 @@ try {
         $vaultLine = $wikiSig.VaultLine
         $staleLine = $wikiSig.StaleLine
 
-        # ---- AGENTS.md 전문 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§31 ---- AGENTS.md 전문 주입」
-        $agentsMaxBytes = 16384      # 전문 주입 상한 — 하니스 생성 템플릿·이 repo가 모두 전문 주입 범위에 들어가는 값 (v1.135.0 기준 실측 최대 약 12KB)
+        # ---- AGENTS.md 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§31 ---- AGENTS.md 목차 주입」
+        $agentsMaxBytes = 16384      # 크기 상한 — 이관 판정 기준(relocate-agents.py 가 이 변수 이름으로 읽는다)
         $agentsTocMaxBytes = 1048576 # 목차 폴백 상한(1MB) — 초과 시 읽기·목차 스캔 자체를 생략 (비정상 대형 파일 방어)
         # 임박 신호 2축 — 근거는 `rules/session-context-rationale-wiki.md`의 「§32 임박 신호 2축」
         $agentsNearRatio = 0.95
@@ -188,28 +188,30 @@ try {
                         # U+FFFD 검출 = UTF-8 디코딩 실패(CP949 등 다른 인코딩) — 깨진 전문을 "정본"으로
                         #   주입하면 오히려 원문 Read를 막으므로, 주입 대신 직접 Read를 안내한다
                         $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 존재 — UTF-8 디코딩 실패(다른 인코딩으로 보임)로 전문 미주입. 참조 시 파일을 직접 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요.")
-                    } elseif ($agentsBytes -le $agentsMaxBytes) {
-                        # 임박이면 전문 주입은 그대로 하고 꼬리에 경고만 덧붙인다 — 아직 상한 안이라
-                        #   가이드를 빼앗을 이유가 없고, 알리는 것만이 목적이다.
-                        $agentsSlack = $agentsMaxBytes - $agentsBytes
-                        $agentsNear = ($agentsBytes -ge ($agentsMaxBytes * $agentsNearRatio)) -or ($agentsSlack -lt $agentsNearSlack)
-                        # 스킬 이름을 백틱으로 감싸지 않는다 — 이중 인용 문자열에서 백틱은 이스케이프 문자라
-                        #   출력에서 그대로 사라진다(`n·`t 등으로 오해석될 여지도 있다). 작은따옴표로 표기한다.
-                        $agentsNearMsg = if ($agentsNear) { " ⚠ 주입 상한 임박(${agentsBytes}/${agentsMaxBytes}B · 여유 ${agentsSlack}B) — 넘으면 이 전문이 목차로 대체됩니다. 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기세요." } else { "" }
-                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) 전문 — 이 repo 프로젝트 가이드의 정본입니다(재Read 불필요). AGENTS.md에 관한 판단은 아래 전문을 근거로 하세요 — '관련 내용이 없다'고 말하려면 아래 전문 전체를 근거로만 단정하고, 앞부분만 보고 단정하지 마세요.${agentsNearMsg}`n---`n${agentsText}`n---")
                     } else {
-                        # 폴백: 전문 대신 헤딩 목차 — 근거는 `rules/session-context-rationale-wiki.md`의 「§33 폴백: 전문 대신 헤딩 목차」
+                        # 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§33 목차 주입 (전문은 자체 로드)」
                         $tocSource = [regex]::Replace($agentsText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
                         $agentsHeadings = @([regex]::Matches($tocSource, '(?m)^#{1,3} .+') | ForEach-Object { ($_.Value -replace '^#{1,3}\s*', '').Trim() })
                         $agentsToc = if ($agentsHeadings.Count -gt 0) { "섹션: " + ($agentsHeadings -join ' · ') + " " } else { "" }
-                        $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(${agentsMaxBytes}B) 초과로 전문 미주입(자동 로드되지 않습니다). ${agentsToc}참조 시 offset/limit 없이 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요. 해소하려면 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기고 포인터만 남기세요.")
+                        $agentsReadMsg = "컨텍스트에 AGENTS.md 전문이 없으면 offset/limit 없이 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요."
+                        if ($agentsBytes -le $agentsMaxBytes) {
+                            # 임박 신호 — 상한은 이제 주입이 아니라 이관 판정(relocate-agents.py)의 기준이다.
+                            #   스킬 이름을 백틱으로 감싸지 않는다 — 이중 인용 문자열에서 백틱은 이스케이프 문자라
+                            #   출력에서 그대로 사라진다(`n·`t 등으로 오해석될 여지도 있다). 작은따옴표로 표기한다.
+                            $agentsSlack = $agentsMaxBytes - $agentsBytes
+                            $agentsNear = ($agentsBytes -ge ($agentsMaxBytes * $agentsNearRatio)) -or ($agentsSlack -lt $agentsNearSlack)
+                            $agentsNearMsg = if ($agentsNear) { " ⚠ 주입 상한 임박(${agentsBytes}/${agentsMaxBytes}B · 여유 ${agentsSlack}B) — 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기세요." } else { "" }
+                            $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 전문은 Claude Code 가 프로젝트 지침으로 자체 로드하므로 여기 다시 싣지 않습니다. ${agentsToc}${agentsReadMsg}${agentsNearMsg}")
+                        } else {
+                            $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(${agentsMaxBytes}B) 초과. ${agentsToc}${agentsReadMsg} 해소하려면 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기고 포인터만 남기세요.")
+                        }
                     }
                 }
             }
         }
 
         # ---- AGENTS.md 이관처 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§36 ---- AGENTS.md 이관처 목차 주입」
-        #   AGENTS.md 는 전문이 주입되지만 **그 분할본은 어느 주입 경로에도 없다** — 포인터로만 닿고,
+        #   AGENTS.md 는 Claude Code 가 자체 로드하지만 **그 분할본은 어느 로드 경로에도 없다** — 포인터로만 닿고,
         #   포인터는 그것이 있는 줄 알아야 따라간다. 전문(75KB)은 주입 예산의 4배라 **절 제목만** 싣는다.
         $convTocMaxBytes = 3000       # 주입 상한 — 절이 늘어도 주입이 세션을 잠식하지 않게 한다
         $convPath = Join-Path $cwd 'docs/harness-conventions.md'
