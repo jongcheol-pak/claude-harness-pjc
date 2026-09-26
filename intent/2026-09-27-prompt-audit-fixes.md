@@ -5,7 +5,7 @@ Author: 사용자(jongcheol-pak). Status: approved.
 `/claude-api prompt-audit` 가 이 레포와 전역 설정에서 낡은 문면(이력 서술·중복 금지문·모순)과 전역 지침과의 충돌을 찾았다. 원문 요청: *"전체 수정해"*. 감사 직후라 근거가 살아 있는 지금 반영한다.
 
 ## Proposed outcome
-레포의 `AGENTS.md` 이력 서술이 정본 문서로 옮겨지고, pjc 스킬 5종·`plan-reviewer` 의 지적 문면이 고쳐지며, 전역 `CLAUDE.md` 「종전대로」 4곳과 개인 스킬 9개의 감사 hunk·전역 지침 충돌 5건이 해소된다. 레포 검사기는 착수 시점과 같은 green 이다.
+레포의 `AGENTS.md` 이력 서술이 정본 문서로 옮겨지고, pjc 스킬 5종·`plan-reviewer` 의 지적 문면이 고쳐지며, 전역 `~/.claude/CLAUDE.md` 「종전대로」 4곳과 개인 스킬 9개의 감사 hunk·전역 지침 충돌 5건이 해소된다. 레포 검사기는 착수 시점과 같은 green 이다.
 
 ## Affected users and systems
 본인과 마켓플레이스 배포 사용자. `AGENTS.md`·`docs/harness-conventions.md`, `pjc:implement`·`pjc:plan`·`pjc:llm-wiki`·`pjc:record-project-fact`·`pjc:pjc-systematic-debugging`·`plan-reviewer`, 레포 밖 `~/.claude/CLAUDE.md`·`~/.claude/skills/` 개인 스킬 9개(모든 프로젝트에 로드).
