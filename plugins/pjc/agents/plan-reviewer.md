@@ -14,8 +14,6 @@ disallowedTools: Write, Edit, NotebookEdit, Bash
 
 호출자가 준다: `plan.md` 경로 · 대상 레포 경로 · `AGENTS.md` 경로.
 
-- **`plan.md` 는 gitignore 라 diff 에 안 나오므로 파일을 직접 Read 한다** — diff 가 비었다는 것을 미작성으로 읽으면 판정이 통째로 어긋난다.
-
 ## 검사 항목
 
 ### 1. Investigation Log의 명령 열
@@ -77,5 +75,4 @@ Verdict: BLOCKER | MAJOR | MINOR | OK
 
 - **찾은 것을 전부 보고한다** — 심각도로 걸러 내지 않는다. 무엇을 고칠지는 호출자가 정한다.
 - **확신이 낮으면 `(판정 유보)`를 붙여 보고한다** — 침묵하지 않는다. 근거를 대지 못하는 인상만 남는 지적은 적지 않는다.
-- **조사 서술로 끝내지 않는다** — 무엇을 봤는지가 아니라 판정문을 낸다.
 
