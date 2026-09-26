@@ -166,8 +166,8 @@ try {
         $vaultLine = $wikiSig.VaultLine
         $staleLine = $wikiSig.StaleLine
 
-        # ---- AGENTS.md 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§31 ---- AGENTS.md 목차 주입」
-        $agentsMaxBytes = 16384      # 크기 상한 — 이관 판정 기준(relocate-agents.py 가 이 변수 이름으로 읽는다)
+        # ---- AGENTS.md 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§31 ---- AGENTS.md 주입」
+        $agentsMaxBytes = 16384      # 크기 상한 — 전문 주입 상방이자 이관 판정 기준(relocate-agents.py 가 이 변수 이름으로 읽는다)
         $agentsTocMaxBytes = 1048576 # 목차 폴백 상한(1MB) — 초과 시 읽기·목차 스캔 자체를 생략 (비정상 대형 파일 방어)
         # 임박 신호 2축 — 근거는 `rules/session-context-rationale-wiki.md`의 「§32 임박 신호 2축」
         $agentsNearRatio = 0.95
@@ -189,21 +189,51 @@ try {
                         #   주입하면 오히려 원문 Read를 막으므로, 주입 대신 직접 Read를 안내한다
                         $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 존재 — UTF-8 디코딩 실패(다른 인코딩으로 보임)로 전문 미주입. 참조 시 파일을 직접 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요.")
                     } else {
-                        # 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§33 목차 주입 (전문은 자체 로드)」
+                        # 자체 로드 판정 — 근거는 `rules/session-context-rationale-wiki.md`의 「§33-1 자체 로드 판정」
+                        #   cwd·상위에 CLAUDE.md 류가 하나라도 있으면 Claude Code 는 AGENTS.md 를 읽지 않는다.
+                        #   홈의 .claude/CLAUDE.md 는 세지 않는다 — 골든은 USERPROFILE 만 격리하고 작업 폴더가
+                        #   실제 홈 아래라, 실제 홈(GetFolderPath)도 함께 빼야 격리 실행에서 판정이 뒤집히지 않는다.
+                        $agentsHomes = @($env:USERPROFILE, $HOME, [Environment]::GetFolderPath('UserProfile')) |
+                            Where-Object { $_ } | ForEach-Object { [System.IO.Path]::GetFullPath($_).TrimEnd('\', '/') }
+                        $claudeFiles = [System.Collections.Generic.List[string]]::new()
+                        # 탐색 경로는 끝 구분자를 자르지 않는다 — 루트(`C:\`)를 `C:` 로 자르면 Join-Path 가
+                        #   드라이브 상대 경로(`C:CLAUDE.md`)를 만든다. 자른 형태는 홈 비교에만 쓴다.
+                        $probeDir = [System.IO.Path]::GetFullPath($cwd)
+                        while ($probeDir) {
+                            foreach ($rel in @('CLAUDE.md', 'CLAUDE.local.md', '.claude/CLAUDE.md')) {
+                                if ($rel -eq '.claude/CLAUDE.md' -and $agentsHomes -contains $probeDir.TrimEnd('\', '/')) { continue }
+                                $candidate = Join-Path $probeDir $rel
+                                if (Test-Path -LiteralPath $candidate -PathType Leaf) { $claudeFiles.Add($candidate) }
+                            }
+                            $parentDir = Split-Path $probeDir -Parent
+                            if (-not $parentDir -or $parentDir -eq $probeDir) { break }
+                            $probeDir = $parentDir
+                        }
+                        # CLAUDE.md 가 @AGENTS.md 를 import 하면 Claude Code 가 그 경로로 싣는다
+                        $agentsImported = @($claudeFiles | Where-Object { (Get-Content -LiteralPath $_ -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) -match '(?m)@(\./)?AGENTS\.md\b' }).Count -gt 0
+                        $agentsSelfLoaded = ($claudeFiles.Count -eq 0) -or $agentsImported
+                        $agentsNotLoadedMsg = "CLAUDE.md 가 있어 AGENTS.md 는 자동 로드되지 않습니다 — "
+
+                        # 목차 — 근거는 `rules/session-context-rationale-wiki.md`의 「§33 목차 주입 (자체 로드되는 경우)」
                         $tocSource = [regex]::Replace($agentsText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
                         $agentsHeadings = @([regex]::Matches($tocSource, '(?m)^#{1,3} .+') | ForEach-Object { ($_.Value -replace '^#{1,3}\s*', '').Trim() })
                         $agentsToc = if ($agentsHeadings.Count -gt 0) { "섹션: " + ($agentsHeadings -join ' · ') + " " } else { "" }
                         $agentsReadMsg = "컨텍스트에 AGENTS.md 전문이 없으면 offset/limit 없이 전문을 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요."
                         if ($agentsBytes -le $agentsMaxBytes) {
-                            # 임박 신호 — 상한은 이제 주입이 아니라 이관 판정(relocate-agents.py)의 기준이다.
+                            # 임박 신호 — 상한은 주입 비용의 상방이자 이관 판정(relocate-agents.py)의 기준이다.
                             #   스킬 이름을 백틱으로 감싸지 않는다 — 이중 인용 문자열에서 백틱은 이스케이프 문자라
                             #   출력에서 그대로 사라진다(`n·`t 등으로 오해석될 여지도 있다). 작은따옴표로 표기한다.
                             $agentsSlack = $agentsMaxBytes - $agentsBytes
                             $agentsNear = ($agentsBytes -ge ($agentsMaxBytes * $agentsNearRatio)) -or ($agentsSlack -lt $agentsNearSlack)
                             $agentsNearMsg = if ($agentsNear) { " ⚠ 주입 상한 임박(${agentsBytes}/${agentsMaxBytes}B · 여유 ${agentsSlack}B) — 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기세요." } else { "" }
-                            $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 전문은 Claude Code 가 프로젝트 지침으로 자체 로드하므로 여기 다시 싣지 않습니다. ${agentsToc}${agentsReadMsg}${agentsNearMsg}")
+                            if ($agentsSelfLoaded) {
+                                $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — CLAUDE.md 가 없어 Claude Code(v2.1.277+)가 프로젝트 지침으로 불러오므로 전문은 여기 다시 싣지 않습니다. ${agentsToc}${agentsReadMsg}${agentsNearMsg}")
+                            } else {
+                                $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) 전문 — ${agentsNotLoadedMsg}이 전문이 이 repo 프로젝트 가이드의 정본입니다(재Read 불필요). AGENTS.md에 관한 판단은 아래 전문을 근거로 하세요 — '관련 내용이 없다'고 말하려면 아래 전문 전체를 근거로만 단정하고, 앞부분만 보고 단정하지 마세요.${agentsNearMsg}`n---`n${agentsText}`n---")
+                            }
                         } else {
-                            $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(${agentsMaxBytes}B) 초과. ${agentsToc}${agentsReadMsg} 해소하려면 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기고 포인터만 남기세요.")
+                            $agentsOverNote = if ($agentsSelfLoaded) { "" } else { $agentsNotLoadedMsg }
+                            $lines.Add("[pjc 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — 크기 상한(${agentsMaxBytes}B) 초과. ${agentsOverNote}${agentsToc}${agentsReadMsg} 해소하려면 'pjc:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기고 포인터만 남기세요.")
                         }
                     }
                 }
@@ -211,7 +241,7 @@ try {
         }
 
         # ---- AGENTS.md 이관처 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§36 ---- AGENTS.md 이관처 목차 주입」
-        #   AGENTS.md 는 Claude Code 가 자체 로드하지만 **그 분할본은 어느 로드 경로에도 없다** — 포인터로만 닿고,
+        #   AGENTS.md 는 Claude Code 나 위 주입으로 컨텍스트에 들지만 **그 분할본은 어느 로드 경로에도 없다** — 포인터로만 닿고,
         #   포인터는 그것이 있는 줄 알아야 따라간다. 전문(75KB)은 주입 예산의 4배라 **절 제목만** 싣는다.
         $convTocMaxBytes = 3000       # 주입 상한 — 절이 늘어도 주입이 세션을 잠식하지 않게 한다
         $convPath = Join-Path $cwd 'docs/harness-conventions.md'

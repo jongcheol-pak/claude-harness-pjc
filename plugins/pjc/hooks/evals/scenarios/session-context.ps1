@@ -59,7 +59,7 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' ''
     Assert-Case -Name "session-context: 빈 stdin 무출력 fail-open (SC6)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-    # SC7~SC9: AGENTS.md 목차 주입 — 전문은 Claude Code 가 자체 로드하므로 hook 은 목차만 싣는다. 전용 픽스처(기존 $scProj 오염 방지, 4-C)
+    # SC7~SC9: AGENTS.md 목차 주입 — CLAUDE.md 가 없으면 Claude Code 가 AGENTS.md 를 읽으므로 hook 은 목차만 싣는다. 전용 픽스처(기존 $scProj 오염 방지, 4-C)
     $scAgents = Join-Path $work 'sc-agents'; New-Item -ItemType Directory $scAgents -Force | Out-Null
     @(
         '---', 'type: x', '---',
@@ -69,7 +69,7 @@ if (Test-HookSelected @('session-context')) {
     ) | Set-Content -Encoding UTF8 (Join-Path $scAgents 'AGENTS.md')
     @('# Plan', '- [ ] T1: todo') | Set-Content -Encoding UTF8 (Join-Path $scAgents 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scAgents } | ConvertTo-Json -Compress)
-    # SC7: 목차는 싣고(헤딩 'Agent Guide') 본문 줄은 싣지 않는다 — 본문을 다시 실으면 자체 로드와 이중이 된다.
+    # SC7: 목차는 싣고(헤딩 'Agent Guide') 본문 줄은 싣지 않는다 — 본문을 다시 실으면 Claude Code 로드분과 이중이 된다.
     Assert-Case -Name "session-context: AGENTS.md 목차만 주입 — 본문 미주입 (SC7)" -R $r -ExpectExit 0 -ExpectContains 'Agent Guide' -ExpectNotContains 'SC_AGENTS_UNIQUE_MARKER'
     Assert-Case -Name "session-context: AGENTS.md 근거 요구 문구 (SC8)" -R $r -ExpectExit 0 -ExpectContains '단정'
 
@@ -100,6 +100,67 @@ if (Test-HookSelected @('session-context')) {
     (@('# Far Guide', '## Section One') + (1..341 | ForEach-Object { '가나다라마 반복 채우기 줄' })) | Set-Content -Encoding UTF8 (Join-Path $scFar 'AGENTS.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scFar } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 임박 미달이면 경고 없음 (SC9c)" -R $r -ExpectExit 0 -ExpectContains 'Far Guide' -ExpectNotContains '주입 상한 임박'
+
+    # SC7c~SC7i · SC9e: Claude Code 는 cwd·상위에 CLAUDE.md · .claude/CLAUDE.md · CLAUDE.local.md 가 있으면
+    #   AGENTS.md 를 읽지 않는다(code.claude.com/docs/en/memory 「When Claude Code reads AGENTS.md」).
+    #   그때 hook 이 목차만 실으면 AGENTS.md 가 컨텍스트에서 통째로 빠지므로 전문을 싣는다.
+    #   홈의 .claude/CLAUDE.md 는 세지 않고, CLAUDE.md 가 @AGENTS.md 를 import 하면 로드된 것으로 본다.
+    $scAgentsBody = @('# Agent Guide', 'SC_AGENTS_UNIQUE_MARKER 이 문자열은 AGENTS.md 전문에만 있다', '## DO NOT', '금지 항목')
+    function New-ScAgentsCm {
+        param([string]$Name, [string]$ClaudeRel, [string[]]$ClaudeBody = @('# 프로젝트 지침'))
+        $dir = Join-Path $work $Name; New-Item -ItemType Directory $dir -Force | Out-Null
+        $scAgentsBody | Set-Content -Encoding UTF8 (Join-Path $dir 'AGENTS.md')
+        if ($ClaudeRel) {
+            $cm = Join-Path $dir $ClaudeRel
+            New-Item -ItemType Directory (Split-Path $cm -Parent) -Force | Out-Null
+            $ClaudeBody | Set-Content -Encoding UTF8 $cm
+        }
+        return $dir
+    }
+    function Invoke-ScStart { param([string]$Cwd, [string]$Source = 'startup') Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = $Source; cwd = $Cwd } | ConvertTo-Json -Compress) }
+
+    $r = Invoke-ScStart (New-ScAgentsCm 'sc-agents-cm-root' 'CLAUDE.md')
+    Assert-Case -Name "session-context: CLAUDE.md 있으면 AGENTS.md 전문 주입 (SC7c)" -R $r -ExpectExit 0 -ExpectContains 'SC_AGENTS_UNIQUE_MARKER' -ExpectNotContains '자체 로드하므로'
+    Assert-Case -Name "session-context: CLAUDE.md 있으면 자동 로드 안 됨을 알린다 (SC7c2)" -R $r -ExpectExit 0 -ExpectContains '자동 로드되지 않'
+    $r = Invoke-ScStart (New-ScAgentsCm 'sc-agents-cm-local' 'CLAUDE.local.md')
+    Assert-Case -Name "session-context: CLAUDE.local.md 도 전문 주입 (SC7d)" -R $r -ExpectExit 0 -ExpectContains 'SC_AGENTS_UNIQUE_MARKER'
+    $r = Invoke-ScStart (New-ScAgentsCm 'sc-agents-cm-dotclaude' '.claude/CLAUDE.md')
+    Assert-Case -Name "session-context: .claude/CLAUDE.md 도 전문 주입 (SC7e)" -R $r -ExpectExit 0 -ExpectContains 'SC_AGENTS_UNIQUE_MARKER'
+
+    # SC7f: 상위 디렉터리의 CLAUDE.md 도 센다 — cwd 만 보면 모노레포 하위에서 빠진다.
+    $scCmParent = Join-Path $work 'sc-agents-cm-parent'; New-Item -ItemType Directory $scCmParent -Force | Out-Null
+    @('# 상위 지침') | Set-Content -Encoding UTF8 (Join-Path $scCmParent 'CLAUDE.md')
+    $scCmChild = Join-Path $scCmParent 'child'; New-Item -ItemType Directory $scCmChild -Force | Out-Null
+    $scAgentsBody | Set-Content -Encoding UTF8 (Join-Path $scCmChild 'AGENTS.md')
+    $r = Invoke-ScStart $scCmChild
+    Assert-Case -Name "session-context: 상위 CLAUDE.md 도 전문 주입 (SC7f)" -R $r -ExpectExit 0 -ExpectContains 'SC_AGENTS_UNIQUE_MARKER'
+
+    # SC7g: CLAUDE.md 가 AGENTS.md 를 import 하면 Claude Code 가 그 경로로 싣는다 — 전문을 또 실으면 이중이다.
+    $r = Invoke-ScStart (New-ScAgentsCm 'sc-agents-cm-import' 'CLAUDE.md' @('# 프로젝트 지침', '@AGENTS.md'))
+    Assert-Case -Name "session-context: CLAUDE.md 가 AGENTS.md 를 import 하면 목차만 (SC7g)" -R $r -ExpectExit 0 -ExpectContains '섹션:' -ExpectNotContains 'SC_AGENTS_UNIQUE_MARKER'
+
+    # SC7h: 홈의 .claude/CLAUDE.md 는 사용자 지침이라 세지 않는다 — 가짜 홈으로 그 호출만 격리한다.
+    #   가짜 홈이 cwd 의 상위여야 상위 탐색이 그 파일을 실제로 지나간다.
+    $scFakeHome = Join-Path $work 'sc-home'
+    New-Item -ItemType Directory (Join-Path $scFakeHome '.claude') -Force | Out-Null
+    @('# 사용자 지침') | Set-Content -Encoding UTF8 (Join-Path $scFakeHome '.claude/CLAUDE.md')
+    $scHomeProj = Join-Path $scFakeHome 'proj'; New-Item -ItemType Directory $scHomeProj -Force | Out-Null
+    $scAgentsBody | Set-Content -Encoding UTF8 (Join-Path $scHomeProj 'AGENTS.md')
+    $scSavedProfile = $env:USERPROFILE
+    try { $env:USERPROFILE = $scFakeHome; $r = Invoke-ScStart $scHomeProj } finally { $env:USERPROFILE = $scSavedProfile }
+    Assert-Case -Name "session-context: 홈 .claude/CLAUDE.md 는 세지 않아 목차만 (SC7h)" -R $r -ExpectExit 0 -ExpectContains '섹션:' -ExpectNotContains 'SC_AGENTS_UNIQUE_MARKER'
+
+    # SC7i: 압축 직후에도 같은 판정 — compact 가 AGENTS.md 를 되살리는 유일한 경로다.
+    $r = Invoke-ScStart (Join-Path $work 'sc-agents-cm-root') 'compact'
+    Assert-Case -Name "session-context: compact 도 CLAUDE.md 있으면 전문 주입 (SC7i)" -R $r -ExpectExit 0 -ExpectContains 'SC_AGENTS_UNIQUE_MARKER'
+
+    # SC9e: CLAUDE.md 가 있어도 16KB 초과면 전문 대신 목차 + Read — 상한은 그대로 주입 비용의 상방이다.
+    $scCmBig = Join-Path $work 'sc-agents-cm-big'; New-Item -ItemType Directory $scCmBig -Force | Out-Null
+    (@('# Big Guide', '## Section One') + (1..2500 | ForEach-Object { '가나다라마 반복 채우기 줄' })) | Set-Content -Encoding UTF8 (Join-Path $scCmBig 'AGENTS.md')
+    @('# 프로젝트 지침') | Set-Content -Encoding UTF8 (Join-Path $scCmBig 'CLAUDE.md')
+    $r = Invoke-ScStart $scCmBig
+    Assert-Case -Name "session-context: CLAUDE.md + 16KB 초과면 목차와 미로드 안내 (SC9e)" -R $r -ExpectExit 0 -ExpectContains '자동 로드되지 않' -ExpectNotContains '반복 채우기 줄'
+    Assert-Case -Name "session-context: CLAUDE.md + 16KB 초과도 목차는 싣는다 (SC9e2)" -R $r -ExpectExit 0 -ExpectContains '섹션:'
 
     # SC10: AGENTS.md 없는 기존 픽스처($scProj: plan만)는 AGENTS 문자열 무오염 — T1 acceptance ⓑ의 영구 그물.
     #   SC3(완전 빈 폴더)은 plan은 있고 AGENTS만 없는 이 경로를 고정 못 하므로 별도 케이스로 둔다.
@@ -939,7 +1000,7 @@ if (Test-HookSelected @('session-context')) {
     Remove-Item -Recurse -Force $scLed, $scLedNoHarn -ErrorAction SilentlyContinue
 
     # ---- SC45: AGENTS.md 이관처 목차 주입 (회차 57 T3)
-    #   AGENTS.md 는 Claude Code 가 자체 로드하지만 그 분할본은 어느 로드 경로에도 없었다 —
+    #   AGENTS.md 는 Claude Code 나 전문 주입으로 컨텍스트에 들지만 그 분할본은 어느 로드 경로에도 없었다 —
     #   포인터는 그것이 있는 줄 알아야 따라간다. 네 케이스가 양성 2 · 델타 음성 2 다.
     $scToc = Join-Path $work 'sc-toc'
     New-Item -ItemType Directory (Join-Path $scToc 'docs') -Force | Out-Null
