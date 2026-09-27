@@ -158,8 +158,8 @@ try {
             $cwdBaseCount++
         }
 
-        # 위키 신호 3종(vault 상태·뒤처짐·큐 잔량)은 `session-wiki-signals.ps1`이 계산한다 —
-        #   그 셋만 vault를 훑어(허브 전수 스캔·git rev-list·pending.md 파싱) 판정 입력이 다르다.
+        # 위키 신호 2종(vault 상태·뒤처짐)은 `session-wiki-signals.ps1`이 계산한다 —
+        #   그 둘만 vault를 훑어(허브 전수 스캔·git rev-list) 판정 입력이 다르다.
         $vaultInsertAt = $lines.Count      # AGENTS 라인보다 앞 위치를 미리 기록(전문이 길어 뒤에 붙으면 묻힌다)
         . (Join-Path $PSScriptRoot 'session-wiki-signals.ps1')
         $wikiSig = Get-WikiSignals -cwd $cwd

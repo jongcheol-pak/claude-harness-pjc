@@ -1,4 +1,4 @@
-﻿# session-wiki-signals.ps1 — 세션 시작 주입의 위키 신호 3종 — 근거는 `rules/wiki-signals-rationale.md`의 「§1 session-wiki-signals.ps1 — 세션 시작 주입의 위키 신호 3종」
+﻿# session-wiki-signals.ps1 — 세션 시작 주입의 위키 신호 2종 — 근거는 `rules/wiki-signals-rationale.md`의 「§1 session-wiki-signals.ps1 — 세션 시작 주입의 위키 신호 2종」
 
 # Get-StaleFeatures — 허브가 가리키는 프로젝트의 feature 중 `updated` 이후 소스가 바뀐 것을 고른다.
 #   현행 뒤처짐 신호는 프로젝트 단위 수치(N커밋 미반영)까지만 말해 **어느 페이지를 볼지가 통째로
