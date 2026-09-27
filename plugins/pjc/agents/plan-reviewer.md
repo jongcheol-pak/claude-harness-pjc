@@ -3,7 +3,6 @@ name: plan-reviewer
 description: 승인 전 plan.md를 검토한다. pjc:plan Step 6에서 1회 호출된다. 읽기 전용 — 파일을 고치지 않는다.
 model: opus
 tools: Read, Grep, Glob
-disallowedTools: Write, Edit, NotebookEdit, Bash
 ---
 
 # Plan Reviewer
