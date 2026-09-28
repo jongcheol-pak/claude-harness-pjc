@@ -1458,11 +1458,11 @@ def _md_headings(text):
     return out
 
 
-# ⑮ 파일명 § 인용. 접두는 번들 파일의 이름이고 `.md`·백틱·따옴표·볼드 변형을 허용한다.
+# ⑮ 파일명 § 인용. 접두는 번들 네 파일(wiki-schema·schema-types·schema-budget·schema-lint)의 이름이고 `.md`·백틱·따옴표·볼드 변형을 허용한다.
 #  § 뒤 번호는 `N`·`N.M`·`N-M` 이고 `·§M`(연쇄)·`~§M`(범위)을 이어 받는다. 번호는 탐욕으로
 #  끝까지 먹으므로 `§7-21` 이 `7-2` 로 잘리지 않는다.
 SCHEMA_CITE_RX = re.compile(
-    r"(?<![\w-])(wiki-schema|schema-types|schema-budget)(?:\.md)?[`\"]?\s?\*{0,2}"
+    r"(?<![\w-])(wiki-schema|schema-types|schema-budget|schema-lint)(?:\.md)?[`\"]?\s?\*{0,2}"
     r"(§\s?\d+(?:[.-]\d+)?(?:\s?[·~]\s?§\s?\d+(?:[.-]\d+)?)*)")
 _CITE_ITEM_RX = re.compile(r"§\s?(\d+)(?:([.-])(\d+))?")
 

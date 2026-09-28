@@ -126,7 +126,7 @@ FEAT_ROW_STEM_RESOLVE = True
 PLATFORM_VOCAB = {"windows-desktop", "web", "mobile", "cli", "cross"}
 ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
-# vault 루트 소비 대기 큐 (wiki-schema §6·§7-1·§9 — 지식 페이지가 아니라 검사 대상에서 제외되는 축).
+# vault 루트 소비 대기 큐 (wiki-schema §6·§9 · schema-lint §7-1 — 지식 페이지가 아니라 검사 대상에서 제외되는 축).
 #  위키 세션이 반영 후 제거한다.
 ROOT_QUEUE_FILES = {"pending.md"}
 # 생성기가 소유하는 폴더 — vault 안에 있으나 **위키 콘텐츠가 아니다**. 모델이 만든 카드·개념·
@@ -267,7 +267,7 @@ INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 �
 #  전자는 §7-30 ⓑ가 허브 목록으로, 후자는 §7-23이 미해결 질문 표로 각각 도달성을 이미 본다.
 INDEXED_TYPES = {"guide", "entity", "concept"}
 
-# 시크릿 의심 패턴 (wiki-schema §7-22 — 키워드+구분자+실값 형태만 매칭하는 보수 정규식.
+# 시크릿 의심 패턴 (schema-lint §7-22 — 키워드+구분자+실값 형태만 매칭하는 보수 정규식.
 #  post-write-checks.ps1의 민감정보 검사를 위키용으로 이식하되, IP 주소는 산문 오탐 위험으로 제외).
 #  password/api key 계열은 값을 캡처해 아래 secret_value_is_codey()로 "코드 꼴" 값을 걸러낸다.
 SECRET_PATTERNS = [
@@ -2939,7 +2939,7 @@ def main():
     if "--auto-split" in sys.argv[2:]:
         if "--fix" in sys.argv[2:]:
             print("--auto-split과 --fix는 함께 쓸 수 없습니다 "
-                  "(승인 규약이 다름 — 따로 실행하세요, wiki-schema §7).")
+                  "(승인 규약이 다름 — 따로 실행하세요, schema-lint §7).")
             sys.exit(1)
         sys.exit(auto_split(vault, "--dry-run" in sys.argv[2:]))
     if "--fix" in sys.argv[2:]:
@@ -2983,9 +2983,9 @@ def main():
             key = parts[0]               # 40_guides 등: 최상위 디렉터리
         warn_groups[key] = warn_groups.get(key, 0) + 1
 
-    unverified_hits, unverified_files = 0, 0  # (미검증) 집계 (wiki-schema §7-12)
+    unverified_hits, unverified_files = 0, 0  # (미검증) 집계 (schema-lint §7-12)
     open_questions = 0                        # 미해결 question 집계 (〃)
-    dep_count = 0                             # deprecated 페이지 집계 (wiki-schema §7-17)
+    dep_count = 0                             # deprecated 페이지 집계 (schema-lint §7-17)
     feat_files, index_feat_links = set(), set()
     indexed_files = {}     # typ -> {무확장 경로} — guide·entity·concept 인덱스 등록 검사(§7-30 ⓒ)
     link_targets = set()   # 위키 전체에서 링크된 대상 (고아 검사용)
@@ -3167,7 +3167,7 @@ def main():
         if cat and cat not in CATEGORY_VOCAB and not in_archive:
             errors.append(f"category 통제어휘 위반: {r} -> '{cat}' (personal|work — schema §3)")
 
-        # tech_stack 휘발성 버전 검사 (schema-types §2.1·§2.2 · wiki-schema §7-11):
+        # tech_stack 휘발성 버전 검사 (schema-types §2.1·§2.2 · schema-lint §7-11):
         #  ⓐ 소스 스텁 "기술 스택" 본문 줄, ⓑ project 허브 tech_stack frontmatter 값에서
         #  major.minor 이상 버전(\d+\.\d+) 발견 시 경고. ".NET 10"·"WinUI 3" 등 major-only는 미매칭(허용).
         if r.startswith("10_sources/"):
@@ -3350,7 +3350,7 @@ def main():
                     itext += "\n" + sfh.read()
             except (UnicodeDecodeError, OSError):  # M-2: 비 UTF-8 sub-index 하나로 전체가 죽지 않게
                 pass
-        # 미해결 질문 인덱스 동기 (wiki-schema §7-23): open question ↔ '## 미해결 질문' 표.
+        # 미해결 질문 인덱스 동기 (schema-lint §7-23): open question ↔ '## 미해결 질문' 표.
         #  **sub-index 합산 '뒤'에 검사한다** — 종전에는 이 섹션이 언제나 본체에 있어 본체만 보면
         #  됐으나, 본체가 임계를 지나면 `index-questions.md`로 덜어내지므로(§4 1단계) 본체만 보면
         #  옮겨간 질문이 전부 '미등록'으로 오탐된다. 등록 여부가 묻는 것은 「조회 경로에 있는가」이고
@@ -3398,11 +3398,11 @@ def main():
         for typ_name in sorted(indexed_files):
             for f in sorted(indexed_files[typ_name] - idx_links):
                 warn(f"인덱스 등록 누락: {f} ({typ_name}인데 index·sub-index 어디에도 미등록 "
-                     f"— 조회 경로 밖, wiki-schema §7-30)", f)
+                     f"— 조회 경로 밖, schema-lint §7-30)", f)
 
         # 한/영 양방향 병기: 기능별 인덱스 유형 행(is_feat_recipe_row — 형상+대상 기반, alias 무관)의
         #  첫 컬럼(기능명)에 한글·영문 중 한쪽만 있으면 WARN. 한글 등록이든 영문 등록이든 양방향
-        #  검색이 되게(wiki-schema §3·§7-16). 스캔은 sub-index까지 합친 itext 전체 — `## ` 소분할
+        #  검색이 되게(wiki-schema §3 · schema-lint §7-16). 스캔은 sub-index까지 합친 itext 전체 — `## ` 소분할
         #  뒤의 행도 누락하지 않는다(§4 보증). 이름 추출은 feat_row_name이 형상별로 처리한다 --
         #  통합 표는 첫 컬럼 평문, 옛 `## 가이드 / 레시피` 섹션은 첫 컬럼 wikilink의 alias.
         han, lat = re.compile(r"[가-힣]"), re.compile(r"[A-Za-z]")
@@ -3426,7 +3426,7 @@ def main():
         #  (index-guides.md, 첫 컬럼 평문)로 대체되고 대상 조건이 `40_guides/` 전체로 넓어졌으며,
         #  **옛 섹션 형상도 feat_row_name 조건 ②가 함께 받으므로** 위 검사 하나가 신·구 양쪽
         #  전 행을 본다 — 마커 없는 vault가 옛 섹션을 유지해도 무신호 구간이 생기지 않는다.
-        #  폐지 이력은 wiki-schema §7 목록에 남긴다.
+        #  폐지 이력은 schema-lint §7 목록에 남긴다.
 
     elif "index.md" in unreadable:
         # 파일은 실재하는데 못 읽은 경우 — 처방이 부재와 정반대라(골격 생성 ✗ / 인코딩 복구 ✓)
@@ -3440,7 +3440,7 @@ def main():
         errors.append("index.md 없음: vault 루트에 index.md가 없어 인덱스 기반 검사"
                       "(§7-6·14·15·16·23)를 건너뜀 — 카탈로그 골격 생성 필요 (schema §4)")
 
-    # log 아카이브 인덱스 정합 (wiki-schema §7-19): log.md '## 아카이브 인덱스'에 등록된
+    # log 아카이브 인덱스 정합 (schema-lint §7-19): log.md '## 아카이브 인덱스'에 등록된
     #  {YYYY-MM}.md ↔ 실재 90_archive/log/{YYYY-MM}.md 양방향 대조. sub-index 정합(위)과 유사하나
     #  양방향 — 아카이브 인덱스 항목은 wikilink가 아니라, 역방향(파일 있으나 미등록)이 깨진링크
     #  검사로 안 잡히므로 양쪽 다 WARN(검색 누락·깨진 참조 방지).
@@ -3560,7 +3560,7 @@ def main():
                 vague += 1
         if vague:
             warn(f"decision-log 방향 미기재: {r} {vague}건 — 기각·보류는 판정 직후 "
-                 f"': {{실제 방향}}'이 필요하다(괄호 부기는 대체 불가, schema-types §2.8 · wiki-schema §7-33)", r)
+                 f"': {{실제 방향}}'이 필요하다(괄호 부기는 대체 불가, schema-types §2.8 · schema-lint §7-33)", r)
         # ⓓ §7-36 사실 오기 정정 표기 형식 (schema-types §2.8).
         #  항목 불변의 예외라 **표기가 곧 감사 기록**이다 — 「정정」을 적었는데 형식이
         #  어긋나면 무엇이 언제 왜 바뀌었는지가 남지 않아 불변 규칙을 우회하는 수단이 된다.
@@ -3577,7 +3577,7 @@ def main():
         if badfix:
             warn(f"decision-log 정정 표기 형식 위반: {r} {badfix}건 — "
                  f"'(정정 YYYY-MM-DD: {{옛 값}} → {{새 값}}, 근거 {{정본}})' 형식이 필요하다"
-                 f"(schema-types §2.8 · wiki-schema §7-36)", r)
+                 f"(schema-types §2.8 · schema-lint §7-36)", r)
     # ⓐ-역방향: 롤오버 아카이브가 실재하는데 대응 현행 파일에 포인터 미등재 (검색 유실).
     #  대응 현행 파일 자체가 없으면 절차 C 보존-삭제 이력이므로 건너뜀(§7-24).
     for r in pages:
@@ -3810,7 +3810,7 @@ def main():
             if f.startswith(hub_base + "/") and not re.search(re.escape(f) + r"(?![\w-])", hub_text):
                 warn(f"허브 기능 목록 누락: {r} -> {f}", r)
 
-    # feature 각주 경로 레포 실존 (wiki-schema §7-20) + '## 관련 파일' 섹션 게이트/경로 실존 (§7-21):
+    # feature 각주 경로 레포 실존 (schema-lint §7-20) + '## 관련 파일' 섹션 게이트/경로 실존 (§7-21):
     #  §7-20 — feature의 [^src-...] 각주 정의 줄에 백틱으로 병기된 레포 상대경로가, 프로젝트 허브
     #  '## 레포 정보 > 경로'의 레포에 실재하는지 확인. §7-21 — '## 관련 파일' 섹션(기능 구성 파일
     #  지도, §2.3)이 없거나 경로 항목 0개면 WARN, 섹션 내 경로 토큰은 §7-20과 동일 로직으로 실존 확인.
@@ -3928,7 +3928,7 @@ def main():
                 warn(f"진입점 심볼 소스에 없음: {r} -> '{sym_token}'의 `{sym}` "
                      f"(이름 변경·삭제 가능 — 조회가 엉뚱한 자리로 간다, schema §7-21)", r)
 
-    # 위키 뒤처짐 (wiki-schema §7-26): 허브 synced_commit(§2.2) 이후 레포에 쌓인 커밋 수를 센다.
+    # 위키 뒤처짐 (schema-lint §7-26): 허브 synced_commit(§2.2) 이후 레포에 쌓인 커밋 수를 센다.
     #  updated는 "언제 손댔나"라서, 날짜만 갱신되고 내용이 레포를 못 따라온 상태를 그대로
     #  통과시킨다 — 그 사각을 이 검사가 메운다("어디까지 담았나").
     #  전부 INFO다: 커밋 수 임계는 프로젝트 커밋 빈도에 따라 의미가 달라 근거 없는 상수가 되므로
