@@ -1225,14 +1225,14 @@
           "## 구현 방법",
           "[UI·UX] 이 문단은",
           "[^src-thing]:"
-        ],
-        "20_projects/personal/demo.md": [
-          "[[20_projects/personal/demo/feat-thing-2\\|것 (Thing) — UI·UX]]"
         ]
       },
       "expect_file_not_contains": {
         "20_projects/personal/demo/feat-thing-2.md": [
           "- `src/Demo/Thing.cs` — 본체"
+        ],
+        "20_projects/personal/demo.md": [
+          "feat-thing-2"
         ]
       }
     },
@@ -1581,7 +1581,8 @@
       "fixture": "prose-resplit-hub",
       "auto_split": true,
       "expect_keywords": [
-        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "허브 하위 행 정리 — 20_projects/personal/demo.md"
       ],
       "expect_absent": [
         "[SPLIT-FAIL]"
@@ -1590,17 +1591,20 @@
         "분리한 본문이 조회 경로 밖",
         "정본 포인터 깨짐",
         "정본 포인터 절 없음",
-        "하위 문서 목록 깨짐"
+        "하위 문서 목록 깨짐",
+        "허브 기능 목록 누락"
       ],
       "expect_file_count": {
         "20_projects/personal/demo.md": {
-          "20_projects/personal/demo/feat-thing-2": 1
+          "20_projects/personal/demo/feat-thing-2": 0,
+          "20_projects/personal/demo/feat-thing-3": 0,
+          "20_projects/personal/demo/feat-thing\\|": 1
         },
         "20_projects/personal/demo/feat-thing.md": {
           "20_projects/personal/demo/feat-thing-2": 1
         }
       },
-      "rationale": "**두 소비처의 차이를 고정한다.** 재분할은 `## 하위 문서` 목록에 이전 회차 형제를 다시 적어야 하지만(그 목록은 매 회차 전량을 담는다), 허브 `## 기능 목록`은 **신설분만** 받아야 한다 — 형제는 지난 회차에 이미 등재됐다. 두 소비처에 같은 목록을 전달하면 허브 표에 같은 기능이 두 줄로 쌓이는데, **존재 여부로는 잡히지 않아**(있기는 있다) 개수를 센다. 이 픽스처는 허브에 형제가 **이미 등록된** 상태에서 시작해 그 차이를 드러낸다 — `prose-resplit`은 허브가 비어 있어 중복이 처음 등록처럼 보인다."
+      "rationale": "**허브에는 분할 하위 행을 두지 않고, 이전 회차가 남긴 하위 행은 걷어 낸다**(T6 — 하위마다 허브 행이 붙어 실 vault `karina-mobile` 허브가 예산을 채웠다. 하위의 도달 경로는 원본 `## 하위 문서`다). 이 픽스처는 허브에 옛 하위 행이 **이미 있는** 상태에서 시작해, 재분할 뒤 원본 행 하나만 남는지(하위 행 0 · 원본 행 1)를 센다. 아래는 종전 서술이다 — **두 소비처의 차이를 고정한다.** 재분할은 `## 하위 문서` 목록에 이전 회차 형제를 다시 적어야 하지만(그 목록은 매 회차 전량을 담는다), 허브 `## 기능 목록`은 **신설분만** 받아야 한다 — 형제는 지난 회차에 이미 등재됐다. 두 소비처에 같은 목록을 전달하면 허브 표에 같은 기능이 두 줄로 쌓이는데, **존재 여부로는 잡히지 않아**(있기는 있다) 개수를 센다. 이 픽스처는 허브에 형제가 **이미 등록된** 상태에서 시작해 그 차이를 드러낸다 — `prose-resplit`은 허브가 비어 있어 중복이 처음 등록처럼 보인다."
     },
     {
       "fixture": "prose-resplit-flat",
@@ -1806,7 +1810,7 @@
       "expect_keywords": [
         "[SPLIT-FAIL]",
         "쓰기 실패: 20_projects/personal/demo/feat-thing.md",
-        "3개 파일 원복"
+        "2개 파일 원복"
       ],
       "expect_absent": [
         "원복 실패"
@@ -1820,7 +1824,7 @@
       "rationale": "**git vault의 실패·원복 경로를 재는 첫 케이스다.** 회차 73이 git vault 4건을 세웠으나 그 넷은 `auto_split` 정상·dirty 거부와 `fix_mode` 정상·dirty 거부라, **처방이 실패했을 때의 원복**은 어느 케이스도 태우지 않았다 — 실패를 주입하는 `auto_split` 케이스 4건이 전부 비 git vault였다(2026-09-17 실측: `git_vault ∧ (readonly_paths|bad_encoding_paths)` = 0). 그래서 `restore()`의 `git_root` 분기(`git checkout -- <대상>`)는 **지워도 골든이 green**이었다. 이 케이스가 없으면 재지 않는 것: ⓐ 그 분기가 실제로 돌아 원복이 성립하는가 ⓑ 신설 하위가 `mark_created` 경로로 걷히는가 ⓒ 실패 대상 원본이 그대로인가. **비 git 케이스와 축이 갈린다 — 원복 수단이 다르고 출력이 다르다**: 비 git은 read-only 원본에 `shutil.copy2`가 막혀 `원복 실패: …` 1줄과 **2개 파일 원복**을 내는데, git은 `git checkout`이 read-only 파일도 되쓰므로 `원복 실패`가 없고 **3개 파일 원복**이다(2026-09-17 실측). `3개 파일 원복`과 `expect_absent: 원복 실패`가 그 갈림을 고정한다 — 개수를 세지 않으면 한 파일만 원복해도 통과한다."
     },
     {
-      "fixture": "prose-split",
+      "fixture": "prose-resplit-hub",
       "auto_split": true,
       "git_vault": true,
       "lf_paths": [
@@ -1843,16 +1847,17 @@
         "원복 실패"
       ],
       "expect_unchanged": [
-        "20_projects/personal/demo.md"
+        "20_projects/personal/demo.md",
+        "20_projects/personal/demo/feat-thing-2.md"
       ],
       "expect_absent_files": [
-        "20_projects/personal/demo/feat-thing-2.md"
+        "20_projects/personal/demo/feat-thing-3.md"
       ],
       "expect_eol": {
         "20_projects/personal/demo/feat-thing.md": "lf",
         "20_projects/personal/demo.md": "lf"
       },
-      "rationale": "**git 원복은 워킹트리 바이트가 아니라 인덱스 내용을 되쓴다** — 인덱스는 줄바꿈을 LF로 정규화하고 `core.autocrlf=true`(Windows git 설치 기본값)면 체크아웃이 그것을 CRLF로 되돌리므로, **원래 LF였던 페이지만** 원복에서 형상을 잃는다. 이 케이스가 재는 것은 `SplitSession._restore_shape`이고, 그 한 줄을 무력화하면 `feat-thing.md`가 `lf → crlf`로 바뀐다(2026-09-17 red 실증). **실패 대상이 원본이 아니라 허브인 것이 이 케이스의 핵심이다** — 산문 분리는 하위 → 원본 → **허브** 순으로 쓰므로(`relocate_sections`), 원본을 read-only로 하면 첫 쓰기에서 죽어 **수정된 추적 파일이 하나도 없고 `git checkout`이 no-op이 되어 변환이 일어나지 않는다**(실측: 그 조합에서는 red가 성립하지 않았다). 허브를 막으면 원본이 이미 쓰인 뒤라 그것이 원복 대상이 되고 변환이 드러난다. **CRLF 대조군은 앞 케이스가 맡는다** — 같은 조합을 CRLF로 돌리면 왕복이 항등이라 변환이 없다(실측). **BOM 축은 이 케이스가 재지 않는다** — `auto_split` 대상 픽스처에 BOM 있는 `.md`가 0개이고(BOM 픽스처 2개는 `archive-exempt`·`build-index-crlf`로 둘 다 `auto_split` 밖) `expect_bom`은 `build_index` 핸들러 전용이다(`run_lint_evals.py`). `_restore_shape`가 BOM을 함께 옮기는 근거는 `_atomic_write`의 시그니처 계약이고 골든이 아니다."
+      "rationale": "**픽스처를 `prose-resplit-hub` 로 옮긴 이유**(T6): 산문 분리가 허브에 하위를 등재하지 않게 되면서 허브 쓰기는 **옛 하위 행을 걷는 정리 단계**에서만 일어나고, 그 단계는 분리 **뒤**에 돈다 — 옛 하위 행이 있는 픽스처여야 「원본이 이미 쓰인 뒤 허브에서 죽는」 아래 조건이 선다. **git 원복은 워킹트리 바이트가 아니라 인덱스 내용을 되쓴다** — 인덱스는 줄바꿈을 LF로 정규화하고 `core.autocrlf=true`(Windows git 설치 기본값)면 체크아웃이 그것을 CRLF로 되돌리므로, **원래 LF였던 페이지만** 원복에서 형상을 잃는다. 이 케이스가 재는 것은 `SplitSession._restore_shape`이고, 그 한 줄을 무력화하면 `feat-thing.md`가 `lf → crlf`로 바뀐다(2026-09-17 red 실증). **실패 대상이 원본이 아니라 허브인 것이 이 케이스의 핵심이다** — 산문 분리는 하위 → 원본 → **허브** 순으로 쓰므로(`relocate_sections`), 원본을 read-only로 하면 첫 쓰기에서 죽어 **수정된 추적 파일이 하나도 없고 `git checkout`이 no-op이 되어 변환이 일어나지 않는다**(실측: 그 조합에서는 red가 성립하지 않았다). 허브를 막으면 원본이 이미 쓰인 뒤라 그것이 원복 대상이 되고 변환이 드러난다. **CRLF 대조군은 앞 케이스가 맡는다** — 같은 조합을 CRLF로 돌리면 왕복이 항등이라 변환이 없다(실측). **BOM 축은 이 케이스가 재지 않는다** — `auto_split` 대상 픽스처에 BOM 있는 `.md`가 0개이고(BOM 픽스처 2개는 `archive-exempt`·`build-index-crlf`로 둘 다 `auto_split` 밖) `expect_bom`은 `build_index` 핸들러 전용이다(`run_lint_evals.py`). `_restore_shape`가 BOM을 함께 옮기는 근거는 `_atomic_write`의 시그니처 계약이고 골든이 아니다."
     },
     {
       "fixture": "fix-mode",
@@ -1904,7 +1909,8 @@
       "fixture": "prose-sub-dup",
       "auto_split": true,
       "expect_keywords": [
-        "관련 파일 복제 정리 — 20_projects/personal/demo/feat-thing-2.md"
+        "관련 파일 복제 정리 — 20_projects/personal/demo/feat-thing-2.md",
+        "허브 하위 행 정리 — 20_projects/personal/demo.md"
       ],
       "expect_absent": [
         "[SPLIT-FAIL]",
@@ -1915,7 +1921,8 @@
         "관련 파일 섹션 누락",
         "정본 포인터 깨짐",
         "정본 포인터 절 없음",
-        "예산 초과: 20_projects/personal/demo/feat-thing"
+        "예산 초과: 20_projects/personal/demo/feat-thing",
+        "허브 기능 목록 누락"
       ],
       "expect_file_contains": {
         "20_projects/personal/demo/feat-thing-2.md": [
@@ -1928,12 +1935,19 @@
         ],
         "log.md": [
           "[SCHEMA] 관련 파일 복제 정리 — 20_projects/personal/demo/feat-thing-2.md",
-          "(사유: 관련 파일 복제)"
+          "(사유: 관련 파일 복제)",
+          "[SCHEMA] 허브 하위 행 정리 — 20_projects/personal/demo.md"
+        ],
+        "20_projects/personal/demo.md": [
+          "[[20_projects/personal/demo/feat-thing\\|것]]"
         ]
       },
       "expect_file_not_contains": {
         "20_projects/personal/demo/feat-thing-2.md": [
           "- `src/Demo/Thing.cs` — 본체"
+        ],
+        "20_projects/personal/demo.md": [
+          "feat-thing-2"
         ]
       },
       "rationale": "**기존 복제 하위의 정리**(§7 결과 처리 예외 ⑤). 픽스처는 복제를 하던 구 분할기가 `prose-split` 에 실제로 만든 산출물이다 — 하위 `## 관련 파일`이 원본 목록과 글자까지 같다. 원본은 예산 안이라 산문 분리는 돌지 않아야 하고(`expect_absent` 「산문 분리 — 」), **예산과 무관하게** 하위의 복제만 정본 포인터로 바뀌어야 한다. 원본의 목록은 그대로 남는지(지도 유실 가드), 정리 뒤 §7-21 이 포인터 하위를 「경로 항목 0개」로 잡지 않는지, `log.md` 기록이 분할과 다른 사유를 적는지를 함께 본다 — 분할의 고정 사유는 이 처방에 거짓이다."
@@ -1989,8 +2003,8 @@
           "index_label: 것 (Thing) — 관련 파일 · 저장소",
           "`src/C/item075.cs`"
         ],
-        "20_projects/personal/demo.md": [
-          "| 관련 파일 · 전송 계층 이 기능 src/Net/ | 것 (Thing)의 「관련 파일 · 전송 계층 이 기능 src/Net/」 절 | [[20_projects/personal/demo/feat-thing-2\\|것 (Thing) — 관련 파일 · 전송 계층 이 기능 src/Net/]] |"
+        "20_projects/personal/demo/feat-thing-3.md": [
+          "> 상위 문서: [[20_projects/personal/demo/feat-thing|것 (Thing)]]"
         ]
       },
       "expect_file_not_contains": {
@@ -2009,8 +2023,8 @@
           "`src/D/"
         ],
         "20_projects/personal/demo.md": [
-          "이 기능]]",
-          "`src/Net/`"
+          "feat-thing-2",
+          "feat-thing-3"
         ]
       },
       "rationale": "**`## 관련 파일`의 `###` 그룹 단위 분할**(D1·D6 — 최후 수단). 다른 절은 짧아 옮겨도 예산이 풀리지 않고 지도만 크다 — 실 vault `feat-transport` 형상이다. 그룹마다 다른 경로 접두(`src/A/`~`src/D/`)를 심어, **첫 그룹(코어)은 원본에 남고** 큰 그룹부터 옮겨지며 **하위에는 자기 그룹 경로만** 가는지를 잰다(다른 그룹 경로의 부재는 `expect_file_not_contains`). 두 그룹이 나가므로 하위 라벨이 서로 다른지도 함께 본다 — 절 제목만 쓰면 둘 다 「관련 파일」이 된다. **그룹명 하나에 wikilink 와 백틱을 심었다** — 실 vault 그룹명에 실재하는 형상이고, 정제 없이 라벨에 들어가면 허브 표 셀을 `|` 로 가르고 바깥 wikilink 를 끊는다. 정제 결과(표시 텍스트만, 백틱 제거, 콜론 없는 구분자)는 D9 규칙에서 세운 기대값이다. 포인터의 절 이름은 「관련 파일」이라 §7-30 이 하위의 `## 관련 파일`로 도달을 확인한다."
@@ -2073,12 +2087,20 @@
         "분리한 본문이 조회 경로 밖"
       ],
       "expect_file_contains": {
-        "20_projects/personal/demo.md": [
-          "[[20_projects/personal/demo/feat-other-2\\|저것 (Other) — UI·UX]]",
-          "[[20_projects/personal/demo/feat-thing-2\\|것 (Thing) — UI·UX]]"
+        "20_projects/personal/demo/feat-other.md": [
+          "- [[20_projects/personal/demo/feat-other-2|저것 (Other) — UI·UX]] — UI·UX"
+        ],
+        "20_projects/personal/demo/feat-thing.md": [
+          "- [[20_projects/personal/demo/feat-thing-2|것 (Thing) — UI·UX]] — UI·UX"
         ]
       },
-      "rationale": "**한 프로젝트의 feature 둘이 한 실행에서 함께 분리되는가.** 두 분리는 같은 허브(`## 기능 목록`)에 하위를 등재하므로 둘 다 허브를 claim 한다. 종전 `claim()` 은 같은 처방의 재claim 도 거부해 첫 feature 만 분리되고 나머지는 「하위 분리 건너뜀」으로 다음 실행에 밀렸다 — 실 vault 사본에서 karina-mobile 5쪽 중 한 실행에 1쪽만 풀린 원인이다. claim 이 막는 것은 **서로 다른 처방**의 겹침(원복 기준점이 갈리는 것)이고, 같은 처방 안의 재접근은 원복 단위가 같아 막을 이유가 없다. 허브에 두 하위가 모두 등재됐는지로 두 번째 분리의 허브 쓰기까지 잰다."
+      "expect_file_not_contains": {
+        "20_projects/personal/demo.md": [
+          "feat-other-2",
+          "feat-thing-2"
+        ]
+      },
+      "rationale": "**한 프로젝트의 feature 둘이 한 실행에서 함께 분리되는가.** 종전에는 두 분리가 같은 허브(`## 기능 목록`)에 하위를 등재하느라 둘 다 허브를 claim 했고, 첫 분리가 허브를 맡으면 나머지는 「하위 분리 건너뜀」으로 다음 실행에 밀렸다 — 실 vault 사본에서 karina-mobile 5쪽 중 한 실행에 1쪽만 풀린 원인이다. 분리가 허브를 쓰지 않게 되면서(T6) 공유 쓰기 대상이 사라졌다 — 이 케이스는 그 상태가 되돌아오지 않는지를 잰다: 두 원본의 `## 하위 문서`에 각자 하위가 있고 허브에는 없어야 한다."
     },
     {
       "fixture": "clean",

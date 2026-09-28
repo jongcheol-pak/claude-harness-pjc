@@ -1385,7 +1385,7 @@ def _git(repo_root, *args):
 
 
 # §4 7번 기록의 사유 — 처방 종류별로 다른 것만 둔다(없으면 분할·롤오버의 기본 사유).
-LOG_REASON = {"관련 파일 복제 정리": "관련 파일 복제"}
+LOG_REASON = {"관련 파일 복제 정리": "관련 파일 복제", "허브 하위 행 정리": "분할 하위 허브 미등재"}
 
 
 class SplitSession:
@@ -1478,14 +1478,9 @@ class SplitSession:
 
         건너뛴 대상은 **다음 실행이 처리한다** — 처방은 멱등이고 `--auto-split`은 반복
         실행이 전제이므로(수렴하면 「수행 대상 없음」), 한 실행에서 다 끝내려다 원복 불가
-        상태를 만드는 것보다 낫다.
-
-        **같은 처방이 이미 맡은 파일은 다시 맡을 수 있다** — 막는 것은 *서로 다른* 처방의 겹침이다.
-        같은 처방 안의 재접근은 원복 단위(`current_claims`)가 같아 기준점이 갈리지 않는다. 막으면
-        한 프로젝트의 feature 여럿이 공유하는 허브(`## 기능 목록` 등재)를 첫 분리만 쓰고 나머지는
-        한 실행에 하나씩 밀린다(실 vault 사본 실측 — 5쪽 중 1쪽)."""
+        상태를 만드는 것보다 낫다."""
         want = set(paths)
-        if want & (self.claimed - self.current_claims):
+        if want & self.claimed:
             return False
         self.claimed |= want
         self.current_claims |= want
@@ -2273,27 +2268,36 @@ def _sub_doc_list(text, entries, nl):
     return text.rstrip("\n") + "\n\n## 하위 문서\n\n" + lines
 
 
-def _register_feature_rows(vault, rel, entries):
-    """신설 feature 하위를 프로젝트 허브 `## 기능 목록` 표에 등재한다(§4 4번).
+def _is_split_sub(vault, target):
+    """링크 대상이 **분할 하위**(복귀 링크를 가진 feature)인가. 대상 파일을 못 읽으면 False."""
+    rel = target if target.endswith(".md") else target + ".md"
+    t, _bom, _nl = _read_page(os.path.join(vault, rel.replace("/", os.sep)))
+    return (t is not None and str(frontmatter(t).get("type", "")).strip() == "feature"
+            and bool(SUBDOC_BACK_RX.search(t)))
 
-    허브에 없으면 조회가 그 하위에 닿지 못한다 — feature는 허브 개념이 있는 타입이라
-    「상위 참조 중 실제로 이 페이지를 등록한 곳」이 이 표다. **설명 칸은 판단이 아니라
-    결정론 형식**을 쓴다(어느 절에서 갈라졌는지 — 그 정보가 곧 조회 판정에 쓰인다).
-    반환: (허브 상대경로, 새 본문) 또는 None."""
-    m = re.match(r"^(20_projects/[^/]+/[^/]+)/", rel)
-    if not m:
+
+def _hub_without_sub_rows(vault, hub_text):
+    """허브 `## 기능 목록` 표에서 분할 하위를 가리키는 행을 뺀 본문. 뺄 행이 없으면 None.
+
+    **분할 하위는 허브에 행을 두지 않는다**(§4 ③) — 하위마다 행이 붙으면 허브가 하위 수만큼
+    자라, 문자 축 처방이 옮길 수 없는 `## 기능 목록`(본문째 남는 절)만으로 허브가 예산을 채운다
+    (실 vault 사본 실측: `karina-mobile` 허브 12,828 → 16,230자). 하위의 도달 경로는 원본의
+    `## 하위 문서`이고 §7-30ⓔ가 그 양방향을 잰다. 이 함수는 **이전 회차가 남긴 하위 행**을
+    걷는 쪽이다 — 새 하위는 처음부터 등재하지 않는다(`relocate_sections`)."""
+    span = next(((s0, s1) for t, s0, s1 in _md_sections(hub_text) if t == "기능 목록"), None)
+    if not span:
         return None
-    hub_rel = m.group(1) + ".md"
-    hub_path = os.path.join(vault, hub_rel.replace("/", os.sep))
-    hub_text, _bom, _nl = _read_page(hub_path)
-    if hub_text is None:
+    s0, s1 = span
+    kept, dropped = [], 0
+    for line in hub_text[s0:s1].splitlines(keepends=True):
+        m = re.search(r"\[\[([^\]|\\]+)", line) if line.lstrip().startswith("|") else None
+        if m and _is_split_sub(vault, m.group(1)):
+            dropped += 1
+            continue
+        kept.append(line)
+    if not dropped:
         return None
-    sec = section(hub_text, "기능 목록")
-    if not sec:
-        return None
-    rows = "".join("| %s | %s의 「%s」 절 | [[%s\\|%s]] |\n" % (title, label0, title, sub, name)
-                   for sub, name, title, label0 in entries)
-    return hub_rel, hub_text.replace(sec, sec.rstrip("\n") + "\n" + rows + "\n", 1)
+    return hub_text[:s0] + "".join(kept) + hub_text[s1:]
 
 
 def _relocation_pointer(sub_rel, label, title, moved, section=None):
@@ -2596,6 +2600,9 @@ def prescribable(rel, fm, text, nl, vault=None):
         sec = section(text, "최근 주요 변경")
         if sec and _rollover_movable(_split_items(sec)[1], HUB_CHANGES_KEEP):
             return True
+        # 허브 하위 행 정리(§4 ③) — 이전 회차가 남긴 분리 하위 행이 있으면 그것이 처방이다.
+        if vault and _hub_without_sub_rows(vault, text) is not None:
+            return True
     # **술어 밖에 남는 것 둘** — `_prose_page_paths`가 `index*`를 제외하는 것(:1634 부근)과
     #  `ses.claim`·`backup` 실패로 「하위 분리 건너뜀」이 나는 것은 **파일 구조가 아니라
     #  실행 사정**이라 여기서 답하지 않는다. 다음 회차가 그것을 이 함수의 사각으로 오판하지 않게.
@@ -2727,13 +2734,10 @@ def relocate_sections(ses):
             #  붙인 것이 이 처방이므로 다시 판단할 것이 없다.
             siblings.append((srel[:-len(".md")], slabel,
                              slabel.split(" — ")[-1] if " — " in slabel else slabel, label))
-        # 목록은 형제까지 적고, **허브 표는 신설분만** 받는다 — 형제는 지난 회차에 이미
-        #  등재됐으므로 다시 전달하면 같은 기능이 표에 두 줄로 쌓인다.
+        # 목록은 형제까지 적는다. **허브에는 등재하지 않는다**(§4 ③ — `_hub_without_sub_rows`).
         cur = _sub_doc_list(cur, entries + siblings, nl)
-        hub = _register_feature_rows(ses.vault, rel, entries) if st.typ == "feature" else None
-        hub_path = os.path.join(ses.vault, hub[0].replace("/", os.sep)) if hub else None
-        touched = [path] + [c[0] for c in created] + ([hub_path] if hub else [])
-        if not ses.claim(*touched) or not ses.backup(*[p for p in (path, hub_path) if p]):
+        touched = [path] + [c[0] for c in created]
+        if not ses.claim(*touched) or not ses.backup(path):
             ses.notes.append(f"{rel} 하위 분리 건너뜀 — 다른 처방이 맡았거나 사본 실패")
             continue
         if not ses.dry_run:
@@ -2744,18 +2748,28 @@ def relocate_sections(ses):
                 #  남길 수 있고(치환 직전 실패), 등록 전에 죽으면 그것이 원복 대상에서 빠진다
                 _write_or_abort(sub_path, body_text, bom, nl, sub_rel_)
             _write_or_abort(path, cur, bom, nl, rel)
-            if hub:
-                # 허브 형상은 읽어서 보존한다 — 읽기 실패를 기본값(BOM 없음·LF)으로 메우면
-                #  CRLF·BOM 허브가 조용히 평탄화된다.
-                hprev, hbom, hnl = _read_page(hub_path)
-                if hprev is None:
-                    raise SplitIOError("허브를 읽지 못해 갱신할 수 없다: " + hub[0])
-                _write_or_abort(hub_path, hub[1], hbom, hnl, hub[0])
-        if st.typ == "feature" and not hub:
-            ses.notes.append(f"{rel} 허브 `## 기능 목록` 미갱신 — 허브를 찾지 못했다(수기 등록 필요)")
         if trimmed is not None:
             ses.record("관련 파일 복제 정리", rel, [])
         ses.record("산문 분리", rel, [c[1] for c in created])
+
+    # **허브 하위 행 정리 — 분리 뒤에 돈다.** 같은 처방 안이라 실패하면 이번 실행의 분리까지
+    #  함께 원복된다(처방 단위 원복). 새 하위는 등재하지 않으므로 여기서 걷는 것은 이전 회차가
+    #  남긴 행뿐이다. 다른 처방(허브 변경 이력 롤오버)이 이미 허브를 맡았으면 다음 실행이 한다.
+    for hub_rel in sorted(_project_hub_paths(ses.vault)):
+        hub_path = os.path.join(ses.vault, hub_rel.replace("/", os.sep))
+        htext, hbom, hnl = _read_page(hub_path)
+        if htext is None:
+            continue
+        cleaned = _hub_without_sub_rows(ses.vault, htext)
+        if cleaned is None:
+            continue
+        if not ses.claim(hub_path) or not ses.backup(hub_path):
+            ses.notes.append(f"{hub_rel} 허브 하위 행 정리 건너뜀 — 다른 처방이 맡았거나 사본 실패")
+            continue
+        if not ses.dry_run:
+            # 허브 형상은 읽어서 보존한다 — 기본값(BOM 없음·LF)으로 메우면 CRLF·BOM 허브가 평탄화된다.
+            _write_or_abort(hub_path, cleaned, hbom, hnl, hub_rel)
+        ses.record("허브 하위 행 정리", hub_rel, [])
 
 
 def _write_trimmed(ses, path, rel, text, bom, nl):
@@ -4057,6 +4071,10 @@ def main():
         hub_base = r[:-3]
         hub_text = text.replace("\\", "")
         for f in sorted(feat_files):
+            # 분할 하위(복귀 링크 보유)는 허브에 행을 두지 않는다(§4 ③) — 도달 경로는 원본
+            #  `## 하위 문서`이고 그 양방향은 §7-30ⓔ가 잰다.
+            if SUBDOC_BACK_RX.search(pages.get(f + ".md", ({}, "", ""))[2]):
+                continue
             # L-4: 부분문자열 매칭은 'feat-a'가 링크 'feat-a-extended'에 substring으로 포함되면 누락을
             #   못 잡는다(위음성) → 경로 뒤에 단어문자·하이픈이 없어야 진짜 등록으로 본다(.md 확장자는 허용).
             if f.startswith(hub_base + "/") and not re.search(re.escape(f) + r"(?![\w-])", hub_text):
