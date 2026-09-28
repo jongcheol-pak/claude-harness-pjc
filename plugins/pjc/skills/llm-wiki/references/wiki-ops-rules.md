@@ -75,18 +75,7 @@
 
 ## 파일 네이밍 규칙 요약
 
-| 대상 | 경로 | 네이밍 | 예시 |
-|------|------|--------|------|
-| 소스 스텁 | `10_sources/{카테고리}/` | `src-{영문소문자}.md` | `src-devdashboard.md` |
-| 프로젝트 허브 | `20_projects/{카테고리}/` | `{영문소문자하이픈}.md` | `devdashboard-winui.md` |
-| feature | `20_projects/{카테고리}/{프로젝트}/` | `feat-{영문소문자하이픈}.md` | `devdashboard-winui/feat-project-cards.md` |
-| 엔티티 | `30_knowledge/tech/` | `{영문소문자하이픈}.md` | `winui3.md` |
-| 개념 | `30_knowledge/patterns/` | `{영문소문자하이픈}.md` | `multi-monitor-dpi.md` |
-| 가이드(platform/ui-ux) | `40_guides/{platforms\|ui-ux}/` | `{영문소문자하이픈}.md` | `platforms/winui3-bootstrap.md` |
-| 레시피(특정 기능) | `40_guides/recipes/{스택}/` | `{영문소문자하이픈}.md` | `recipes/winui/startup-autostart.md` |
-| 질문 | `30_knowledge/questions/` | `q-{YYYYMMDD}-{짧은설명}.md` | `q-20260607-scrollview-issue.md` |
-| 결정 이력 | `20_projects/{카테고리}/{프로젝트}/` | `decisions.md` (고정) | `devdashboard-winui/decisions.md` |
-| 작업 규약 | `20_projects/{카테고리}/{프로젝트}/` | `conventions.md` (고정) · 하위는 `conventions-{주제}.md`(사람이 나눌 때만 — 옛 순번 하위 `conventions-{n}.md` 는 그대로 남는다, schema §3·§2.9) | `devdashboard-winui/conventions.md` |
+> 정본은 `wiki-schema.md` §3 「파일 네이밍」 표(대상·경로·규칙·예시)다 — 사본을 두면 한쪽만 고쳐지므로 여기에는 두지 않는다. 쓰기 세션은 페이지를 만들 때 §3 을 읽는다(목차 「읽는 시점」).
 
 ## 파일 예산
 
@@ -105,8 +94,8 @@
 | decision-log | 6000 (**§7-2 발동 시** 오래된 항목부터 90_archive 원경로 이동 — schema §2.8) |
 | convention | 12000 (작업 규약 — **§7-2 발동 시** 무효 항목 제거. **분리·재분할·아카이브 롤오버를 하지 않는다**: 절차 K가 매 작업 전에 읽어 이동이 곧 유실이고, 분리는 파편만 늘렸다 — schema §2.9. 신호는 아래 「신호 층위」의 ⓓ 갈래 하나뿐이다) |
 | log.md | 6000자(문자 수) (**§7-2 발동 시** 가장 오래된 항목부터 `90_archive/log/{YYYY-MM}.md`로 월별 이동 — schema §8) |
-| index.md | 제한 없음 (**생성 마커가 있으면 분할은 `--build-index`가 담당**. 마커 없는 vault는 본문 400줄 / 기능별 인덱스 200행 초과 시 **B/F 세션이 자동 분할** — lint INFO, 승인 불요. **index는 등록 항목 개수가 본질이라 행/줄 수 단위**다. sub-index `index-*.md`도 동일 임계 측정 — 초과 시 B/F 세션이 순번 파일(`index-{cat}-{n}.md`)로 자동 분할(승인 불요, §4 3단계). 절차 상세는 schema-budget §4) |
-- **§7-2 발동 시 위 표의 해당 타입 처방을 수행한다**(발동·종료·재발동·승급 네 조건의 정본은 schema-budget §7-2. 임계·심각도는 아래 「예산 단계 신호」 절) — 전 타입이 **이동·분리 처방**을 가지므로 **내용을 요약으로 줄이는 압축은 쓰지 않는다**. 대표 경로: project 허브는 `## 최근 주요 변경`의 **6번째 항목부터**(§2.2 — 문자 예산과 무관) `90_archive/…/changes.md`로 롤오버하고 작업 규약은 `conventions.md`로 분리, feature·entity·concept·guide는 하위 페이지 분리(§4 「재분할 일반 규칙」), log.md는 월별 롤오버(3000자 이하까지).
+| index.md | 제한 없음 (**생성 마커가 있으면 분할은 `--build-index`가 담당**. 마커 없는 vault는 본문 400줄 / 기능별 인덱스 200행 초과 시 **B/F 세션이 자동 분할** — lint INFO, 승인 불요. **index는 등록 항목 개수가 본질이라 행/줄 수 단위**다. sub-index `index-*.md`도 동일 임계 측정 — 초과 시 B/F 세션이 자동 분할(승인 불요, §4 3단계). 절차 상세는 schema-budget §4) |
+- **§7-2 발동 시 위 표의 해당 타입 처방을 수행한다**(발동·종료·재발동·승급 네 조건의 정본은 schema-budget §7-2. 임계·심각도는 아래 「예산 단계 신호」 절) — 전 타입이 **이동·분리 처방**을 가지므로 **내용을 요약으로 줄이는 압축은 쓰지 않는다**. 대표 경로: project 허브는 `## 최근 주요 변경`의 **schema-types §2.2 「6번째 항목」부터** `90_archive/…/changes.md`로 롤오버하고 작업 규약은 `conventions.md`로 분리, feature·entity·concept·guide는 하위 페이지 분리(§4 「재분할 일반 규칙」), log.md는 월별 롤오버(3000자 이하까지).
 - **예산 판정은 전 타입에서 「비계」를 뺀 유효 문자 수로 한다** — 분할이 남긴 **정본 포인터 줄**과 **`## 하위 문서` 목록**이 그것이다(판정 방식 정본은 schema-types §2.6, 구현은 `lint.py`의 `strip_scaffold`).
 - **guide(platform-bootstrap·ui-ux)의 예산 판정은 코드 펜스 내부 문자를 제외한 유효 문자 수**로 한다(recipe는 펜스 포함 — 정본은 schema-types §2.6). 가이드가 **§7-2를 발동시키면** 허브+하위 분할 — 실행 절차는 I-2b(`references/procedures-content.md`).
 
