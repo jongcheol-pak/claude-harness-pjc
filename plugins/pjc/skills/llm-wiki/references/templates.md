@@ -81,7 +81,7 @@ tags: [project, 카테고리, 프로젝트태그]
 ## 프로젝트 간 공유 패턴
 - **패턴명**: 어떤 프로젝트와 어떻게 공유하는지
 
-<!-- 작업 규약·주의사항은 이 허브가 아니라 같은 폴더 conventions.md(wiki-schema §2.9)에 둔다 —
+<!-- 작업 규약·주의사항은 이 허브가 아니라 같은 폴더 conventions.md(schema-types §2.9)에 둔다 —
      규약은 계속 누적되는데 허브는 "한 장 요약"이라 한 파일에 두면 항목이 늘 때마다 압축이 강제된다.
      위 "관련 위키 지식"에서 링크만 하고, 절차 K가 매 작업 전에 그 파일을 읽는다. -->
 
@@ -107,7 +107,7 @@ category: personal | work
 feature_name: "기능명"
 description: "한 줄 요약 (권장 — wiki-schema §12)"
 platform: windows-desktop | web | mobile | cli | cross
-status: active   # 코드에서 제거 시 deprecated: YYYY-MM-DD 추가 (폐기 보존, wiki-schema §2.3)
+status: active   # 코드에서 제거 시 deprecated: YYYY-MM-DD 추가 (폐기 보존, schema-types §2.3)
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
 updated: YYYY-MM-DD
@@ -194,7 +194,7 @@ confidence: high | medium | low
 updated: YYYY-MM-DD
 related_projects: [프로젝트1, 프로젝트2]
 tags: [concept, 패턴태그]
-# budget_split: none            # (선택) 나눌 하위 주제가 없을 때만 — wiki-schema §3·§4
+# budget_split: none            # (선택) 나눌 하위 주제가 없을 때만 — wiki-schema §3 · schema-budget §4
 # budget_split_chars: 0         #   lint 예산 판정과 같은 기준의 문자 수(=임박 메시지의 {현재} 값,
 #                               #   ui-ux·platform-bootstrap guide는 펜스 제외). 부착 후 재측정해 수렴
 # budget_split_reason: ""       #   왜 나눌 수 없는가 ("작아서"는 사유가 아니다)
@@ -225,7 +225,7 @@ confidence: high | medium | low
 updated: YYYY-MM-DD
 related_projects: [프로젝트1]
 tags: [guide, recipe, 플랫폼태그]
-# budget_split: none            # (선택) 단일 레시피처럼 나눌 하위가 없을 때만 — wiki-schema §3·§4
+# budget_split: none            # (선택) 단일 레시피처럼 나눌 하위가 없을 때만 — wiki-schema §3 · schema-budget §4
 # budget_split_chars: 0         #   lint 예산 판정과 같은 기준의 문자 수(=임박 메시지의 {현재} 값,
 #                               #   ui-ux·platform-bootstrap guide는 펜스 제외). 부착 후 재측정해 수렴
 # budget_split_reason: ""       #   왜 나눌 수 없는가 ("작아서"는 사유가 아니다)
@@ -235,7 +235,7 @@ tags: [guide, recipe, 플랫폼태그]
 
 (platform-bootstrap) ## 대상 플랫폼 / ## 기본 프로젝트 생성 / ## 권장 구조 / ## 필수 의존성 / ## UI/UX 기본 / ## 체크리스트
 (ui-ux) UI/UX 규칙 섹션들
-(recipe) ## 목적 / ## 적용 플랫폼 / ## 단계 / ## 코드 스니펫 / ## 사용 프로젝트 사례 / ## 주의점 / 함정(선택 — 함정형 recipe 권장, wiki-schema §2.6)
+(recipe) ## 목적 / ## 적용 플랫폼 / ## 단계 / ## 코드 스니펫 / ## 사용 프로젝트 사례 / ## 주의점 / 함정(선택 — 함정형 recipe 권장, schema-types §2.6)
 ```
 
 ## question
@@ -270,8 +270,8 @@ tags: [decision-log, 프로젝트태그]
 
 # 프로젝트명 결정 이력
 
-<!-- 항목 불변: 기록된 결정은 수정·삭제하지 않는다 — 결정이 바뀌면 "번복" 항목을 새로 추가(같은 주제어 재사용, wiki-schema §2.8).
-     어휘 고정: 채택 | 보류 | 기각 | 번복. 최신이 위. wiki-schema §7-2 발동 시 오래된 항목부터 90_archive 원경로 이동.
+<!-- 항목 불변: 기록된 결정은 수정·삭제하지 않는다 — 결정이 바뀌면 "번복" 항목을 새로 추가(같은 주제어 재사용, schema-types §2.8).
+     어휘 고정: 채택 | 보류 | 기각 | 번복. 최신이 위. schema-budget §7-2 발동 시 오래된 항목부터 90_archive 원경로 이동.
      기각·보류는 판정 직후 ": {실제 방향 1줄}"을 붙인다 — 주제가 행위·부정문이면 판정만으로 방향이 뒤집혀 읽히고,
        조회는 grep으로 행을 특정해 하위 불릿을 못 본다(괄호 부기는 이 자리를 대신하지 못한다, lint §7-33).
      기록 수준: LLM이 이 기록만 보고 사용자에게 결정 배경을 설명할 수 있어야 함 — 사유가 다층적이거나
@@ -296,9 +296,9 @@ tags: [convention, 프로젝트태그]
 <!-- 이 프로젝트에서 작업할 때 알아야 할 크로스 세션 규약·함정. 절차 K가 매 작업 전에 읽는다.
      항목 불변이 아니다(decision-log와 다른 점) — 규약이 바뀌면 그 항목을 고치거나 지운다.
        낡은 규약을 남기면 다음 세션이 그것을 따른다.
-     wiki-schema §7-2 발동 시: 무효가 된 항목을 제거한다(그것이 이 타입의 유일한 처방이다 — v1.303.0).
+     schema-budget §7-2 발동 시: 무효가 된 항목을 제거한다(그것이 이 타입의 유일한 처방이다 — v1.303.0).
        분리·재분할·90_archive 롤오버는 하지 않는다 — 절차 K가 아카이브를 읽지 않아 이동이 곧 유실이고,
-       분리는 파편만 늘려 폐지했다(근거는 wiki-schema §2.9 예산 줄).
+       분리는 파편만 늘려 폐지했다(근거는 schema-types §2.9 예산 줄).
      담지 않는 것: 빌드/실행/테스트 명령·산출물 위치(그 레포 AGENTS.md가 정본) ·
        진행 상태(레포 plan.md가 정본) · 민감 정보(금지).
      유입은 pending.md [PROJECT-FACT] 큐 소비(B-1 0)가 기본 경로. 최신이 위.

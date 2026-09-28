@@ -340,7 +340,7 @@
         "변경 로그",
         "옛 섹션 레시피"
       ],
-      "rationale": "§7-16 양성 검출 — **마커 없는 vault의 옛 `## 가이드 / 레시피` 섹션 형상**(첫 컬럼이 wikilink, 표시 이름은 alias)에서도 한글 전용 라벨이 WARN을 낸다. 통합 표 전용 판정(첫 컬럼 평문)만 남기면 이 형상은 폐지된 가이드 섹션 전용 검사에도 §7-16에도 걸리지 않아 **병기 무신호 구간**이 생긴다 — wiki-schema §4가 마커 없는 vault에 그 섹션 유지를 지시하므로 실재하는 경로다. red 실증: `feat_row_name` 조건 ②에서 wikilink 첫 컬럼 분기를 빼면 이 행이 탈락해 WARN 0건으로 FAIL한다. `expect_absent`는 반대 축 **둘**이다 — `옛 섹션 레시피`는 §3 「하위호환 형상」 ①(`40_guides/recipes/` 제외 — 마커 없는 vault에서 recipe는 `## 기능별 인덱스`에도 실려 이중 요구가 된다)을 고정한다: alias가 한글 전용인데도 WARN이 나지 않아야 하고, 그 제외를 지우면 WARN이 생겨 FAIL한다. `변경 로그`는 또 다른 반대 축이다 — 같은 형상이라도 대상이 `40_guides/`가 아닌 행(프로젝트·기술·참조 표)은 종전대로 제외돼야 하므로, 그 한글 전용 라벨이 WARN에 등장하면 과탐이다."
+      "rationale": "§7-16 양성 검출 — **마커 없는 vault의 옛 `## 가이드 / 레시피` 섹션 형상**(첫 컬럼이 wikilink, 표시 이름은 alias)에서도 한글 전용 라벨이 WARN을 낸다. 통합 표 전용 판정(첫 컬럼 평문)만 남기면 이 형상은 폐지된 가이드 섹션 전용 검사에도 §7-16에도 걸리지 않아 **병기 무신호 구간**이 생긴다 — schema-budget §4가 마커 없는 vault에 그 섹션 유지를 지시하므로 실재하는 경로다. red 실증: `feat_row_name` 조건 ②에서 wikilink 첫 컬럼 분기를 빼면 이 행이 탈락해 WARN 0건으로 FAIL한다. `expect_absent`는 반대 축 **둘**이다 — `옛 섹션 레시피`는 §3 「하위호환 형상」 ①(`40_guides/recipes/` 제외 — 마커 없는 vault에서 recipe는 `## 기능별 인덱스`에도 실려 이중 요구가 된다)을 고정한다: alias가 한글 전용인데도 WARN이 나지 않아야 하고, 그 제외를 지우면 WARN이 생겨 FAIL한다. `변경 로그`는 또 다른 반대 축이다 — 같은 형상이라도 대상이 `40_guides/`가 아닌 행(프로젝트·기술·참조 표)은 종전대로 제외돼야 하므로, 그 한글 전용 라벨이 WARN에 등장하면 과탐이다."
     },
     {
       "fixture": "release-marker",
@@ -465,7 +465,7 @@
       "expect_absent": [
         "sub-index 미등록"
       ],
-      "rationale": "§7-14 순번 sub-index 자동 분할 신호(INFO) — index-work-1.md가 본문 400줄 임계 초과라 '순번 파일 자동 분할' INFO를 낸다(wiki-schema §4 3단계). 동시에 index.md에 순번 stem(index-work-1/-2)이 등록됐는데 §7-15 '미등록' WARN이 안 나는지 실증 — mentioned 정규식 index-[a-z]+(?:-\\d+)?가 순번 suffix를 포착(구 index-[a-z]+는 index-work로만 잡혀 index-work-1을 미등록 오탐, expect_absent가 그 회귀를 가드)."
+      "rationale": "§7-14 순번 sub-index 자동 분할 신호(INFO) — index-work-1.md가 본문 400줄 임계 초과라 '순번 파일 자동 분할' INFO를 낸다(schema-budget §4 3단계). 동시에 index.md에 순번 stem(index-work-1/-2)이 등록됐는데 §7-15 '미등록' WARN이 안 나는지 실증 — mentioned 정규식 index-[a-z]+(?:-\\d+)?가 순번 suffix를 포착(구 index-[a-z]+는 index-work로만 잡혀 index-work-1을 미등록 오탐, expect_absent가 그 회귀를 가드)."
     },
     {
       "fixture": "convention-over",
@@ -487,7 +487,7 @@
         "작업 규약 미마이그레이션",
         "conventions.md로 이전 대상"
       ],
-      "rationale": "§7-31 검출 — 허브에 옛 '## 작업 규약·주의사항' 섹션이 남아 있으면 conventions.md 이전 대상으로 알린다(wiki-schema §2.9). 미마이그레이션 허브를 매 lint에서 가시화해 다음 ingest가 처리하게 만드는 신호다."
+      "rationale": "§7-31 검출 — 허브에 옛 '## 작업 규약·주의사항' 섹션이 남아 있으면 conventions.md 이전 대상으로 알린다(schema-types §2.9). 미마이그레이션 허브를 매 lint에서 가시화해 다음 ingest가 처리하게 만드는 신호다."
     },
     {
       "fixture": "convention-legacy-hub",
@@ -503,7 +503,7 @@
       "expect_absent": [
         "포인터 누락"
       ],
-      "rationale": "§7-30ⓐ 정방향 — 허브 '## 아카이브' 포인터가 실재하지 않는 changes.md를 가리키면 WARN(wiki-schema §2.2·§8). 롤오버한 변경 이력에 도달하지 못하면 이동이 곧 유실이므로 §7-24 decisions 포인터와 같은 계열로 검사한다. expect_absent '포인터 누락'은 역방향 오발화 가드 — 이 픽스처에는 90_archive 하위 changes.md가 없어 역방향은 침묵해야 한다."
+      "rationale": "§7-30ⓐ 정방향 — 허브 '## 아카이브' 포인터가 실재하지 않는 changes.md를 가리키면 WARN(schema-types §2.2 · schema-budget §8). 롤오버한 변경 이력에 도달하지 못하면 이동이 곧 유실이므로 §7-24 decisions 포인터와 같은 계열로 검사한다. expect_absent '포인터 누락'은 역방향 오발화 가드 — 이 픽스처에는 90_archive 하위 changes.md가 없어 역방향은 침묵해야 한다."
     },
     {
       "fixture": "convention-broken",
@@ -515,7 +515,7 @@
       "expect_absent": [
         "목록 깨짐"
       ],
-      "rationale": "§7-30ⓑ 역방향 — conventions-release.md가 실재하는데 conventions.md '## 하위 문서' 목록에 없으면 WARN(wiki-schema §2.9). 목록이 조회 진입점이라 미등재는 분리한 규약이 절차 K의 조회 경로 밖으로 나가는 것이다(조회 홉 1 위반). expect_absent '목록 깨짐'은 정방향 오발화 가드 — 목록이 가리키는 없는 파일이 없으므로 정방향은 침묵해야 한다. 고아 페이지 WARN이 함께 나오는 것은 미등재 상태의 필연적 동반 신호(링크 부재)이며 이 케이스 판정에 영향이 없다."
+      "rationale": "§7-30ⓑ 역방향 — conventions-release.md가 실재하는데 conventions.md '## 하위 문서' 목록에 없으면 WARN(schema-types §2.9). 목록이 조회 진입점이라 미등재는 분리한 규약이 절차 K의 조회 경로 밖으로 나가는 것이다(조회 홉 1 위반). expect_absent '목록 깨짐'은 정방향 오발화 가드 — 목록이 가리키는 없는 파일이 없으므로 정방향은 침묵해야 한다. 고아 페이지 WARN이 함께 나오는 것은 미등재 상태의 필연적 동반 신호(링크 부재)이며 이 케이스 판정에 영향이 없다."
     },
     {
       "fixture": "budget-critical",
@@ -718,7 +718,7 @@
       "after_expect_keywords": [
         "예산 임박(분리 불가 판정 유지)"
       ],
-      "rationale": "budget_split=none 판정이 붙은 96% concept을 --auto-split이 건드리지 않는지 보는 델타 음성. 규정이 「더 나눌 것이 없다」고 판정한 페이지를 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다(wiki-schema §7-2 억제). 수행 후 재lint에서 억제 INFO가 그대로 남는 것이 존중의 증거다."
+      "rationale": "budget_split=none 판정이 붙은 96% concept을 --auto-split이 건드리지 않는지 보는 델타 음성. 규정이 「더 나눌 것이 없다」고 판정한 페이지를 코드가 강제로 쪼개면 그 판정 자체가 무의미해진다(schema-budget §7-2 억제). 수행 후 재lint에서 억제 INFO가 그대로 남는 것이 존중의 증거다."
     },
     {
       "fixture": "build-index",

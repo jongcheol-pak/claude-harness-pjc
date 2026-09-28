@@ -50,7 +50,7 @@ schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.
 계기: v1.164.0이 `convention` 타입을 신설하며 이 자리들을 일회성 정규식 스캔으로 손수 찾아냈고,
 그 스캔은 자산이 아니라 임시 스크립트였다.
 
-⑪ 예산 트리거 조건 어휘 유일성 — 예산 처방의 발동·종료·재발동·승급 조건은 wiki-schema §7-2
+⑪ 예산 트리거 조건 어휘 유일성 — 예산 처방의 발동·종료·재발동·승급 조건은 schema-budget §7-2
 (와 임계 정본인 SKILL '## 예산 단계 신호' 표)에서만 서술하고, 나머지 자리는 조건을 다시 쓰지 않고
 `§7-2 발동 시` 포인터만 둔다 — **예외는 §7-2가 명시한 `lint.py` 임계 상수 근거 주석 하나**로,
 그 자리는 조건의 형태를 말하지 않으면 '이 상수를 지우면 안 되는 이유'가 성립하지 않는다. 그 자리들이 저마다 조건을 다시 쓰던 것이 v1.177 회차에서 6라운드
@@ -69,6 +69,12 @@ FAIL(그 절차의 범위가 통째로 빈다), 헤딩에만 있는 이름은 �
 ⑭ lint §7 번호 ⊆ schema §7 — lint.py 가 인용하는 `§7-N` 번호가 schema §7 목록에 있는가.
 ⑦이 F-1 ↔ schema 만 보아 lint.py 쪽 신설(§7-36)이 목록·F-1 에서 빠진 채 green 이었던
 사각을 메운다(v1.317.0). 방향은 한쪽이다 — schema 에만 있는 번호(폐지·[에이전트])는 정상.
+
+⑮ 파일명 § 인용 소재 — schema 번들이 세 파일로 나뉜 뒤, **파일명을 붙인** § 인용(`<파일> §N`)이
+그 § 의 `## N.` 헤딩을 실제로 가진 파일을 가리키는가. 절을 옮기면 파일명 인용은 조용히 틀린
+파일을 지목하는데 다른 축은 이 인용을 보지 않았다(⑧ 은 절차 라벨만 본다). 스캔은 `plugins/pjc`
+전역이다 — 인용은 대개 다른 파일에 있다. **파일명 없는 `schema §N`·접두 없는 `§N` 은 대상 밖**이다:
+번호가 번들 전역에서 유일하고 코어 목차가 라우팅하므로 틀린 파일을 지목할 수 없다.
 
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
@@ -612,7 +618,7 @@ TAG_EXTRA = {"recipe"}
 #  8타입 대비 과거에만 있던 타입이 0건이었다. 이 축이 겨냥한 결함은 아직 한 번도 실현된 적이
 #  없고, 여기 있는 것은 **다음 삭제 때 작동할 자리**다. 빈 dict 자체가 「삭제 이력 0건」의 기록이다.
 # ⚠ **사람이 갱신해야 동작한다** — 타입을 삭제하면 `{이름: 사유·삭제 회차}`를 여기 추가한다.
-#  같은 규약을 wiki-schema.md §2 서두에도 적어 두 곳에서 보이게 했다(한쪽만 보고 지나치지 않게).
+#  같은 규약을 schema-types.md §2 서두에도 적어 두 곳에서 보이게 했다(한쪽만 보고 지나치지 않게).
 # 이름이 **다른 의미의 일반어로 재사용**되면(예: 타입명이 아닌 문맥의 같은 단어) 오탐이 나므로,
 #  그때는 사유란에 문맥 한정을 적거나 그 이름을 목록에서 뺀다.
 RETIRED_TYPES = {}
@@ -805,7 +811,7 @@ def check_budget_stages(ops_rules_text, lint):
 
 
 # ⑪ 예산 트리거 조건 어휘 유일성 — 예산 처방의 발동·종료·재발동·승급 조건은
-#  wiki-schema §7-2(와 임계 정본인 SKILL '## 예산 단계 신호' 표)에서만 서술하고,
+#  schema-budget §7-2(와 임계 정본인 SKILL '## 예산 단계 신호' 표)에서만 서술하고,
 #  다른 자리는 조건을 적지 않고 `§7-2 발동 시` 포인터만 둔다(예외는 §7-2가 명시한
 #  `lint.py` 임계 상수 근거 주석 하나 — 아래 화이트리스트에 사유와 함께 등재돼 있다). 그 자리들이 저마다 조건을
 #  다시 쓰던 것이 v1.177 회차에서 6라운드 연속 드리프트를 낸 원인이다(헤딩은 「임박」인데
@@ -1427,6 +1433,51 @@ def _md_headings(text):
     return out
 
 
+# ⑮ 파일명 § 인용. 접두는 번들 세 파일의 이름이고 `.md`·백틱·따옴표·볼드 변형을 허용한다.
+#  § 뒤 번호는 `N`·`N.M`·`N-M` 이고 `·§M`(연쇄)·`~§M`(범위)을 이어 받는다. 번호는 탐욕으로
+#  끝까지 먹으므로 `§7-21` 이 `7-2` 로 잘리지 않는다.
+SCHEMA_CITE_RX = re.compile(
+    r"(?<![\w-])(wiki-schema|schema-types|schema-budget)(?:\.md)?[`\"]?\s?\*{0,2}"
+    r"(§\s?\d+(?:[.-]\d+)?(?:\s?[·~]\s?§\s?\d+(?:[.-]\d+)?)*)")
+_CITE_ITEM_RX = re.compile(r"§\s?(\d+)(?:([.-])(\d+))?")
+
+
+def check_schema_citations(bundle):
+    """⑮ 파일명 § 인용 → 그 § 헤딩이 실재하는 파일인가. `bundle` 은 {파일명: 본문}.
+
+    § 키 해석: `§7-2` 처럼 `## N-M.` 헤딩이 따로 있는 키는 그 헤딩을, 그 밖의 `§N-M`·`§N.M` 은
+    상위 `N` 을 본다(§7-21 은 §7 목록 항목, §2.8 은 §2 의 하위 절이다).
+    반환: (불일치 목록, 대조 인용 수)."""
+    where = {}
+    for fname, text in bundle.items():
+        for hm in re.finditer(r"^## (\d+(?:-\d+)?)\.", text, re.M):
+            where.setdefault(hm.group(1), []).append(fname)
+    root = os.path.dirname(os.path.dirname(SKILL_DIR))   # plugins/pjc
+    issues, checked = [], 0
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+        for fn in sorted(filenames):
+            if os.path.splitext(fn)[1] not in (".md", ".py", ".json", ".ps1"):
+                continue
+            path = os.path.join(dirpath, fn)
+            rel = os.path.relpath(path, os.path.dirname(os.path.dirname(root))).replace(os.sep, "/")
+            for no, line in enumerate(read(path).splitlines(), 1):
+                for m in SCHEMA_CITE_RX.finditer(line):
+                    cited = m.group(1) + ".md"
+                    for im in _CITE_ITEM_RX.finditer(m.group(2)):
+                        n, sep, sub = im.groups()
+                        key = f"{n}-{sub}" if sep == "-" and f"{n}-{sub}" in where else n
+                        checked += 1
+                        actual = where.get(key)
+                        label = im.group(0).replace(" ", "")
+                        if not actual:
+                            issues.append(f"{rel}:{no}: `{m.group(1)}` {label} — 번들에 없는 §")
+                        elif cited not in actual:
+                            issues.append(f"{rel}:{no}: `{m.group(1)}` {label} — 그 §는 "
+                                          f"{'·'.join(actual)} 에 있다")
+    return issues, checked
+
+
 def check_route_table(skill_text, ops_rules_text):
     """⑬ 라우팅 표가 지목한 절이 `wiki-ops-rules.md` 에 실재하는가.
 
@@ -1638,6 +1689,11 @@ def main():
     checked += route_checked
     mismatches.extend(route_issues)
     axes.append(("쓰기 규칙 절 라우팅", route_checked, "항목"))
+
+    cite_issues, cite_checked = check_schema_citations(bundle)
+    checked += cite_checked
+    mismatches.extend(cite_issues)
+    axes.append(("파일명 § 인용", cite_checked, "건"))
 
     print("== llm-wiki 상수 정합 셀프체크 (SKILL ↔ schema ↔ lint) ==")
     if mismatches:

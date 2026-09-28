@@ -39,7 +39,7 @@
 환경변수: LLM_WIKI_TODAY(ISO 날짜) — 시간 기반 판정의 「오늘」을 고정한다(_today 참조).
           골든 러너 전용 경로이며 일반 실행에는 설정하지 않는다.
 규칙 진실원천은 references/wiki-schema.md 번들(§2 는 schema-types.md, §4·§7-2·§8 은 schema-budget.md). 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
-(H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3~§4·이 파일 3중 동기화).
+(H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3 · schema-budget §4·이 파일 3중 동기화).
 """
 import os, re, sys, glob, shutil, datetime, subprocess, collections
 
@@ -88,13 +88,13 @@ BUDGET_CRITICAL_SLACK = 500
 BUDGET_REJUDGE_MARGIN = 0.10
 BUDGET_SPLIT_VOCAB = {"none"}
 
-BUDGET = {  # type -> 최대 문자 수 (wiki-schema.md §4와 일치 유지 — v1.138.0 줄 수→문자 수 전환)
+BUDGET = {  # type -> 최대 문자 수 (schema-budget.md §4와 일치 유지 — v1.138.0 줄 수→문자 수 전환)
     #  줄 수는 밀도를 못 담아(한 줄에 500자를 써도 통과) 예산이 무의미했다 → 문자 수로 전환.
     #  단 index.md는 '행 수(등록 항목 개수)'가 본질적 단위라 문자로 못 바꾼다(INDEX_* 별도 경로 유지),
     #  log.md도 이미 문자 수(SPECIAL_BUDGET). 즉 산문 타입만 이 딕셔너리로 문자 수 판정한다.
     "source-stub": 1800, "project": 13000, "feature": 22000,
     "entity": 6000, "concept": 5000, "question": 3500,
-    "decision-log": 6000,  # 결정 이력 (wiki-schema §2.8 — §7-2 발동 시 90_archive 원경로 이동)
+    "decision-log": 6000,  # 결정 이력 (schema-types §2.8 — §7-2 발동 시 90_archive 원경로 이동)
     #  작업 규약 (§2.9 — §7-2 발동 시 무효 항목 제거. 분리·재분할은 하지 않는다: 아래 BUDGET_OVER_ONLY_TYPES.
     #  아카이브 롤오버도 안 한다: 절차 K가 매 작업 전에 읽으므로 아카이브로 옮기면 조회 경로 밖이 되어 이동이 곧 유실이다)
     "convention": 12000,
@@ -147,17 +147,17 @@ def is_generated(rel):
 #  이 정규식과 어긋나는 접두를 위반으로 센다: 날짜 누락(`- [TAG]`)·형식 불일치(`[2026-7-2]`)·
 #  대괄호 없음(`- 2026-07-02 [TAG]`) 셋 다 여기서 걸린다.
 QUEUE_DATE_PREFIX_RX = re.compile(r"^\[\d{4}-\d{2}-\d{2}\]\s*$")
-# decision-log 항목 결정 어휘 (wiki-schema §2.8·§3 — 어긋나면 타임라인 합성·번복 추적 누락)
+# decision-log 항목 결정 어휘 (schema-types §2.8 · wiki-schema §3 — 어긋나면 타임라인 합성·번복 추적 누락)
 DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
-# §7-33 방향 풀어쓰기를 요구하는 판정 (wiki-schema §2.8) — 주제 자리에 행위·부정문이 오면
+# §7-33 방향 풀어쓰기를 요구하는 판정 (schema-types §2.8) — 주제 자리에 행위·부정문이 오면
 #  이 둘만 방향이 뒤집혀 읽힌다. 채택·번복은 주제와 방향이 같아 대상이 아니다.
 VERDICT_PROSE_REQUIRED = {"기각", "보류"}
-# §7-36 사실 오기 정정 표기 (wiki-schema §2.8) — 항목 불변의 예외라 **형식이 곧 감사 기록**이다.
+# §7-36 사실 오기 정정 표기 (schema-types §2.8) — 항목 불변의 예외라 **형식이 곧 감사 기록**이다.
 #  표기 없이 값만 덮어쓰면 무엇이 언제 왜 바뀌었는지가 사라져 불변 규칙을 우회하는 수단이 된다.
 #  「정정」이 들어간 항목만 보므로 정정하지 않은 기존 항목은 대상이 아니다.
 DECISION_FIX_RX = re.compile(
     r"\(정정 \d{4}-\d{2}-\d{2}: .+? → .+?, 근거 .+?\)")
-# §7-35 patterns(concept)의 관측 기록 절 이름 — wiki-schema §2.5가 정본.
+# §7-35 patterns(concept)의 관측 기록 절 이름 — schema-types §2.5가 정본.
 #  **이름을 하나로 고정하는 이유**: 조회자가 `confidence`를 「현재 실증 폭」으로 읽는데 그 필드는
 #  §2.5 「소급 비적용」상 **등재 시점 판정**이라 갈린다(실측 2026-09-07 — medium 20건 중 정확 절로 세어 5건, 아래 변형 이름까지 세면 6건이
 #  2~6개 프로젝트 관측). 폭을 볼 자리가 필요한데 실 vault의 절 이름이 5종으로 갈려 있어
@@ -226,7 +226,7 @@ CATEGORY_VOCAB = {"personal", "work"}
 # updated 필수 타입 (§7-9 — 필드가 없으면 미래날짜 검사가 조용히 건너뛰어져 추적 사각.
 #  source-stub은 불변 스텁이라 ingested를 쓰므로 제외)
 UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log", "convention"}
-# log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, wiki-schema §4·§8)
+# log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, schema-budget §4·§8)
 SPECIAL_BUDGET = {"log.md": 6000}
 # 타입별 **더 낮은 목표치** — 처방을 어디까지 수행하고 멈추는가(§7-2 종료 조건의 마지막 문장:
 #  "타입이 더 낮은 목표치를 따로 정하면 그쪽이 우선한다"). log.md만 §8이 3000자를 명시한다.
@@ -256,7 +256,7 @@ RELEASE_MARKER_EXEMPT_TYPES = {"decision-log", "question"}
 #  question을 넣지 않은 이유: 항목 불변 규정이 없어 본문 편집이 가능하고, 인용 원문의 이모지는
 #  대개 코드펜스 안이라 strip_code가 이미 걷어낸다.
 EMOJI_EXEMPT_TYPES = {"decision-log"}
-# index.md 분할 신호 임계 (wiki-schema.md §4 — index.md 초과는 B/F 세션이 2단계 파일 분할을 자동 수행,
+# index.md 분할 신호 임계 (schema-budget.md §4 — index.md 초과는 B/F 세션이 2단계 파일 분할을 자동 수행,
 #   sub-index(순번 파일) 초과는 순번 파일(index-{cat}-{n}.md)로 자동 분할)
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
 INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 수
@@ -363,7 +363,7 @@ def fenced_interior_chars(text):
     """guide 예산 판정용: 백틱 코드 펜스(```)의 '내부' 문자 수를 센다(여닫는 구분자 줄은 판정에서 제외).
     platform-bootstrap·ui-ux 가이드는 분할 불가능한 페이로드(샘플 템플릿·예제)가 펜스에 실리므로
     예산(산문 비대 억제)에서 펜스 내부를 제외한다 — recipe는 스니펫이 본체(예산이 펜스 포함 보정값)라
-    비적용(wiki-schema §2.6·§4·§7-2).
+    비적용(schema-types §2.6 · schema-budget §4·§7-2).
     여닫이가 안 맞으면(미종결 펜스) 0을 반환해 전체 문자 수로 판정한다(비대 은폐 방지 — 보수 폴백).
     문자 수 계산은 각 내부 줄의 길이 + 줄바꿈 1자로 하되(전체 len(text)와 같은 기준), 여닫는 구분자 줄은
     제외해 전체 문자 수에서 빼면 산문분만 남는다(v1.138.0 줄 수→문자 수 전환).
@@ -642,7 +642,7 @@ def feat_row_name(line, guide_stems=None):
     폐지하고 이 검사에 흡수했다.
 
     ②가 wikilink 첫 컬럼을 함께 받는 이유: **생성 마커가 없는 vault는 `## 가이드 / 레시피` 섹션을
-    그대로 유지**하고(wiki-schema §4의 마커 없는 vault 분기) 그 행은 첫 컬럼이 wikilink다. 평문만
+    그대로 유지**하고(schema-budget §4의 마커 없는 vault 분기) 그 행은 첫 컬럼이 wikilink다. 평문만
     받으면 그 vault의 guide 행은 폐지된 전용 검사에도 이 검사에도 걸리지 않아 **병기 무신호 구간**이
     생긴다 -- 폐지가 만든 공백이라 하위호환 형상을 여기서 함께 받는다."""
     feat_prefix, guide_seg = FEAT_ROW_TARGET_TOKENS
@@ -1020,7 +1020,7 @@ def _sub_index_text(name, rows):
                 " (recipe·platform-bootstrap·ui-ux 전 종류를 한 표에 담는다)")
     else:
         title = ("개인" if name.endswith("personal") else "업무") + " 프로젝트 기능별 인덱스"
-        lead = "[[index|위키 인덱스]]에서 분할된 기능별 인덱스 (wiki-schema §4 2단계)"
+        lead = "[[index|위키 인덱스]]에서 분할된 기능별 인덱스 (schema-budget §4 2단계)"
     return ("---\ntype: index\ntags: [index, navigation, %s]\n---\n\n"
             "# %s\n\n> %s. **이 파일은 `--build-index`가 생성한다 --"
             " 수기 편집은 다음 생성에서 사라진다.**\n\n"
@@ -3077,7 +3077,7 @@ def main():
             #  실패했거나 아직 안 돈 상태이므로 그때는 알려야 한다).
             if st.over:
                 warn(f"예산 초과: {r} {chars}/{st.budget}자 "
-                     f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (wiki-schema §8)", r)
+                     f"— 오래된 항목을 90_archive/log/로 롤오버 필요 (schema-budget §8)", r)
         elif not in_archive:
             # 판정은 budget_state 공용 — 조건을 여기 다시 쓰지 않는다(그 함수 docstring 참조).
             #  guide_kind 통제어휘 WARN은 예산 판정이 아니라 「값 위반 가시화」라 여기 남는다.
@@ -3102,9 +3102,9 @@ def main():
                 # 수리 경로가 정해진 타입은 초과 시점에도 그 처방을 병기한다 — 임박 WARN에서만
                 #  안내하고 초과 WARN에서 침묵하면, 정작 고쳐야 할 시점에 방법을 못 받는다.
                 hint = {
-                    "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (wiki-schema §2.8)",
-                    "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약은 conventions.md로 분리 (wiki-schema §2.2·§2.9)",
-                    "convention": " — 무효 항목을 제거한다 (wiki-schema §2.9)",
+                    "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (schema-types §2.8)",
+                    "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약은 conventions.md로 분리 (schema-types §2.2·§2.9)",
+                    "convention": " — 무효 항목을 제거한다 (schema-types §2.9)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{eff_note}){hint}", r)
             elif (budget and st.near and not is_lint_report(r) and not st.suppressed
@@ -3130,13 +3130,13 @@ def main():
                     #  `critical`로 두는 것은 이 갈래가 v1.207.0 이전과 **완전히 같은 동작**이기
                     #  때문이다(바뀐 것은 처방이 있는 파일이 여기서 빠졌다는 것뿐이다).
                     np_hint = {
-                        "project": " — '최근 주요 변경'이 5개 이하라 §2.2 롤오버 대상이 아니다. 작업 규약을 conventions.md로 분리 (wiki-schema §2.9)",
-                        "decision-log": " — 옮길 항목을 찾지 못했다. §2.8 롤오버 대상 형식을 확인 (wiki-schema §2.8)",
+                        "project": " — '최근 주요 변경'이 5개 이하라 §2.2 롤오버 대상이 아니다. 작업 규약을 conventions.md로 분리 (schema-types §2.9)",
+                        "decision-log": " — 옮길 항목을 찾지 못했다. §2.8 롤오버 대상 형식을 확인 (schema-types §2.8)",
                     }.get(typ, "")
                     if not np_hint:
-                        np_hint = (" — auto-split이 옮길 `## ` 경계가 없다. 주제별 헤딩으로 구역화 (wiki-schema §4)"
+                        np_hint = (" — auto-split이 옮길 `## ` 경계가 없다. 주제별 헤딩으로 구역화 (schema-budget §4)"
                                    if typ in RELOCATE_TYPES
-                                   else " — 이 타입에는 auto-split 처방이 없다. 내용을 줄이거나 상위·하위로 옮겨야 한다 (wiki-schema §4)")
+                                   else " — 이 타입에는 auto-split 처방이 없다. 내용을 줄이거나 상위·하위로 옮겨야 한다 (schema-budget §4)")
                     warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
                          f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
                          f"{np_hint}", r)
@@ -3152,7 +3152,7 @@ def main():
                              f"({eff_chars / budget * 100:.0f}%, type={typ}) "
                              f"— 재판정 마진 초과 시 자동 재발화")
 
-        # platform 통제어휘 (90_archive/ 제외 — 동결 백업은 wiki-schema §2.8·§8 자동 제외 원칙)
+        # platform 통제어휘 (90_archive/ 제외 — 동결 백업은 schema-types §2.8 · schema-budget §8 자동 제외 원칙)
         plat = fm.get("platform")
         if plat and plat not in PLATFORM_VOCAB and not in_archive:
             errors.append(f"platform 통제어휘 위반: {r} -> '{plat}'")
@@ -3164,7 +3164,7 @@ def main():
         if cat and cat not in CATEGORY_VOCAB and not in_archive:
             errors.append(f"category 통제어휘 위반: {r} -> '{cat}' (personal|work — schema §3)")
 
-        # tech_stack 휘발성 버전 검사 (wiki-schema §2.1·§2.2·§7-11):
+        # tech_stack 휘발성 버전 검사 (schema-types §2.1·§2.2 · wiki-schema §7-11):
         #  ⓐ 소스 스텁 "기술 스택" 본문 줄, ⓑ project 허브 tech_stack frontmatter 값에서
         #  major.minor 이상 버전(\d+\.\d+) 발견 시 경고. ".NET 10"·"WinUI 3" 등 major-only는 미매칭(허용).
         if r.startswith("10_sources/"):
@@ -3299,7 +3299,7 @@ def main():
     if "index.md" in pages:
         itext = pages["index.md"][2]
 
-        # 분할 신호 (wiki-schema §4) — sub 합치기 전 index.md 본체로 측정
+        # 분할 신호 (schema-budget §4) — sub 합치기 전 index.md 본체로 측정
         idx_lines = itext.count("\n") + 1
         #  행수는 증상별 인덱스를 뺀 본문으로 잰다 -- 그 섹션 행은 첫 컬럼이 평문이고 해법
         #  컬럼이 `40_guides/`를 가리켜 is_feat_recipe_row에 걸리는데, 기능 등재가 아니라
@@ -3308,11 +3308,11 @@ def main():
         if idx_lines > INDEX_BODY_LINES or feat_rows > INDEX_FEAT_ROWS:
             infos.append(f"index.md 분할 대상: 본문 {idx_lines}줄(임계 {INDEX_BODY_LINES}), "
                          f"기능별 인덱스 {feat_rows}행(임계 {INDEX_FEAT_ROWS}) — B/F 세션이 "
-                         f"주 작업 완료 후 자동 분할(승인 불요, wiki-schema §4 2단계)")
+                         f"주 작업 완료 후 자동 분할(승인 불요, schema-budget §4 2단계)")
 
         # sub-index 분할 신호 (§7-14): 각 index-*.md 자체 크기도 측정.
         # sub-index(순번 파일)가 초과하면 순번 파일(index-{cat}-{n}.md)로 자동 분할한다
-        # (wiki-schema §4 3단계 — personal/work 종착 분류를 유지한 채 등록 순서로 순번 청크 증분).
+        # (schema-budget §4 3단계 — personal/work 종착 분류를 유지한 채 등록 순서로 순번 청크 증분).
         # 본문 줄수는 헤딩과 무관하게, 행수는 sub-index가 보유한 '## 기능별 인덱스' 헤딩 기준으로 측정.
         for sp in sub_files:
             try:
@@ -3326,14 +3326,14 @@ def main():
                 infos.append(
                     f"{os.path.basename(sp)} 순번 파일 자동 분할 대상: 본문 {s_lines}줄(임계 {INDEX_BODY_LINES}), "
                     f"기능별 인덱스 {s_rows}행(임계 {INDEX_FEAT_ROWS}) — `--build-index`를 한 번 "
-                    f"실행하면 순번 파일(index-{{cat}}-{{n}}.md)로 나뉜다(wiki-schema §4 3단계)")
+                    f"실행하면 순번 파일(index-{{cat}}-{{n}}.md)로 나뉜다(schema-budget §4 3단계)")
 
         # sub-index 목록 정합: 실재하는 index-*.md가 index.md에 언급(등록)됐는지.
         #  A(실재 파일) − B(index.md 언급) = 미등록 → WARN. 역방향(언급은 있으나 파일 없음)은
         #  wikilink면 위 깨진/경로없음 검사가 이미 잡으므로 신규 WARN을 내지 않는다(중복·모순 차단).
         # 순번 sub-index(index-work-1 등)의 '-\d+' suffix까지 stem으로 포착한다(비캡처 그룹 —
         #  findall이 전체 매치를 반환해 '-1'이 잘려 index-work로만 잡히던 §7-15 오탐 제거).
-        #  무순번 index-personal도 그대로 매치돼 회귀 없음(wiki-schema §4 3단계).
+        #  무순번 index-personal도 그대로 매치돼 회귀 없음(schema-budget §4 3단계).
         mentioned = set(re.findall(r"index-[a-z]+(?:-\d+)?", itext))
         for sp in sub_files:
             stem = os.path.basename(sp)[:-3]  # 예: 'index-personal'
@@ -3536,13 +3536,13 @@ def main():
         # ⓐ-정방향: 포인터가 가리키는 아카이브 파일 실재
         for m in dec_ptr_rx.finditer(text):
             if m.group(1) not in pages:
-                warn(f"decisions 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (wiki-schema §2.8)", r)
+                warn(f"decisions 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (schema-types §2.8)", r)
         # ⓑ 항목 결정 어휘 (하위 불릿은 들여쓰기라 ^- 매치에서 자연 제외)
         bad = sum(1 for ln in text.splitlines()
                   if dec_item_rx.match(ln) and not dec_vocab_rx.search(ln))
         if bad:
-            warn(f"decision-log 어휘 위반: {r} {bad}건 (고정 어휘 채택|보류|기각|번복 — wiki-schema §2.8)", r)
-        # ⓒ §7-33 기각·보류 항목의 방향 풀어쓰기 (wiki-schema §2.8).
+            warn(f"decision-log 어휘 위반: {r} {bad}건 (고정 어휘 채택|보류|기각|번복 — schema-types §2.8)", r)
+        # ⓒ §7-33 기각·보류 항목의 방향 풀어쓰기 (schema-types §2.8).
         #  **항목의 첫 판정만 본다** — 채택 항목의 본문이 대안을 "**기각**"으로 언급하는
         #  형태가 실 vault에 다수라(21건 중 6건), 줄 어디든 매치로 세면 그것들이 전부 잡힌다.
         #  괄호 부기는 `:`를 대체하지 못한다(§2.8) — 방향인 것과 메타 정보인 것이 같은 형태다.
@@ -3557,8 +3557,8 @@ def main():
                 vague += 1
         if vague:
             warn(f"decision-log 방향 미기재: {r} {vague}건 — 기각·보류는 판정 직후 "
-                 f"': {{실제 방향}}'이 필요하다(괄호 부기는 대체 불가, wiki-schema §2.8·§7-33)", r)
-        # ⓓ §7-36 사실 오기 정정 표기 형식 (wiki-schema §2.8).
+                 f"': {{실제 방향}}'이 필요하다(괄호 부기는 대체 불가, schema-types §2.8 · wiki-schema §7-33)", r)
+        # ⓓ §7-36 사실 오기 정정 표기 형식 (schema-types §2.8).
         #  항목 불변의 예외라 **표기가 곧 감사 기록**이다 — 「정정」을 적었는데 형식이
         #  어긋나면 무엇이 언제 왜 바뀌었는지가 남지 않아 불변 규칙을 우회하는 수단이 된다.
         #  「정정」이 든 항목만 보므로 정정하지 않은 기존 항목은 모집단 밖이다.
@@ -3574,7 +3574,7 @@ def main():
         if badfix:
             warn(f"decision-log 정정 표기 형식 위반: {r} {badfix}건 — "
                  f"'(정정 YYYY-MM-DD: {{옛 값}} → {{새 값}}, 근거 {{정본}})' 형식이 필요하다"
-                 f"(wiki-schema §2.8·§7-36)", r)
+                 f"(schema-types §2.8 · wiki-schema §7-36)", r)
     # ⓐ-역방향: 롤오버 아카이브가 실재하는데 대응 현행 파일에 포인터 미등재 (검색 유실).
     #  대응 현행 파일 자체가 없으면 절차 C 보존-삭제 이력이므로 건너뜀(§7-24).
     for r in pages:
@@ -3583,7 +3583,7 @@ def main():
         cur = r[len("90_archive/"):]
         if cur in pages and r not in pages[cur][2]:
             warn(f"decisions 아카이브 포인터 누락: {cur}의 '## 아카이브'에 {r} 미등재 "
-                 f"— 오래된 결정이 검색에서 유실 (wiki-schema §2.8)", cur)
+                 f"— 오래된 결정이 검색에서 유실 (schema-types §2.8)", cur)
 
     # 이동·분리한 내용의 도달 경로 정합 (§7-30): ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향
     #  ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향. 둘 다 "옮긴 자리를 읽는 경로"를 검사한다 —
@@ -3596,13 +3596,13 @@ def main():
         # ⓐ-정방향: 허브 포인터가 가리키는 changes 아카이브 실재
         for m in CHG_PTR_RX.finditer(text):
             if m.group(1) not in pages:
-                warn(f"변경 이력 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (wiki-schema §2.2·§8)", r)
+                warn(f"변경 이력 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (schema-types §2.2 · schema-budget §8)", r)
         # §7-31: 허브에 '## 작업 규약·주의사항' 잔존 = conventions.md 미마이그레이션 신호.
         #  INFO 고정 — 사용자가 점진 마이그레이션을 택했고(각 프로젝트 ingest 때 적용) WARN이면
         #  미마이그레이션 허브 전부가 매 lint마다 경고를 낸다. exit code 불변.
         if section(text, "작업 규약·주의사항"):
             infos.append(f"작업 규약 미마이그레이션: {r}의 '## 작업 규약·주의사항'을 "
-                         f"conventions.md로 이전 대상 (wiki-schema §2.9 — 다음 ingest에서 처리)")
+                         f"conventions.md로 이전 대상 (schema-types §2.9 — 다음 ingest에서 처리)")
     # ⓐ-역방향: changes 아카이브가 실재하는데 대응 현행 허브에 포인터 미등재 (검색 유실).
     #  경로 도출이 §7-24와 다르다 — decisions는 아카이브·현행이 같은 파일명이라 접두만 떼면 되지만,
     #  changes는 '90_archive/20_projects/{cat}/{proj}/changes.md' → 현행 허브 '20_projects/{cat}/{proj}.md'로
@@ -3614,7 +3614,7 @@ def main():
         hub = r[len("90_archive/"):-len("/changes.md")] + ".md"
         if hub in pages and r not in pages[hub][2]:
             warn(f"변경 이력 아카이브 포인터 누락: {hub}의 '## 아카이브'에 {r} 미등재 "
-                 f"— 롤오버한 변경 이력이 검색에서 유실 (wiki-schema §2.2·§8)", hub)
+                 f"— 롤오버한 변경 이력이 검색에서 유실 (schema-types §2.2 · schema-budget §8)", hub)
     # ⓑ conventions '## 하위 문서' 목록 ↔ 하위 파일 양방향.
     #  wikilink(무확장자)·평문 경로 둘 다 인정한다 — §7-24 포인터가 평문, §7-15 목록이 파일명 언급
     #  기준인 두 선례를 모두 수용(형식 위반은 §7-1 링크 검사가 별도로 본다).
@@ -3631,12 +3631,12 @@ def main():
         listed = {m.group(1) + ".md" for m in sub_conv_rx.finditer(section(text, "하위 문서") or "")}
         for t in sorted(listed):
             if t not in pages:
-                warn(f"규약 하위 문서 목록 깨짐: {r} -> {t} 없음 (wiki-schema §2.9)", r)
+                warn(f"규약 하위 문서 목록 깨짐: {r} -> {t} 없음 (schema-types §2.9)", r)
         prefix = r[:-len("conventions.md")] + "conventions-"
         for other in sorted(pages):
             if other.startswith(prefix) and other.endswith(".md") and other not in listed:
                 warn(f"규약 하위 문서 목록 누락: {r}의 '## 하위 문서'에 {other} 미등재 "
-                     f"— 분리한 규약이 조회 경로 밖(조회 홉 1 위반, wiki-schema §2.9)", r)
+                     f"— 분리한 규약이 조회 경로 밖(조회 홉 1 위반, schema-types §2.9)", r)
 
     # ⓓ guide 허브 `## 하위 문서` 목록 ↔ 하위 파일 양방향.
     #  convention과 달리 guide에는 `conventions-{주제}.md` 같은 **파일명 접두 규약이 없다** —
@@ -3666,7 +3666,7 @@ def main():
                   for t in wikilink_targets(section(pages[hub][2], "하위 문서") or "")}
         for t in sorted(listed):
             if t + ".md" not in pages:
-                warn(f"가이드 하위 문서 목록 깨짐: {hub} -> {t} 없음 (wiki-schema §2.6)", hub)
+                warn(f"가이드 하위 문서 목록 깨짐: {hub} -> {t} 없음 (schema-types §2.6)", hub)
         # 역방향: 이 허브를 복귀 링크한 같은 폴더 guide가 목록에 있는가
         folder = os.path.dirname(hub)
         hub_stem = hub[:-3]
@@ -3677,7 +3677,7 @@ def main():
             if hub_stem in back and other[:-3] not in listed:
                 warn(f"가이드 하위 문서 목록 누락: {hub}의 '## 하위 문서'에 {other} 미등재 "
                      f"— 이 허브를 가리키는 링크는 있는데 목록에 없어 조회 홉 1이 깨진다 "
-                     f"(하위가 아니라 단순 참조면 그 링크를 떼거나 목록에 올린다, wiki-schema §2.6)", hub)
+                     f"(하위가 아니라 단순 참조면 그 링크를 떼거나 목록에 올린다, schema-types §2.6)", hub)
 
     # ⓔ 자동 분할 하위(`{stem}-{n}.md`) ↔ 진입 파일 `## 하위 문서` 양방향 + 포인터 도달성.
     #  ⓑ·ⓓ는 타입이 정해진 두 경로(convention·guide)만 보는데, `--auto-split`은 feature·
@@ -3706,7 +3706,7 @@ def main():
                   for x in wikilink_targets(section(pages[parent][2], "하위 문서") or "")}
         if r[:-3] not in listed:
             warn(f"하위 문서 목록 누락: {parent}의 '## 하위 문서'에 {r} 미등재 "
-                 f"— 분리한 본문이 조회 경로 밖(조회 홉 1 위반, wiki-schema §4)", parent)
+                 f"— 분리한 본문이 조회 경로 밖(조회 홉 1 위반, schema-budget §4)", parent)
     #  정방향 — 목록이 가리키는 하위가 실재하는가(ⓑ·ⓓ가 보는 타입은 그쪽이 담당한다).
     for r, (fm, typ, text) in pages.items():
         if r.startswith("90_archive/") or typ in ("convention", "guide"):
@@ -3714,7 +3714,7 @@ def main():
         for tgt in sorted(wikilink_targets(section(text, "하위 문서") or "")):
             tf = tgt if tgt.endswith(".md") else tgt + ".md"
             if tf not in pages:
-                warn(f"하위 문서 목록 깨짐: {r} -> {tgt} 없음 (wiki-schema §4)", r)
+                warn(f"하위 문서 목록 깨짐: {r} -> {tgt} 없음 (schema-budget §4)", r)
     #  포인터 도달성 — 본문을 옮긴 자리에 남는 `**정본은 …의 「…」이다**`가 실제로 닿는가.
     #  **파일 실재만이 아니라 그 절 이름까지 본다** — 이것이 「옮겼는데 못 찾는」 상태를 잡는
     #  유일한 기계 확인이다(§7-1 링크 검사는 파일까지만 본다).
@@ -3725,11 +3725,11 @@ def main():
             tgt, sec_name = m.group(1), m.group(2)
             tf = tgt if tgt.endswith(".md") else tgt + ".md"
             if tf not in pages:
-                warn(f"정본 포인터 깨짐: {r} -> {tgt} 없음 (wiki-schema §4)", r)
+                warn(f"정본 포인터 깨짐: {r} -> {tgt} 없음 (schema-budget §4)", r)
             elif not re.search(r"(?m)^##[ \t]+" + re.escape(sec_name) + r"[ \t]*$",
                                pages[tf][2]):
                 warn(f"정본 포인터 절 없음: {r} -> {tgt}에 '## {sec_name}' 없음 "
-                     f"— 옮긴 본문에 닿지 못한다 (wiki-schema §4)", r)
+                     f"— 옮긴 본문에 닿지 못한다 (schema-budget §4)", r)
 
     # §7-32: feature의 한 `## ` 섹션이 통짜로 커서 부분 조회가 안 되는 상태를 알린다.
     #  **INFO 고정** -- 구역화는 내용 판단이라 코드가 대신할 수 없고(어디서 끊을지가 판단이다),

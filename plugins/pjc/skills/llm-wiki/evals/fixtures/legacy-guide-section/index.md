@@ -6,7 +6,7 @@ updated: 2026-08-21
 
 # LLM WIKI
 
-<!-- 생성 마커가 없는 vault는 wiki-schema §4의 마커 없는 vault 분기대로 `## 가이드 / 레시피`
+<!-- 생성 마커가 없는 vault는 schema-budget §4의 마커 없는 vault 분기대로 `## 가이드 / 레시피`
      섹션을 그대로 유지하고, 그 행은 첫 컬럼이 wikilink다. 통합 표 전용 판정(첫 컬럼 평문)만
      남기면 이 형상은 폐지된 가이드 섹션 전용 검사에도 §7-16에도 걸리지 않아 병기 무신호가 된다.
      feat_row_name 조건 ②가 `40_guides/` wikilink 첫 컬럼을 함께 받는 것을 이 fixture가 고정한다.
