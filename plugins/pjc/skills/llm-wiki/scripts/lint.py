@@ -2412,7 +2412,7 @@ def relocate_sections(ses):
         #  안의 `## `를 헤딩으로 오인**할 수 있어서다(여기 경계는 `_md_sections`가 잡은 것과
         #  같아야 한다). 필수 섹션마다 원문을 다시 훑지 않는 것은 그 덤이다.
         secmap = {ti: text[s:e] for ti, s, e in _md_sections(text)}
-        created, entries, moved = [], [], 0
+        created, entries = [], []
         cur = text
         while True:
             n = _next_sub_index(ses.vault, rel) + len(created)
@@ -2446,7 +2446,6 @@ def relocate_sections(ses):
             keep.add(title)
             created.append((sub_path, sub_rel, sub_text))
             entries.append((sub_rel[:-len(".md")], "%s — %s" % (label, title), title, label))
-            moved += 1
             nst = budget_state(rel, fm, cur)
             if not nst or budget_resolved(nst):
                 break

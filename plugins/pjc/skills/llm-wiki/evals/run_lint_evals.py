@@ -668,8 +668,10 @@ def check_case(case):
         problems = []
         if rc != 0:
             problems.append("build-index 종료코드 %d" % rc)
-        limit = case.get("expect_body_limit", 400)
-        if body_lines > limit and case.get("expect_under_limit", True):
+        # 임계는 lint.py 상수에서 읽는다 — 러너에 400 을 따로 적어 두면 lint 임계를 내려도
+        #  골든이 옛 기준으로 조용히 통과한다.
+        limit = load_lint_module().INDEX_BODY_LINES
+        if body_lines > limit:
             problems.append("본체 %d줄 > 임계 %d(덜어내기 미달)" % (body_lines, limit))
         for name in case.get("expect_aux_files", []):
             # **파일 이름이 아니라 그 파일의 미리보기 블록을 찾는다** — 덜어낸 구역은 본체에
@@ -716,7 +718,7 @@ def check_case(case):
             idx = fh.read()
         gen_subs = [s for s in subs if s != "index-notes.md"]
         total = sum(_rows(s) for s in gen_subs)
-        limit = case.get("expect_row_limit", 200)
+        limit = case.get("expect_row_limit", load_lint_module().INDEX_FEAT_ROWS)
         problems = []
         if rc != 0:
             problems.append("build-index 종료코드 %d" % rc)
@@ -773,6 +775,11 @@ def check_case(case):
             changed = sorted(k for k in set(dry_before) | set(dry_after)
                              if dry_before.get(k) != dry_after.get(k))
             return False, "--auto-split --dry-run이 파일을 변경함: " + ", ".join(changed)
+        # dry-run 은 진입 가드(미커밋 거부 등)를 건너뛰므로 git dirty 케이스도 0 이다 —
+        #  0 이 아니면 미리보기 경로 자체가 깨진 것이다.
+        if rc_dry != 0:
+            rmtree_force(tmp)
+            return False, "--auto-split --dry-run 종료코드 %d: %s" % (rc_dry, (err_dry or out_dry)[:200])
         # 실패 주입은 dry-run 무변경 확인 **뒤**에 건다 — dry-run은 실패 경로와 무관한
         #  계약이고, 앞에 걸면 그 계약이 「쓰지 못해서 안 바뀐 것」과 구분되지 않는다.
         restore = inject_split_failures(dest, case)

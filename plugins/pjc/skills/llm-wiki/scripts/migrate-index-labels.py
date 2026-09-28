@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """index.md의 표시 라벨을 각 페이지 frontmatter의 `index_label`로 역이관한다 (1회성).
 
+**레거시 — `index_label` 도입 전 형식 vault 전용이다.** 이미 이관한 vault(대부분의 페이지가
+`index_label`을 가진 vault)에서는 할 일이 없다. 배포 사용자 중 옛 형식 vault 가 남아 있을 수 있어
+유일한 이관 수단으로 남겨 둔다.
+
 사용법: python migrate-index-labels.py "<vault_path>" [--apply]
 
 기본은 dry-run이다 — 무엇을 넣을지만 출력하고 파일은 건드리지 않는다. `--apply`를 줘야 쓴다.

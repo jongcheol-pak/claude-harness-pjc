@@ -1,5 +1,5 @@
 {
-  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 31개 lint 검사 중 대표 19개(깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(§7-16 — 통합 표의 가이드 행까지 포함. 종전의 가이드 섹션 전용 검사는 폐지돼 여기에 흡수됐다)·시크릿·decision 어휘·index 부재·feature 각주·구현 방법 섹션 부재·updated 누락·관련 파일 섹션/경로(§7-21)·각주/관련 파일 경로 실존(§7-20·21)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산(§7-2)·이동·분리 도달 경로(§7-30 ⓐ정·ⓑ역·ⓒ인덱스 등록·ⓓguide 허브↔하위)·작업 규약 미마이그레이션(§7-31)). 나머지는 Deferred(plan 참조).",
+  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 번호가 부여된 §7 검사 36개 중 케이스가 인용하는 번호 32개(폐지 §7-3·27 언급 포함 — 집계는 케이스의 `§7-N` 인용. 괄호 안은 초기 대표 목록이다: 깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(§7-16 — 통합 표의 가이드 행까지 포함. 종전의 가이드 섹션 전용 검사는 폐지돼 여기에 흡수됐다)·시크릿·decision 어휘·index 부재·feature 각주·구현 방법 섹션 부재·updated 누락·관련 파일 섹션/경로(§7-21)·각주/관련 파일 경로 실존(§7-20·21)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산(§7-2)·이동·분리 도달 경로(§7-30 ⓐ정·ⓑ역·ⓒ인덱스 등록·ⓓguide 허브↔하위)·작업 규약 미마이그레이션(§7-31)). 골든이 없는 번호는 §7-4·5·10·13 — [에이전트] 항목(모델 판정)이다.",
   "cases": [
     {
       "fixture": "clean",
@@ -730,7 +730,6 @@
       ],
       "expect_min_subs": 3,
       "expect_total_rows": 406,
-      "expect_row_limit": 200,
       "rationale": "§4 3단계 순번 분할을 N>=3 경로로 실제로 태운다(feature 401개 생성). 2청크만 보면 세 번째 이후 경로가 미검증으로 남고 경계 오류는 대개 그 자리에서 난다. 함께 보는 것 넷 — 행 총계 보존(406 = 생성 401 + build-index 픽스처의 기존 feature·recipe 5), 각 파일이 임계 200 이하, index.md 목록에 전부 등재(조회 홉 1), 생성 대상 밖 sub-index 2개 자동 제거. index-notes.md(type: guide)는 이름이 index-*.md여도 생성물이 아니라 삭제되면 안 되는 델타 음성이다."
     },
     {
@@ -742,7 +741,6 @@
       ],
       "expect_min_subs": 2,
       "expect_total_rows": 405,
-      "expect_row_limit": 200,
       "rationale": "청크 경계가 임계의 배수와 정확히 맞아떨어지는 구간에서 빈 sub-index를 만들지 않는지(off-by-one). feature 400개 + 픽스처 기존 5행이라 청크가 정확히 나뉘는 자리를 지나며, 빈 파일이 생기면 러너가 잡는다."
     },
     {
@@ -1079,6 +1077,22 @@
         "expect": "## 기술 스택 지식 (tech/)\n\n| 기술 | 사용 |\n\n"
       },
       "rationale": "**괄호 부기 헤딩을 계속 받는다.** 위 `section` 케이스가 접두 오매치를 막으면서 경계를 줄 끝으로 좁혔는데, 그러면 `## 기술 스택 지식 (tech/)`처럼 **경로·범위를 괄호로 덧붙인** 헤딩을 못 찾는다 — 그 형태는 실 vault index.md 와 픽스처 셋에 실재하고, 못 찾으면 §7-14 행수·§7-16 병기 스코프가 조용히 0이 되어 **좁히기 전보다 나쁜 상태**가 된다. 두 케이스가 한 정규식의 **양쪽 경계**를 각각 누른다: 저쪽은 낱말이 이어지는 것을 거르고, 이쪽은 괄호가 이어지는 것을 받는다. 한쪽만 두면 다음 수정이 반대쪽으로 기울어도 아무도 모른다. **판정은 반환 전문이다** — 이 케이스가 없으면 괄호를 받는 순간 절이 EOF 까지 늘어난 것을 아무도 보지 못한다. 두 unit 케이스가 한 정규식의 **시작·끝 두 경계**를 함께 누른다: 저쪽은 낱말이 이어지는 헤딩을 거르고, 이쪽은 괄호를 받되 **다음 헤딩에서 끊기는지**까지 본다."
+    },
+    {
+      "fixture": "volatile-version",
+      "expect_keywords": [
+        "허브 tech_stack 휘발성 버전 기재",
+        "소스 스텁 휘발성 버전 기재"
+      ],
+      "rationale": "**§7-11 양성 — 기술 스택에 major.minor 버전을 적으면 WARN.** schema §2.1·§2.2 는 기술 스택을 이름만 적게 한다(버전의 진실원천은 코드). 종전 골든은 아카이브 제외 음성(§7-7·9·11 + BOM)뿐이라 이 판정을 지워도 green 이었다. 픽스처는 `clean` 에서 허브 `tech_stack` 의 `dotnet` → `dotnet 8.0`, 소스 스텁 「기술 스택」 줄의 `.NET` → `.NET 8.0` 두 곳만 바꿨다 — ⓐ 스텁 본문·ⓑ 허브 frontmatter 두 경로를 한 번에 누른다."
+    },
+    {
+      "fixture": "deprecated-notice",
+      "expect_keywords": [
+        "deprecated 표기 안내 누락",
+        "deprecated 페이지 1건"
+      ],
+      "rationale": "**§7-17 양성 — deprecated 인데 「코드에서 제거」 안내가 없으면 WARN, 현행 deprecated 수는 INFO 집계.** schema §2.3 이 deprecated 표기 시 안내를 요구한다. 종전 골든에 deprecated 키워드가 0건이라 이 판정을 지워도 green 이었다. 픽스처는 `clean` 의 feature `status: active` → `deprecated` 한 곳만 바꿨다(안내 문구는 넣지 않았다)."
     },
     {
       "fixture": "clean",
