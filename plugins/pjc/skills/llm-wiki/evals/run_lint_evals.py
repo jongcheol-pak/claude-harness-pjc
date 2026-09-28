@@ -480,6 +480,9 @@ def check_case(case):
         if "expect" not in u:
             return False, "unit 케이스에 기대값(`expect`)이 없음: " + u["func"]
         got = fn(*u.get("args", []))
+        # JSON 에는 tuple 이 없다 — 오프셋 쌍을 돌려주는 함수(`section_span`)는 list 로 대조한다.
+        if isinstance(got, tuple):
+            got = list(got)
         # **반환 전문을 대조한다** — 첫 줄만 재면 시작 경계만 고정되고 끝 경계가 무너져도
         #  통과한다(회차 45 완료 리뷰 2R 이 그 상태를 실측으로 잡았다).
         if got != u["expect"]:

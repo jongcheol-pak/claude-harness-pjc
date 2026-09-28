@@ -404,6 +404,30 @@ def strip_scaffold(text, probe=None):
     return prose, ptr + (len(sub) if sub else 0)
 
 
+def _section_rx(heading):
+    """'## {heading}' 섹션(헤딩 줄~다음 '## ' 또는 \\Z)의 경계 정규식 — `section()`·
+    `without_section()`·`section_span()` 공용. 셋이 경계를 따로 들면 읽기·제거·쓰기가 서로
+    다른 절을 보게 된다(`section_span`만 옛 `\\b` 경계로 남아 `## 아카이브`가 `## 아카이브 인덱스`를
+    물었던 것이 실제 사례다).
+
+    **줄 끝은 `\\r?$` 다** — 앞 둘은 정규화 텍스트를 받지만 `section_span`은 `--fix`의 원문을
+    받고, 그 원문은 CRLF vault 에서 `\\r\\n`을 그대로 갖는다. `re.M`의 `$`는 `\\n` 앞에서만
+    성립하므로 `$`로만 끝내면 CRLF 헤딩을 못 찾는다(정규화 텍스트에서는 둘이 같은 결과다).
+
+    헤딩 끝을 못박는다 — `\\b`만으로는 `## 아카이브`가 `## 아카이브 인덱스`를 먼저 물어,
+    롤오버 포인터를 넣으려던 코드가 **다른 섹션을 통째로 교체**한다(실측).
+    **괄호 부기는 받는다** — `## 기술 스택 지식 (tech/)`처럼 경로·범위를 괄호로 덧붙인
+    헤딩이 실 vault index.md 와 픽스처에 실재하고, 그것을 거르면 §7-14 행수·§7-16 병기
+    스코프가 조용히 0이 된다(좁히기 전보다 나쁜 상태다). 거르는 것은 **낱말이 이어지는
+    경우**뿐이다 — 그것이 다른 섹션이다.
+    **괄호 안은 `[^\\n]*` 로 한 줄에 묶는다** — `re.S` 아래서 `.` 는 개행을 먹으므로 `.*` 로
+    두면 탐욕 매치가 문서 끝까지 가고 `$` 가 마지막 줄에서 성립해 **헤딩부터 EOF 전체가 한
+    절**이 된다. 그 반환값으로 `_replace_section` 이 통째 치환하니 절 하나를 고치려던 편집이
+    문서 뒷부분을 통째로 지운다(회차 45 완료 리뷰 2R 실측)."""
+    return re.compile(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\([^\n]*)?\r?$.*?(?=^##\s|\Z)",
+                      re.M | re.S)
+
+
 def section(text, heading, probe=None):
     """본문에서 '## {heading}' 섹션(헤딩 줄부터 다음 '## ' 헤딩 또는 문서 끝까지)을 반환, 없으면 None.
     기능별 인덱스(§7-6·14)·레포 정보(§7-20)·아카이브 인덱스(§7-19)·미해결 질문(§7-23) 공용 —
@@ -419,18 +443,8 @@ def section(text, heading, probe=None):
     위해서다(`_md_sections`와 같은 이유·같은 계약)."""
     if probe is None:
         probe = strip_code(text)
-    # 헤딩 끝을 못박는다 — `\b`만으로는 `## 아카이브`가 `## 아카이브 인덱스`를 먼저 물어,
-    #  롤오버 포인터를 넣으려던 코드가 **다른 섹션을 통째로 교체**한다(실측).
-    #  **괄호 부기는 받는다** — `## 기술 스택 지식 (tech/)`처럼 경로·범위를 괄호로 덧붙인
-    #  헤딩이 실 vault index.md 와 픽스처에 실재하고, 그것을 거르면 §7-14 행수·§7-16 병기
-    #  스코프가 조용히 0이 된다(좁히기 전보다 나쁜 상태다). 거르는 것은 **낱말이 이어지는
-    #  경우**뿐이다 — 그것이 다른 섹션이다.
-    #  **괄호 안은 `[^\n]*` 로 한 줄에 묶는다** — `re.S` 아래서 `.` 는 개행을 먹으므로 `.*` 로
-    #  두면 탐욕 매치가 문서 끝까지 가고 `$` 가 마지막 줄에서 성립해 **헤딩부터 EOF 전체가 한
-    #  절**이 된다. 그 반환값으로 `_replace_section` 이 통째 치환하니 절 하나를 고치려던 편집이
-    #  문서 뒷부분을 통째로 지운다(회차 45 완료 리뷰 2R 실측).
-    m = re.search(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\([^\n]*)?$.*?(?=^##\s|\Z)",
-                  probe, re.M | re.S)
+    # 경계 규칙(헤딩 끝 고정·괄호 부기·CRLF)의 근거는 `_section_rx` docstring.
+    m = _section_rx(heading).search(probe)
     return text[m.start():m.end()] if m else None
 
 
@@ -446,11 +460,26 @@ def without_section(text, heading, probe=None):
     제거는 **뒤에서부터** 한다 — 앞을 먼저 지우면 뒤 매치의 오프셋이 밀린다."""
     if probe is None:
         probe = strip_code(text)
-    pat = re.compile(r"^##\s*" + re.escape(heading) + r"[ \t]*(?:\([^\n]*)?$.*?(?=^##\s|\Z)",
-                     re.M | re.S)
-    for m in reversed(list(pat.finditer(probe))):
+    for m in reversed(list(_section_rx(heading).finditer(probe))):
         text = text[:m.start()] + text[m.end():]
     return text
+
+
+def section_span(raw, heading, probe=None):
+    """섹션의 (시작, 끝) 오프셋. 없으면 None.
+
+    **`section()`과 같은 경계(`_section_rx`)를 쓴다** — 이쪽은 `--fix`의 **쓰기** 경로다.
+    한쪽만 펜스를 세거나 경계를 달리 들면 「읽기는 없다고 보고 쓰기는 다른 절에 넣는」 상태가
+    되어 같은 수정이 2회째에도 수렴하지 않는다. 판정은 `strip_code` 사본에서 하고 **오프셋은
+    길이 보존이라 원문에 그대로 쓴다**(`section()`·`_md_sections`와 같은 계약). 원문은 CRLF 일
+    수 있다 — 그래서 헬퍼의 줄 끝이 `\\r?$` 다.
+
+    Match가 아니라 오프셋 쌍을 돌려주는 이유는 `group(0)`이 사본의 조각이 되기 때문이다 —
+    호출부가 원문을 잘라 쓰도록 반환형으로 못박는다."""
+    if probe is None:
+        probe = strip_code(raw)
+    m = _section_rx(heading).search(probe)
+    return (m.start(), m.end()) if m else None
 
 
 def wikilink_targets(text):
@@ -2714,21 +2743,6 @@ def apply_fixes(vault, dry_run=False):
     def remove_lines(raw_seg, pred):
         kept = [ln for ln in raw_seg.splitlines(keepends=True) if not pred(ln)]
         return "".join(kept), len(raw_seg.splitlines()) - len(kept)
-
-    def section_span(raw, heading, probe=None):
-        """섹션의 (시작, 끝) 오프셋. 없으면 None.
-
-        **`section()`과 같은 경계를 쓴다** — 이쪽은 `--fix`의 **쓰기** 경로다. 한쪽만 펜스를
-        세면 「읽기는 없다고 보고 쓰기는 펜스 안에 넣는」 상태가 되어 같은 수정이 2회째에도
-        수렴하지 않는다. 판정은 `strip_code` 사본에서 하고 **오프셋은 길이 보존이라 원문에
-        그대로 쓴다**(`section()`·`_md_sections`와 같은 계약).
-
-        Match가 아니라 오프셋 쌍을 돌려주는 이유는 `group(0)`이 사본의 조각이 되기 때문이다 —
-        호출부가 원문을 잘라 쓰도록 반환형으로 못박는다."""
-        if probe is None:
-            probe = strip_code(raw)
-        m = re.search(r"(?m)^##\s*" + re.escape(heading) + r"\b.*?(?=^##\s|\Z)", probe, re.S)
-        return (m.start(), m.end()) if m else None
 
     def insert_into_section(raw, heading, new_line, cell=None):
         """섹션 끝(후행 공백줄 앞)에 행 삽입. 섹션이 없으면 문서 끝에 신설(기계적 — 골격 규약 준수).
