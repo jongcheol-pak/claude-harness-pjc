@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SKILL.md ↔ wiki-schema.md ↔ lint.py 공유 상수 정합 셀프체크.
+"""SKILL.md ↔ schema 번들(wiki-schema.md · schema-types.md · schema-budget.md) ↔ lint.py 공유 상수 정합 셀프체크.
 
 사용법: python check_consistency.py   (인자 없음 — 번들 내 상대 위치로 세 파일을 찾는다)
        python check_consistency.py --trigger-report
@@ -14,8 +14,8 @@
 무엇을: llm-wiki의 공유 상수(파일 예산·통제 어휘)는 네 곳에 존재한다 —
   ① lint.py 상수(BUDGET·GUIDE_BUDGET·SPECIAL_BUDGET·INDEX_*·*_VOCAB)
   ② references/wiki-ops-rules.md '## 파일 예산' 표 (v1.180.0 T8이 SKILL.md에서 분리)
-  ③ wiki-schema.md 타입별 '- **예산**: ~N줄' 줄 (§2.x)
-  ④ wiki-schema.md §4 예산 표 (schema 내 이중 표현 — ③과 ④가 서로 어긋나는 것도 잡는다)
+  ③ schema-types.md 타입별 '- **예산**: ~N줄' 줄 (§2.x)
+  ④ schema-budget.md §4 예산 표 (schema 번들 내 이중 표현 — ③과 ④가 서로 어긋나는 것도 잡는다)
 번들 규약 H-2(references/procedures-ops.md 하단 '(참고)' 블록)는 이들의 수동 동기화를
 요구하는데, 사람이 한 곳을 고치고 나머지를 놓치면 드리프트가 조용히 생긴다.
 이 스크립트가 그 드리프트를 기계로 잡는다.
@@ -26,7 +26,7 @@
 파일 개명·헤딩 소실·중복·표에 없는 스트레이 헤딩 시 라우팅이 허공을 가리킴). 문자 집합은 표에서
 동적으로 캡처한다([A-L] 하드코딩 금지 — 절차 M이 추가돼도 검사에서 조용히 빠지지 않게).
 
-또한 ⑥ wiki-schema.md 목차(부분 Read 인덱스)의 § 번호 ↔ 실제 '## N.' 헤딩 정합을 검사한다 —
+또한 ⑥ wiki-schema.md 목차(부분 Read 인덱스)의 § 번호·「파일」 열 ↔ 그 파일의 실제 '## N.' 헤딩 정합을 검사한다 —
 부분 Read 세션은 전체 정독이 금지라 목차가 낡아도 자가 교정 기회가 없으므로 기계로 잡는다.
 
 그리고 ⑦ procedures-ops.md F-1 실행 순서 인덱스 ↔ wiki-schema.md §7 검사 항목의 번호 집합
@@ -95,6 +95,10 @@ EVALS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(EVALS_DIR)
 SKILL_MD = os.path.join(SKILL_DIR, "SKILL.md")
 SCHEMA_MD = os.path.join(SKILL_DIR, "references", "wiki-schema.md")
+# schema 번들은 세 파일이다 — §2 는 types, §4·§7-2·§8 은 budget 으로 나갔다(§ 번호는 유지).
+#  축마다 자기 절이 사는 파일을 읽는다. 코어(`SCHEMA_MD`)에는 목차와 나머지 § 가 남는다.
+SCHEMA_TYPES_MD = os.path.join(SKILL_DIR, "references", "schema-types.md")
+SCHEMA_BUDGET_MD = os.path.join(SKILL_DIR, "references", "schema-budget.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
 # 절차 K 5~6(큐 기록 규약)은 v1.218.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 3건의 귀속이 함께 옮겨간다.
 QUEUE_RULES_MD = os.path.join(SKILL_DIR, "references", "queue-rules.md")
@@ -193,7 +197,7 @@ def parse_ops_rules_budget(text):
 def parse_schema_table_budget(text):
     m = re.search(r"^## 4\. 파일 예산\n(.*?)(?=^### |^## |\Z)", text, re.M | re.S)
     if not m:
-        die("wiki-schema.md '## 4. 파일 예산' 섹션을 찾지 못함")
+        die("schema-budget.md '## 4. 파일 예산' 섹션을 찾지 못함")
     return parse_budget_table(m.group(1), "schema §4 표")
 
 
@@ -202,7 +206,7 @@ def parse_schema_type_budget(text):
     rows = {}
     sections = list(SCHEMA_TYPE_HEADING_RX.finditer(text))
     if not sections:
-        die("wiki-schema.md '### 2.N <type>' 헤딩을 찾지 못함")
+        die("schema-types.md '### 2.N <type>' 헤딩을 찾지 못함")
     for i, hm in enumerate(sections):
         typ = hm.group(1)
         end = sections[i + 1].start() if i + 1 < len(sections) else len(text)
@@ -333,27 +337,41 @@ def check_procedure_placement(skill_text):
     return issues, checked
 
 
-def check_schema_toc(schema_text):
-    """⑥ schema 목차(부분 Read 인덱스) 정합 — 목차 표의 § 번호 ↔ 실제 '## N.' 헤딩 1:1.
+def check_schema_toc(schema_text, bundle):
+    """⑥ schema 목차(부분 Read 인덱스) 정합 — 목차 표의 § 번호·「파일」 열 ↔ 그 파일의 '## N.' 헤딩 1:1.
 
     목차는 손으로 유지하는 표라 § 삽입·재번호 시 조용히 낡는데, 부분 Read 세션은 전체 정독이
     금지라 낡은 목차를 자가 교정할 기회가 없다 — 기계로 잡는다. 제목 문구는 대조하지 않는다
-    (목차의 내용 열은 요약 표현을 허용). 반환: (불일치 목록, 대조 항목 수)."""
+    (목차의 내용 열은 요약 표현을 허용).
+
+    번들이 세 파일로 나뉜 뒤로 목차는 **어느 파일을 열지**도 정한다 — 마지막 열의 첫 백틱
+    파일명이 그 § 의 `## N.` 헤딩을 실제로 가진 파일이어야 한다. **정수 § 만 대조한다**:
+    budget 의 `## 7-2.` 는 §7 목록 항목의 본문이라 목차에 자기 행이 없다(7행은 코어를 가리킨다).
+    `bundle` 은 {파일명: 본문}. 반환: (불일치 목록, 대조 항목 수)."""
     m = re.search(r"^## 목차[^\n]*\n(.*?)(?=^## |\Z)", schema_text, re.M | re.S)
     if not m:
         die("wiki-schema.md '## 목차' 섹션을 찾지 못함")
-    toc = {int(rm.group(1)) for rm in re.finditer(r"^\|\s*(\d+)\s*\|", m.group(1), re.M)}
+    toc = {}
+    for rm in re.finditer(r"^\|\s*(\d+)\s*\|.*\|\s*`([^`]+)`[^|]*\|\s*$", m.group(1), re.M):
+        toc[int(rm.group(1))] = rm.group(2)
     if not toc:
-        die("wiki-schema.md 목차 표에서 § 행을 하나도 파싱하지 못함")
-    heads = {int(hm.group(1)) for hm in re.finditer(r"^## (\d+)\.", schema_text, re.M)}
+        die("wiki-schema.md 목차 표에서 § 행(끝 열에 파일명)을 하나도 파싱하지 못함")
+    heads = {}
+    for fname, text in bundle.items():
+        for hm in re.finditer(r"^## (\d+)\.", text, re.M):
+            heads.setdefault(int(hm.group(1)), []).append(fname)
     if not heads:
-        die("wiki-schema.md '## N.' 헤딩을 하나도 찾지 못함")
+        die("schema 번들에서 '## N.' 헤딩을 하나도 찾지 못함")
     issues = []
-    for n in sorted(toc - heads):
-        issues.append(f"schema 목차에 §{n} 행이 있으나 '## {n}.' 헤딩 없음")
-    for n in sorted(heads - toc):
-        issues.append(f"schema '## {n}.' 헤딩이 목차(부분 Read 인덱스)에 미등록")
-    return issues, len(toc | heads)
+    for n in sorted(set(toc) - set(heads)):
+        issues.append(f"schema 목차에 §{n} 행이 있으나 번들 어디에도 '## {n}.' 헤딩 없음")
+    for n in sorted(set(heads) - set(toc)):
+        issues.append(f"schema '## {n}.' 헤딩({'·'.join(heads[n])})이 목차(부분 Read 인덱스)에 미등록")
+    for n in sorted(set(toc) & set(heads)):
+        if heads[n] != [toc[n]]:
+            issues.append(f"schema 목차 §{n} 행의 파일 열이 `{toc[n]}` 인데 '## {n}.' 헤딩은 "
+                          f"{'·'.join(heads[n])}에 있다")
+    return issues, len(set(toc) | set(heads))
 
 
 def check_f1_schema7(ops_text, schema_text):
@@ -487,6 +505,8 @@ def check_prose_pointers(skill_text, schema_text):
             os.path.join(SKILL_DIR, "references", "procedures-content.md")),
         "references/procedures-ops.md": read(OPS_MD),
         "references/wiki-schema.md": schema_text,
+        "references/schema-types.md": read(SCHEMA_TYPES_MD),
+        "references/schema-budget.md": read(SCHEMA_BUDGET_MD),
     }
     issues = []
     checked = 0
@@ -512,7 +532,7 @@ def check_prose_pointers(skill_text, schema_text):
     return issues, checked
 
 
-def check_templates_types(schema_text):
+def check_templates_types(types_text):
     """⑨ templates.md ↔ schema §2 타입 집합 정합.
 
     H-2 규약은 "타입 템플릿·주석이 바뀌면 references/templates.md도 함께 동기"를 요구하나,
@@ -527,9 +547,9 @@ def check_templates_types(schema_text):
     tmpl_types = set(re.findall(r"^type:\s*([a-z][a-z-]*)$", tmpl_text, re.M))
     if not tmpl_types:
         die("templates.md에서 'type:' frontmatter 값을 하나도 찾지 못함")
-    schema_types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(schema_text)}
+    schema_types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(types_text)}
     if not schema_types:
-        die("wiki-schema.md '### 2.N <type>' 헤딩을 찾지 못함(⑨)")
+        die("schema-types.md '### 2.N <type>' 헤딩을 찾지 못함(⑨)")
     issues = []
     for t in sorted(schema_types - tmpl_types):
         issues.append(f"schema §2 타입 '{t}'가 templates.md에 없음(템플릿 누락 — H-2 동기 위반)")
@@ -621,7 +641,7 @@ def _enum_span(text, rx, label):
     return m.group(1)
 
 
-def check_type_enumerations(schema_text, lint):
+def check_type_enumerations(schema_text, types_text, bundle, lint):
     """⑩ 신규 타입 열거 누락 정합.
 
     새 페이지 타입을 도입할 때 **기존 타입이 산문으로 열거된 자리**가 조용히 낡는 사각을 잡는다
@@ -639,10 +659,12 @@ def check_type_enumerations(schema_text, lint):
     열어야 하는데 그러면 산문 단어 오탐이 들어온다 — 의식적 트레이드오프다(F-7 m2).
     **그 반대 방향은 B5가 목록 등재분에 한해서만 본다**(`RETIRED_TYPES`) — 자동 확장이 아니라
     사람이 적은 이름만 보므로 위 어휘 한정을 깨지 않는다. 즉 미등재 삭제 이름은 여전히 통과한다.
+    **읽는 파일이 셋으로 갈린다** — 타입 집합(`### 2.N`)은 `types_text`, 열거 자리(A1·A2·A5~A7·
+    B1·B2·B4)는 전부 코어 `schema_text`, B5 유령 이름은 번들 세 파일(`bundle`) 전부다.
     반환: (불일치 목록, 대조 항목 수)."""
-    types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(schema_text)}
+    types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(types_text)}
     if not types:
-        die("wiki-schema.md '### 2.N <type>' 헤딩을 찾지 못함(⑩)")
+        die("schema-types.md '### 2.N <type>' 헤딩을 찾지 못함(⑩)")
     issues = []
     checked = 0
 
@@ -714,7 +736,7 @@ def check_type_enumerations(schema_text, lint):
     #  (하이픈 복합 타입명이 잘리거나 '20_projects'의 project가 물리는 것을 함께 막는다).
     checked += 1
     for name, reason in sorted(RETIRED_TYPES.items()):
-        ghosts = [label for label, text in (("wiki-schema.md", schema_text), ("templates.md", tmpl_text))
+        ghosts = [label for label, text in list(bundle.items()) + [("templates.md", tmpl_text)]
                   if re.search(r"(?<![a-z-])" + re.escape(name) + r"(?![a-z-])", text)]
         if ghosts:
             issues.append(f"타입 열거 'B5-retired' 유령 이름: 삭제된 타입 '{name}'이 "
@@ -837,7 +859,9 @@ def _trigger_scan_scope():
 # 정본 앵커 — 구간이다(줄이 아니다). §7-2는 착수 시점에 한 줄이지만 소불릿으로 나뉘면
 #  여러 줄이 되므로, 줄로 잡으면 정본을 정리하는 순간 그 정리가 위반으로 잡힌다.
 TRIGGER_ANCHORS = {
-    SCHEMA_MD: (r"^2\. \*\*예산 준수\*\*", r"^3\. \*\*"),
+    # §7-2 본문은 schema-budget.md 의 `## 7-2.` 절로 옮겨 갔다 — 끝은 다음 절 `## 8.` 이다.
+    #  코어 §7 에 남은 번호 포인터 줄도 같은 시작 문면이라 **파일로 갈라야** 한 건 매치가 선다.
+    SCHEMA_BUDGET_MD: (r"^2\. \*\*예산 준수\*\*", r"^## 8\. "),
     OPS_RULES_MD: (r"^## 예산 단계 신호", r"^## "),
 }
 
@@ -871,24 +895,24 @@ BUDGET_PARTIAL_SOURCE_OK = {
 #  그 벌 수를 열거에 적어 두면 벌 수가 달라지는 것 자체가 신호가 된다.
 TRIGGER_ALLOWLIST = [
     # ── index 줄/행 축(§7-14) — 문자 예산이 아니라 본문 400줄·기능별 인덱스 200행이 트리거다
-    (SCHEMA_MD, ["| index.md | 제한 없음", "400줄 초과 또는 기능별 인덱스 200행 초과", "200행)를 넘으면", "가 초과하면 `index-{cat}-1.md`", "초과분을 `index-{cat}-2.md`", "순번 파일이 또 초과하면"], "§7-14 index 트리거 — 줄/행 기준이라 문자 예산 무관"),
-    (SCHEMA_MD, ['**트리거는 "그 시점 임계 초과"**', "이번 세션이 만든 초과인지 이전부터 넘어 있었는지", "기존 초과를 넘기면"], "§7-14 index 분할 트리거의 시점 규정"),
-    (SCHEMA_MD, ["> lint §7-14 INFO(본문 400줄", "200행 초과)를 받았을 때"], "§4 분할 수행 절차 서두의 §7-14 신호 인용"),
-    (SCHEMA_MD, ["- **범위는 2단계 category 분할과 3단계", "`index-{cat}.md` 초과 시", "본체가 임계를 넘으면"], "index 분할 자동화 근거(2·3단계 라우팅 결정론) — §7-14 축"),
-    (SCHEMA_MD, ["- **수행 시점은 그 세션의 주 작업 완료 후**다", "직후 다시 임계를 넘는다"], "index 분할 수행 시점 — 「임계를 넘는다」는 §7-14 축"),
-    (SCHEMA_MD, "- **3단계(순번)**: 초과한 sub-index가 무순번", "index 3단계 순번 분할 — §7-14 축"),
-    (SCHEMA_MD, ["3. **내용 이동(잘라내기)**", "3단계면 초과분을"], "index 분할의 초과분 이동 — §7-14 축"),
+    (SCHEMA_BUDGET_MD, ["| index.md | 제한 없음", "400줄 초과 또는 기능별 인덱스 200행 초과", "200행)를 넘으면", "가 초과하면 `index-{cat}-1.md`", "초과분을 `index-{cat}-2.md`", "순번 파일이 또 초과하면"], "§7-14 index 트리거 — 줄/행 기준이라 문자 예산 무관"),
+    (SCHEMA_BUDGET_MD, ['**트리거는 "그 시점 임계 초과"**', "이번 세션이 만든 초과인지 이전부터 넘어 있었는지", "기존 초과를 넘기면"], "§7-14 index 분할 트리거의 시점 규정"),
+    (SCHEMA_BUDGET_MD, ["> lint §7-14 INFO(본문 400줄", "200행 초과)를 받았을 때"], "§4 분할 수행 절차 서두의 §7-14 신호 인용"),
+    (SCHEMA_BUDGET_MD, ["- **범위는 2단계 category 분할과 3단계", "`index-{cat}.md` 초과 시", "본체가 임계를 넘으면"], "index 분할 자동화 근거(2·3단계 라우팅 결정론) — §7-14 축"),
+    (SCHEMA_BUDGET_MD, ["- **수행 시점은 그 세션의 주 작업 완료 후**다", "직후 다시 임계를 넘는다"], "index 분할 수행 시점 — 「임계를 넘는다」는 §7-14 축"),
+    (SCHEMA_BUDGET_MD, "- **3단계(순번)**: 초과한 sub-index가 무순번", "index 3단계 순번 분할 — §7-14 축"),
+    (SCHEMA_BUDGET_MD, ["3. **내용 이동(잘라내기)**", "3단계면 초과분을"], "index 분할의 초과분 이동 — §7-14 축"),
     (SCHEMA_MD, ["14. **index.md·sub-index 분할 신호**", "200) 초과면 INFO를 낸다", "**index.md 초과는 B/F 세션이", "**sub-index 초과도 B/F 세션이"], "§7-14 검사 항목 본문 — index 트리거 정본"),
-    (SCHEMA_MD, ["**예산 판정 방식 (펜스 제외 — platform-bootstrap·ui-ux 한정)**", "초과 WARN 문구에"],
+    (SCHEMA_TYPES_MD, ["**예산 판정 방식 (펜스 제외 — platform-bootstrap·ui-ux 한정)**", "초과 WARN 문구에"],
      "§2.6 펜스 제외 판정 — 「초과 WARN 문구」는 §7-2 신호의 이름 인용이지 조건 서술이 아니다"),
-    (SCHEMA_MD, ["- **도달 경로(4번 등록)의 기계 검증은 §7-30 이 맡는다**", "만 보고 넘기면 등록 누락이"],
+    (SCHEMA_BUDGET_MD, ["- **도달 경로(4번 등록)의 기계 검증은 §7-30 이 맡는다**", "만 보고 넘기면 등록 누락이"],
      "「lint 통과만 보고 넘기면」 — 예산 무관"),
     (OPS_RULES_MD, ["| index.md | 제한 없음", "기능별 인덱스 200행 초과 시", "동일 임계 측정 — 초과 시 B/F 세션이"], "§7-14 index 트리거 — 줄/행 기준"),
     (OPS_MD, ["`[기계]` index·sub-index 분할 신호", "sub-index 초과는 3단계 순번 파일"], "F-1 인덱스의 §7-14 라벨"),
     # ── 섹션 구역화 축(§7-32) — 파일 예산이 아니라 **한 섹션의 문자 수 + `### ` 유무**가
     #  트리거다. 처방도 분리가 아니라 소제목 추가라 §7-2와 겹치지 않는다.
     (SCHEMA_MD, ["32. **섹션 구역화 권장**", "를 초과하면서 `### ` 소제목이"], "§7-32 검사 항목 본문 — 섹션 축 정본"),
-    (SCHEMA_MD, ["> **섹션 구역화 (`### ` 소제목)**", "6,000자를 초과하면서 소제목이"], "§2.3 구역화 규칙 — 섹션 축"),
+    (SCHEMA_TYPES_MD, ["> **섹션 구역화 (`### ` 소제목)**", "6,000자를 초과하면서 소제목이"], "§2.3 구역화 규칙 — 섹션 축"),
     (OPS_MD, ["`[기계]` 섹션 구역화 권장", "6,000자를 초과하면서 `### ` 소제목 0개면"], "F-1 인덱스의 §7-32 라벨"),
     (LINT_PY, ["# §7-32 feature 섹션 구역화 신호", "이 문자 수를 초과하면서"], "SECTION_H3_CHARS 상수 주석 — 섹션 축"),
     (LINT_PY, ["#  값의 근거: 실 vault feature 섹션", "초과 13섹션 중"], "위 상수 주석의 이어지는 줄 — 섹션 축"),
@@ -917,15 +941,15 @@ TRIGGER_ALLOWLIST = [
     # ── §2.2 항목 개수 축 — `## 최근 주요 변경`은 6번째 항목이 트리거이고 문자 예산과 무관하다
     #    (§7 결과 처리가 "⚠ project 허브만 트리거가 다르다"로 명시 배제한 대상이다).
     #    `§7-2 발동 시`로 치환하면 정본이 되려는 §7-2가 자기 배제 규정과 충돌한다.
-    (SCHEMA_MD, "**초과분은 압축하지 않고 롤오버한다**", "§2.2 6번째 항목 트리거 — 문자 예산 무관"),
-    (SCHEMA_MD, "| project (허브) | 13000자 |", "§4 표 project 행 — 3열 롤오버 구가 §2.2 항목 개수 축"),
-    (SCHEMA_MD, ["**project 허브 `## 최근 주요 변경`**: 3~5개를 유지하고", "초과분을 `90_archive/"], "§8 롤오버 — §2.2 항목 개수 축"),
+    (SCHEMA_TYPES_MD, "**초과분은 압축하지 않고 롤오버한다**", "§2.2 6번째 항목 트리거 — 문자 예산 무관"),
+    (SCHEMA_BUDGET_MD, "| project (허브) | 13000자 |", "§4 표 project 행 — 3열 롤오버 구가 §2.2 항목 개수 축"),
+    (SCHEMA_BUDGET_MD, ["**project 허브 `## 최근 주요 변경`**: 3~5개를 유지하고", "초과분을 `90_archive/"], "§8 롤오버 — §2.2 항목 개수 축"),
     (TEMPLATES_MD, "<!-- 3~5개 유지. 초과분은 압축하지 않고", "허브 템플릿 주석 — §2.2 항목 개수 축"),
     (TEMPLATES_MD, "# budget_split_chars: 0         #   lint 예산 판정과 같은 기준의 문자 수(=임박 메시지의 {현재} 값,",
      "`budget_split_chars` 필드 설명 — 「임박 메시지」는 §7-2 신호의 이름 인용이지 조건 서술이 아니다", 2),  # 템플릿 2곳 공통 문면
 
     # ── 예산과 무관한 「초과」·「넘」 — 축어 정규식이 넓어 걸리지만 트리거 서술이 아니다
-    (SCHEMA_MD, ["7. **기록**: `log.md`에", "(사유: 임계 초과)`"], "log 기록 형식의 `(사유: 임계 초과)` 예시 문자열"),
+    (SCHEMA_BUDGET_MD, ["7. **기록**: `log.md`에", "(사유: 임계 초과)`"], "log 기록 형식의 `(사유: 임계 초과)` 예시 문자열"),
     (SCHEMA_MD, ["19. **log 아카이브 인덱스 정합**", "영영 아카이브로 넘어가지 않고"], "§7-19 검사 항목 본문 — 오배치 항목이 아카이브로 「넘어가지 않는다」는 결과 서술이지 예산 조건이 아니다"),
     (QUEUE_CONSUME_MD, ["그 파일은 프로젝트 단위 규약", "프로젝트·스택을 넘는 일반 패턴", "절차 I(가이드/레시피)로 넘긴다"], "「스택을 넘는 일반 패턴」 — 귀속 판정이지 예산 아님"),
     (CONTENT_MD, ["5. **델타 신뢰도 점검**", "**30일 초과**면"], "허브 `updated` 30일 초과 = ingest 델타 신뢰도 축"),
@@ -1485,13 +1509,17 @@ def main():
     skill_text = read(SKILL_MD)
     ops_rules_text = read(OPS_RULES_MD)
     schema_text = read(SCHEMA_MD)
+    types_text = read(SCHEMA_TYPES_MD)
+    budget_text = read(SCHEMA_BUDGET_MD)
+    bundle = {"wiki-schema.md": schema_text, "schema-types.md": types_text,
+              "schema-budget.md": budget_text}
     lint = load_lint()
 
     budget_sources = {
         "lint.py": lint_budget(lint),
         "wiki-ops-rules.md 예산표": parse_ops_rules_budget(ops_rules_text),
-        "schema §2 타입별 줄": parse_schema_type_budget(schema_text),
-        "schema §4 표": parse_schema_table_budget(schema_text),
+        "schema §2 타입별 줄": parse_schema_type_budget(types_text),
+        "schema §4 표": parse_schema_table_budget(budget_text),
     }
     mismatches = []
     # 축별 `(라벨, 값, 단위)`. 출력 문구를 여기서 조립하므로 축을 추가할 때
@@ -1541,7 +1569,7 @@ def main():
     mismatches.extend(placement_issues)
     axes.append(("절차 배치", placement_checked, "항목"))
 
-    toc_issues, toc_checked = check_schema_toc(schema_text)
+    toc_issues, toc_checked = check_schema_toc(schema_text, bundle)
     checked += toc_checked
     mismatches.extend(toc_issues)
     axes.append(("schema 목차", toc_checked, "§"))
@@ -1561,12 +1589,12 @@ def main():
     mismatches.extend(pointer_issues)
     axes.append(("산문 포인터", pointer_checked, "건"))
 
-    tmpl_issues, tmpl_checked = check_templates_types(schema_text)
+    tmpl_issues, tmpl_checked = check_templates_types(types_text)
     checked += tmpl_checked
     mismatches.extend(tmpl_issues)
     axes.append(("templates 타입", tmpl_checked, "종"))
 
-    enum_issues, enum_checked = check_type_enumerations(schema_text, lint)
+    enum_issues, enum_checked = check_type_enumerations(schema_text, types_text, bundle, lint)
     checked += enum_checked
     mismatches.extend(enum_issues)
     axes.append(("타입 열거", enum_checked, "항목"))

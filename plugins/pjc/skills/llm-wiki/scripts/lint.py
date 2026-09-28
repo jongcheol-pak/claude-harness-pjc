@@ -38,7 +38,7 @@
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 환경변수: LLM_WIKI_TODAY(ISO 날짜) — 시간 기반 판정의 「오늘」을 고정한다(_today 참조).
           골든 러너 전용 경로이며 일반 실행에는 설정하지 않는다.
-규칙 진실원천은 references/wiki-schema.md. 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
+규칙 진실원천은 references/wiki-schema.md 번들(§2 는 schema-types.md, §4·§7-2·§8 은 schema-budget.md). 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3~§4·이 파일 3중 동기화).
 """
 import os, re, sys, glob, shutil, datetime, subprocess, collections

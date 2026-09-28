@@ -182,8 +182,9 @@ def check_pointer_reachability():
         ("docs/plans/deferred-closed.md", "SKILL.md"),
     }
 
-    # 대장 2종 파일 단위 면제 — 근거는 `harness-consistency-rationale.md`의 「§5 축 ① — 대장 2종을 파일 단위로 통째 면제하는 이유」
-    POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md"}
+    # 대장 2종 + 이력 intent 1건 파일 단위 면제 — 근거는 `harness-consistency-rationale.md`의 「§5 축 ① — 대장 2종을 파일 단위로 통째 면제하는 이유」
+    POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md",
+                          "intent/2026-09-12-close-waiting-three.md"}
 
     # 부분 경로(`implement/SKILL.md`처럼 repo 루트 기준이 아닌 표기)를 해석하기 위한 색인.
     # 이 repo의 문서는 같은 파일을 전체 경로·부분 경로 두 방식으로 가리키며, 부분 표기를
@@ -255,7 +256,7 @@ def check_pointer_reachability():
             hs = anchors_of(target)
             if hs is None:
                 continue
-            # 대장 2종 인용 제외 — 근거는 `harness-consistency-rationale.md`의 「§1 축 ① — 대장 2종 인용을 축 수치에서 빼는 이유」
+            # 대장 2종 + 이력 intent 1건 인용 제외 — 근거는 `harness-consistency-rationale.md`의 「§1 축 ① — 대장 2종 인용을 축 수치에서 빼는 이유」
             if rel_src not in POINTER_EXEMPT_SRC:
                 checked += 1
             # 전체 일치 또는 앵커가 그 이름으로 시작(부제·괄호 꼬리 허용).

@@ -4,7 +4,7 @@
 >
 > **다만 「비 git vault 사전 백업」은 여기 없고 `wiki-schema.md` §8이 정본이다** — 그 절이 취지·대상·시점·정리·복구를 한자리에 담고, 이 파일과 `SKILL.md`는 그것을 가리키기만 한다. 절차 M(코드 세션이 쌓은 큐를 위키 세션이 §0 시작 절차 뒤에 소비하는 경량 절차)도 같은 곳을 본다.
 >
-> 규칙·타입·예산의 진실원천은 `wiki-schema.md`이며 이 파일은 그 중 **작업 중 손에 있어야 하는 것**만 옮겨 둔 자리다.
+> 규칙·타입·예산의 진실원천은 schema 번들(`wiki-schema.md` 와 그 목차가 가리키는 `schema-types.md`·`schema-budget.md`)이며 이 파일은 그 중 **작업 중 손에 있어야 하는 것**만 옮겨 둔 자리다.
 
 ## 쓰기 세션 전용 규칙 — 사전 준수 사항(쓰기분)
 
@@ -152,7 +152,7 @@
 
 > 이 절을 **고치기 전에** `references/wiki-ops-rationale.md` 「세션 처방」 를 읽는다.
 
-`--auto-split`이 못 하고 **세션이 직접 수행**하는 처방이다(위 표 ⓑ′의 소비 주체). 소비 지점(F-2·A-4·B-3)이 **승인 없이 수행하고 성공은 보고하지 않는다** — 안전장치·보고 억제는 `wiki-schema.md` §4 「분할 수행 절차」를 그대로 쓴다.
+`--auto-split`이 못 하고 **세션이 직접 수행**하는 처방이다(위 표 ⓑ′의 소비 주체). 소비 지점(F-2·A-4·B-3)이 **승인 없이 수행하고 성공은 보고하지 않는다** — 안전장치·보고 억제는 `schema-budget.md` §4 「분할 수행 절차」를 그대로 쓴다.
 
 - **ⓕ 처방 없는 타입의 상세 이관**: `source-stub`은 상세를 feature/entity로 옮기고 포인터만 남긴다(§2.1) · `question`은 관련 페이지에 흡수하고 `status: resolved`로 보존한다(§2.7). **둘 다 이동이라 원문 손실이 없다.**
 
@@ -165,7 +165,7 @@
 1. **디렉터리**: `10_sources/{personal,work}`, `20_projects/{personal,work}`, `30_knowledge/{tech,patterns,questions}`, `40_guides/{platforms,ui-ux,recipes}`, `90_archive`
 2. **`index.md`**: 빈 카탈로그 골격 — **frontmatter 포함**: `type: index` · `okf_version: "0.2"` · `updated: YYYY-MM-DD` (OKF 버전 선언 위치는 루트 index.md 뿐 — wiki-schema §12). 섹션: `## 개인 프로젝트` / `## 업무 프로젝트` / `## 기능별 인덱스` / `## 증상별 인덱스`(증상→검증된 원인→해법 역인덱스, wiki-schema §6) / `## 기술 스택 지식 (tech/)` / `## 범용 패턴 (patterns/)` / `## 미해결 질문` / `## 참조`. **`## 가이드 / 레시피`는 두지 않는다** — 가이드·레시피는 `--build-index`가 `index-guides.md` 통합 표로 파생한다(wiki-schema §6 「인덱스 생성」). 표는 헤더만, 내용은 "아직 없음" 주석. 참조 섹션은 **실제 존재하는 파일만** 링크(`log.md` 등). **생성 대상 6섹션(개인 프로젝트~미해결 질문)을 `<!-- AUTO-INDEX:BEGIN -->`~`<!-- AUTO-INDEX:END -->`로 감싼다** — 새 vault는 처음부터 생성 체계로 출발하는 것이 옳다(wiki-schema §6). **증상별 인덱스·참조는 마커 밖에 둔다**(수기 판단 영역). 마커를 넣어 두면 이후 `--build-index`가 바로 동작하고, 넣지 않으면 그 명령이 "마커 없음"으로 거부한다.
 3. **`log.md`**: `## 최근 변경` + `- [YYYY-MM-DD] [INIT] 위키 초기 골격 생성 (llm-wiki 스킬).` + `## 아카이브 인덱스`(빈 목록 — **§7-2 발동 시** 월별 롤오버 항목을 `- {YYYY-MM}.md: {키워드}`로 등록, wiki-schema §8). `90_archive/log/`는 첫 롤오버 시 생성(미리 만들지 않음).
-4. **규칙은 vault에 복사하지 않는다** — 진실원천은 스킬 번들 `references/wiki-schema.md` 뿐. index `## 참조`에는 번들 경로를 텍스트로 안내한다(vault에 SCHEMA.md를 만들지 말 것).
+4. **규칙은 vault에 복사하지 않는다** — 진실원천은 스킬 번들의 schema 세 파일(`references/wiki-schema.md` · `schema-types.md` · `schema-budget.md`)뿐. index `## 참조`에는 번들 경로를 텍스트로 안내한다(vault에 SCHEMA.md를 만들지 말 것).
 5. 부트스트랩 완료 후 본래 요청(A~I)을 이어서 진행한다.
 
 > OKF 정합 상세(번들 경계·okf_version·description 권장 필드)는 wiki-schema §12가 정본이다.

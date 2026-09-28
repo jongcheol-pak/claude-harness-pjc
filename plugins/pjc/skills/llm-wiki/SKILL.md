@@ -14,7 +14,7 @@ description: >
 # LLM WIKI 운영 스킬
 
 이 스킬은 위키 작업의 **실행 절차(A~M) + 규칙**을 담는다 — 본체(이 문서)는 시작 절차·공통 규칙만 담고, 절차는 전부 `references/`에 나눠 담는다(컨텍스트 예산 — 작업에 필요한 파일만 지연 로드). **어느 절차가 어느 파일에 있는지는 아래 「절차 목차」 표가 정본이다.** **vault에 아무 파일이 없어도(빈 폴더) 동작**한다.
-규칙·타입·예산의 진실원천은 **이 스킬 번들** `<skill>/references/wiki-schema.md` 다. vault에는 SCHEMA.md 사본을 두지 않는다(번들만 사용).
+규칙·타입·예산의 진실원천은 **이 스킬 번들**의 schema 세 파일 — `<skill>/references/wiki-schema.md`(코어·목차)와 그 목차가 가리키는 `schema-types.md`(§2)·`schema-budget.md`(§4·§7-2·§8) — 다. vault에는 SCHEMA.md 사본을 두지 않는다(번들만 사용).
 
 > **`<skill>` 경로**: 이 SKILL.md가 위치한 폴더. pjc plugin으로 설치된 경우 `${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki`, 독립 설치된 경우 `~/.claude/skills/llm-wiki`. 본문의 `<skill>/...` 참조는 모두 이 폴더 기준이며, 실제로는 이 SKILL.md와 같은 디렉터리의 `references/`·`scripts/`·`config.json`을 가리킨다.
 
@@ -61,7 +61,7 @@ description: >
 > **읽는 법**: `grep -nE "^#{2,3} " <skill>/references/wiki-ops-rules.md` **1회**로 각 절의 시작 줄과 다음 절의 시작 줄을 얻어 `offset`+`limit` 을 **둘 다** 준다. 번호가 연속한 절은 한 번에 읽는다.
 > **표에 없는 절은 읽지 않는다 — 그것이 이 표의 뜻이다.** 걸리는 절이 갈리면 여기를 고치고 `wiki-ops-rules.md` 산문에 조건을 다시 쓰지 않는다(정본이 둘이면 한쪽만 고쳐진다).
 
-> **지연 로드 규칙 (필수)**: 절차를 수행할 때는 **해당 위치의 파일을 먼저 Read**한다 — 표의 절차 이름만 보고 진행하면 생략하면 안 되는 필수 단계·사용자 게이트(pending 큐 소비, recipe 승격 확인, 삭제 확인 등)를 건너뛴다. **대형 참조 파일(`procedures-content.md`·`procedures-ops.md`·`wiki-schema.md`·`wiki-ops-rules.md`)은 파일 전체가 단일 Read에 담기지 않는다 — 크기를 재지 말고 `grep -n "^### " <파일>` **1회**로 대상 절차의 시작 줄과 **다음 절차의 시작 줄**을 함께 얻어, Read에 `offset`과 `limit`을 **둘 다** 준다.** `limit` 없이 `offset`만 주면 그 지점부터 **파일 끝까지** 읽어 여전히 잘린다 — **단 `wiki-ops-rules.md` 의 범위는 절차가 아니라 위 「쓰기 규칙 절 라우팅」 표가 준다** — 절차 B 하나가 25k 토큰 상한에 닿는 크기다. **첫 페이지만 읽고 로드를 마쳤다고 판정하지 않는다.** 목차 표에 **줄 번호를 적지 않는 이유**는 그 값이 파일을 고치는 회차마다 낡기 때문이다 — 낡은 좌표를 고치는 왕복이 조사 1회보다 비싸다. **범위가 표에 없는 행**(`lookup-rules.md`·`queue-rules.md`·`queue-consume-rules.md`)은 파일 하나가 곧 절차 하나라 **전체를 읽는다** — 절 단위 부분 Read 를 쓰지 않는다.
+> **지연 로드 규칙 (필수)**: 절차를 수행할 때는 **해당 위치의 파일을 먼저 Read**한다 — 표의 절차 이름만 보고 진행하면 생략하면 안 되는 필수 단계·사용자 게이트(pending 큐 소비, recipe 승격 확인, 삭제 확인 등)를 건너뛴다. **대형 참조 파일(`procedures-content.md`·`procedures-ops.md`·`wiki-schema.md`·`schema-types.md`·`schema-budget.md`·`wiki-ops-rules.md`)은 파일 전체가 단일 Read에 담기지 않는다 — 크기를 재지 말고 `grep -n "^### " <파일>` **1회**로 대상 절차의 시작 줄과 **다음 절차의 시작 줄**을 함께 얻어, Read에 `offset`과 `limit`을 **둘 다** 준다.** `limit` 없이 `offset`만 주면 그 지점부터 **파일 끝까지** 읽어 여전히 잘린다 — **단 `wiki-ops-rules.md` 의 범위는 절차가 아니라 위 「쓰기 규칙 절 라우팅」 표가 준다** — 절차 B 하나가 25k 토큰 상한에 닿는 크기다. **첫 페이지만 읽고 로드를 마쳤다고 판정하지 않는다.** 목차 표에 **줄 번호를 적지 않는 이유**는 그 값이 파일을 고치는 회차마다 낡기 때문이다 — 낡은 좌표를 고치는 왕복이 조사 1회보다 비싸다. **범위가 표에 없는 행**(`lookup-rules.md`·`queue-rules.md`·`queue-consume-rules.md`)은 파일 하나가 곧 절차 하나라 **전체를 읽는다** — 절 단위 부분 Read 를 쓰지 않는다.
 >
 > **예산 처방은 세션이 손으로 옮기지 않는다** — `python "<skill>/scripts/lint.py" "<vault>" --auto-split`을 호출하고 결과를 검증·보고한다(§7-2 번복 · §4 분할 수행 절차 1·5·6번). 그 **`--auto-split`** 호출 지점은 F-2(lint)·A-4(등록)·B-3(ingest) 셋이다 — 처방 없는 plain lint 호출은 절차 I-4에도 있으므로 둘을 섞어 세지 않는다.
 >
@@ -90,7 +90,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
   - **읽기측 예외**: 절차 G(질의)·K(작업 참조)·M(큐 소비)은 빈 위키에서 J 부트스트랩을 발동하지 않는다(각 절차의 빈 위키 예외가 정본) — 읽기·경량 요청의 부작용으로 vault 골격을 만들지 않는다.
 
 ### 0-3. 규칙 로드
-- 규칙·타입·예산·네이밍·통제 어휘는 스킬 번들 `<skill>/references/wiki-schema.md`를 따른다. (vault에는 SCHEMA.md 사본을 두지 않는다.)
+- 규칙·타입·예산·네이밍·통제 어휘는 스킬 번들 `<skill>/references/wiki-schema.md`(목차가 `schema-types.md`·`schema-budget.md` 로 안내한다)를 따른다. (vault에는 SCHEMA.md 사본을 두지 않는다.)
 - **schema는 전체 정독하지 않는다(컨텍스트 예산 — 단일 Read 에 담기지 않는다)**: 작업 관련 §만 schema 상단 "목차 (부분 Read 인덱스)"로 특정해 부분 Read(Grep 또는 offset Read)한다. 절차 본문 곳곳의 "상세는 schema §N" 포인터도 그 §만 읽으면 충분하다.
 
 ## 사전 준수 사항 (모든 작업 공통)
