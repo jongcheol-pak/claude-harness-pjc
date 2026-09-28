@@ -2276,8 +2276,14 @@ def _is_split_sub(vault, target):
             and bool(SUBDOC_BACK_RX.search(t)))
 
 
+# 옛 `_register_feature_rows`가 쓰던 허브 행 서식 — `| {절} | {라벨}의 「{절}」 절 | [[{하위}\|{라벨} — {절}]] |`.
+#  **이 서식과 글자까지 같은 행만** 걷는다(§7 결과 처리 예외 ⑤ — 잃는 것이 없는 경우만). 링크 대상만
+#  보고 지우면 사람이 같은 하위를 가리켜 쓴 행(자기 설명 텍스트가 그 행에만 있다)까지 사라진다.
+HUB_AUTO_SUB_ROW_RX = re.compile(r"^\| (.+?) \| (.+?)의 「\1」 절 \| \[\[([^\]|\\]+)\\\|\2 — \1\]\] \|$")
+
+
 def _hub_without_sub_rows(vault, hub_text):
-    """허브 `## 기능 목록` 표에서 분할 하위를 가리키는 행을 뺀 본문. 뺄 행이 없으면 None.
+    """허브 `## 기능 목록` 표에서 **자동 등재 서식의** 분할 하위 행을 뺀 본문. 뺄 행이 없으면 None.
 
     **분할 하위는 허브에 행을 두지 않는다**(§4 ③) — 하위마다 행이 붙으면 허브가 하위 수만큼
     자라, 문자 축 처방이 옮길 수 없는 `## 기능 목록`(본문째 남는 절)만으로 허브가 예산을 채운다
@@ -2290,8 +2296,8 @@ def _hub_without_sub_rows(vault, hub_text):
     s0, s1 = span
     kept, dropped = [], 0
     for line in hub_text[s0:s1].splitlines(keepends=True):
-        m = re.search(r"\[\[([^\]|\\]+)", line) if line.lstrip().startswith("|") else None
-        if m and _is_split_sub(vault, m.group(1)):
+        m = HUB_AUTO_SUB_ROW_RX.match(line.rstrip("\n"))
+        if m and _is_split_sub(vault, m.group(3)):
             dropped += 1
             continue
         kept.append(line)

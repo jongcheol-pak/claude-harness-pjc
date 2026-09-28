@@ -21,6 +21,7 @@ tags: [project, personal, demo]
 |---|---|---|
 | 것 | 데모 기능 | [[20_projects/personal/demo/feat-thing\|것]] |
 | UI·UX | 것 (Thing)의 「UI·UX」 절 | [[20_projects/personal/demo/feat-thing-2\|것 (Thing) — UI·UX]] |
+| 화면 규칙 | 사람이 적은 설명 — 버튼 배치와 여백의 실제 거동 | [[20_projects/personal/demo/feat-thing-2\|화면]] |
 
 ## 레포 정보
 - **경로**: `D:/none-existent-repo`
