@@ -17,6 +17,8 @@ lint-cases.json의 각 case를 evals/fixtures/<fixture> vault에 대해 lint.py�
                          복사본 절대경로로 치환해 lint를 실행한다. §7-20처럼 '실재하는
                          절대경로'가 필요한 fixture를 기계 독립적으로 만든다 (opt-in —
                          기존 fixture는 그대로 원본 경로로 실행).
+  - expect_file_not_contains → (auto_split 보조) {파일: [문자열]} — 1회 수행 뒤 그 파일에
+                         하나라도 있으면 FAIL. 「무엇이 사라졌는가」가 동작인 처방을 잰다.
 
 lint.py 자체는 수정하지 않고 subprocess로 호출만 한다(실사용 경로와 동일). 표준 라이브러리만
 사용하며(테스트 프레임워크 없음 — AGENTS.md 정합), lint.py를 부른 것과 같은 인터프리터
@@ -897,6 +899,18 @@ def check_case(case):
                 if got != want:
                     problems.append("%s의 '%s' 개수 불일치 — 기대 %d / 실제 %d"
                                     % (rel, needle, want, got))
+        # **없어야 할 문자열**을 대조한다. 복제 중단처럼 「무엇이 사라졌는가」가 동작인 처방은
+        #  존재 대조로 잴 수 없다 — 포인터가 생겨도 옛 복제가 함께 남으면 contains 는 그대로 통과한다.
+        for rel, needles in (case.get("expect_file_not_contains") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                problems.append("결과 파일 없음: " + rel)
+                continue
+            with open(fp, encoding="utf-8-sig") as fh:
+                ft = fh.read()
+            present = [n for n in needles if n in ft]
+            if present:
+                problems.append("%s에 없어야 할 문자열 있음: %s" % (rel, ", ".join(present)))
         # **2회째 실행은 아무것도 수행하지 않아야 한다 — 케이스마다 붙는 무조건 계약이다.**
         #  `--auto-split`은 반복 호출이 전제이고 「수렴하면 수행 대상 없음」이 그 계약인데,
         #  1회만 도는 검사는 **호출 간에 지속되지 않는 상태에 기댄 가드**의 결함을 원리상

@@ -1378,11 +1378,16 @@ def _git(repo_root, *args):
     return proc.stdout if proc.returncode == 0 else None
 
 
+# §4 7번 기록의 사유 — 처방 종류별로 다른 것만 둔다(없으면 분할·롤오버의 기본 사유).
+LOG_REASON = {"관련 파일 복제 정리": "관련 파일 복제"}
+
+
 class SplitSession:
     """`--auto-split` 한 번의 실행 컨텍스트 — 사본·기록·보고를 모은다(§4 분할 수행 절차).
 
     `--fix`(apply_fixes)와 합치지 않는 이유: 그쪽은 「참조 무결성 3종」으로 대상이 한정되고
-    실행에 사용자 승인이 필요한데(§7 서두), 분할·롤오버는 승인 불요다(§7 결과 처리 예외 ①②③).
+    실행에 사용자 승인이 필요한데(§7 서두), 분할·롤오버·복제 정리는 승인 불요다(§7 결과 처리
+    예외 ①②③⑤).
     규약이 정반대라 한 함수에 섞으면 승인 경계가 흐려진다."""
 
     def __init__(self, vault, dry_run):
@@ -1563,10 +1568,15 @@ class SplitSession:
         self.actions.append((kind, target, list(created)))
 
     def log_line(self, kind, target, created):
-        """§4 절차 7번 기록 1줄. 형식은 그 절이 정본이다."""
+        """§4 절차 7번 기록 1줄. 형식은 그 절이 정본이다.
+
+        사유는 처방 종류에서 정한다 — 복제 정리는 예산과 무관하게 돌므로 분할의 기본 사유가
+        거짓이 된다. `actions` 튜플에 사유 칸을 더하지 않는 이유: 출력부가 그 튜플을 세 칸으로
+        풀어 쓰는 자리가 여럿이라, 칸을 늘리면 그 자리를 전부 함께 고쳐야 한다."""
         made = "·".join(created) if created else "(신설 없음)"
+        reason = LOG_REASON.get(kind, "임계 초과")
         return (f"- [{_today().isoformat()}] [SCHEMA] {kind} — "
-                f"{target}: {made}. (사유: 임계 초과)")
+                f"{target}: {made}. (사유: {reason})")
 
 
 def _atomic_write(path, content, bom=False, newline="\n"):
@@ -2199,9 +2209,11 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
 
     **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번) §7-18ⓐ·
     §7-21 같은 필수 섹션 게이트가 하위에도 그대로 걸린다 — 재현하지 않으면 자동 분할이
-    스스로 새 위반을 만든다. 재현 방식은 결정론이다: **지도인 `## 관련 파일`은 원본 목록을
-    복제**하고(§7-20이 양쪽에서 경로 실존을 각각 검사하므로 정보가 왜곡되지 않는다),
-    나머지는 **상위를 가리키는 한 줄**을 둔다(정본은 하나라는 것을 문면으로 못박는다)."""
+    스스로 새 위반을 만든다. 재현 방식은 결정론이다: 전부 **상위를 가리키는 한 줄**을 둔다
+    (정본은 하나라는 것을 문면으로 못박는다). **`## 관련 파일`도 복제하지 않는다** — 종전에는
+    원본 목록을 통째로 실었는데, 지도가 큰 feature 는 그 복제만으로 하위가 곧 예산에 닿아
+    어느 절도 옮길 수 없게 됐다(실 vault 6쪽이 그 상태로 굳었다). 포인터만 둔 하위는 §7-21 이
+    복귀 링크 + 포인터 줄로 알아보고 「경로 항목 0개」를 내지 않는다."""
     head = "---\n"
     for k, v in fm.items():
         if k == "index_label":
@@ -2222,15 +2234,12 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
         src = secmap.get(req)
         if src is None:
             continue
-        if req == "관련 파일":
-            keep_body += src.rstrip("\n") + "\n\n"
-        else:
-            ref = "정본은 [[%s|%s]]의 「%s」이다." % (rel[:-len(".md")], label, req)
-            # `## 구현 방법`은 각주 0개가 곧 위반이라(§7-18ⓑ) 원본 각주를 한 번 인용한다.
-            fns = re.findall(r"\[\^[^\]\n]+\]", src)
-            if fns:
-                ref += fns[0]
-            keep_body += "## %s\n\n%s\n\n" % (req, ref)
+        ref = "정본은 [[%s|%s]]의 「%s」이다." % (rel[:-len(".md")], label, req)
+        # `## 구현 방법`은 각주 0개가 곧 위반이라(§7-18ⓑ) 원본 각주를 한 번 인용한다.
+        fns = re.findall(r"\[\^[^\]\n]+\]", src)
+        if fns:
+            ref += fns[0]
+        keep_body += "## %s\n\n%s\n\n" % (req, ref)
     out += keep_body + "## %s\n\n" % title + body
 
     used = set(re.findall(r"\[\^([^\]\n]+)\]", keep_body + body))
@@ -2362,13 +2371,58 @@ def _rollover_movable(items, keep_min=1):
     return len(items) > keep_min and any(d is not None for d, _b in items)
 
 
-def prescribable(rel, fm, text, nl):
+def _trim_dup_related(vault, rel, fm, text):
+    """분할 하위의 `## 관련 파일`이 원본 목록의 **복제**면 정본 포인터로 바꾼 본문을 돌려준다.
+    대상이 아니면 None(§7 결과 처리 예외 ⑤ — 관련 파일 복제 정리).
+
+    복제는 구 `_sub_page_text`가 만든 산출물이다 — 그 함수는 이제 포인터를 두지만 이미 만들어진
+    하위에는 원본 지도 전체가 남아 있고, 그 복제가 하위를 예산에 묶는다. **판정은 「복귀 링크가
+    가리키는 원본의 `## 관련 파일` 본문과 글자까지 같은가」 하나다** — 원본에 정본이 그대로
+    있으므로 걷어도 잃는 것이 없고, 조금이라도 다르면(사람이 하위에 맞게 고친 목록) 건드리지 않는다.
+    예산과 무관하게 판정한다 — 복제는 크기가 아니라 형상의 문제다.
+
+    절 경계는 `_md_sections`로 잡는다(코드펜스 안의 `## `를 헤딩으로 오인하지 않는다). 각주 정의가
+    그 절 안에 있으면 건드리지 않는다 — 문서 끝 절이면 정의가 섹션 경계 안에 들어오는데,
+    그것까지 걷으면 §7-18ⓑ가 곧바로 새 위반을 낸다."""
+    if str(fm.get("type", "")).strip() != "feature":
+        return None
+    m = SUBDOC_BACK_RX.search(text)
+    if not m:
+        return None
+    parent_rel = m.group(1) if m.group(1).endswith(".md") else m.group(1) + ".md"
+    ptext, _pb, _pn = _read_page(os.path.join(vault, parent_rel.replace("/", os.sep)))
+    if ptext is None:
+        return None
+
+    def rel_span(t):
+        """(절 시작, 절 끝, 헤딩 줄 뒤 본문). 헤딩이 파일 마지막 줄이면 본문은 빈 문자열이다."""
+        for title, s0, s1 in _md_sections(t):
+            if title == "관련 파일":
+                nl_at = t.find("\n", s0, s1)
+                return s0, s1, (t[nl_at + 1:s1] if nl_at >= 0 else "")
+        return None
+
+    own, par = rel_span(text), rel_span(ptext)
+    if not own or not par:
+        return None
+    body = own[2]
+    if (not body.strip() or body.strip() != par[2].strip()
+            or FOOTNOTE_DEF_RX.search(body) or PTR_ONLY_LINE_RX.search(body)):
+        return None
+    pfm = frontmatter(ptext)
+    plabel = pfm.get("index_label", "").strip() or os.path.basename(parent_rel)[:-len(".md")]
+    ptr = "정본은 [[%s|%s]]의 「관련 파일」이다." % (parent_rel[:-len(".md")], plabel)
+    return text[:own[0]] + "## 관련 파일\n\n%s\n\n" % ptr + text[own[1]:]
+
+
+def prescribable(rel, fm, text, nl, vault=None):
     """`--auto-split`이 이 파일에 **수행할 처방을 갖는가**(§7-2 발동 ⓐ/ⓑ′ 판정용).
 
-    `relocatable`만으로는 부족하다 — auto-split의 처방은 넷인데(§8 log 롤오버 · §2.8
-    decision-log 롤오버 · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리) 그 함수는 마지막
-    하나만 답한다. **이 함수가 판정하는 것은 그중 셋**이다 — log 롤오버는 호출부가 먼저
-    갈라 자기 분기에서 답하므로 여기 오지 않는다. 앞 셋을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
+    `relocatable`만으로는 부족하다 — auto-split의 처방은 다섯인데(§8 log 롤오버 · §2.8
+    decision-log 롤오버 · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리 · 관련 파일 복제 정리)
+    그 함수는 산문 분리 하나만 답한다. **이 함수가 판정하는 것은 그중 넷**이다 — log 롤오버는
+    호출부가 먼저 갈라 자기 분기에서 답하므로 여기 오지 않는다. 복제 정리는 원본을 읽어야
+    판정되므로 `vault`가 주어질 때만 본다. 앞 셋을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
     사람에게 할 일이 없는 경고가 다시 쌓이고, 반대로 산문 술어만 참으로 두면
     `source-stub`처럼 **어느 처방도 없는 타입이 조용해진다**(초과 전까지 무신호).
 
@@ -2391,21 +2445,34 @@ def prescribable(rel, fm, text, nl):
     # **술어 밖에 남는 것 둘** — `_prose_page_paths`가 `index*`를 제외하는 것(:1634 부근)과
     #  `ses.claim`·`backup` 실패로 「하위 분리 건너뜀」이 나는 것은 **파일 구조가 아니라
     #  실행 사정**이라 여기서 답하지 않는다. 다음 회차가 그것을 이 함수의 사각으로 오판하지 않게.
+    if vault and _trim_dup_related(vault, rel, fm, text) is not None:
+        return True
     return relocatable(rel, fm, text, nl)
 
 def relocate_sections(ses):
     """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다.
 
     헤딩과 포인터 1줄은 원본에 남는다 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을
-    내고, 제목까지 지우면 목차에서 그 주제가 사라져 물을 실마리가 없어진다."""
+    내고, 제목까지 지우면 목차에서 그 주제가 사라져 물을 실마리가 없어진다.
+
+    **관련 파일 복제 정리(`_trim_dup_related`)를 선행 단계로 같이 돈다** — 별도 처방으로 두면
+    정리에서 claim 한 하위를 같은 실행의 분리가 다시 claim 하지 못해(`claim()`은 실행 전체
+    기준이다) 그 하위의 분리가 다음 실행으로 밀린다. 한 파일의 정리와 분리는 claim 1회로 묶는다.
+    정렬 순서상 하위(`feat-x-2.md`)가 원본(`feat-x.md`)보다 먼저 오므로, 원본이 이번 실행에서
+    바뀌기 전의 목록과 대조된다."""
     for rel in sorted(_prose_page_paths(ses.vault)):
         path = os.path.join(ses.vault, rel.replace("/", os.sep))
         text, bom, nl = _read_page(path)
         if text is None:
             continue
         fm = frontmatter(text)
+        trimmed = _trim_dup_related(ses.vault, rel, fm, text)
+        if trimmed is not None:
+            text = trimmed
         st = budget_state(rel, fm, text)
         if not st or not (st.critical or st.over) or st.suppressed:
+            if trimmed is not None:
+                _write_trimmed(ses, path, rel, text, bom, nl)
             continue
         keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(st.typ, ()))
         label = fm.get("index_label", "").strip() or os.path.basename(rel)[:-len(".md")]
@@ -2453,6 +2520,8 @@ def relocate_sections(ses):
             if not nst or budget_resolved(nst):
                 break
         if not created:
+            if trimmed is not None:
+                _write_trimmed(ses, path, rel, text, bom, nl)
             continue
 
         # 이전 회차에 나온 형제 하위도 함께 등재한다 — 이번 것만 넣으면 재분할할 때마다
@@ -2513,7 +2582,19 @@ def relocate_sections(ses):
                 _write_or_abort(hub_path, hub[1], hbom, hnl, hub[0])
         if st.typ == "feature" and not hub:
             ses.notes.append(f"{rel} 허브 `## 기능 목록` 미갱신 — 허브를 찾지 못했다(수기 등록 필요)")
+        if trimmed is not None:
+            ses.record("관련 파일 복제 정리", rel, [])
         ses.record("산문 분리", rel, [c[1] for c in created])
+
+
+def _write_trimmed(ses, path, rel, text, bom, nl):
+    """복제 정리만 하는 경우(분리 없음)의 쓰기 — 분리 경로와 같은 claim·사본 계약을 쓴다."""
+    if not ses.claim(path) or not ses.backup(path):
+        ses.notes.append(f"{rel} 관련 파일 복제 정리 건너뜀 — 다른 처방이 맡았거나 사본 실패")
+        return
+    if not ses.dry_run:
+        _write_or_abort(path, text, bom, nl, rel)
+    ses.record("관련 파일 복제 정리", rel, [])
 
 
 PRESCRIPTIONS.append(relocate_sections)
@@ -3120,7 +3201,7 @@ def main():
                 #  합성 + `budget_state`가 매 파일에 붙는다).
                 # 개행은 "\n" 고정 — 이 루프의 `text`는 위에서 LF로 정규화됐고,
                 #  헬퍼가 합성하는 하위 텍스트도 같은 기준으로 재야 길이 판정이 어긋나지 않는다.
-                can = prescribable(r, fm, text, "\n")
+                can = prescribable(r, fm, text, "\n", vault)
                 if can:
                     # ⓐ auto-split이 처리할 수 있다 → **아무 신호도 내지 않는다.**
                     #  사람이 할 일이 없는데 「초과까지 몇 % 남았다」를 내면 그것은 소음이고,
@@ -3841,6 +3922,7 @@ def main():
         #  섹션 내 '- ' 항목의 백틱 경로 토큰 수집(원문 줄에서).
         rel_tokens, rel_section_found = [], False
         rel_symbols = []       # (경로 토큰, 심볼) — §7-21 진입점 앵커
+        rel_pointer = False    # 섹션 안에 정본 포인터 줄이 있는가 — 분할 하위의 면제 판정용
         in_rel = False
         for i, sl in enumerate(stripped_lines):
             s = sl.strip()
@@ -3850,6 +3932,8 @@ def main():
                 continue
             if in_rel and s.startswith("## "):
                 in_rel = False
+            if in_rel and PTR_ONLY_LINE_RX.match(raw_lines[i]):
+                rel_pointer = True
             if in_rel and s.startswith("-"):
                 line_paths = [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
                               if "/" in t or "\\" in t]
@@ -3866,7 +3950,10 @@ def main():
         if not rel_section_found:
             warn(f"관련 파일 섹션 누락: {r} "
                  f"('## 관련 파일' 기능 구성 파일 지도 — 다음 ingest 시 채움, schema §7-21)", r)
-        elif not rel_tokens:
+        elif not rel_tokens and not (rel_pointer and SUBDOC_BACK_RX.search(text)):
+            # 분할 하위(복귀 링크)가 `## 관련 파일`을 정본 포인터로 둔 것은 누락이 아니다 —
+            #  지도는 원본에 있고 하위는 그것을 가리킨다(`_sub_page_text`). **두 조건을 함께 본다**:
+            #  복귀 링크만으로 면제하면 사람이 비워 둔 하위 지도가 조용히 통과한다.
             warn(f"관련 파일 경로 항목 0개: {r} "
                  f"(섹션은 있으나 백틱 경로 없음 — '- `경로` — 역할' 형식으로 기재, schema §7-21)", r)
         if not tokens and not rel_tokens:
