@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 43건 (5스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 50건 (5스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
 | `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 | `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
 
@@ -57,9 +57,9 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 2026-07-29 기준선에서 격리 0.6 / 비격리 0.9로 갈렸다. **한쪽 수치만 보고 "트리거가 나쁘다/좋다"로 결론짓지 말 것** — A/B 비교는 같은 모드끼리만 유효하다.
 
-**현행 격리 기준선 (2026-09-11, run `20260911-174931` · 케이스 43건 · opus)**: 발동률 **1.000**(판정 pos 25건) · 오발동률 **0.000**(판정 neg 18건) · `inconclusive` 0 · `timeout` 0 · `error` 0 — **43/43 PASS, 러너 exit 0**.
+**현행 격리 기준선 (2026-09-11, run `20260911-174931` · 케이스 43건 · opus)**: 발동률 **1.000**(판정 pos 25건) · 오발동률 **0.000**(판정 neg 18건) · `inconclusive` 0 · `timeout` 0 · `error` 0 — **43/43 PASS, 러너 exit 0**. **케이스 파일이 바뀌어 이 run 은 기준선 자격을 잃었다**(2026-09-28 — llm-wiki 전용 케이스를 이관했다) — 새 케이스 파일로는 wiki 필터 부분 실행만 있다.
 
-**직전 기준선(`20260806-153530`)은 자격을 잃어 교체했다** — 그 run 의 케이스 파일은 56건인데 그 뒤 스킬 2종이 폐기돼 현행이 43건이다. 분모가 다른 두 run 은 아래 규정대로 대조 자격이 없으므로 **회차 59 가 같은 모드(격리·opus)로 다시 떴다**. 옛 값(발동률 0.906)과 새 값을 빼서 증감으로 읽지 말 것.
+**직전 기준선(`20260806-153530`)은 자격을 잃어 교체했다** — 그 run 의 케이스 파일은 56건인데 그 뒤 스킬 2종이 폐기돼 당시 현행이 43건이었다. 분모가 다른 두 run 은 아래 규정대로 대조 자격이 없으므로 **회차 59 가 같은 모드(격리·opus)로 다시 떴다**. 옛 값(발동률 0.906)과 새 값을 빼서 증감으로 읽지 말 것.
 
 ⚠ **이 값은 앞의 `0.6`·`0.750`과 분모가 다르다** — should-trigger 케이스의 턴 소진분을 분모에서 빼기 시작한 뒤의 수치이므로(위 「턴 상한」), 그 전 값과 직접 빼서 증감으로 읽지 말 것. **같은 정의로 잰 값끼리의 추이**는 `20260805-175450` 0.750 → `20260806-122901` 0.833 → `20260806-143647` 0.871 → **`20260806-153530` 0.906**이다.
 
@@ -135,7 +135,7 @@ python compare_evals.py <before.json> <after.json>
 
 ## 비용
 
-`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(43건 → 86세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(50건 → 100세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
 
 ## 실행 함정 (2026-09-03 실측)
 

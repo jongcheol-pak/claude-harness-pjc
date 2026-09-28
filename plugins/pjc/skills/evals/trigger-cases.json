@@ -250,6 +250,62 @@
       "why": "위키와 무관한 일반 지식 질문 — description이 명시적으로 제외"
     },
     {
+      "id": "wiki-pos-4",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "위키 업데이트해줘",
+      "why": "정보 갱신(절차 B) — \"위키 업데이트\" (구 llm-wiki 전용 케이스 #2 이관)"
+    },
+    {
+      "id": "wiki-pos-5",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "위키 되돌려줘, 어제 잘못 갱신했어",
+      "why": "복구(절차 L) — \"위키 되돌려줘/복구\" (구 llm-wiki 전용 케이스 #9 이관)"
+    },
+    {
+      "id": "wiki-pos-6",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "이 프로젝트 위키에서 아카이브 상태로 바꿔줘",
+      "why": "상태 변경(절차 D) — active→archived (구 llm-wiki 전용 케이스 #10 이관)"
+    },
+    {
+      "id": "wiki-pos-7",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "이 프로젝트 위키에서 삭제해줘",
+      "why": "프로젝트 삭제(절차 C) (구 llm-wiki 전용 케이스 #11 이관)"
+    },
+    {
+      "id": "wiki-pos-8",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "이 스크롤 버벅임 해결한 방법을 recipe로 위키에 넣어줘",
+      "why": "특정 기능/함정 recipe 추가(절차 I) — \"{기능} 위키에 추가\" (구 llm-wiki 전용 케이스 #14 이관)"
+    },
+    {
+      "id": "wiki-neg-3",
+      "skill": "pjc:llm-wiki",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "위키 관리하는 이 클래스 리팩토링해줘",
+      "why": "오발동 함정 — 'wiki' 단어가 있으나 대상은 코드. pjc:plan/pjc:implement 영역 (구 llm-wiki 전용 케이스 #15 이관)"
+    },
+    {
+      "id": "wiki-neg-4",
+      "skill": "pjc:llm-wiki",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "옵시디언 단축키 알려줘",
+      "why": "오발동 함정 — 위키 도구(Obsidian) 언급이나 vault 운영과 무관한 일반 지식 질문 (구 llm-wiki 전용 케이스 #16 이관)"
+    },
+    {
       "id": "dbg-pos-1",
       "skill": "pjc:pjc-systematic-debugging",
       "expect": "trigger",
