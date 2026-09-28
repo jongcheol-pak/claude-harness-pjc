@@ -1282,7 +1282,7 @@
       "expect_absent": [
         "산문 분리 — 20_projects/personal/demo/feat-thing.md"
       ],
-      "rationale": "**정지 가드.** 예산은 발동했지만 옮길 수 있는 섹션이 없다 — `## 개요`·`## 관련 파일`·`## 구현 방법`은 본문째 원본에 남기는 대상이라(그것이 필수 섹션 게이트를 지키는 방법이다) 남는 것이 없다. 이때 쪼개지 않고 멈추며 그 상태를 실패로 판정하지 않는다."
+      "rationale": "**정지 가드.** 예산은 발동했지만 옮길 수 있는 것이 없다 — `## 개요`는 본문째 남는 정체성이고, 유일한 이동 후보 `## 구현 방법`은 옮기면 하위가 곧바로 발동하는 크기이며, `## 관련 파일`은 항목이 하나뿐이라 최후 수단인 단위 분할도 첫 단위(원본 몫)만 남는다. 이때 쪼개지 않고 멈추며 그 상태를 실패로 판정하지 않는다."
     },
     {
       "fixture": "prose-under",
@@ -1419,7 +1419,7 @@
         "정본 포인터 절 없음",
         "하위 문서 목록 깨짐"
       ],
-      "rationale": "**`## 구현 방법`이 최대 섹션인 경우** — 실 vault에서 발동 직전인 형상이 정확히 이것이다(`feat-pjc:implement.md`의 그 섹션이 10,173자). 초기 구현은 이 섹션을 이동 제외에 넣어 여기서 「옮길 것이 없다」로 멈췄는데, §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을 옮겨도 게이트가 깨지지 않는다(원본에 헤딩 + 포인터가 남고 각주 정의도 남는다). 이동 제외는 지도(`## 관련 파일`)와 정체성(`## 개요`)뿐이라는 것을 이 케이스가 고정한다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "rationale": "**`## 구현 방법`이 최대 섹션인 경우** — 실 vault에서 발동 직전인 형상이 정확히 이것이다(`feat-pjc:implement.md`의 그 섹션이 10,173자). 초기 구현은 이 섹션을 이동 제외에 넣어 여기서 「옮길 것이 없다」로 멈췄는데, §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을 옮겨도 게이트가 깨지지 않는다(원본에 헤딩 + 포인터가 남고 각주 정의도 남는다). 절 단위 이동에서 빠지는 것은 지도(`## 관련 파일` — 절 이동으로 풀리지 않을 때만 단위 분할의 대상이 된다)와 정체성(`## 개요`)뿐이라는 것을 이 케이스가 고정한다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
       "expect_file_contains": {
         "20_projects/personal/demo/feat-thing.md": [
           "## 구현 방법",
@@ -1944,6 +1944,117 @@
         "관련 파일 경로 항목 0개: 20_projects/personal/demo/feat-thing-2.md"
       ],
       "rationale": "**§7-21 면제의 경계**(D5 부정 케이스). 복귀 링크가 있는 하위라도 `## 관련 파일`에 정본 포인터가 없고 비어 있으면 그대로 경고한다 — 면제 조건은 「복귀 링크 AND 포인터 줄」이고, 복귀 링크만으로 면제하면 사람이 비워 둔 하위 지도가 조용히 통과한다. 면제를 넓게 구현하면 이 케이스만 red 가 된다."
+    },
+    {
+      "fixture": "prose-related-groups",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md",
+        "20_projects/personal/demo/feat-thing-3.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]"
+      ],
+      "after_expect_absent": [
+        "예산 초과: 20_projects/personal/demo/feat-thing",
+        "예산 임박: 20_projects/personal/demo/feat-thing",
+        "관련 파일 경로 항목 0개",
+        "관련 파일 섹션 누락",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐",
+        "분리한 본문이 조회 경로 밖",
+        "허브 기능 목록 누락"
+      ],
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "### 코어",
+          "`src/A/item001.cs`",
+          "`src/D/item001.cs`",
+          "### 저장소",
+          "**정본은 [[20_projects/personal/demo/feat-thing-2|것 (Thing) — 관련 파일 · 전송 계층 이 기능 src/Net/]]의 「관련 파일」이다**",
+          "**정본은 [[20_projects/personal/demo/feat-thing-3|것 (Thing) — 관련 파일 · 저장소]]의 「관련 파일」이다**",
+          "- [[20_projects/personal/demo/feat-thing-2|것 (Thing) — 관련 파일 · 전송 계층 이 기능 src/Net/]] — 관련 파일 · 전송 계층 이 기능 src/Net/"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "index_label: 것 (Thing) — 관련 파일 · 전송 계층 이 기능 src/Net/",
+          "> 상위 문서: [[20_projects/personal/demo/feat-thing|것 (Thing)]]",
+          "## 관련 파일",
+          "`src/B/item001.cs`",
+          "`src/B/item082.cs`",
+          "## 구현 방법"
+        ],
+        "20_projects/personal/demo/feat-thing-3.md": [
+          "index_label: 것 (Thing) — 관련 파일 · 저장소",
+          "`src/C/item075.cs`"
+        ],
+        "20_projects/personal/demo.md": [
+          "| 관련 파일 · 전송 계층 이 기능 src/Net/ | 것 (Thing)의 「관련 파일 · 전송 계층 이 기능 src/Net/」 절 | [[20_projects/personal/demo/feat-thing-2\\|것 (Thing) — 관련 파일 · 전송 계층 이 기능 src/Net/]] |"
+        ]
+      },
+      "expect_file_not_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "`src/B/item001.cs`",
+          "`src/C/item001.cs`"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "`src/A/",
+          "`src/C/",
+          "`src/D/"
+        ],
+        "20_projects/personal/demo/feat-thing-3.md": [
+          "`src/A/",
+          "`src/B/",
+          "`src/D/"
+        ],
+        "20_projects/personal/demo.md": [
+          "이 기능]]",
+          "`src/Net/`"
+        ]
+      },
+      "rationale": "**`## 관련 파일`의 `###` 그룹 단위 분할**(D1·D6 — 최후 수단). 다른 절은 짧아 옮겨도 예산이 풀리지 않고 지도만 크다 — 실 vault `feat-transport` 형상이다. 그룹마다 다른 경로 접두(`src/A/`~`src/D/`)를 심어, **첫 그룹(코어)은 원본에 남고** 큰 그룹부터 옮겨지며 **하위에는 자기 그룹 경로만** 가는지를 잰다(다른 그룹 경로의 부재는 `expect_file_not_contains`). 두 그룹이 나가므로 하위 라벨이 서로 다른지도 함께 본다 — 절 제목만 쓰면 둘 다 「관련 파일」이 된다. **그룹명 하나에 wikilink 와 백틱을 심었다** — 실 vault 그룹명에 실재하는 형상이고, 정제 없이 라벨에 들어가면 허브 표 셀을 `|` 로 가르고 바깥 wikilink 를 끊는다. 정제 결과(표시 텍스트만, 백틱 제거, 콜론 없는 구분자)는 D9 규칙에서 세운 기대값이다. 포인터의 절 이름은 「관련 파일」이라 §7-30 이 하위의 `## 관련 파일`로 도달을 확인한다."
+    },
+    {
+      "fixture": "prose-related-flat",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "feat-thing-3.md"
+      ],
+      "after_expect_absent": [
+        "예산 초과: 20_projects/personal/demo/feat-thing",
+        "예산 임박: 20_projects/personal/demo/feat-thing",
+        "관련 파일 경로 항목 0개",
+        "정본 포인터 깨짐",
+        "정본 포인터 절 없음",
+        "하위 문서 목록 깨짐"
+      ],
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "`src/F/item005.cs`",
+          "`src/F/item290.cs`",
+          "의 「관련 파일」이다**"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "## 관련 파일",
+          "`src/F/item150.cs`"
+        ]
+      },
+      "expect_file_not_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "`src/F/item150.cs`"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "`src/F/item005.cs`",
+          "`src/F/item290.cs`"
+        ]
+      },
+      "rationale": "**`###` 그룹이 없는 긴 관련 파일 목록**(D1 항목 묶음). 실 vault `feat-session-terminal`·`feat-source-control` 형상이다 — 소제목이 없어 그룹 단위로 나눌 수 없다. `- ` 항목을 순서대로 예산 절반 크기로 묶고, 첫 묶음은 원본에 남으며 큰 묶음부터 옮겨진다. 300항목 중 앞 묶음(`item005`)과 끝 묶음(`item290`)은 원본에, 가운데 묶음(`item150`)은 하위에 있어야 한다 — 한 번 옮기면 풀리는 크기라 하위는 하나다(`feat-thing-3.md` 부재)."
     }
   ]
 }
