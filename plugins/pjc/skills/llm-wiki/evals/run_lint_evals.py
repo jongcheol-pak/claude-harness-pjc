@@ -1034,6 +1034,12 @@ def check_case(case):
         missing = [kw for kw in case.get("expect_keywords", []) if kw not in out1]
         if missing:
             problems.append("--fix 출력 미검출 키워드: " + ", ".join(missing))
+        # `expect_keywords` 는 부분 문자열 대조라 옛 꼬리가 붙은 출력도 통과시킨다 — 꼬리를
+        #  걷어낸 문구를 재려면 그 꼬리가 **없다**는 것을 따로 대조해야 한다. `[SKIP]` 줄은
+        #  `--fix` 출력(out1)에만 나오므로 재실행(out2)이 아니라 여기서 잰다.
+        present = [kw for kw in case.get("expect_absent", []) if kw in out1]
+        if present:
+            problems.append("--fix 출력에 있으면 안 되는 문자열: " + ", ".join(present))
         residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
         if residual:
             problems.append("수정 후 재lint에 위반 잔존: " + ", ".join(residual))

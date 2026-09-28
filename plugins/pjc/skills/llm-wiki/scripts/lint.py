@@ -2162,7 +2162,7 @@ def _root_stem(rel):
 def _next_sub_index(vault, rel):
     """`{루트 stem}-{n}.md`의 다음 순번. 이미 있는 최대값 + 1이고 없으면 2다.
 
-    **섹션 제목을 파일명에 전사하지 않는다**(D1 ⓐ) — §3 네이밍이 전 타입에 영문소문자
+    **섹션 제목을 파일명에 전사하지 않는다** — §3 네이밍이 전 타입에 영문소문자
     하이픈을 요구하는데 위키 본문은 한글이 원칙이고 `## 주의점 / 함정`처럼 경로 구분자를
     포함한 제목이 실재한다. 순번은 결정론이면서 네이밍 규칙을 항상 만족한다.
 
@@ -2192,7 +2192,7 @@ def _label_with_section(base, title):
 
 
 def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
-    """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다(D1 ⓓ).
+    """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다.
 
     **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번) §7-18ⓐ·
     §7-21 같은 필수 섹션 게이트가 하위에도 그대로 걸린다 — 재현하지 않으면 자동 분할이
@@ -2209,7 +2209,7 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
     back = "> 상위 문서: [[%s|%s]]\n\n" % (rel[:-len(".md")], label)
     out = head + "# %s\n\n" % _label_with_section(h1.group(1).strip() if h1 else label, title) + back
 
-    # 각주 정의는 **원본에 남기고 하위에도 복제**한다(D2) — 각주는 파일 로컬이라 본문만
+    # 각주 정의는 **원본에 남기고 하위에도 복제**한다 — 각주는 파일 로컬이라 본문만
     #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본의 `[^src-` 가 0이 되어
     #  §7-18ⓑ가 곧바로 새 위반을 낸다(자동 분할이 스스로 만든 위반).
     keep_body = ""
@@ -2391,7 +2391,7 @@ def prescribable(rel, fm, text, nl):
     return relocatable(rel, fm, text, nl)
 
 def relocate_sections(ses):
-    """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다(D2).
+    """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다.
 
     헤딩과 포인터 1줄은 원본에 남는다 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을
     내고, 제목까지 지우면 목차에서 그 주제가 사라져 물을 실마리가 없어진다."""
@@ -2428,7 +2428,7 @@ def relocate_sections(ses):
             (title, s0, s1), body, sub_text = pick
             hd_end = cur.index("\n", s0) + 1
             ptr = _relocation_pointer(sub_rel, label, title, len(body))
-            # **본문 안의 각주 정의는 원본에 남긴다**(D2) — 각주는 파일 로컬이라, 정의가
+            # **본문 안의 각주 정의는 원본에 남긴다** — 각주는 파일 로컬이라, 정의가
             #  옮기는 절 안에 있으면 본문과 함께 빠져 **원본의 `[^src-` 가 0이 된다**(§7-18ⓑ가
             #  곧바로 새 위반을 낸다). 하위에는 body 에 이미 딸려 가므로 여기서 복제하지 않는다.
             #  마지막 절이 옮겨질 때 실제로 일어나는 경로다 — 각주 정의는 관례상 문서 끝에 모인다.
@@ -2706,7 +2706,7 @@ def apply_fixes(vault, dry_run=False):
         pages[rel(p)] = (fm, fm.get("type", ""), norm)
 
     fixed, failed = [], []
-    skipped_fix = []   # 생성기가 담당해 이번 --fix에서 제외한 항목 (D11)
+    skipped_fix = []   # 생성기가 담당해 이번 --fix에서 제외한 항목
     backed = set()
 
     def backup(r):
@@ -2775,9 +2775,9 @@ def apply_fixes(vault, dry_run=False):
     #  **못 잡게 되는 것**: 마커 있는 vault에서 생성기를 돌리지 않은 채 open question이 늘면
     #  index.md가 그만큼 뒤처진다 -- 그 상태는 다음 `--build-index` 한 번으로 닫히고, 검사(§7-23)
     #  자체는 그대로 남아 보고한다(수정만 생성기가 맡는다).
-    #  **마커 없는 vault는 무회귀** -- 종전대로 안전 3종이 모두 동작한다(D11).
+    #  **마커 없는 vault는 무회귀** -- 종전대로 안전 3종이 모두 동작한다.
     if AUTO_INDEX_BEGIN in pages.get("index.md", (None, None, ""))[2]:
-        skipped_fix.append("§7-23 미해결 질문 동기 — 생성 구역이라 --build-index가 담당 (D11)")
+        skipped_fix.append("§7-23 미해결 질문 동기 — 생성 구역이라 --build-index가 담당")
     elif "index.md" in pages:
         try:
             inorm = pages["index.md"][2]
@@ -3831,7 +3831,7 @@ def main():
             if not sl.lstrip().startswith("[^src-"):
                 continue
             # 디렉터리 구분자 포함 토큰만 경로 후보 — 무구분자(`MainViewModel.LoadAsync` 등
-            #  클래스·멤버명)는 오탐 방지 위해 제외 (plan D2)
+            #  클래스·멤버명)는 오탐 방지 위해 제외
             tokens += [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
                        if "/" in t or "\\" in t]
         # §7-21: '## 관련 파일' 섹션 판별(strip_code 사본 — 코드펜스 안 유사 헤딩 제외) +
