@@ -15,7 +15,7 @@ description: >
 # LLM WIKI 운영 스킬
 
 이 스킬은 위키 작업의 **실행 절차(A~M) + 규칙**을 담는다 — 본체(이 문서)는 시작 절차·공통 규칙만 담고, 절차는 전부 `references/`에 나눠 담는다(컨텍스트 예산 — 작업에 필요한 파일만 지연 로드). **어느 절차가 어느 파일에 있는지는 아래 「절차 목차」 표가 정본이다.** **vault에 아무 파일이 없어도(빈 폴더) 동작**한다.
-규칙·타입·예산의 진실원천은 **이 스킬 번들**의 schema 세 파일 — `<skill>/references/wiki-schema.md`(코어·목차)와 그 목차가 가리키는 `schema-types.md`(§2)·`schema-budget.md`(§4·§7-2·§8) — 다. vault에는 SCHEMA.md 사본을 두지 않는다(번들만 사용).
+규칙·타입·예산의 진실원천은 **이 스킬 번들**의 schema 네 파일 — `<skill>/references/wiki-schema.md`(코어·목차)와 그 목차가 가리키는 `schema-types.md`(§2)·`schema-budget.md`(§4·§7-2·§8)·`schema-lint.md`(§7) — 다. vault에는 SCHEMA.md 사본을 두지 않는다(번들만 사용).
 
 > **`<skill>` 경로**: 이 SKILL.md가 위치한 폴더. pjc plugin으로 설치된 경우 `${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki`, 독립 설치된 경우 `~/.claude/skills/llm-wiki`. 본문의 `<skill>/...` 참조는 모두 이 폴더 기준이며, 실제로는 이 SKILL.md와 같은 디렉터리의 `references/`·`scripts/`·`config.json`을 가리킨다.
 
@@ -91,7 +91,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
   - **읽기측 예외**: 절차 G(질의)·K(작업 참조)·M(큐 소비)은 빈 위키에서 J 부트스트랩을 발동하지 않는다(각 절차의 빈 위키 예외가 정본) — 읽기·경량 요청의 부작용으로 vault 골격을 만들지 않는다.
 
 ### 0-3. 규칙 로드
-- 규칙·타입·예산·네이밍·통제 어휘는 스킬 번들 `<skill>/references/wiki-schema.md`(목차가 `schema-types.md`·`schema-budget.md` 로 안내한다)를 따른다. (vault에는 SCHEMA.md 사본을 두지 않는다.)
+- 규칙·타입·예산·네이밍·통제 어휘는 스킬 번들 `<skill>/references/wiki-schema.md`(목차가 `schema-types.md`·`schema-budget.md`·`schema-lint.md` 로 안내한다)를 따른다. (vault에는 SCHEMA.md 사본을 두지 않는다.)
 - **schema는 전체 정독하지 않는다(컨텍스트 예산 — 단일 Read 에 담기지 않는다)**: 작업 관련 §만 schema 상단 "목차 (부분 Read 인덱스)"로 특정해 부분 Read(Grep 또는 offset Read)한다. 절차 본문 곳곳의 "상세는 schema §N" 포인터도 그 §만 읽으면 충분하다.
 
 ## 사전 준수 사항 (모든 작업 공통)

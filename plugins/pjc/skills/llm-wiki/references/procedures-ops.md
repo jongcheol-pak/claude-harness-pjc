@@ -13,50 +13,13 @@
 #### F-0. 보조 스크립트 (먼저 실행)
 - **큐 잔량 확인 (보고만 — 소비는 F-2 승인 후)**: vault 루트 `pending.md`를 읽어 잔량을 집계·보고한다(어떤 태그가 몇 건, 어느 프로젝트인지) — `[DECISION]`·`[PROJECT-FACT]`·`[SYMPTOM]`. 파일이 없으면 건너뛴다. **F-0에서는 소비(제거·표식 부착·decisions.md 반영)를 하지 않는다** — 실제 소비는 **F-2 결과 보고에서 사용자 승인과 함께** 처리한다(수정 승인 게이트에 합류 — 큐 소비도 위키를 바꾸는 쓰기이므로 lint 수정 승인과 같은 지점에서 함께 확인받는다). 소비 시점의 규칙은 **B-1 0의 소비 규칙과 동일**하다(정본 `references/queue-consume-rules.md` B-1 0 — 태그별 규칙은 여기 재열거하지 않고 소비 전 그 파일을 Read 한다). 미처리 잔량은 이번 점검 보고에 포함하고 관련 프로젝트 정합 확인에 반영한다.
   - **형식 위반 WARN(§7-25)이 뜨면 잔량 숫자를 그대로 신뢰하지 않는다** — 태그는 있으나 날짜 선두 형식이 아닌 줄은 집계에서 빠지므로, 실제 잔량이 보고된 수보다 많다(극단적으로 전건 위반이면 잔량 0으로 보인다). 위반 줄을 규약 형식으로 정규화한 뒤 잔량을 재확인하고, 그 정규화도 F-2 승인 대상에 포함한다.
-- `python "<skill>/scripts/lint.py" "<vault>"` 로 **아래 F-1 인덱스의 `[기계]` 표시 항목 전체**를 기계적으로 1차 점검(읽기 전용 — 항목 상세 정본은 schema §7, F-1은 실행 순서 인덱스). 그 결과를 아래 항목과 합쳐 보고한다.
+- `python "<skill>/scripts/lint.py" "<vault>"` 로 **`schema-lint.md` §7 의 `[기계]` 항목 전체**를 기계적으로 1차 점검(읽기 전용 — 항목 상세·주체의 정본은 그 절이다). 그 결과를 아래 항목과 합쳐 보고한다.
 - **인덱스 생성**: `python "<skill>/scripts/lint.py" "<vault>" --build-index [--dry-run]` — `index.md`의 `<!-- AUTO-INDEX:BEGIN -->`~`END` 사이를 frontmatter 파생으로 채우고 category별 sub-index를 만든다(마커 밖 불변, 마커 없으면 미실행 · 규약 정본 schema §6). **검사와 별개 실행**이라 F-0의 1차 점검을 대체하지 않는다.
 - **폴백 (python 부재·실행 실패)**: `references/wiki-ops-rules.md`의 **lint 실행 폴백(공통)** 을 따른다(정본 — 건너뛰기 + "기계 lint 미실행" 보고 명시). F에서는 건너뛴 뒤 §7-10 에이전트 수동 점검으로 진행한다.
 
 #### F-1. 실행 순서 (검사 항목 인덱스)
 
-> **각 항목의 상세·판정 기준·역할 경계·심각도(ERR/WARN/INFO)는 schema §7이 정본**(F-1 번호 N = §7-N, 1:1 대응 — 여기 재열거하지 않는다). 아래는 실행 순서 + **수행 주체** 인덱스: `[기계]`=lint.py 자동, `[에이전트]`=세션이 직접 대조(lint.py 범위 아님). F-0의 lint.py 1차 점검은 `[기계]` 항목 전체를 돈다.
-
-1. `[기계]` 깨진 wikilink (참조 무결성)
-2. `[기계]` 예산 준수 (§7-2)
-3. `[기계]` ~~신선도(`updated` 60·90일)~~ — **폐지**(v1.238.0 — 집행 주체 없이 INFO만 내던 축, wiki-schema §7-3). 실행하지 않는다 — 번호는 §7 목록과의 1:1 대조를 위해 자리만 유지한다(재사용 금지)
-4. `[에이전트]` 모순 탐색 → question 기록
-5. `[에이전트]` 크로스참조 누락 (tech_stack ↔ `used_by`)
-6. `[기계]` 기능별 인덱스 동기화 (index.md 부재·읽기 실패 시 각각 다른 ERR + 인덱스 검사 6·14·15·16·23 skip)
-7. `[기계]` 통제 어휘 위반 (`platform`·`origin`·`confidence`·`category`)
-8. `[기계]` 고아 페이지·타입 미지정
-9. `[기계]` 미래/이상 날짜·`updated` 누락
-10. `[에이전트]` 코드 정합 샘플링 (feature 표본 서술↔코드) — **`origin` 승격이 일어나는 지점이 여기다**(schema §11): 표본이 코드와 맞으면 그 페이지를 `human-validated`로 올리고, 어긋나면 서술을 고친다. 승격·미승격 건수는 F-2 보고에 적는다
-11. `[기계]` tech_stack 휘발성 버전
-12. `[기계]` (미검증)·미해결 question 집계 (INFO)
-13. `[에이전트]` 잠재 연결 발견 (미연결 공통점, INFO)
-14. `[기계]` index·sub-index 분할 신호 (INFO) — B-3/F-2에서 자동 수행(승인 불요, §4 분할 수행 절차 1번). index.md는 2단계 category 분할, sub-index 초과는 3단계 순번 파일(`index-{cat}-{n}.md`) 분할.
-15. `[기계]` sub-index 목록 정합
-16. `[기계]` 기능별 인덱스 한/영 병기
-17. `[기계]` deprecated 표기 정합·집계
-18. `[기계]` feature 구현 근거 각주
-19. `[기계]` log 아카이브 인덱스 정합
-20. `[기계]` feature 각주 경로 레포 실존
-21. `[기계]` feature `## 관련 파일` 섹션 게이트 + 경로 실존
-22. `[기계]` 시크릿 의심 스캔
-23. `[기계]` 미해결 질문 인덱스 동기
-24. `[기계]` decision-log 정합
-25. `[기계]` 큐 잔량 집계 (INFO) + 형식 위반 (WARN) — `pending.md`
-26. `[기계]` 위키 뒤처짐 — 허브 `synced_commit` ↔ 레포 HEAD 커밋 수 (INFO, fail-open)
-27. `[기계]` ~~가이드/레시피 섹션 가이드 행 한/영 병기~~ — **폐지**(§7-16에 흡수, wiki-schema §7-27). 실행하지 않는다 — 번호는 §7 목록과의 1:1 대조를 위해 자리만 유지한다(재사용 금지).
-28. `[기계]` 본문 릴리즈 마커 (§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
-29. `[기계]` 장식 이모지 검출 (§7-29 — 20_/30_/40_ 산문의 Emoji_Presentation 이모지, 코드펜스·lint-*·decision-log 제외)
-30. `[기계]` 이동·분리 도달 경로 정합 (§7-30 — ⓐ 허브 `## 아카이브` 포인터 ↔ `changes.md` 양방향 ⓑ `conventions.md` `## 하위 문서` 목록 ↔ 하위 파일 양방향 ⓒ guide·entity·concept의 인덱스 등록 ⓓ guide 허브 `## 하위 문서` ↔ 하위 양방향(허브를 가리키는 링크 기준 — 위치 무관) ⓔ 그 밖의 산문 타입(feature·entity·concept) `## 하위 문서` ↔ 하위 양방향 + 정본 포인터 도달성(복귀 링크 기준). `--fix` 비대상)
-31. `[기계]` 작업 규약 미마이그레이션 (§7-31 — 허브에 `## 작업 규약·주의사항` 잔존 시 INFO, `conventions.md` 이전 대상)
-32. `[기계]` 섹션 구역화 권장 (§7-32 — feature의 한 `## ` 섹션이 6,000자를 초과하면서 `### ` 소제목 0개면 INFO. 파일 예산과 별개 축이고 처방은 소제목 추가다)
-33. `[기계]` decision-log 방향 미기재 (§7-33 — 기각·보류 항목의 **첫 판정** 직후에 `: {실제 방향}`이 없으면 WARN. 괄호 부기는 대체 불가. `--fix` 비대상)
-34. `[기계]` conventions 근거 표기 집계 (§7-34 — 항목 끝 `({근거})` 미보유 건수 / 전체를 INFO 1줄. exit code 불변, `--fix` 비대상)
-35. `[기계]` patterns 관측 폭 집계 (§7-35 — `## 프로젝트 사례` 절 미보유 건수 / 전체를 INFO 1줄. `confidence`가 등재 시점 판정이라 실증 폭과 갈리는 것을 메운다. exit code 불변, `--fix` 비대상)
-36. `[기계]` decision-log 정정 표기 형식 (§7-36 — `(정정 `·`정정:` 을 담은 항목이 `(정정 YYYY-MM-DD: {옛 값} → {새 값}, 근거 {정본})` 형식이 아니면 WARN. `--fix` 비대상)
+> **검사 항목·수행 주체·판정 기준·심각도의 정본은 `schema-lint.md` §7 이다** — 번호 순으로 돈다. 각 항목 이름 뒤 태그가 주체를 가른다: `[기계]` 는 F-0 의 lint.py 1차 점검이 전부 돌고, `[에이전트]`(§7-4·5·10·13)는 이 세션이 직접 대조한다. 폐지 번호(§7-3·27)는 태그가 없고 실행하지 않는다.
 
 #### F-2. 결과 보고
 - 결과를 **심각도 등급**(🔴 오류 / 🟡 경고 / 🔵 정보)으로 분류해 보고.
@@ -67,7 +30,7 @@
 - 사용자 승인 후 수정. **단 다음 넷은 승인 대상이 아니다**(정본 열거는 schema §7 결과 처리) — ① **§7-14의 index/sub-index 분할**(§4 2단계 category + 3단계 순번 파일) ② **§7-2 발동으로 소비 지점(F-2·A-4·B-3)이 착수한 산문 타입 하위 분리 및 그 판정 결과인 `budget_split` 3필드 부착**(위 F-2 예산 신호 소비 지점) ③ **롤오버**(project 허브·decision-log·`log.md` — 보존 이동이라 원문 손실이 없다, §2.2·§2.8·§8). **시점은 각 절이 정한다** — decision-log·`log.md`는 **§7-2 발동**, **project 허브는 schema-types §2.2 「6번째 항목」**이다. ④ **처방 없는 타입의 상세 이관**(`source-stub`→feature/entity + 포인터 · `question` 흡수 + `status: resolved`) — **④가 「세션 처방」**이고 `--auto-split`이 못 해서 세션이 직접 한다(`references/wiki-ops-rules.md` 「세션 처방」). 넷 다 주 작업 완료 후 자동 수행하고 **성공은 보고하지 않는다**(§4 분할 수행 절차 1번·6번). **참조 무결성 3종(§7-23·§7-24·§7-19 stale 행)은 수기 편집 대신 `python "<skill>/scripts/lint.py" "<vault>" --fix`로 대체할 수 있다** — **단 생성 마커가 있는 vault에서는 §7-23이 빠진 2종이다**(그 섹션은 `--build-index`가 담당 — 정본은 schema §7 서두)(비 git vault 는 자동 백업·[FIXED] 요약 출력 — 대상·안전장치 정본은 schema §7 서두, 승인 전 실행 금지).
 - **위 불릿의 `--fix`를 부르기 직전에 절차 커밋을 먼저 한다**(같은 근거 — 「커밋 시점」 ①) — **이 자리가 한 절차의 두 번째 호출이라 지시를 호출 뒤에 둔다**: 앞에 두면 그 사이 승인 후 수기 수정·세션 처방 ④가 vault를 다시 더럽혀 커밋이 무효가 된다. **커밋 대상은 둘이다** — ⓐ 바로 위 `--auto-split`의 처방 결과 ⓑ 이 불릿에서 방금 한 수기 수정·④. ⓐ가 남는지는 재점검 pass가 도는가로 갈리지만(돌면 그 진입 체크포인트가 앞 pass 결과를 담아 깨끗해진다 — 2026-09-16 실측: `log-guard`는 clean, `prose-split`은 미커밋 3건) **갈리는 것을 절차가 매번 재지 않도록 언제나 커밋한다.** 남지 않았으면 커밋할 것이 없어 무해하고, 남았는데 건너뛰면 이 호출이 거부된다.
 - **큐 소비도 이 승인 지점에서 함께 처리**(F-0 잔량 보고 → 여기서 소비): 승인 시 B-1 0 규칙대로 `pending.md`를 소비한다 — 어느 태그를 어디까지 소비하는가는 그 규칙이 정한다. 소비 전 `references/queue-consume-rules.md` 를 Read 해(단일 파일이라 그대로 한 번에 읽힌다 — 절 단위 부분 Read 가 필요 없다) 제거 시점 재읽기-병합·중복 검사·롤오버·표식 규칙과 **타 프로젝트 동의 게이트**를 따른다(요약만으로 소비 금지).
-- `log.md` (**위키 파일이 실제로 변했을 때만** — `references/wiki-ops-rules.md`의 log 기록 조건이 정본): `- [YYYY-MM-DD] [LINT] 위키 점검. {발견}건 발견, {수정}건 수정. 표본: {코드 정합 샘플링 feature 목록}.` — 표본 명시는 다음 lint의 로테이션 근거다(F-1 10, schema §7-10).
+- `log.md` (**위키 파일이 실제로 변했을 때만** — `references/wiki-ops-rules.md`의 log 기록 조건이 정본): `- [YYYY-MM-DD] [LINT] 위키 점검. {발견}건 발견, {수정}건 수정. 표본: {코드 정합 샘플링 feature 목록}.` — 표본 명시는 다음 lint의 로테이션 근거다(schema §7-10).
   - **기록 대상**: 수정 적용(수기·`--fix`) · 큐 소비(`pending.md` 변경) · 리포트 페이지 생성(`questions/lint-*.md`) **중 하나라도 있었을 때**.
   - **미기록**: 발견 0건이거나, 발견은 있었으나 사용자가 수정을 승인하지 않아 **위키 파일이 하나도 안 변한** 경우 — log를 쓰면 그 자체가 vault 쓰기가 되어 비 git vault 사전 백업까지 연쇄 발동한다(무변경 점검이 부작용을 낳는 구조). 결과는 대화 보고로만 전달한다.
 
@@ -107,8 +70,8 @@
 
 > **(참고) 승인 후 하네스 레포에서 번들을 실제로 수정할 때의 규칙** — 위키 세션이 아니라 `pjc:plan` 승인을 거친 하네스 세션에서 적용:
 > - 규칙 번들 수정 시 frontmatter `version`을 올린다.
-> - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `references/wiki-ops-rules.md` 예산표, `schema-types.md` **§2.N 타입절(`- **예산**:` 줄)·§3~§4**, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/RELEASE_MARKER_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **예산 단계 임계·판정 어휘**(BUDGET_NEAR_RATIO/BUDGET_CRITICAL_RATIO/BUDGET_CRITICAL_SLACK/BUDGET_REJUDGE_MARGIN/BUDGET_SPLIT_VOCAB)는 `references/wiki-ops-rules.md`의 **「예산 단계 신호」 표**가 문서 측 정본이며 `check_consistency.py`가 그 표와 lint 상수를 기계 대조한다 — 산문(§7-2·§4)에는 수치를 복제하지 말고 상수명만 쓴다(복제하면 그 자리가 무가드로 남는다). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때도 `wiki-schema.md` §7 검사항목 + `references/procedures-ops.md` F-1(이 파일)에 동일 항목을 문서화한다.
-> - **이 동기 정합은 `python "<skill>/evals/check_consistency.py"`(인자 없음)로 기계 검증한다** — 세 곳(+§4 예산표·템플릿 주석·§7↔F-1 번호·**타입 열거 정합**)의 드리프트를 손 대조 대신 자동으로 잡는다. **타입 열거 정합**은 새 타입을 도입할 때 기존 타입이 산문으로 열거된 자리(§3 origin·confidence 통제어휘 서술 · §7-9 · §7-28 · §11 · 목차 §2 행 · 계층 태그 · `templates.md` 목차 · §12 description 권장/비대상)가 조용히 낡는 것을 막는다 — **새 타입을 만들면 이 자리들도 함께 갱신해야 exit 0이 된다.** 수동 3중 갱신에 의존하지 말고 번들 수정 후 반드시 돌린다(레포 루트 `AGENTS.md`가 지목하는 검증 매핑 표 — 표 본체는 `docs/harness-conventions.md` — 가 `llm-wiki/**` 수정 시 이 실행을 요구한다. 이 포인터는 그 게이트를 절차에서도 발견 가능하게 한다).
+> - 예산·통제어휘 변경 시 세 곳을 동시 갱신한다 — `references/wiki-ops-rules.md` 예산표, `schema-types.md` **§2.N 타입절(`- **예산**:` 줄)·§3~§4**, `scripts/lint.py` 상수(BUDGET/GUIDE_BUDGET/SPECIAL_BUDGET/PLATFORM_VOCAB/ORIGIN_VOCAB/CONFIDENCE_VOCAB/CATEGORY_VOCAB/DECISION_VOCAB/ORIGIN_REQUIRED_TYPES/UPDATED_REQUIRED_TYPES/INFRA_TYPES/RELEASE_MARKER_EXEMPT_TYPES/INDEX_BODY_LINES/INDEX_FEAT_ROWS). **예산 단계 임계·판정 어휘**(BUDGET_NEAR_RATIO/BUDGET_CRITICAL_RATIO/BUDGET_CRITICAL_SLACK/BUDGET_REJUDGE_MARGIN/BUDGET_SPLIT_VOCAB)는 `references/wiki-ops-rules.md`의 **「예산 단계 신호」 표**가 문서 측 정본이며 `check_consistency.py`가 그 표와 lint 상수를 기계 대조한다 — 산문(§7-2·§4)에는 수치를 복제하지 말고 상수명만 쓴다(복제하면 그 자리가 무가드로 남는다). **타입 템플릿·주석이 바뀌면 `references/templates.md`도 함께 동기**한다(템플릿 주석은 규칙 요지를 중복 보유하므로 어긋나면 생성물이 규약을 위반). lint에 신규 검사(상수 아님)를 추가할 때는 `schema-lint.md` §7 검사 항목(이름 뒤 주체 태그 포함)과 `references/lint-rationale.md` 의 같은 번호 절 두 곳에 문서화한다.
+> - **이 동기 정합은 `python "<skill>/evals/check_consistency.py"`(인자 없음)로 기계 검증한다** — 세 곳(+§4 예산표·템플릿 주석·§7 주체 태그·**타입 열거 정합**)의 드리프트를 손 대조 대신 자동으로 잡는다. **타입 열거 정합**은 새 타입을 도입할 때 기존 타입이 산문으로 열거된 자리(§3 origin·confidence 통제어휘 서술 · §7-9 · §7-28 · §11 · 목차 §2 행 · 계층 태그 · `templates.md` 목차 · §12 description 권장/비대상)가 조용히 낡는 것을 막는다 — **새 타입을 만들면 이 자리들도 함께 갱신해야 exit 0이 된다.** 수동 3중 갱신에 의존하지 말고 번들 수정 후 반드시 돌린다(레포 루트 `AGENTS.md`가 지목하는 검증 매핑 표 — 표 본체는 `docs/harness-conventions.md` — 가 `llm-wiki/**` 수정 시 이 실행을 요구한다. 이 포인터는 그 게이트를 절차에서도 발견 가능하게 한다).
 
 #### H-3. 범위 제한 (SSOT 우선)
 - **SSOT 우선 판정**: 위키 실제 상태가 규칙과 다르면, 기본은 **규칙(SSOT)이 옳고 위키가 틀린 것**으로 본다 — 규칙을 위키에 맞추지 말고, 위키 콘텐츠를 규칙에 맞추거나(절차 B/F) 판단이 갈리면 사용자에게 확인한다. "위키가 이러니 규칙을 바꾸자"는 H-3 자기정당화 루프의 입구다.
@@ -128,7 +91,7 @@
 
 ### M. 큐 소비 (경량)
 
-**발동은 사용자 요청 하나다** — "큐 정리", "pending 정리/소비". 풀 ingest(B)·풀 lint(F) 없이 **`pending.md`만 다루는** 경량 절차이며, 잔량 경고(20건 · K 5-2)를 받고 정리만 원할 때 큐 5건 비우자고 F-1 인덱스 36항목 점검을 도는 마찰을 없앤다.
+**발동은 사용자 요청 하나다** — "큐 정리", "pending 정리/소비". 풀 ingest(B)·풀 lint(F) 없이 **`pending.md`만 다루는** 경량 절차이며, 잔량 경고(20건 · K 5-2)를 받고 정리만 원할 때 큐 5건 비우자고 §7 검사 36항목 점검을 도는 마찰을 없앤다.
 
 1. §0 시작 절차 수행 후 vault 루트 `pending.md`(세 태그)를 읽는다. 없거나 비어 있으면 "소비할 큐 없음"으로 둔다. **빈 위키 예외**: `index.md`/`log.md`가 없어도 §0-2의 J 부트스트랩을 발동하지 않는다(절차 G·K 1과 동형 — 큐 정리 요청의 부작용으로 vault 골격을 만들지 않는다). 비어 있으면 "소비할 큐 없음"을 보고하고 종료한다 — 부트스트랩·lint·ingest로 확대하지 않는다(범위 고정). **`pending.md`는 있는데 `index.md`가 없으면**(미부트스트랩 vault에 큐만 쌓인 상태 — 코드 세션 큐잉은 index 존재를 요구하지 않아 실제로 생길 수 있다) 태그별 잔량만 보고하고 소비하지 않는다 — 소비 목적지(허브·decisions.md·index)가 없어 반영이 불가능하다. 부트스트랩(절차 J)·프로젝트 등록(절차 A) 또는 ingest(절차 B)가 선행돼야 함을 안내하고 종료한다(확대는 사용자 지시 시 별도 진행).
 2. 태그별 잔량을 집계·보고한다(F-0 동형). **소비 규칙은 `references/queue-consume-rules.md` B-1 0이 정본** — 소비 전 그 파일을 Read 해 따른다(단일 파일이라 한 번에 읽힌다)(요약만으로 소비 금지). 잔량 보고 후 **사용자 승인을 받아** 소비한다.

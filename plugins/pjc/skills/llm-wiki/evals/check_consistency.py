@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""SKILL.md ↔ schema 번들(wiki-schema.md · schema-types.md · schema-budget.md) ↔ lint.py 공유 상수 정합 셀프체크.
+"""SKILL.md ↔ schema 번들(wiki-schema.md · schema-types.md · schema-budget.md · schema-lint.md) ↔ lint.py 공유 상수 정합 셀프체크.
 
-사용법: python check_consistency.py   (인자 없음 — 번들 내 상대 위치로 세 파일을 찾는다)
+사용법: python check_consistency.py   (인자 없음 — 번들 내 상대 위치로 네 파일을 찾는다)
        python check_consistency.py --trigger-report
          축 ⑪(예산 트리거 조건 어휘 유일성)의 위반·화이트리스트·차집합·면제 잔여 목록만
          출력한다. 정합 대조는 돌지 않고 exit 0으로 끝난다(위반·면제 잔여는 인자 없는 기본
@@ -68,10 +68,10 @@ FAIL(그 절차의 범위가 통째로 빈다), 헤딩에만 있는 이름은 �
 표 뒤 산문의 인용까지 절 이름으로 잡힌다(신설 당일 실측 2건).
 
 ⑭ lint §7 번호 ⊆ schema §7 — lint.py 가 인용하는 `§7-N` 번호가 schema §7 목록에 있는가.
-⑦이 F-1 ↔ schema 만 보아 lint.py 쪽 신설(§7-36)이 목록·F-1 에서 빠진 채 green 이었던
+당시 ⑦(F-1 ↔ §7 번호 대조 — 지금은 주체 태그 축)이 F-1 ↔ schema 만 보아 lint.py 쪽 신설(§7-36)이 목록·F-1 에서 빠진 채 green 이었던
 사각을 메운다(v1.317.0). 방향은 한쪽이다 — schema 에만 있는 번호(폐지·[에이전트])는 정상.
 
-⑮ 파일명 § 인용 소재 — schema 번들이 세 파일로 나뉜 뒤, **파일명을 붙인** § 인용(`<파일> §N`)이
+⑮ 파일명 § 인용 소재 — schema 번들이 여러 파일로 나뉜 뒤, **파일명을 붙인** § 인용(`<파일> §N`)이
 그 § 의 `## N.` 헤딩을 실제로 가진 파일을 가리키는가. 절을 옮기면 파일명 인용은 조용히 틀린
 파일을 지목하는데 다른 축은 이 인용을 보지 않았다(⑧ 은 절차 라벨만 본다). 스캔은 `plugins/pjc`
 전역이다 — 인용은 대개 다른 파일에 있다. **파일명 없는 `schema §N`·접두 없는 `§N` 은 대상 밖**이다:
@@ -102,10 +102,11 @@ EVALS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(EVALS_DIR)
 SKILL_MD = os.path.join(SKILL_DIR, "SKILL.md")
 SCHEMA_MD = os.path.join(SKILL_DIR, "references", "wiki-schema.md")
-# schema 번들은 세 파일이다 — §2 는 types, §4·§7-2·§8 은 budget 으로 나갔다(§ 번호는 유지).
+# schema 번들은 네 파일이다 — §2 는 types, §4·§7-2·§8 은 budget, §7 은 lint 로 나갔다(§ 번호는 유지).
 #  축마다 자기 절이 사는 파일을 읽는다. 코어(`SCHEMA_MD`)에는 목차와 나머지 § 가 남는다.
 SCHEMA_TYPES_MD = os.path.join(SKILL_DIR, "references", "schema-types.md")
 SCHEMA_BUDGET_MD = os.path.join(SKILL_DIR, "references", "schema-budget.md")
+SCHEMA_LINT_MD = os.path.join(SKILL_DIR, "references", "schema-lint.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
 # 절차 K 5~6(큐 기록 규약)은 v1.218.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 3건의 귀속이 함께 옮겨간다.
 QUEUE_RULES_MD = os.path.join(SKILL_DIR, "references", "queue-rules.md")
@@ -353,7 +354,7 @@ def check_schema_toc(schema_text, bundle):
 
     번들이 세 파일로 나뉜 뒤로 목차는 **어느 파일을 열지**도 정한다 — 마지막 열의 첫 백틱
     파일명이 그 § 의 `## N.` 헤딩을 실제로 가진 파일이어야 한다. **정수 § 만 대조한다**:
-    budget 의 `## 7-2.` 는 §7 목록 항목의 본문이라 목차에 자기 행이 없다(7행은 코어를 가리킨다).
+    budget 의 `## 7-2.` 는 §7 목록 항목의 본문이라 목차에 자기 행이 없다(7행은 `schema-lint.md` 를 가리킨다).
     `bundle` 은 {파일명: 본문}. 반환: (불일치 목록, 대조 항목 수)."""
     m = re.search(r"^## 목차[^\n]*\n(.*?)(?=^## |\Z)", schema_text, re.M | re.S)
     if not m:
@@ -424,7 +425,7 @@ def schema7_section(schema_text):
     """schema '## 7.' 절 본문 — ⑦·⑭ 공용. 다음 '## N.' 전까지로 한정해 다른 절의 번호 목록과 섞이지 않게 한다."""
     sm = re.search(r"^## 7\..*?\n(.*?)(?=^## \d|\Z)", schema_text, re.M | re.S)
     if not sm:
-        die("wiki-schema.md '## 7.' 섹션을 찾지 못함")
+        die("schema-lint.md '## 7.' 섹션을 찾지 못함")
     return sm.group(1)
 
 
@@ -440,7 +441,7 @@ def schema7_numbers(schema_text):
 def check_lint_s7_numbers(lint_text, schema_text):
     """⑭ lint.py 가 인용하는 §7-N 번호 ⊆ schema §7 목록 번호.
 
-    ⑦은 F-1 ↔ schema 두 문서만 대조해 **lint.py 쪽 신설을 보지 못한다** — §7-36 이 lint.py·골든·
+    당시 ⑦은 F-1 ↔ schema 두 문서만 대조해 **lint.py 쪽 신설을 보지 못했다** — §7-36 이 lint.py·골든·
     §2.8 에만 들어가고 §7 목록·F-1 에서 빠진 채 green 이었던 것이 실제 사례다(cf67191f). 그때
     lint 의 WARN 문구가 존재하지 않는 절을 가리켰다. **방향은 한쪽이다** — lint.py 에 없는 번호가
     schema 에 있는 것은 정상이다(폐지 항목·[에이전트] 항목은 lint.py 가 인용하지 않는다).
@@ -450,8 +451,8 @@ def check_lint_s7_numbers(lint_text, schema_text):
     if not nums:
         die("lint.py 에서 '§7-N' 인용을 하나도 찾지 못함")
     s7 = schema7_numbers(schema_text)
-    issues = [f"lint.py 의 §7-{n} 인용이 schema §7 목록에 없음 — §7 목록·F-1·"
-              f"lint-rationale 세 곳에 함께 등재하라(procedures-ops.md 하단 '(참고)' 블록)"
+    issues = [f"lint.py 의 §7-{n} 인용이 schema §7 목록에 없음 — schema-lint.md §7 목록(주체 태그 포함)·"
+              f"lint-rationale 두 곳에 함께 등재하라(procedures-ops.md 하단 '(참고)' 블록)"
               for n in sorted(nums - s7)]
     return issues, len(nums)
 
@@ -533,6 +534,7 @@ def check_prose_pointers(skill_text, schema_text):
         "references/wiki-schema.md": schema_text,
         "references/schema-types.md": read(SCHEMA_TYPES_MD),
         "references/schema-budget.md": read(SCHEMA_BUDGET_MD),
+        "references/schema-lint.md": read(SCHEMA_LINT_MD),
     }
     issues = []
     checked = 0
@@ -614,6 +616,9 @@ TYPE_ENUM_SITES_LINT = {
     "A6-validation": (r"^## 11\.[\s\S]*?^- 적용 대상: (.+)$", lambda lint: lint.ORIGIN_REQUIRED_TYPES),
 }
 
+# ⑩-ⓐ 중 §7 검사 항목 본문에 있는 자리 — §7 이 `schema-lint.md` 로 나가 그 파일에서 읽는다.
+TYPE_ENUM_LINT_SITES = {"A2-updated", "A5-release", "A7-emoji"}
+
 # ⑩-ⓑ 전 타입 커버 — 값의 정본이 schema §2 타입 집합인 자리. 기대 집합을 계산으로 도출하므로
 #  코드에 타입 값을 적지 않는다(B2의 매핑 2건만 예외 — 태그 표기가 타입명과 갈리는 지점).
 TYPE_ENUM_SITES_COVER = {
@@ -686,7 +691,8 @@ def check_type_enumerations(schema_text, types_text, bundle, lint):
     **그 반대 방향은 B5가 목록 등재분에 한해서만 본다**(`RETIRED_TYPES`) — 자동 확장이 아니라
     사람이 적은 이름만 보므로 위 어휘 한정을 깨지 않는다. 즉 미등재 삭제 이름은 여전히 통과한다.
     **읽는 파일이 셋으로 갈린다** — 타입 집합(`### 2.N`)은 `types_text`, 열거 자리(A1·A2·A5~A7·
-    B1·B2·B4)는 전부 코어 `schema_text`, B5 유령 이름은 번들 세 파일(`bundle`) 전부다.
+    B1·B2·B4)는 코어 `schema_text` 이되 §7 항목 자리(A2·A5·A7)는 `schema-lint.md`(`TYPE_ENUM_LINT_SITES`),
+    B5 유령 이름은 번들 네 파일(`bundle`) 전부다.
     반환: (불일치 목록, 대조 항목 수)."""
     types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(types_text)}
     if not types:
@@ -696,7 +702,8 @@ def check_type_enumerations(schema_text, types_text, bundle, lint):
 
     # ⓐ 코드↔문서
     for label, (rx, derive) in sorted(TYPE_ENUM_SITES_LINT.items()):
-        span = _enum_span(schema_text, rx, label)
+        src = bundle["schema-lint.md"] if label in TYPE_ENUM_LINT_SITES else schema_text
+        span = _enum_span(src, rx, label)
         for alias, attr in PROSE_SET_ALIASES.items():
             if alias in span:
                 span = span.replace(alias, " ".join(getattr(lint, attr)))
@@ -886,7 +893,7 @@ def _trigger_scan_scope():
 #  여러 줄이 되므로, 줄로 잡으면 정본을 정리하는 순간 그 정리가 위반으로 잡힌다.
 TRIGGER_ANCHORS = {
     # §7-2 본문은 schema-budget.md 의 `## 7-2.` 절로 옮겨 갔다 — 끝은 다음 절 `## 8.` 이다.
-    #  코어 §7 에 남은 번호 포인터 줄도 같은 시작 문면이라 **파일로 갈라야** 한 건 매치가 선다.
+    #  schema-lint §7 에 남은 번호 포인터 줄도 같은 시작 문면이라 **파일로 갈라야** 한 건 매치가 선다.
     SCHEMA_BUDGET_MD: (r"^2\. \*\*예산 준수\*\*", r"^## 8\. "),
     OPS_RULES_MD: (r"^## 예산 단계 신호", r"^## "),
 }
@@ -928,18 +935,16 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_BUDGET_MD, ["- **수행 시점은 그 세션의 주 작업 완료 후**다", "직후 다시 임계를 넘는다"], "index 분할 수행 시점 — 「임계를 넘는다」는 §7-14 축"),
     (SCHEMA_BUDGET_MD, "- **3단계(순번)**: 초과한 sub-index가 무순번", "index 3단계 순번 분할 — §7-14 축"),
     (SCHEMA_BUDGET_MD, ["3. **내용 이동(잘라내기)**", "3단계면 초과분을"], "index 분할의 초과분 이동 — §7-14 축"),
-    (SCHEMA_MD, ["14. **index.md·sub-index 분할 신호**", "200) 초과면 INFO를 낸다", "**index.md 초과는 B/F 세션이", "**sub-index 초과도 B/F 세션이"], "§7-14 검사 항목 본문 — index 트리거 정본"),
+    (SCHEMA_LINT_MD, ["14. **index.md·sub-index 분할 신호**", "200) 초과면 INFO를 낸다", "**index.md 초과는 B/F 세션이", "**sub-index 초과도 B/F 세션이"], "§7-14 검사 항목 본문 — index 트리거 정본"),
     (SCHEMA_TYPES_MD, ["**예산 판정 방식 (펜스 제외 — platform-bootstrap·ui-ux 한정)**", "초과 WARN 문구에"],
      "§2.6 펜스 제외 판정 — 「초과 WARN 문구」는 §7-2 신호의 이름 인용이지 조건 서술이 아니다"),
     (SCHEMA_BUDGET_MD, ["- **도달 경로(4번 등록)의 기계 검증은 §7-30 이 맡는다**", "만 보고 넘기면 등록 누락이"],
      "「lint 통과만 보고 넘기면」 — 예산 무관"),
     (OPS_RULES_MD, ["| index.md | 제한 없음", "기능별 인덱스 200행 초과 시", "동일 임계 측정 — 초과 시 B/F 세션이"], "§7-14 index 트리거 — 줄/행 기준"),
-    (OPS_MD, ["`[기계]` index·sub-index 분할 신호", "sub-index 초과는 3단계 순번 파일"], "F-1 인덱스의 §7-14 라벨"),
     # ── 섹션 구역화 축(§7-32) — 파일 예산이 아니라 **한 섹션의 문자 수 + `### ` 유무**가
     #  트리거다. 처방도 분리가 아니라 소제목 추가라 §7-2와 겹치지 않는다.
-    (SCHEMA_MD, ["32. **섹션 구역화 권장**", "를 초과하면서 `### ` 소제목이"], "§7-32 검사 항목 본문 — 섹션 축 정본"),
+    (SCHEMA_LINT_MD, ["32. **섹션 구역화 권장**", "를 초과하면서 `### ` 소제목이"], "§7-32 검사 항목 본문 — 섹션 축 정본"),
     (SCHEMA_TYPES_MD, ["> **섹션 구역화 (`### ` 소제목)**", "6,000자를 초과하면서 소제목이"], "§2.3 구역화 규칙 — 섹션 축"),
-    (OPS_MD, ["`[기계]` 섹션 구역화 권장", "6,000자를 초과하면서 `### ` 소제목 0개면"], "F-1 인덱스의 §7-32 라벨"),
     (LINT_PY, ["# §7-32 feature 섹션 구역화 신호", "이 문자 수를 초과하면서"], "SECTION_H3_CHARS 상수 주석 — 섹션 축"),
     (LINT_PY, ["#  값의 근거: 실 vault feature 섹션", "초과 13섹션 중"], "위 상수 주석의 이어지는 줄 — 섹션 축"),
     (LINT_PY, ["      / 섹션 구역화 권장(§7-32", "SECTION_H3_CHARS를 초과하면서"], "파일 헤더 docstring의 검사 열거 — 섹션 축"),
@@ -976,7 +981,7 @@ TRIGGER_ALLOWLIST = [
 
     # ── 예산과 무관한 「초과」·「넘」 — 축어 정규식이 넓어 걸리지만 트리거 서술이 아니다
     (SCHEMA_BUDGET_MD, ["7. **기록**: `log.md`에", "(사유: 임계 초과)`"], "log 기록 형식의 `(사유: 임계 초과)` 예시 문자열"),
-    (SCHEMA_MD, ["19. **log 아카이브 인덱스 정합**", "영영 아카이브로 넘어가지 않고"], "§7-19 검사 항목 본문 — 오배치 항목이 아카이브로 「넘어가지 않는다」는 결과 서술이지 예산 조건이 아니다"),
+    (SCHEMA_LINT_MD, ["19. **log 아카이브 인덱스 정합**", "영영 아카이브로 넘어가지 않고"], "§7-19 검사 항목 본문 — 오배치 항목이 아카이브로 「넘어가지 않는다」는 결과 서술이지 예산 조건이 아니다"),
     (QUEUE_CONSUME_MD, ["그 파일은 프로젝트 단위 규약", "프로젝트·스택을 넘는 일반 패턴", "절차 I(가이드/레시피)로 넘긴다"], "「스택을 넘는 일반 패턴」 — 귀속 판정이지 예산 아님"),
     (CONTENT_MD, ["5. **델타 신뢰도 점검**", "**30일 초과**면"], "허브 `updated` 30일 초과 = ingest 델타 신뢰도 축"),
     (CONTENT_MD, ["> **축소 조건 (소규모 갱신)**", "14일을 넘거나 변경 파일이 5개를 초과하면"], "변경 파일 5개 초과 = 개수 조건, 예산 무관"),
@@ -1073,9 +1078,9 @@ TRIGGER_ALLOWLIST = [
 #  ⚠ 정당한 추가면 여기를 올리는 것이 정답이다. 숫자를 맞추려고 면제를 지우면 안 된다 —
 #   그 자리는 다시 위반으로 잡혀 결국 조건어 문면을 피해 쓰게 되고, 그것이 T11이 금지한
 #   "회피"다(면제는 기록이 남지만 회피는 아무 흔적도 남기지 않는다).
-TRIGGER_ALLOWLIST_BASELINE = 91   # schema §5 2b(델타 신뢰도 30일)를 절차 B-1 5 포인터로 줄이며 그 줄의
-                                  #  면제 1건이 소멸했다(v1.317.0 — 조건어는 procedures-content 쪽 면제가 계속 덮는다).
-                                  #  그 전은 92(convention을 예산 신호 계층에서 빼며 -4 +6), 그 전은 90(큐 4종 폐기 직후).
+TRIGGER_ALLOWLIST_BASELINE = 89   # F-1 번호 목록이 schema-lint §7 로 합쳐지며 F-1 라벨 면제 2건(§7-14·§7-32)이
+                                  #  소멸했다(v1.319.0 — 같은 조건어는 §7 본문 쪽 면제가 계속 덮는다).
+                                  #  그 전은 91(schema §5 2b 를 절차 B-1 5 포인터로 줄이며 -1, v1.317.0), 그 전은 92(convention을 예산 신호 계층에서 빼며 -4 +6), 그 전은 90(큐 4종 폐기 직후).
 
 # 차집합 사유 — 광의 패턴에는 걸리지만 예산 트리거가 아닌 줄. 위 화이트리스트와 자료구조를
 #  나누는 이유는 이쪽이 **스캔 밖**의 줄이라 「앵커 1건 매치」 검증의 대상이 아니기 때문이다.
@@ -1453,7 +1458,7 @@ def _md_headings(text):
     return out
 
 
-# ⑮ 파일명 § 인용. 접두는 번들 세 파일의 이름이고 `.md`·백틱·따옴표·볼드 변형을 허용한다.
+# ⑮ 파일명 § 인용. 접두는 번들 파일의 이름이고 `.md`·백틱·따옴표·볼드 변형을 허용한다.
 #  § 뒤 번호는 `N`·`N.M`·`N-M` 이고 `·§M`(연쇄)·`~§M`(범위)을 이어 받는다. 번호는 탐욕으로
 #  끝까지 먹으므로 `§7-21` 이 `7-2` 로 잘리지 않는다.
 SCHEMA_CITE_RX = re.compile(
@@ -1582,8 +1587,9 @@ def main():
     schema_text = read(SCHEMA_MD)
     types_text = read(SCHEMA_TYPES_MD)
     budget_text = read(SCHEMA_BUDGET_MD)
+    lint_s7_text = read(SCHEMA_LINT_MD)
     bundle = {"wiki-schema.md": schema_text, "schema-types.md": types_text,
-              "schema-budget.md": budget_text}
+              "schema-budget.md": budget_text, "schema-lint.md": lint_s7_text}
     lint = load_lint()
 
     budget_sources = {
@@ -1645,12 +1651,12 @@ def main():
     mismatches.extend(toc_issues)
     axes.append(("schema 목차", toc_checked, "§"))
 
-    tag_issues, tag_checked = check_s7_actor_tags(schema_text)
+    tag_issues, tag_checked = check_s7_actor_tags(lint_s7_text)
     checked += tag_checked
     mismatches.extend(tag_issues)
     axes.append(("§7 주체 태그", tag_checked, "항목"))
 
-    s7num_issues, s7num_checked = check_lint_s7_numbers(read(LINT_PY), schema_text)
+    s7num_issues, s7num_checked = check_lint_s7_numbers(read(LINT_PY), lint_s7_text)
     checked += s7num_checked
     mismatches.extend(s7num_issues)
     axes.append(("lint §7 번호⊆schema", s7num_checked, "번호"))
