@@ -1207,14 +1207,17 @@ def build_index(vault, dry_run, report=None):
     if dry_run:
         print("== --build-index --dry-run (파일 미변경) ==")
         print(new)
+        # 파일 본문은 아래 쓰기 경로와 **같은 빌더**로 낸다 — 행만 찍으면 머리·리드 문장이 빠져,
+        #  생성기 문구를 바꾼 변경이 미리보기에서 보이지 않는다(v1.318.0 에서 리드 문장 변경이
+        #  dry-run 대조로는 diff 0 이었다).
         for name, lines in sorted(sub_files.items()):
             print("---- %s.md ----" % name)
-            print("\n".join(lines))
+            print(_sub_index_text(name, lines))
         # 덜어낸 구역(aux)도 낸다 — 실제 실행은 이 파일들도 쓰므로, 미리보기가 sub-index만
         #  보여주면 **표시 범위와 쓰기 범위가 갈린다**(구역을 덜어내는 vault에서만 갈려 더 늦게 드러난다).
         for name, (title, lines) in sorted(aux_files.items()):
             print("---- %s.md (덜어낸 구역: %s) ----" % (name, title))
-            print("\n".join(lines))
+            print(_aux_index_text(name, title, lines))
         return 0
 
     # 여러 파일을 순차로 덮어쓰면 중간 실패가 **깨진 상태**를 남긴다 -- index.md는 이미
