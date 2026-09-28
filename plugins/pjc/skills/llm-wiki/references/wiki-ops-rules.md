@@ -112,6 +112,8 @@
 
 ## 예산 단계 신호
 
+> 이 절을 **고치기 전에** `references/wiki-ops-rationale.md` 「예산 단계 신호」 를 읽는다.
+
 > 아래 임계는 **기계 대조 대상**이다 — `evals/check_consistency.py`가 이 표를 파싱해 `scripts/lint.py` 상수와 대조하고 어긋나면 FAIL한다. 값을 고치면 두 곳을 함께 고친다.
 
 | 신호 | 임계 | 심각도 |
@@ -161,7 +163,7 @@
 `<vault>`가 비었거나 골격이 없으면 생성한다(이미 있으면 건너뜀). §0-2에서 트리거.
 
 1. **디렉터리**: `10_sources/{personal,work}`, `20_projects/{personal,work}`, `30_knowledge/{tech,patterns,questions}`, `40_guides/{platforms,ui-ux,recipes}`, `90_archive`
-2. **`index.md`**: 빈 카탈로그 골격 — **frontmatter 포함**: `type: index` · `okf_version: "0.2"` · `updated: YYYY-MM-DD` (OKF 버전 선언 위치는 루트 index.md 뿐 — wiki-schema §12). 섹션: `## 개인 프로젝트` / `## 업무 프로젝트` / `## 기능별 인덱스` / `## 증상별 인덱스`(증상→검증된 원인→해법 역인덱스, wiki-schema §6) / `## 기술 스택 지식 (tech/)` / `## 범용 패턴 (patterns/)` / `## 미해결 질문` / `## 참조`. **`## 가이드 / 레시피`는 두지 않는다** — 가이드·레시피는 `--build-index`가 `index-guides.md` 통합 표로 파생한다(wiki-schema §5). 표는 헤더만, 내용은 "아직 없음" 주석. 참조 섹션은 **실제 존재하는 파일만** 링크(`log.md` 등). **생성 대상 6섹션(개인 프로젝트~미해결 질문)을 `<!-- AUTO-INDEX:BEGIN -->`~`<!-- AUTO-INDEX:END -->`로 감싼다** — 새 vault는 처음부터 생성 체계로 출발하는 것이 옳다(wiki-schema §6). **증상별 인덱스·참조는 마커 밖에 둔다**(수기 판단 영역). 마커를 넣어 두면 이후 `--build-index`가 바로 동작하고, 넣지 않으면 그 명령이 "마커 없음"으로 거부한다.
+2. **`index.md`**: 빈 카탈로그 골격 — **frontmatter 포함**: `type: index` · `okf_version: "0.2"` · `updated: YYYY-MM-DD` (OKF 버전 선언 위치는 루트 index.md 뿐 — wiki-schema §12). 섹션: `## 개인 프로젝트` / `## 업무 프로젝트` / `## 기능별 인덱스` / `## 증상별 인덱스`(증상→검증된 원인→해법 역인덱스, wiki-schema §6) / `## 기술 스택 지식 (tech/)` / `## 범용 패턴 (patterns/)` / `## 미해결 질문` / `## 참조`. **`## 가이드 / 레시피`는 두지 않는다** — 가이드·레시피는 `--build-index`가 `index-guides.md` 통합 표로 파생한다(wiki-schema §6 「인덱스 생성」). 표는 헤더만, 내용은 "아직 없음" 주석. 참조 섹션은 **실제 존재하는 파일만** 링크(`log.md` 등). **생성 대상 6섹션(개인 프로젝트~미해결 질문)을 `<!-- AUTO-INDEX:BEGIN -->`~`<!-- AUTO-INDEX:END -->`로 감싼다** — 새 vault는 처음부터 생성 체계로 출발하는 것이 옳다(wiki-schema §6). **증상별 인덱스·참조는 마커 밖에 둔다**(수기 판단 영역). 마커를 넣어 두면 이후 `--build-index`가 바로 동작하고, 넣지 않으면 그 명령이 "마커 없음"으로 거부한다.
 3. **`log.md`**: `## 최근 변경` + `- [YYYY-MM-DD] [INIT] 위키 초기 골격 생성 (llm-wiki 스킬).` + `## 아카이브 인덱스`(빈 목록 — **§7-2 발동 시** 월별 롤오버 항목을 `- {YYYY-MM}.md: {키워드}`로 등록, wiki-schema §8). `90_archive/log/`는 첫 롤오버 시 생성(미리 만들지 않음).
 4. **규칙은 vault에 복사하지 않는다** — 진실원천은 스킬 번들 `references/wiki-schema.md` 뿐. index `## 참조`에는 번들 경로를 텍스트로 안내한다(vault에 SCHEMA.md를 만들지 말 것).
 5. 부트스트랩 완료 후 본래 요청(A~I)을 이어서 진행한다.
