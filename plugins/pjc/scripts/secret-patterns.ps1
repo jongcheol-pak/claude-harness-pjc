@@ -93,7 +93,8 @@ function Get-SecretMatches {
                 $pubHit = $false; $privHit = $false
                 foreach ($ipm in [regex]::Matches($content, $sp.rx)) {
                     $m = $ipm.Value
-                    if ($m -eq '127.0.0.1' -or $m -eq '0.0.0.0' -or $m -eq '255.255.255.255' -or $m -like '0.0.0.*') { continue }
+                    # 루프백은 127.0.0.0/8 전체를 뺀다 — 로컬 전용이라 유출 대상이 아닌데 127.0.0.1 외 루프백이 경고되면 자동 커밋이 멈춘다.
+                    if ($m -like '127.*' -or $m -eq '0.0.0.0' -or $m -eq '255.255.255.255' -or $m -like '0.0.0.*') { continue }
                     # 버전 문자열(AssemblyVersion/FileVersion/<Version>/v1.0.0.0 등) 오탐 제외
                     if ($content -match "(?i)(version|v)\s*[>=:]?\s*[`"']?$([regex]::Escape($m))") { continue }
                     if ($m -match '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)') { $privHit = $true } else { $pubHit = $true }

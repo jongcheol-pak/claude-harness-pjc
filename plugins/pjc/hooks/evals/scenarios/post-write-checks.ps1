@@ -49,11 +49,15 @@ Assert-Case -Name "post-write: 개인키 경고" -R $r -ExpectExit 0 -ExpectCont
 Assert-Case -Name "post-write: Bearer 토큰 경고" -R $r -ExpectExit 0 -ExpectContains 'Bearer 토큰'
 Assert-Case -Name "post-write: IP 주소 경고" -R $r -ExpectExit 0 -ExpectContains 'IP 주소'
 
-# ---- IP 음성 2건 (예약 IP·버전 문자열 제외 로직 회귀 가드 — 다른 트리거 없는 파일이라 완전 무출력 기대) ----
+# ---- IP 음성 3건 (예약 IP·버전 문자열 제외 로직 회귀 가드 — 다른 트리거 없는 파일이라 완전 무출력 기대) ----
 $ipnegPath = Join-Path $pw 'ip-neg.md'
 [System.IO.File]::WriteAllText($ipnegPath, '로컬 검증은 127.0.0.1 에서 수행.', [System.Text.UTF8Encoding]::new($false))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $ipnegPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 예약 IP(127.0.0.1) 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$lbnegPath = Join-Path $pw 'lb-neg.md'
+[System.IO.File]::WriteAllText($lbnegPath, '보조 루프백 127.0.1.1 과 127.53.0.2 사용.', [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $lbnegPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 루프백 대역(127.0.0.0/8) 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 $vernegPath = Join-Path $pw 'ver-neg.md'
 [System.IO.File]::WriteAllText($vernegPath, 'Version="1.2.3.4" 로 배포.', [System.Text.UTF8Encoding]::new($false))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $vernegPath } } | ConvertTo-Json -Compress)
