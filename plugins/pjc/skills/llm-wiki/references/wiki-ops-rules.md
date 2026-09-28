@@ -86,7 +86,7 @@
 | 레시피(특정 기능) | `40_guides/recipes/{스택}/` | `{영문소문자하이픈}.md` | `recipes/winui/startup-autostart.md` |
 | 질문 | `30_knowledge/questions/` | `q-{YYYYMMDD}-{짧은설명}.md` | `q-20260607-scrollview-issue.md` |
 | 결정 이력 | `20_projects/{카테고리}/{프로젝트}/` | `decisions.md` (고정) | `devdashboard-winui/decisions.md` |
-| 작업 규약 | `20_projects/{카테고리}/{프로젝트}/` | `conventions.md` (고정) · 하위는 `conventions-{주제}.md` | `devdashboard-winui/conventions.md` |
+| 작업 규약 | `20_projects/{카테고리}/{프로젝트}/` | `conventions.md` (고정) · 하위는 `conventions-{주제}.md`(사람이 나눌 때만 — 옛 순번 하위 `conventions-{n}.md` 는 그대로 남는다, schema §3·§2.9) | `devdashboard-winui/conventions.md` |
 
 ## 파일 예산
 
