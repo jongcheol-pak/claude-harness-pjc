@@ -29,9 +29,10 @@
 또한 ⑥ wiki-schema.md 목차(부분 Read 인덱스)의 § 번호·「파일」 열 ↔ 그 파일의 실제 '## N.' 헤딩 정합을 검사한다 —
 부분 Read 세션은 전체 정독이 금지라 목차가 낡아도 자가 교정 기회가 없으므로 기계로 잡는다.
 
-그리고 ⑦ procedures-ops.md F-1 실행 순서 인덱스 ↔ wiki-schema.md §7 검사 항목의 번호 집합
-1:1 정합을 검사한다 — F-1은 "번호 N = §7-N 정본" 규약인데 두 목록은 손으로 유지되므로,
-한쪽에만 항목을 추가하면 실행 인덱스와 정본이 조용히 어긋난다(검사 사각지대). 기계로 잡는다.
+그리고 ⑦ schema §7 검사 항목의 수행 주체 태그 정합을 검사한다 — 각 항목이 이름 뒤에
+`[기계]`/`[에이전트]` 를 정확히 하나 달고(폐지 항목은 0개), 머리 집계 문장(「N개 검사가 [기계] A,
+[에이전트] B」)의 수가 태그 수와 같은가. 주체는 절차 F 가 `[기계]` 항목 전부를 lint.py 로 도는
+실행 정보이고 머리 문장은 그 수의 손 사본이라, 한쪽만 고치면 조용히 어긋난다.
 
 ⑧ 산문 크로스파일 포인터 회귀 가드 — 지연 로드 분할 후 '절차 라벨이 어느 파일에 있는지'
 가리키는 파일-귀속 산문 포인터(references/procedures-*.md + 인접 절차 라벨)가 실제 헤딩 파일과
@@ -380,38 +381,57 @@ def check_schema_toc(schema_text, bundle):
     return issues, len(set(toc) | set(heads))
 
 
-def check_f1_schema7(ops_text, schema_text):
-    """⑦ F-1 실행 순서 인덱스 ↔ schema §7 검사 항목 번호 1:1 정합.
-
-    F-1(procedures-ops.md)은 'N. `[기계]`/`[에이전트]` ...' 실행 순서 인덱스이고 상세 정본은
-    §7-N(wiki-schema.md 'N. **...**')이다 — 규약상 번호가 1:1인데 둘 다 수동 목록이라 한쪽만
-    추가·삭제하면 조용히 어긋난다. 파싱 앵커는 각 섹션 내부로 한정한다(F-1은 다음 #### 전까지,
-    §7은 다음 '## N.' 전까지 — 다른 절의 번호 목록·표와 충돌하지 않게). 반환: (불일치 목록, 대조 수).
-
-    한계(LOW-3): 번호 **집합**만 대조한다 — 같은 번호의 내용 정합(F-1 N의 의미 = §7-N의 의미)은
-    검사하지 않는다(번호를 보존한 채 두 항목의 의미만 맞바꾸면 통과). 내용 정합은 사람 몫."""
-    fm = re.search(r"^#### F-1\..*?\n(.*?)(?=^#### |\Z)", ops_text, re.M | re.S)
-    if not fm:
-        die("procedures-ops.md '#### F-1.' 섹션을 찾지 못함")
-    f1 = {int(n) for n in re.findall(r"^(\d+)\.\s+`\[(?:기계|에이전트)\]`", fm.group(1), re.M)}
-    if not f1:
-        die("F-1 인덱스에서 'N. `[기계]`/`[에이전트]`' 항목을 하나도 파싱하지 못함")
-    s7 = schema7_numbers(schema_text)
-    issues = []
-    for n in sorted(f1 - s7):
-        issues.append(f"F-1 인덱스 {n}번이 schema §7에 없음 (정본 §7-{n} 부재 — 상세·판정 기준 없는 실행 항목)")
-    for n in sorted(s7 - f1):
-        issues.append(f"schema §7-{n} 검사 항목이 F-1 실행 순서 인덱스에 없음 (lint 세션이 이 검사를 건너뜀)")
-    return issues, len(f1 | s7)
+S7_ITEM_RX = re.compile(r"^(\d+)\.\s+(\*\*[^*\n]+\*\*)([^\n]*)$", re.M)
+S7_TAG_RX = re.compile(r"`\[(기계|에이전트)\]`")
+S7_TALLY_RX = re.compile(r"\*\*(\d+)개 검사가 \[기계\] (\d+), \[에이전트\] (\d+)\*\*")
 
 
-def schema7_numbers(schema_text):
-    """schema §7 목록('## 7.' 절 안의 'N. **...**')의 번호 집합 — ⑦·⑭ 공용.
-    폐지 항목도 목록에 번호가 남으므로(`3. ~~…~~`) 집합에 든다."""
+def check_s7_actor_tags(schema_text):
+    """⑦ §7 검사 항목의 수행 주체 태그 정합.
+
+    주체 태그는 이름 볼드 **바로 뒤**에 온다(`N. **이름** `[기계]` — 심각도`). 판정:
+      ⓐ 비폐지 항목은 태그가 정확히 1개 — 절차 F 가 `[기계]` 항목 전부를 lint.py 로 돌리므로
+         태그가 없으면 그 검사가 어느 쪽에서도 돌지 않는다
+      ⓑ 폐지 항목(이름 볼드 안에 `~~`)은 0개 — 달면 「`[기계]` 항목 전부」에 섞인다
+      ⓒ 머리 집계 문장 「**N개 검사가 [기계] A, [에이전트] B**」가 §7 절에 1건이고 N·A·B 가 태그 수와 같다
+    태그는 이름 볼드 뒤의 **같은 줄 첫 머리**만 본다 — 본문 산문이 `[기계]` 를 인용해도 세지 않게.
+    옛 ⑦(F-1 ↔ §7 번호 1:1)은 두 목록이 하나로 합쳐지며 대조 대상이 사라졌다.
+    반환: (불일치 목록, 대조 항목 수)."""
+    body = schema7_section(schema_text)
+    issues, counts = [], {"기계": 0, "에이전트": 0}
+    items = S7_ITEM_RX.findall(body)
+    for n, bold, rest in items:
+        tags = S7_TAG_RX.findall(rest.split(" — ")[0].split(":")[0])
+        if "~~" in bold:
+            if tags:
+                issues.append(f"schema §7-{n} 은 폐지 항목인데 주체 태그 {tags} 를 달았다 (실행 주체가 없다)")
+        elif len(tags) != 1:
+            issues.append(f"schema §7-{n} 의 주체 태그가 {len(tags)}개다 — 이름 뒤에 `[기계]`/`[에이전트]` 하나")
+        else:
+            counts[tags[0]] += 1
+    tally = S7_TALLY_RX.findall(body)
+    if len(tally) != 1:
+        die(f"schema §7 머리 집계 문장('**N개 검사가 [기계] A, [에이전트] B**')이 {len(tally)}건 — 1건이어야 한다")
+    total, mech, agent = (int(v) for v in tally[0])
+    actual = (counts["기계"] + counts["에이전트"], counts["기계"], counts["에이전트"])
+    if (total, mech, agent) != actual:
+        issues.append(f"schema §7 머리 집계 {total}개·[기계] {mech}·[에이전트] {agent} ≠ 태그 실측 "
+                      f"{actual[0]}개·[기계] {actual[1]}·[에이전트] {actual[2]}")
+    return issues, len(items)
+
+
+def schema7_section(schema_text):
+    """schema '## 7.' 절 본문 — ⑦·⑭ 공용. 다음 '## N.' 전까지로 한정해 다른 절의 번호 목록과 섞이지 않게 한다."""
     sm = re.search(r"^## 7\..*?\n(.*?)(?=^## \d|\Z)", schema_text, re.M | re.S)
     if not sm:
         die("wiki-schema.md '## 7.' 섹션을 찾지 못함")
-    s7 = {int(n) for n in re.findall(r"^(\d+)\.\s+\*\*", sm.group(1), re.M)}
+    return sm.group(1)
+
+
+def schema7_numbers(schema_text):
+    """schema §7 목록('## 7.' 절 안의 'N. **...**')의 번호 집합 — ⑭ 용.
+    폐지 항목도 목록에 번호가 남으므로(`3. ~~…~~`) 집합에 든다."""
+    s7 = {int(n) for n in re.findall(r"^(\d+)\.\s+\*\*", schema7_section(schema_text), re.M)}
     if not s7:
         die("schema §7에서 'N. **...**' 검사 항목을 하나도 파싱하지 못함")
     return s7
@@ -1625,10 +1645,10 @@ def main():
     mismatches.extend(toc_issues)
     axes.append(("schema 목차", toc_checked, "§"))
 
-    f1_issues, f1_checked = check_f1_schema7(read(OPS_MD), schema_text)
-    checked += f1_checked
-    mismatches.extend(f1_issues)
-    axes.append(("F-1↔§7", f1_checked, "항목"))
+    tag_issues, tag_checked = check_s7_actor_tags(schema_text)
+    checked += tag_checked
+    mismatches.extend(tag_issues)
+    axes.append(("§7 주체 태그", tag_checked, "항목"))
 
     s7num_issues, s7num_checked = check_lint_s7_numbers(read(LINT_PY), schema_text)
     checked += s7num_checked
