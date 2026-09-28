@@ -66,6 +66,10 @@ FAIL(그 절차의 범위가 통째로 빈다), 헤딩에만 있는 이름은 �
 있을 수 있다). 절 이름은 **범례(`① 「…」`)에서만** 뽑는다 — 절 전체에서 「…」를 훑으면
 표 뒤 산문의 인용까지 절 이름으로 잡힌다(신설 당일 실측 2건).
 
+⑭ lint §7 번호 ⊆ schema §7 — lint.py 가 인용하는 `§7-N` 번호가 schema §7 목록에 있는가.
+⑦이 F-1 ↔ schema 만 보아 lint.py 쪽 신설(§7-36)이 목록·F-1 에서 빠진 채 green 이었던
+사각을 메운다(v1.317.0). 방향은 한쪽이다 — schema 에만 있는 번호(폐지·[에이전트])는 정상.
+
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
   - 불일치 → 항목별 소스 값 나열 + exit 1
@@ -368,18 +372,44 @@ def check_f1_schema7(ops_text, schema_text):
     f1 = {int(n) for n in re.findall(r"^(\d+)\.\s+`\[(?:기계|에이전트)\]`", fm.group(1), re.M)}
     if not f1:
         die("F-1 인덱스에서 'N. `[기계]`/`[에이전트]`' 항목을 하나도 파싱하지 못함")
-    sm = re.search(r"^## 7\..*?\n(.*?)(?=^## \d|\Z)", schema_text, re.M | re.S)
-    if not sm:
-        die("wiki-schema.md '## 7.' 섹션을 찾지 못함")
-    s7 = {int(n) for n in re.findall(r"^(\d+)\.\s+\*\*", sm.group(1), re.M)}
-    if not s7:
-        die("schema §7에서 'N. **...**' 검사 항목을 하나도 파싱하지 못함")
+    s7 = schema7_numbers(schema_text)
     issues = []
     for n in sorted(f1 - s7):
         issues.append(f"F-1 인덱스 {n}번이 schema §7에 없음 (정본 §7-{n} 부재 — 상세·판정 기준 없는 실행 항목)")
     for n in sorted(s7 - f1):
         issues.append(f"schema §7-{n} 검사 항목이 F-1 실행 순서 인덱스에 없음 (lint 세션이 이 검사를 건너뜀)")
     return issues, len(f1 | s7)
+
+
+def schema7_numbers(schema_text):
+    """schema §7 목록('## 7.' 절 안의 'N. **...**')의 번호 집합 — ⑦·⑭ 공용.
+    폐지 항목도 목록에 번호가 남으므로(`3. ~~…~~`) 집합에 든다."""
+    sm = re.search(r"^## 7\..*?\n(.*?)(?=^## \d|\Z)", schema_text, re.M | re.S)
+    if not sm:
+        die("wiki-schema.md '## 7.' 섹션을 찾지 못함")
+    s7 = {int(n) for n in re.findall(r"^(\d+)\.\s+\*\*", sm.group(1), re.M)}
+    if not s7:
+        die("schema §7에서 'N. **...**' 검사 항목을 하나도 파싱하지 못함")
+    return s7
+
+
+def check_lint_s7_numbers(lint_text, schema_text):
+    """⑭ lint.py 가 인용하는 §7-N 번호 ⊆ schema §7 목록 번호.
+
+    ⑦은 F-1 ↔ schema 두 문서만 대조해 **lint.py 쪽 신설을 보지 못한다** — §7-36 이 lint.py·골든·
+    §2.8 에만 들어가고 §7 목록·F-1 에서 빠진 채 green 이었던 것이 실제 사례다(cf67191f). 그때
+    lint 의 WARN 문구가 존재하지 않는 절을 가리켰다. **방향은 한쪽이다** — lint.py 에 없는 번호가
+    schema 에 있는 것은 정상이다(폐지 항목·[에이전트] 항목은 lint.py 가 인용하지 않는다).
+    lint.py 의 주석·출력 문자열을 가리지 않고 `§7-N` 전부를 본다 — 주석이 인용하는 번호도
+    읽는 사람을 schema 로 보내므로 없는 절이면 같은 결함이다. 반환: (불일치 목록, 대조 수)."""
+    nums = {int(n) for n in re.findall(r"§7-(\d+)", lint_text)}
+    if not nums:
+        die("lint.py 에서 '§7-N' 인용을 하나도 찾지 못함")
+    s7 = schema7_numbers(schema_text)
+    issues = [f"lint.py 의 §7-{n} 인용이 schema §7 목록에 없음 — §7 목록·F-1·"
+              f"lint-rationale 세 곳에 함께 등재하라(procedures-ops.md 하단 '(참고)' 블록)"
+              for n in sorted(nums - s7)]
+    return issues, len(nums)
 
 
 # ⑧ 산문 크로스파일 포인터 회귀 가드용 정규식.
@@ -1521,6 +1551,11 @@ def main():
     checked += f1_checked
     mismatches.extend(f1_issues)
     axes.append(("F-1↔§7", f1_checked, "항목"))
+
+    s7num_issues, s7num_checked = check_lint_s7_numbers(read(LINT_PY), schema_text)
+    checked += s7num_checked
+    mismatches.extend(s7num_issues)
+    axes.append(("lint §7 번호⊆schema", s7num_checked, "번호"))
 
     pointer_issues, pointer_checked = check_prose_pointers(skill_text, schema_text)
     checked += pointer_checked
