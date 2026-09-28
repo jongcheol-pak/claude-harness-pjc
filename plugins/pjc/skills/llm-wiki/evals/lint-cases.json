@@ -2055,6 +2055,75 @@
         ]
       },
       "rationale": "**`###` 그룹이 없는 긴 관련 파일 목록**(D1 항목 묶음). 실 vault `feat-session-terminal`·`feat-source-control` 형상이다 — 소제목이 없어 그룹 단위로 나눌 수 없다. `- ` 항목을 순서대로 예산 절반 크기로 묶고, 첫 묶음은 원본에 남으며 큰 묶음부터 옮겨진다. 300항목 중 앞 묶음(`item005`)과 끝 묶음(`item290`)은 원본에, 가운데 묶음(`item150`)은 하위에 있어야 한다 — 한 번 옮기면 풀리는 크기라 하위는 하나다(`feat-thing-3.md` 부재)."
+    },
+    {
+      "fixture": "prose-two-features",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-other.md",
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "하위 분리 건너뜀"
+      ],
+      "after_expect_absent": [
+        "예산 초과: 20_projects/personal/demo/feat-",
+        "허브 기능 목록 누락",
+        "분리한 본문이 조회 경로 밖"
+      ],
+      "expect_file_contains": {
+        "20_projects/personal/demo.md": [
+          "[[20_projects/personal/demo/feat-other-2\\|저것 (Other) — UI·UX]]",
+          "[[20_projects/personal/demo/feat-thing-2\\|것 (Thing) — UI·UX]]"
+        ]
+      },
+      "rationale": "**한 프로젝트의 feature 둘이 한 실행에서 함께 분리되는가.** 두 분리는 같은 허브(`## 기능 목록`)에 하위를 등재하므로 둘 다 허브를 claim 한다. 종전 `claim()` 은 같은 처방의 재claim 도 거부해 첫 feature 만 분리되고 나머지는 「하위 분리 건너뜀」으로 다음 실행에 밀렸다 — 실 vault 사본에서 karina-mobile 5쪽 중 한 실행에 1쪽만 풀린 원인이다. claim 이 막는 것은 **서로 다른 처방**의 겹침(원복 기준점이 갈리는 것)이고, 같은 처방 안의 재접근은 원복 단위가 같아 막을 이유가 없다. 허브에 두 하위가 모두 등재됐는지로 두 번째 분리의 허브 쓰기까지 잰다."
+    },
+    {
+      "fixture": "clean",
+      "unit": {
+        "func": "strip_code",
+        "args": [
+          "a ```` ```x ```` b\n## H\nc ```` ``` ```` d\n"
+        ],
+        "expect": "a                b\n## H\nc               d\n"
+      },
+      "rationale": "**인라인 코드 안의 백틱 셋이 펜스로 짝지어지지 않는가.** 종전 `strip_code` 는 ``` 를 줄 어디서든 펜스로 보고, 인라인 코드를 백틱 하나로만 닫았다 — 그래서 4-백틱 인라인 코드 안의 ```mermaid 와 먼 줄의 ``` 가 짝지어져 **그 사이 헤딩(`## H`)이 지워졌다**. 실 vault `feat-source-control` 에서 `## 동작(사용법)`이 그렇게 보이지 않아 `## 관련 파일`이 그 절까지 먹었다. 펜스는 줄머리에서만 열고, 인라인 코드는 여는 백틱 수와 같은 수로 닫는다(CommonMark). **판정은 반환 전문이다** — 헤딩 줄이 살아 있는지와 두 스팬이 정확히 공백으로 바뀌는지를 함께 본다."
+    },
+    {
+      "fixture": "prose-related-fence",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "feat-thing-3.md"
+      ],
+      "after_expect_absent": [
+        "예산 초과: 20_projects/personal/demo/feat-thing",
+        "구현 방법 섹션 누락",
+        "하위 문서 목록 깨짐",
+        "분리한 본문이 조회 경로 밖",
+        "관련 파일 경로 항목 0개"
+      ],
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "## 구현 방법",
+          "닫는 표식은 ```` ``` ```` 로 적는다"
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "`src/F/item150.cs` — 댓글의 ```` ```mermaid ```` 블록을 그리는"
+        ]
+      },
+      "expect_file_count": {
+        "20_projects/personal/demo/feat-thing.md": {
+          "## 하위 문서": 1
+        }
+      },
+      "rationale": "**4-백틱 인라인 코드가 든 항목을 옮겨도 원본의 절 경계가 무너지지 않는가.** `prose-related-flat` 에 실 vault `feat-source-control` 형상을 심었다 — 옮겨질 가운데 묶음의 항목 하나에 ```` ```mermaid ```` 가, 원본에 남는 `## 개요`에 ```` ``` ```` 가 있다. 종전 `strip_code` 는 둘을 펜스로 짝지어 원본에서 이미 그 사이 헤딩(`## 관련 파일`)을 지웠고, 항목이 하위로 가자 원본에 짝 잃은 ``` 가 남아 **그 뒤 전부가 미닫힘 펜스**가 됐다 — 실 vault 사본에서 `## 하위 문서`가 네 벌로 중복되고 다음 단위 선택이 그 목록을 집었다. 원본에 `## 하위 문서`가 한 벌인지(`expect_file_count`)와 `## 구현 방법`이 보이는지, 옮겨진 것이 그 항목이 든 묶음인지로 잰다."
     }
   ]
 }
