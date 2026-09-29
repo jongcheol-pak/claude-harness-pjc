@@ -3765,7 +3765,7 @@ def main():
         pend_text = pages["pending.md"][2]
         # 태그 목록은 아래 잔량 집계와 형식 위반 검사가 공유한다 — 한쪽만 태그를 추가하면
         #  새 태그가 집계되지 않거나 위반 검출에서 빠져 조용히 사각지대가 생긴다(단일 출처).
-        pend_tags = (("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트 즉시·타 프로젝트 동의 소비, lint는 F-2 승인 시 소비, 구현 완료 시점는 대상 프로젝트분 자동 소비)"),
+        pend_tags = (("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트분만 즉시 소비, 타 프로젝트분은 lint F-2·큐 정리 M 승인 시 소비)"),
                      ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — conventions.md 반영 대상(§2.9), 소비 주체·게이트는 DECISION 동형)"),
                      ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)"))
         parts = []
@@ -3776,7 +3776,7 @@ def main():
                 parts.append(label.format(n=n))
         if parts:
             infos.append("pending.md 미처리 잔량 — " + " / ".join(parts)
-                         + " — ingest(절차 B-1 0) 또는 lint(F-0 보고 후 F-2 승인 시)에서 소비")
+                         + " — ingest(절차 B-1 0 — 대상 프로젝트분)·lint(F-0 보고 후 F-2 승인 시)·큐 정리(절차 M)에서 소비")
 
         # 형식 위반 검출 (§7-25): 위 집계는 날짜 선두를 요구하므로, 태그는 있으나 그 형식이
         #  아닌 줄은 **어느 태그에도 안 잡히고 버려진다** — 큐가 쌓여 있어도 잔량 0으로 보고돼

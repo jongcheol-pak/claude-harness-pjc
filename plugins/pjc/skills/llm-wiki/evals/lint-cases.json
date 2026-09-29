@@ -251,12 +251,14 @@
         "pending.md 미처리 잔량",
         "PROJECT-FACT 1건",
         "DECISION 1건",
-        "SYMPTOM 1건"
+        "SYMPTOM 1건",
+        "큐 정리(절차 M)"
       ],
       "expect_absent": [
         "깨진 링크",
         "경로 없는 wikilink",
-        "형식 위반"
+        "형식 위반",
+        "구현 완료 시점"
       ],
       "rationale": "§7-25 pending 잔량 집계 INFO — [PROJECT-FACT]·[DECISION]·[SYMPTOM] 세 태그의 집계 무회귀. **추가(§7-1 pending 제외, v1.116.0)**: [SYMPTOM] 행의 대응 페이지가 부재 대상 wikilink여도 깨진 링크 ERR·경로없음 WARN이 나지 않아야 함 — 루트 pending.md는 소비 대기 큐라 링크 규약 대상이 아니다(제외가 빠지면 큐 항목이 lint를 exit 1로 죽인다)"
     },
