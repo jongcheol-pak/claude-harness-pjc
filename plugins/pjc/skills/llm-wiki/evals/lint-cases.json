@@ -1780,6 +1780,16 @@
       "fixture": "prose-split",
       "auto_split": true,
       "git_vault": true,
+      "expect_no_git_maintenance": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "rationale": "**체크포인트 커밋은 자동 maintenance 를 띄우지 않는다.** Windows 에서 `git commit` 은 `maintenance run --auto --detach` 를 분리하지 못하고 foreground 로 기다린다(trace 실측: maintenance 종료 6.70초 뒤 commit 종료 6.89초). 느슨한 객체가 쌓인 vault 에서는 그 repack 이 커밋 호출 시간을 4.5~18초로 늘렸고, 실 vault 에서는 `_git` 의 30초 타임아웃에 걸려 **이미 만들어진 체크포인트 커밋이 「실패」로 판정돼 재점검 pass 의 log 롤오버가 미수행**됐다(2026-09-29). 발동 조건은 자식 안에서 따지므로 **자식을 띄웠는가**를 trace2 로 재면 객체 수와 무관하게 결정론이다. commit 이 trace 에 없으면 재지 못한 것이라 FAIL 로 둔다."
+    },
+    {
+      "fixture": "prose-split",
+      "auto_split": true,
+      "git_vault": true,
       "git_vault_dirty": [
         "log.md"
       ],

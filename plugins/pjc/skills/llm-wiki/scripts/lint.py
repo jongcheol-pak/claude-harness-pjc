@@ -1356,7 +1356,14 @@ def _checkpoint_commit(git_root, label):
     if not (_git(git_root, "status", "--porcelain") or "").strip():
         return True   # 변경 0건 — HEAD가 그대로 기준점이다
     msg = "문서: %s 직전 체크포인트 [%d]" % (label, os.getpid())
-    return _git(git_root, "commit", "-m", msg) is not None
+    # **자동 maintenance 를 이 커밋에서만 끈다.** `git commit` 은 끝나기 전에 `maintenance run
+    #  --auto`(구버전은 `gc --auto`)를 띄우는데 Windows 에서는 `--detach` 가 분리되지 않아 그 repack 을
+    #  foreground 로 기다린다. 느슨한 객체가 쌓인 vault 에서는 그 시간이 `_git` 의 타임아웃에 걸려,
+    #  **커밋은 이미 만들어졌는데** 호출이 None 이 되고 처방 전체가 「체크포인트 커밋 실패」로
+    #  미수행됐다(2026-09-29 실측 — 재현에서 커밋 한 번이 4.5~18초). 체크포인트는 되돌림 기준점만
+    #  잡으면 되고 저장소 정리는 세션의 일반 커밋이 계속 맡으므로 잃는 것이 없다.
+    return _git(git_root, "-c", "maintenance.auto=false", "-c", "gc.auto=0",
+                "commit", "-m", msg) is not None
 
 
 def _git(repo_root, *args):

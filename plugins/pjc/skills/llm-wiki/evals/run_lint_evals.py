@@ -60,10 +60,11 @@ CASES_JSON = os.path.join(EVALS_DIR, "lint-cases.json")
 FIXTURE_TODAY = "2026-08-27"
 
 
-def run_lint(vault_path, extra_args=None):
+def run_lint(vault_path, extra_args=None, extra_env=None):
     """lint.py를 subprocess로 실행하고 (stdout, returncode, stderr)를 반환한다.
     returncode를 함께 넘겨, lint.py 자체 크래시와 '위반 검출 결과'를 호출부가 구분하게 한다.
-    extra_args: --fix 등 추가 인자(fix_mode 케이스용)."""
+    extra_args: --fix 등 추가 인자(fix_mode 케이스용).
+    extra_env: 이 호출에만 더할 환경변수(git trace2 수집 등 — 기준일 고정보다 먼저 합쳐 그것을 덮지 못한다)."""
     # 상한 180초 — lint.py 는 vault 전수를 훑으므로 이 파일의 다른 git 단발 호출(20초)보다
     #  성격이 다르다. `stdin` 을 닫는 것은 자격증명·에디터 프롬프트가 입력을 기다리며 상한까지
     #  버티는 것을 막기 위해서다(`llm-wiki/scripts/lint.py` 가 자기 git 호출에 쓰는 것과 같다).
@@ -73,7 +74,7 @@ def run_lint(vault_path, extra_args=None):
             capture_output=True, text=True, encoding="utf-8",
             # 기준일을 고정해 넘긴다(FIXTURE_TODAY 주석 참조). 바깥 환경에 이미 값이 있어도 덮는다 —
             #  골든 결과가 호출자의 환경에 좌우되면 재현성이 없다.
-            env={**os.environ, "LLM_WIKI_TODAY": FIXTURE_TODAY},
+            env={**os.environ, **(extra_env or {}), "LLM_WIKI_TODAY": FIXTURE_TODAY},
             timeout=180, stdin=subprocess.DEVNULL,
         )
     except subprocess.TimeoutExpired:
@@ -787,7 +788,12 @@ def check_case(case):
         restore = inject_split_failures(dest, case)
         unchanged_before = {rel: _read_bytes(dest, rel)
                             for rel in case.get("expect_unchanged", [])}
-        out, rc, err = run_lint(dest, ["--auto-split"])
+        # git trace2 를 이 호출에만 건다 — 체크포인트 커밋이 띄우는 자식 프로세스를 재는 축이다
+        #  (`expect_no_git_maintenance`). 뒤의 재lint 에는 걸지 않는다: 그쪽은 커밋하지 않는다.
+        trace_path = os.path.join(tmp, "git-trace2.json")
+        out, rc, err = run_lint(
+            dest, ["--auto-split"],
+            {"GIT_TRACE2_EVENT": trace_path} if case.get("expect_no_git_maintenance") else None)
         out2, rc2, err2 = run_lint(dest)
         # **정상 케이스의 종료 코드는 0 하나다.** 1은 `ses.failed`(사본 실패 등 처방 미수행)이
         #  내는 값이라 골든 픽스처에서는 나올 이유가 없는데, 종전 판정이 0과 1을 함께 통과시켜
@@ -833,6 +839,33 @@ def check_case(case):
         present = [kw for kw in case.get("expect_absent", []) if kw in out]
         if present:
             problems.append("--auto-split 출력에 금지 키워드: " + ", ".join(present))
+        # **체크포인트 커밋이 자동 maintenance 를 띄우지 않는가** — Windows 에서는 `git commit` 이
+        #  `maintenance run --auto`(구버전은 `gc --auto`)를 foreground 로 기다려, 느슨한 객체가 쌓이면
+        #  커밋 호출이 `_git` 의 타임아웃을 넘기고 이미 만들어진 커밋이 「실패」로 판정된다.
+        #  발동 조건은 자식 안에서 따지므로 **자식을 띄웠는가**만 보면 객체 수와 무관하게 결정론이다.
+        #  커밋이 한 번도 안 돌았으면 재지 못한 것이라 통과로 두지 않는다.
+        if case.get("expect_no_git_maintenance"):
+            argvs = []
+            if os.path.exists(trace_path):
+                with open(trace_path, encoding="utf-8", errors="replace") as fh:
+                    for line in fh:
+                        try:
+                            ev = json.loads(line)
+                        except ValueError:
+                            continue
+                        if ev.get("event") != "start":
+                            continue
+                        # 하위 명령부터 남긴다 — `git -C <경로> -c k=v commit` 의 전역 옵션 쌍을 건너뛴다.
+                        args = list((ev.get("argv") or [])[1:])
+                        while args and args[0] in ("-C", "-c"):
+                            args = args[2:]
+                        if args:
+                            argvs.append(args)
+            if not any(a[0] == "commit" for a in argvs):
+                problems.append("git trace2 에 commit 이 없다 — 체크포인트 커밋 경로를 재지 못했다")
+            spawned = sorted({" ".join(a[:2]) for a in argvs if a[0] in ("maintenance", "gc")})
+            if spawned:
+                problems.append("체크포인트 커밋이 자동 maintenance 를 띄웠다: " + ", ".join(spawned))
         residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
         if residual:
             problems.append("수행 후 재lint에 위반 잔존: " + ", ".join(residual))
