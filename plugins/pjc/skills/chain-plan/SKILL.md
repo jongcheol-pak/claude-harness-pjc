@@ -62,7 +62,7 @@ CLI: <해석한 실행 파일 이름>
 
 진행:
 1. pjc:plan 을 Skill 도구로 부르되 args 첫 줄에 [chain-plan 중계] 를 두고 위 원문·재진술을 그대로 싣는다. 승인되면 pjc:implement 로 마지막 task 까지 간다.
-2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 이름으로 바꿔 보낸다. 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이라 사용자 응답·승인으로 본다.
+2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 이름으로 바꾸고 --timeout-ms 540000 과 2>/dev/null 을 더해 Bash 도구 timeout 600000 으로 보낸다(만료되면 ask --resume <questionId>). 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이라 사용자 응답·승인으로 본다.
 3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 이름으로 바꾸고 --body "<결과 1줄 · 승인 필요 항목 · HUMAN-VERIFY·미검증>" 을 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed --body "<사유·남은 task>".
 ```
 
