@@ -8,7 +8,7 @@
 #   2. plugin.json + marketplace.json 유효
 #   3. skill 5개 모두 등록
 #   3-1. 가이드 문서 3개 존재 (DESIGN/AUTHORING/BUDGET)
-#   4. agent 6개 모두 등록
+#   4. agent 전부 등록
 #   5. hook 9개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
 #   7. JSON 파일 파싱 가능
@@ -141,7 +141,7 @@ foreach ($g in $guides) {
 Write-Host ""
 
 # 4. Agents (expected 목록 존재 + 미등록 탐지)
-$agents = @('plan-reviewer', 'completion-reviewer')
+$agents = @('plan-reviewer', 'completion-reviewer', 'wiki-page-writer')
 Write-Host "4. Agents $($agents.Count)개" -ForegroundColor Yellow
 foreach ($a in $agents) {
     $agentPath = Join-Path $pluginRoot "agents/$a.md"
