@@ -294,6 +294,12 @@ if (Test-HookSelected @('session-context')) {
     # SC43f (**행동 지시**): 경로만 주고 무엇을 하라는지 없으면 세션이 읽지 않는다 — vault 라인에
     #   행동 지시 축을 건 SC18c·SC18d와 같은 형태다. 그 꼬리가 지워져도 SC43·SC43b는 통과한다.
     Assert-Case -Name "session-context: 조회 절차 지시에 행동 문구 (SC43f)" -R $r -ExpectExit 0 -ExpectContains 'vault 판정 게이트가 그 안에 있습니다'
+    # SC43g (**절 지목**): 파일째 Read 지시는 계획 세션에 쓰지 않는 절(§3 이하)까지 싣는다 — 호출측 스킬이
+    #   지목한 절만 읽으라는 문구가 이 줄의 계약이다(2026-09-29 — 읽을 절을 SKILL 포인터가 지목하게 바꿨다).
+    Assert-Case -Name "session-context: 조회 절차 지시가 지목한 절만 읽게 한다 (SC43g)" -R $r -ExpectExit 0 -ExpectContains '지목한 절만'
+    # SC43h (**추출 수단 동봉**): 절만 읽으라면서 수단을 주지 않으면 세션이 펜스 없는 grep 으로 흐른다 — PS 문자열의
+    #   백틱 여섯 겹이 출력에서 세 개로 풀렸는지를 이 문자열로 잰다(겹이 틀리면 펜스 토글이 사라진다).
+    Assert-Case -Name "session-context: 조회 절차 지시에 절 추출 awk 동봉 (SC43h)" -R $r -ExpectExit 0 -ExpectContains '/^(```|~~~)/{f=!f} !f&&/^## /{c++} c==n'
     # SC43c (델타 음성): startup엔 넣지 않는다 — 압축 전용 보완이라 매 세션 얹으면 예산 낭비다.
     #   ⚠ 대조 문자열은 **새 라인의 것**이어야 한다 — 옛 문자열(K 1 본문)로 두면 주입이 사라진
     #   지금은 어떤 출력에도 없어 이 케이스가 항상 통과하고 델타 음성 축이 조용히 죽는다.
@@ -318,6 +324,8 @@ if (Test-HookSelected @('session-context')) {
     #   ⚠ v1.208.0부터 이 상태에도 **계획 재읽기 지시**(plan/SKILL.md)는 나간다 — 완료된 plan이
     #   남은 채 새 계획을 세우는 세션이 두 분기 사이로 빠지던 사각을 닫았다(아래 SC38). assert가
     #   구현 경로 부재만 보므로 이 케이스는 그대로 유효하다.
+    #   ⚠ 이 상태에도 조회 절차 줄(SC43)이 나가며 §3 완료 기록 절을 **스킬 이름**(pjc:implement)으로 지목한다 —
+    #   경로 문자열이 아니라 구현 경로 주입이 아니다(2026-09-29 회차 D5). 이 어서션을 스킬 이름까지 넓히지 않는다.
     $scDone = Join-Path $work 'sc-done'; New-Item -ItemType Directory $scDone -Force | Out-Null
     @('# Plan', '- [x] T1: done', '- [x] T2: done') | Set-Content -Encoding UTF8 (Join-Path $scDone 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scDone } | ConvertTo-Json -Compress)
