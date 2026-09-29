@@ -432,6 +432,46 @@
       "workspace": "no_plan",
       "query": "summarize() 함수에 통화 단위 인자를 추가해줘",
       "why": "코드 변경 요청 — 문서 기록이 아니다"
+    },
+    {
+      "id": "chain-pos-1",
+      "skill": "pjc:chain-plan",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "plan 1: summarize()에 통화별 합계 추가\nplan 2: 합계 결과를 JSON 파일로 저장\nplan 3: README에 사용 예시 보강\n위 셋을 이 순서로, 하나씩 깨끗한 세션을 새로 열어 계획하고 구현까지 마쳐줘",
+      "why": "사용자가 경계를 나눈 **목록형 계획 여럿** + 계획마다 새 세션 — 이 스킬의 기본 입력 형태"
+    },
+    {
+      "id": "chain-pos-2",
+      "skill": "pjc:chain-plan",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "chain-plan 으로 돌려줘 — 1) sample.py 로깅을 파일 출력으로 바꾸기 2) summarize()에 음수 금액 검증 넣기",
+      "why": "스킬 이름 명시 + 번호 목록 — 이름을 부르면 pjc:plan 이 아니라 이 스킬이어야 한다"
+    },
+    {
+      "id": "chain-pos-3",
+      "skill": "pjc:chain-plan",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "sample.py 개선을 두 덩어리로 나눴어. 첫째는 입력 행 검증, 둘째는 평균·최대값 집계 추가야. 덩어리마다 컨텍스트 없는 새 에이전트가 맡아서 설계부터 코드까지 끝내고, 끝나면 다음 덩어리로 넘어가게 해줘",
+      "why": "「plan」·「세션」 어휘 없이 **새 컨텍스트로 순차 인계**를 서술만 한 발화 — 트리거 어휘 복창이 아니라 의도로 잡히는지 잰다"
+    },
+    {
+      "id": "chain-neg-1",
+      "skill": "pjc:chain-plan",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "summarize()에 통화별 합계를 추가하는 기능 계획 세워줘",
+      "why": "계획이 **하나뿐** — pjc:plan 영역(description 의 첫 near-miss)"
+    },
+    {
+      "id": "chain-neg-2",
+      "skill": "pjc:chain-plan",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "Karina 오케스트레이션에서 워커 탭 하나 열어 sample.py 컴파일 확인만 시키고 결과 메시지를 받아와줘",
+      "why": "계획 없이 **워커 조작만** — karina-orchestration 영역. 격리 모드는 그 스킬이 없어 「pjc 어느 스킬도 발동하지 않음」을 잰다"
     }
   ]
 }

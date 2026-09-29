@@ -53,7 +53,7 @@
 - **트리거 러너 종료 코드** (`skills/evals/trigger_eval.py` 수정 시 필수 · 모델 호출 없음): `python plugins/pjc/skills/evals/test_exit_code.py`
 - **스킬 트리거 eval** (`skills/*/SKILL.md` frontmatter `description` 수정 시 필수 — **실제 모델 호출이라 비용이 크다**):
   ```
-  python plugins/pjc/skills/evals/trigger_eval.py --filter <plan|impl|rec|wiki|dbg>
+  python plugins/pjc/skills/evals/trigger_eval.py --filter <plan|impl|rec|wiki|dbg|chain>
   ```
 - **위키 회로 검사** (`implement/SKILL.md`·`WIKI.md`·`plan/SKILL.md`·`skills/llm-wiki/**` 수정 시 필수):
   ```
