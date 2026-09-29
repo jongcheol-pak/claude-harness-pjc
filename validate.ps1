@@ -6,7 +6,7 @@
 # 검증 항목:
 #   1. plugin 디렉터리 존재
 #   2. plugin.json + marketplace.json 유효
-#   3. skill 5개 모두 등록
+#   3. skill 6개 모두 등록
 #   3-1. 가이드 문서 3개 존재 (DESIGN/AUTHORING/BUDGET)
 #   4. agent 전부 등록
 #   5. hook 9개 모두 등록 + BOM 확인
@@ -112,7 +112,7 @@ Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" |
 Write-Host ""
 
 # 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
-$skills = @('plan', 'implement', 'pjc-systematic-debugging', 'llm-wiki', 'record-project-fact')
+$skills = @('plan', 'implement', 'pjc-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"

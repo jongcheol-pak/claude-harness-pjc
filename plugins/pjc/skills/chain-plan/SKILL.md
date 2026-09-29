@@ -1,0 +1,124 @@
+---
+name: chain-plan
+description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순서대로 끝내는 코디네이터다 — 계획마다 사용자와 인터뷰를 먼저 끝내고, Karina 오케스트레이션 워커 탭(새 세션)을 계획마다 하나씩 띄워 pjc:plan(중계 모드) → pjc:implement 를 돌리며, 워커의 질문·승인 요청만 사용자에게 잇는다. 한국어(계획 체인/계획 여러 개를 차례로/plan 1·plan 2 순서대로/계획마다 새 세션에서/계획별로 따로 세션 돌려)와 영어(chain plans/run these plans in order/fresh session per plan)에 발동한다. Karina 앱과 Karina 탭 안의 세션이 전제다. 발동하지 않는 것 — 계획이 하나뿐인 요청은 pjc:plan 이다. 승인된 plan.md 를 이 세션에서 실행하라는 요청은 pjc:implement 다. 계획 없이 워커를 띄우거나 메시지·task 만 다루는 오케스트레이션 조작은 karina-orchestration 이다.
+---
+
+# Chain Plan
+
+사용자가 준 계획 목록을 **계획마다 새 세션(Karina 워커 탭)에서** 계획 → 구현까지 순서대로 끝낸다. 이 세션은 **파일을 고치지 않는다** — 인터뷰·중계·보고만 한다.
+
+## 전제조건
+
+- **착수 전에 셋을 확인하고, 하나라도 아니면 사유를 말하고 멈춘다** — 워커 탭에서 막히면 그 화면은 아무도 보지 않는다.
+  - ⓐ Karina 앱 실행 — `<CLI> orchestration run-current --json` 이 `app_not_running` 이 아니다
+  - ⓑ 이 세션이 Karina 탭 — 환경변수 `KARINA_TAB_UUID` 가 있다(Run 의 코디네이터 핸들이 여기서 나온다)
+  - ⓒ Karina 의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.** 첫 `worker-start` 응답의 `turnStart: "permission"` 이 꺼져 있다는 신호다
+- **`<CLI>` 는 한 번 해석해 spec 에 싣는다 — `KARINA_CLI_COMMAND` 값 → PATH 의 `karina-cli.exe` → `karina-dev-cli.exe` 순이다** — 배정문은 실행 파일 이름을 `karina-cli` 로 고정해 적어, debug 판 환경에서 그대로 치면 명령을 못 찾거나 다른 앱으로 간다.
+
+## 계획 목록
+
+- **계획 목록은 사용자가 준다 — `plan 1: … / plan 2: … / plan 3: …` 형태이고, 없으면 묻고 멈춘다** — 경계를 이 스킬이 자르면 순서 의존이 어긋나도 아무도 모른다. 계획이 하나뿐이면 이 스킬이 아니라 `pjc:plan` 이다.
+- **「plan N부터」로 불리면 N 앞의 계획은 건너뛴다** — 멈춘 체인의 재개는 사용자가 이렇게 다시 부르는 것뿐이다.
+
+## 인터뷰
+
+- **워커를 띄우기 전에 계획마다 사용자와 인터뷰를 끝낸다 — 절차는 `../plan/references/interview.md` 2-1~2-6 그대로이고, 결과는 계획마다 재진술 6항목이다** — 워커 화면은 사용자가 보지 않아, 거기서 인터뷰하면 질문이 추측으로 메워진다.
+- **그 전에 대상 레포 `AGENTS.md` 만 읽는다(컨텍스트에 전문이 없을 때만 Read)** — 2-3 「근거로 결정되는 것은 묻지 않는다」를 지키되, 코드·위키로 답이 나오는 것은 워커의 Step 1·Step 3 실측과 `ask` 에 맡긴다. 이 세션까지 위키를 읽으면 워커가 같은 것을 다시 읽는다.
+- **`AGENTS.md` 에 아키텍처 선언이 없으면 `GUESS:` 한 질문으로 확정해 재진술의 제약조건에 싣는다** — `../plan/SKILL.md` Step 1 이 이것을 인터뷰의 몫으로 두는데, 중계 모드의 워커는 인터뷰를 하지 않는다.
+- **계획마다 인터뷰 Q/A 요지를 남긴다 — spec 의 「원문:」 블록이 된다** — 워커의 intent 가 인용할 원문이 없으면 `plan-reviewer` 가 「확정 요구가 재진술뿐」으로 지적한다.
+
+## Run·Task
+
+인터뷰가 전부 끝나면 Run 하나와 계획마다 Task 하나를 만든다. 뒤 Task 는 `--deps` 로 앞 Task 에 건다.
+
+```
+<CLI> orchestration run-create --json --objective "<계획 목록 한 줄>"
+<CLI> orchestration task-create --json --task-title "plan <N>/<총> — <한 줄>" --deps <앞 task id> --spec "$(cat <<'EOF'
+<아래 spec 서식을 채운 것>
+EOF
+)"
+```
+
+- **`--task-title` 을 반드시 준다** — 없으면 배정문의 `Task:` 줄이 spec 전문을 되풀이한다.
+- **spec·`reply` 본문은 위처럼 작은따옴표 heredoc 치환으로 넘긴다** — 두 명령 모두 파일·stdin 입력이 없고, 본문의 백틱·`$`·따옴표가 셸에서 변조된다.
+
+### spec 서식
+
+```
+[chain-plan 중계] plan <N>/<총>
+CLI: <해석한 실행 파일 이름>
+
+원문:
+<사용자의 계획 목록 중 이 계획의 줄>
+<인터뷰 Q/A 요지>
+
+재진술:
+- 결과:        …
+- 사용자:      …
+- 지금 하는 이유: …
+- 성공의 모습:  …
+- 제약조건:    …
+- 범위 밖:     …
+
+진행:
+1. pjc:plan 을 Skill 도구로 부르되 args 첫 줄에 [chain-plan 중계] 를 두고 위 원문·재진술을 그대로 싣는다. 승인되면 pjc:implement 로 마지막 task 까지 간다.
+2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 이름으로 바꿔 보낸다. 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이라 사용자 응답·승인으로 본다.
+3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 이름으로 바꾸고 --body "<결과 1줄 · 승인 필요 항목 · HUMAN-VERIFY·미검증>" 을 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed --body "<사유·남은 task>".
+```
+
+- **표식은 spec 첫 줄에 둔다** — 배정문 첫 줄은 항상 `[오케스트레이션 배정]` 이고 spec 은 `할 일:` 바로 아래에 온다. 워커의 `pjc:plan` 은 그 자리와 Skill args 첫 줄을 본다(`../plan/references/interview.md` 「중계 모드」).
+- **질문·보고 명령은 spec 에 새로 적지 않고 배정문 끝의 것을 가리킨다** — 핸들·task id·dispatch id 가 거기 이미 채워져 있고, 옮겨 적으면 값이 어긋날 자리가 하나 는다.
+
+## 워커 루프
+
+계획 하나씩, 앞 계획의 `worker_done`(succeeded)을 받은 뒤에만 다음을 띄운다.
+
+```
+<CLI> orchestration worker-start --json --task <task id> --agent claude --worktree current
+<CLI> orchestration check --json --wait --timeout-ms 540000 2>/dev/null
+```
+
+- **`worker-start` 응답을 네 갈래로 가른다** — 성공 경로만 두면 권한 프롬프트에 걸린 워커를 끝없이 기다린다.
+  - ⓐ `worker_start_failed`(사유가 `agent_readiness:` 로 시작) → 사유를 보고하고 멈춘다
+  - ⓑ `turnStart: "permission"` → `worker-stop --dispatch <id>` 후 전제조건 ⓒ 를 보고하고 멈춘다
+  - ⓒ `state: "outcome_unknown"` → `worker-show`·`worker-read` 로 살펴 살아 있으면 대기로 가고, 아니면 `worker-abandon --dispatch <id>` 후 보고하고 멈춘다
+  - ⓓ 그 밖 → 대기로 간다
+- **대기는 `check --wait` 를 Bash 도구 `timeout` 600000 으로 반복한다 — 시한 540,000ms 는 그보다 짧게 잡은 것이다** — 도구가 먼저 끊으면 응답이 버려진다. `2>/dev/null` 은 15초마다 stderr 로 오는 keepalive 줄이 컨텍스트에 쌓이지 않게 한다.
+- **`count: 0`(시한 만료)은 실패가 아니라 체크포인트다 — `worker-show --dispatch <id>` 와 `worker-read --dispatch <id> --cursor <앞 cursor>` 로 새 출력을 보고, busy 가 아닌데 새 출력이 없는 체크포인트가 3회 연속이면 보고하고 멈춘다** — 긴 빌드·eval 은 출력 없이 오래 돌아 busy 인 동안은 세지 않는다. 3회는 같은 수단을 세 번 반복해도 닿지 않을 때 멈추는 수와 같다.
+- **`question` 이 오면 아래 「답하는 기준」으로 답하고 `reply --id <msg_id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <delivery_id>` 한다** — 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
+- **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, `worker-show` 로 워커가 idle 인지 1회 본 뒤 `worker-release --dispatch <id>` 하고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다. `worker-read` 는 보조다.
+- **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다.
+- **그 밖의 메시지 유형은 요지를 한 줄 알리고 ack 한 뒤 대기를 이어 간다.**
+- **사용자에게 질문을 넘길 때만 turn 을 끝낸다** — 대기 사이에 경과 보고만 내고 turn 을 끝내면 루프가 거기서 멈춘다. 경과는 다음 `check --wait` 호출과 같은 메시지에 싣는다.
+
+## 답하는 기준
+
+- **스스로 답하는 것은 재진술 6항목·사용자의 처음 지시·그 질문에 인용된 코드 사실에서 문면으로 답이 나올 때뿐이다** — 워커는 돌아온 답을 사용자 응답으로 보므로, 여기서 추측하면 추측이 확정 요구로 굳는다.
+- **그 밖은 질문 원문과 `GUESS:` 를 그대로 사용자에게 보이고, 답을 글자 그대로 옮긴다** — 요약해 넘기면 사용자가 워커의 실제 질문이 아니라 이 세션의 해석에 답하게 된다.
+- **승인 요청은 항상 사용자에게 간다 — 답 `Y` / `E: <수정 요청>` / `N` 을 글자 그대로 옮긴다** — `plan.md` 승인이 실행 위임장이고 「승인 필요 항목」이 거기 실리므로, 대신 누르면 글로벌 별도 승인 규칙을 우회한다.
+
+## 보고
+
+체인이 끝나거나 멈추면 한 번 낸다.
+
+```
+계획 체인 — <완료 N/총 | plan N 에서 멈춤>
+
+plan 1: <결과 1줄>
+plan 2: <결과 1줄>
+…
+
+승인 필요 항목: <워커 --body 에서 받은 것 전부 — 없으면 「없음」>
+HUMAN-VERIFY·미검증: <워커 --body 에서 받은 것 전부>
+사용자에게 넘긴 질문: <수>
+멈춘 사유·남은 task: <멈췄을 때만>
+```
+
+- **워커가 받은 승인 필요 항목(push·릴리즈 등)은 모아서 싣고 이 세션에서 실행하지 않는다** — 그 항목의 승인은 체인 승인에 들어 있지 않다.
+
+## 하지 않는 것
+
+- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다.
+- **대리 승인** — 위 「답하는 기준」.
+- **계획 자동 분할** — 경계는 사용자가 정한다.
+- **멈춘 워커의 자동 재개** — 멈춘 자리는 승인이 필요한 정지이고, 재개는 사용자가 「plan N부터」로 다시 부른다.
