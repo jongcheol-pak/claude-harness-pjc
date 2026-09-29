@@ -5,7 +5,7 @@
 # claude-harness-pjc (자율 루프)
 
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
-> <br>(계획·검증 로직은 OS 무관, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
+> <br>(계획·검증 로직은 OS 무관 — 단 `chain-plan` 은 Karina(Windows)가 필요하다, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
 **버전**: 1.323.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
@@ -183,9 +183,12 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 |---|---|---|
 | 계획 수립 | "기능 추가", "구현" 등 | 코드 변경 전 계획 + 검토 + 요구 확정(이해한 요구를 승인 시 재진술하고 `intent/`에 남긴다) |
 | 구현 | 계획 승인 후 자동 | 모든 task를 끝까지 자동 진행 |
+| 계획 체인 | "plan 1: …, plan 2: …" 목록 · 계획 여러 개를 차례로 | 계획마다 사용자와 인터뷰를 먼저 끝내고, Karina 워커 탭(새 세션)에서 계획→구현을 순서대로 끝낸다. 승인과 재진술로 답할 수 없는 질문만 사용자에게 온다 |
 | 디버깅 | "버그", "에러", "안 됨" 등 | 근본 원인을 찾는 체계적 디버깅 |
 | 위키 운영 | "위키에 등록/업데이트" | 프로젝트 지식을 쌓고 다음 작업 때 참조 |
 | 프로젝트 사실 기록 | "AGENTS.md에 기록" 또는 hook 제안 수락 | 빌드·DB·테스트 방식을 AGENTS.md에 축적(재확인 줄이기) |
+
+계획 체인은 Karina 앱이 떠 있고 이 세션이 Karina 탭 안에 있어야 하며, 워커 세션은 **agent 권한 확인을 끈 채** 돈다 — 하니스 차단 hook 은 그대로 동작하지만 사람이 보는 권한 확인 층은 없다.
 
 ### Subagents
 
@@ -262,6 +265,7 @@ pjc는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름으
 | "기능 추가", "리팩토링", "구현" | 계획 수립 |
 | "버그", "에러", "안 돼" | 디버깅 |
 | "위키에 등록/업데이트" | 위키 운영 |
+| "plan 1: …, plan 2: … 순서로 각각 새 세션에서" | 계획 체인 |
 
 ---
 
@@ -500,7 +504,7 @@ pjc는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 
 | 구성 | OS 의존 | 설명 |
 |---|---|---|
-| **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 |
+| **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 — 단 `chain-plan` 은 Karina(Windows)가 필요하다 |
 | **Hooks** (위험 명령 차단·권한/보안 변경 차단·외부 작업(push·릴리즈) 경고·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 우선·5.1 폴백** | hook 스크립트는 Claude Code가 띄운 PowerShell에서 직접 실행(자식 셸 재기동 없음). 실행 셸은 Claude Code의 powershell 해석을 따르며(실측: pwsh 7 있으면 `pwsh` 우선), 스크립트는 내장 powershell.exe(5.1) 호환을 유지; macOS/Linux는 `pwsh` 7 |
 
 | 항목 | 지원 |
