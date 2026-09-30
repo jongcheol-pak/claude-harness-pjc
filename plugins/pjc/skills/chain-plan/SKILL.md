@@ -15,7 +15,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
   - ⓒ Karina 의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.** 첫 `worker-start` 응답의 `turnStart: "permission"` 이 꺼져 있다는 신호다
 - **`<CLI>` 는 ⓐ 확인 전에 한 번 해석해 spec 에 싣는다 — 판은 탭 환경변수 `KARINA_APP_ID` 로 가른다(`Karina` → `karina-cli.exe` · `Karina-Dev` → `karina-dev-cli.exe`, 그 밖·없음 → 멈춤)** — 배정문은 실행 파일 이름을 `karina-cli` 로 고정해 적어, dev 판 환경에서 그대로 치면 명령을 못 찾거나 다른 앱으로 간다.
   - **다른 판 이름으로 폴백하지 않는다** — 다른 판 CLI 는 이 앱이 아니라 `app_not_running` 을 돌려주고, ⓐ 가 그것을 앱 미실행으로 오진한다.
-  - 그 이름이 PATH 에 없으면 설치본 전체경로(release 기본 `$LOCALAPPDATA/Programs/Karina/karina-cli.exe`)를 쓰고, 그것도 없으면 「Karina 설정에서 CLI PATH 등록」을 안내하고 멈춘다. 전체경로는 슬래시로 적고 큰따옴표로 감싼 채 spec `CLI:` 줄에 싣는다.
+  - 그 이름이 PATH 에 없으면 설치본 전체경로(release 기본 `$LOCALAPPDATA/Programs/Karina/karina-cli.exe`)를 쓰고, 그것도 없으면 「Karina 설정에서 CLI PATH 등록」을 안내하고 멈춘다. 전체경로는 슬래시로 적고 큰따옴표로 감싼 채 spec `CLI:` 줄에 싣는다 — Git Bash 의 `$LOCALAPPDATA` 는 역슬래시 경로라 `cygpath -m "$LOCALAPPDATA"` 로 바꿔 쓴다(역슬래시를 손으로 치환하면 경로가 깨진다).
 
 ## 계획 목록
 
@@ -129,7 +129,8 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 - **대기는 `check --wait` 를 Bash 도구 `timeout` 600000 으로 반복한다 — 시한 540,000ms 는 그보다 짧게 잡은 것이다** — 도구가 먼저 끊으면 응답이 버려진다. `2>/dev/null` 은 15초마다 stderr 로 오는 keepalive 줄이 컨텍스트에 쌓이지 않게 한다.
 - **`count: 0`(시한 만료)은 실패가 아니라 체크포인트다 — `worker-show --dispatch <id>` 와 `worker-read --dispatch <id> --cursor <앞 cursor>` 로 새 출력을 보고, busy 가 아닌데 새 출력이 없는 체크포인트가 3회 연속이면 보고하고 멈춘다** — 긴 빌드·eval 은 출력 없이 오래 돌아 busy 인 동안은 세지 않는다. 3회는 같은 수단을 세 번 반복해도 닿지 않을 때 멈추는 수와 같다.
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 빈 문자열이다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
-- **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, `worker-read` 로 최종 보고 텍스트가 출력됐는지 1회 본 뒤 `worker-release --dispatch <id>` 하고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다. `worker-show` 에는 busy·idle 필드가 없어 이 확인에 쓸 수 없다.
+- **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, `worker-read` 에 최종 보고의 제목 줄 `## 완료 보고` 가 보인 뒤 `worker-release --dispatch <id>` 하고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다. `worker-show` 에는 busy·idle 필드가 없어 이 확인에 쓸 수 없다.
+  - `worker-read` 는 터미널 화면 끝부분이라 보고를 그리는 중에는 다른 내용이 보인다 — 제목 줄이 없으면 `check --wait --timeout-ms 30000` 으로 기다린 뒤 다시 본다. 3회 안에 안 보이면 `--body` 가 정본이라 그대로 release 한다.
   - release 응답이 `outcome: "retained"` 면 탭이 남은 것이다 — 닫지 말고 보고에 「남은 탭」으로 싣는다(닫는 것은 사용자 몫).
 - **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다.
 - **그 밖의 메시지 유형은 요지를 한 줄 알리고 ack 한 뒤 대기를 이어 간다.**
