@@ -67,6 +67,8 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 템플릿·작성 규칙은 `references/plan-template.md`다. 루트 `plan.md` 하나에 쓰고(덮어쓰기), 요구는 `references/intent-rules.md` 형식으로 `intent/` 에 쓴다.
 
 - **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 나머지는 `## Deferred / Follow-up`에 `[다음 회차]` 마커로 적는다(마커 규약은 `references/deferred-rules.md`).
+  - **회차를 나누기로 했고 환경변수 `KARINA_TAB_UUID` 가 있으며 중계 모드가 아니면, 계획을 쓰기 전에 사용자에게 「회차 전부를 계획 체인으로 돌릴까」를 한 번 묻는다** — 회차마다 새 세션을 사람이 여는 대신 `pjc:chain-plan` 이 워커 탭으로 잇는다. 인터뷰로 컨텍스트가 찬 이 세션이 1회차를 구현하지 않도록 1회차도 워커에 맡긴다.
+  - **예면 `plan.md` 를 쓰지 않고 `pjc:chain-plan` 을 Skill 도구로 부른다 — args 는 `회차 경계:`(회차마다 한 줄) · `회차 재진술:`(회차마다 2-6 서식) · `인터뷰 요지:`(Q/A) 세 블록이다.** `pjc:chain-plan` 이 전제조건에서 멈추면 이 세션이 `plan.md` 작성으로 돌아온다. 아니오면 위 `[다음 회차]` 경로 그대로다.
 - **`plan.md`는 `Write`(전체 교체)·`Edit`(부분 수정) 도구로만 고친다** — `sed`·`cp`·python 쓰기는 `guard-bash` 가 `exit 2` 로 막고 근거는 그 차단 메시지가 낸다.
 - **쓰기가 실패하면 오류 원문을 그대로 내고 멈춘다** — 삼키면 **승인받은 계획이 디스크에 없다.**
 
