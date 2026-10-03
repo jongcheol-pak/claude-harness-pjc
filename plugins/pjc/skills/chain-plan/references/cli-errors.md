@@ -17,4 +17,4 @@
   - `task_not_startable` — 이 체인의 Task 를 살아 있는 다른 워커가 쥐고 있는 예상 밖 상태다. 이름 댄 dispatch 를 닫지 않고 싣는다.
   - `app_not_running` — CLI 는 앱을 띄우지 않는다. 앱 실행은 사용자 몫이다.
   - `no_bound_run`·`unknown_*`·`unsupported_capability` 등 — Run 바인딩이나 이 세션이 받은 id 가 어긋났거나 이 빌드에 없는 기능이라, 이어 가면 상태 추적이 깨진다.
-- **예외 — `../SKILL.md` 「전제조건」 ⓐ 의 `run-current` 는 `app_not_running` 과 샌드박스 밖에서도 막힌 `runtime_access_denied` 만 멈춘다** — Run 을 만들기 전의 탭은 `no_bound_run` 을 내는 것이 정상이다.
+- **예외 — `../SKILL.md` 「전제조건」 ⓐ 의 `run-current` 가 낸 `no_bound_run` 은 통과다** — Run 을 만들기 전의 탭은 이것을 내는 것이 정상이다. 그 밖의 코드는 위 규칙대로 복구하거나 멈춘다.
