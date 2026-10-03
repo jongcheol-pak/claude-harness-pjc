@@ -1,6 +1,6 @@
 ---
 name: chain-plan
-description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순서대로 끝내는 코디네이터다 — 계획마다 사용자와 인터뷰를 먼저 끝내고, Karina 오케스트레이션 워커 탭(새 세션)을 계획마다 하나씩 띄워 pjc:plan(중계 모드) → pjc:implement 를 돌리며, 워커의 질문·승인 요청만 사용자에게 잇는다. 한국어(계획 체인/계획 여러 개를 차례로/plan 1·plan 2 순서대로/계획마다 새 세션에서/계획별로 따로 세션 돌려)와 영어(chain plans/run these plans in order/fresh session per plan)에 발동한다. Karina 앱과 Karina 탭 안의 세션이 전제다. 발동하지 않는 것 — 계획이 하나뿐인 요청은 pjc:plan 이다. 승인된 plan.md 를 이 세션에서 실행하라는 요청은 pjc:implement 다. 계획 없이 워커를 띄우거나 메시지·task 만 다루는 오케스트레이션 조작은 karina-orchestration 이다.
+description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순서대로 끝내는 코디네이터다 — 계획마다 사용자와 인터뷰를 먼저 끝내고, Karina 오케스트레이션 워커 탭(새 세션)을 계획마다 하나씩 띄워 pjc:plan(중계 모드) → pjc:implement 를 돌리며, 워커의 질문·승인 요청은 계획의 목표·제약으로 판정해 답하고 사용자 몫만 사용자에게 잇는다. 한국어(계획 체인/계획 여러 개를 차례로/plan 1·plan 2 순서대로/계획마다 새 세션에서/계획별로 따로 세션 돌려)와 영어(chain plans/run these plans in order/fresh session per plan)에 발동한다. Karina 앱과 Karina 탭 안의 세션이 전제다. 발동하지 않는 것 — 계획이 하나뿐인 요청은 pjc:plan 이다. 승인된 plan.md 를 이 세션에서 실행하라는 요청은 pjc:implement 다. 계획 없이 워커를 띄우거나 메시지·task 만 다루는 오케스트레이션 조작은 karina-orchestration 이다.
 ---
 
 # Chain Plan
