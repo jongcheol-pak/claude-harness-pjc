@@ -10,7 +10,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 ## 전제조건
 
 - **착수 전에 셋을 확인하고, 하나라도 아니면 사유를 말하고 멈춘다** — 워커 탭에서 막히면 그 화면은 아무도 보지 않는다.
-  - ⓐ Karina 앱 실행 — `<CLI> orchestration run-current --json` 이 `app_not_running` 이 아니다
+  - ⓐ Karina 앱 실행 — `<CLI> orchestration run-current --json` 이 `app_not_running` 이 아니다(`ok: false` 면 `references/cli-errors.md`「오류 응답」 으로 판정)
   - ⓑ 이 세션이 Karina 탭 — 환경변수 `KARINA_TAB_UUID` 가 있다(Run 의 코디네이터 핸들이 여기서 나온다)
   - ⓒ Karina 의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.** 첫 `worker-start` 응답의 `turnStart: "permission"` 이 꺼져 있다는 신호다
 - **`<CLI>` 는 ⓐ 확인 전에 한 번 해석해 spec 에 싣는다 — 판은 탭 환경변수 `KARINA_APP_ID` 로 가른다(`Karina` → `karina-cli.exe` · `Karina-Dev` → `karina-dev-cli.exe`, 그 밖·없음 → 멈춤)** — 배정문은 실행 파일 이름을 `karina-cli` 로 고정해 적어, dev 판 환경에서 그대로 치면 명령을 못 찾거나 다른 앱으로 간다.
@@ -65,6 +65,8 @@ plan 2: …
 ## Run·Task
 
 체인 승인을 받으면 Run 하나와 계획마다 Task 하나를 만든다. 뒤 Task 는 `--deps` 로 앞 Task 에 건다 — **plan 1 은 `--deps` 를 뺀다**(값 없는 `--deps` 는 `invalid_argument`).
+
+- **모든 `<CLI>` 응답이 `ok: false` 면 `references/cli-errors.md`「오류 응답」 을 읽고 따른다** — 재전송·재실행으로 복구되는 코드가 있다.
 
 ```
 <CLI> orchestration run-create --json --objective "<계획 목록 한 줄>"
@@ -131,7 +133,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 ```
 
 - **`worker-start` 응답을 다섯 갈래로 가른다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
-  - ⓐ 실패 코드가 담긴 응답(`worker_start_failed`·`duplicate_worker`·`app_not_running` 등 Karina 가이드 「Errors」의 코드 전부) → 코드와 사유를 보고하고 멈춘다. **`duplicate_worker` 가 이름 대는 dispatch 는 `worker-stop`·`worker-abandon` 하지 않는다** — 같은 폴더를 쓰는 다른 세션의 워커일 수 있고, 닫으면 그 세션의 체인이 끊긴다
+  - ⓐ `ok: false` → `references/cli-errors.md`「오류 응답」
   - ⓑ `turnStart: "permission"` → `worker-stop --dispatch <id>` 후 전제조건 ⓒ 를 보고하고 멈춘다
   - ⓒ `injected: false` → 배정문 제출이 실패해 워커가 일을 받지 못했다. `worker-stop --dispatch <id>` 후 사유를 보고하고 멈춘다
   - ⓓ `state: "outcome_unknown"` → `worker-show`·`worker-read` 로 살펴 살아 있으면 대기로 가고, 아니면 `worker-abandon --dispatch <id>` 후 보고하고 멈춘다
