@@ -17,7 +17,7 @@ plan 2: …
 승인 필요 항목: <워커 --body 에서 받은 것 전부 — 없으면 「없음」>
 HUMAN-VERIFY·미검증: <워커 --body 에서 받은 것 전부>
 사용자에게 넘긴 질문: <수>
-코디네이터 판정: <판정으로 답한 질문·승인과 근거 — 없으면 「없음」>
+코디네이터 판정: <판정으로 답한 질문·승인과 근거 — 외부 계약 위임으로 답한 것은 `(외부 계약 위임)` 표기 · 없으면 「없음」>
 남은 탭: <release 가 retained 였던 plan · CLI 오류 응답(`worker_start_failed`·`duplicate_worker`·`task_not_startable`)이 이름 댄 탭·dispatch — 없으면 줄 생략>
 멈춘 사유·남은 task: <멈췄을 때만 — CLI 오류로 멈췄으면 코드·`error` 문장, `protocol_error` 면 retry id 와 「이미 실행됐을 수 있다 — `worker-list` 로 확인」>
 ```
