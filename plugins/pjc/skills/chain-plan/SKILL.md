@@ -131,7 +131,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 ```
 
 - **`worker-start` 응답을 다섯 갈래로 가른다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
-  - ⓐ `worker_start_failed`(사유가 `agent_readiness:` 로 시작) → 사유를 보고하고 멈춘다
+  - ⓐ 실패 코드가 담긴 응답(`worker_start_failed`·`duplicate_worker`·`app_not_running` 등 Karina 가이드 「Errors」의 코드 전부) → 코드와 사유를 보고하고 멈춘다. **`duplicate_worker` 가 이름 대는 dispatch 는 `worker-stop`·`worker-abandon` 하지 않는다** — 같은 폴더를 쓰는 다른 세션의 워커일 수 있고, 닫으면 그 세션의 체인이 끊긴다
   - ⓑ `turnStart: "permission"` → `worker-stop --dispatch <id>` 후 전제조건 ⓒ 를 보고하고 멈춘다
   - ⓒ `injected: false` → 배정문 제출이 실패해 워커가 일을 받지 못했다. `worker-stop --dispatch <id>` 후 사유를 보고하고 멈춘다
   - ⓓ `state: "outcome_unknown"` → `worker-show`·`worker-read` 로 살펴 살아 있으면 대기로 가고, 아니면 `worker-abandon --dispatch <id>` 후 보고하고 멈춘다
