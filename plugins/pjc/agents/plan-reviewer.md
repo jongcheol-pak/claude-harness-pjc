@@ -27,6 +27,7 @@ tools: Read, Grep, Glob
 
 - **출력 요지가 주장을 뒷받침하는지 대조한다** — 숫자가 다르거나, 출력에 없는 파일을 주장이 언급하면 지적한다.
 - **의심되면 직접 확인한다** — Read·Grep으로 그 파일을 열어 본다. 검토자의 확인이 계획자의 서술보다 우선한다.
+- **Log 밖 산문(Goal 문단·Decisions 근거·Out of Scope 사유)의 사실 주장이 Log 행도 `(추정 — 근거)`·`(모름)` 표시도 없는데 읽기 전용 명령으로 잴 수 있는 것이면 지적한다** — 표만 실측이고 그것을 풀어 쓴 문장이 짐작이면 사용자는 짐작을 읽는다(정본 `skills/plan/references/plan-template.md`「Investigation Log」).
 
 ### task의 Files 완전성
 
