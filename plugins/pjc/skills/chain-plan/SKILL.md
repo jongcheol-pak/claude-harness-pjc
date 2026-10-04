@@ -127,7 +127,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 4. 문제가 생기면 pjc:pjc-systematic-debugging 절차로 근본 원인을 고친다 — 테스트 skip·예외 삼키기·하드코딩·검증 완화 같은 우회는 쓰지 않는다.
 ```
 
-- **표식은 spec 첫 줄에 둔다** — 워커의 `pjc:plan` 이 그 자리(배정문 `할 일:` 바로 아래)와 Skill args 첫 줄로 중계 모드를 판정한다(`../plan/references/interview.md` 「중계 모드」).
+- **표식은 spec 첫 줄에 둔다** — 워커의 `pjc:plan` 이 그 자리(배정문 `할 일:` 바로 아래)와 Skill args 첫 줄로 중계 모드를 판정한다(`../plan/references/relay-mode.md`「중계 모드」).
 - **질문·보고 명령은 spec 에 새로 적지 않고 배정문 끝의 것을 가리킨다** — 핸들·task id·dispatch id 가 거기 이미 채워져 있고, 옮겨 적으면 값이 어긋날 자리가 하나 는다.
 - **`--body` 의 heredoc 구분자는 `BODY` 다** — spec 자체가 `EOF` heredoc 으로 넘어가, 그 안에 `EOF` 줄이 있으면 spec 이 거기서 끊긴다.
 

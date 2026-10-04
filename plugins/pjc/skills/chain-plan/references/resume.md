@@ -1,6 +1,6 @@
 # 재개 (`pjc:chain-plan` — 「plan N부터」)
 
-> `../SKILL.md` 「계획 목록」이 「plan N부터」로 불렸을 때만 이 파일을 연다. 재개는 새 Run 을 만들므로 spec `인계:` 의 기본 경로(`docs/plans/chain-<Run id>.md`)는 아직 없는 파일이고, 워커는 그 파일이 없으면 첫 계획으로 넘어간다(`../../plan/references/interview.md`「중계 모드」) — 앞 계획의 결정·제약을 읽지 못한다.
+> `../SKILL.md` 「계획 목록」이 「plan N부터」로 불렸을 때만 이 파일을 연다. 재개는 새 Run 을 만들므로 spec `인계:` 의 기본 경로(`docs/plans/chain-<Run id>.md`)는 아직 없는 파일이고, 워커는 그 파일이 없으면 첫 계획으로 넘어간다(`../../plan/references/relay-mode.md`「중계 모드」) — 앞 계획의 결정·제약을 읽지 못한다.
 
 ## 재개
 
