@@ -1,36 +1,37 @@
 # 조사 로그 서식
 
-> `pjc-systematic-debugging`의 조사 결과를 루트 `plan.md`에 남기는 형식 — 그 파일 하나이고 별도 조사 파일을 만들지 않는다(`AGENTS.md`의 `## Plan Location`).
+> `pjc-systematic-debugging`의 조사 결과를 남기는 형식이다. **진행 중 루트 `plan.md`(미완료 `[ ]`/`[/]` task 가 남은 것 — 끝난 plan 은 진행 중이 아니다)가 있으면 그 끝에 아래 `## Debug:` 절을 Edit 로 덧붙이고, 없으면 파일을 만들지 않고 최종 보고에 싣는다** — 별도 조사 파일도 만들지 않는다.
+> **`plan.md` 를 Write 로 쓰지 않는다** — 승인된 계획을 덮는다. 덧붙이는 절에는 task 체크박스를 넣지 않는다 — 실행 스킬이 task 로 읽는다.
 > **조사를 시작할 때 이 서식을 열어 그대로 채운다** — 빈 칸이 곧 아직 안 한 일이다.
 
 ```markdown
-# Debug: <증상 요약>
+## Debug: <증상 요약>
 
-## Symptom
+### Symptom
 <무엇이 어떻게 잘못되는가>
 
-## Reproduction
+### Reproduction
 <재현 절차 — 다른 사람이 따라할 수 있게>
 
-## Phase 1 — Evidence
+### Phase 1 — Evidence
 - Error: <메시지 핵심 단서>
 - Stack: <핵심 프레임>
 - Recent changes: <git log 요약>
 - Failing layer: <어디서 실패>
 
-## Phase 2 — Hypotheses
+### Phase 2 — Hypotheses
 - H1: <가설> — 예측: <무엇을 바꾸면 증상이 사라지나/악화되나> — 검증: <어떻게> → 결과: ✅/❌/⚠️
 - H2: ...
 
-## Phase 3 — Root Cause
+### Phase 3 — Root Cause
 <왜 그것이 원인인지 메커니즘 설명>
 
-## Phase 4 — Fix
+### Phase 4 — Fix
 - Test added: <테스트 파일:케이스>
 - Change: <파일:라인 + 한 줄 요약>
 - Defense in depth: <선택, 있다면>
 
-## Verification
+### Verification
 - Build: OK
 - Tests: <X/Y>
 - Manual repro: 더 이상 재현 안 됨
@@ -73,10 +74,10 @@ _logger.LogInformation("[VM] Items.Count={Count}", Items.Count);
 
 ## 경량 경로를 썼을 때
 
-**보고에 「경량 경로」를 명시하고 어떤 단계를 왜 생략했는지 적는다.** 위 서식에서 `## Phase 2 — Hypotheses`·`## Phase 3`을 비우는 대신 한 줄로 대체한다:
+**보고에 「경량 경로」를 명시하고 어떤 단계를 왜 생략했는지 적는다.** 위 서식에서 `### Phase 2 — Hypotheses`·`### Phase 3`을 비우는 대신 한 줄로 대체한다:
 
 ```markdown
-## 경량 경로
+### 경량 경로
 - 근거: <컴파일러/스택트레이스가 짚은 파일:라인:원인>
 - 생략: Phase 1-B~1-D · 2 · 3 (원인이 이미 확정)
 ```
