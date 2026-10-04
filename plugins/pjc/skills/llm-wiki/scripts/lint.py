@@ -2866,7 +2866,7 @@ def auto_split(vault, dry_run):
     written, log_err = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
     if log_err:
         # 기록 실패는 파일을 이미 다 쓴 뒤라 원복 대상이 아니지만, 종료 코드로는 알린다 —
-        #  호출측(F-2·A-4·B-3)이 「되돌리는 방법」을 그 기록에서 찾기 때문이다.
+        #  호출측(F-2·A-4·B-3·I-4)이 「되돌리는 방법」을 그 기록에서 찾기 때문이다.
         ses.notes.append(log_err)
         ses.failed = True
     if written:
@@ -2877,7 +2877,7 @@ def auto_split(vault, dry_run):
         recheck = SplitSession(vault, dry_run)
         _run_prescriptions(recheck)
         # 재점검의 **실패도 종료 코드에 합류**한다 -- 그러지 않으면 재점검에서 사본이 실패해
-        #  처방을 못 돌아도 `exit 0`이라, 호출측(F-2·A-4·B-3)이 그것을 통과로 읽는다.
+        #  처방을 못 돌아도 `exit 0`이라, 호출측(F-2·A-4·B-3·I-4)이 그것을 통과로 읽는다.
         ses.failed = ses.failed or recheck.failed
         ses.notes.extend(recheck.notes)
         if recheck.actions:

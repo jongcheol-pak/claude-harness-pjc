@@ -64,7 +64,7 @@ description: >
 
 > **지연 로드 규칙 (필수)**: 절차를 수행할 때는 **해당 위치의 파일을 먼저 Read**한다 — 표의 절차 이름만 보고 진행하면 생략하면 안 되는 필수 단계·사용자 게이트(pending 큐 소비, recipe 승격 확인, 삭제 확인 등)를 건너뛴다. **대형 참조 파일(`procedures-content.md`·`procedures-ops.md`·`wiki-schema.md`·`schema-types.md`·`schema-budget.md`·`wiki-ops-rules.md`)은 파일 전체가 단일 Read에 담기지 않는다 — 크기를 재지 말고 `grep -n "^### " <파일>` **1회**로 대상 절차의 시작 줄과 **다음 절차의 시작 줄**을 함께 얻어, Read에 `offset`과 `limit`을 **둘 다** 준다.** `limit` 없이 `offset`만 주면 그 지점부터 **파일 끝까지** 읽어 여전히 잘린다 — **단 `wiki-ops-rules.md` 의 범위는 절차가 아니라 위 「쓰기 규칙 절 라우팅」 표가 준다**. **첫 페이지만 읽고 로드를 마쳤다고 판정하지 않는다.** 목차 표에 **줄 번호를 적지 않는 이유**는 그 값이 파일을 고치는 회차마다 낡기 때문이다 — 낡은 좌표를 고치는 왕복이 조사 1회보다 비싸다. **범위가 표에 없는 행**(`lookup-rules.md`·`queue-rules.md`·`queue-consume-rules.md`)은 파일 하나가 곧 절차 하나라 **전체를 읽는다** — 절 단위 부분 Read 를 쓰지 않는다.
 >
-> **예산 처방은 세션이 손으로 옮기지 않는다** — `python "<skill>/scripts/lint.py" "<vault>" --auto-split`을 호출하고 결과를 검증한다 — 처방·안전장치·보고 억제는 `references/schema-budget.md` §4 「분할 수행 절차」가 정본이다(§7-2 번복). 그 **`--auto-split`** 호출 지점은 F-2(lint)·A-4(등록)·B-3(ingest) 셋이다 — 처방 없는 plain lint 호출은 절차 I-4에도 있으므로 둘을 섞어 세지 않는다.
+> **예산 처방은 세션이 손으로 옮기지 않는다** — `python "<skill>/scripts/lint.py" "<vault>" --auto-split`을 호출하고 결과를 검증한다 — 처방·안전장치·보고 억제는 `references/schema-budget.md` §4 「분할 수행 절차」가 정본이다(§7-2 번복). 그 **`--auto-split`** 호출 지점은 F-2(lint)·A-4(등록)·B-3(ingest)·I-4(가이드) 넷이다 — 처방 없는 plain lint 호출(C-4 등)과 섞어 세지 않는다.
 >
 >
 > **쓰기 세션 전용 규칙은 `references/wiki-ops-rules.md`에 있다 — vault에 쓰는 절차는 그 파일도 읽되, 절 단위 범위는 위 「쓰기 규칙 절 라우팅」 표가 준다.** 판정은 *"이 절차가 vault 파일을 만들거나 고치거나 지우는가"* 이고, **큐 소비(M)와 백업 사본 복원(L)도 여기 해당**한다(절차를 열거하지 않는 이유가 이것이다). 단 「비 git vault 사전 백업」은 본체에 남아 있다.
