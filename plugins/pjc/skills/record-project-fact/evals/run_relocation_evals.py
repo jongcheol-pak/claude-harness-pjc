@@ -50,6 +50,22 @@ def run_case(mod, case):
     tmp = tempfile.mkdtemp(prefix="reloc-eval-")
     dest = os.path.join(tmp, case["fixture"])
     shutil.copytree(fx, dest)
+    # **git 저장소 형상** — 사본 gitignore 알림(판정 ⓕ)은 대상이 git 작업 트리일 때만 판정한다.
+    #  임시 폴더는 저장소가 아니므로 `git_init` 으로 만들고, 그 케이스 동안 git 설정 환경변수를
+    #  고정한다 — `~/.gitconfig` 만 끄면 기본 전역 ignore 파일(`$XDG_CONFIG_HOME/git/ignore`)이
+    #  남아, 실행 PC 의 전역 설정이 판정을 바꾼다.
+    saved_env = {}
+    if case.get("gitignore") is not None:
+        with open(os.path.join(dest, ".gitignore"), "wb") as fh:
+            fh.write(case["gitignore"].encode("utf-8"))
+    if case.get("git_init"):
+        pinned = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+                  "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.excludesFile",
+                  "GIT_CONFIG_VALUE_0": os.devnull}
+        saved_env = {k: os.environ.get(k) for k in pinned}
+        os.environ.update(pinned)
+        subprocess.run(["git", "init", "-q", dest], timeout=60, stdin=subprocess.DEVNULL,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     try:
         if case.get("cli_args") is not None:
             # **CLI 진입점은 subprocess로만 태울 수 있다** — 위 두 모드는 모듈을 import해 함수를
@@ -169,6 +185,11 @@ def run_case(mod, case):
                 return False, "원복되지 않았다: " + rel
         return True, out.splitlines()[0] if out else "(무출력)"
     finally:
+        for k, v in saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
         shutil.rmtree(tmp, ignore_errors=True)
 
 

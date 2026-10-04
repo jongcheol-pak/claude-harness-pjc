@@ -101,6 +101,8 @@ python "<skill>/scripts/relocate-agents.py" "<레포 루트>" [--dry-run]
 - 되돌리려면: `docs/.agents-presplit/{날짜}-{시각}/`의 AGENTS.md 사본과(이관처가 원래 있었으면)
   그 사본을 **함께** 되돌리고, 이관처를 신설했으면 그 파일을 지운다
   (AGENTS.md만 되돌리면 이관처에 옮긴 절이 두 곳에 남는다)
+- 커밋 주의: <스크립트의 `[알림]` 줄 — 없으면 이 줄을 생략>
+  (사본 폴더가 `.gitignore` 에 없으면 다음 커밋에 섞인다 — 스크립트는 `.gitignore` 를 쓰지 않는다)
 ```
 
 ## 소급 정리

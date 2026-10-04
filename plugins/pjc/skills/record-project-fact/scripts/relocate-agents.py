@@ -44,7 +44,10 @@
   ⓕ 사본 — 착수 직전 `docs/.agents-presplit/{YYYY-MM-DD}-{HHMMSS}/`에 복사한다(git 저장소여도
      만든다 — 이관은 미커밋 작업 도중에도 돌 수 있어 `git checkout` 원복이 그 작업까지 지운다).
      **시각을 붙이는 이유**: 날짜만 쓰면 같은 날 두 번째 실행이 첫 실행 **결과**를 원본으로
-     덮어써, 되돌릴 지점이 사라진다.
+     덮어써, 되돌릴 지점이 사라진다. **사본 폴더가 git 이 무시하는 경로가 아니면 보고에
+     `[알림]` 1줄을 싣는다**(`git check-ignore` — 저장소가 아니거나 git 이 없으면 무출력).
+     사본은 원복 뒤에도 남아 다음 `git add -A` 커밋에 섞이는데, `.gitignore` 를 대신 쓰면
+     무승인 쓰기 범위(AGENTS.md·이관처)를 넘는다.
   ⓖ 검증 — ① **임박선 이내**(상한이 아니다 — 발동 조건과 같은 술어를 써야 「옮겼는데 여전히
      발동 중」이 실패로 잡힌다) ② 잔류 절 8종 존재 ③ 포인터 도달성(파일 실재 + **같은 절 이름
      존재**) ④ **원문 도달 대조**(줄 수 합이 아니라 각 줄이 어딘가에 닿았는가 —
@@ -72,6 +75,7 @@ import io
 import os
 import re
 import shutil
+import subprocess
 import sys
 
 from collections import Counter
@@ -184,6 +188,23 @@ def pick_destination(raw):
     return best, False
 
 
+def presplit_notice(root, bdir):
+    """사본 폴더를 git 이 무시하지 않으면 `[알림]` 1줄을 낸다(판정 ⓕ). 반환: 줄 목록(0~1).
+
+    rc 만 본다(`-q`) — 출력을 디코딩하지 않으므로 콘솔 인코딩에 걸리지 않는다. 0 은 무시됨,
+    1 은 무시되지 않음, 그 밖(128 = 저장소 아님)과 git 부재·시간 초과는 알릴 대상이 없다."""
+    try:
+        r = subprocess.run(["git", "-C", root, "check-ignore", "-q", bdir],
+                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if r.returncode != 1:
+        return []
+    return ["[알림] `%s/` 가 .gitignore 에 없다 — 사본이 다음 커밋에 섞이지 않게 등록하거나, "
+            "확인 뒤 지운다" % BACKUP_DIR.replace(os.sep, "/")]
+
+
 def rollback(backups, dest, dest_new):
     """사본으로 되돌리고 이 회차가 **신설한** 이관처를 지운다. 반환: 실패한 항목 설명 목록.
 
@@ -252,6 +273,8 @@ def relocate(root, dry_run=False):
                 b = os.path.join(bdir, os.path.basename(p))
                 shutil.copy2(p, b)
                 backups.append((p, b))
+    # 사본을 만든 뒤의 반환은 넷(옮길 절 없음·쓰기 실패·검증 실패·성공)이고 사본은 넷 모두에서 남는다.
+    notice = presplit_notice(root, bdir) if backups else []
 
     moved, cur = [], raw
     for title, _s, _e in targets:
@@ -281,7 +304,7 @@ def relocate(root, dry_run=False):
         moved.append((title, block, len(block)))
 
     if not moved:
-        return 0, [MIGRATE_HINT % "발동했으나 옮길 수 있는 절이 없다"]
+        return 0, [MIGRATE_HINT % "발동했으나 옮길 수 있는 절이 없다"] + notice
 
     dest_before = read_bytes(dest) if os.path.exists(dest) else b""
     dest_raw = dest_before
@@ -303,7 +326,7 @@ def relocate(root, dry_run=False):
         except OSError as e:
             hurt = rollback(backups, dest, dest_new)
             log = ["[쓰기 실패] %s — 사본으로 원복했다: %s" % (type(e).__name__, bdir)]
-            return 1, log + ["[원복 불완전] " + h for h in hurt]
+            return 1, log + ["[원복 불완전] " + h for h in hurt] + notice
 
     ok, problems = verify(cur, dest_raw, dest_rel, limit, raw,
                           ratio=ratio, slack=slack, dest_before=dest_before)
@@ -311,14 +334,14 @@ def relocate(root, dry_run=False):
         hurt = rollback(backups, dest, dest_new) if not dry_run else []
         return 1, (["[검증 실패] " + p for p in problems]
                    + ["사본으로 원복했다: " + bdir]
-                   + ["[원복 불완전] " + h for h in hurt])
+                   + ["[원복 불완전] " + h for h in hurt] + notice)
 
     log.append("이관 전: %dB / 상한 %dB" % (size, limit))
     for title, _b, n in moved:
         log.append("옮긴 절: 「%s」 %dB → `%s`%s" % (title, n, dest_rel, " (신설)" if dest_new else ""))
     log.append("이관 후: %dB (여유 %dB)" % (len(cur), limit - len(cur)))
     log.append("되돌리려면: %s" % bdir)
-    return 0, log
+    return 0, log + notice
 
 
 def unreached_lines(orig_raw, parts, declared_removals=(), already=b""):
