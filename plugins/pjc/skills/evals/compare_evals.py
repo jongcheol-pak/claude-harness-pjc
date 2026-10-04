@@ -67,13 +67,27 @@ def align(before, after, key_field):
             sorted(set(a_map) - set(b_map)))
 
 
-def trigger_verdict(case):
+def case_routes():
+    """현행 `trigger-cases.json` 의 id → route_to. 못 읽으면 빈 dict(표시만 종전으로 돌아간다).
+
+    결과 JSON 에 `route_to` 를 싣기 전(2026-10-04 b536bd08 이전)의 run 도 같은 표시로 보이게
+    케이스 파일에서 보충한다 — 안 하면 두 run 의 판정 열이 서로 다른 꼴로 섞인다.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trigger-cases.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return {c["id"]: c["route_to"] for c in json.load(fh)["cases"] if c.get("route_to")}
+    except (OSError, ValueError, KeyError):
+        return {}
+
+
+def trigger_verdict(case, routes=None):
     """트리거 케이스의 판정을 한 단어로 만든다. 판정 불가는 status를 그대로 노출한다."""
     if case.get("status") in UNJUDGED_TRIGGER_STATUSES:
         return case["status"]
     # route_to 케이스는 「목표가 떴는가」가 아니라 「누가 처음 떴는가」로 판정되므로
     #   그것을 보인다 — 발동/미발동만 내면 PASS→FAIL 이 「미발동 → 미발동」으로 찍힌다.
-    if case.get("route_to"):
+    if case.get("route_to") or (routes or {}).get(case.get("id")):
         first = (case.get("triggered") or ["없음"])[0]
         return f"첫:{first.split(':')[-1]}"
     return "발동" if case.get("fired") else "미발동"
@@ -82,9 +96,10 @@ def trigger_verdict(case):
 def compare_trigger(before, after):
     """트리거 run 두 개를 비교해 케이스별 변화와 회귀 목록을 낸다."""
     pairs, only_b, only_a = align(before, after, "id")
+    routes = case_routes()
     rows, regressions, improvements = [], [], []
     for cid, b, a in pairs:
-        bv, av = trigger_verdict(b), trigger_verdict(a)
+        bv, av = trigger_verdict(b, routes), trigger_verdict(a, routes)
         # 한쪽이라도 판정 불가면 증감을 만들지 않는다 — 없는 판정을 실패로 두면 허위 회귀가
         # 생긴다(루브릭 쪽 N/A 처리와 같은 원칙). 대신 변화 칸에 그 사실을 드러낸다.
         if (b.get("status") in UNJUDGED_TRIGGER_STATUSES
