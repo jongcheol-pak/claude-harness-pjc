@@ -32,6 +32,7 @@
   python plugins/pjc/skills/llm-wiki/evals/run_lint_evals.py
   ```
 - **AGENTS.md 이관 골든** (`relocate-agents.py` 수정 시 필수): `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py`
+- **chain-plan 대기 스크립트 골든** (`chain-plan/scripts/wait-worker.py` 수정 시 필수): `python plugins/pjc/skills/chain-plan/evals/run_wait_evals.py`
 - **하니스 정합 셀프체크** (`plugins/pjc/evals/**`·**대장 3파일**·`agents/*.md`·`*.md`·**`session-wiki-signals.ps1`·`llm-wiki/scripts/lint.py`**(축 「관련 파일 파서 동기」) 수정 시 필수 · **골든 케이스 수를 바꿨으면 매니페스트 무관하게 필수** — **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python plugins/pjc/evals/check-harness-consistency.py
