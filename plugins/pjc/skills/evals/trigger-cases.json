@@ -243,7 +243,7 @@
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "pending 큐에 쌓인 항목들 정리해줘",
-      "why": "경량 큐 소비(절차 M) — \"큐 정리/pending 정리\""
+      "why": "경량 큐 소비(절차 M) — \"위키 큐 정리/pending 큐 정리\"(저빈도어 pending 이 남아 이 질의가 맞는다)"
     },
     {
       "id": "wiki-neg-1",
