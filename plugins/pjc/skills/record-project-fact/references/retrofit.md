@@ -16,8 +16,10 @@
 4. **`pjc:plan`으로 넘긴다** — 승인된 정리안이 그 plan의 입력이다. 그때 **아래 도달 대조 명령을 그 plan의 검증 acceptance로 넣는다** — 「무손실 역대조를 건다」는 서술만 넘기면 실행자가 무엇을 돌릴지 몰라 대조가 통째로 빠진다.
 
    ```
-   python <skill>/scripts/relocate-agents.py --verify-only <정리 전 원문> <정리 후 AGENTS.md> <이관처...> --declared <삭제 선언 파일>
+   python "<skill>/scripts/relocate-agents.py" --verify-only <정리 전 원문> <정리 후 AGENTS.md> <이관처...> --declared <삭제 선언 파일>
    ```
+
+   **`<skill>` 은 그 plan 의 acceptance 에 지금 해석한 절대경로로 넣는다**(정의는 `../SKILL.md` Step 5) — 설치본 경로는 플러그인 버전 폴더(`…/pjc/<버전>/…`)에 묶여 업데이트 뒤 바뀌므로, 실행 시점에 그 경로가 없으면 그 시점의 설치본으로 다시 해석한다.
 
    원문의 각 줄이 결과 어딘가에 도달했는지 세고, 도달하지 않았는데 `--declared`에도 없는 줄을 전건 출력한다(미도달 0이면 rc 0 · 있으면 rc 1 · 입력 오류는 rc 2). **`--declared`는 이 경로의 필수 인자다**(§8).
 
