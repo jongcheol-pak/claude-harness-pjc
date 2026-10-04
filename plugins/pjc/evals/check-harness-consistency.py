@@ -1608,6 +1608,11 @@ def _json_case_count(rel):
 #  **단위가 바이트가 아니라 문자**라 한글 스킬에서 바이트로 재면 3배로 어긋난다.
 #  넘으면 스킬이 로드되지 않으므로 통지가 아니라 게이트다.
 SKILL_FM_MAX = {"name": 64, "description": 1024}
+# 스킬 description **합계** 통지선. Claude Code 의 스킬 목록 예산은 컨텍스트 비율
+#  (`skillListingBudgetFraction`, 1% — AUTHORING.md 「description 작성」)이라 재는 단위가 스킬별이
+#  아니라 합계이고, 위 1,024자는 스킬별 상한일 뿐이다. 6,000 은 2026-10-04 합계 4,900자의 여유선이다.
+#  넘어도 로드는 되고 목록이 잘릴 뿐이라 게이트가 아니라 통지다.
+SKILL_DESC_TOTAL_MAX = 6000
 # 같은 출처의 **하드 제약 2종** — 근거는 `harness-consistency-rationale.md` 의
 #  「축 ⑰ — frontmatter 하드 제약 2종」.
 SKILL_FM_RESERVED = ("anthropic", "claude")
@@ -1621,12 +1626,12 @@ def check_count_and_version(conv):
     왜 필요한가·버전을 함께 재는 이유는 `harness-consistency-rationale.md` 의
     「축 ⑰ — 계수·버전 정합이 왜 필요한가」.
     """
-    issues, n = [], 0
+    issues, n, notices = [], 0, []
     # **매니페스트가 하나도 없으면 골든 픽스처다** — 픽스처는 레포의 일부만 담으므로 없는
     #  파일까지 세면 이 축이 픽스처에서 상시 실패한다(축 ⑭ 가 같은 이유로 스캔 실재를 본다).
     #  그래서 실재 여부를 **먼저** 가르고, 그 뒤의 절 부재만 앵커 실패로 판정한다.
     if not any(os.path.exists(os.path.join(ROOT, p)) for p in _MANIFEST_PATHS):
-        return issues, n
+        return issues, n, notices
     body = conv.split(COUNT_SECTION_HEADING, 1)
     if len(body) < 2:
         # 매니페스트는 있는데 절이 없다 = 헤딩이 바뀌어 축이 통째로 조용해진 것이다.
@@ -1672,6 +1677,7 @@ def check_count_and_version(conv):
                 issues.append("계수 정합: `%s` 는 %d건인데 문서는 %s건으로 적었다"
                               % (hit, actual, fm.group(2)))
 
+    desc_total = 0
     for path in sorted(glob.glob(os.path.join(ROOT, "plugins", "pjc", "skills",
                                                "*", "SKILL.md"))):
         fm = _RX_FRONTMATTER.match(read(path))
@@ -1688,6 +1694,8 @@ def check_count_and_version(conv):
             n += 1
             # 여러 줄 값은 로드될 때 한 줄로 접히므로 공백을 정규화한 뒤 센다.
             val = " ".join(m.group(1).strip().strip("'\"").split())
+            if field == "description":
+                desc_total += len(val)
             if len(val) > cap:
                 issues.append("frontmatter 길이: `%s` 의 %s 가 %d자로 상한 %d자를 넘었다 "
                               "— 넘으면 그 스킬이 로드되지 않는다(단위는 바이트가 아니라 "
@@ -1702,10 +1710,14 @@ def check_count_and_version(conv):
             if _RX_FM_XML.search(val):
                 issues.append("frontmatter XML 태그: `%s` 의 %s 가 `<` 로 시작하는 태그꼴을 "
                               "담았다 — 공식이 두 필드 모두에 금지한다" % (rel, field))
+    if desc_total > SKILL_DESC_TOTAL_MAX:
+        notices.append("스킬 description 합계 %d자 — 통지선 %d자를 넘었다(스킬 목록 예산은 "
+                       "컨텍스트 비율이라 넘으면 목록이 잘린다). 통지 등급이라 exit 0 을 "
+                       "유지합니다" % (desc_total, SKILL_DESC_TOTAL_MAX))
 
     # 버전 축도 같은 관용을 쓴다 — 픽스처에는 `plugin.json`·`README.md` 가 없다.
     if not (os.path.exists(PLUGIN_JSON) and os.path.exists(README_MD)):
-        return issues, n
+        return issues, n, notices
     n += 1
     plugin_v = _read_json_field(PLUGIN_JSON, "version")
     readme_m = re.search(r"^\*\*버전\*\*:\s*(\S+)", read(README_MD), re.M)
@@ -1715,7 +1727,7 @@ def check_count_and_version(conv):
     elif plugin_v != readme_m.group(1):
         issues.append("버전 정합: `plugin.json` %s ↔ `README.md` %s — 버전은 한 커밋에서 "
                       "두 곳을 함께 올린다" % (plugin_v, readme_m.group(1)))
-    return issues, n
+    return issues, n, notices
 
 
 # `--fix` 가 절대 건드리지 않는 파일 — `plan.md` 는 gitignore 라 복구 경로가 없다(글로벌 지침
@@ -2034,6 +2046,7 @@ def main():
     ledger_issues, ledger_n, ledger_notices = check_deferred_stats(ledger, ledger_closed)
     rule_issues, rule_n, rule_notices = check_rule_rationale()
     tagenum_issues, tagenum_n, tagenum_notices = check_queue_tag_enum()
+    count_issues, count_n, count_notices = check_count_and_version(conv)
     axes = [
         ("포인터 도달성", check_pointer_reachability()),
         ("Deferred 집계", (ledger_issues, ledger_n)),
@@ -2049,7 +2062,7 @@ def main():
         ("폐기 식별자 실재", check_deprecated_identifiers()),
         ("등재 근거 실측", check_ledger_evidence(ledger)),
         ("분할 헬퍼 동기", check_split_helper_sync()),
-        ("계수·버전 정합", check_count_and_version(conv)),
+        ("계수·버전 정합", (count_issues, count_n)),
         ("규칙 근거 보유", (rule_issues, rule_n)),
         ("영향 검토 3축", check_impact_axes()),
         ("관련 파일 파서 동기", check_parser_sync()),
@@ -2064,7 +2077,7 @@ def main():
     print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
     # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
     for m in (check_agents_target() + budget_notices + close_notices
-              + ledger_notices + rule_notices + tagenum_notices):
+              + ledger_notices + rule_notices + tagenum_notices + count_notices):
         print("[NOTICE] %s" % m)
     if all_issues:
         for m in all_issues:
