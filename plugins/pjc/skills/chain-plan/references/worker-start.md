@@ -6,4 +6,4 @@
 
 - **`turnStart: "permission"`** → `worker-stop --dispatch <id>` 후 `../SKILL.md` 「전제조건」의 agent 권한 모드가 꺼져 있다고 보고하고 멈춘다
 - **`injected: false`** → 배정문 제출이 실패해 워커가 일을 받지 못했다. `worker-stop --dispatch <id>` 후 사유를 보고하고 멈춘다
-- **`state: "outcome_unknown"`** → `worker-show`·`worker-read` 로 살펴 살아 있으면 `../SKILL.md` 「워커 루프」의 대기로 가고, 아니면 `worker-abandon --dispatch <id>` 후 보고하고 멈춘다
+- **`state: "outcome_unknown"`** → `worker-show`·`worker-read` 로 살펴 살아 있으면 `../SKILL.md` 「워커 루프」의 대기를 띄우고, 아니면 `worker-abandon --dispatch <id>` 후 보고하고 멈춘다

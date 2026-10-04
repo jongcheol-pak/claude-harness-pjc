@@ -9,10 +9,11 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 
 ## 전제조건
 
-- **착수 전에 셋을 확인하고, 하나라도 아니면 사유를 말하고 멈춘다** — 워커 탭에서 막히면 그 화면은 아무도 보지 않는다.
+- **착수 전에 넷을 확인하고, 하나라도 아니면 사유를 말하고 멈춘다** — 워커 탭에서 막히면 그 화면은 아무도 보지 않는다.
   - ⓐ Karina 앱 실행 — `<CLI> orchestration run-current --json` 이 `app_not_running` 이 아니다(`ok: false` 면 `references/cli-errors.md`「오류 응답」 으로 판정)
   - ⓑ 이 세션이 Karina 탭 — 환경변수 `KARINA_TAB_UUID` 가 있다(Run 의 코디네이터 핸들이 여기서 나온다)
   - ⓒ Karina 의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.** 첫 `worker-start` 응답의 `turnStart: "permission"` 이 꺼져 있다는 신호다
+  - ⓓ `python --version` 이 3.x 를 낸다 — 워커 대기 스크립트(「워커 루프」)가 쓴다
 - **`<CLI>` 는 ⓐ 확인 전에 한 번 해석해 spec 에 싣는다 — 판은 탭 환경변수 `KARINA_APP_ID` 로 가른다(`Karina` → `karina-cli.exe` · `Karina-Dev` → `karina-dev-cli.exe`, 그 밖·없음 → 멈춤)** — 배정문은 실행 파일 이름을 `karina-cli` 로 고정해 적어, dev 판 환경에서 그대로 치면 명령을 못 찾거나 다른 앱으로 간다.
   - **다른 판 이름으로 폴백하지 않는다** — 다른 판 CLI 는 이 앱이 아니라 `app_not_running` 을 돌려주고, ⓐ 가 그것을 앱 미실행으로 오진한다.
   - 그 이름이 PATH 에 없으면 설치본 전체경로(release 기본 `$LOCALAPPDATA/Programs/Karina/karina-cli.exe`)를 쓰고, 그것도 없으면 「Karina 설정에서 CLI PATH 등록」을 안내하고 멈춘다. 전체경로는 슬래시로 적고 큰따옴표로 감싼 채 spec `CLI:` 줄에 싣는다 — Git Bash 의 `$LOCALAPPDATA` 는 역슬래시 경로라 `cygpath -m "$LOCALAPPDATA"` 로 바꿔 쓴다(역슬래시를 손으로 치환하면 경로가 깨진다).
@@ -137,7 +138,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 
 ```
 <CLI> orchestration worker-start --json --task <task id> --agent claude --worktree "<대상 레포 경로>" 2>/dev/null
-<CLI> orchestration check --json --wait --timeout-ms 540000 2>/dev/null
+python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id>
 ```
 
 - **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
@@ -145,8 +146,8 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
   - `ok: false` → `references/cli-errors.md`「오류 응답」
   - `turnStart` 가 `permission` 이거나 `injected: false` 거나 `state: "outcome_unknown"` → `references/worker-start.md`「시작 이상 응답」
   - 그 밖 → 대기로 간다
-- **대기는 `check --wait` 를 Bash 도구 `timeout` 600000 으로 반복한다 — 시한 540,000ms 는 그보다 짧게 잡은 것이다** — 도구가 먼저 끊으면 응답이 버려진다. `2>/dev/null` 은 15초마다 stderr 로 오는 keepalive 줄이 컨텍스트에 쌓이지 않게 한다.
-- **`count: 0`(시한 만료)은 실패가 아니라 체크포인트다 — `worker-show --dispatch <id>` 와 `worker-read --dispatch <id> --cursor <앞 cursor>` 로 보고, 읽은 화면이 앞 체크포인트와 같은 체크포인트가 3회 연속이면(메시지가 오면 다시 센다) `worker-retain` 후 보고하고 멈춘다** — `worker-show` 에는 busy·idle 필드가 없어 화면으로 가른다. 작업 중이면 스피너 경과 시간이 바뀌어 같을 수 없으니 출력 없이 오래 도는 빌드·eval 은 세지 않는다. 3회는 같은 수단을 세 번 반복해도 닿지 않을 때 멈추는 수와 같다.
+- **대기는 둘째 줄(`<skill>` 은 이 SKILL.md 의 폴더)을 Bash 도구 `run_in_background: true` 로 띄우고(샌드박스를 풀었으면 같은 플래그로) 경과 보고 없이 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 해 첫 줄 `RESULT: <갈래> — <지시>` 의 지시를 따른다. RESULT 줄이 없으면 한 번만 다시 띄우고, 두 번 연속이면 출력을 보고하고 멈춘다** — 9분마다 이 세션이 깨어나 큰 컨텍스트를 다시 읽던 폴링을 스크립트가 맡는다. 멈춤 판정(같은 화면 3회 연속)과 잠금은 그 스크립트가 정본이다.
+- **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤(`worker_done` 제외) · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다. 사용자에게 넘긴 질문이 열려 있는 동안은 띄우지 않는다** — 워커가 `ask` 에 막혀 화면이 그대로라 멈춤으로 오판한다.
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 빈 문자열이다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
 - **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 워커가 최종 보고를 다 그린 뒤 `worker-release --dispatch <id>` 하고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다.
   - `worker-read` 는 `--limit` 과 무관하게 지금 보이는 터미널 화면만 준다 — 제목은 `● 완료 보고` 처럼 보이고, 보고 뒤에 인계 프롬프트 코드블록이 붙으면 화면 위로 밀려 안 보인다. 그래서 판정은 둘 중 하나다: `완료 보고` 부분 문자열이 보이거나, 아래 대기 앞뒤로 읽은 화면이 같다(작업 중이면 스피너의 경과 시간이 매초 바뀌어 같을 수 없다).
@@ -154,8 +155,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
   - release 응답이 `outcome: "retained"` 여도 닫지 않는다(남은 탭 보고 재료) — 닫는 것은 사용자 몫이다.
   - **`남은 일` 이 「없음」이 아니면 다음 계획 전에 `references/continuation.md`「남은 일 판정」 을 따른다** — `succeeded` 라도 계획이 미완일 수 있다.
 - **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다.
-- **그 밖의 메시지 유형은 요지를 한 줄 알리고 ack 한 뒤 대기를 이어 간다.**
-- **사용자에게 질문을 넘길 때만 turn 을 끝낸다** — 대기 사이에 경과 보고만 내고 turn 을 끝내면 루프가 거기서 멈춘다. 경과는 다음 `check --wait` 호출과 같은 메시지에 싣는다.
+- **그 밖의 메시지 유형은 요지를 한 줄 알리고 ack 한 뒤 대기를 다시 띄운다.**
 
 ## 답하는 기준
 
