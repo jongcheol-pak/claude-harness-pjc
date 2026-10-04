@@ -1,12 +1,12 @@
 ---
 name: record-project-fact
-description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into an EXISTING AGENTS.md — on the suggest-agents-record hook's acceptance, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "빌드 명령 기록해줘", "DB 접근법 적어둬", "AGENTS.md에서 이 항목 빼줘". Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 넘었어", the hook's "주입 상한 임박") — Step 5 relocates oversized sections and leaves a pointer. Also for RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘", "소급 정리") — measures, judges each section's destination, and hands off to pjc:plan instead of editing. Do NOT trigger for creating a new AGENTS.md - that file is created by pjc:plan Step 1 when it is missing - or for code work (pjc:plan/pjc:implement). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's verbatim relocation, which reports afterward. Real secrets are forbidden — env var names only.
+description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into AGENTS.md — on the suggest-agents-record hook's acceptance, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "빌드 명령 기록해줘", "DB 접근법 적어둬", "AGENTS.md에서 이 항목 빼줘". Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 넘었어", the hook's "주입 상한 임박") — Step 5 relocates oversized sections and leaves a pointer. Also for RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘", "소급 정리") — measures, judges each section's destination, and hands off to pjc:plan instead of editing. Also creates a missing AGENTS.md when that alone is asked (minimal skeleton per AGENTS-BOUNDARY.md). Do NOT trigger for code work (pjc:plan/pjc:implement). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's verbatim relocation, which reports afterward. Real secrets are forbidden — env var names only.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
 # Record Project Fact
 
-작업 중 **확인된 프로젝트 사실**(빌드·실행 명령, DB 접근 방법, 산출물 위치, 검증 명령, 의도적 테스트 비대상 계층)을 **기존 `AGENTS.md`에 추가·갱신·제거**한다. 다음 작업이 같은 정보를 재발견하지 않게 하고, 틀려진 정보가 남아 오도하지 않게 하는 것이 목적이다.
+작업 중 **확인된 프로젝트 사실**(빌드·실행 명령, DB 접근 방법, 산출물 위치, 검증 명령, 의도적 테스트 비대상 계층)을 **`AGENTS.md`에 추가·갱신·제거**한다(파일이 없으면 규칙 8). 다음 작업이 같은 정보를 재발견하지 않게 하고, 틀려진 정보가 남아 오도하지 않게 하는 것이 목적이다.
 
 `AGENTS.md`는 세션마다 컨텍스트에 실리므로(CLAUDE.md 가 없으면 Claude Code 가 불러오고, 있으면 SessionStart hook `session-context` 가 전문을 싣는다) **한 번 기록하면 다음 세션부터 재확인이 사라진다.** 이 스킬은 「기록 측」만 담당한다.
 
@@ -19,7 +19,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 5. **「의도적 비대상」은 사용자 확인으로만 성립한다** — 테스트가 없는 계층을 발견한 것만으로는 비대상이 아니다(빠뜨린 것일 수도 있다). 사용자가 의도라고 확인해야 적는다.
 6. **중복은 추가가 아니라 갱신** — 같은 항목이 있으면 새 줄을 늘리지 말고 기존 줄을 고친다.
 7. **삭제는 stale·틀린·시크릿이 든 항목만** — 멀쩡한 정보를 임의로 지우지 않는다. 무엇을 왜 지우는지 승인받는다.
-8. **`AGENTS.md`가 없으면** `pjc:plan` Step 1의 최소 생성을 안내한다(이 스킬은 갱신 전담).
+8. **`AGENTS.md`가 없으면 `../AGENTS-BOUNDARY.md`「AGENTS.md 최소 생성」 대로 만든다** — 생성 단독 요청이면 바로, 기록 요청이면 먼저 만들지 묻는다. 절차는 그 절이 정본이라 여기 재서술하지 않는다.
 
 ## 기록 대상 → 섹션 매핑
 
@@ -48,7 +48,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 
 ### Step 1. `AGENTS.md` 확인
 
-Read한다. 없으면 *"`pjc:plan`으로 작업을 시작하면 최소 `AGENTS.md`가 먼저 생깁니다 — 그렇게 하시겠어요?"* 안내 후 종료.
+Read한다. 없으면 규칙 8로 간다.
 
 ### Step 2. 기록 내용 구성
 
