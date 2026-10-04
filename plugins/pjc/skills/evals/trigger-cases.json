@@ -322,8 +322,8 @@
       "skill": "pjc:llm-wiki",
       "expect": "trigger",
       "workspace": "no_plan",
-      "query": "위키에서 OO 어떻게 구현했는지 찾아줘",
-      "why": "위키 조회(절차 G) — 사용자가 위키를 명시해 묻는 조회. 코드 세션의 자체 read-only 참조(K)와 다르다 (구 llm-wiki 전용 케이스 #5 복원 — 2026-09-28 2회 연속 미발동으로 제외됐다가 description 보강 후 복원)"
+      "query": "예전에 CSV 내보내기를 어떤 식으로 구현했는지 위키에서 찾아봐줘",
+      "why": "위키 조회(절차 G) — 사용자가 위키를 명시해 묻는 조회. 코드 세션의 자체 read-only 참조(K)와 다르다 (구 llm-wiki 전용 케이스 #5 복원 — 2026-09-28 2회 연속 미발동으로 제외됐다가 description 보강 후 복원) 자리표시 없이 구체 기능명 · description 인용 트리거와 3어절 연속 일치 없음(2026-10-04 run 160310 이 「OO」를 되묻고 멈췄다)."
     },
     {
       "id": "wiki-decision-1",
@@ -347,16 +347,16 @@
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "이 함수가 어떻게 구현됐는지 찾아줘",
-      "why": "경계 음성 — wiki-query-1 과 같은 「어떻게 구현했는지 찾아줘」 꼴이지만 위키 언급이 없다. 조회 트리거를 넓히며 코드 탐색까지 먹지 않는지 잰다"
+      "why": "경계 음성 — wiki-query-1 과 같은 「구현 방식을 찾아 달라는」 꼴이지만 위키 언급이 없다. 조회 트리거를 넓히며 코드 탐색까지 먹지 않는지 잰다"
     },
     {
       "id": "wiki-neg-6",
       "skill": "pjc:llm-wiki",
       "expect": "no-trigger",
       "workspace": "no_plan",
-      "query": "위키에 정리돼 있는 CSV 내보내기 방식을 참고해서 이 프로젝트에 그대로 구현해줘",
+      "query": "위키에 정리해 둔 CSV 내보내기 규칙(UTF-8 BOM · 쉼표 구분 · 첫 줄 헤더)대로 이 프로젝트에 CSV 내보내기 기능을 추가해줘",
       "route_to": "pjc:plan",
-      "why": "**위키를 언급한 구현 요청** — 위키는 참고 자료이고 요청은 기능 추가다. 코드 세션의 위키 참조는 llm-wiki 를 발동하지 않는다(description 의 절차 K). 신규 기능이라 pjc:plan 이 첫 발동이어야 한다."
+      "why": "**위키를 언급한 구현 요청** — 위키는 참고 자료이고 요청은 기능 추가다. 코드 세션의 위키 참조는 llm-wiki 를 발동하지 않는다(description 의 절차 K). 신규 기능이라 pjc:plan 이 첫 발동이어야 한다. 질의가 위키 내용을 직접 담아 vault 를 읽을 이유가 없다(2026-10-04 run 153358·160310 이 vault 읽기 거부로 멈췄다)."
     },
     {
       "id": "dbg-pos-1",
