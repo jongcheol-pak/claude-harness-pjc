@@ -1,11 +1,11 @@
 ---
 name: chain-plan
-description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순서대로 끝내는 코디네이터다 — 계획마다 사용자와 인터뷰를 먼저 끝내고, Karina 오케스트레이션 워커 탭(새 세션)을 계획마다 하나씩 띄워 pjc:plan(중계 모드) → pjc:implement 를 돌리며, 워커의 질문·승인 요청은 계획의 목표·제약으로 판정해 답하고 사용자 몫만 사용자에게 잇는다. 한국어(계획 체인/계획 여러 개를 차례로/plan 1·plan 2 순서대로/계획마다 새 세션에서/계획별로 따로 세션 돌려)와 영어(chain plans/run these plans in order/fresh session per plan)에 발동한다. Karina 앱과 Karina 탭 안의 세션이 전제다. 발동하지 않는 것 — 계획이 하나뿐인 요청은 pjc:plan 이다. 승인된 plan.md 를 이 세션에서 실행하라는 요청은 pjc:implement 다. 계획 없이 워커를 띄우거나 메시지·task 만 다루는 오케스트레이션 조작은 karina-orchestration 이다.
+description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순서대로 끝내는 코디네이터다 — 계획마다 사용자와 인터뷰를 먼저 끝내고, Karina 오케스트레이션 워커 탭(새 세션)을 계획마다 하나씩 띄워 pjc:plan(중계 모드) → pjc:implement 를 돌리며, 워커의 질문·승인 요청은 계획의 목표·제약으로 판정해 답하고 사용자 몫만 사용자에게 잇는다. 한국어(계획 체인/계획 여러 개를 차례로/plan 1·plan 2 순서대로/계획마다 새 세션에서/계획별로 따로 세션 돌려)와 영어(chain plans/run these plans in order/fresh session per plan)에 발동한다. 멈춘 체인을 계획 번호로 잇는 재개(「plan 3부터 다시」/resume the chain from plan 2)도 이 스킬이다 — task 번호 재개(「T3부터」)는 pjc:implement 다. Karina 앱과 Karina 탭 안의 세션이 전제다. 발동하지 않는 것 — 계획이 하나뿐인 요청은 pjc:plan 이다. 승인된 plan.md 를 이 세션에서 실행하라는 요청은 pjc:implement 다. 계획 없이 워커를 띄우거나 메시지·task 만 다루는 오케스트레이션 조작은 karina-orchestration 이다.
 ---
 
 # Chain Plan
 
-사용자가 준 계획 목록을 **계획마다 새 세션(Karina 워커 탭)에서** 계획 → 구현까지 순서대로 끝낸다. 이 세션은 **파일을 고치지 않는다** — 인터뷰·중계·보고만 한다.
+사용자가 준 계획 목록을 **계획마다 새 세션(Karina 워커 탭)에서** 계획 → 구현까지 순서대로 끝낸다.
 
 ## 전제조건
 
@@ -19,7 +19,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 
 ## 계획 목록
 
-- **계획 목록은 사용자가 준다 — `plan 1: … / plan 2: … / plan 3: …` 형태이고, 없으면 묻고 멈춘다** — 경계를 이 스킬이 자르면 순서 의존이 어긋나도 아무도 모른다. 계획이 하나뿐이면 이 스킬이 아니라 `pjc:plan` 이다.
+- **계획 목록은 사용자가 준다 — `plan 1: … / plan 2: … / plan 3: …` 형태이고, 없으면 묻고 멈춘다** — 경계를 이 스킬이 자르면 순서 의존이 어긋나도 아무도 모른다.
 - **args 첫 블록이 `회차 경계:` 이면 `pjc:plan` 이 회차를 나눠 넘긴 것이다 — 블록 서식은 `references/handoff.md`「넘김 args」, 계획마다의 확인 화면·요청 밖 후보 질문은 `references/handoff.md`「확인 인터뷰」 를 읽고 따른다** — 경계는 그 단계가 사용자와 확정했고, 회차별 확인은 여기서 받는다.
 - **「plan N부터」로 불리면 N 앞의 계획은 건너뛰고 `references/resume.md`「재개」 를 읽고 따른다.**
 
@@ -126,7 +126,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 4. 문제가 생기면 pjc:pjc-systematic-debugging 절차로 근본 원인을 고친다 — 테스트 skip·예외 삼키기·하드코딩·검증 완화 같은 우회는 쓰지 않는다.
 ```
 
-- **표식은 spec 첫 줄에 둔다** — 배정문 첫 줄은 항상 `[오케스트레이션 배정]` 이고 spec 은 `할 일:` 바로 아래에 온다. 워커의 `pjc:plan` 은 그 자리와 Skill args 첫 줄을 본다(`../plan/references/interview.md` 「중계 모드」).
+- **표식은 spec 첫 줄에 둔다** — 워커의 `pjc:plan` 이 그 자리(배정문 `할 일:` 바로 아래)와 Skill args 첫 줄로 중계 모드를 판정한다(`../plan/references/interview.md` 「중계 모드」).
 - **질문·보고 명령은 spec 에 새로 적지 않고 배정문 끝의 것을 가리킨다** — 핸들·task id·dispatch id 가 거기 이미 채워져 있고, 옮겨 적으면 값이 어긋날 자리가 하나 는다.
 - **`--body` 의 heredoc 구분자는 `BODY` 다** — spec 자체가 `EOF` heredoc 으로 넘어가, 그 안에 `EOF` 줄이 있으면 spec 이 거기서 끊긴다.
 
