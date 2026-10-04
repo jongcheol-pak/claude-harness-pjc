@@ -21,7 +21,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 
 - **계획 목록은 사용자가 준다 — `plan 1: … / plan 2: … / plan 3: …` 형태이고, 없으면 묻고 멈춘다** — 경계를 이 스킬이 자르면 순서 의존이 어긋나도 아무도 모른다. 계획이 하나뿐이면 이 스킬이 아니라 `pjc:plan` 이다.
 - **args 첫 블록이 `회차 경계:` 이면 `pjc:plan` 이 회차를 나눠 넘긴 것이다 — 블록 서식은 `references/handoff.md`「넘김 args」, 계획마다의 확인 화면·요청 밖 후보 질문은 `references/handoff.md`「확인 인터뷰」 를 읽고 따른다** — 경계는 그 단계가 사용자와 확정했고, 회차별 확인은 여기서 받는다.
-- **「plan N부터」로 불리면 N 앞의 계획은 건너뛴다** — 멈춘 체인의 재개는 사용자가 이렇게 다시 부르는 것뿐이다.
+- **「plan N부터」로 불리면 N 앞의 계획은 건너뛰고 `references/resume.md`「재개」 를 읽고 따른다.**
 
 ## 인터뷰
 
@@ -69,7 +69,7 @@ plan 2: …
 
 ## Run·Task
 
-체인 승인을 받으면 Run 하나와 계획마다 Task 하나를 만든다. 뒤 Task 는 `--deps` 로 앞 Task 에 건다 — **plan 1 은 `--deps` 를 뺀다**(값 없는 `--deps` 는 `invalid_argument`).
+체인 승인을 받으면 Run 하나와 계획마다 Task 하나를 만든다. 뒤 Task 는 `--deps` 로 앞 Task 에 건다 — **첫 Task 는 `--deps` 를 뺀다**(값 없는 `--deps` 는 `invalid_argument`).
 
 - **모든 `<CLI>` 응답이 `ok: false` 면 `references/cli-errors.md`「오류 응답」 을 읽고 따른다** — 재전송·재실행으로 복구되는 코드가 있다.
 
@@ -146,9 +146,9 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
   - ⓓ `state: "outcome_unknown"` → `worker-show`·`worker-read` 로 살펴 살아 있으면 대기로 가고, 아니면 `worker-abandon --dispatch <id>` 후 보고하고 멈춘다
   - ⓔ 그 밖 → 대기로 간다
 - **대기는 `check --wait` 를 Bash 도구 `timeout` 600000 으로 반복한다 — 시한 540,000ms 는 그보다 짧게 잡은 것이다** — 도구가 먼저 끊으면 응답이 버려진다. `2>/dev/null` 은 15초마다 stderr 로 오는 keepalive 줄이 컨텍스트에 쌓이지 않게 한다.
-- **`count: 0`(시한 만료)은 실패가 아니라 체크포인트다 — `worker-show --dispatch <id>` 와 `worker-read --dispatch <id> --cursor <앞 cursor>` 로 새 출력을 보고, busy 가 아닌데 새 출력이 없는 체크포인트가 3회 연속이면 보고하고 멈춘다** — 긴 빌드·eval 은 출력 없이 오래 돌아 busy 인 동안은 세지 않는다. 3회는 같은 수단을 세 번 반복해도 닿지 않을 때 멈추는 수와 같다.
+- **`count: 0`(시한 만료)은 실패가 아니라 체크포인트다 — `worker-show --dispatch <id>` 와 `worker-read --dispatch <id> --cursor <앞 cursor>` 로 보고, 읽은 화면이 앞 체크포인트와 같은 체크포인트가 3회 연속이면(메시지가 오면 다시 센다) 보고하고 멈춘다** — `worker-show` 에는 busy·idle 필드가 없어 화면으로 가른다. 작업 중이면 스피너 경과 시간이 바뀌어 같을 수 없으니 출력 없이 오래 도는 빌드·eval 은 세지 않는다. 3회는 같은 수단을 세 번 반복해도 닿지 않을 때 멈추는 수와 같다.
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 빈 문자열이다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
-- **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 워커가 최종 보고를 다 그린 뒤 `worker-release --dispatch <id>` 하고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다. `worker-show` 에는 busy·idle 필드가 없어 이 확인에 쓸 수 없다.
+- **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 워커가 최종 보고를 다 그린 뒤 `worker-release --dispatch <id>` 하고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다.
   - `worker-read` 는 `--limit` 과 무관하게 지금 보이는 터미널 화면만 준다 — 제목은 `● 완료 보고` 처럼 보이고, 보고 뒤에 인계 프롬프트 코드블록이 붙으면 화면 위로 밀려 안 보인다. 그래서 판정은 둘 중 하나다: `완료 보고` 부분 문자열이 보이거나, 아래 대기 앞뒤로 읽은 화면이 같다(작업 중이면 스피너의 경과 시간이 매초 바뀌어 같을 수 없다).
   - 아니면 `check --wait --timeout-ms 30000` 으로 기다린 뒤 다시 본다 — 그 사이 온 메시지 배치는 위 규칙대로 처리하고 ack 한다. 3회 안에 판정이 서지 않으면 `--body` 가 정본이라 그대로 release 한다.
   - release 응답이 `outcome: "retained"` 면 탭이 남은 것이다 — 닫지 말고 보고에 「남은 탭」으로 싣는다(닫는 것은 사용자 몫).
