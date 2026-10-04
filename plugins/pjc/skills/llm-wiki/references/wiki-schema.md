@@ -8,7 +8,7 @@ language: ko
 # 위키 규칙 — llm-wiki 번들 (규칙 진실원천)
 
 > 이 파일은 위키의 헌법이다. llm-wiki 스킬은 이 파일의 규칙을 따르되, **전체를 정독하지 않고 작업 관련 §만** 아래 목차 인덱스로 특정해 부분 Read한다(컨텍스트 예산). **번들은 네 파일이다** — 이 코어와 `schema-types.md`(§2) · `schema-budget.md`(§4 · §7-2 · §8) · `schema-lint.md`(§7). § 번호는 번들 전역에서 유일하고, 어느 파일을 열지는 목차의 「파일」 열이 정한다. 번들 버전은 이 파일 frontmatter 하나다.
-> 실행 절차(A~M)는 `SKILL.md`(본체: §0 시작 절차·공통 사전 준수 사항)와 `references/lookup-rules.md`(K 조회)·`references/queue-rules.md`(K 5~6 큐 기록)·`references/wiki-ops-rules.md`(J + 쓰기 세션 전용 규칙)·`references/procedures-content.md`(A~E·I)·`references/procedures-ops.md`(F·G·H·L·M)에 있다. vault에는 이 규칙의 사본을 두지 않는다(번들만 사용).
+> 실행 절차(A~M)는 `SKILL.md`(본체: §0 시작 절차·공통 사전 준수 사항)와 `references/lookup-rules.md`(K 조회)·`references/queue-rules.md`(K 5~6 큐 기록)·`references/queue-consume-rules.md`(ingest·lint·M 의 큐 소비)·`references/wiki-ops-rules.md`(J + 쓰기 세션 전용 규칙)·`references/procedures-content.md`(A~E·I)·`references/procedures-ops.md`(F·G·H·L·M)에 있다. vault에는 이 규칙의 사본을 두지 않는다(번들만 사용).
 
 ## 목차 (부분 Read 인덱스 — 작업 관련 §만 읽는다)
 
