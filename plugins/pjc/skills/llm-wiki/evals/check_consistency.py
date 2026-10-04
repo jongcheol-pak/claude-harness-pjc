@@ -868,7 +868,9 @@ TRIGGER_BROAD_RX = re.compile(r"임박|초과|넘|예산|한도|여유")
 #  *"왜 그렇게 정했는가"* 를 적는 자리라, 거기 남은 조건어는 **과거 판정의 인용**이지 트리거
 #  정의가 아니다(예: *"비율만 쓰면 … 놓치고"*). 절차가 읽지 않는 파일이라 그 문면에 트리거가
 #  있어도 발화 경로가 없고, 규칙 정본은 `wiki-ops-rules.md` 쪽이 그대로 스캔된다.
-TRIGGER_SCAN_EXCLUDE = {"wiki-ops-rationale.md"}  # 파일명(basename) 집합.
+#  둘째는 `schema-rationale.md` 다 — schema 번들(budget·types·wiki-schema)의 경위를 받는 같은
+#  성격의 파일이고, 규칙 정본 셋은 그대로 스캔된다.
+TRIGGER_SCAN_EXCLUDE = {"wiki-ops-rationale.md", "schema-rationale.md"}  # 파일명(basename) 집합.
 
 
 def _trigger_scan_scope():
