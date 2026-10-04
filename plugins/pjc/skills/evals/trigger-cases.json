@@ -359,6 +359,30 @@
       "why": "**위키를 언급한 구현 요청** — 위키는 참고 자료이고 요청은 기능 추가다. 코드 세션의 위키 참조는 llm-wiki 를 발동하지 않는다(description 의 절차 K). 신규 기능이라 pjc:plan 이 첫 발동이어야 한다. 질의가 위키 내용을 직접 담아 vault 를 읽을 이유가 없다(2026-10-04 run 153358·160310 이 vault 읽기 거부로 멈췄다)."
     },
     {
+      "id": "wiki-pos-9",
+      "skill": "pjc:llm-wiki",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "Put this repository into my LLM wiki vault as a new project page.",
+      "why": "영어 위키 요청(W9) — description 의 영어 트리거 줄이 덮는 꼴이되 그 문구(add/register this project to the wiki)를 복창하지 않는다. 등록(절차 A)"
+    },
+    {
+      "id": "wiki-neg-7",
+      "skill": "pjc:llm-wiki",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "리뷰어가 남긴 코멘트 변경분 반영해줘",
+      "why": "고빈도 단독어 near-miss(W9) — 「변경분 반영」 이 있으나 위키를 말하지 않는 코드 리뷰 반영 요청이다. description 은 「{프로젝트} 변경분 위키에 반영」 으로 위키와 결합해야 발동한다"
+    },
+    {
+      "id": "wiki-neg-8",
+      "skill": "pjc:llm-wiki",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "메시지 큐 정리하는 워커에서 중복 메시지를 걸러내도록 고쳐줘",
+      "why": "고빈도 단독어 near-miss(W9) — 「큐 정리」 가 있으나 대상은 메시지 큐 코드다. description 은 「위키 큐 정리/pending 큐 정리」 로 결합해야 발동한다"
+    },
+    {
       "id": "dbg-pos-1",
       "skill": "pjc:pjc-systematic-debugging",
       "expect": "trigger",
@@ -485,6 +509,22 @@
       "workspace": "no_plan",
       "query": "AGENTS.md에 적힌 빌드 명령 한 번 돌려줘",
       "why": "**AGENTS.md 를 읽어 실행만** — 파일을 고치거나 사실을 적는 요청이 아니다. 「AGENTS.md」 단어만으로 기록 스킬이 뜨지 않는지 잰다. 빌드 명령은 no_plan 픽스처 AGENTS.md 에 실재한다."
+    },
+    {
+      "id": "rec-pos-8",
+      "skill": "pjc:record-project-fact",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "방금 `pytest -q` 로 전체 테스트가 도는 걸 확인했어. 다음 세션에서도 쓰게 이거 기억해둬",
+      "why": "빌드·테스트 **명령** 기억 요청(R7) — 확인된 명령은 레포 귀속 실행 사실이라 AGENTS.md(이 스킬)로 간다(queue-rules K 5-3 라우팅 ①). description 의 예시 문구를 복창하지 않는다"
+    },
+    {
+      "id": "rec-neg-4",
+      "skill": "pjc:record-project-fact",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "이 프로젝트의 결제 모듈은 금액을 항상 원 단위 정수로 다뤄야 해. 기억해둬",
+      "why": "rec-pos-8 의 짝 음성(R7) — 명령이 아니라 작업 규약·함정의 「기억해둬」 라 위키 큐([PROJECT-FACT], K 5-3 ③) 몫이다(AGENTS-BOUNDARY 표 — 크로스 세션 작업 규약·함정은 위키)"
     },
     {
       "id": "chain-pos-1",
