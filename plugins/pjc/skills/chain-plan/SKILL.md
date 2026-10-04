@@ -65,7 +65,7 @@ plan 2: …
 - **`바뀌는 영역`·`승인 필요 항목` 은 실측(`회차 실측:` 또는 `references/measure.md` 결과)에서만 채우고, 그 계획의 실측이 실패했을 때만 「워커 실측 후 확정」이다** — 실측 밖의 값은 추측이다.
 
 - **위임되지 않는 것이 있다 — `../plan/references/plan-template.md` 「승인 필요 항목」의 「실행 시점에 별도 승인」 목록이다** — 체인 승인에 적혀 있어도 그 실행은 그때 사용자에게 간다. 목록 안의 DB 변경이라도 파괴적 형태는 여기에 든다.
-- **`E` 면 그 계획의 재진술·체크리스트를 고쳐 다시 내고, `E: 위임 없음` 이면 위임 줄을 바꾸고 `run-create` objective 끝에 `[위임 없음]` 을 붙이며, `N` 이면 Run 을 만들지 않고 보고한 뒤 끝낸다.**
+- **`E` 면 그 계획의 재진술·체크리스트를 고쳐 다시 내고, `E: 위임 없음` 이면 위임 줄을 바꾸고 `run-create` objective 의 `[체인 승인:` 앞에 `[위임 없음]` 을 넣으며, `N` 이면 Run 을 만들지 않고 보고한 뒤 끝낸다.**
 
 ## Run·Task
 
@@ -74,15 +74,16 @@ plan 2: …
 - **모든 `<CLI>` 응답이 `ok: false` 면 `references/cli-errors.md`「오류 응답」 을 읽고 따른다** — 재전송·재실행으로 복구되는 코드가 있다.
 
 ```
-<CLI> orchestration run-create --json --objective "<계획 목록 한 줄>"
+<CLI> orchestration run-create --json --objective "<계획 목록 한 줄> [체인 승인: <사용자 답 원문>]"
 <CLI> orchestration task-create --json --task-title "plan <N>/<총> — <한 줄>" --deps <앞 task id> --spec "$(cat <<'EOF'
 <아래 spec 서식을 채운 것>
 EOF
 )"
 ```
 
+- **압축 뒤 체인 승인 답 원문·task·dispatch id 가 안 보이면 `references/compaction.md`「압축 뒤 복원」 을 따른다** — 파일을 고치지 않는 이 세션의 체인 상태는 Run·Task 에만 남는다.
 - **`--task-title` 을 반드시 준다** — 없으면 배정문의 `Task:` 줄이 spec 전문을 되풀이한다.
-- **spec·`reply` 본문은 위처럼 작은따옴표 heredoc 치환으로 넘긴다** — 두 명령 모두 파일·stdin 입력이 없고, 본문의 백틱·`$`·따옴표가 셸에서 변조된다.
+- **objective·spec·`reply` 본문은 spec 처럼 작은따옴표 heredoc 치환으로 넘긴다** — 세 명령 모두 파일·stdin 입력이 없고, 본문의 백틱·`$`·따옴표가 셸에서 변조된다.
 
 ### spec 서식
 
