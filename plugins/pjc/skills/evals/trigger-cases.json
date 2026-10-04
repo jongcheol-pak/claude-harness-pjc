@@ -1,5 +1,5 @@
 {
-  "_note": "스킬 트리거 정확도 eval 케이스. trigger_eval.py가 각 케이스를 격리 CLAUDE_CONFIG_DIR + 임시 워크스페이스에서 `claude -p`로 실행해 Skill 도구 호출을 관측한다. expect=trigger면 skill이 발동해야 PASS, expect=no-trigger면 발동하지 않아야 PASS(다른 스킬이 대신 발동하는 것은 무방 — 오발동만 본다). workspace는 러너가 실행 시점에 생성한다(plan.md가 repo .gitignore 대상이라 픽스처로 체크인할 수 없음). why는 판정 근거이며 러너는 읽지 않는다(사람·후속 세션용).",
+  "_note": "스킬 트리거 정확도 eval 케이스. trigger_eval.py가 각 케이스를 격리 CLAUDE_CONFIG_DIR + 임시 워크스페이스에서 `claude -p`로 실행해 Skill 도구 호출을 관측한다. 판정은 첫 발동이다 — expect=trigger면 처음 뜬 스킬이 skill이어야 PASS, expect=no-trigger면 route_to(선택)가 있을 때 처음 뜬 스킬이 route_to여야 PASS이고 없으면 skill이 발동하지 않아야 PASS(다른 스킬이 대신 발동하는 것은 무방). 모든 케이스는 첫 Skill 호출에서 끊는다. workspace는 러너가 실행 시점에 생성한다(plan.md가 repo .gitignore 대상이라 픽스처로 체크인할 수 없음). why는 판정 근거이며 러너는 읽지 않는다(사람·후속 세션용).",
   "cases": [
     {
       "id": "impl-pos-1",

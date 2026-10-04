@@ -31,7 +31,7 @@ REQUIRED_KEYS = ("run_id", "kind", "cases")
 
 # 트리거 run에서 **판정이 이뤄지지 않은** status. 결과가 아니라 "판정을 못 한 것"이라
 # 회귀·개선 어느 버킷에도 넣지 않는다 — 넣으면 관측 실패가 품질 회귀로 둔갑한다.
-# (`inconclusive`는 should-trigger 케이스가 스킬 호출 전에 턴이 소진된 경우 — trigger_eval.py)
+# (`inconclusive`는 목표가 있는 케이스가 스킬 호출 전에 턴이 소진된 경우 — trigger_eval.judge_case)
 UNJUDGED_TRIGGER_STATUSES = ("timeout", "error", "inconclusive")
 
 

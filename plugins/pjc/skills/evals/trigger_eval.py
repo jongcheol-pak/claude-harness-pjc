@@ -20,6 +20,11 @@
   3. **watchdog kill + 프로세스 트리 정리** — 응답이 오지 않는 케이스가 러너를 무한 대기시키지
      않게 한다. timeout은 성공/실패 어느 쪽으로도 집계하지 않는다.
 
+판정은 **첫 발동**으로 한다 — `expect: trigger` 는 처음 뜬 스킬이 목표여야 PASS 이고,
+`expect: no-trigger` 는 `route_to` 가 있으면 그 스킬이 처음 떠야 PASS 다(없으면 목표가 뜨지
+않으면 PASS). 그래서 **모든 케이스를 첫 Skill 호출에서 끊는다** — 그 뒤의 턴은 판정에 쓰이지
+않는다. 판정식은 순수 함수 `judge_case` 이고 `test_exit_code.py` 가 그 갈래를 잰다.
+
 워크스페이스(plan.md 유무)는 픽스처로 체크인하지 않고 **실행 시점에 임시 폴더에 생성**한다 —
 repo .gitignore가 `plan.md`를 무시해 체크인 자체가 불가능하다.
 
@@ -51,13 +56,13 @@ CASES_JSON = os.path.join(EVALS_DIR, "trigger-cases.json")
 # 케이스당 상한. 판정에 필요한 만큼만 넓히고 그 이상은 비용이다.
 # 3이던 값을 8로 올린 이유: 모델이 스킬을 부르기 전에 프로젝트를 훑는 케이스가 있는데
 # (2026-08-06 재현 실측 — 탐색 도구 3~5회 관측, 그마저 3턴에서 잘린 하한이다), 3턴에서는
-# 그 탐색만으로 상한에 닿아 **스킬 호출 기회 자체가 없었다**. 발동하는 케이스는 stop_skill이
-# 즉시 끊으므로(run_claude) 상한을 올려도 비용이 늘지 않는다 — 늘어나는 것은 미발동 케이스뿐.
+# 그 탐색만으로 상한에 닿아 **스킬 호출 기회 자체가 없었다**. 스킬이 뜨는 케이스는 첫 Skill
+# 호출에서 끊으므로(run_claude) 상한을 올려도 비용이 늘지 않는다 — 늘어나는 것은 미발동 케이스뿐.
 MAX_TURNS = 8
 # 2026-07-29 기준선 40세션의 최장 케이스가 108.7초였다 — 그보다 넉넉히 잡아 정상 케이스가
 # timeout으로 버려지지 않게 하되, 응답이 끊긴 세션이 러너를 무한정 붙잡지도 않게 한다.
 CASE_TIMEOUT_SEC = 180
-# 미발동 케이스에 싣는 진단의 상한. 원인을 읽기엔 충분하고 결과 JSON을 부풀리지 않는 선.
+# PASS 가 아닌 케이스에 싣는 진단의 상한. 원인을 읽기엔 충분하고 결과 JSON을 부풀리지 않는 선.
 MAX_DIAG_TOOLS = 20
 MAX_DIAG_TEXT = 300
 
@@ -200,7 +205,7 @@ def parse_events(lines):
     첫 줄이 init이라고 가정하면 안 된다 — pjc hook이 있으면 hook_started가 먼저 온다.
     플러그인 스킬은 네임스페이스 이름(`pjc:implement`)으로 등재되므로 그대로 수집한다.
 
-    도구 시퀀스와 최종 텍스트는 **미발동 케이스의 원인 규명용**이다. 이것이 없으면 결과 JSON에
+    도구 시퀀스와 최종 텍스트는 **PASS 가 아닌 케이스의 원인 규명용**이다. 이것이 없으면 결과 JSON에
     "발동 안 함"만 남아 ⓐ 질의가 선행 대화를 전제해 모델이 되물은 것 ⓑ 픽스처와 전제가 어긋난 것
     ⓒ 탐색만 하다 턴이 소진된 것 ⓓ 진짜로 description이 안 맞은 것이 구분되지 않는다(2026-08-06에
     실제로 그 오진이 Deferred 대장에 등재됐다). 같은 순회에서 함께 모으므로 추가 파싱 비용이 없다.
@@ -238,9 +243,13 @@ def parse_events(lines):
     return init_ev, triggered, result_ev, tool_calls, final_text
 
 
-def is_skill_call(line, skill):
-    """이 stream-json 줄이 `skill`에 대한 Skill 도구 호출인가 (조기 종료 판정용)."""
-    if skill not in line:
+def is_skill_call(line):
+    """이 stream-json 줄이 **어느 스킬이든** Skill 도구 호출을 담는가 (조기 종료 판정용).
+
+    목표 스킬만 보면 다른 스킬이 먼저 뜬 케이스가 끝까지 돌아, 첫 발동으로 판정할 정보를
+    이미 얻은 뒤에도 시간·토큰을 쓴다.
+    """
+    if '"Skill"' not in line:
         return False
     try:
         ev = json.loads(line)
@@ -250,16 +259,15 @@ def is_skill_call(line, skill):
         return False
     for block in (ev.get("message") or {}).get("content") or []:
         if block.get("type") == "tool_use" and block.get("name") == "Skill":
-            if (block.get("input") or {}).get("skill") == skill:
-                return True
+            return True
     return False
 
 
-def run_claude(query, workspace, config_dir, model, stop_skill=None):
+def run_claude(query, workspace, config_dir, model):
     """claude를 한 번 실행하고 (stdout 줄 목록, stderr, timed_out)을 반환한다.
 
-    stop_skill이 주어지면 그 스킬의 발동을 관측하는 즉시 종료한다 — 트리거 판정에 필요한
-    정보를 이미 얻었으므로 남은 턴은 시간과 토큰만 쓴다.
+    첫 Skill 호출을 관측하는 즉시 종료한다 — 판정은 첫 발동으로 하므로 그 정보를 이미
+    얻었고, 남은 턴은 시간과 토큰만 쓴다.
     """
     # 옵션을 먼저 쌓고 질의를 **맨 뒤에 `-p -- <query>`로** 붙인다. `-`로 시작하는 질의(불릿
     # 목록 등 실사용 발화)를 CLI가 옵션으로 파싱해 죽는 것을 막기 위함이다 — 그 형태의 케이스가
@@ -301,7 +309,7 @@ def run_claude(query, workspace, config_dir, model, stop_skill=None):
     try:
         for line in proc.stdout:  # blocking readline — watchdog kill이 EOF로 풀어준다
             lines.append(line)
-            if stop_skill and is_skill_call(line, stop_skill):
+            if is_skill_call(line):
                 kill_tree(proc)
                 break
     finally:
@@ -324,6 +332,56 @@ def is_fatal(result_ev):
     return bool(res.get("is_error")) and res.get("subtype") != "error_max_turns"
 
 
+def judge_case(case, triggered, stop_reason, timed_out):
+    """한 케이스의 (status, fired) 를 정한다 — 판정의 정본이다.
+
+    목표는 `expect: trigger` 면 `skill`, `expect: no-trigger` 면 `route_to`(있을 때)다.
+    목표가 있으면 **첫 발동이 목표여야** PASS 다 — 목록 안에 있는지만 보면 다른 스킬이 먼저
+    떠 그쪽이 일을 가져간 오라우팅도 PASS 가 된다. `route_to` 없는 no-trigger 는 종전대로
+    `skill` 이 뜨지 않으면 PASS 다.
+
+    `fired` 는 통과 방향과 같은 뜻을 지닌다 — trigger 는 「목표가 첫 발동」, no-trigger 는
+    「`skill` 이 떴다(오발동)」. `compare_evals.py`·`summarize` 가 이 필드를 그대로 읽는다.
+
+    목표가 있는데 아무 스킬도 안 뜬 채 턴이 소진되면 `inconclusive` 다 — 스킬을 안 쓰기로 한
+    것이 아니라 호출 기회에 닿지 못한 것이라 판정 불가다. `route_to` 없는 no-trigger 의 턴
+    소진은 「발동 없음」을 확인한 정상 종료라 그대로 판정한다(넣으면 오발동률 분모가 무너진다).
+    timeout 은 성공·실패 어느 쪽도 아니지만 `fired` 는 남긴다 — 발동 관측은 이미 끝났을 수
+    있고 `summarize` 의 오발동 게이트가 그것을 쓴다.
+    """
+    first = triggered[0] if triggered else None
+    target = case["skill"] if case["expect"] == "trigger" else case.get("route_to")
+    if case["expect"] == "trigger":
+        fired = first == case["skill"]
+    else:
+        fired = case["skill"] in triggered
+    if timed_out:
+        return "timeout", fired
+    if target is None:
+        return ("fail" if fired else "pass"), fired
+    if first is None and stop_reason == "error_max_turns":
+        return "inconclusive", fired
+    return ("pass" if first == target else "fail"), fired
+
+
+def attach_diagnostics(result, stop_reason, tool_calls, final_text):
+    """PASS 가 아닌 결과에 원인 분류용 진단을 싣는다(제자리 수정).
+
+    없으면 결과 JSON에 「FAIL」만 남아 ⓐ 질의가 선행 대화를 전제해 되물은 것 ⓑ 픽스처와
+    전제가 어긋난 것 ⓒ 턴이 소진된 것 ⓓ 진짜로 description 이 안 맞은 것 ⓔ 다른 스킬이
+    먼저 뜬 것이 갈리지 않는다. PASS 에는 싣지 않는다 — 결과 JSON만 커진다. 절단은
+    표시한다(조용한 절단 금지).
+    """
+    if result.get("status") == "pass":
+        return
+    result["stop_reason"] = stop_reason
+    result["tool_calls"] = tool_calls[:MAX_DIAG_TOOLS]
+    if len(tool_calls) > MAX_DIAG_TOOLS:
+        result["tool_calls"].append(f"…(+{len(tool_calls) - MAX_DIAG_TOOLS} more)")
+    result["final_text"] = (final_text[:MAX_DIAG_TEXT] + "…(절단)"
+                            if len(final_text) > MAX_DIAG_TEXT else final_text)
+
+
 def run_case(case, config_dir, model, workspaces):
     """한 케이스를 실행·판정해 결과 dict를 반환한다. 오류는 1회 재시도한다."""
     ws = workspaces[case["workspace"]]
@@ -334,15 +392,11 @@ def run_case(case, config_dir, model, workspaces):
     stderr = ""
     timed_out = False
 
-    # 목표 스킬이 발동해야 하는 케이스는 그 발동을 보는 즉시 끊는다(오발동 케이스는 끝까지 봐야
-    # '발동 없음'을 확인할 수 있으므로 조기 종료 대상이 아니다).
-    stop_skill = case["skill"] if case["expect"] == "trigger" else None
-
     # 네트워크·API 오류(rate limit·5xx)는 케이스당 1회만 재시도한다. 재시도를 늘리면 실패가
     # 비용으로만 쌓이고, 늘리지 않으면 일시 장애가 기준선을 오염시킨다.
     while attempts < 2:
         attempts += 1
-        lines, stderr, timed_out = run_claude(case["query"], ws, config_dir, model, stop_skill)
+        lines, stderr, timed_out = run_claude(case["query"], ws, config_dir, model)
         init_ev, triggered, result_ev, tool_calls, final_text = parse_events(lines)
         if timed_out:
             break
@@ -359,10 +413,8 @@ def run_case(case, config_dir, model, workspaces):
 
     if timed_out:
         # 성공으로도 실패로도 집계하지 않는다 — 판정을 못 한 것이지 결과가 아니다.
-        # **단 발동 관측은 남긴다** — `triggered` 가 이미 찼으면 스킬이 뜬 것은 본 것이고
-        #   못 본 것은 그 뒤의 턴뿐이다. summarize 의 오발동 게이트가 그 구분을 쓴다.
-        base["status"] = "timeout"
-        base["fired"] = case["skill"] in base["triggered"]
+        # 발동 관측(`fired`)은 judge_case 가 남긴다 — summarize 의 오발동 게이트가 쓴다.
+        base["status"], base["fired"] = judge_case(case, base["triggered"], None, True)
         return base, init_ev
     if init_ev is None:
         base["status"] = "error"
@@ -373,28 +425,9 @@ def run_case(case, config_dir, model, workspaces):
         base["detail"] = str(result_ev.get("result") or result_ev.get("subtype") or "")[:300]
         return base, init_ev
 
-    hit = case["skill"] in base["triggered"]
-    base["fired"] = hit
     stop_reason = (result_ev or {}).get("subtype")
-
-    if not hit:
-        # 진단은 미발동 케이스에만 싣는다 — 발동 케이스는 stop_skill이 즉시 끊어 남길 정보가
-        # 없고, 전 케이스에 실으면 결과 JSON만 커진다. 절단은 표시한다(조용한 절단 금지).
-        base["stop_reason"] = stop_reason
-        base["tool_calls"] = tool_calls[:MAX_DIAG_TOOLS]
-        if len(tool_calls) > MAX_DIAG_TOOLS:
-            base["tool_calls"].append(f"…(+{len(tool_calls) - MAX_DIAG_TOOLS} more)")
-        base["final_text"] = (final_text[:MAX_DIAG_TEXT] + "…(절단)"
-                              if len(final_text) > MAX_DIAG_TEXT else final_text)
-
-    if not hit and case["expect"] == "trigger" and stop_reason == "error_max_turns":
-        # 스킬을 안 쓰기로 판단한 것이 아니라 **호출 기회에 닿지 못한** 것이라 판정 불가다
-        # (timeout과 같은 성격 — 판정을 못 한 것이지 결과가 아니다). 발동률 분모에서 뺀다.
-        # expect=no-trigger에는 적용하지 않는다 — 그쪽은 "발동 없음"을 확인하려 설계상 끝까지
-        # 돌리므로 턴 소진이 정상 경로이고, 여기 포함시키면 오발동률 분모가 통째로 무너진다.
-        base["status"] = "inconclusive"
-    else:
-        base["status"] = "pass" if hit == (case["expect"] == "trigger") else "fail"
+    base["status"], base["fired"] = judge_case(case, base["triggered"], stop_reason, False)
+    attach_diagnostics(base, stop_reason, tool_calls, final_text)
     return base, init_ev
 
 
