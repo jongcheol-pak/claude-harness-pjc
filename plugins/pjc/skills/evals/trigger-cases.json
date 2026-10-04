@@ -47,7 +47,8 @@
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "src/sample.py의 로깅 방식을 전체적으로 리팩토링해줘",
-      "why": "plan이 없음 — pjc:implement가 아니라 pjc:plan 영역"
+      "route_to": "pjc:plan",
+      "why": "plan이 없음 — pjc:implement가 아니라 pjc:plan 영역 **route_to(2026-10-04)**: `pjc:plan` 가 첫 발동이어야 PASS — why 가 지목한 인접 스킬로 실제로 가는지까지 잰다(오라우팅 판정)."
     },
     {
       "id": "impl-neg-2",
@@ -79,7 +80,17 @@
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "알림 기능을 새로 넣고 싶은데 계획부터 세워줘",
-      "why": "계획 수립 요청 — pjc:plan이 맞다"
+      "route_to": "pjc:plan",
+      "why": "계획 수립 요청 — pjc:plan이 맞다 **route_to(2026-10-04)**: `pjc:plan` 가 첫 발동이어야 PASS — why 가 지목한 인접 스킬로 실제로 가는지까지 잰다(오라우팅 판정)."
+    },
+    {
+      "id": "impl-neg-6",
+      "skill": "pjc:implement",
+      "expect": "no-trigger",
+      "workspace": "draft_plan",
+      "query": "plan.md 이어서 계속해줘",
+      "route_to": "pjc:plan",
+      "why": "**승인 전 초안의 「계속」** — plan.md 가 있어도 승인 표지(`> 승인:` 줄)가 자리표시 그대로면 implement 의 발동 조건(승인된 plan.md) 밖이고, 초안을 이어 승인까지 가는 것은 pjc:plan 이다. with_plan 의 impl-pos-3(「T2부터 계속」)과 질의 꼴이 같고 워크스페이스만 다른 짝이다."
     },
     {
       "id": "plan-pos-1",
@@ -151,7 +162,8 @@
       "expect": "no-trigger",
       "workspace": "with_plan",
       "query": "T1 구현 진행해줘",
-      "why": "승인된 plan 존재 + 실행 지시 — pjc:implement로 라우팅돼야 한다"
+      "route_to": "pjc:implement",
+      "why": "승인된 plan 존재 + 실행 지시 — pjc:implement로 라우팅돼야 한다 **route_to(2026-10-04)**: `pjc:implement` 가 첫 발동이어야 PASS — why 가 지목한 인접 스킬로 실제로 가는지까지 잰다(오라우팅 판정)."
     },
     {
       "id": "plan-neg-5",
@@ -338,6 +350,15 @@
       "why": "경계 음성 — wiki-query-1 과 같은 「어떻게 구현했는지 찾아줘」 꼴이지만 위키 언급이 없다. 조회 트리거를 넓히며 코드 탐색까지 먹지 않는지 잰다"
     },
     {
+      "id": "wiki-neg-6",
+      "skill": "pjc:llm-wiki",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "위키에 정리돼 있는 CSV 내보내기 방식을 참고해서 이 프로젝트에 그대로 구현해줘",
+      "route_to": "pjc:plan",
+      "why": "**위키를 언급한 구현 요청** — 위키는 참고 자료이고 요청은 기능 추가다. 코드 세션의 위키 참조는 llm-wiki 를 발동하지 않는다(description 의 절차 K). 신규 기능이라 pjc:plan 이 첫 발동이어야 한다."
+    },
+    {
       "id": "dbg-pos-1",
       "skill": "pjc:pjc-systematic-debugging",
       "expect": "trigger",
@@ -360,6 +381,22 @@
       "workspace": "no_plan",
       "query": "가끔씩만 합계가 틀리게 나오는데 재현이 잘 안 돼",
       "why": "간헐적 오동작 — \"이상한 현상·재현\" 트리거"
+    },
+    {
+      "id": "dbg-pos-4",
+      "skill": "pjc:pjc-systematic-debugging",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "summarize()에 숫자만 든 리스트를 넘기면 AttributeError 로 죽어. 고치는 김에 로깅 방식도 전체적으로 리팩토링해줘",
+      "why": "**버그 보고 + 리팩토링이 한 문장** — 변경이 둘이라 pjc:plan 의 「한 문장에 변경이 둘 이상」에도 걸리지만, plan description 이 「버그·에러·크래시 보고는 debugging 이 먼저」라 첫 발동은 debugging 이어야 한다. 전제(숫자 원소에서 `row.get` AttributeError)는 dbg-pos-1 과 같이 픽스처에서 참이다."
+    },
+    {
+      "id": "dbg-pos-5",
+      "skill": "pjc:pjc-systematic-debugging",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "summarize() throws an AttributeError when I pass it a plain list of numbers. What's going on?",
+      "why": "**영어 결함 보고** — debugging 케이스에 영어 질의가 없었다. description 은 영어로 쓰였으나 따옴표 인용이 없어 복창 대조 대상이 아니다."
     },
     {
       "id": "dbg-neg-1",
@@ -407,7 +444,7 @@
       "expect": "trigger",
       "workspace": "stale_agents_md",
       "query": "AGENTS.md를 새 경계에 맞게 정리해줘",
-      "why": "소급 정리 축 — 이미 있는 AGENTS.md를 현행 내용 경계로 맞추는 요청이다(description의 RETROFIT 트리거). 신규 생성(rec-neg-1)과 갈리는 지점은 **파일이 이미 있다**는 것이고, 이 경로의 산출물은 편집이 아니라 plan.md다."
+      "why": "소급 정리 축 — 이미 있는 AGENTS.md를 현행 내용 경계로 맞추는 요청이다(description의 RETROFIT 트리거). 신규 생성(rec-pos-7)과 갈리는 지점은 **파일이 이미 있다**는 것이고, 이 경로의 산출물은 편집이 아니라 plan.md다."
     },
     {
       "id": "rec-pos-5",
@@ -418,12 +455,20 @@
       "why": "**의도적 테스트 비대상**을 사실로 기록하는 축(description의 untested layers). 다른 rec 케이스가 빌드·DB·제거를 덮는 데 비해 이 도메인만 골든 공백이었다. \"안 한다\"는 것도 확인된 사실이라 기록 대상이다."
     },
     {
-      "id": "rec-neg-1",
+      "id": "rec-pos-6",
       "skill": "pjc:record-project-fact",
-      "expect": "no-trigger",
+      "expect": "trigger",
+      "workspace": "bloated_agents_md",
+      "query": "AGENTS.md 분량이 많아서 세션마다 컨텍스트를 너무 잡아먹어",
+      "why": "**AGENTS.md 비대의 서술형 문제 제기** — description 인용(「AGENTS.md가 너무 커졌어」)을 복창하지 않는 꼴로 Step 5 이관 축을 잰다. pjc:plan 의 서술형 트리거(「…가 너무 많아」)와 겹치는 경계라 plan 이 먼저 뜨면 FAIL 이다. 전제(파일이 크다)는 bloated_agents_md 가 실재시킨다."
+    },
+    {
+      "id": "rec-pos-7",
+      "skill": "pjc:record-project-fact",
+      "expect": "trigger",
       "workspace": "no_agents_md",
       "query": "AGENTS.md 새로 만들어줘",
-      "why": "**신규 생성** — 이 스킬은 기존 `AGENTS.md` 갱신 전담이고, 신규 생성은 `pjc:plan` Step 1이 작업 착수 시 맡는다"
+      "why": "**신규 생성 단독 요청**(2026-10-04 담당 이관 — 옛 음성 케이스(「AGENTS.md 새로 만들어줘」 미발동)의 기대를 뒤집으며 id 를 새로 뒀다. 같은 id 로 expect 를 바꾸면 compare_evals 가 같은 케이스의 회귀·개선으로 읽는다). 작업 착수 없이 파일만 만들어 달라는 요청은 record-project-fact 가 `AGENTS-BOUNDARY.md`「AGENTS.md 최소 생성」 대로 만든다 — pjc:plan 의 「만들어줘」가 먼저 뜨면 FAIL 이다."
     },
     {
       "id": "rec-neg-2",
@@ -432,6 +477,14 @@
       "workspace": "no_plan",
       "query": "summarize() 함수에 통화 단위 인자를 추가해줘",
       "why": "코드 변경 요청 — 문서 기록이 아니다"
+    },
+    {
+      "id": "rec-neg-3",
+      "skill": "pjc:record-project-fact",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "AGENTS.md에 적힌 빌드 명령 한 번 돌려줘",
+      "why": "**AGENTS.md 를 읽어 실행만** — 파일을 고치거나 사실을 적는 요청이 아니다. 「AGENTS.md」 단어만으로 기록 스킬이 뜨지 않는지 잰다. 빌드 명령은 no_plan 픽스처 AGENTS.md 에 실재한다."
     },
     {
       "id": "chain-pos-1",
@@ -458,12 +511,21 @@
       "why": "「plan」·「세션」 어휘 없이 **새 컨텍스트로 순차 인계**를 서술만 한 발화 — 트리거 어휘 복창이 아니라 의도로 잡히는지 잰다"
     },
     {
+      "id": "chain-pos-4",
+      "skill": "pjc:chain-plan",
+      "expect": "trigger",
+      "workspace": "with_plan",
+      "query": "plan 1: summarize()에 통화별 합계 추가, plan 2: 합계 결과를 JSON 파일로 저장, plan 3: README에 사용 예시 보강 — 이 셋을 plan 하나씩 새 세션에서 돌리다가 plan 1 만 끝나고 멈췄어. plan 2부터 다시 이어줘",
+      "why": "**멈춘 체인의 계획 번호 재개** — 「plan N부터」는 task 번호(T N) 재개가 아니라 남은 계획을 새 세션으로 잇는 요청이다. 질의는 계획 목록을 담아 자기완결이고, 앞 계획의 plan.md 가 남은 with_plan 에서 implement 가 먼저 뜨지 않는지 잰다(chain-neg-3 과 짝)."
+    },
+    {
       "id": "chain-neg-1",
       "skill": "pjc:chain-plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "summarize()에 통화별 합계를 추가하는 기능 계획 세워줘",
-      "why": "계획이 **하나뿐** — pjc:plan 영역(description 의 첫 near-miss)"
+      "route_to": "pjc:plan",
+      "why": "계획이 **하나뿐** — pjc:plan 영역(description 의 첫 near-miss) **route_to(2026-10-04)**: `pjc:plan` 가 첫 발동이어야 PASS — why 가 지목한 인접 스킬로 실제로 가는지까지 잰다(오라우팅 판정)."
     },
     {
       "id": "chain-neg-2",
@@ -472,6 +534,15 @@
       "workspace": "no_plan",
       "query": "Karina 오케스트레이션에서 워커 탭 하나 열어 sample.py 컴파일 확인만 시키고 결과 메시지를 받아와줘",
       "why": "계획 없이 **워커 조작만** — karina-orchestration 영역. 격리 모드는 그 스킬이 없어 「pjc 어느 스킬도 발동하지 않음」을 잰다"
+    },
+    {
+      "id": "chain-neg-3",
+      "skill": "pjc:chain-plan",
+      "expect": "no-trigger",
+      "workspace": "with_plan",
+      "query": "계획 체인 워커가 이 plan.md 를 실행하다 멈췄어. T2부터 이어서 해줘",
+      "route_to": "pjc:implement",
+      "why": "**체인 어휘가 있어도 task 번호 재개는 implement** — 「계획 체인」이 질의에 있으나 재개 단위가 T N 이고 승인된 plan.md 가 있다. chain-pos-4(「plan N부터」)와 갈리는 경계다."
     }
   ]
 }

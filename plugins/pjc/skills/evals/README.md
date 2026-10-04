@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 59건 (6스킬 × 최소 5건, `pjc:plan`는 16건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 67건 (6스킬 × 최소 7건, `pjc:llm-wiki`는 17건) | `trigger-<isolation>-<run_id>.json` |
 | `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
 | `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
 
@@ -77,12 +77,14 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 `trigger-cases.json`의 `cases[]`에 `id`·`skill`·`expect`·`workspace`·`query`·`why`를 넣는다. `expect: no-trigger` 에는 선택 필드 `route_to`(그 질의가 가야 할 인접 스킬 이름)를 단다 — **대안 스킬이 description 문면으로 하나로 정해질 때만** 단다(직접 편집·무발동이 정답이면 달지 않는다).
 
-**`workspace`는 5종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
+**`workspace`는 7종**이며 러너가 케이스 파일에서 쓰이는 종류만 골라 만든다(목록을 코드에 박지 않는다 — 새 종류를 추가하면 러너가 자동으로 만든다):
 - `no_plan` — AGENTS.md·소스만 있는 기본 프로젝트(Python 단일 스크립트).
-- `with_plan` — 거기에 **미완료 task가 있는 plan.md**를 더한 것. `pjc:implement`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
-- `no_agents_md` — **AGENTS.md가 없는** 프로젝트. 그 파일의 **부재**가 발동 조건의 일부인 케이스를 재는 자리다(`record-project-fact`는 갱신 전담이라 부재 상태에서 미발동이 정답이다).
+- `with_plan` — 거기에 **미완료 task가 있는 승인된 plan.md**(`## Goal` 아래 `> 승인: <날짜> …` 표지)를 더한 것. `pjc:implement`는 승인된 plan이 있을 때만 발동하므로 plan 유무가 곧 트리거 조건의 일부다.
+- `draft_plan` — 같은 plan.md 인데 BASE·승인 줄이 **템플릿 자리표시 그대로**인 승인 전 초안. 「계속」이 implement 가 아니라 `pjc:plan` 으로 가야 하는 경계를 재는 자리다.
+- `no_agents_md` — **AGENTS.md가 없는** 프로젝트. 그 파일의 **부재**가 전제인 케이스를 재는 자리다(「AGENTS.md 새로 만들어줘」 단독 요청은 `record-project-fact`가 최소 골격으로 만든다 — 파일이 있으면 그 전제가 성립하지 않는다).
 - `multi_file` — `src/` 아래 모듈 3개(loader·summary·report)가 **에러 처리를 서로 다르게** 갖는 Python 프로젝트. "여러 파일에 걸쳐 바꿔야 한다"는 질의가 성립하려면 그 상태가 실재해야 한다.
 - `stale_agents_md` — 기본 프로젝트에 AGENTS.md의 Test 줄만 **더 이상 유효하지 않은 명령**(`pytest tests/`인데 `tests/`가 없음)으로 바꾼 것. `record-project-fact`의 **제거** 축은 지울 대상이 실재해야 발동한다.
+- `bloated_agents_md` — AGENTS.md 가 세션 주입 상한(16,384B)을 넘는 프로젝트(배포 절차 한 절이 대부분). 「AGENTS.md 가 너무 크다」는 질의의 전제가 실재해야 이관 축이 발동한다.
 
 > **⚠ 워크스페이스가 스킬의 발동 조건과 어긋나면 "발동 안 함"이 스킬 결함이 아니라 픽스처 결함이 된다.** 뒤의 세 종류는 전부 그래서 생겼다 — 스킬 description 이 특정 프로젝트 성격을 **명시적 제외**로 두면 기본 워크스페이스(Python 스크립트)에서는 **미발동이 정상**이라, 그 수치는 트리거 품질이 아니라 픽스처 불일치를 잰 것이 된다(회차 22 가 스택 전용 스킬 2종을 없애며 그 목적의 워크스페이스 `ddd_project`·`xaml_project` 도 함께 지웠다). 새 스킬 케이스를 추가할 때는 **그 스킬의 제외 조건부터 읽고** 워크스페이스가 거기 걸리지 않는지 확인할 것.
 
@@ -136,7 +138,7 @@ python compare_evals.py <before.json> <after.json>
 
 ## 비용
 
-`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(59건 → 118세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(67건 → 134세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
 
 ## 실행 함정 (2026-09-03 실측)
 

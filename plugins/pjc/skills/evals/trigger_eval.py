@@ -70,12 +70,22 @@ MAX_DIAG_TEXT = 300
 def build_workspace(kind, dest):
     """케이스가 실행될 최소 프로젝트를 dest에 만든다.
 
-    kind='with_plan'이면 미완료 task가 있는 plan.md를 둔다 — pjc:implement는 '승인된 plan이
-    이미 있을 때만' 발동하므로, plan 유무가 곧 트리거 조건의 일부다.
+    kind='with_plan'이면 미완료 task가 있는 **승인된** plan.md를 둔다 — pjc:implement는 '승인된
+    plan이 이미 있을 때만' 발동하므로, plan 유무가 곧 트리거 조건의 일부다. 승인 여부는
+    `## Goal` 아래 승인 표지(`> 승인: <날짜> …`)가 가른다(`plan/references/plan-template.md`
+    「Goal」) — 표지가 없으면 implement 본문이 실행 전에 확인을 묻는다.
+
+    kind='draft_plan'은 같은 plan.md에서 BASE·승인 줄이 **템플릿 자리표시 그대로**인 승인 전
+    초안이다 — 「계속」이 implement 가 아니라 pjc:plan 으로 가야 하는 경계를 재는 자리다.
 
     kind='no_agents_md'면 AGENTS.md를 만들지 않는다 — 그 파일의 **부재**가 발동 조건의 일부인
-    케이스를 재기 위한 워크스페이스다(`record-project-fact`는 기존 파일 갱신 전담이라 부재
-    상태에서 미발동이 정답이다). AGENTS.md가 있는 워크스페이스로 재면 그 판정이 성립하지 않는다.
+    케이스를 재기 위한 워크스페이스다(「AGENTS.md 새로 만들어줘」 단독 요청은
+    `record-project-fact`가 최소 골격으로 만든다). AGENTS.md가 있는 워크스페이스로 재면
+    「없는 파일을 만든다」는 전제가 성립하지 않는다.
+
+    kind='bloated_agents_md'는 AGENTS.md가 세션 주입 상한(`session-context.ps1`의
+    `$agentsMaxBytes` 16,384B)을 넘는 프로젝트다 — 「AGENTS.md가 너무 크다」는 질의의 전제가
+    실재해야 한다(작은 파일로 재면 모델이 전제 모순을 짚고 멈춘다).
 
     kind='multi_file'·'stale_agents_md'도 같은 이유로 생겼다 — **질의가 전제하는 상태가 기본
     워크스페이스에 없어서** 미발동하던 케이스들이다(2026-08-06 실측). 전자는 "여러 파일에 걸쳐"를
@@ -116,7 +126,22 @@ def build_workspace(kind, dest):
             fh.write("# Sales Report\n\nJSON을 읽어 합계를 내고 문자열로 렌더하는 예제.\n")
         return
 
-    if kind != "no_agents_md":
+    if kind == "bloated_agents_md":
+        # 배포 절차를 한 절에 길게 늘어놓은 상태 — 절 하나가 상한 대부분을 차지해야 「옮길
+        # 큰 절이 있다」가 성립한다. 줄마다 번호·로그 경로가 달라 반복 문서로 읽히지 않는다.
+        steps = "".join(
+            f"{i}. 배포 단계 {i}: `python -m py_compile src/sample.py` 로 구문을 확인하고 "
+            f"결과 로그를 `logs/deploy-{i:03d}.txt` 에 남긴 뒤 담당자 확인을 받는다\n"
+            for i in range(1, 181))
+        with open(os.path.join(dest, "AGENTS.md"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(
+                "# AGENTS.md\n\n"
+                "## Stack\n- Python 3 단일 스크립트.\n\n"
+                "## Build & Test\n- Build: `python -m py_compile src/sample.py`\n- Test: 없음\n\n"
+                "## 배포 절차\n" + steps +
+                "\n## Plan Location\n- 단일 plan: `plan.md`\n"
+            )
+    elif kind != "no_agents_md":
         # stale_agents_md만 Test 줄이 다르다 — "이제 안 쓰는 테스트 명령을 빼 달라"는 질의는
         # 지울 대상이 실재해야 성립한다(`tests/`가 없는 옛 명령을 심어 stale임이 드러나게 한다).
         # 다른 kind의 생성 내용은 바뀌지 않는다.
@@ -145,11 +170,16 @@ def build_workspace(kind, dest):
     with open(os.path.join(dest, "README.md"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("# Smaple Project\n\n합계를 계산하는 예제 스크립트.\n")
 
-    if kind == "with_plan":
+    if kind in ("with_plan", "draft_plan"):
+        # 두 종류는 승인 표지 두 줄만 다르다 — 초안은 템플릿 자리표시를 그대로 둔다.
+        marks = ("> BASE: 3f2a9c1\n> 승인: 2026-10-01 · 화면 Y\n" if kind == "with_plan" else
+                 "> BASE: <승인 직후 intent 커밋의 SHA>\n"
+                 "> 승인: <승인일 YYYY-MM-DD> · <승인 경로 — 화면 Y | 중계 답 첫 줄>\n")
         with open(os.path.join(dest, "plan.md"), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(
                 "# Plan: 합계 계산 정확도 개선\n\n"
-                "## Goal\n\nsummarize()가 통화 단위와 소수점을 올바르게 처리하게 한다.\n\n"
+                "## Goal\n\n" + marks +
+                "\nsummarize()가 통화 단위와 소수점을 올바르게 처리하게 한다.\n\n"
                 "## Tasks\n\n"
                 "- [ ] T1. summarize()에 통화 단위 인자 추가\n"
                 "  - **Type**: B\n"
