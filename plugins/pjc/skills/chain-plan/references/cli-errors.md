@@ -4,7 +4,7 @@
 
 ## 오류 응답
 
-- **판정은 `ok: false` 와 `code` 다** — 오류도 stdout 의 JSON 으로 와서 `2>/dev/null` 아래에서도 보인다. `state: "outcome_unknown"` 은 `ok: true` 인 성공 응답이라 여기가 아니라 `../SKILL.md` 「워커 루프」의 ⓓ 다.
+- **판정은 `ok: false` 와 `code` 다** — 오류도 stdout 의 JSON 으로 와서 `2>/dev/null` 아래에서도 보인다. `state: "outcome_unknown"` 은 `ok: true` 인 성공 응답이라 여기가 아니라 `worker-start.md`「시작 이상 응답」 이다.
 - **가이드가 복구 동작을 정했고 코디네이터가 수행할 수 있는 코드는 그 동작을 따른다.**
   - `protocol_error` — 응답이 `--retry-request <id>` 를 이름 대면 같은 명령을 그 id 로 다시 보낸다. id 없이 다시 보내지 않는다 — 응답만 잃고 명령은 이미 실행됐을 수 있어, 새 id 로 보내면 워커·task 가 둘이 된다. id 가 없으면(읽기 명령) 같은 명령을 그대로 다시 실행한다.
   - `runtime_access_denied` — 샌드박스가 파이프를 막은 것이다. 같은 명령을 Bash 도구 `dangerouslyDisableSandbox: true` 로 다시 실행하고, 그 뒤의 `<CLI>` 는 처음부터 그렇게 실행한다. 샌드박스 밖에서도 같은 코드면 곧바로 멈춘다. Karina 를 재시작하지 않는다 — 재시작은 권한을 주지 못한다. 샌드박스 밖 실행이 권한 확인 화면을 띄우면 사용자 확인 대기로 본다.

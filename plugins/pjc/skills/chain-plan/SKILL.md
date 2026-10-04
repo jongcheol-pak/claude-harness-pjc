@@ -135,16 +135,15 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 계획 하나씩, 앞 계획의 `worker_done`(succeeded)을 받은 뒤에만 다음을 띄운다.
 
 ```
-<CLI> orchestration worker-start --json --task <task id> --agent claude --worktree current 2>/dev/null
+<CLI> orchestration worker-start --json --task <task id> --agent claude --worktree "<대상 레포 경로>" 2>/dev/null
 <CLI> orchestration check --json --wait --timeout-ms 540000 2>/dev/null
 ```
 
-- **`worker-start` 응답을 다섯 갈래로 가른다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
-  - ⓐ `ok: false` → `references/cli-errors.md`「오류 응답」
-  - ⓑ `turnStart: "permission"` → `worker-stop --dispatch <id>` 후 전제조건 ⓒ 를 보고하고 멈춘다
-  - ⓒ `injected: false` → 배정문 제출이 실패해 워커가 일을 받지 못했다. `worker-stop --dispatch <id>` 후 사유를 보고하고 멈춘다
-  - ⓓ `state: "outcome_unknown"` → `worker-show`·`worker-read` 로 살펴 살아 있으면 대기로 가고, 아니면 `worker-abandon --dispatch <id>` 후 보고하고 멈춘다
-  - ⓔ 그 밖 → 대기로 간다
+- **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
+- **`worker-start` 응답을 갈래로 가른다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
+  - `ok: false` → `references/cli-errors.md`「오류 응답」
+  - `turnStart` 가 `permission` 이거나 `injected: false` 거나 `state: "outcome_unknown"` → `references/worker-start.md`「시작 이상 응답」
+  - 그 밖 → 대기로 간다
 - **대기는 `check --wait` 를 Bash 도구 `timeout` 600000 으로 반복한다 — 시한 540,000ms 는 그보다 짧게 잡은 것이다** — 도구가 먼저 끊으면 응답이 버려진다. `2>/dev/null` 은 15초마다 stderr 로 오는 keepalive 줄이 컨텍스트에 쌓이지 않게 한다.
 - **`count: 0`(시한 만료)은 실패가 아니라 체크포인트다 — `worker-show --dispatch <id>` 와 `worker-read --dispatch <id> --cursor <앞 cursor>` 로 보고, 읽은 화면이 앞 체크포인트와 같은 체크포인트가 3회 연속이면(메시지가 오면 다시 센다) 보고하고 멈춘다** — `worker-show` 에는 busy·idle 필드가 없어 화면으로 가른다. 작업 중이면 스피너 경과 시간이 바뀌어 같을 수 없으니 출력 없이 오래 도는 빌드·eval 은 세지 않는다. 3회는 같은 수단을 세 번 반복해도 닿지 않을 때 멈추는 수와 같다.
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 빈 문자열이다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
