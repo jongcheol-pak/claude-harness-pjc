@@ -25,6 +25,7 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 > Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
 
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
+- **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 이 세션 컨텍스트에 그 plan 의 승인 답(화면 `Y`·발동 메시지의 승인·중계 답)이 있으면 묻지 않고 그 답을 근거로 줄을 적는다 — 받은 승인을 다시 받는 것은 순환이다. 없으면 「승인 전 초안으로 보인다 — 이대로 실행할까」를 **turn 을 끝내지 않는 막힘형 호출로** 1회 묻는다(`AskUserQuestion` · 중계 모드는 `plan.md` `## Next Steps` 의 `ask`). 예면 줄을 적고 진행하고, 아니면 실행하지 않고 `pjc:plan` 을 Skill 도구로 불러 계획 수정으로 돌아간다. 텍스트로 묻고 turn 을 끝내면 `references/loop-stop-patterns.md` 가 위반으로 읽고 `loop-continue` 가 계속을 주입해 답 없이 실행되므로 이 확인은 아래 여덟 정지에 세지 않는다 — `pjc:plan` 호출은 그 hook 의 발동 마커를 지운다.
 
 ## 자율 루프
 
