@@ -1,5 +1,6 @@
 """trigger_eval 의 순수 함수 단위 케이스 — `exit_code` 종료 코드 판정 · `summarize` 오발동 게이트 ·
-`judge_case` 첫 발동 판정 · `is_skill_call` 조기 종료 · `attach_diagnostics` 진단 부착.
+`judge_case` 첫 발동 판정 · `is_skill_call` 조기 종료 · `attach_diagnostics` 진단 부착 ·
+`missing_skills` 스킬 로드 누락.
 
 이 서브트리에는 골든 러너가 없다. `trigger_eval.py` 본체는 실제 모델을 호출해 비용이
 크므로 회귀 축으로 쓸 수 없고, 판정 로직만 순수 함수로 갈라 여기서 잰다.
@@ -15,6 +16,7 @@ import importlib.util
 import json
 import os
 import sys
+import tempfile
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SPEC = importlib.util.spec_from_file_location(
@@ -120,6 +122,15 @@ DIAG_CASES = [
     ("ⓟ pass 결과 -> 진단 없음", "pass", False),
 ]
 
+# 스킬 로드 갈래 — 플러그인은 떴는데 SKILL.md 하나가 조용히 빠진 상태를 잡는가.
+#   frontmatter YAML 이 깨진 스킬은 오류 없이 목록에서 빠지고, 그 run 은 그 스킬 케이스를 전부
+#   「발동 없음」 FAIL 로 세 품질 저하로 둔갑한다(2026-10-04 실측 — run 153358, 6종 중 5종 로드).
+# (이름, init 의 skills, 기대 누락 목록)
+LOAD_CASES = [
+    ("ⓠ 스킬 전부 로드 -> 누락 없음", ["pjc:plan", "pjc:implement", "other:x"], []),
+    ("ⓠ 스킬 하나 빠짐 -> 그 이름", ["pjc:plan", "other:x"], ["pjc:implement"]),
+]
+
 
 def _call(mod, name, *args):
     """대상 함수를 부르되 예외·부재를 값으로 돌려 그 케이스만 FAIL 로 세게 한다 —
@@ -149,6 +160,16 @@ def main():
         ok = got == want
         failed += 0 if ok else 1
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: tool_calls {'있음' if got else '없음'}")
+    with tempfile.TemporaryDirectory() as plugin_dir:
+        # 레포 스킬 목록에 기대지 않도록 스킬 둘짜리 플러그인 트리를 만든다
+        for skill in ("plan", "implement"):
+            os.makedirs(os.path.join(plugin_dir, "skills", skill))
+            open(os.path.join(plugin_dir, "skills", skill, "SKILL.md"), "w").close()
+        for name, loaded, want in LOAD_CASES:
+            got = _call(_TE, "missing_skills", loaded, plugin_dir)
+            ok = got == want
+            failed += 0 if ok else 1
+            print(f"[{'PASS' if ok else 'FAIL'}] {name}: {got} (기대 {want})")
     for name, summaries, want in CASES:
         got = _TE.exit_code(summaries)
         ok = got == want
@@ -163,7 +184,7 @@ def main():
         print(f"[{mark}] {name}: judged_negative {got_n} (기대 {want_n})"
               f" · 오발동률 {got_rate} (기대 {want_rate})")
     total = (len(CASES) + len(SUMMARIZE_CASES) + len(JUDGE_CASES)
-             + len(STOP_CASES) + len(DIAG_CASES))
+             + len(STOP_CASES) + len(DIAG_CASES) + len(LOAD_CASES))
     print(f"\n결과: {total - failed}/{total} PASS")
     sys.exit(1 if failed else 0)
 

@@ -71,6 +71,11 @@ def trigger_verdict(case):
     """트리거 케이스의 판정을 한 단어로 만든다. 판정 불가는 status를 그대로 노출한다."""
     if case.get("status") in UNJUDGED_TRIGGER_STATUSES:
         return case["status"]
+    # route_to 케이스는 「목표가 떴는가」가 아니라 「누가 처음 떴는가」로 판정되므로
+    #   그것을 보인다 — 발동/미발동만 내면 PASS→FAIL 이 「미발동 → 미발동」으로 찍힌다.
+    if case.get("route_to"):
+        first = (case.get("triggered") or ["없음"])[0]
+        return f"첫:{first.split(':')[-1]}"
     return "발동" if case.get("fired") else "미발동"
 
 

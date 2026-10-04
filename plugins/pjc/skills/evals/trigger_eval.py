@@ -33,6 +33,7 @@ repo .gitignore가 `plan.md`를 무시해 체크인 자체가 불가능하다.
 exit code: 전 케이스 판정 완료 0 / 하나라도 FAIL 1 / 환경·로드 실패 2.
 """
 import argparse
+import glob
 import json
 import os
 import shutil
@@ -440,6 +441,8 @@ def run_case(case, config_dir, model, workspaces):
         "attempts": attempts, "duration_sec": duration,
         "triggered": triggered or [],
     }
+    if case.get("route_to"):
+        base["route_to"] = case["route_to"]  # compare_evals 가 첫 발동 표시에 쓴다
 
     if timed_out:
         # 성공으로도 실패로도 집계하지 않는다 — 판정을 못 한 것이지 결과가 아니다.
@@ -461,6 +464,19 @@ def run_case(case, config_dir, model, workspaces):
     return base, init_ev
 
 
+def missing_skills(loaded, plugin_dir):
+    """`plugin_dir/skills/*/SKILL.md` 가 있는데 init 의 skills 에 없는 pjc 스킬 이름 목록.
+
+    frontmatter YAML 이 깨진 SKILL.md 는 오류 없이 목록에서 빠진다 — 플러그인 로드만 보면
+    그 run 이 통과 자격을 가진 채 그 스킬 케이스를 전부 「발동 없음」으로 센다(2026-10-04
+    실측: run 153358 이 6종 중 5종으로 돌아 FAIL 8건 중 7건이 그 원인이었다).
+    """
+    expected = sorted(
+        "pjc:" + os.path.basename(os.path.dirname(path))
+        for path in glob.glob(os.path.join(plugin_dir, "skills", "*", "SKILL.md")))
+    return [name for name in expected if name not in loaded]
+
+
 def assert_plugin_loaded(init_ev, isolation):
     """init 이벤트로 pjc 로드를 단언한다. 실패는 즉시 종료 — 이것이 은닉 실패를 막는 축이다."""
     plugins = init_ev.get("plugins") or []
@@ -474,6 +490,12 @@ def assert_plugin_loaded(init_ev, isolation):
         print("       (상위 디렉터리를 주면 엉뚱한 플러그인이 로드되고 실행만 성공합니다)")
         sys.exit(2)
     pjc_skills = [s for s in skills if isinstance(s, str) and s.startswith("pjc:")]
+    missing = missing_skills(pjc_skills, PLUGIN_DIR)
+    if missing:
+        print(f"[중단] pjc 스킬 일부가 로드되지 않았습니다 (mode={isolation}): {missing}")
+        print("       그 SKILL.md 의 frontmatter 가 YAML 로 읽히는지 확인하세요"
+              "(따옴표 없는 값 안의 「: 」 가 흔한 원인입니다)")
+        sys.exit(2)
     print(f"  로드 확인: plugins={names} · pjc 스킬 {len(pjc_skills)}종 · agents {len(agents)}종")
     return {"plugins": names, "pjc_skill_count": len(pjc_skills), "agent_count": len(agents)}
 
