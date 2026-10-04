@@ -9,6 +9,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 
 ## 전제조건
 
+- **이 세션에서 체인 발동 전에 체인과 무관한 작업을 했으면 `references/fresh-session.md`「새 세션 권고」 를 먼저 따른다.**
 - **착수 전에 넷을 확인하고, 하나라도 아니면 사유를 말하고 멈춘다** — 워커 탭에서 막히면 그 화면은 아무도 보지 않는다.
   - ⓐ Karina 앱 실행 — `<CLI> orchestration run-current --json` 이 `app_not_running` 이 아니다(`ok: false` 면 `references/cli-errors.md`「오류 응답」 으로 판정)
   - ⓑ 이 세션이 Karina 탭 — 환경변수 `KARINA_TAB_UUID` 가 있다(Run 의 코디네이터 핸들이 여기서 나온다)
@@ -150,8 +151,7 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id>
 - **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤(`worker_done` 제외) · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다. 사용자에게 넘긴 질문이 열려 있는 동안은 띄우지 않는다** — 워커가 `ask` 에 막혀 화면이 그대로라 멈춤으로 오판한다.
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 빈 문자열이다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
 - **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 워커가 최종 보고를 다 그린 뒤 `worker-release --dispatch <id>` 하고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다.
-  - `worker-read` 는 `--limit` 과 무관하게 지금 보이는 터미널 화면만 준다 — 제목은 `● 완료 보고` 처럼 보이고, 보고 뒤에 인계 프롬프트 코드블록이 붙으면 화면 위로 밀려 안 보인다. 그래서 판정은 둘 중 하나다: `완료 보고` 부분 문자열이 보이거나, 아래 대기 앞뒤로 읽은 화면이 같다(작업 중이면 스피너의 경과 시간이 매초 바뀌어 같을 수 없다).
-  - 아니면 `check --wait --timeout-ms 30000` 으로 기다린 뒤 다시 본다 — 그 사이 온 메시지 배치는 위 규칙대로 처리하고 ack 한다. 3회 안에 판정이 서지 않으면 `--body` 가 정본이라 그대로 release 한다.
+  - 최종 보고를 다 그렸는지는 `references/release.md`「완료 보고 확인」 으로 가른다.
   - release 응답이 `outcome: "retained"` 여도 닫지 않는다(남은 탭 보고 재료) — 닫는 것은 사용자 몫이다.
   - **`남은 일` 이 「없음」이 아니면 다음 계획 전에 `references/continuation.md`「남은 일 판정」 을 따른다** — `succeeded` 라도 계획이 미완일 수 있다.
 - **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다.
