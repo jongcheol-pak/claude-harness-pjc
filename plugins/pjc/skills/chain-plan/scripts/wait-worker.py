@@ -96,7 +96,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
     """대기 반복. call(args)->str 은 `<CLI> orchestration <args>` 의 stdout, lock.owned() 는 잠금 소유,
     progress 는 진행 감지(Progress — 없으면 끈다)다 — 바깥에서 넣어 골든이 Karina·git 없이 갈래를 잰다.
     poll_ms 가 없으면 timeout_ms 와 같아 주기마다 화면을 읽는다. 시한은 두지 않는다 — 백그라운드 실행은
-    45분을 넘겨도 살아 완료 알림을 낸다(2026-10-06 실측)."""
+    45분(2,700초)까지 살아 완료 알림을 냈다 — 그 이상은 미측정(2026-10-06 실측)."""
     streak, last_hash = 0, None
     poll = poll_ms or timeout_ms
     remaining = timeout_ms
