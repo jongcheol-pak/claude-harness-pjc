@@ -25,7 +25,7 @@ description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1�
 > Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
 
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
-- **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 이 세션 컨텍스트에 그 plan 의 승인 답(화면 `Y`·발동 메시지의 승인·중계 답)이 있으면 묻지 않고 그 답을 근거로 줄을 적는다 — 받은 승인을 다시 받는 것은 순환이다. 없으면 「승인 전 초안으로 보인다 — 이대로 실행할까」를 **turn 을 끝내지 않는 막힘형 호출로** 1회 묻는다(`AskUserQuestion` · 중계 모드는 `plan.md` `## Next Steps` 의 `ask`). 예면 줄을 적고 진행하고, 아니면 실행하지 않고 `pjc:plan` 을 Skill 도구로 불러 계획 수정으로 돌아간다. 텍스트로 묻고 turn 을 끝내면 `references/loop-stop-patterns.md` 가 위반으로 읽고 `loop-continue` 가 계속을 주입해 답 없이 실행되므로 이 확인은 아래 여덟 정지에 세지 않는다 — `pjc:plan` 호출은 그 hook 의 발동 마커를 지운다.
+- **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 없으면 `references/loop-exceptions.md`「승인 표지 없음」 을 Read 한다 — 확인 방식이 이 루프의 여덟 정지와 갈리는 막힘형 호출이라 그 절에 있다.
 
 ## 자율 루프
 
@@ -88,9 +88,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 실패 처리
 
-- **같은 문제로 두 번째 막히면 위키 기록 대상이다** — 아래 「완료 시 위키 기록」의 판정 ⓐ. 1회차 실패는 그 시점에 `../WIKI.md`「ⓐ 같은 원인으로 2회 이상 막혔는가」의 형식으로 `plan.md`에 1줄 남긴다 — 남기지 않으면 2회차가 1회차로 보인다.
-- **증상만 막지 않는다** — 원인이 이번 task의 Files 안에 있으면 그 자리에서 원인을 고친다. 증상을 막고 원인을 다음으로 미루면 다음 회차에 다른 얼굴로 돌아온다.
-- **루프 안의 실패는 `pjc:pjc-systematic-debugging` 을 Skill 도구로 부르지 않고 `../pjc-systematic-debugging/SKILL.md` 「Phase 1」~「Phase 3」 절을 Read 해 원인을 규명한다 — 수정이 그 task 의 Files 안이면 루프 안에서 고치고, 밖이면 `pjc:plan` 으로 넘기지 않고 위 「plan 승인이 덮지 않는 변경」으로 멈춘다** — 그 스킬의 「통과 후 갈림」은 다중 파일 수정을 `pjc:plan` 으로 넘기는데, 루프 안에서 그리로 가면 진행 중인 `plan.md` 를 덮어쓴다. Phase 3 의 임시 프로브가 Files 밖에 들어갔으면 규명 뒤 되돌린다.
+- **task 검증이 실패하거나 막히면 `references/loop-exceptions.md`「실패 처리」 를 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
 
 ## 커밋
 
