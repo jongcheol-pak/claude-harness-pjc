@@ -1,9 +1,11 @@
 """chain-plan 대기 스크립트(scripts/wait-worker.py) 골든.
 
-Karina·모델을 부르지 않는다 — CLI 호출·잠금·시계를 가짜로 주입해 갈래마다 첫 줄과 호출 인자를 잰다.
+Karina·모델을 부르지 않는다 — CLI 호출·잠금·시계·git·plan 읽기·상태 저장을 가짜로 주입해 갈래마다 첫 줄과
+호출 인자를 잰다(상태 파일의 원자 쓰기·읽지 못함 케이스만 임시 폴더의 실제 파일을 쓴다).
 마지막 케이스 하나만 실제 프로세스로 띄워, 백그라운드 stdout 이 cp949 일 때도 RESULT 줄이 살아 나오는지 본다.
 """
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -57,6 +59,9 @@ class FakeLock:
     def owned(self):
         self.n += 1
         return self.owned_until is None or self.n <= self.owned_until
+
+    def release(self):
+        pass
 
 
 class FakeClock:
@@ -348,14 +353,20 @@ def no_repo_no_git():
     run(cli, timeout_ms=540000)
     assert [c[c.index('--timeout-ms') + 1] for c in cli.calls if c[0] == 'check'] == ['540000', '540000']
     git_made = []
-    saved = (ww.make_call, ww.make_git)
+    saved = (ww.make_call, ww.make_git, ww.FileLock, sys.stdout)
     ww.make_call = lambda c: FakeCli([msg_batch()])
     ww.make_git = lambda repo: git_made.append(repo)
+    ww.FileLock = lambda dispatch: FakeLock()
+    # main() 이 stdout 을 reconfigure 하므로 StringIO 가 아니라 바이트 위의 텍스트 스트림으로 받는다.
+    sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
     try:
         ww.main(['--cli', 'x', '--dispatch', 'disp_norepo'])
+        sys.stdout.flush()
+        printed = sys.stdout.buffer.getvalue().decode('utf-8')
     finally:
-        ww.make_call, ww.make_git = saved
+        ww.make_call, ww.make_git, ww.FileLock, sys.stdout = saved
     assert git_made == [], 'main() 은 --repo 가 없으면 git 을 만들지 않는다'
+    assert printed.startswith('RESULT: message — '), printed[:200]
 
 
 @case
