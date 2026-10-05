@@ -1,6 +1,6 @@
 # CLI 오류 응답 (`pjc:chain-plan`)
 
-> `../SKILL.md` 가 `<CLI>` 응답이 `ok: false` 일 때만 이 파일을 연다. 코드의 뜻과 처방의 정본은 Karina 가이드(`<CLI> skills get karina-orchestration`)의 Errors·Retrying Safely 절이고, 여기는 그 처방을 체인 맥락에 맞춘 것이다.
+> `../SKILL.md` 가 `<CLI>` 응답이 `ok: false` 일 때(「오류 응답」)와 「전제조건」에서 해석한 CLI 이름이 PATH 에 없을 때(「CLI 경로」)만 이 파일을 연다. 코드의 뜻과 처방의 정본은 Karina 가이드(`<CLI> skills get karina-orchestration`)의 Errors·Retrying Safely 절이고, 여기는 그 처방을 체인 맥락에 맞춘 것이다.
 
 ## 오류 응답
 
@@ -24,3 +24,7 @@
   - `app_not_running` — CLI 는 앱을 띄우지 않는다. 앱 실행은 사용자 몫이다.
   - `no_bound_run`·`unknown_*`·`unsupported_capability` 등 — Run 바인딩이나 이 세션이 받은 id 가 어긋났거나 이 빌드에 없는 기능이라, 이어 가면 상태 추적이 깨진다.
 - **예외 — `../SKILL.md` 「전제조건」의 Karina 앱 실행 확인(`run-current`)이 낸 `no_bound_run` 은 통과다** — Run 을 만들기 전의 탭은 이것을 내는 것이 정상이다. 그 밖의 코드는 위 규칙대로 복구하거나 멈춘다.
+
+## CLI 경로
+
+- `../SKILL.md` 「전제조건」에서 해석한 `<CLI>` 이름이 PATH 에 없으면 설치본 전체경로(release 기본 `$LOCALAPPDATA/Programs/Karina/karina-cli.exe`)를 쓰고, 그것도 없으면 「Karina 설정에서 CLI PATH 등록」을 안내하고 멈춘다. 전체경로는 슬래시로 적고 큰따옴표로 감싼 채 spec `CLI:` 줄에 싣는다 — Git Bash 의 `$LOCALAPPDATA` 는 역슬래시 경로라 `cygpath -m "$LOCALAPPDATA"` 로 바꿔 쓴다(역슬래시를 손으로 치환하면 경로가 깨진다).

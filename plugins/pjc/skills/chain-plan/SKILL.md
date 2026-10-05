@@ -17,7 +17,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
   - ⓓ `python --version` 이 3.x 를 낸다 — 워커 대기 스크립트(「워커 루프」)가 쓴다
 - **`<CLI>` 는 ⓐ 확인 전에 한 번 해석해 spec 에 싣는다 — 판은 탭 환경변수 `KARINA_APP_ID` 로 가른다(`Karina` → `karina-cli.exe` · `Karina-Dev` → `karina-dev-cli.exe`, 그 밖·없음 → 멈춤)** — 배정문은 실행 파일 이름을 `karina-cli` 로 고정해 적어, dev 판 환경에서 그대로 치면 명령을 못 찾거나 다른 앱으로 간다.
   - **다른 판 이름으로 폴백하지 않는다** — 다른 판 CLI 는 이 앱이 아니라 `app_not_running` 을 돌려주고, ⓐ 가 그것을 앱 미실행으로 오진한다.
-  - 그 이름이 PATH 에 없으면 설치본 전체경로(release 기본 `$LOCALAPPDATA/Programs/Karina/karina-cli.exe`)를 쓰고, 그것도 없으면 「Karina 설정에서 CLI PATH 등록」을 안내하고 멈춘다. 전체경로는 슬래시로 적고 큰따옴표로 감싼 채 spec `CLI:` 줄에 싣는다 — Git Bash 의 `$LOCALAPPDATA` 는 역슬래시 경로라 `cygpath -m "$LOCALAPPDATA"` 로 바꿔 쓴다(역슬래시를 손으로 치환하면 경로가 깨진다).
+  - 그 이름이 PATH 에 없으면 `references/cli-errors.md`「CLI 경로」 를 읽고 따른다.
 
 ## 계획 목록
 
