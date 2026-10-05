@@ -11,10 +11,21 @@
 - renew      `--max-ms` 를 넘겼다 — 연속 수와 마지막 화면 해시를 넘겨 다시 띄운다.
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
+- progress   워커가 task 를 끝냈다(`--repo` 를 줬을 때만) — 표시할 줄 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작`.
+             message 와 같은 주기에 오면 그 줄을 message 원문 앞에 싣는다 — worker_done 뒤에는 대기를 다시
+             띄우지 않아, 따로 내면 마지막 task 줄이 사라진다.
 
 멈춤 판정: `check` 가 시한 만료(count 0)로 돌아올 때마다 `worker-read`(커서 없음 — 커서는 출처에 묶여
 다른 출처로 넘기면 `source_changed` 다)로 화면을 읽고, 앞 체크포인트와 `lines` 가 같으면 연속 수를 올린다.
 일하는 워커는 스피너 경과 시간이 바뀌어 같을 수 없어, 출력 없이 오래 도는 빌드도 멈춤으로 세지 않는다.
+화면 비교까지 남은 대기를 시계가 아니라 차감으로 센다 — `check` 시한은 min(--poll-ms, 남은 대기)이고
+남은 대기가 0 이 된 주기에만 화면을 읽는다. renew 판정도 화면 비교 뒤에만 한다(비교 간격을 9분으로 지킨다).
+
+진행 감지: 주기마다 `git -C <repo> log <본 sha>..HEAD` 에서 제목이 `<유형>: T<N> — <무엇을>`
+(implement 「커밋」 형식)인 커밋을 고른다. 분모는 `<repo>/plan.md` 의 `### T<N>.` 번호 최댓값(implement 의
+`T<N>/T<M>` 과 같은 정의)이고 다음 시작은 N 보다 큰 최소 번호다. 본 sha 와 표시한 번호는 dispatch 별
+상태 파일에 두어 재기동해도 같은 커밋·같은 task 의 후속 커밋(「수정: T2」)을 다시 표시하지 않는다.
+잠금을 잃은 대기는 상태를 쓰지 않는다. git 실패는 대기를 끊지 않고, 본 sha 가 무효하면 HEAD 로 다시 채운다.
 
 stdout 을 utf-8 로 바꾸는 것은 필수다 — 백그라운드 stdout 은 cp949 라 첫 줄의 「—」에서 죽는다(실측).
 """
@@ -22,6 +33,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -37,8 +49,8 @@ def screen_hash(lines):
 
 def _action(kind, dispatch, streak=0, last_hash=None):
     if kind == 'message':
-        return ('배치를 chain-plan 「워커 루프」 규칙대로 처리하고 ack 한 뒤 대기를 다시 띄운다 '
-                '(이 배치의 deliveryId 를 이미 ack 했으면 처리하지 않고 대기만 다시 띄운다 · '
+        return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고, 배치를 chain-plan 「워커 루프」 규칙대로 '
+                '처리하고 ack 한 뒤 대기를 다시 띄운다 (이 배치의 deliveryId 를 이미 ack 했으면 처리하지 않고 대기만 다시 띄운다 · '
                 'worker_done 이면 다시 띄우지 않고 다음 계획의 worker-start 뒤에 띄운다)')
     if kind == 'stall':
         return ('같은 화면이 체크포인트 %d회 연속이다 — worker-retain --dispatch %s 후 보고하고 멈춘다'
@@ -49,6 +61,8 @@ def _action(kind, dispatch, streak=0, last_hash=None):
     if kind == 'renew':
         return ('--max-ms 에 닿았다 — 같은 명령에 --stall-carry %d --prev-hash %s 를 더해 대기를 다시 띄운다'
                 % (streak, last_hash or '-'))
+    if kind == 'progress':
+        return '아래 줄을 그대로 한 줄씩 표시하고 대기를 다시 띄운다'
     return '같은 dispatch 의 새 대기가 이어받았다 — 아무것도 하지 않는다'
 
 
@@ -67,14 +81,21 @@ def _parse(raw):
     return data, None
 
 
-def wait_loop(call, lock, now, dispatch, timeout_ms, stall, max_ms, stall_carry, prev_hash):
+def wait_loop(call, lock, now, dispatch, timeout_ms, stall, max_ms, stall_carry, prev_hash,
+              poll_ms=None, progress=None):
     """대기 반복. call(args)->str 은 `<CLI> orchestration <args>` 의 stdout, lock.owned() 는 잠금 소유,
-    now() 는 ms 단위 시계다 — 셋 다 바깥에서 넣어 골든이 Karina 없이 갈래를 잰다."""
+    now() 는 ms 단위 시계, progress 는 진행 감지(Progress — 없으면 끈다)다 — 바깥에서 넣어 골든이
+    Karina·git 없이 갈래를 잰다. poll_ms 가 없으면 timeout_ms 와 같아 종전처럼 주기마다 화면을 읽는다."""
     start = now()
     streak, last_hash = stall_carry, prev_hash
+    poll = poll_ms or timeout_ms
+    remaining = timeout_ms
+    if progress is not None:
+        progress.start()
     while True:
+        wait = min(poll, remaining)
         try:
-            raw = call(['check', '--json', '--wait', '--timeout-ms', str(timeout_ms)])
+            raw = call(['check', '--json', '--wait', '--timeout-ms', str(wait)])
         except OSError as e:
             return _result('error', dispatch, ['CLI 실행 실패: %s' % e])
         if not lock.owned():
@@ -82,8 +103,21 @@ def wait_loop(call, lock, now, dispatch, timeout_ms, stall, max_ms, stall_carry,
         data, err = _parse(raw)
         if err is not None:
             return _result('error', dispatch, [err])
+        lines_done = progress.poll() if progress is not None else []
         if data.get('count', 0) > 0:
-            return _result('message', dispatch, [raw[:RAW_LIMIT * 4]])
+            if progress is not None and lock.owned():
+                progress.commit()
+            return _result('message', dispatch, lines_done + [raw[:RAW_LIMIT * 4]])
+        if progress is not None:
+            if not lock.owned():
+                return _result('superseded', dispatch)
+            progress.commit()
+            if lines_done:
+                return _result('progress', dispatch, lines_done)
+        remaining -= wait
+        if remaining > 0:
+            continue
+        remaining = timeout_ms
 
         try:
             raw = call(['worker-read', '--json', '--dispatch', dispatch])
@@ -137,6 +171,103 @@ def make_call(cli):
     return call
 
 
+TASK_COMMIT = re.compile(r'^(기능|수정|리팩토링|문서|설정): T(\d+) — (.+)$')
+PLAN_TASK = re.compile(r'^### T(\d+)\. ', re.M)
+
+
+class Progress:
+    """task 완료 커밋을 표시 줄로 바꾼다. git(args)->(성공, 출력) · read_plan()->str|None · store(load/save) 는 주입한다."""
+
+    def __init__(self, git, read_plan, store, label):
+        self.git, self.read_plan, self.store, self.label = git, read_plan, store, label
+        self.pending = None
+
+    def start(self):
+        if self.store.load() is None:
+            ok, head = self.git(['rev-parse', 'HEAD'])
+            if ok and head:
+                self.store.save({'sha': head, 'shown': []})
+
+    def poll(self):
+        """새 진행 줄을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤)."""
+        self.pending = None
+        st = self.store.load()
+        if not st or not st.get('sha'):
+            return []
+        shown = list(st.get('shown') or [])
+        ok, out = self.git(['log', '--reverse', '--format=%H%x1f%s', '%s..HEAD' % st['sha']])
+        if not ok:
+            ok, head = self.git(['rev-parse', 'HEAD'])
+            if ok and head:
+                self.pending = {'sha': head, 'shown': shown}
+            return []
+        done, last = [], st['sha']
+        for row in out.splitlines():
+            sha, _, subject = row.partition('\x1f')
+            if not sha:
+                continue
+            last = sha
+            m = TASK_COMMIT.match(subject.strip())
+            if not m or int(m.group(2)) in shown:
+                continue
+            shown.append(int(m.group(2)))
+            done.append(self._line(int(m.group(2)), m.group(3).strip()))
+        self.pending = {'sha': last, 'shown': shown}
+        return done
+
+    def commit(self):
+        if self.pending is not None:
+            self.store.save(self.pending)
+            self.pending = None
+
+    def _line(self, n, what):
+        head = '%s: ' % self.label if self.label else ''
+        nums = sorted({int(x) for x in PLAN_TASK.findall(self.read_plan() or '')})
+        if not nums:
+            return '%sT%d 완료 — %s' % (head, n, what)
+        nxt = [k for k in nums if k > n]
+        tail = ' · T%d 시작' % nxt[0] if nxt else ''
+        return '%sT%d/T%d 완료 — %s%s' % (head, n, nums[-1], what, tail)
+
+
+class FileStore:
+    """dispatch 별 상태 파일(JSON). 대기가 task 마다 재기동돼 지울 시점이 없고 크기가 작아 지우지 않는다."""
+
+    def __init__(self, dispatch):
+        self.path = os.path.join(tempfile.gettempdir(), 'pjc-chain-wait-%s.seen' % dispatch)
+
+    def load(self):
+        try:
+            with open(self.path, encoding='utf-8') as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return None
+
+    def save(self, st):
+        with open(self.path, 'w', encoding='utf-8') as f:
+            json.dump(st, f)
+
+
+def make_git(repo):
+    def git(args):
+        try:
+            p = subprocess.run(['git', '-C', repo] + args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        except OSError:
+            return False, ''
+        return p.returncode == 0, p.stdout.decode('utf-8', errors='replace').strip()
+    return git
+
+
+def make_read_plan(repo):
+    def read_plan():
+        try:
+            with open(os.path.join(repo, 'plan.md'), encoding='utf-8', errors='replace') as f:
+                return f.read()
+        except OSError:
+            return None
+    return read_plan
+
+
 def main(argv=None):
     sys.stdout.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser(description='chain-plan 워커 대기')
@@ -147,11 +278,20 @@ def main(argv=None):
     ap.add_argument('--max-ms', type=int, default=1500000)
     ap.add_argument('--stall-carry', type=int, default=0)
     ap.add_argument('--prev-hash', default=None)
+    ap.add_argument('--repo', default=None)
+    ap.add_argument('--label', default='')
+    ap.add_argument('--poll-ms', type=int, default=None)
     a = ap.parse_args(argv)
+    progress = None
+    poll_ms = a.poll_ms
+    if a.repo:
+        progress = Progress(make_git(a.repo), make_read_plan(a.repo), FileStore(a.dispatch), a.label)
+        poll_ms = poll_ms or 60000
     lock = FileLock(a.dispatch)
     out = wait_loop(make_call(a.cli), lock, lambda: time.monotonic() * 1000,
                     dispatch=a.dispatch, timeout_ms=a.timeout_ms, stall=a.stall, max_ms=a.max_ms,
-                    stall_carry=a.stall_carry, prev_hash=None if a.prev_hash in (None, '-') else a.prev_hash)
+                    stall_carry=a.stall_carry, prev_hash=None if a.prev_hash in (None, '-') else a.prev_hash,
+                    poll_ms=poll_ms, progress=progress)
     lock.release()
     print('\n'.join(out), flush=True)
     return 0

@@ -225,6 +225,194 @@ def non_ascii_survives_cp949_stdout():
     assert text.startswith('RESULT: error — '), text[:200]
 
 
+# ── 진행 감지(task 완료마다 한 줄) ─────────────────────────────────────────
+
+PLAN5 = '# plan\r\n\r\n### T1. 첫\r\n### T2. 둘\r\n### T3. 셋\r\n### T4. 넷\r\n### T5. 다섯\r\n'
+
+
+class FakeGit:
+    """`git -C <repo> <args>` 응답. log 는 호출마다 차례로 소비하고, None 이면 실패를 낸다."""
+
+    def __init__(self, head='h0', logs=(), head_ok=True):
+        self.head = head
+        self.logs = list(logs)
+        self.head_ok = head_ok
+        self.calls = []
+
+    def __call__(self, args):
+        self.calls.append(list(args))
+        if args[0] == 'rev-parse':
+            return (self.head_ok, self.head)
+        item = self.logs.pop(0) if self.logs else []
+        if item is None:
+            return (False, 'fatal: bad revision')
+        return (True, '\n'.join('%s\x1f%s' % c for c in item))
+
+
+class FakeStore:
+    def __init__(self, state=None):
+        self.state = state
+        self.saves = 0
+
+    def load(self):
+        return None if self.state is None else json.loads(json.dumps(self.state))
+
+    def save(self, st):
+        self.saves += 1
+        self.state = st
+
+
+def prog(git, store=None, plan=PLAN5, label='Plan 2'):
+    return ww.Progress(git, lambda: plan, store if store is not None else FakeStore({'sha': 'h0', 'shown': []}), label)
+
+
+def runp(cli, progress, lock=None, **kw):
+    opts = dict(timeout_ms=540000, poll_ms=60000)
+    opts.update(kw)
+    return run(cli, lock=lock, progress=progress, **opts)
+
+
+@case
+def progress_line_with_next():
+    git = FakeGit(logs=[[('h1', '기능: T1 — 사각형을 칠한다')]])
+    out = runp(FakeCli([EMPTY]), prog(git))
+    assert first(out).startswith('RESULT: progress — '), out
+    assert out[1] == 'Plan 2: T1/T5 완료 — 사각형을 칠한다 · T2 시작', out
+
+
+@case
+def progress_last_task_has_no_start():
+    git = FakeGit(logs=[[('h5', '문서: T5 — README')]])
+    out = runp(FakeCli([EMPTY]), prog(git))
+    assert out[1] == 'Plan 2: T5/T5 완료 — README', out
+
+
+@case
+def progress_two_commits_two_lines():
+    git = FakeGit(logs=[[('h1', '기능: T1 — 하나'), ('h2', '수정: T2 — 둘')]])
+    out = runp(FakeCli([EMPTY]), prog(git))
+    assert out[1:] == ['Plan 2: T1/T5 완료 — 하나 · T2 시작', 'Plan 2: T2/T5 완료 — 둘 · T3 시작'], out
+
+
+@case
+def non_task_commit_updates_seen_only():
+    store = FakeStore({'sha': 'h0', 'shown': []})
+    git = FakeGit(logs=[[('h1', '설정: intent — 무엇')], []])
+    out = runp(FakeCli([EMPTY, msg_batch()]), prog(git, store))
+    assert first(out).startswith('RESULT: message — '), out
+    assert store.state['sha'] == 'h1', store.state
+    assert not any('완료 —' in l for l in out), out
+
+
+@case
+def seen_state_prevents_repeat():
+    store = FakeStore({'sha': 'h1', 'shown': [1]})
+    git = FakeGit(logs=[[]])
+    runp(FakeCli([EMPTY, msg_batch()]), prog(git, store))
+    log_calls = [c for c in git.calls if c[0] == 'log']
+    assert log_calls and log_calls[0][-1] == 'h1..HEAD', git.calls
+
+
+@case
+def no_plan_omits_total():
+    git = FakeGit(logs=[[('h3', '기능: T3 — 셋째')]])
+    out = runp(FakeCli([EMPTY]), prog(git, plan=None))
+    assert out[1] == 'Plan 2: T3 완료 — 셋째', out
+
+
+@case
+def git_failure_keeps_waiting():
+    git = FakeGit(logs=[None], head_ok=False)
+    out = runp(FakeCli([EMPTY, msg_batch()]), prog(git))
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
+def screen_read_only_after_timeout():
+    cli = FakeCli([EMPTY] * 9 + [msg_batch()], [screen('a')])
+    out = runp(cli, prog(FakeGit()))
+    waits = [c[c.index('--timeout-ms') + 1] for c in cli.calls if c[0] == 'check']
+    reads = [i for i, c in enumerate(cli.calls) if c[0] == 'worker-read']
+    assert waits[:9] == ['60000'] * 9, waits
+    assert reads == [9], ('9번째 check(누적 540000) 뒤에만 화면을 읽는다', cli.calls)
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
+def remaining_caps_wait():
+    cli = FakeCli([EMPTY, EMPTY, msg_batch()], [screen('a')])
+    runp(cli, prog(FakeGit()), timeout_ms=100000, poll_ms=60000)
+    waits = [c[c.index('--timeout-ms') + 1] for c in cli.calls if c[0] == 'check']
+    assert waits[:2] == ['60000', '40000'], waits
+
+
+@case
+def no_repo_no_git():
+    cli = FakeCli([EMPTY, msg_batch()], [screen('a')])
+    run(cli, timeout_ms=540000)
+    assert [c[c.index('--timeout-ms') + 1] for c in cli.calls if c[0] == 'check'] == ['540000', '540000']
+    assert ww.Progress is not None and not hasattr(cli, 'git_calls')
+
+
+@case
+def message_carries_progress_first():
+    git = FakeGit(logs=[[('h5', '기능: T5 — 마지막')]])
+    out = runp(FakeCli([msg_batch()]), prog(git))
+    assert first(out).startswith('RESULT: message — '), out
+    assert '진행 줄' in first(out), '진행 줄을 먼저 표시하라는 지시'
+    assert out[1] == 'Plan 2: T5/T5 완료 — 마지막' and 'dlv_1' in out[2], out
+
+
+@case
+def lost_lock_does_not_save():
+    store = FakeStore({'sha': 'h0', 'shown': []})
+    git = FakeGit(logs=[[('h1', '기능: T1 — 하나')]])
+    out = runp(FakeCli([EMPTY]), prog(git, store), lock=FakeLock(owned_until=1))
+    assert first(out).startswith('RESULT: superseded — '), out
+    assert store.saves == 0 and store.state['sha'] == 'h0', store.state
+
+
+@case
+def renew_only_after_screen():
+    cli = FakeCli([EMPTY] * 9 + [msg_batch()], [screen('a')])
+    out = runp(cli, prog(FakeGit()), clock=FakeClock(10 ** 6), max_ms=1)
+    assert first(out).startswith('RESULT: renew — '), out
+    assert len([c for c in cli.calls if c[0] == 'check']) == 9, '화면 비교(9번째 check 뒤) 전에는 renew 하지 않는다'
+
+
+@case
+def invalid_seen_reseeds_head():
+    store = FakeStore({'sha': 'gone', 'shown': []})
+    git = FakeGit(head='h7', logs=[None, [('h8', '기능: T2 — 다음')]])
+    out = runp(FakeCli([EMPTY, EMPTY]), prog(git, store))
+    assert first(out).startswith('RESULT: progress — '), out
+    log_calls = [c for c in git.calls if c[0] == 'log']
+    assert log_calls[1][-1] == 'h7..HEAD', git.calls
+
+
+@case
+def same_task_followup_not_repeated():
+    git = FakeGit(logs=[[('h1', '기능: T2 — 둘'), ('h2', '수정: T2 — 둘 보강'), ('h3', '기능: T3 — 셋')]])
+    out = runp(FakeCli([EMPTY]), prog(git))
+    assert out[1:] == ['Plan 2: T2/T5 완료 — 둘 · T3 시작', 'Plan 2: T3/T5 완료 — 셋 · T4 시작'], out
+
+
+@case
+def gapped_numbers_use_max_and_next():
+    plan = '### T0. 영\n### T2. 둘\n### T5. 다섯\n'
+    git = FakeGit(logs=[[('h1', '기능: T2 — 둘')]])
+    out = runp(FakeCli([EMPTY]), prog(git, plan=plan))
+    assert out[1] == 'Plan 2: T2/T5 완료 — 둘 · T5 시작', out
+
+
+@case
+def seeds_head_when_no_state():
+    store = FakeStore(None)
+    git = FakeGit(head='h9', logs=[[]])
+    runp(FakeCli([EMPTY, msg_batch()]), prog(git, store))
+    assert store.state and store.state['sha'] == 'h9', store.state
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     failed = 0
