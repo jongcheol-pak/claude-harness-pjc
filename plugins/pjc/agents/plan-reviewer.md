@@ -57,7 +57,7 @@ tools: Read, Grep, Glob
 ### 실행 중 정지의 사전 해소
 
 - **task 의 검증 명령(빌드·테스트)이 `AGENTS.md`(또는 그것이 지목하는 문서)에 없으면 MAJOR 로 지적한다** — `pjc:implement` 는 plan 이 아니라 그 파일만 보고, 없으면 실행 중에 사용자에게 묻느라 선다. 처방은 `skills/plan/references/plan-template.md`「검증 방법」이 정본이다. 위 「판정용 명령에 현재값」은 acceptance 기대값을 보는 것이라 이 항목과 다르다.
-- **파일을 삭제하는 task 에 복구 경로 실측 행(Investigation Log)이 없으면 지적한다** — 판정 명령은 `skills/plan/references/plan-template.md` 「승인 필요 항목」. 복구 경로 없는 대상은 위 「승인 필요 항목의 회피 설계」 순서(회피 설계 먼저)를 따르고, 회피 설계가 없는데 `## 승인 필요 항목` 에 없으면 지적한다 — 빠지면 그 삭제에서 실행 중 루프가 선다.
+- **파일을 삭제하는 task 에 복구 경로 실측 행(Investigation Log)이 없으면 지적한다** — 판정 명령은 `skills/plan/references/deletion-recoverability.md` 「삭제 복구 경로 판정」. 복구 경로 없는 대상은 위 「승인 필요 항목의 회피 설계」 순서(회피 설계 먼저)를 따르고, 회피 설계가 없는데 `## 승인 필요 항목` 에 없으면 지적한다 — 빠지면 그 삭제에서 실행 중 루프가 선다.
 
 ### 미해결 질문
 
