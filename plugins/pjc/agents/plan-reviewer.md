@@ -15,7 +15,7 @@ tools: Read, Grep, Glob
 
 중계 모드(`skills/plan/references/relay-mode.md`)에서는 아래 줄이 더 온다 — 그 줄이 있으면 해당 검사를 이렇게 읽는다.
 
-- **「중계 모드 — 인터뷰는 코디네이터 세션에서…」** — 원문은 spec 의 「원문:」 블록(intent `Problem` 에 인용)과 그 Q/A 다. 아래 「요구 확정」은 확정 요구를 그 블록과 대조하고, Q/A 가 담은 제약·범위 밖이 intent 에 있으면 재진술뿐이라고 지적하지 않는다.
+- **「중계 모드 — 인터뷰는 코디네이터 세션에서…」** — 원문은 spec 의 「원문:」 블록(intent `Problem` 에 인용)과 그 Q/A 다. 아래 「요구 확정」은 확정 요구를 그 블록과 대조하고, Q/A 가 담은 제약·범위 밖이 intent 에 있으면 재진술뿐이라고 지적하지 않는다. Problem 의 문답 `A:` 가 intent Constraints·Proposed outcome 이나 plan 의 task·Decisions 와 어긋나거나 빠졌으면 지적하고, Problem 에 문답도 `Q/A: 없음` 도 없으면 원문을 줄여 옮긴 것으로 지적한다(이어받기 intent 는 그것이 가리키는 원 intent 의 Problem 으로 본다).
 - **「이어받기 <k> — …」** — 이 회차 몫은 spec 실측 요지 항목뿐이다. 아래 「범위」의 누락 검사는 그 항목만 센다 — 나머지는 앞 워커가 커밋했다.
 - **「재측정 생략 — 근거는 Log 의 델타 행」** — 명령 열에 근거와 출처 `실측 요지(기준 <sha>)` 가 적힌 행은 실측으로 본다. 델타 행(`git diff --name-only <기준>` 과 그 출력)이 없으면 지적한다.
 
