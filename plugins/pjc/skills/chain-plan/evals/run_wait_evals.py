@@ -6,8 +6,10 @@ Karina·모델을 부르지 않는다 — CLI 호출·잠금·시계를 가짜�
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, '..', 'scripts', 'wait-worker.py')
@@ -224,15 +226,18 @@ PLAN5 = '# plan\r\n\r\n### T1. 첫\r\n### T2. 둘\r\n### T3. 셋\r\n### T4. 넷\
 class FakeGit:
     """`git -C <repo> <args>` 응답. log 는 호출마다 차례로 소비하고, None 이면 실패를 낸다."""
 
-    def __init__(self, head='h0', logs=(), head_ok=True):
+    def __init__(self, head='h0', logs=(), head_ok=True, heads=()):
         self.head = head
         self.logs = list(logs)
         self.head_ok = head_ok
+        self.heads = list(heads)  # rev-parse 응답 (성공, HEAD) 를 차례로 — 다 쓰면 head_ok·head 고정값
         self.calls = []
 
     def __call__(self, args):
         self.calls.append(list(args))
         if args[0] == 'rev-parse':
+            if self.heads:
+                return self.heads.pop(0)
             return (self.head_ok, self.head)
         item = self.logs.pop(0) if self.logs else []
         if item is None:
@@ -443,6 +448,104 @@ def seeds_head_when_no_state():
     git = FakeGit(head='h9', logs=[[]])
     runp(FakeCli([EMPTY, msg_batch()]), prog(git, store))
     assert store.state and store.state['sha'] == 'h9', store.state
+
+
+@case
+def head_retried_after_start_failure():
+    store = FakeStore(None)
+    git = FakeGit(heads=[(False, ''), (True, 'h9')], logs=[[('h10', '기능: T1 — 하나')]])
+    out = runp(FakeCli([EMPTY, EMPTY, msg_batch()]), prog(git, store))
+    assert first(out).startswith('RESULT: progress — '), out
+    assert out[1] == 'Plan 2: T1/T5 완료 — 하나 · T2 시작', out
+    assert [c[-1] for c in git.calls if c[0] == 'log'] == ['h9..HEAD'], git.calls
+
+
+@case
+def number_over_total_drops_total():
+    git = FakeGit(logs=[[('h7', '기능: T7 — 일곱')]])
+    out = runp(FakeCli([EMPTY]), prog(git))
+    assert out[1] == 'Plan 2: T7 완료 — 일곱', out
+
+
+@case
+def plan_read_once_per_poll():
+    reads = []
+
+    def read_plan():
+        reads.append(1)
+        return PLAN5
+    git = FakeGit(logs=[[('h1', '기능: T1 — 하나'), ('h2', '기능: T2 — 둘')]])
+    out = runp(FakeCli([EMPTY]), ww.Progress(git, read_plan, FakeStore({'sha': 'h0', 'shown': []}), 'Plan 2'))
+    assert len(out) == 3 and len(reads) == 1, (out, reads)
+
+
+# 상태 파일 케이스만 임시 폴더의 실제 파일을 쓴다 — 원자 쓰기·읽지 못함은 파일 시스템이 재는 동작이다.
+
+SEEN = 'pjc-chain-wait-disp_t.seen'
+
+
+def temp_store(content=None):
+    d = tempfile.mkdtemp(prefix='pjc-wait-eval-')
+    st = ww.FileStore('disp_t')
+    st.path = os.path.join(d, SEEN)
+    if content is not None:
+        with open(st.path, 'w', encoding='utf-8') as f:
+            f.write(content)
+    return d, st
+
+
+@case
+def save_survives_missing_folder():
+    d, st = temp_store()
+    st.path = os.path.join(d, 'no-such-folder', SEEN)
+    try:
+        st.save({'sha': 'h1', 'shown': []})
+    finally:
+        shutil.rmtree(d)
+
+
+@case
+def save_failure_keeps_old_file():
+    d, st = temp_store('{"sha": "h0", "shown": [1]}')
+    real = ww.json.dump
+
+    def broken(obj, f, *a, **kw):
+        f.write('{"sha":')
+        raise OSError(28, 'No space left on device')
+    ww.json.dump = broken
+    try:
+        st.save({'sha': 'h1', 'shown': [1, 2]})
+        with open(st.path, encoding='utf-8') as f:
+            assert json.load(f) == {'sha': 'h0', 'shown': [1]}, '쓰다 실패해도 앞 상태가 남는다'
+        assert os.listdir(d) == [SEEN], os.listdir(d)
+    finally:
+        ww.json.dump = real
+        shutil.rmtree(d)
+
+
+@case
+def save_roundtrip_leaves_no_temp():
+    d, st = temp_store()
+    try:
+        st.save({'sha': 'h1', 'shown': [2]})
+        assert st.load() == {'sha': 'h1', 'shown': [2]}, st.load()
+        assert os.listdir(d) == [SEEN], os.listdir(d)
+    finally:
+        shutil.rmtree(d)
+
+
+@case
+def unreadable_state_not_reseeded():
+    d, st = temp_store('{"sha":')
+    try:
+        assert st.load() == {}, '읽지 못함은 부재(None)와 갈린다'
+        p = ww.Progress(FakeGit(head='h9'), lambda: PLAN5, st, '')
+        p.start()
+        assert p.poll() == [] and p.pending is None, p.pending
+        with open(st.path, encoding='utf-8') as f:
+            assert f.read() == '{"sha":', '읽지 못한 상태를 HEAD 로 덮어쓰지 않는다'
+    finally:
+        shutil.rmtree(d)
 
 
 @case

@@ -23,9 +23,12 @@
 
 진행 감지: 주기마다 `git -C <repo> log <본 sha>..HEAD` 에서 제목이 `<유형>: T<N> — <무엇을>`
 (implement 「커밋」 형식)인 커밋을 고른다. 분모는 `<repo>/plan.md` 의 `### T<N>.` 번호 최댓값(implement 의
-`T<N>/T<M>` 과 같은 정의)이고 다음 시작은 N 보다 큰 최소 번호다. 본 sha 와 표시한 번호는 dispatch 별
-상태 파일에 두어 재기동해도 같은 커밋·같은 task 의 후속 커밋(「수정: T2」)을 다시 표시하지 않는다.
-잠금을 잃은 대기는 상태를 쓰지 않는다. git 실패는 대기를 끊지 않고, 본 sha 가 무효하면 HEAD 로 다시 채운다.
+`T<N>/T<M>` 과 같은 정의)이고 다음 시작은 N 보다 큰 최소 번호다 — N 이 최댓값보다 크면 분모·다음 시작 없이 낸다.
+본 sha 와 표시한 번호는 dispatch 별 상태 파일에 두어 재기동해도 같은 커밋·같은 task 의 후속 커밋(「수정: T2」)을
+다시 표시하지 않는다. 진행 감지는 잠금 확인보다 먼저 돌고, 잠금을 잃은 대기는 상태를 쓰지 않는다.
+git 실패는 대기를 끊지 않고, 본 sha 가 무효하면 HEAD 로 다시 채운다. 상태 파일이 없으면(시작 때 HEAD 를
+못 잡음) 주기마다 다시 잡고, 있는데 읽지 못하면 덮어쓰지 않는다. 상태 파일은 임시 파일을 바꿔 넣어 쓰고,
+저장 실패는 대기를 끊지 않는다.
 
 stdout 을 utf-8 로 바꾸는 것은 필수다 — 백그라운드 stdout 은 cp949 라 첫 줄의 「—」에서 죽는다(실측).
 """
@@ -187,10 +190,17 @@ class Progress:
                 self.store.save({'sha': head, 'shown': []})
 
     def poll(self):
-        """새 진행 줄을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤)."""
+        """새 진행 줄을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤).
+        plan.md 는 매치가 있는 주기에 한 번만 읽는다."""
         self.pending = None
         st = self.store.load()
-        if not st or not st.get('sha'):
+        if st is None:
+            # 시작 때 HEAD 를 못 잡았다(커밋 없는 레포·일시 실패) — 다시 잡지 않으면 이 대기가 끝날 때까지 꺼진다.
+            ok, head = self.git(['rev-parse', 'HEAD'])
+            if ok and head:
+                self.pending = {'sha': head, 'shown': []}
+            return []
+        if not st.get('sha'):
             return []
         shown = list(st.get('shown') or [])
         ok, out = self.git(['log', '--reverse', '--format=%H%x1f%s', '%s..HEAD' % st['sha']])
@@ -199,7 +209,7 @@ class Progress:
             if ok and head:
                 self.pending = {'sha': head, 'shown': shown}
             return []
-        done, last = [], st['sha']
+        done, last, nums = [], st['sha'], None
         for row in out.splitlines():
             sha, _, subject = row.partition('\x1f')
             if not sha:
@@ -209,7 +219,9 @@ class Progress:
             if not m or int(m.group(2)) in shown:
                 continue
             shown.append(int(m.group(2)))
-            done.append(self._line(int(m.group(2)), m.group(3).strip()))
+            if nums is None:
+                nums = sorted({int(x) for x in PLAN_TASK.findall(self.read_plan() or '')})
+            done.append(self._line(int(m.group(2)), m.group(3).strip(), nums))
         self.pending = {'sha': last, 'shown': shown}
         return done
 
@@ -218,10 +230,10 @@ class Progress:
             self.store.save(self.pending)
             self.pending = None
 
-    def _line(self, n, what):
+    def _line(self, n, what, nums):
         head = '%s: ' % self.label if self.label else ''
-        nums = sorted({int(x) for x in PLAN_TASK.findall(self.read_plan() or '')})
-        if not nums:
+        # 분모를 넘는 번호(plan.md 가 바뀐 뒤의 커밋)는 분모 없이 낸다 — T7/T5 처럼 분자가 분모를 넘지 않게.
+        if not nums or n > nums[-1]:
             return '%sT%d 완료 — %s' % (head, n, what)
         nxt = [k for k in nums if k > n]
         tail = ' · T%d 시작' % nxt[0] if nxt else ''
@@ -235,15 +247,32 @@ class FileStore:
         self.path = os.path.join(tempfile.gettempdir(), 'pjc-chain-wait-%s.seen' % dispatch)
 
     def load(self):
+        """부재면 None, 읽지 못하면 {} — 읽지 못함을 부재로 보면 start() 가 남은 상태를 HEAD 로 덮어쓴다."""
         try:
             with open(self.path, encoding='utf-8') as f:
-                return json.load(f)
-        except (OSError, ValueError):
+                data = json.load(f)
+        except FileNotFoundError:
             return None
+        except (OSError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
 
     def save(self, st):
-        with open(self.path, 'w', encoding='utf-8') as f:
-            json.dump(st, f)
+        # 임시 파일에 쓰고 바꿔 넣는다 — 제자리 쓰기는 다른 대기의 load() 에 반쯤 쓴 JSON 을 보인다.
+        # 저장 실패는 삼킨다: 진행 표시는 부가 기능인데 크래시로 RESULT 줄을 잃으면 체인이 선다.
+        folder, name = os.path.split(self.path)
+        tmp = None
+        try:
+            fd, tmp = tempfile.mkstemp(prefix=name + '.', dir=folder or None)
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                json.dump(st, f)
+            os.replace(tmp, self.path)
+        except OSError:
+            if tmp is not None:
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
 
 
 def make_git(repo):
