@@ -79,5 +79,4 @@
 - [2026-10-05] chain-plan-review-borrowings · 규약 · 읽음 28절 · [계획] 반영 6/걸림 6 · [구현] 배분 3/걸림 2 · 폴백 0절 · 미반영: conventions-planning 14·19·21·23·27·29·45·49, conventions-2 20, decisions.md, feat-chain-plan 「관련 지식·레시피」 9항목 · 없어서조사: 0 — K2 CRLF 1건은 Edit 뒤 변환 여부를 기록하지 않아 걸림으로 세지 않았다
 - [2026-10-05] chain-interview-qa-and-constraint-limits · 규약 · 읽음 12절 · [계획] 반영 4/걸림 4 · [구현] 배분 5/걸림 3 · 폴백 0절 · 미반영: conventions.md 「스크립트로 파일을 고칠 때」, decisions.md, feat-review-subagents 「관련 지식·레시피」 · 없어서조사: 0 — K2 3(CRLF 복원·커밋 -F 경로 한정·「…」 인용 회피), conventions-3 17·28 은 실행에서 red·잔존을 만나지 않음
 - [2026-10-05] instruction-volume · 규약 · 읽음 11절 · [계획] 반영 5/걸림 5 · [구현] 배분 3/걸림 1 · 폴백 0절 · 미반영: conventions-3 25, conventions-planning 33·45, decisions.md · 없어서조사: 0 — K2 1(conventions-3 23 — 새 참조 파일 머리말에 절 수 대신 절 이름을 적음), 18·「…」 인용은 실행에서 red 를 만나지 않음
-- [2026-10-05] chain-fixed-cost · 규약 · 읽음 7절 · [계획] 반영 1/걸림 1 · [구현] 배분 3/걸림 1 · 폴백 0절 · 미반영: conventions-3 16, decisions.md 묶기 임계 메모 · 없어서조사: 0 — K2 1(CRLF 앵커 — 마지막 줄 앵커에 
- 을 넣어 assert 로 멈췄고 쓰기 전이라 무손실), 18·「…」 인용은 red 를 만나지 않음
+- [2026-10-05] chain-fixed-cost · 규약 · 읽음 7절 · [계획] 반영 1/걸림 1 · [구현] 배분 3/걸림 1 · 폴백 0절 · 미반영: conventions-3 16, decisions.md 묶기 임계 메모 · 없어서조사: 0 — K2 1(CRLF 앵커 — 마지막 줄 앵커에 줄바꿈 문자를 넣어 assert 로 멈췄고 쓰기 전이라 무손실), 18·「…」 인용은 red 를 만나지 않음
