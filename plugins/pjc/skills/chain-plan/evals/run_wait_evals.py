@@ -215,15 +215,6 @@ def message_action_mentions_acked_delivery():
     assert 'worker_done' in first(out), 'worker_done 이면 다시 띄우지 않는다는 지시'
 
 
-@case
-def non_ascii_survives_cp949_stdout():
-    env = dict(os.environ, PYTHONIOENCODING='cp949')
-    p = subprocess.run([sys.executable, SCRIPT, '--cli', sys.executable, '--dispatch', 'disp_x',
-                        '--timeout-ms', '10'], capture_output=True, env=env, timeout=60)
-    text = p.stdout.decode('utf-8', errors='strict')
-    assert p.returncode == 0, (p.returncode, p.stderr[-400:])
-    assert text.startswith('RESULT: error — '), text[:200]
-
 
 # ── 진행 감지(task 완료마다 한 줄) ─────────────────────────────────────────
 
@@ -351,7 +342,15 @@ def no_repo_no_git():
     cli = FakeCli([EMPTY, msg_batch()], [screen('a')])
     run(cli, timeout_ms=540000)
     assert [c[c.index('--timeout-ms') + 1] for c in cli.calls if c[0] == 'check'] == ['540000', '540000']
-    assert ww.Progress is not None and not hasattr(cli, 'git_calls')
+    git_made = []
+    saved = (ww.make_call, ww.make_git)
+    ww.make_call = lambda c: FakeCli([msg_batch()])
+    ww.make_git = lambda repo: git_made.append(repo)
+    try:
+        ww.main(['--cli', 'x', '--dispatch', 'disp_norepo'])
+    finally:
+        ww.make_call, ww.make_git = saved
+    assert git_made == [], 'main() 은 --repo 가 없으면 git 을 만들지 않는다'
 
 
 @case
@@ -411,6 +410,16 @@ def seeds_head_when_no_state():
     git = FakeGit(head='h9', logs=[[]])
     runp(FakeCli([EMPTY, msg_batch()]), prog(git, store))
     assert store.state and store.state['sha'] == 'h9', store.state
+
+
+@case
+def non_ascii_survives_cp949_stdout():
+    env = dict(os.environ, PYTHONIOENCODING='cp949')
+    p = subprocess.run([sys.executable, SCRIPT, '--cli', sys.executable, '--dispatch', 'disp_x',
+                        '--timeout-ms', '10'], capture_output=True, env=env, timeout=60)
+    text = p.stdout.decode('utf-8', errors='strict')
+    assert p.returncode == 0, (p.returncode, p.stderr[-400:])
+    assert text.startswith('RESULT: error — '), text[:200]
 
 
 def main():
