@@ -13,6 +13,12 @@
 - progress   워커가 task 를 끝냈다(`--repo` 를 줬을 때만) — 표시할 줄 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작`.
              message 와 같은 주기에 오면 그 줄을 message 원문 앞에 싣는다 — worker_done 뒤에는 대기를 다시
              띄우지 않아, 따로 내면 마지막 task 줄이 사라진다.
+- freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 원문).
+
+자리 대기(`--place <dispatch>`): `worker-start` 가 `duplicate_worker` 로 다른 세션 워커를 이름 댔을 때 띄운다.
+주기(`--poll-ms`, 기본 1분)마다 `check --wait` 로 쉬고 `worker-list --json`(전 Run)에서 그 dispatch 행을 본다.
+행이 없거나 Karina `holds_place_at` 기준으로 놓았으면 freed 다. 시한·멈춤 판정은 없다 — 사람이 탭을 놓아야
+풀리는 상태도 있어서다. 이 모드의 message·freed 지시문은 --place 재기동을 말하고 error 는 두 모드가 같다.
 
 멈춤 판정: `check` 가 시한 만료(count 0)로 돌아올 때마다 `worker-read`(커서 없음 — 커서는 출처에 묶여
 다른 출처로 넘기면 `source_changed` 다)로 화면을 읽고, 앞 체크포인트와 `lines` 가 같으면 연속 수(일치한 비교
@@ -50,7 +56,13 @@ def screen_hash(lines):
     return hashlib.sha1('\n'.join(lines).encode('utf-8')).hexdigest()[:16]
 
 
-def _action(kind, dispatch, streak=0):
+def _action(kind, dispatch, streak=0, on_place=False):
+    if kind == 'message' and on_place:
+        return ('배치를 chain-plan 「워커 루프」 규칙대로 처리하고 ack 한 뒤 같은 --place 대기를 다시 띄운다 '
+                '(자리 대기 중이라 --dispatch 대기를 띄우지 않는다)')
+    if kind == 'freed':
+        return ('자리가 비었다 — 거절됐던 worker-start 를 같은 인자로 다시 보낸다 '
+                '(references/cli-errors.md 「오류 응답」 duplicate_worker)')
     if kind == 'message':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고, 배치를 chain-plan 「워커 루프」 규칙대로 '
                 '처리하고 ack 한 뒤 대기를 다시 띄운다 (이 배치의 deliveryId 를 이미 ack 했으면 처리하지 않고 대기만 다시 띄운다 · '
@@ -132,6 +144,45 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
         # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
         if streak + 1 >= stall:
             return _result('stall', dispatch, lines[-STALL_TAIL:], streak=streak + 1)
+
+
+# Karina `Worker::holds_place_at` 이 「자리를 쥐고 있다」로 보는 state — 그 밖이거나 놓았으면(released) 빈자리다.
+HOLDING_STATES = ('starting', 'ready', 'start_unknown', 'stopping', 'stop_unknown')
+
+
+def holds_place(row):
+    return row.get('state') in HOLDING_STATES and row.get('terminalState') != 'released'
+
+
+def place_loop(call, lock, place, poll_ms):
+    """자리 대기. 다른 세션 워커(dispatch `place`)가 같은 폴더를 쥐고 있는 동안 백그라운드에서 돌고,
+    놓으면 freed 로 끝나 코디네이터가 worker-start 를 다시 보낸다. 쉬는 수단은 `check --wait` 다 —
+    sleep 을 새로 두지 않아도 되고, 그 사이 이 코디네이터에게 온 배치도 잃지 않는다."""
+    while True:
+        try:
+            raw = call(['check', '--json', '--wait', '--timeout-ms', str(poll_ms)])
+        except OSError as e:
+            return _result('error', place, ['CLI 실행 실패: %s' % e])
+        if not lock.owned():
+            return _result('superseded', place)
+        data, err = _parse(raw)
+        if err is not None:
+            return _result('error', place, [err])
+        if data.get('count', 0) > 0:
+            return _result('message', place, [raw[:RAW_LIMIT * 4]], on_place=True)
+
+        try:
+            raw = call(['worker-list', '--json'])
+        except OSError as e:
+            return _result('error', place, ['CLI 실행 실패: %s' % e])
+        if not lock.owned():
+            return _result('superseded', place)
+        data, err = _parse(raw)
+        if err is not None:
+            return _result('error', place, [err])
+        rows = [r for r in data.get('workers') or [] if r.get('dispatchId') == place]
+        if not any(holds_place(r) for r in rows):
+            return _result('freed', place, [json.dumps(rows, ensure_ascii=False)[:RAW_LIMIT]])
 
 
 class FileLock:
@@ -294,13 +345,22 @@ def main(argv=None):
     sys.stdout.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser(description='chain-plan 워커 대기')
     ap.add_argument('--cli', required=True)
-    ap.add_argument('--dispatch', required=True)
+    ap.add_argument('--dispatch', default=None)
+    ap.add_argument('--place', default=None)
     ap.add_argument('--timeout-ms', type=int, default=540000)
     ap.add_argument('--stall', type=int, default=3)
     ap.add_argument('--repo', default=None)
     ap.add_argument('--label', default='')
     ap.add_argument('--poll-ms', type=int, default=None)
     a = ap.parse_args(argv)
+    if (a.dispatch is None) == (a.place is None):
+        ap.error('--dispatch 와 --place 중 하나만 준다')
+    if a.place is not None:
+        lock = FileLock('place-%s' % a.place)
+        out = place_loop(make_call(a.cli), lock, a.place, a.poll_ms or 60000)
+        lock.release()
+        print('\n'.join(out), flush=True)
+        return 0
     progress = None
     poll_ms = a.poll_ms
     if a.repo:

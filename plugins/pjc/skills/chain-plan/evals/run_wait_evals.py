@@ -189,9 +189,12 @@ def every_branch_has_action_line():
         run(FakeCli([EMPTY] * 4, [screen('i')] * 4)),
         run(FakeCli(['x'])),
         run(FakeCli([msg_batch()]), lock=FakeLock(owned_until=0)),
+        runp(FakeCli([EMPTY]), prog(FakeGit(logs=[[('h1', '기능: T1 — 하나')]]))),
+        ww.place_loop(FakeCli([EMPTY], [workers()]), FakeLock(), 'disp_o', 60000),
     ]
     kinds = [first(o).split(' — ')[0] for o in outs]
-    assert kinds == ['RESULT: message', 'RESULT: stall', 'RESULT: error', 'RESULT: superseded'], kinds
+    assert kinds == ['RESULT: message', 'RESULT: stall', 'RESULT: error', 'RESULT: superseded',
+                     'RESULT: progress', 'RESULT: freed'], kinds
     assert all(len(first(o).split(' — ', 1)[1]) > 10 for o in outs), '다음 행동 문구가 있어야 한다'
 
 
@@ -491,6 +494,121 @@ def plan_read_once_per_poll():
     git = FakeGit(logs=[[('h1', '기능: T1 — 하나'), ('h2', '기능: T2 — 둘')]])
     out = runp(FakeCli([EMPTY]), ww.Progress(git, read_plan, FakeStore({'sha': 'h0', 'shown': []}), 'Plan 2'))
     assert len(out) == 3 and len(reads) == 1, (out, reads)
+
+
+# ── 자리 대기(--place — 다른 세션 워커가 같은 폴더를 쥐었을 때) ──────────────────
+
+def place_row(state, terminal, dispatch='disp_o'):
+    return {'dispatchId': dispatch, 'runId': 'run_o', 'state': state, 'terminalState': terminal,
+            'workingDir': 'D:\\work\\alpha', 'agentId': 'claude'}
+
+
+def workers(*rows):
+    return json.dumps({'ok': True, 'count': len(rows), 'workers': list(rows)})
+
+
+def place(cli, lock=None):
+    return ww.place_loop(cli, lock or FakeLock(), 'disp_o', 60000)
+
+
+@case
+def place_freed_when_row_missing():
+    # 다른 dispatch 가 쥔 자리는 이 대기와 무관하다 — 지켜보는 dispatch 의 행이 없으면 빈자리다.
+    out = place(FakeCli([EMPTY], [workers(place_row('ready', 'active', dispatch='disp_other'))]))
+    assert first(out).startswith('RESULT: freed — '), out
+    assert 'worker-start' in first(out), out
+
+
+@case
+def place_freed_when_stopped():
+    out = place(FakeCli([EMPTY], [workers(place_row('stopped', 'active'))]))
+    assert first(out).startswith('RESULT: freed — ') and 'worker-start' in first(out), out
+
+
+@case
+def place_freed_when_released():
+    out = place(FakeCli([EMPTY], [workers(place_row('ready', 'released'))]))
+    assert first(out).startswith('RESULT: freed — ') and 'worker-start' in first(out), out
+
+
+@case
+def place_waits_then_freed():
+    cli = FakeCli([EMPTY, EMPTY], [workers(place_row('ready', 'active')), workers(place_row('stopped', 'released'))])
+    out = place(cli)
+    assert first(out).startswith('RESULT: freed — ') and 'worker-start' in first(out), out
+    assert len([c for c in cli.calls if c[0] == 'worker-list']) == 2, cli.calls
+
+
+@case
+def place_holding_states_keep_waiting():
+    # Karina holds_place_at 의 「쥐고 있음」 조합 — 한 번 보고 놓지 않았으면 다음 주기의 메시지에서야 끝난다.
+    combos = [(s, 'active') for s in ('starting', 'ready', 'start_unknown', 'stopping', 'stop_unknown')]
+    combos += [('ready', t) for t in ('reclaimable', 'retained', 'release_pending', 'release_unknown')]
+    for state, terminal in combos:
+        out = place(FakeCli([EMPTY, msg_batch()], [workers(place_row(state, terminal))]))
+        assert first(out).startswith('RESULT: message — '), (state, terminal, out)
+
+
+@case
+def place_list_not_ok_is_error():
+    out = place(FakeCli([EMPTY], [json.dumps({'ok': False, 'code': 'protocol_error', 'error': 'x'})]))
+    assert first(out).startswith('RESULT: error — ') and '오류 응답' in first(out), out
+    assert any('protocol_error' in l for l in out)
+
+
+@case
+def place_superseded_when_lock_lost():
+    out = place(FakeCli([EMPTY], [workers()]), lock=FakeLock(owned_until=0))
+    assert first(out).startswith('RESULT: superseded — '), out
+
+
+@case
+def place_message_passthrough():
+    out = place(FakeCli([msg_batch()]))
+    assert first(out).startswith('RESULT: message — ') and '--place' in first(out), out
+    assert any('dlv_1' in l for l in out), '원문 배치가 실려야 한다'
+
+
+@case
+def place_command_arguments():
+    cli = FakeCli([EMPTY], [workers()])
+    locks = []
+    saved = (ww.make_call, ww.FileLock, sys.stdout)
+    ww.make_call = lambda c: cli
+    ww.FileLock = lambda key: locks.append(key) or FakeLock()
+    sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+    try:
+        try:
+            ww.main(['--cli', 'x', '--place', 'disp_o'])
+        except SystemExit as e:
+            # SystemExit 는 Exception 이 아니라 러너의 except 를 지나 러너째 죽인다 — 실패로 바꿔 낸다.
+            raise AssertionError('--place 를 거절했다 (exit %s)' % e.code)
+        sys.stdout.flush()
+        printed = sys.stdout.buffer.getvalue().decode('utf-8')
+    finally:
+        ww.make_call, ww.FileLock, sys.stdout = saved
+    chk, lst = cli.calls[0], cli.calls[1]
+    assert chk[:1] == ['check'] and chk[chk.index('--timeout-ms') + 1] == '60000', chk
+    assert lst == ['worker-list', '--json'], lst
+    assert locks == ['place-disp_o'], locks
+    assert printed.startswith('RESULT: freed — '), printed[:200]
+
+
+@case
+def place_and_dispatch_rejected():
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+    try:
+        for args in (['--dispatch', 'disp_1', '--place', 'disp_o'], []):
+            sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+            sys.stderr = io.StringIO()
+            try:
+                ww.main(['--cli', 'x'] + args)
+            except SystemExit as e:
+                assert e.code == 2, (args, e.code)
+            else:
+                raise AssertionError('%s 를 받아들였다' % args)
+    finally:
+        sys.stdout, sys.stderr = real_stdout, real_stderr
 
 
 # 상태 파일 케이스만 임시 폴더의 실제 파일을 쓴다 — 원자 쓰기·읽지 못함은 파일 시스템이 재는 동작이다.

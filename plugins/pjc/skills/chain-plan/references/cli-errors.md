@@ -16,8 +16,8 @@
   - 먼저 `worker-list --json` 에서 그 dispatch 를 찾는다. 목록에 없으면 곧바로 `worker-start` 를 다시 보내고, 다시 같은 dispatch 를 이름 대면 보고하고 멈춘다
   - 이 체인 Run 의 것이면(앞 계획 워커의 release 가 `release_unknown` 으로 남은 경우) 그 dispatch 에 `worker-release` 를 한 번 다시 보내고(되풀이해 불러도 안전하다) `worker-start` 를 다시 보낸다. 또 같은 dispatch 면 보고하고 멈춘다
   - `workingDir` 가 대상 레포 경로와 다르면(끝 구분자를 떼고 `/` 를 `\` 로 바꾸고 소문자로 맞춰 비교한다) Karina 판정과 어긋난 것이라 보고하고 멈춘다
-  - 같은 폴더의 다른 세션 워커면 기다린다 — 기다리기 시작할 때 사용자 화면에 그 dispatch·`state`·`terminalState` 를 한 번 알리고, `start_unknown`·`stop_unknown`·`retained`·`release_unknown` 이면 「그 탭을 사람이 닫거나 놓아야 풀린다」를 함께 적는다. 그 뒤 `check --wait --timeout-ms 540000` 체크포인트마다 `worker-list --run <그 dispatch 의 run> --json` 으로 다시 확인하고, 자리를 놓았으면(`state` 가 starting·ready·start_unknown·stopping·stop_unknown 밖이거나 `terminalState` 가 released) `worker-start` 를 다시 보낸다. 이 기다림은 전경 반복이라 turn 을 끝내지 않고, 경과는 다음 `check --wait` 와 같은 메시지에 싣는다
-  - 이 기다림에는 위 3회 상한도 `../SKILL.md` 「워커 루프」 대기 스크립트의 멈춤 판정도 걸리지 않는다 — 같은 명령의 재시도가 아니라 상태 관찰이고, 지켜볼 자기 dispatch 가 없다
+  - 같은 폴더의 다른 세션 워커면 기다린다 — 기다리기 시작할 때 사용자 화면에 그 dispatch·`state`·`terminalState` 를 한 번 알리고, `start_unknown`·`stop_unknown`·`retained`·`release_unknown` 이면 「그 탭을 사람이 닫거나 놓아야 풀린다」를 함께 적는다. 그 뒤 자리 대기 `python "<skill>/scripts/wait-worker.py" --cli <CLI> --place <그 dispatch>` 를 `../SKILL.md` 「워커 루프」 대기처럼 `run_in_background: true` 로 띄우고 turn 을 끝낸다 — 놓을 때까지 이 세션은 깨어나지 않는다. `RESULT: freed` 면 `worker-start` 를 다시 보내고, 또 `duplicate_worker` 면 이 갈래들을 처음부터 다시 가른다. 그 밖의 RESULT 는 첫 줄 지시를 따르고, RESULT 줄이 없으면 「워커 루프」의 같은 규칙(한 번 다시 띄움, 두 번 연속이면 보고하고 멈춤)이다
+  - 자리 대기는 같은 명령의 재시도가 아니라 상태 관찰이라 위 3회 상한이 걸리지 않는다
 - **그 밖의 코드는 코드와 `error` 문장을 보고하고 멈춘다.** 응답이 이름 댄 탭·dispatch 는 `report.md` 「보고 서식」의 남은 탭 줄에 싣는다.
   - `worker_start_failed` — 원인이 사람이 답해야 하는 화면(trust·sign-in·권한)이거나 대기 만료라 코디네이터가 고칠 수 없다. 응답이 남긴 것으로 이름 댄 탭·dispatch 를 싣는다. `error` 가 `그런 터미널이 없습니다` 이면 대상 레포가 Karina 에 열려 있지 않다 — 사용자가 그 레포를 Karina 에서 열면 풀린다.
   - `task_not_startable` — 이 체인의 Task 를 살아 있는 다른 워커가 쥐고 있는 예상 밖 상태다. 이름 댄 dispatch 를 닫지 않고 싣는다.
