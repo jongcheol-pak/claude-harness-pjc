@@ -117,18 +117,25 @@ def changing_screen_never_stalls():
 
 
 @case
-def same_screen_three_times_stalls():
-    cli = FakeCli([EMPTY] * 4, [screen('idle')] * 4)
+def same_screen_three_screens_stalls():
+    cli = FakeCli([EMPTY] * 3, [screen('idle')] * 3)
     out = run(cli, dispatch='disp_9')
     assert first(out).startswith('RESULT: stall — '), out
     assert 'disp_9' in first(out), 'retain 할 dispatch 를 지시에 담아야 한다'
-    assert len([c for c in cli.calls if c[0] == 'worker-read']) == 4
+    assert len([c for c in cli.calls if c[0] == 'worker-read']) == 3, '첫 화면을 1장으로 센다'
     assert out[-1] == 'idle', '화면 끝 줄이 실려야 한다'
 
 
 @case
+def two_same_screens_do_not_stall():
+    cli = FakeCli([EMPTY, EMPTY, msg_batch()], [screen('idle')] * 2)
+    out = run(cli)
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
 def streak_resets_on_change():
-    reads = [screen('x'), screen('x'), screen('x'), screen('y'), screen('y'), screen('y')]
+    reads = [screen('x'), screen('x'), screen('y'), screen('y'), screen('z'), screen('z')]
     cli = FakeCli([EMPTY] * 6 + [msg_batch()], reads)
     out = run(cli)
     assert first(out).startswith('RESULT: message — '), out

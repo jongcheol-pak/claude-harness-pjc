@@ -6,7 +6,7 @@
 
 출력 — 첫 줄 `RESULT: <갈래> — <다음 행동>`, 이어 원문:
 - message    `check` 가 배치를 돌려줬다(원문 JSON). ack 는 하지 않는다 — 코디네이터가 처리한 뒤 한다.
-- stall      같은 화면이 체크포인트마다 이어져 `--stall` 회 연속이 됐다(화면 끝 40줄).
+- stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌다 — 첫 화면이 1장이다(화면 끝 40줄).
 - error      CLI 실행 실패 · JSON 아님 · `ok: false`(원문).
 - renew      `--max-ms` 를 넘겼다 — 연속 수와 마지막 화면 해시를 넘겨 다시 띄운다.
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
@@ -16,7 +16,8 @@
              띄우지 않아, 따로 내면 마지막 task 줄이 사라진다.
 
 멈춤 판정: `check` 가 시한 만료(count 0)로 돌아올 때마다 `worker-read`(커서 없음 — 커서는 출처에 묶여
-다른 출처로 넘기면 `source_changed` 다)로 화면을 읽고, 앞 체크포인트와 `lines` 가 같으면 연속 수를 올린다.
+다른 출처로 넘기면 `source_changed` 다)로 화면을 읽고, 앞 체크포인트와 `lines` 가 같으면 연속 수(일치한 비교
+횟수 — 같은 화면 장 수보다 하나 적다)를 올린다.
 일하는 워커는 스피너 경과 시간이 바뀌어 같을 수 없어, 출력 없이 오래 도는 빌드도 멈춤으로 세지 않는다.
 화면 비교까지 남은 대기를 시계가 아니라 차감으로 센다 — `check` 시한은 min(--poll-ms, 남은 대기)이고
 남은 대기가 0 이 된 주기에만 화면을 읽는다. renew 판정도 화면 비교 뒤에만 한다(비교 간격을 9분으로 지킨다).
@@ -56,7 +57,7 @@ def _action(kind, dispatch, streak=0, last_hash=None):
                 '처리하고 ack 한 뒤 대기를 다시 띄운다 (이 배치의 deliveryId 를 이미 ack 했으면 처리하지 않고 대기만 다시 띄운다 · '
                 'worker_done 이면 다시 띄우지 않고 다음 계획의 worker-start 뒤에 띄운다)')
     if kind == 'stall':
-        return ('같은 화면이 체크포인트 %d회 연속이다 — worker-retain --dispatch %s 후 보고하고 멈춘다'
+        return ('같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 보고하고 멈춘다'
                 % (streak, dispatch))
     if kind == 'error':
         return ('references/cli-errors.md 「오류 응답」 을 따른다 — 그 처방의 「같은 명령을 다시 실행」은 '
@@ -133,8 +134,9 @@ def wait_loop(call, lock, now, dispatch, timeout_ms, stall, max_ms, stall_carry,
         h = screen_hash(lines)
         streak = streak + 1 if h == last_hash else 0
         last_hash = h
-        if streak >= stall:
-            return _result('stall', dispatch, lines[-STALL_TAIL:], streak=streak)
+        # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
+        if streak + 1 >= stall:
+            return _result('stall', dispatch, lines[-STALL_TAIL:], streak=streak + 1)
         if now() - start >= max_ms:
             return _result('renew', dispatch, streak=streak, last_hash=last_hash)
 
