@@ -76,3 +76,4 @@
 - [2026-10-05] chain-plan-cost · 규약 · 읽음 11절 · [계획] 반영 3/걸림 3 · [구현] 배분 8/걸림 7 · 폴백 0절 · 미반영: 없음 · 없어서조사: 0 — K2 7 — 「…」 괄호 포인터(feat-chain-plan)와 자기 크기 행(conventions-3)이 정합 검사 MISMATCH 로 실제 걸렸고, subprocess encoding(conventions-3)이 백그라운드 cp949 실측에서 재현됐다
 - [2026-10-05] chain-progress-line · 규약 · 읽음 7절 · [계획] 반영 1/걸림 1 · [구현] 배분 5/걸림 4 · 폴백 0절 · 미반영: decisions.md · 없어서조사: 0 — 같은 날 앞 회차 조회를 vault 델타 0 실측으로 재사용, 「…」 포인터 함정만 만나지 않았다
 - [2026-10-05] wait-worker-review-fixes · 구현 · 읽음 5절 · [계획] 반영 3/걸림 2 · [구현] 배분 2/걸림 2 · 폴백 0절 · 미반영: 없음 · 없어서조사: 0 — conventions 3파일 델타 0 실측으로 앞 회차 배분 재사용, decisions.md 는 리뷰 지적 ⑥ 기각 근거로 쓰여 함정 표 밖이라 K1 에서 뺐다
+- [2026-10-05] chain-plan-review-borrowings · 규약 · 읽음 28절 · [계획] 반영 6/걸림 6 · [구현] 배분 3/걸림 2 · 폴백 0절 · 미반영: conventions-planning 14·19·21·23·27·29·45·49, conventions-2 20, decisions.md, feat-chain-plan 「관련 지식·레시피」 9항목 · 없어서조사: 0 — K2 CRLF 1건은 Edit 뒤 변환 여부를 기록하지 않아 걸림으로 세지 않았다
