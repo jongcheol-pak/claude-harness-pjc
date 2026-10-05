@@ -1,6 +1,6 @@
 # 회차 분할
 
-> `../SKILL.md`「Step 5. plan.md 작성」 에서 회차를 나누기로 했을 때만 읽는다 — 회차 체인 질문과 `pjc:chain-plan` 넘김 규칙이다.
+> `../SKILL.md`「Step 5. plan.md 작성」 에서 회차를 나누기로 했을 때 읽는다 — 회차 체인 질문과 `pjc:chain-plan` 넘김 규칙이다. 끝의 요청 밖 후보 기준은 회차 분할과 무관하게 `../../chain-plan/references/handoff.md`·`../../chain-plan/references/measure.md`·`relay-mode.md` 도 이 자리로 가리킨다.
 
 ## 회차 분할
 
