@@ -77,3 +77,4 @@
 - [2026-10-05] chain-progress-line · 규약 · 읽음 7절 · [계획] 반영 1/걸림 1 · [구현] 배분 5/걸림 4 · 폴백 0절 · 미반영: decisions.md · 없어서조사: 0 — 같은 날 앞 회차 조회를 vault 델타 0 실측으로 재사용, 「…」 포인터 함정만 만나지 않았다
 - [2026-10-05] wait-worker-review-fixes · 구현 · 읽음 5절 · [계획] 반영 3/걸림 2 · [구현] 배분 2/걸림 2 · 폴백 0절 · 미반영: 없음 · 없어서조사: 0 — conventions 3파일 델타 0 실측으로 앞 회차 배분 재사용, decisions.md 는 리뷰 지적 ⑥ 기각 근거로 쓰여 함정 표 밖이라 K1 에서 뺐다
 - [2026-10-05] chain-plan-review-borrowings · 규약 · 읽음 28절 · [계획] 반영 6/걸림 6 · [구현] 배분 3/걸림 2 · 폴백 0절 · 미반영: conventions-planning 14·19·21·23·27·29·45·49, conventions-2 20, decisions.md, feat-chain-plan 「관련 지식·레시피」 9항목 · 없어서조사: 0 — K2 CRLF 1건은 Edit 뒤 변환 여부를 기록하지 않아 걸림으로 세지 않았다
+- [2026-10-05] chain-interview-qa-and-constraint-limits · 규약 · 읽음 12절 · [계획] 반영 4/걸림 4 · [구현] 배분 5/걸림 3 · 폴백 0절 · 미반영: conventions.md 「스크립트로 파일을 고칠 때」, decisions.md, feat-review-subagents 「관련 지식·레시피」 · 없어서조사: 0 — K2 3(CRLF 복원·커밋 -F 경로 한정·「…」 인용 회피), conventions-3 17·28 은 실행에서 red·잔존을 만나지 않음
