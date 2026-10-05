@@ -8,7 +8,6 @@
 - message    `check` 가 배치를 돌려줬다(원문 JSON). ack 는 하지 않는다 — 코디네이터가 처리한 뒤 한다.
 - stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌다 — 첫 화면이 1장이다(화면 끝 40줄).
 - error      CLI 실행 실패 · JSON 아님 · `ok: false`(원문).
-- renew      `--max-ms` 를 넘겼다 — 연속 수와 마지막 화면 해시를 넘겨 다시 띄운다.
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
 - progress   워커가 task 를 끝냈다(`--repo` 를 줬을 때만) — 표시할 줄 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작`.
@@ -20,7 +19,7 @@
 횟수 — 같은 화면 장 수보다 하나 적다)를 올린다.
 일하는 워커는 스피너 경과 시간이 바뀌어 같을 수 없어, 출력 없이 오래 도는 빌드도 멈춤으로 세지 않는다.
 화면 비교까지 남은 대기를 시계가 아니라 차감으로 센다 — `check` 시한은 min(--poll-ms, 남은 대기)이고
-남은 대기가 0 이 된 주기에만 화면을 읽는다. renew 판정도 화면 비교 뒤에만 한다(비교 간격을 9분으로 지킨다).
+남은 대기가 0 이 된 주기에만 화면을 읽는다(비교 간격을 9분으로 지킨다).
 
 진행 감지: 주기마다 `git -C <repo> log <본 sha>..HEAD` 에서 제목이 `<유형>: T<N> — <무엇을>`
 (implement 「커밋」 형식)인 커밋을 고른다. 분모는 `<repo>/plan.md` 의 `### T<N>.` 번호 최댓값(implement 의
@@ -51,7 +50,7 @@ def screen_hash(lines):
     return hashlib.sha1('\n'.join(lines).encode('utf-8')).hexdigest()[:16]
 
 
-def _action(kind, dispatch, streak=0, last_hash=None):
+def _action(kind, dispatch, streak=0):
     if kind == 'message':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고, 배치를 chain-plan 「워커 루프」 규칙대로 '
                 '처리하고 ack 한 뒤 대기를 다시 띄운다 (이 배치의 deliveryId 를 이미 ack 했으면 처리하지 않고 대기만 다시 띄운다 · '
@@ -62,9 +61,6 @@ def _action(kind, dispatch, streak=0, last_hash=None):
     if kind == 'error':
         return ('references/cli-errors.md 「오류 응답」 을 따른다 — 그 처방의 「같은 명령을 다시 실행」은 '
                 '이 대기를 다시 띄우는 것이다(샌드박스 해제가 필요하면 같은 플래그로)')
-    if kind == 'renew':
-        return ('--max-ms 에 닿았다 — 같은 명령에 --stall-carry %d --prev-hash %s 를 더해 대기를 다시 띄운다'
-                % (streak, last_hash or '-'))
     if kind == 'progress':
         return '아래 줄을 그대로 한 줄씩 표시하고 대기를 다시 띄운다'
     return '같은 dispatch 의 새 대기가 이어받았다 — 아무것도 하지 않는다'
@@ -85,13 +81,12 @@ def _parse(raw):
     return data, None
 
 
-def wait_loop(call, lock, now, dispatch, timeout_ms, stall, max_ms, stall_carry, prev_hash,
-              poll_ms=None, progress=None):
+def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=None):
     """대기 반복. call(args)->str 은 `<CLI> orchestration <args>` 의 stdout, lock.owned() 는 잠금 소유,
-    now() 는 ms 단위 시계, progress 는 진행 감지(Progress — 없으면 끈다)다 — 바깥에서 넣어 골든이
-    Karina·git 없이 갈래를 잰다. poll_ms 가 없으면 timeout_ms 와 같아 종전처럼 주기마다 화면을 읽는다."""
-    start = now()
-    streak, last_hash = stall_carry, prev_hash
+    progress 는 진행 감지(Progress — 없으면 끈다)다 — 바깥에서 넣어 골든이 Karina·git 없이 갈래를 잰다.
+    poll_ms 가 없으면 timeout_ms 와 같아 주기마다 화면을 읽는다. 시한은 두지 않는다 — 백그라운드 실행은
+    45분을 넘겨도 살아 완료 알림을 낸다(2026-10-06 실측)."""
+    streak, last_hash = 0, None
     poll = poll_ms or timeout_ms
     remaining = timeout_ms
     if progress is not None:
@@ -137,8 +132,6 @@ def wait_loop(call, lock, now, dispatch, timeout_ms, stall, max_ms, stall_carry,
         # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
         if streak + 1 >= stall:
             return _result('stall', dispatch, lines[-STALL_TAIL:], streak=streak + 1)
-        if now() - start >= max_ms:
-            return _result('renew', dispatch, streak=streak, last_hash=last_hash)
 
 
 class FileLock:
@@ -304,9 +297,6 @@ def main(argv=None):
     ap.add_argument('--dispatch', required=True)
     ap.add_argument('--timeout-ms', type=int, default=540000)
     ap.add_argument('--stall', type=int, default=3)
-    ap.add_argument('--max-ms', type=int, default=1500000)
-    ap.add_argument('--stall-carry', type=int, default=0)
-    ap.add_argument('--prev-hash', default=None)
     ap.add_argument('--repo', default=None)
     ap.add_argument('--label', default='')
     ap.add_argument('--poll-ms', type=int, default=None)
@@ -317,9 +307,7 @@ def main(argv=None):
         progress = Progress(make_git(a.repo), make_read_plan(a.repo), FileStore(a.dispatch), a.label)
         poll_ms = poll_ms or 60000
     lock = FileLock(a.dispatch)
-    out = wait_loop(make_call(a.cli), lock, lambda: time.monotonic() * 1000,
-                    dispatch=a.dispatch, timeout_ms=a.timeout_ms, stall=a.stall, max_ms=a.max_ms,
-                    stall_carry=a.stall_carry, prev_hash=None if a.prev_hash in (None, '-') else a.prev_hash,
+    out = wait_loop(make_call(a.cli), lock, dispatch=a.dispatch, timeout_ms=a.timeout_ms, stall=a.stall,
                     poll_ms=poll_ms, progress=progress)
     lock.release()
     print('\n'.join(out), flush=True)

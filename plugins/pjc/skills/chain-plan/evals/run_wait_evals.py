@@ -64,20 +64,10 @@ class FakeLock:
         pass
 
 
-class FakeClock:
-    def __init__(self, step_ms):
-        self.t = 0
-        self.step = step_ms
-
-    def __call__(self):
-        self.t += self.step
-        return self.t
-
-
-def run(cli, lock=None, clock=None, **kw):
-    opts = dict(dispatch='disp_1', timeout_ms=540000, stall=3, max_ms=10 ** 12, stall_carry=0, prev_hash=None)
+def run(cli, lock=None, **kw):
+    opts = dict(dispatch='disp_1', timeout_ms=540000, stall=3)
     opts.update(kw)
-    return ww.wait_loop(cli, lock or FakeLock(), clock or FakeClock(1), **opts)
+    return ww.wait_loop(cli, lock or FakeLock(), **opts)
 
 
 def first(out):
@@ -199,27 +189,41 @@ def every_branch_has_action_line():
         run(FakeCli([EMPTY] * 4, [screen('i')] * 4)),
         run(FakeCli(['x'])),
         run(FakeCli([msg_batch()]), lock=FakeLock(owned_until=0)),
-        run(FakeCli([EMPTY], [screen('i')]), clock=FakeClock(10 ** 6), max_ms=1),
     ]
     kinds = [first(o).split(' — ')[0] for o in outs]
-    assert kinds == ['RESULT: message', 'RESULT: stall', 'RESULT: error', 'RESULT: superseded', 'RESULT: renew'], kinds
+    assert kinds == ['RESULT: message', 'RESULT: stall', 'RESULT: error', 'RESULT: superseded'], kinds
     assert all(len(first(o).split(' — ', 1)[1]) > 10 for o in outs), '다음 행동 문구가 있어야 한다'
 
 
 @case
-def renew_after_max_ms():
-    cli = FakeCli([EMPTY, EMPTY], [screen('p'), screen('p')])
-    out = run(cli, clock=FakeClock(400000), max_ms=700000)
-    assert first(out).startswith('RESULT: renew — '), out
-    assert '--stall-carry 1' in first(out) and '--prev-hash ' in first(out), out
+def long_wait_no_renew():
+    # 시한 없이 돈다 — 빈 check 와 바뀌는 화면이 이어져도 메시지가 올 때까지 RESULT 를 내지 않는다.
+    reads = [screen('spin %d' % i) for i in range(10)]
+    cli = FakeCli([EMPTY] * 10 + [msg_batch()], reads)
+    out = run(cli)
+    assert first(out).startswith('RESULT: message — '), out
+    assert len([c for c in cli.calls if c[0] == 'worker-read']) == 10
 
 
 @case
-def stall_carry_continues_streak():
-    h = ww.screen_hash(['idle'])
-    cli = FakeCli([EMPTY], [screen('idle')])
-    out = run(cli, stall_carry=2, prev_hash=h)
-    assert first(out).startswith('RESULT: stall — '), out
+def removed_args_rejected():
+    saved = (ww.make_call, ww.FileLock)
+    ww.make_call = lambda c: FakeCli([msg_batch()])
+    ww.FileLock = lambda dispatch: FakeLock()
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+    try:
+        for extra in (['--max-ms', '1'], ['--stall-carry', '1'], ['--prev-hash', 'abc']):
+            sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+            sys.stderr = io.StringIO()
+            try:
+                ww.main(['--cli', 'x', '--dispatch', 'disp_r'] + extra)
+            except SystemExit as e:
+                assert e.code == 2, (extra, e.code)
+            else:
+                raise AssertionError('%s 를 받아들였다' % extra[0])
+    finally:
+        ww.make_call, ww.FileLock = saved
+        sys.stdout, sys.stderr = real_stdout, real_stderr
 
 
 @case
@@ -425,14 +429,6 @@ def lock_lost_during_poll_drops_batch():
     assert first(out).startswith('RESULT: superseded — '), out
     assert not any('dlv_1' in l for l in out), '물러난 대기는 배치를 싣지 않는다(새 대기가 재배달받는다)'
     assert store.saves == 0, store.state
-
-
-@case
-def renew_only_after_screen():
-    cli = FakeCli([EMPTY] * 9 + [msg_batch()], [screen('a')])
-    out = runp(cli, prog(FakeGit()), clock=FakeClock(10 ** 6), max_ms=1)
-    assert first(out).startswith('RESULT: renew — '), out
-    assert len([c for c in cli.calls if c[0] == 'check']) == 9, '화면 비교(9번째 check 뒤) 전에는 renew 하지 않는다'
 
 
 @case
