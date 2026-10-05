@@ -170,7 +170,7 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
   - ② `승인 필요 항목` 이 없거나, 체인 승인 때 명시해 승인받은 것뿐이다(위임 켜짐 시 `references/delegation.md`「외부 계약 위임」 의 추가 포함)
   - ③ `DB 변경` 이 체인 승인의 DB 목록 안이다
 - **봉투 대조가 어긋나면 `references/delegation.md`「봉투 밖 승인 요청」 을 읽고 따른다** — 봉투 밖이라는 사실만으로 사용자에게 넘기지 않는다.
-- **사용자에게 넘길 때는 `references/user-relay.md`「사용자에게 넘기기」 를 읽고 따른다 — 워커에 대기 신호를 먼저 보내고 사용자를 부른 뒤 묻는다** — 신호가 없으면 워커는 무응답 상한에서 멈추고, 알림이 없으면 사용자는 질문이 떠 있는 줄 모른다.
+- **사용자에게 넘길 때는 `references/user-relay.md`「사용자에게 넘기기」 를 읽고 따른다.**
 
 ## 보고
 

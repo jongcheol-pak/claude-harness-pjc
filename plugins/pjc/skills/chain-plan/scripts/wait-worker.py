@@ -71,8 +71,7 @@ def _action(kind, dispatch, streak=0, on_place=False):
         return ('같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 보고하고 멈춘다'
                 % (streak, dispatch))
     if kind == 'error':
-        return ('references/cli-errors.md 「오류 응답」 을 따른다 — 그 처방의 「같은 명령을 다시 실행」은 '
-                '이 대기를 다시 띄우는 것이다(샌드박스 해제가 필요하면 같은 플래그로)')
+        return 'references/cli-errors.md 「오류 응답」 을 따른다'
     if kind == 'progress':
         return '아래 줄을 그대로 한 줄씩 표시하고 대기를 다시 띄운다'
     return '같은 dispatch 의 새 대기가 이어받았다 — 아무것도 하지 않는다'
