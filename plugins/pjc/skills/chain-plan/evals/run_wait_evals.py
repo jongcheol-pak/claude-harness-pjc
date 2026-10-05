@@ -362,13 +362,46 @@ def message_carries_progress_first():
     assert out[1] == 'Plan 2: T5/T5 완료 — 마지막' and 'dlv_1' in out[2], out
 
 
+class SwitchLock:
+    """lose() 뒤로 owned() 가 거짓 — 진행 감지(git log) 도중 새 대기가 잠금을 가져간 순간을 흉내 낸다."""
+
+    def __init__(self):
+        self.lost = False
+
+    def owned(self):
+        return not self.lost
+
+    def lose(self):
+        self.lost = True
+
+
+def losing_git(lock, logs):
+    git = FakeGit(logs=logs)
+
+    def call(args):
+        if args[0] == 'log':
+            lock.lose()
+        return git(args)
+    return call
+
+
 @case
-def lost_lock_does_not_save():
+def lock_lost_during_poll_does_not_save():
+    lock = SwitchLock()
     store = FakeStore({'sha': 'h0', 'shown': []})
-    git = FakeGit(logs=[[('h1', '기능: T1 — 하나')]])
-    out = runp(FakeCli([EMPTY]), prog(git, store), lock=FakeLock(owned_until=1))
+    out = runp(FakeCli([EMPTY]), prog(losing_git(lock, [[('h1', '기능: T1 — 하나')]]), store), lock=lock)
     assert first(out).startswith('RESULT: superseded — '), out
     assert store.saves == 0 and store.state['sha'] == 'h0', store.state
+
+
+@case
+def lock_lost_during_poll_drops_batch():
+    lock = SwitchLock()
+    store = FakeStore({'sha': 'h0', 'shown': []})
+    out = runp(FakeCli([msg_batch()]), prog(losing_git(lock, [[('h1', '기능: T1 — 하나')]]), store), lock=lock)
+    assert first(out).startswith('RESULT: superseded — '), out
+    assert not any('dlv_1' in l for l in out), '물러난 대기는 배치를 싣지 않는다(새 대기가 재배달받는다)'
+    assert store.saves == 0, store.state
 
 
 @case

@@ -98,22 +98,20 @@ def wait_loop(call, lock, now, dispatch, timeout_ms, stall, max_ms, stall_carry,
             raw = call(['check', '--json', '--wait', '--timeout-ms', str(wait)])
         except OSError as e:
             return _result('error', dispatch, ['CLI 실행 실패: %s' % e])
+        # 진행 감지(git 하위 프로세스)를 잠금 확인보다 먼저 한다 — 확인 뒤에 돌리면 그 사이 잠금을 잃은
+        # 대기가 배치를 싣고 나간다. poll 은 저장하지 않으므로 앞에 둬도 상태를 쓰지 않는다.
+        lines_done = progress.poll() if progress is not None else []
         if not lock.owned():
             return _result('superseded', dispatch)
         data, err = _parse(raw)
         if err is not None:
             return _result('error', dispatch, [err])
-        lines_done = progress.poll() if progress is not None else []
-        if data.get('count', 0) > 0:
-            if progress is not None and lock.owned():
-                progress.commit()
-            return _result('message', dispatch, lines_done + [raw[:RAW_LIMIT * 4]])
         if progress is not None:
-            if not lock.owned():
-                return _result('superseded', dispatch)
             progress.commit()
-            if lines_done:
-                return _result('progress', dispatch, lines_done)
+        if data.get('count', 0) > 0:
+            return _result('message', dispatch, lines_done + [raw[:RAW_LIMIT * 4]])
+        if lines_done:
+            return _result('progress', dispatch, lines_done)
         remaining -= wait
         if remaining > 0:
             continue
