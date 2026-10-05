@@ -140,7 +140,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 
 ```
 <CLI> orchestration worker-start --json --task <task id> --agent claude --worktree "<대상 레포 경로>" 2>/dev/null
-python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id>
+python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --repo "<대상 레포 경로>" --label "Plan <N>"
 ```
 
 - **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
