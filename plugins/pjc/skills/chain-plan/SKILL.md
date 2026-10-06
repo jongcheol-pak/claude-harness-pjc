@@ -13,7 +13,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 - **착수 전에 넷을 확인하고, 하나라도 아니면 사유를 말하고 멈춘다** — 워커 탭에서 막히면 그 화면은 아무도 보지 않는다.
   - ⓐ Karina 앱 실행 — `<CLI> orchestration run-current --json` 이 `app_not_running` 이 아니다(`ok: false` 면 `references/cli-errors.md`「오류 응답」 으로 판정)
   - ⓑ 이 세션이 Karina 탭 — 환경변수 `KARINA_TAB_UUID` 가 있다(Run 의 코디네이터 핸들이 여기서 나온다)
-  - ⓒ Karina 의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.** 첫 `worker-start` 응답의 `turnStart: "permission"` 이 꺼져 있다는 신호다
+  - ⓒ Karina 의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.**
   - ⓓ `python --version` 이 3.x 를 낸다 — 워커 대기 스크립트(「워커 루프」)가 쓴다
 - **`<CLI>` 는 ⓐ 확인 전에 한 번 해석해 spec 에 싣는다 — 판은 탭 환경변수 `KARINA_APP_ID` 로 가른다(`Karina` → `karina-cli.exe` · `Karina-Dev` → `karina-dev-cli.exe`, 그 밖·없음 → 멈춤)** — 배정문은 실행 파일 이름을 `karina-cli` 로 고정해 적어, dev 판 환경에서 그대로 치면 명령을 못 찾거나 다른 앱으로 간다.
   - **다른 판 이름으로 폴백하지 않는다** — 다른 판 CLI 는 이 앱이 아니라 `app_not_running` 을 돌려주고, ⓐ 가 그것을 앱 미실행으로 오진한다.
@@ -85,7 +85,7 @@ EOF
 )"
 ```
 
-- **압축 뒤 체인 승인 답 원문·task·dispatch id 가 안 보이면 `references/compaction.md`「압축 뒤 복원」 을 따른다** — 파일을 고치지 않는 이 세션의 체인 상태는 Run·Task 에만 남는다.
+- **압축 뒤 체인 승인 답 원문·task·dispatch id 가 안 보이면 `references/compaction.md`「압축 뒤 복원」 을 따른다.**
 - **`--task-title` 을 반드시 준다** — 없으면 배정문의 `Task:` 줄이 spec 전문을 되풀이한다.
 - **objective·spec·`reply` 본문은 spec 처럼 작은따옴표 heredoc 치환으로 넘긴다** — 세 명령 모두 파일·stdin 입력이 없고, 본문의 백틱·`$`·따옴표가 셸에서 변조된다.
 
@@ -127,6 +127,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
    남은 일: <없으면 「없음」>
    승인 필요 항목: <없으면 「없음」>
    HUMAN-VERIFY·미검증: <없으면 「없음」>
+   환경 마찰: <hook 차단·AGENTS.md 에 없어 찾거나 물은 명령·같은 원인 반복 실패 — 겪을 때 Progress Log 에 적어 모은다(올린 곳이 있으면 그 위치) · 없으면 「없음」>
    BODY
    )"
 4. 문제가 생기면 pjc:pjc-systematic-debugging 절차로 근본 원인을 고친다 — 테스트 skip·예외 삼키기·하드코딩·검증 완화 같은 우회는 쓰지 않는다.
@@ -171,7 +172,7 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
   - ② `승인 필요 항목` 이 없거나, 체인 승인 때 명시해 승인받은 것뿐이다(위임 켜짐 시 `references/delegation.md`「외부 계약 위임」 의 추가 포함)
   - ③ `DB 변경` 이 체인 승인의 DB 목록 안이다
 - **봉투 대조가 어긋나면 `references/delegation.md`「봉투 밖 승인 요청」 을 읽고 따른다** — 봉투 밖이라는 사실만으로 사용자에게 넘기지 않는다.
-- **사용자에게 넘길 때는 `references/user-relay.md`「사용자에게 넘기기」 를 읽고 따른다.**
+- **앞 계획에서 답한 질문이 컨텍스트에 있으면 `references/prior-answers.md`「앞선 답」, 사용자에게 넘길 때는 `references/user-relay.md`「사용자에게 넘기기」 를 읽고 따른다.**
 
 ## 보고
 
