@@ -119,7 +119,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 진행:
 1. pjc:plan 을 Skill 도구로 부르되 args 첫 줄에 [chain-plan 중계] 를 두고 위 실측 기준·원문·재진술·실측 요지를 그대로 싣는다. 승인되면 pjc:implement 를 Skill 도구로 불러 마지막 task 까지 간다.
 2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 --timeout-ms 540000 과 2>/dev/null 을 더해 Bash 도구 timeout 600000 으로 보낸다(만료되면 ask --resume <questionId>). 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이거나 체인 승인 위임 답(Y (체인 승인 위임 — …))이거나 코디네이터 판정 답(… (코디네이터 판정 — …))이라, 셋 다 사용자 응답·승인으로 본다. 워커 화면에는 묻지 않는다(AskUserQuestion 금지).
-3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 아래 --body 를 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed 에 --body 로 사유·남은 task 를 싣는다.
+3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 아래 --body 를 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed 에 --body 로 사유·남은 task·환경 마찰을 싣는다.
    --body "$(cat <<'BODY'
    결과: <1줄>
    사용자용 요약: <무엇이 바뀌었나 — 사용자 관점 2~3줄>
@@ -127,7 +127,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
    남은 일: <없으면 「없음」>
    승인 필요 항목: <없으면 「없음」>
    HUMAN-VERIFY·미검증: <없으면 「없음」>
-   환경 마찰: <hook 차단·AGENTS.md 에 없어 찾거나 물은 명령·같은 원인 반복 실패 — 겪을 때 Progress Log 에 적어 모은다(올린 곳이 있으면 그 위치) · 없으면 「없음」>
+   환경 마찰: <겪은 것마다 「<무엇> ×<횟수>」 — hook 차단·AGENTS.md 에 없어 찾거나 물은 명령·원인별 실패(1회도) · 겪을 때 Progress Log 에 적어 모은다(올린 곳이 있으면 그 위치) · 없으면 「없음」>
    BODY
    )"
 4. 문제가 생기면 pjc:pjc-systematic-debugging 절차로 근본 원인을 고친다 — 테스트 skip·예외 삼키기·하드코딩·검증 완화 같은 우회는 쓰지 않는다.
@@ -172,7 +172,7 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
   - ② `승인 필요 항목` 이 없거나, 체인 승인 때 명시해 승인받은 것뿐이다(위임 켜짐 시 `references/delegation.md`「외부 계약 위임」 의 추가 포함)
   - ③ `DB 변경` 이 체인 승인의 DB 목록 안이다
 - **봉투 대조가 어긋나면 `references/delegation.md`「봉투 밖 승인 요청」 을 읽고 따른다** — 봉투 밖이라는 사실만으로 사용자에게 넘기지 않는다.
-- **앞 계획에서 답한 질문이 컨텍스트에 있으면 `references/prior-answers.md`「앞선 답」, 사용자에게 넘길 때는 `references/user-relay.md`「사용자에게 넘기기」 를 읽고 따른다.**
+- **앞 워커에게 답한 질문이 컨텍스트에 있으면 `references/prior-answers.md`「앞선 답」, 사용자에게 넘길 때는 `references/user-relay.md`「사용자에게 넘기기」 를 읽고 따른다.**
 
 ## 보고
 
