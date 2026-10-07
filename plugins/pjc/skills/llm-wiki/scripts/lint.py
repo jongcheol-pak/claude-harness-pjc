@@ -1884,8 +1884,10 @@ def rollover_log(ses):
         if not ses.dry_run:
             os.makedirs(arch_dir, exist_ok=True)
             _write_or_abort(af, body, abom, anl, arch_rel)
-        dates = sorted(d for d, _b in targets[mon])
-        line = "- %s.md: %d건 (%s~%s)" % (mon, len(blocks), dates[0], dates[-1])
+        # 건수·기간은 **월 파일 전체**로 센다(`_archive_span`) — 기존 월 파일에 append 했으면
+        #  이번 이동분만으로는 이미 옮겨 둔 항목이 인덱스에서 사라진다.
+        total, first, last = _archive_span(body)
+        line = "- %s.md: %d건 (%s~%s)" % (mon, total, first, last)
         idx_sec = section(new_text, "아카이브 인덱스")
         if idx_sec:
             rx = re.compile(r"(?m)^- %s\.md:.*$" % re.escape(mon))
