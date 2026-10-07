@@ -1754,6 +1754,22 @@ def _split_items(section_text):
     return head, out
 
 
+def _archive_span(text):
+    """아카이브 본문 **전체**의 (건수, 가장 오래된 날짜, 가장 최신 날짜) — 포인터·인덱스 값(§2.2·§2.8·§8).
+
+    **이번에 옮긴 항목이 아니라 아카이브 파일 전체로 잰다** — append 하는 아카이브는 이전 실행이
+    옮긴 항목을 이미 담고 있어, 이동분으로 범위를 쓰면 포인터가 「가장 오래된 날짜」를 잃는다
+    (실 vault: 「2026-10-06~2026-10-06, 누적 405건」 — 실제 2026-07-22~10-06).
+
+    불릿 셋은 롤오버가 옮기는 단위(`_split_items`)와 같고, 날짜는 **앞부분만** 읽는다 —
+    `- [2026-09-26~27]` 같은 범위 표기도 한 항목으로 센다. `strip_code` 사본으로 세는 것은
+    코드펜스 안에 인용된 `- [날짜]` 줄을 항목으로 세지 않기 위해서다(`_decision_body_span` 과 같다)."""
+    dates = sorted(re.findall(r"(?m)^[-*+] \[(\d{4}-\d{2}-\d{2})", strip_code(text)))
+    if not dates:
+        return 0, None, None
+    return len(dates), dates[0], dates[-1]
+
+
 def _rollover_items(items, fits, keep_min=1):
     """항목 목록에서 **가장 오래된 것부터** 이동 대상을 고른다(§2.8·§8 롤오버 공용).
 
@@ -1957,9 +1973,8 @@ def rollover_decisions(ses):
         # `## 아카이브` 포인터(§2.8·§7-24). **기존 포인터가 있으면 그 형식을 유지**하고
         #  날짜·건수만 갱신한다 — 실 vault는 규정 문면과 다른 wikilink 형식을 쓰는데(실측),
         #  그것도 §7-24를 통과하므로 형식을 갈아엎을 이유가 없다.
-        dates = sorted(d for d, _b in moving)
-        total = len(re.findall(r"(?m)^- \[\d{4}-\d{2}-\d{2}", arch_text))
-        span = "%s~%s, 누적 %d건" % (dates[0], dates[-1], total)
+        total, first, last = _archive_span(arch_text)
+        span = "%s~%s, 누적 %d건" % (first, last, total)
         sec = section(new_text, "아카이브")
         if sec and DEC_PTR_RX.search(sec):
             new_sec = re.sub(r"\(\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}, 누적 \d+건\)",
@@ -2067,9 +2082,8 @@ def rollover_hub_changes(ses):
         # `## 아카이브` 포인터(§2.2 — 정합은 §7-30ⓐ). decision-log와 같은 처리다:
         #  기존 포인터가 있으면 그 형식을 유지한 채 날짜·건수만 갱신하고, 없을 때만 규정
         #  형식으로 신설한다(실 vault 포인터가 규정 문면과 다른 wikilink 형식을 쓴다).
-        dates = sorted(d for d, _b in moving)
-        total = len(re.findall(r"(?m)^- \[\d{4}-\d{2}-\d{2}", arch_text))
-        span = "%s~%s, 누적 %d건" % (dates[0], dates[-1], total)
+        total, first, last = _archive_span(arch_text)
+        span = "%s~%s, 누적 %d건" % (first, last, total)
         asec = section(new_text, "아카이브")
         if asec and CHG_PTR_RX.search(asec):
             upd = re.sub(r"\(\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}, 누적 \d+건\)",
