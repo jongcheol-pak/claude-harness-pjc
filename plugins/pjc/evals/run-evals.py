@@ -20,6 +20,9 @@
   checker         harness | truncation | stale  (`--filter` 가 이 필드와 매치한다)
   fixture         `fixtures/` 아래 디렉터리 이름
   mutate          [{file, find, replace}] — 사본에 넣을 변이. 생략하면 정상 케이스.
+  mutate_after_commit  `mutate` 와 같은 형식 — `mutate` → `git init`·`add -A` → `commit` 뒤에
+                  넣는다. git 작업 트리 변경(HEAD 대비)을 재는 통지가 쓴다. 없으면 커밋하지 않는다
+                  (HEAD 없음 — 기존 케이스 그대로).
   cli_args        검사기에 줄 인자 (예: ["--ledger"])
   expect_rc       기대 종료 코드 (기본 0)
   expect_keywords 출력에 있어야 하는 문구
@@ -102,10 +105,44 @@ def build_tree(case):
     os.makedirs(dst_dir, exist_ok=True)
     shutil.copyfile(os.path.join(HERE, checker), os.path.join(dst_dir, checker))
 
-    for mut in case.get("mutate", []):
+    err = apply_mutations(root, case.get("mutate", []))
+    if err:
+        return None, err, tmp
+
+    env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1",
+               GIT_AUTHOR_NAME="eval", GIT_AUTHOR_EMAIL="eval@local",
+               GIT_COMMITTER_NAME="eval", GIT_COMMITTER_EMAIL="eval@local")
+    git_steps = [("init", ["init", "-q"]), ("add", ["add", "-A"])]
+    # 커밋 뒤 변이가 있을 때만 커밋한다 — 기존 케이스는 HEAD 없는 트리를 전제로 짰다.
+    #   서명·전역 hook 이 켜진 환경에서 커밋이 멈추거나 실패하지 않게 둘 다 끈다.
+    if case.get("mutate_after_commit"):
+        git_steps.append(("commit", ["-c", "commit.gpgsign=false", "-c", "core.hooksPath=",
+                                     "commit", "-q", "--no-verify", "-m", "eval"]))
+    for name, args in git_steps:
+        # `timeout` + `stdin` 차단: 상한이 없으면 매달린 git 하나가 러너 전체를 무한 대기시키고,
+        #   그때 러너를 강제로 끊으면 git 이 고아로 남는다. `stdin` 을 닫는 것은 자격증명·에디터
+        #   프롬프트가 입력을 기다리며 상한까지 버티는 것을 막기 위해서다(`llm-wiki/scripts/lint.py`
+        #   가 같은 이유로 `DEVNULL` 을 쓴다). 20초는 git 단발 호출의 상한이다.
+        try:
+            r = subprocess.run(["git", "-C", root] + args, capture_output=True, env=env,
+                               timeout=20, stdin=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            return None, "git %s 20초 초과 — 케이스를 실패로 돌린다" % name, tmp
+        if r.returncode != 0:
+            return None, "git %s 실패: %s" % (name, r.stderr.decode("utf-8", "replace")[:120]), tmp
+
+    err = apply_mutations(root, case.get("mutate_after_commit", []))
+    if err:
+        return None, err, tmp
+    return root, None, tmp
+
+
+def apply_mutations(root, mutations):
+    """변이 목록을 트리에 넣는다. 실패하면 사유 문자열, 성공하면 None."""
+    for mut in mutations:
         p = os.path.join(root, mut["file"].replace("/", os.sep))
         if not os.path.exists(p):
-            return None, "변이 대상 없음: " + mut["file"], tmp
+            return "변이 대상 없음: " + mut["file"]
         # 파일 삭제 변이 — 참조 대상의 **부재**를 재는 축(핵심 포인터 실재의 ⓐ 분기)은
         #   치환으로 표현할 수 없다. `find`/`replace` 없이 `delete` 만 적는다.
         if mut.get("delete"):
@@ -116,27 +153,11 @@ def build_tree(case):
         with io.open(p, encoding="utf-8", newline="") as fh:
             body = fh.read()
         if mut["find"] not in body:
-            return None, "변이 앵커 불일치: %s / %r" % (mut["file"], mut["find"][:40]), tmp
+            return "변이 앵커 불일치: %s / %r" % (mut["file"], mut["find"][:40])
         body = body.replace(mut["find"], mut["replace"])
         with io.open(p, "w", encoding="utf-8", newline="") as fh:
             fh.write(body)
-
-    env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1",
-               GIT_AUTHOR_NAME="eval", GIT_AUTHOR_EMAIL="eval@local",
-               GIT_COMMITTER_NAME="eval", GIT_COMMITTER_EMAIL="eval@local")
-    for args in (["init", "-q"], ["add", "-A"]):
-        # `timeout` + `stdin` 차단: 상한이 없으면 매달린 git 하나가 러너 전체를 무한 대기시키고,
-        #   그때 러너를 강제로 끊으면 git 이 고아로 남는다. `stdin` 을 닫는 것은 자격증명·에디터
-        #   프롬프트가 입력을 기다리며 상한까지 버티는 것을 막기 위해서다(`llm-wiki/scripts/lint.py`
-        #   가 같은 이유로 `DEVNULL` 을 쓴다). 20초는 `git init`·`add` 단발 호출의 상한이다.
-        try:
-            r = subprocess.run(["git", "-C", root] + args, capture_output=True, env=env,
-                               timeout=20, stdin=subprocess.DEVNULL)
-        except subprocess.TimeoutExpired:
-            return None, "git %s 20초 초과 — 케이스를 실패로 돌린다" % args[0], tmp
-        if r.returncode != 0:
-            return None, "git %s 실패: %s" % (args[0], r.stderr.decode("utf-8", "replace")[:120]), tmp
-    return root, None, tmp
+    return None
 
 
 def run_case(case):
