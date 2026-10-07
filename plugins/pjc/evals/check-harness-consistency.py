@@ -4,7 +4,7 @@ r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것�
 사용법: python plugins/pjc/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
        python plugins/pjc/evals/check-harness-consistency.py --fix [--dry-run]
 
-축: ① 포인터 도달성 ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ batch 차수 수열
+축: ① 포인터 도달성(+하위 통지 「줄이 지워진 절」) ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ batch 차수 수열
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
     ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 분할 헬퍼 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
     ⑲ 영향 검토 3축 ⑳ 관련 파일 파서 동기 ㉑ 큐 태그 열거 정합(+하위 「수 표현」)
@@ -105,6 +105,76 @@ def _md_files():
                 yield os.path.join(base, n)
 
 
+# 축 ① 과 「줄이 지워진 절」 통지가 함께 쓰는 포인터 해석 — 두 곳에 두면 한쪽만 고쳐진다.
+# 근거는 `harness-consistency-rationale.md` 의 「축 ① — 왜 「절 이름 동반」만 포인터로 세는가」.
+# ⚠ **배제 문자를 늘리거나 절 이름 상한을 내리지 말 것** — 둘 다 무음 누락을 낸 전례가 있다.
+#   사유는 같은 문서의 「축 ① — 정규식을 좁히면 침묵한다」.
+_POINTER_RX = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
+# 대장 2종 + 이력 intent 1건 파일 단위 면제 — 근거는 `harness-consistency-rationale.md`의 「§5 축 ① — 대장 2종을 파일 단위로 통째 면제하는 이유」
+_POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md",
+                       "intent/2026-09-12-close-waiting-three.md"}
+
+
+def _pointer_sources():
+    """포인터 출처 — `.md` 와 hook 스크립트. 과거 plan·로컬 노트·문서 아카이브는 뺀다."""
+    # hook 스크립트도 포인터 소스다 — v1.225.0에서 근거 주석을 `rules/*-rationale.md`로 내리며
+    #   `.ps1`이 그 문서의 절을 가리키게 됐는데, 이 축이 마크다운만 보아 **끊긴 포인터 46건이
+    #   exit 0으로 통과했다**(완료 리뷰가 잡았다). 소스에 스크립트를 더해 같은 결함을 막는다.
+    out = []
+    for src in list(_md_files()) + sorted(glob.glob(os.path.join(ROOT, "plugins/pjc/scripts/*.ps1"))):
+        rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
+        # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
+        # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
+        # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
+        if not (_ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY):
+            out.append((src, rel_src))
+    return out
+
+
+def _md_suffix_index():
+    # 부분 경로(`implement/SKILL.md`처럼 repo 루트 기준이 아닌 표기)를 해석하기 위한 색인.
+    # 이 repo의 문서는 같은 파일을 전체 경로·부분 경로 두 방식으로 가리키며, 부분 표기를
+    # 해석하지 않으면 그 참조가 통째로 검사에서 빠진다(초기 구현에서 8건이 그렇게 빠졌다).
+    by_suffix = {}
+    for f in _md_files():
+        parts = os.path.relpath(f, ROOT).replace(os.sep, "/").split("/")
+        for i in range(len(parts)):
+            by_suffix.setdefault("/".join(parts[i:]), []).append(f)
+    return by_suffix
+
+
+def _resolve_pointer(src, ref_path, by_suffix):
+    """포인터 경로를 실재 파일로 푼다 — 루트 기준 · 출처 기준 · 유일 접미 · 같은 스킬 폴더. 못 풀면 None."""
+    cand = [os.path.join(ROOT, ref_path.replace("/", os.sep)),
+            os.path.join(os.path.dirname(src), ref_path.replace("/", os.sep))]
+    target = next((c for c in cand if os.path.exists(c)), None)
+    if target is None:
+        # 부분 경로 표기(`implement/SKILL.md`처럼 `plugins/pjc/skills/`
+        # 접두가 빠진 형제-스킬 참조)를 접미 색인으로 해석한다. 후보가 여럿이면
+        # 어느 것을 뜻하는지 확정할 수 없으므로 해석하지 않는다(추측 금지).
+        hits = by_suffix.get(ref_path, [])
+        if len(hits) == 1:
+            target = hits[0]
+    if target is None and "/" not in ref_path:
+        # **같은 스킬 폴더 기준 해석.** `references/` 안의 문서가 자기 스킬의 `SKILL.md`를
+        #   이름만으로 가리키는 표기가 흔한데 ②③ 이 둘 다 실패한다(사유는 rationale).
+        #   출처에서 위로 거슬러 `skills/<name>/` 경계를 찾아 그 폴더에서만 찾으면
+        #   후보가 하나로 확정된다(추측이 아니라 소속으로 정해진다).
+        #   한계는 `harness-consistency-rationale.md` 의 「축 ① — 같은 스킬 폴더 해석의 한계」.
+        skill_dir = os.path.dirname(src)
+        while True:
+            up = os.path.dirname(skill_dir)
+            if not up or up == skill_dir:
+                break
+            if os.path.basename(up) == "skills":
+                skill_cand = os.path.join(skill_dir, ref_path)
+                if os.path.exists(skill_cand):
+                    target = skill_cand
+                break
+            skill_dir = up
+    return target
+
+
 def check_pointer_reachability():
     """`<경로>` … 「<절 이름>」 형태의 포인터가 대상 파일의 실제 헤딩에 닿는지 본다.
 
@@ -112,10 +182,7 @@ def check_pointer_reachability():
     ⓒ agents/·docs/·references/·다른 SKILL.md → 대상 파일. 경로가 명시된 참조만
     대상으로 삼는 이유는, 경로 없는 「…」는 강조 표기와 구분되지 않아 오탐이 크기 때문이다.
     """
-    # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 왜 「절 이름 동반」만 포인터로 세는가」.
-    # ⚠ **배제 문자를 늘리거나 절 이름 상한을 내리지 말 것** — 둘 다 무음 누락을 낸 전례가 있다.
-    #   사유는 같은 문서의 「축 ① — 정규식을 좁히면 침묵한다」.
-    pat = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
+    pat = _POINTER_RX
     # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 「절 이름 없는 참조」를 판정이 아니라 범위로 내는 이유」.
     pat_any = re.compile(r"`([A-Za-z0-9_./-]+\.md)`")
     # 자기 파일 내부 참조 — 대상이 **그 파일 자신**이라 경로가 선행하지 않는다. 위 `pat` 에도
@@ -182,32 +249,10 @@ def check_pointer_reachability():
         ("docs/plans/deferred-closed.md", "SKILL.md"),
     }
 
-    # 대장 2종 + 이력 intent 1건 파일 단위 면제 — 근거는 `harness-consistency-rationale.md`의 「§5 축 ① — 대장 2종을 파일 단위로 통째 면제하는 이유」
-    POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md",
-                          "intent/2026-09-12-close-waiting-three.md"}
+    POINTER_EXEMPT_SRC = _POINTER_EXEMPT_SRC
+    by_suffix = _md_suffix_index()
 
-    # 부분 경로(`implement/SKILL.md`처럼 repo 루트 기준이 아닌 표기)를 해석하기 위한 색인.
-    # 이 repo의 문서는 같은 파일을 전체 경로·부분 경로 두 방식으로 가리키며, 부분 표기를
-    # 해석하지 않으면 그 참조가 통째로 검사에서 빠진다(초기 구현에서 8건이 그렇게 빠졌다).
-    by_suffix = {}
-    for f in _md_files():
-        rel = os.path.relpath(f, ROOT).replace(os.sep, "/")
-        parts = rel.split("/")
-        for i in range(len(parts)):
-            by_suffix.setdefault("/".join(parts[i:]), []).append(f)
-
-    # hook 스크립트도 포인터 소스다 — v1.225.0에서 근거 주석을 `rules/*-rationale.md`로 내리며
-    #   `.ps1`이 그 문서의 절을 가리키게 됐는데, 이 축이 마크다운만 보아 **끊긴 포인터 46건이
-    #   exit 0으로 통과했다**(완료 리뷰가 잡았다). 소스에 스크립트를 더해 같은 결함을 막는다.
-    _ptr_sources = list(_md_files()) + sorted(glob.glob(os.path.join(ROOT, "plugins/pjc/scripts/*.ps1")))
-
-    for src in _ptr_sources:
-        rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
-        # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
-        # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
-        # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
-        if _ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY:
-            continue
+    for src, rel_src in _pointer_sources():
         text = open(src, encoding="utf-8-sig", errors="replace").read()
         # 대장 2종은 위에서 이미 파일 단위 면제라 계수에서도 뺀다 — 그 둘은 관측 시점의
         #   기록이라 산문 언급이 많고(실측 302건), 넣으면 이 수가 부풀어 신호가 죽는다.
@@ -216,33 +261,7 @@ def check_pointer_reachability():
             unnamed += len(pat_any.findall(text)) - _named
             named += _named
         for ref_path, sec_name in pat.findall(text):
-            cand = [os.path.join(ROOT, ref_path.replace("/", os.sep)),
-                    os.path.join(os.path.dirname(src), ref_path.replace("/", os.sep))]
-            target = next((c for c in cand if os.path.exists(c)), None)
-            if target is None:
-                # 부분 경로 표기(`implement/SKILL.md`처럼 `plugins/pjc/skills/`
-                # 접두가 빠진 형제-스킬 참조)를 접미 색인으로 해석한다. 후보가 여럿이면
-                # 어느 것을 뜻하는지 확정할 수 없으므로 해석하지 않는다(추측 금지).
-                hits = by_suffix.get(ref_path, [])
-                if len(hits) == 1:
-                    target = hits[0]
-            if target is None and "/" not in ref_path:
-                # **같은 스킬 폴더 기준 해석.** `references/` 안의 문서가 자기 스킬의 `SKILL.md`를
-                #   이름만으로 가리키는 표기가 흔한데 ②③ 이 둘 다 실패한다(사유는 rationale).
-                #   출처에서 위로 거슬러 `skills/<name>/` 경계를 찾아 그 폴더에서만 찾으면
-                #   후보가 하나로 확정된다(추측이 아니라 소속으로 정해진다).
-                #   한계는 `harness-consistency-rationale.md` 의 「축 ① — 같은 스킬 폴더 해석의 한계」.
-                skill_dir = os.path.dirname(src)
-                while True:
-                    up = os.path.dirname(skill_dir)
-                    if not up or up == skill_dir:
-                        break
-                    if os.path.basename(up) == "skills":
-                        skill_cand = os.path.join(skill_dir, ref_path)
-                        if os.path.exists(skill_cand):
-                            target = skill_cand
-                        break
-                    skill_dir = up
+            target = _resolve_pointer(src, ref_path, by_suffix)
             if target is None:
                 # 경로 표기가 다양해(상대·부분 경로) 해석 실패를 곧바로 결함으로 보면 오탐이 크다.
                 # 다만 **조용히 넘기지는 않는다** — 파일이 실제로 삭제·이동된 경우가 가장 심한
@@ -308,6 +327,98 @@ def check_pointer_reachability():
                       "정당하면 POINTER_EXEMPT에 등재할 것): %s"
                       % (len(skipped), " / ".join(skipped[:5]) + (" …" if len(skipped) > 5 else "")))
     return issues, checked
+
+
+def _heading_chain(lines):
+    """줄마다 그 줄을 감싼 헤딩의 줄 번호 목록(바깥→안). 코드 펜스 안의 `#` 줄은 헤딩이 아니다."""
+    stack, fence, out = [], False, []
+    for i, line in enumerate(lines):
+        if re.match(r"^(```|~~~)", line):
+            fence = not fence
+        m = None if fence else re.match(r"^(#{1,6}) +\S", line)
+        if m:
+            stack = [s for s in stack if s[0] < len(m.group(1))] + [(len(m.group(1)), i)]
+        out.append([s[1] for s in stack])
+    return out
+
+
+def _anchor_section(lines, chain, sec_name):
+    """포인터 절 이름이 닿는 절(헤딩 줄 번호) — 헤딩이면 그 헤딩, 볼드·불릿·표 셀이면 감싼 가장 안쪽 헤딩."""
+    sn = sec_name.strip()
+    for i, line in enumerate(lines):
+        m = re.match(r"^#{1,6} +(.+?)\s*$", line)
+        if m and chain[i] and chain[i][-1] == i:
+            h = m.group(1).strip()
+            if h.startswith(sn) or _HEADING_PREFIX_RX.sub("", h).strip().startswith(sn):
+                return i
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if ("**" + sn) in s or re.match(r"^[-*] +" + re.escape(sn), s) or (s.startswith("|") and ("| " + sn) in s):
+            return chain[i][-1] if chain[i] else None
+    return None
+
+
+def check_deleted_section_pointers():
+    """「줄이 지워진 절」 통지 — 축 ① 의 하위 통지라 `issues` 가 아니다(exit 코드 불변).
+
+    왜: 절에서 규칙 줄만 지우면 절 이름이 남아 축 ① 이 통과한다. 그 절을 가리키던 포인터가
+    기대던 규칙이 사라져도 기계가 모른다(2026-10-05 chain-plan 의 한 줄 삭제 계획에서
+    merge.md 의 절 이름 포인터가 빈 자리를 가리킬 뻔했고 계획 리뷰 2라운드가 잡았다).
+    순감 절: `git diff -U0 --diff-filter=M HEAD` 의 hunk 마다 (삭제 − 추가)를 hunk 시작 줄을
+    감싼 헤딩과 상위 헤딩(줄 위치로 식별)에 더한 합이 양수인 절. 문맥 줄을 두면 hunk 시작이
+    문맥 줄이라 헤딩 바로 아래 삭제가 앞 절로 간다.
+    못 잡는 것: 한 줄 안의 구 삭제 · 여러 절에 걸친 hunk(시작 절에 몰아 귀속) · 지우기 전
+    계획 단계 · 자기 파일 참조(출처 == 대상 — 지우는 세션이 그 파일을 보고 있다) · 병행 세션의
+    미커밋 변경이 섞이는 오탐. HEAD 가 없거나 git 이 실패하면 아무것도 내지 않는다.
+    """
+    def git(*args):
+        try:
+            r = subprocess.run(["git", "-c", "core.quotePath=false", "-C", ROOT] + list(args),
+                               capture_output=True, encoding="utf-8", errors="replace",
+                               timeout=30, stdin=subprocess.DEVNULL)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        return r.stdout if r.returncode == 0 else None
+
+    diff = git("diff", "-U0", "--diff-filter=M", "HEAD", "--", "*.md")
+    if not diff:
+        return []
+    files, cur = {}, None  # 경로 → [HEAD 판 줄, 헤딩 계층, {헤딩 줄: 순감}]
+    for line in diff.splitlines():
+        if line.startswith("--- a/"):
+            old = git("show", "HEAD:" + line[6:])
+            cur = None
+            if old is not None:
+                lines = old.splitlines()
+                cur = files.setdefault(line[6:], [lines, _heading_chain(lines), {}])
+            continue
+        m = re.match(r"@@ -(\d+)(?:,(\d+))? \+\d+(?:,(\d+))? @@", line)
+        if m and cur and cur[1]:
+            n_del = int(m.group(2)) if m.group(2) is not None else 1
+            n_add = int(m.group(3)) if m.group(3) is not None else 1
+            for h in cur[1][min(max(int(m.group(1)) - 1, 0), len(cur[1]) - 1)]:
+                cur[2][h] = cur[2].get(h, 0) + n_del - n_add
+    shrunk = {rel: {h for h, v in f[2].items() if v > 0} for rel, f in files.items()}
+    shrunk = {rel: hs for rel, hs in shrunk.items() if hs}
+    if not shrunk:
+        return []
+    by_suffix, hits = _md_suffix_index(), []
+    for src, rel_src in _pointer_sources():
+        if rel_src in _POINTER_EXEMPT_SRC:
+            continue
+        for no, text in enumerate(open(src, encoding="utf-8-sig", errors="replace").read().splitlines(), 1):
+            for ref_path, sec_name in _POINTER_RX.findall(text):
+                target = _resolve_pointer(src, ref_path, by_suffix)
+                rel_t = target and os.path.relpath(target, ROOT).replace(os.sep, "/")
+                if rel_t not in shrunk or rel_t == rel_src:
+                    continue
+                lines, chain, _ = files[rel_t]
+                if _anchor_section(lines, chain, sec_name) in shrunk[rel_t]:
+                    hits.append("%s「%s」 ← %s:%d" % (rel_t, sec_name.strip(), rel_src, no))
+    if not hits:
+        return []
+    return ["줄이 지워진 절을 가리키는 포인터 %d건 — 그 포인터가 기대던 규칙이 아직 그 절에 있는지 "
+            "확인한다: %s" % (len(hits), " / ".join(hits))]
 
 
 # 대장 항목 1건의 문자 상한. 정본 문면은 `docs/plans/deferred.md` 머리말과
@@ -2076,8 +2187,8 @@ def main():
 
     print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
     # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
-    for m in (check_agents_target() + budget_notices + close_notices
-              + ledger_notices + rule_notices + tagenum_notices + count_notices):
+    for m in (check_agents_target() + check_deleted_section_pointers() + budget_notices
+              + close_notices + ledger_notices + rule_notices + tagenum_notices + count_notices):
         print("[NOTICE] %s" % m)
     if all_issues:
         for m in all_issues:
