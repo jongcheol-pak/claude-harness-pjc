@@ -21,7 +21,7 @@ HUMAN-VERIFY·미검증: <워커 --body 에서 받은 것 전부>
 환경 개선 후보: <마찰마다 「<무엇> — <횟수> · <출처: plan N 워커 | 코디네이터> — <행선지 | 올린 위치>」 — 없으면 「없음」>
 인계 파일: <경로 — 지움 <커밋 sha> | 남김 — <사유>>
 남은 탭: <체인이 끝나거나 멈출 때 `worker-list --run <Run id> --json` 의 이 Run 행 중 `terminalState` 가 `released` 가 아닌 것(dispatch·state·terminalState) · CLI 오류 응답(`worker_start_failed`·`duplicate_worker`·`task_not_startable`)이 이름 댄 다른 탭·dispatch — 없으면 줄 생략>
-멈춘 사유·남은 task: <멈췄을 때만 — CLI 오류로 멈췄으면 코드·`error` 문장, `protocol_error` 면 retry id 와 「이미 실행됐을 수 있다 — `worker-list` 로 확인」>
+멈춘 사유·남은 task: <멈췄을 때만 — CLI 오류로 멈췄으면 코드·`error` 문장, `protocol_error` 면 retry id 와 「이미 실행됐을 수 있다 — `worker-list` 로 확인」 · stall·failed 로 멈췄으면 「워커를 그 탭에서 직접 이어 가게 했으면 이 탭에 「plan <N> 워커 재개」라고 알린다 — 체인이 거기서 잇는다」>
 ```
 
 - **plan 별 칸은 워커 `--body` 의 같은 이름 필드에서만 채운다** — 이 세션은 파일을 읽지 않으므로, 필드에 없는 것을 채우면 추측이다. 남은 탭은 그때 돌린 `worker-list` 출력과 CLI 오류 응답에서 온다 — 멈춘 경로(`release.md`「닫기」 가 자리만 푼 abandon·failed·대기 스크립트 stall 의 retain·시작 이상의 abandon)가 무엇이든 탭이 남은 dispatch 가 한 출력에 모인다. `worker-list` 가 실패하면 받아 둔 `worker-release`·`worker-retain` 응답, `worker-stop`·`worker-abandon` 응답과 CLI 오류 응답으로 채우고 나머지는 `모름` 으로 적는다. 멈춘 사유는 `failed` 의 `--body` 나 CLI 오류 응답에서 온다(`cli-errors.md`「오류 응답」). **예외는 이어받기다** — `이어받기:` 수는 이 세션이 만든 이어받기 task 수에서 오고, plan N 칸은 원 워커와 이어받기 워커의 `--body` 를 합친다(무엇이 바뀌었나·확인 방법은 이어 붙이고, 남은 일은 이어받기로 처리한 `[다음 회차]` 만 빼고 모든 워커의 것을 합친다 — 마지막 워커의 것만 쓰면 앞 워커가 남긴 일이 사라진다).

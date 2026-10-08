@@ -1,6 +1,6 @@
 # 완료 보고 확인·닫기 (`pjc:chain-plan` — succeeded 뒤)
 
-> `../SKILL.md` 「워커 루프」가 `worker_done` 의 `succeeded` 를 받았을 때 이 파일을 연다 — 워커가 최종 보고 텍스트를 다 그렸는지 가른 뒤(「완료 보고 확인」) 그 탭을 닫는다(「닫기」). `continuation.md` 의 이어받기와 `cli-errors.md` 의 `duplicate_worker` 이 Run 갈래도 「닫기」 를 쓴다.
+> `../SKILL.md` 「워커 루프」가 `worker_done` 의 `succeeded` 를 받았을 때 이 파일을 연다 — 워커가 최종 보고 텍스트를 다 그렸는지 가른 뒤(「완료 보고 확인」) 그 탭을 닫는다(「닫기」). `continuation.md` 의 이어받기와 `cli-errors.md` 의 `duplicate_worker` 이 Run 갈래도 「닫기」 를 쓴다. 사후 완료 status 를 받았을 때도(`manual-resume.md`「사후 완료」) 두 절(「완료 보고 확인」·「닫기」)을 쓴다.
 
 ## 완료 보고 확인
 
