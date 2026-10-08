@@ -1112,5 +1112,28 @@ if (Test-HookSelected @('session-context')) {
         Remove-Item -Force (Join-Path $md 'sc-ttl-new') -ErrorAction SilentlyContinue
     }
     Remove-Item -Recurse -Force $scMkProj -ErrorAction SilentlyContinue
+
+    # ---- [회차 3 T6] Get-StaleFeatures 전체 시간 상한 (단위 — 함수를 직접 부른다) ----
+    # 상한 0 이면 feature 를 하나도 재지 않고 `TimedOut` 으로 멈춰야 한다. 상한이 없던 구현은
+    #   `TimedOut` 키가 없고 뒤처진 feature 를 그대로 낸다. hook 을 거치지 않는 이유는 상한이 함수
+    #   인자라 hook 입력으로 바꿀 길이 없고, 정상 경로는 위 뒤처짐 케이스들이 이미 hook 으로 잰다.
+    if ($gitOk) {
+        . (Join-Path $scriptsDir 'session-wiki-signals.ps1')
+        $sfRepo = Join-Path $work 'sf-budget-repo'
+        $sfFeat = Join-Path $work 'sf-budget-feat'
+        New-Item -ItemType Directory (Join-Path $sfRepo 'src') -Force | Out-Null
+        New-Item -ItemType Directory $sfFeat -Force | Out-Null
+        Push-Location $sfRepo
+        git init -q; git config user.email t@t; git config user.name t
+        'x' | Set-Content (Join-Path $sfRepo 'src/a.txt')
+        git add .; git commit -qm base
+        Pop-Location
+        @('---', 'type: feature', 'updated: 2000-01-01', '---', '', '## 관련 파일', '', '- `src/a.txt` — 대상') |
+            Set-Content -Encoding UTF8 (Join-Path $sfFeat 'feat-a.md')
+        $sf = Get-StaleFeatures -FeatureDir $sfFeat -RepoRoot $sfRepo -BudgetMs 0
+        $sfOk = ($sf.TimedOut -eq $true) -and (@($sf.Names).Count -eq 0)
+        Assert-Case -Name "session-context: 뒤처짐 계산이 시간 상한 0 에서 멈춘다 (회차 3 T6)" -R @{ code = ([int](-not $sfOk)); out = "TimedOut=$($sf.TimedOut) / Names=$(@($sf.Names) -join ',')" } -ExpectExit 0
+        Remove-Item -Recurse -Force $sfRepo, $sfFeat -ErrorAction SilentlyContinue
+    }
 }   # ---- §13 게이트 끝 (session-context) ----
 

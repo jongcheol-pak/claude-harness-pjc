@@ -5,15 +5,20 @@
 #   사람 몫**이었다. 실측(회차 64): 이 프로젝트 feature 12건 중 8건이 updated 이후 소스 변경.
 # ⚠ **이 파서는 `lint.py` 의 `## 관련 파일` 수집 규칙과 수동 동기화 대상이다** — 코드를 공유하지
 #   않기로 했으므로(같은 판정을 두 벌 두지 않는다), 그쪽 형식이 바뀌면 여기도 확인해야 한다.
-# ⚠ **상한과 타임아웃을 둔다** — vault 실측 최대가 31 feature 라 40 이면 현 vault 전체가 들어오고
-#   이상 증식만 걸린다. 상한을 넘으면 **거기서 멈추되 「이하 미검사」를 남긴다**(조용히 자르면
-#   0건과 구분되지 않는다). 10초는 `lint.py` 가 같은 목적으로 쓰는 값이라 새 상수를 만들지 않는다.
+# ⚠ **건수 상한과 시간 상한을 둔다** — vault 실측 최대가 31 feature 라 40 이면 현 vault 전체가 들어오고
+#   이상 증식만 걸린다. 전체 시간 상한(`-BudgetMs`, 기본 3초)은 이 hook 의 상한(10초) 안에서 계산이
+#   끝나게 한다 — git 대기 10초가 feature 마다 걸리면 hook 이 죽어 세션 시작 주입 전체가 사라진다.
+#   어느 상한이든 넘으면 **거기서 멈추되 「일부만 검사」를 남긴다**(조용히 자르면 0건과 구분되지 않는다).
+#   git 한 번의 대기는 남은 시간과 10초 중 작은 값이다 — 10초는 `lint.py` 가 같은 목적으로 쓰는 값이다.
 # ⚠ `Start-Job` 을 쓰지 않는다 — feature 마다 runspace 가 생겨 세션 시작이 수 초 늘어난다.
-#   외부 프로세스를 직접 띄우고 `WaitForExit(ms)` 로 잰다.
+#   외부 프로세스를 직접 띄우고 `WaitForExit(ms)` 로 잰다. **출력은 비동기 `ReadToEndAsync` 로 받는다** —
+#   `ReadToEnd()` 를 먼저 부르면 프로세스가 끝날 때까지 거기서 막혀 `WaitForExit` 의 상한이 걸리지
+#   않는다(실측: 4초 걸리는 프로세스에 1초 상한을 줘도 4,422ms 를 기다렸다).
 function Get-StaleFeatures {
-    param([string]$FeatureDir, [string]$RepoRoot)
+    param([string]$FeatureDir, [string]$RepoRoot, [int]$BudgetMs = 3000)
     $scanCap = 40
-    $result = @{ Names = @(); Truncated = $false }
+    $result = @{ Names = @(); Truncated = $false; TimedOut = $false }
+    $budgetWatch = [System.Diagnostics.Stopwatch]::StartNew()
     if (-not (Test-Path -LiteralPath $FeatureDir -PathType Container)) { return $result }
     if (-not (Test-Path -LiteralPath $RepoRoot -PathType Container)) { return $result }
     $files = @(Get-ChildItem -LiteralPath $FeatureDir -Filter '*.md' -File -ErrorAction SilentlyContinue | Sort-Object Name)
@@ -21,6 +26,8 @@ function Get-StaleFeatures {
     $seen = 0
     foreach ($f in $files) {
         if ($seen -ge $scanCap) { $result.Truncated = $true; break }
+        $remainMs = $BudgetMs - [int]$budgetWatch.ElapsedMilliseconds
+        if ($remainMs -le 0) { $result.TimedOut = $true; break }
         $body = $null
         try { $body = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8 } catch { continue }
         if (-not $body) { continue }
@@ -71,10 +78,14 @@ function Get-StaleFeatures {
             $psi.UseShellExecute = $false
             $psi.CreateNoWindow = $true
             $proc = [System.Diagnostics.Process]::Start($psi)
-            $out = $proc.StandardOutput.ReadToEnd()
-            if (-not $proc.WaitForExit(10000)) { try { $proc.Kill() } catch {}; continue }
+            $outTask = $proc.StandardOutput.ReadToEndAsync()
+            if (-not $proc.WaitForExit([Math]::Min(10000, [Math]::Max(1, $remainMs)))) {
+                try { $proc.Kill() } catch {}
+                $result.TimedOut = $true
+                break
+            }
             if ($proc.ExitCode -ne 0) { continue }
-            $lastDate = ("$out").Trim()
+            $lastDate = ("$($outTask.Result)").Trim()
         } catch { continue }
         if (-not $lastDate -or $lastDate.Length -lt 10) { continue }
         if ($lastDate.Substring(0, 10) -gt $upd) { $names.Add($f.Name) }
@@ -185,7 +196,7 @@ function Get-WikiSignals {
                                                 if ($sf.Names.Count -gt 0) {
                                                     $top = (@($sf.Names | Select-Object -First 3) -join ', ')
                                                     $more = if ($sf.Names.Count -gt 3) { ' …' } else { '' }
-                                                    $cap = if ($sf.Truncated) { ' · 40건까지만 검사' } else { '' }
+                                                    $cap = if ($sf.TimedOut) { ' · 시간 상한으로 일부만 검사' } elseif ($sf.Truncated) { ' · 40건까지만 검사' } else { '' }
                                                     $featPart = " · 뒤처진 feature $($sf.Names.Count)건: ${top}${more}${cap}"
                                                 }
                                             } catch { }
