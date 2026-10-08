@@ -65,7 +65,7 @@ function Get-StagedPaths {
 
 function Get-CountMismatchLines {
     <#
-      층 1 잔여 — 축 ⑰ 불일치가 남은 채로 커밋되는 경로를 잡는다(`--fix` 를 안 돌린 경우).
+      층 1 잔여 — 축 ⑰ 불일치·크기 임계 표 기록값 어긋남이 남은 채로 커밋되는 경로를 잡는다(`--fix` 를 안 돌린 경우).
       ⚠ **스테이징 경로와 무관하게 매니페스트 전수로 돈다** — 검증 매핑이 `lint-cases.json`·
         `relocation-cases.json`·`trigger-cases.json` 편집에는 축 ⑰을 부르지 않으므로, 이 자리가
         파일 패턴에 묶이면 그 3종의 드리프트가 커밋까지 통과한다.

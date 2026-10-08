@@ -1935,5 +1935,98 @@
       "줄이 지워진 절을 가리키는 포인터"
     ],
     "why": "**ⓕ 같은 파일 경로 포인터 음성.** 출처와 대상이 같은 파일이면 알리지 않는다 — 그 줄을 지우는 세션이 그 파일을 보고 있다. 경로 형태라 포인터 해석 헬퍼에는 걸리므로 「출처 == 대상」 제외가 없으면 알림이 나 FAIL 한다."
+  },
+  {
+    "id": "fix-conv-dry-run",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--fix",
+      "--dry-run"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 |",
+        "replace": "| `docs/golden-runner.md` | 99 |"
+      }
+    ],
+    "expect_keywords": [
+      "[WOULD-FIX]",
+      "docs/golden-runner.md"
+    ],
+    "expect_absent": [
+      "[FIXED]"
+    ],
+    "why": "**`--fix --dry-run` 이 크기 임계 표 기록값 불일치를 보인다.** 종전엔 그 표가 `--fix` 대상이 아니어서 본 검사는 exit 1 인데 `--fix` 는 「고칠 것 없음」을 냈다(2026-09-21 왕복 1회). 쓰지 않는다는 것은 이 러너가 파일 내용을 못 봐 골든 미측정이다 — 계획의 수동 확인(사본 해시 대조)이 맡는다."
+  },
+  {
+    "id": "fix-conv-apply",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--fix"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 |",
+        "replace": "| `docs/golden-runner.md` | 99 |"
+      }
+    ],
+    "expect_keywords": [
+      "[FIXED]",
+      "docs/golden-runner.md",
+      "남은 치환 0"
+    ],
+    "why": "**`--fix` 가 표 기록값을 실측으로 고치고, 다시 잰 결과가 0 이다.** `--fix` 는 축을 돌리지 않고 끝나므로 「불일치」 부재 단언은 무의미하다 — 적용 뒤 같은 계산을 다시 돌린 결과(남은 치환 0)로 쓰기가 실제로 됐는지를 잰다."
+  },
+  {
+    "id": "fix-conv-self-row",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--fix"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 | 4,000 |",
+        "replace": "| `docs/golden-runner.md` | 118 | 4,000 |\n| `docs/harness-conventions.md` | 99 | 9,999 |"
+      }
+    ],
+    "expect_keywords": [
+      "[FIXED]",
+      "docs/harness-conventions.md",
+      "남은 치환 0",
+      "반복 2회"
+    ],
+    "why": "**자기 행(표를 담은 파일 자신의 크기)은 반복 기입으로 수렴한다.** 틀린 기록값 99(2자리)를 실측(3자리)으로 바꾸면 파일이 1자 늘어 방금 적은 값이 틀린다 — 그래서 쓴 횟수가 2다. 자릿수가 같은 값으로 두면 1회로 끝나 반복 루프를 재지 못한다(위키 conventions-verification-2)."
+  },
+  {
+    "id": "fix-conv-over-cap-untouched",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--fix"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 | 4,000 |",
+        "replace": "| `docs/golden-runner.md` | 118 | 50 |"
+      }
+    ],
+    "expect_keywords": [
+      "고칠 것 없음"
+    ],
+    "expect_absent": [
+      "[FIXED]"
+    ],
+    "why": "**상한 초과는 `--fix` 가 손대지 않는다(회귀).** 기록값은 맞고 상한만 실측보다 작다 — 상한을 올리는 것은 처방이 아니라 판단이라(`AGENTS.md` 「파일 크기」) `--fix` 대상이 아니다."
   }
 ]

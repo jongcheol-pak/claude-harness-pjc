@@ -290,11 +290,8 @@ def check_pointer_reachability():
         # ---- 자기 파일 내부 참조(`아래/위/같은 문서 「절」`) ----
         # 대상은 **이 파일 자신**이라 경로 해석이 없다. 면제·아카이브 규칙은 위와 같은 것을
         #   쓴다(대장 2종은 산문 언급이 많아 파일 단위 면제).
-        # ⚠ **양방향 부분 일치(`_sn in h`)를 쓰지 않는다** — 참조 문장 자신이 80자 이내
-        #   굵은 텍스트면 그것이 앵커로 잡혀 **자기 자신에 도달했다고 판정된다**. 실측:
-        #   `golden-runner.md` 의 `⚠ 아래 「명령」 열은 … 아래 「실행·대기 절차 (정본)」이
-        #   정본이다.` 가 그 형태라, 낡은 절 이름(실제 헤딩은 `실행 절차 (정본)`)이 조용히
-        #   통과했다. 근거는 `harness-consistency-pointer-rationale.md` 의
+        # ⚠ **양방향 부분 일치(`_sn in h`)를 쓰지 않는다** — 참조 문장 자신이 앵커로 잡혀 자기 자신에
+        #   도달했다고 판정된다. 실측·근거는 `harness-consistency-pointer-rationale.md` 의
         #   「축 ① — 양방향 부분 일치를 기각한 이유」.
         if rel_src not in POINTER_EXEMPT_SRC and not _POINTER_SKIP_RX.match(rel_src):
             self_hs = anchors_of(src)
@@ -525,22 +522,9 @@ def check_batch_number_sequence(hist):
 # ─────────────────────────────────────────────────────────────
 # ③ 볼드 마커 짝 · ④ 한 줄 안 문장 중복 (문서 표기 결함)
 # ─────────────────────────────────────────────────────────────
-# 제외 정책 — ⓐ 픽스처는 **의도적으로 깨뜨린** 파일이라 검사 대상이 되면 축이 상시 실패한다
-#  ⓑ `docs/plans/YYYY-MM-DD-*.md`는 과거 회차의 이력 자산이고 그 시점의 사실이라 고치지 않는다
-#  (`deferred.md`는 살아 있는 자산이라 **제외하지 않는다** — 가장 활발히 편집되는 문서다)
-#  ⓑ-2 `docs/.agents-presplit/`도 같은 이유로 제외한다 — 이관 전 문서 사본이라 **고칠 수 없고**,
-#  (그 근거는 `harness-consistency-rationale.md` 의 「축 ③④ — 아카이브 제외의 근거」)
-#  ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
+# 제외 정책(픽스처·이력 plan·아카이브·로컬 전용) — 근거는 `harness-consistency-rationale.md` 의 「§6 축 ③④ — 픽스처·이력·로컬 전용 파일을 빼는 이유」.
 _ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
-# `intent/` 는 **승인 시점의 요구 기록**이라 대상 문서의 절 이름이 나중에 바뀌어도 고치지
-#   않는다(`AGENTS.md` 「Plan Location」 — *"요구는 `intent/`"*). 그래서 **자기 파일 참조
-#   판정에서만** 뺀다 — 두 겹으로 좁힌 것이다. ⓐ `_ARCHIVED_RX` 에 합치면 줄바꿈·예산처럼
-#   intent 에도 적용돼야 할 축까지 함께 꺼지고, ⓑ 축 ① 루프 선두에서 `continue` 하면
-#   **경로 동반 참조(`pat`) 22건의 커버리지가 같이 꺼진다**(회차 66 완료 리뷰 MINOR — 그
-#   22건은 BASE 까지 이 축이 재고 있던 것이다). 끄려던 것은 자기 참조 오탐 2건뿐이다.
-# 회차 66 실측: 이 회차의 intent 가 ⓐ 정규식 형태를 설명하는 인용(`아래/위/같은 문서 「절
-#   이름」`)과 ⓑ 아직 없는 절(`wiki-schema.md`「사실 오기 정정」 — 같은 회차가 만든다)로
-#   끊김 2건을 냈는데, 둘 다 고칠 대상이 아니다.
+# `intent/` 는 자기 파일 참조 판정에서만 뺀다 — 근거는 `harness-consistency-rationale.md` 의 「§7 축 ① — intent 를 자기 파일 참조 판정에서만 빼는 이유」.
 _POINTER_SKIP_RX = re.compile(r"^intent/")
 _LOCAL_ONLY = {"plan.md", "notes.md"}
 # `## §2 ---- 릴리즈 누락 감지` 처럼 rationale 문서의 헤딩에 기계가 붙인 접두. 참조 쪽은
@@ -1174,12 +1158,7 @@ def check_ledger_marker_sync():
                     " (형식 정본은 `plan/references/deferred-rules.md`)" % line.strip()[:70])
 
     # ③ 근거 게이트 — `[다음 회차]` 항목에 `(근거: …)` 가 있는가. ① 과 같은 절 안에서만 돈다.
-    #   왜 필요한가: 이 마커는 「다음 세션이 곧바로 착수한다」는 주장인데, 그 주장이 실제
-    #   상태와 갈려도 아무도 재지 않았다 — 회차 66 이 *"회차 64 복귀"* 를 적었으나 그 회차는
-    #   이미 완료·릴리즈(v1.275.0)돼 있었고, 다음 세션이 그것을 「미완」으로 읽고 계획을 시작했다.
-    #   **재는 것은 근거의 진위가 아니라 존재다** — 필드를 요구하면 적는 쪽이 그 자리에서 한 번
-    #   확인하게 되고, 그 확인이 없던 것이 위 사고의 형태였다. 진위까지 재려면 커밋 실재 조회가
-    #   필요한데 그 값은 레포마다 형태가 달라(sha·명령 출력·파일 경로) 기계 판정이 서지 않는다.
+    #   근거는 `harness-consistency-rationale.md` 의 「§8 축 ⑪ — 다음 회차 항목에 근거 필드를 요구하는 이유」.
     if sec:
         for line in sec.group(1).splitlines():
             if not NEXT_ROUND_HEAD_RX.match(line):
@@ -1849,13 +1828,35 @@ def check_count_and_version(conv):
 FIX_FORBIDDEN = ("plan.md", "notes.md")
 
 
+def _conv_table_edits():
+    """「조건부 참조 문서 크기 임계」 표에서 기록값이 실측(`charlen`)과 다른 행의 치환.
+
+    **기록값 열만 고친다 — 상한 열은 손대지 않는다**(상한을 올리는 것은 처방이 아니라 판단이다).
+    표나 절이 없으면 빈 목록이다 — `--fix` 는 축 판정이 아니라 고칠 자리만 찾는다.
+    """
+    text = read(CONV_MD)
+    if not re.search(r"^## 조건부 참조 문서 크기 임계", text, re.M):
+        return []
+    body = section(text, r"^## 조건부 참조 문서 크기 임계")
+    edits = []
+    for rel, rec_s, _cap in re.findall(r"^\| `([^`]+)` \| ([\d,]+) \| ([\d,]+) \|", body, re.M):
+        try:
+            size = charlen(os.path.join(ROOT, *rel.split("/")))
+        except OSError:
+            continue    # 파일 부재는 판단이 필요하다(표에서 뺄지 경로를 고칠지) — 본 검사가 알린다.
+        if size != int(rec_s.replace(",", "")):
+            edits.append((CONV_MD, "| `%s` | %s |" % (rel, rec_s), "| `%s` | %s |" % (rel, format(size, ",")),
+                          "크기 임계 표 %s 기록 %s → %s" % (rel, rec_s, format(size, ","))))
+    return edits
+
+
 def _count_fix_edits():
     """`--fix` 가 수행할 치환을 `(경로, 옛 문자열, 새 문자열, 설명)` 으로 낸다.
 
-    **판단이 필요 없는 것만 담는다** — 대조 상대가 실재하고 결정론적인 값뿐이다.
+    **판단이 필요 없는 것만 담는다** — 축 ⑰ 의 기준선·파일 건수·버전과 크기 임계 표 기록값.
     러너 총계(hook 골든)는 내장 시나리오가 섞여 파일을 세면 어긋나므로 여기 없다.
     """
-    edits, conv = [], read(CONV_MD)
+    edits, conv = _conv_table_edits(), read(CONV_MD)
     body = conv.split(COUNT_SECTION_HEADING, 1)
     if len(body) < 2:
         return edits
@@ -1891,33 +1892,51 @@ def _count_fix_edits():
     return edits
 
 
-def run_fix(dry_run):
-    """계수·버전을 실측값으로 치환한다. `dry_run` 이면 한 바이트도 쓰지 않는다."""
-    edits = _count_fix_edits()
-    if not edits:
-        print("[FIX] 고칠 것 없음 — 계수·버전이 전부 실측과 같다.")
-        return 0
+def _apply_fix_edits(edits):
+    """치환을 파일별로 적용한다 — `newline=""` 로 CRLF 를 보존한다(LF 로 누우면 「줄바꿈 정합」 축이 red)."""
     by_file = {}
-    for path, old, new, desc in edits:
+    for path, old, new, _desc in edits:
         if os.path.basename(path) in FIX_FORBIDDEN:
             die("`--fix` 대상에 %s 가 들어왔다 — 복구 경로가 없는 파일이라 손대지 않는다"
                 % os.path.basename(path))
-        print("[%s] %s" % ("WOULD-FIX" if dry_run else "FIXED", desc))
         by_file.setdefault(path, []).append((old, new))
-    if dry_run:
-        print("\n결과: %d건 — `--dry-run` 이라 쓰지 않았습니다." % len(edits))
-        return 0
     for path, subs in by_file.items():
-        # 줄바꿈을 보존한다 — `newline=""` 없이 쓰면 CRLF 가 LF 로 눕고 「줄바꿈 정합」 축이
-        #  red 를 낸다(그 축은 `git ls-files` 로 재므로 tracked 파일에서만 드러난다).
         with open(path, encoding="utf-8", newline="") as f:
             text = f.read()
         for old, new in subs:
             text = text.replace(old, new, 1)
         with open(path, "w", encoding="utf-8", newline="") as f:
             f.write(text)
-    print("\n결과: %d건 갱신했습니다 — 이어서 인자 없이 1회 더 돌려 확인하세요." % len(edits))
-    return 0
+
+
+def run_fix(dry_run):
+    """계수·버전·크기 임계 표 기록값을 실측으로 치환한다. `dry_run` 이면 한 바이트도 쓰지 않는다.
+
+    적용 뒤 같은 계산을 다시 돌려 남은 치환이 0 이 될 때까지(최대 3회) 반복한다 — 크기 임계 표의
+    자기 행(표를 담은 파일 자신의 크기)은 기입하는 순간 파일이 바뀌어, 자릿수가 바뀌면 1회로 어긋난다.
+    """
+    edits = _count_fix_edits()
+    if not edits:
+        print("[FIX] 고칠 것 없음 — 계수·버전·크기 임계 표 기록값이 전부 실측과 같다.")
+        return 0
+    for path, _old, _new, desc in edits:
+        if os.path.basename(path) in FIX_FORBIDDEN:
+            die("`--fix` 대상에 %s 가 들어왔다 — 복구 경로가 없는 파일이라 손대지 않는다"
+                % os.path.basename(path))
+        print("[%s] %s" % ("WOULD-FIX" if dry_run else "FIXED", desc))
+    if dry_run:
+        print("\n결과: %d건 — `--dry-run` 이라 쓰지 않았습니다." % len(edits))
+        return 0
+    total, writes = len(edits), 0
+    while edits and writes < 3:
+        _apply_fix_edits(edits)
+        writes += 1
+        edits = _count_fix_edits()
+        for _path, _old, _new, desc in edits:
+            print("[FIXED] (재기입) %s" % desc)
+    print("[FIX] 다시 잰 결과: 남은 치환 %d · 반복 %d회" % (len(edits), writes))
+    print("\n결과: %d건 갱신했습니다 — 이어서 인자 없이 1회 더 돌려 확인하세요." % total)
+    return 1 if edits else 0
 
 
 # ── 축 ㉑ 「큐 태그 열거 정합」 ────────────────────────
@@ -2143,8 +2162,9 @@ def main():
     except (AttributeError, OSError):
         pass  # 재설정 불가 환경(파이프 등)에서는 그대로 진행
 
-    # `--fix` 는 축 ⑰의 결정론적 자리만 고치고 즉시 끝난다 — 다른 축은 내용 판단이 필요해
-    #  영구 제외다(llm-wiki `lint.py --fix` 와 같은 선긋기). 인자 없는 기본 실행은 불변이다.
+    # `--fix` 는 축 ⑰의 결정론적 자리와 축 ⑦ 「조건부 참조 문서 크기 임계」 표의 기록값만 고치고
+    #  즉시 끝난다 — 다른 축은 내용 판단이 필요해 영구 제외다(llm-wiki `lint.py --fix` 와 같은 선긋기).
+    #  인자 없는 기본 실행은 불변이다.
     if "--fix" in sys.argv:
         sys.exit(run_fix("--dry-run" in sys.argv))
 
