@@ -61,7 +61,7 @@
   python plugins/pjc/skills/evals/check_wiki_circuit.py
   ```
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugin.json` + `README.md` 상단 `**버전**:` 줄. **버전만 올리는 별도 커밋** → push → **곧바로 릴리즈 발행**. ⚠ 태그가 원격에만 생겨 확인은 `gh release list` 다. 절차 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」이고 **push·릴리즈는 별도 승인**이다.
+- **Release**: 버전 정본은 `plugin.json` 하나이고 `README.md` 상단 `**버전**:` 줄은 함께 올리는 파생이다. **버전만 올리는 별도 커밋** → push → **곧바로 릴리즈 발행**. ⚠ 태그가 원격에만 생겨 확인은 `gh release list` 다. 절차 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」이고 **push·릴리즈는 별도 승인**이다.
   - **⚠ 발행 여부는 「이번 push 에 버전이 올랐는가」가 아니라 「마지막 버전 커밋 이후 `plugins/` 에 변경이 있는가」로 판정한다** — `git log <마지막 v 커밋>..HEAD -- plugins/`. 위키·`docs/`·`intent/` 만 고친 회차가 이어지면 앞 회차의 플러그인 변경이 **미배포로 남는다**(정본의 「판정 시점」).
 - **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — 도구 경로 보호가 오차단한다(회피법은 정본).
 
@@ -78,7 +78,7 @@
 - **명령 출력 예산**: 판정용 명령은 **최소 형식**으로 낸다(정본은 `docs/harness-conventions.md` 「명령 출력 예산」).
 - **파일 크기**: 상한 표·초과 처방·참조 깊이·목차 규칙은 `plugins/pjc/skills/BUDGET.md`「예산 표」가 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**
 - **병행 세션의 커밋은 `git commit -- <경로…>` 다** — `git add` 경로 한정으로는 상대의 staged 를 삼킨다. 커밋 명령에 `2>&1` 을 붙이고 **시크릿 스캔과 커밋을 한 명령에 잇지 않는다**. 근거·부분 스테이징 주의는 `docs/harness-conventions.md` 「병행 세션의 커밋」.
-- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**이고 그것을 내는 hook은 넷이다. **우회 변수는 둘이며 서로 대체되지 않는다.** 이름·범위·담당·면제 경로는 `docs/harness-conventions.md` 「`guard-write`의 PLAN-EXEMPT 면제 경로」가 정본 — hook 수정 전 읽을 것.
+- **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**이고 그것을 내는 hook은 넷이다. **우회 변수는 둘이며 서로 대체되지 않는다.** 이름·범위·담당은 `docs/harness-conventions.md` 「자격증명 취급 (기록 금지 대상과 검증 스크립트 제약)」, 면제 경로는 `docs/harness-conventions.md` 「`guard-write`의 PLAN-EXEMPT 면제 경로」가 정본 — hook 수정 전 읽을 것.
 - **`guard-write` 는 게이트 2종**(plan 존재·plan 작성)이고 **같은 정규식을 공유하므로 한쪽만 고치지 말 것** — 차이가 곧 우회 경로다.
 - **⚠ `llm-wiki` 의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md` 의 vault 예외를 함께 확인**한다 — repo 밖이라 검사기가 못 잡는다(정본은 `docs/harness-conventions.md` 「llm-wiki ↔ 글로벌 지침 결합」).
 - **SKILL 문서**: 형식은 `skills/AUTHORING.md`, **설계 원칙은 `skills/DESIGN.md` 가 정본**이다.

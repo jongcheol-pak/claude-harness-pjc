@@ -1833,8 +1833,8 @@ def check_count_and_version(conv):
     plugin_v = _read_json_field(PLUGIN_JSON, "version")
     readme_m = re.search(r"^\*\*버전\*\*:\s*(\S+)", read(README_MD), re.M)
     if plugin_v is None or readme_m is None:
-        issues.append("버전 정합: 정본 두 곳 중 한쪽을 읽지 못했다 — `plugin.json` 의 "
-                      "`version` 과 `README.md` 상단 `**버전**:` 줄이 정본이다")
+        issues.append("버전 정합: `plugin.json` 의 `version`(정본)과 `README.md` 상단 "
+                      "`**버전**:` 줄 — 버전 줄(파생) 중 한쪽을 읽지 못했다")
     elif plugin_v != readme_m.group(1):
         issues.append("버전 정합: `plugin.json` %s ↔ `README.md` %s — 버전은 한 커밋에서 "
                       "두 곳을 함께 올린다" % (plugin_v, readme_m.group(1)))
