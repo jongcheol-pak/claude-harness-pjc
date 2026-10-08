@@ -286,6 +286,8 @@ $eolLf = Join-Path $eolRepo 'lf.md'
 $eolCrlf = Join-Path $eolRepo 'crlf.md'
 [System.IO.File]::WriteAllText($eolLf, "첫 줄`n둘째 줄`n")
 [System.IO.File]::WriteAllText($eolCrlf, "첫 줄`r`n둘째 줄`r`n")
+# 판정은 추적 파일의 워킹트리 CRLF 비율(≥ 90% · 표본 ≥ 5)이다 — EOL1·EOL1b 가 양성이도록 CRLF 추적 파일을 채운다(CRLF 10 · LF 1).
+1..9 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolRepo "crlf$_.md"), "줄`r`n") }
 # 픽스처 제외 경로 — 실제 레포의 LF 18건이 전부 이 형태라 오탐하면 그 트리를 만질 때마다 발화한다.
 $eolFx = Join-Path $eolRepo 'plugins/pjc/skills/llm-wiki/evals/fixtures/x'
 New-Item -ItemType Directory $eolFx -Force | Out-Null
@@ -297,6 +299,8 @@ Pop-Location
 # EOL1 (양성): 추적 파일이 LF 면 경고한다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-a'; tool_input = @{ file_path = $eolLf } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 추적 파일이 LF 면 경고 (EOL1)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+# 이 hook 은 모든 레포에서 돈다 — 문구가 하네스 레포 문서를 가리키면 다른 레포에서 틀린 지시가 된다(2026-10-08 Karina).
+Assert-Case -Name "post-write: EOL 경고 문구에 하네스 레포 참조가 없다 (EOL1)" -R $r -ExpectExit 0 -ExpectNotContains 'AGENTS.md'
 
 # EOL2 (델타 음성 — CRLF): 규약대로 저장된 파일은 조용하다. 없으면 「항상 경고」로 바꿔도 green 이다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-b'; tool_input = @{ file_path = $eolCrlf } } | ConvertTo-Json -Compress)
@@ -311,20 +315,20 @@ New-Item -ItemType Directory (Split-Path -Parent $eolNew) -Force | Out-Null
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-d'; tool_input = @{ file_path = $eolNew } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 신규 미추적 파일이 LF 면 경고 (EOL1b)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
 
-# EOL4 (델타 음성 — LF 규약 레포): 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다.
-#   CRLF 를 규약으로 단정하면 LF 규약 레포에서 새 문서마다 틀린 지시가 붙는다(완료 리뷰 2R 오탐 관측).
-#   ⚠ 두 신호를 한 케이스에 담지 않는다 — 담으면 구현이 `core.autocrlf` 로 닫았는지
-#     `.gitattributes` 로 닫았는지 판정되지 않는다(「검증 케이스의 축 분리」).
-# EOL4: core.autocrlf=false · eol 속성 없음 → 기계 설정 축.
+# EOL4 (양성 — autocrlf 무관): 판정은 기계 설정 `core.autocrlf` 가 아니라 **추적 파일의 실제 워킹트리 eol** 이다.
+#   autocrlf=false 여도 추적 파일 대부분이 CRLF 면 경고한다 — 「autocrlf 를 읽지 않는다」를 행동으로 잰다.
+#   ⚠ 두 신호를 한 케이스에 담지 않는다(「검증 케이스의 축 분리」) — 속성은 EOL5, 혼합 비율은 EOL6 이 잰다.
 $eolLfRepo = Join-Path $work 'eol-lf-repo'; New-Item -ItemType Directory $eolLfRepo -Force | Out-Null
 Push-Location $eolLfRepo
 git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+1..5 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolLfRepo "c$_.md"), "줄`r`n") }
 $eolLfDoc = Join-Path $eolLfRepo 'guide.md'
-[System.IO.File]::WriteAllText($eolLfDoc, "LF 가 규약인 저장소`n")
+[System.IO.File]::WriteAllText($eolLfDoc, "가이드`r`n")
 git add -A; git commit -qm init
 Pop-Location
+[System.IO.File]::WriteAllText($eolLfDoc, "LF 로 다시 저장`n")
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolLfRepo; session_id = 'eol-e'; tool_input = @{ file_path = $eolLfDoc } } | ConvertTo-Json -Compress)
-Assert-Case -Name "post-write: core.autocrlf=false 레포에서는 무경고 (EOL4)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+Assert-Case -Name "post-write: autocrlf=false 여도 추적 파일 대부분이 CRLF 면 경고 (EOL4)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
 
 # EOL5: core.autocrlf=**true** + `.gitattributes eol=lf` → **속성이 이긴다**.
 #   Windows 기본값과 크로스플랫폼 .gitattributes 의 흔한 조합이고, autocrlf 만 보던
@@ -333,12 +337,71 @@ $eolAttrRepo = Join-Path $work 'eol-attr-repo'; New-Item -ItemType Directory $eo
 Push-Location $eolAttrRepo
 git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf true
 [System.IO.File]::WriteAllText((Join-Path $eolAttrRepo '.gitattributes'), "* text eol=lf`n")
+# 워킹트리 CRLF 추적 파일 5 — 속성 우선 분기가 없으면 비율 판정이 경고할 형상이라, 무경고는 속성이 이긴 결과다.
+1..5 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolAttrRepo "c$_.md"), "줄`r`n") }
 $eolAttrDoc = Join-Path $eolAttrRepo 'guide.md'
 [System.IO.File]::WriteAllText($eolAttrDoc, "속성이 LF 를 규약으로 선언한다`n")
 git add -A; git commit -qm init
 Pop-Location
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolAttrRepo; session_id = 'eol-f'; tool_input = @{ file_path = $eolAttrDoc } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: .gitattributes eol=lf 가 autocrlf 를 이긴다 (EOL5)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
+# EOL6 (델타 음성 — 혼합 레포): 속성 없음 · 추적 CRLF 3 / LF 7(30%) → 규약이 없는 레포라 경고하지 않는다.
+#   autocrlf=true(Windows 기본값) 를 규약으로 읽던 구현이 Karina(CRLF 34%)에서 오경보 11회를 냈다(2026-10-08).
+$eolMixRepo = Join-Path $work 'eol-mix-repo'; New-Item -ItemType Directory $eolMixRepo -Force | Out-Null
+Push-Location $eolMixRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf true
+1..3 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolMixRepo "c$_.md"), "줄`r`n") }
+1..7 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolMixRepo "l$_.md"), "줄`n") }
+git add -A 2>$null; git commit -qm init
+Pop-Location
+$eolMixRepoDoc = Join-Path $eolMixRepo 'l1.md'
+[System.IO.File]::WriteAllText($eolMixRepoDoc, "LF 로 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolMixRepo; session_id = 'eol-g'; tool_input = @{ file_path = $eolMixRepoDoc } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: CRLF 가 소수인 혼합 레포에서는 무경고 (EOL6)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
+# EOL7 (델타 음성 — 표본 부족): 속성 없음 · 추적 CRLF 2 → 표본 5 미만이라 규약을 단정하지 않는다.
+$eolFewRepo = Join-Path $work 'eol-few-repo'; New-Item -ItemType Directory $eolFewRepo -Force | Out-Null
+Push-Location $eolFewRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf true
+1..2 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolFewRepo "c$_.md"), "줄`r`n") }
+git add -A 2>$null; git commit -qm init
+Pop-Location
+$eolFewRepoDoc = Join-Path $eolFewRepo 'new.md'
+[System.IO.File]::WriteAllText($eolFewRepoDoc, "새 파일`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolFewRepo; session_id = 'eol-h'; tool_input = @{ file_path = $eolFewRepoDoc } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 추적 파일 표본이 5 미만이면 무경고 (EOL7)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
+# EOL8 (양성 — 쓴 파일 제외): 추적 CRLF 6 중 하나를 LF 로 다시 저장 → 제외하면 5/5 라 경고.
+#   쓴 파일을 표본에 넣으면 5/6 = 83% 로 무경고가 된다 — 방금 쓴 파일의 w/ 는 새 내용이라 규약 신호가 아니다.
+#   autocrlf=false 를 명시한다 — 시스템 값(true)을 물려받으면 옛 구현도 경고해 구현 전 RED 가 서지 않는다.
+$eolSelfRepo = Join-Path $work 'eol-self-repo'; New-Item -ItemType Directory $eolSelfRepo -Force | Out-Null
+Push-Location $eolSelfRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+1..6 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolSelfRepo "c$_.md"), "줄`r`n") }
+git add -A 2>$null; git commit -qm init
+Pop-Location
+$eolSelfRepoDoc = Join-Path $eolSelfRepo 'c1.md'
+[System.IO.File]::WriteAllText($eolSelfRepoDoc, "LF 로 다시 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolSelfRepo; session_id = 'eol-i'; tool_input = @{ file_path = $eolSelfRepoDoc } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 쓴 파일은 표본에서 빼고 판정한다 (EOL8)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+
+# EOL9 (양성 — 픽스처 제외): 추적 CRLF 9 · llm-wiki 픽스처 아래 추적 LF 2 · CRLF 하나를 LF 로 재저장 → 제외하면 8/8 이라 경고.
+#   픽스처를 표본에 넣으면 8/10 = 80% 로 무경고 — 픽스처의 LF 는 의도된 테스트 입력이지 레포 규약이 아니다(EOL3 과 같은 이유).
+#   autocrlf=false 명시 — EOL8 과 같은 이유.
+$eolFxRepo = Join-Path $work 'eol-fx-repo'; New-Item -ItemType Directory $eolFxRepo -Force | Out-Null
+Push-Location $eolFxRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+1..9 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolFxRepo "c$_.md"), "줄`r`n") }
+$eolFxDir = Join-Path $eolFxRepo 'plugins/pjc/skills/llm-wiki/evals/fixtures/x'
+New-Item -ItemType Directory $eolFxDir -Force | Out-Null
+1..2 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolFxDir "f$_.md"), "줄`n") }
+git add -A 2>$null; git commit -qm init
+Pop-Location
+$eolFxRepoDoc = Join-Path $eolFxRepo 'c1.md'
+[System.IO.File]::WriteAllText($eolFxRepoDoc, "LF 로 다시 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolFxRepo; session_id = 'eol-j'; tool_input = @{ file_path = $eolFxRepoDoc } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: llm-wiki 픽스처는 표본에서 빼고 판정한다 (EOL9)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
 
 # EOL3 (델타 음성 — 픽스처 제외): llm-wiki/evals/fixtures/ 아래 LF 는 의도된 테스트 입력이다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-c'; tool_input = @{ file_path = $eolFxFile } } | ConvertTo-Json -Compress)

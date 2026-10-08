@@ -348,26 +348,50 @@ try {
         # gitignore 가 아니면 대상 — exit 1 만 「repo 안이고 ignore 아님」이다(§15)
         $null = & git check-ignore -q -- $file 2>$null
         $notIgnored = ($LASTEXITCODE -eq 1)
-        # 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다 — CRLF 를 규약으로 단정하면
-        #   LF 규약 레포에서 새 문서마다 틀린 지시가 붙는다(2026-09-09 오탐 관측 · §15).
-        #   판정은 **파일 단위 권위 답**인 `check-attr eol` 이 먼저다 — `core.autocrlf` 는
-        #   레포 규약이 아니라 기계 설정이라 `.gitattributes` 로 선언한 규약에 진다.
-        $eolAttr = ((& git check-attr eol -- $file 2>$null) -join '')
-        $crlfRepo = if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') { $Matches[1] -eq 'crlf' }
-                    else { (& git config --get core.autocrlf 2>$null) -match '^(?i)true$' }
-        if ($notIgnored -and $crlfRepo) {
+        # 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다 — 레포 규약을 증거 없이 CRLF 로 단정하면
+        #   LF·혼합 레포에서 저장마다 틀린 지시가 붙는다. 판정 순서와 그 이유(기계 설정을 버린 이유 포함)는
+        #   근거 §15 가 정본이다: ① 파일 단위 `check-attr eol` ② 속성이 없으면 추적 파일의 실제 워킹트리 eol 비율.
+        if ($notIgnored) {
             $bytes = [System.IO.File]::ReadAllBytes($file)
             $lf = 0; $crlf = 0
             for ($i = 0; $i -lt $bytes.Length; $i++) {
                 if ($bytes[$i] -ne 0x0A) { continue }
                 if ($i -gt 0 -and $bytes[$i - 1] -eq 0x0D) { $crlf++ } else { $lf++ }
             }
-            if ($lf -gt 0 -and (Test-WarnOnce "eol|$file")) {
+            $crlfRepo = $false; $repoCrlf = 0; $repoTotal = 0
+            if ($lf -gt 0) {
+                $eolAttr = ((& git check-attr eol -- $file 2>$null) -join '')
+                if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') {
+                    $crlfRepo = ($Matches[1] -eq 'crlf')
+                } else {
+                    # 표본 — 대상 확장자 추적 파일(레포 전체 · 대소문자 무시)의 `w/` 열. 방금 쓴 파일은 빼고
+                    #   (그 `w/` 는 새 내용이다), llm-wiki 픽스처도 뺀다(의도된 LF 테스트 입력 — 위 제외와 같은 이유).
+                    #   `quotepath=off` 는 한글 경로가 이스케이프돼 「쓴 파일」 비교가 빗나가지 않게 한다.
+                    $eolSampleMin = 5; $eolCrlfRatioMin = 0.9
+                    $top = ((& git rev-parse --show-toplevel 2>$null) -join '').Trim()
+                    $self = ($file -replace '\\', '/')
+                    if ($top -and $self.StartsWith($top + '/', [System.StringComparison]::OrdinalIgnoreCase)) {
+                        $self = $self.Substring($top.Length + 1)
+                    }
+                    $specs = @('md', 'ps1', 'py', 'json', 'psm1', 'psd1' | ForEach-Object { ':(top,icase)*.' + $_ })
+                    foreach ($row in @(& git -c core.quotepath=off ls-files --full-name --eol -- $specs 2>$null)) {
+                        $cols = $row -split "`t", 2
+                        if ($cols.Count -lt 2) { continue }
+                        $path = $cols[1]
+                        if ($path -ieq $self -or $path -match '(?i)(^|/)llm-wiki/evals/fixtures/') { continue }
+                        if ($cols[0] -match 'w/crlf') { $repoCrlf++; $repoTotal++ }
+                        elseif ($cols[0] -match 'w/(lf|mixed)') { $repoTotal++ }
+                    }
+                    $crlfRepo = ($repoTotal -ge $eolSampleMin -and ($repoCrlf / $repoTotal) -ge $eolCrlfRatioMin)
+                }
+            }
+            if ($crlfRepo -and (Test-WarnOnce "eol|$file")) {
                 $nm = Split-Path -Leaf $file
                 if ($allMsgs.Count -gt 0) { $allMsgs.Add("") }
                 $allMsgs.Add("[EOL WARNING] ${nm}: 워킹트리 줄바꿈이 LF 입니다 (LF $lf / CRLF $crlf).")
-                $allMsgs.Add("이 레포의 워킹트리 규약은 CRLF 이고(`AGENTS.md` 「줄바꿈」) Write·Edit 도구는 LF 로 씁니다 — 「줄바꿈 정합」 축이 red 를 냅니다.")
-                $allMsgs.Add("`git ls-files --eol` 로 확인하고 CRLF 로 되돌리세요. 이 경고는 차단이 아닙니다.")
+                $why = if ($repoTotal -gt 0) { "이 레포 추적 파일의 워킹트리 줄바꿈은 대부분 CRLF 입니다 (CRLF $repoCrlf / 전체 $repoTotal)" } else { "이 파일의 .gitattributes 속성은 eol=crlf 입니다" }
+                $allMsgs.Add("$why — Write·Edit 도구는 LF 로 씁니다.")
+                $allMsgs.Add("``git ls-files --eol`` 로 확인하고 CRLF 로 되돌리세요. 이 경고는 차단이 아닙니다.")
             }
         }
     }
