@@ -1,4 +1,4 @@
-﻿# scenarios/guard-bash.ps1 — warn-commit-secrets 시나리오 (§9 — 라벨 판정·스캔 범위·등급별 차단) (dot-source 전용, 단독 실행 금지)
+﻿# scenarios/warn-commit-secrets.ps1 — warn-commit-secrets 시나리오 (§9 — 라벨 판정·스캔 범위·등급별 차단) (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====

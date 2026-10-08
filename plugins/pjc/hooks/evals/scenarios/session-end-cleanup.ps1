@@ -1,4 +1,4 @@
-﻿# scenarios/session-end-cleanup-lib.ps1 — 고아 콘솔 프로세스 회수 시나리오 (dot-source 전용, 단독 실행 금지)
+﻿# scenarios/session-end-cleanup.ps1 — 고아 콘솔 프로세스 회수 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook)와 공유 변수($work·$iso)를 그대로 쓴다.
 #
 # 다른 시나리오와 다른 점: 이 시나리오는 hook에 stdin을 주입하는 대신 **헬퍼 함수를 직접 호출**한다.
