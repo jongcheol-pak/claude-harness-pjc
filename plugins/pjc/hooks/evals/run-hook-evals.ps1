@@ -17,7 +17,7 @@
 #   시나리오를 동시에 돌리면 wall-clock이 최대 그룹 하나의 시간으로 수렴한다.
 #   케이스 단위로 쪼개지 않는 이유는 시나리오 내부의 픽스처 생성 순서가 깨지기 때문이다.
 #
-# -Sequential 계약: 병렬 디스패치를 끄고 **한 프로세스에서 14 시나리오를 종전대로 dot-source**한다.
+# -Sequential 계약: 병렬 디스패치를 끄고 **한 프로세스에서 모든 시나리오를 종전대로 dot-source**한다.
 #   ① 병렬 결과와의 등가 대조 기준(같은 세션에서 두 모드를 연속 측정해야 한다 — 같은 스위트가
 #      19분 6초 ↔ 27분 14초로 실측된 만큼 wall-clock 편차가 커서 교차 세션 비교는 근거가 못 된다)
 #   ② 병렬 경로에 문제가 생겼을 때의 폴백. 판정 정본으로서의 자격은 두 모드가 동일하다.
@@ -106,6 +106,33 @@ $scenarioGroups = @(
     @('loop-continue')
 )
 
+# ---- 발사 순서 (비용 내림차순) ----
+# 오래 걸리는 그룹이 늦게 뜨면 그 그룹 하나가 전체 종료 시각을 정한다 — 2026-10-08 실측에서
+#   session-context(144초)가 191초에야 떠 끝 시각이 335초였다. 그래서 병렬 경로는 아래 비용표의
+#   큰 순서로 띄운다. **결과 취합·출력 순서는 위 $scenarioGroups 그대로다**(순차 경로와 형식 등가).
+# 값은 그룹별 소요 초(2026-10-08 실측)이고, 병렬 실행 끝의 `[TIMING-GROUPS]` 줄로 다시 맞춘다.
+#   stateless 샤드는 케이스 번호 나머지로 나눈 같은 단위라 평균 한 값을 같이 쓴다 — 샤드별 값
+#   (121~172초)은 실행마다 갈리는 측정 잡음이라 그대로 적으면 순서가 잡음을 따른다.
+#   표에 없는 그룹은 맨 앞에 띄운다 — 비용을 모르는 큰 그룹이 마지막에 떠 임계 경로가 되지 않게.
+#   비용이 같으면 $scenarioGroups 순서를 따른다.
+$statelessCostSec = 143
+$groupCostSec = @{
+    'guard-write' = 192; 'guard-harness' = 170; 'warn-commit-secrets' = 168; 'session-context' = 144
+    'guard-bash' = 125; 'post-write-checks' = 69; 'guard-stale-docs' = 55; 'suggest-agents-record' = 42
+    'guard-harness-content' = 40; 'loop-continue' = 29; 'guard-harness-installed+hook-event-log' = 21
+    'warn-version-drift' = 16; 'session-end-cleanup' = 8
+}
+$launchGroups = @(
+    for ($i = 0; $i -lt $scenarioGroups.Count; $i++) {
+        $name = $scenarioGroups[$i] -join '+'
+        $cost = if ($name -match '^stateless-\d+$') { $statelessCostSec }
+                elseif ($groupCostSec.ContainsKey($name)) { $groupCostSec[$name] }
+                else { [double]::MaxValue }
+        [pscustomobject]@{ Group = $scenarioGroups[$i]; Cost = $cost; Index = $i }
+    }
+) | Sort-Object @{ Expression = 'Cost'; Descending = $true }, @{ Expression = 'Index'; Descending = $false } |
+    ForEach-Object { , $_.Group }
+
 Write-Host "== pjc hook 골든 회귀 =="
 
 # ---- 필터 정규화 + 이름 검증 (코디네이터에서 선행) ----
@@ -138,7 +165,7 @@ if ($script:NormalizedFilter) {
 # 닿지 못한 실행분은 그대로 남는다 — 걷는 코드가 없어 2026-08-20 시점에 **평면 폴더 80개**가
 # 쌓였고(구 state 루트는 별건) 그중 3일 기준을 넘긴 59개가 이 장치의 첫 실행에서 정리됐다
 # (최고령 2026-07-08). 나머지는 아직 사흘이 안 지난 것들이라 다음 실행들이 순차로 걷는다.
-# **자식은 이 일을 하지 않는다** — 13개 자식이 같은 폴더를 동시에 훑으면 서로의 진행 중 폴더를
+# **자식은 이 일을 하지 않는다** — 자식들이 같은 폴더를 동시에 훑으면 서로의 진행 중 폴더를
 # 건드릴 여지가 생긴다(위키 feat-hook-evals가 기록한 "한쪽 정리가 다른 쪽 픽스처를 지운다" 유형).
 # 삭제 건수를 화면에 내는 이유는 조용히 지우면 "왜 없어졌는지"를 나중에 재구성할 수 없어서다.
 # 보존 기간을 `-Days` 같은 CLI 스위치로 빼지 않은 것은 의도다 — 조작할 이유가 아직 없고,
@@ -153,7 +180,7 @@ try {
 }
 
 # =====================================================================
-# 순차 경로 — 종전 구조 그대로 (한 프로세스에서 14 시나리오 dot-source)
+# 순차 경로 — 종전 구조 그대로 (한 프로세스에서 모든 시나리오 dot-source)
 # =====================================================================
 if ($Sequential) {
     $EvalFilter = $Filter
@@ -288,7 +315,7 @@ $jobs = @()
 #   자식 쪽 워치독(`run-scenario.ps1` 의 `-ParentPid`)이고, 둘은 대체 관계가 아니다.
 try {
     $skipped = @()
-    foreach ($g in $scenarioGroups) {
+    foreach ($g in $launchGroups) {
         $gf = Get-GroupFile $g
         if ($Resume -and (Test-GroupDone $gf)) {
             $skipped += ($g -join '+')
@@ -310,7 +337,7 @@ try {
 
         # 동시 실행 상한 — 슬롯이 빌 때까지 기다린다.
         # 폴링 400ms: 그룹 하나가 최소 수십 초라 이 간격이 총 시간에 미치는 영향은 무시할 수 있고,
-        # 더 짧게 잡으면 13그룹 대기 동안 폴링 자체가 CPU를 잠식해 자식과 경합한다.
+        # 더 짧게 잡으면 그룹 대기 동안 폴링 자체가 CPU를 잠식해 자식과 경합한다.
         while (@($jobs | Where-Object { -not $_.Proc.HasExited }).Count -ge $MaxParallel) {
             Start-Sleep -Milliseconds 400
         }
@@ -420,6 +447,17 @@ if ($deadGroups.Count) {
     Write-Host ("[WARN] 완주하지 못한 그룹 {0}개: {1} — -Resume 으로 이어서 돌릴 수 있습니다." -f $deadGroups.Count, ($deadGroups -join ', '))
 }
 Write-Host ("[MODE] 병렬 실행 (그룹 {0}개, 동시 상한 {1}) · 상태 {2}" -f $scenarioGroups.Count, $MaxParallel, $StateDir)
+# 그룹별 소요 — 위 $groupCostSec 을 다시 맞출 근거다(자식 프로세스의 시작·종료 시각).
+#   `-Resume` 이 건너뛴 그룹은 프로세스가 없어 싣지 않고, 시각을 못 읽은 그룹은 `?` 로 낸다.
+$groupSecs = foreach ($j in $jobs) {
+    $sec = $null
+    try { $sec = [int]($j.Proc.ExitTime - $j.Proc.StartTime).TotalSeconds } catch {}
+    [pscustomobject]@{ Group = $j.Group; Sec = $sec }
+}
+$groupSecText = @($groupSecs) |
+    Sort-Object @{ Expression = { if ($null -eq $_.Sec) { -1 } else { $_.Sec } }; Descending = $true } |
+    ForEach-Object { '{0}={1}' -f $_.Group, $(if ($null -eq $_.Sec) { '?' } else { $_.Sec }) }
+Write-Host ('[TIMING-GROUPS] ' + (@($groupSecText) -join ' '))
 # 미완주가 있으면 **결과 줄 자체**에 분모의 성격을 적는다 — 위 [WARN]은 결과 줄 위에 따로 떠서
 # 읽는 사람이 `FAIL 1`을 회귀로 오해한다(v1.173.0 F-7에서 실제로 메인·리뷰어가 둘 다 오독했다).
 # 미실행 케이스 수는 세지 않는다 — 그러려면 시나리오 파서가 필요한데, 막으려는 것이 오독이라
