@@ -154,7 +154,7 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **분기별 근거** — 작은따옴표 안은 bash 에서 이스케이프가 없어 다음 `'` 까지 전부 리터럴이다. 인용 **밖**의 백슬래시도 다음 문자를 이스케이프한다 — `\"` 가 인용을 열어 구분자 분리를 깨뜨리던 미탐을 그 분기가 막는다.
 
-**의도적 복제** — 이 함수는 `block-destructive.ps1` 과 `guard-bash.ps1` 두 곳에 같은 본문으로 있고, `guard-bash.ps1` 쪽 정의 위에는 그 사실을 적은 주석이 없다(여기가 정본이다). `block-destructive` 는 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 **외부 파일 의존을 만들지 않는다** — 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고 그 경로를 재는 것이 없다. 복제의 드리프트는 `check-harness-consistency.py` 의 「분할 헬퍼 동기」 축이 잡는다.
+**의도적 복제** — 이 함수는 `block-destructive.ps1` 과 `guard-bash.ps1` 두 곳에 같은 본문으로 있고, `guard-bash.ps1` 쪽 정의 위에는 그 사실을 적은 주석이 없다(여기가 정본이다). `block-destructive` 는 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 **외부 파일 의존을 만들지 않는다** — 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고 그 경로를 재는 것이 없다. 복제의 드리프트는 `check-harness-consistency.py` 의 「복제 사본 동기」 축이 잡는다.
 
 ## §12 셸 접두어를 벗긴 토큰 배열
 
@@ -192,6 +192,6 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **데이터-싱크만 스트립한다.** `cat` + `>` 리다이렉트 또는 `tee` 로 가는 본문은 **기록될 데이터라 실행되지 않으므로** 여는 줄만 남기고 지운다. `bash`·`psql` 같은 **실행자로 가는 본문은 보존한다** — 허용목록 방식이라 모르는 명령은 보존이 기본이고, 그러지 않으면 미탐이 생긴다.
 
-**`block-destructive.ps1` 의 같은 스트립을 복제 이식했다.** 그쪽은 함수가 아니라 최상위 인라인 코드라 「분할 헬퍼 동기」 축(`_ps_function_body`)이 잡지 못한다. 그래서 이쪽은 별도 함수 `Remove-HeredocDataSink` 로 두었다 — `Split-TopLevel` 본문에 넣으면 그 축이 두 파일의 갈림으로 읽는다.
+**`block-destructive.ps1` 의 같은 스트립을 복제 이식했다.** 그쪽은 함수가 아니라 최상위 인라인 코드라 판정 블록은 「복제 사본 동기」 축의 함수 본문 대조(`_ps_function_body`)가 잡지 못하고, **정규식 리터럴만** 그 축의 리터럴 묶음(`$heredocRx` ↔ `$script:HeredocBlockRx`)이 잰다. 그래서 이쪽은 별도 함수 `Remove-HeredocDataSink` 로 두었다 — `Split-TopLevel` 본문에 넣으면 그 축이 두 파일의 갈림으로 읽는다.
 
 **스트립 함수는 둘이고 합치지 않는다** — `Remove-HeredocDataSink`(실행 판정)와 `Remove-HeredocBodyForJudge`(커밋 판정 전용). 정규식은 같고 묻는 것이 다르다 — 대조표는 `commit-secrets-rationale.md`「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」가 정본이다.

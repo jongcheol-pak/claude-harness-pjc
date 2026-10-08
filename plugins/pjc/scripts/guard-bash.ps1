@@ -7,7 +7,7 @@
 # heredoc 블록 정규식 — 아래 함수와 guard-commit-secrets.ps1 의 스트립이 공유한다(dot-source 라 같은 스코프).
 $script:HeredocBlockRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
 # heredoc 데이터-싱크 본문 스트립 — 근거는 `rules/bash-guard-rationale.md`의 「§16 heredoc 본문이 분할을 깨뜨린다」
-#   `block-destructive.ps1` 의 같은 스트립을 복제 이식했다(그쪽은 최상위 인라인 코드라 「분할 헬퍼 동기」 축이 못 잰다).
+#   `block-destructive.ps1` 의 같은 스트립을 복제 이식했다(그쪽은 최상위 인라인 코드라 「복제 사본 동기」 축이 정규식 리터럴만 잰다).
 function Remove-HeredocDataSink([string]$s) {
     if ([string]::IsNullOrEmpty($s)) { return $s }
     return [regex]::Replace($s, $script:HeredocBlockRx, {

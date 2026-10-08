@@ -6,7 +6,7 @@ r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것�
 
 축: ① 포인터 도달성(+하위 통지 「줄이 지워진 절」) ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ batch 차수 수열
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
-    ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 분할 헬퍼 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
+    ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 복제 사본 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
     ⑲ 영향 검토 3축 ⑳ 관련 파일 파서 동기 ㉑ 큐 태그 열거 정합(+하위 「수 표현」)
     (**⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.)
@@ -1563,28 +1563,28 @@ def check_ledger_evidence(ledger):
     return issues, n
 
 
-# 축 ⑯이 대조하는 두 사본. 순서가 곧 「어느 쪽이 원본인가」이며, 앞이 원본이다.
+# 축 ⑯ 「복제 사본 동기」가 대조하는 묶음 — 원본 지정·사본을 둔 이유는 `harness-consistency-rationale.md` 의 ⑯ 항.
+#   묶음 = (이름, 종류, ((파일, 함수·변수 이름), …)) 이고 첫 쌍이 원본이다. heredoc 은 파일마다 변수 이름이 다르다.
 #   ⚠ 이 목록을 늘리려면 복제를 늘린다는 뜻이다 — `skills/DESIGN.md` 2절의 예외 문단을 먼저 읽는다.
-SPLIT_HELPER_FILES = ("block-destructive.ps1", "guard-bash.ps1")
-SPLIT_HELPER_NAME = "Split-TopLevel"
+COPY_SYNC_GROUPS = (
+    ("Split-TopLevel", "function",
+     (("block-destructive.ps1", "Split-TopLevel"), ("guard-bash.ps1", "Split-TopLevel"))),
+    ("Find-PlanFileUpwards", "function",
+     (("session-context.ps1", "Find-PlanFileUpwards"), ("loop-continue.ps1", "Find-PlanFileUpwards"))),
+    ("불릿 정규식", "literal",
+     (("guard-write.ps1", "planBulletRx"), ("session-context.ps1", "planBulletRx"), ("loop-continue.ps1", "planBulletRx"))),
+    ("heredoc 정규식", "literal",
+     (("block-destructive.ps1", "heredocRx"), ("guard-bash.ps1", "HeredocBlockRx"))),
+)
 
 
 def _strip_ps_comment_lines(text):
-    """줄 전체가 주석인 줄을 지운다. **본문을 오려 내기 전에** 부른다.
-
-    산문 주석에는 짝이 안 맞는 따옴표가 흔하다(원본의 *"다음 ' 까지 전부 리터럴"*). 그것을
-    문자열 시작으로 읽으면 뒤따르는 중괄호를 세지 못해 **조용히 잘린 본문**을 비교하게 된다
-    — 실제로 원본이 296자에서 끊겼다.
-    """
+    """줄 전체가 주석인 줄을 지운다. **본문을 오려 내기 전에** 부른다(이유는 rationale ⑯ 항 — 산문의 짝 없는 따옴표)."""
     return "\n".join(l for l in text.split("\n") if not l.lstrip().startswith("#"))
 
 
 def _ps_function_body(text, name):
-    """`function <name>` 부터 그 중괄호가 닫힐 때까지를 돌려준다. 못 찾으면 None.
-
-    문자열 안의 중괄호는 세지 않는다 — 지금 대상 함수에는 없지만, 없다는 전제를 코드가
-    말하지 않으면 다음에 생겼을 때 조용히 잘린 본문을 비교하게 된다.
-    """
+    """`function <name>` 부터 그 중괄호가 닫힐 때까지를 돌려준다. 못 찾으면 None. 문자열 안의 중괄호는 세지 않는다."""
     text = _strip_ps_comment_lines(text)
     i = text.find("function %s" % name)
     if i < 0:
@@ -1609,52 +1609,55 @@ def _ps_function_body(text, name):
 
 
 def _normalize_ps_body(body):
-    """주석 줄을 지우고 공백을 정규화한다 — 재는 것은 판정 로직이지 문면이 아니다.
-
-    한쪽(`guard-bash.ps1`)은 근거 주석을 `rules/bash-guard-rationale.md` 로 내렸고 그것은
-    설계대로다. 주석까지 비교하면 이 축이 그 이관을 드리프트로 잡아 **문서를 정리할 때마다
-    red** 가 나고, 그러면 축을 끄게 된다. 줄 전체가 주석인 것만 지운다 — 대상 함수에 줄 끝
-    주석이 없고, `#` 를 문자열 안에서 잘라 내면 없던 차이를 만든다.
-    """
+    """주석 줄을 지우고 공백을 정규화한다 — 재는 것은 판정 로직이지 문면이 아니다(rationale ⑯ 항)."""
     kept = [l.strip() for l in body.splitlines() if not l.lstrip().startswith("#")]
     return re.sub(r"\s+", " ", " ".join(k for k in kept if k)).strip()
 
 
-def check_split_helper_sync():
-    """축 ⑯ 분할 헬퍼 동기 — 두 hook 의 `Split-TopLevel` 본문이 같은가.
+def _ps_literal(text, name):
+    """`$name = '…'`(`$script:` 접두 허용)의 작은따옴표 값. 대입이 정확히 1건이 아니면 None — 둘이면 어느 쪽이 쓰이는지 갈리지 않는다."""
+    found = re.findall(r"^[ \t]*\$(?:script:)?%s[ \t]*=[ \t]*'((?:[^']|'')*)'[ \t]*\r?$" % re.escape(name), text, re.M)
+    return found[0] if len(found) == 1 else None
 
-    `block-destructive.ps1` 은 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 외부 파일 의존을
-    만들지 않는다(공유 모듈은 dot-source 실패 시 차단이 통째로 사라지고 그 경로를 재는 것이
-    없다). 그래서 이 함수는 공유가 아니라 복제이고, **복제를 허용한 대가로 여기서 감시한다** —
-    「복제 리터럴 동기」 축이 v1.224.0 에 폐지된 근거가 *"`DESIGN.md` 2절로 복제 자체를 금지해
-    감시할 대상이 없다"* 였으므로, 복제를 만드는 순간 그 전제가 깨진다.
 
-    **부재는 통과가 아니다** — 한쪽에서 함수를 지우면 드리프트가 아니라 감시 대상 소멸이고,
-    그것이 조용히 지나가면 남은 쪽이 혼자 바뀌어도 아무도 모른다.
+def check_copy_sync():
+    """축 ⑯ 복제 사본 동기 — 묶음마다 사본이 원본과 같은가. **부재는 통과가 아니라 불일치**다(감시 대상 소멸).
+
+    함수는 주석 줄을 뺀 본문을, 리터럴은 작은따옴표 값을 그대로 비교한다. 항목 수는 읽어 낸 사본 수다.
     """
     scripts = os.path.join(ROOT, "plugins", "pjc", "scripts")
-    issues, bodies = [], {}
-    for name in SPLIT_HELPER_FILES:
-        path = os.path.join(scripts, name)
-        if not os.path.exists(path):
-            issues.append("분할 헬퍼 동기: 파일 없음 — plugins/pjc/scripts/%s" % name)
+    issues, n = [], 0
+    for group, kind, members in COPY_SYNC_GROUPS:
+        got = []
+        for fname, name in members:
+            path = os.path.join(scripts, fname)
+            if not os.path.exists(path):
+                issues.append("복제 사본 동기: `%s` 묶음 — 파일 없음: plugins/pjc/scripts/%s" % (group, fname))
+                continue
+            text = open(path, encoding="utf-8-sig").read()
+            if kind == "function":
+                body = _ps_function_body(text, name)
+                val = None if body is None else _normalize_ps_body(body)
+                what = "`function %s`" % name
+            else:
+                val = _ps_literal(text, name)
+                what = "`$%s = '…'` 대입 1건" % name
+            if val is None:
+                issues.append("복제 사본 동기: `%s` 묶음 — %s 에 %s 이 없다 — 사본 한쪽이 사라지면 "
+                              "남은 쪽의 드리프트를 재는 것이 없어진다" % (group, fname, what))
+                continue
+            got.append((fname, val))
+            n += 1
+        if len(got) < len(members):
             continue
-        body = _ps_function_body(open(path, encoding="utf-8-sig").read(), SPLIT_HELPER_NAME)
-        if body is None:
-            issues.append("분할 헬퍼 동기: %s 에 `function %s` 이 없다 — 복제 한쪽이 사라지면 "
-                          "남은 쪽의 드리프트를 재는 것이 없어진다" % (name, SPLIT_HELPER_NAME))
-            continue
-        bodies[name] = _normalize_ps_body(body)
-
-    if len(bodies) == len(SPLIT_HELPER_FILES):
-        src, dst = SPLIT_HELPER_FILES
-        if bodies[src] != bodies[dst]:
-            a, b = bodies[src], bodies[dst]
-            at = next((k for k in range(min(len(a), len(b))) if a[k] != b[k]), min(len(a), len(b)))
-            issues.append("분할 헬퍼 동기: `%s` 본문이 갈렸다 — %s ↔ %s. 첫 차이 %d자째: "
-                          "원본 %r / 사본 %r (주석·공백은 비교에서 제외된다)"
-                          % (SPLIT_HELPER_NAME, src, dst, at + 1, a[at:at + 40], b[at:at + 40]))
-    return issues, len(bodies)
+        src, a = got[0]
+        for dst, b in got[1:]:
+            if a != b:
+                at = next((k for k in range(min(len(a), len(b))) if a[k] != b[k]), min(len(a), len(b)))
+                issues.append("복제 사본 동기: `%s` 묶음이 갈렸다 — %s ↔ %s. 첫 차이 %d자째: "
+                              "원본 %r / 사본 %r (함수는 주석·공백을 비교에서 뺀다)"
+                              % (group, src, dst, at + 1, a[at:at + 40], b[at:at + 40]))
+    return issues, n
 
 
 # 축 ⑰이 파싱하는 세 문면. **사정거리는 문서 전체이고 아래 절 이름은 앵커로만 쓴다** —
@@ -2172,7 +2175,7 @@ def main():
         ("등재 마커 실재", check_ledger_marker_sync()),
         ("폐기 식별자 실재", check_deprecated_identifiers()),
         ("등재 근거 실측", check_ledger_evidence(ledger)),
-        ("분할 헬퍼 동기", check_split_helper_sync()),
+        ("복제 사본 동기", check_copy_sync()),
         ("계수·버전 정합", (count_issues, count_n)),
         ("규칙 근거 보유", (rule_issues, rule_n)),
         ("영향 검토 3축", check_impact_axes()),

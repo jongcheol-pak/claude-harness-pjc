@@ -1,10 +1,6 @@
-﻿# 픽스처용 최소 hook — 추출 앵커 축이 이 파일을 파싱한다.
-$sectionMaxBytes = 4000
-$skillsDir = Join-Path $PSScriptRoot '..' 'skills'
-$s = Get-SkillSection -Path (Join-Path $skillsDir 'sample/SKILL.md') -StartHeading '## 주입 대상 절' -StopHeading '## 그다음 절'
-Write-Output $s
+﻿# 픽스처용 loop-continue 최소 사본 — 복제 사본 동기 축의 **사본** 쪽이다(plan 탐색 함수 · 불릿 정규식).
 
-# 복제 사본 동기 축의 원본 쪽(plan 탐색 함수) · 사본 쪽(불릿 리터럴)
+# 실물의 판정 로직은 담지 않는다. 재는 것은 「사본이 원본과 같은가」다.
 $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
 function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {
     if ([string]::IsNullOrEmpty($StartDir)) { return $null }

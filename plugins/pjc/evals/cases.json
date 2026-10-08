@@ -843,7 +843,7 @@
     "fixture": "minimal-repo",
     "expect_rc": 0,
     "expect_keywords": [
-      "분할 헬퍼 동기 2항목",
+      "복제 사본 동기 9항목",
       "대조 전부 일치"
     ]
   },
@@ -860,8 +860,76 @@
       }
     ],
     "expect_keywords": [
-      "분할 헬퍼 동기: `Split-TopLevel` 본문이 갈렸다",
+      "복제 사본 동기: `Split-TopLevel` 묶음이 갈렸다",
       "block-destructive.ps1 ↔ guard-bash.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-plan-func-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/loop-continue.ps1",
+        "find": "if ($parent -eq $dir) { break }",
+        "replace": "if ($parent -eq $base) { break }"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `Find-PlanFileUpwards` 묶음이 갈렸다",
+      "session-context.ps1 ↔ loop-continue.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-bullet-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/session-context.ps1",
+        "find": "$planBulletRx = '(?m)^\\s*([-*+]|\\d+[.)])\\s*'",
+        "replace": "$planBulletRx = '(?m)^\\s*([-*]|\\d+[.)])\\s*'"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `불릿 정규식` 묶음이 갈렸다",
+      "guard-write.ps1 ↔ session-context.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-heredoc-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/guard-bash.ps1",
+        "find": "(?<tag>\\w+)\\k<q>",
+        "replace": "(?<tag>[\\w-]+)\\k<q>"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `heredoc 정규식` 묶음이 갈렸다",
+      "block-destructive.ps1 ↔ guard-bash.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-copy-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/loop-continue.ps1",
+        "find": "$planBulletRx = '(?m)^\\s*([-*+]|\\d+[.)])\\s*'",
+        "replace": "# 사본이 지워졌다"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `불릿 정규식` 묶음 — loop-continue.ps1 에",
+      "이 없다"
     ]
   },
   {

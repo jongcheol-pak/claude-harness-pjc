@@ -1,6 +1,6 @@
-﻿# 픽스처용 block-destructive 최소 사본 — 분할 헬퍼 동기 축의 **원본** 쪽이다.
+﻿# 픽스처용 block-destructive 최소 사본 — 복제 사본 동기 축의 **원본** 쪽이다.
 
-# 픽스처용 최소 사본 — 축 ⑯「분할 헬퍼 동기」가 두 파일의 이 함수를 대조한다.
+# 픽스처용 최소 사본 — 축 ⑯「복제 사본 동기」가 두 파일의 이 함수를 대조한다.
 # 실물의 판정 로직 전부를 담을 필요는 없다. 재는 것은 「두 사본이 같은가」이지 분할 자체가 아니다.
 function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     $parts = New-Object System.Collections.Generic.List[string]
@@ -21,3 +21,6 @@ function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     $parts.Add($cur)
     return $parts
 }
+
+# heredoc 정규식 — 같은 축의 리터럴 묶음 대상
+$heredocRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
