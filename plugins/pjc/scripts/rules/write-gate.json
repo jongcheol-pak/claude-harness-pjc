@@ -84,8 +84,6 @@
     "AUTHORS"
   ],
   "styleExts": [
-    ".css",
-    ".scss",
     ".sass",
     ".less",
     ".styl",

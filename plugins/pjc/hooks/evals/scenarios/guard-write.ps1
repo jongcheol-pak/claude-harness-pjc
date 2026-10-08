@@ -82,6 +82,20 @@ $relYml = @{ tool_name = 'Write'; cwd = $noplan; tool_input = @{ file_path = '.g
 $r = Invoke-Hook 'guard-write.ps1' $relYml
 Assert-Case -Name "require-plan: 상대경로 .github/workflows/rel.yml plan 없이 차단 (T2 ^ 분기)" -R $r -ExpectExit 2
 
+# [감사 2026-10-08] 문서·설정·스타일 파일은 plan 없이 통과 — 확장자별 결과만 고정한다(어느 분기가
+#   받는지는 보지 않는다). 겹쳐 있던 전용 분기를 지울 때 판정이 그대로인지 재는 회귀 가드다.
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $noplan (Join-Path $noplan '.env.example'))
+Assert-Case -Name "require-plan: .env.example plan 없이 통과 (감사 회귀 가드)" -R $r -ExpectExit 0
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $noplan (Join-Path $noplan '.env.sample'))
+Assert-Case -Name "require-plan: .env.sample plan 없이 통과 (감사 회귀 가드)" -R $r -ExpectExit 0
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $noplan (Join-Path $noplan 'strings.xml'))
+Assert-Case -Name "require-plan: 루트 strings.xml plan 없이 통과 (감사 회귀 가드)" -R $r -ExpectExit 0
+foreach ($styleExt in @('css', 'scss')) {
+    $sv = @{ tool_name = 'Edit'; cwd = $noplan; tool_input = @{ file_path = (Join-Path $noplan "site.$styleExt"); old_string = '.a { color: #fff; margin: 4px; }'; new_string = '.a { color: #000; margin: 8px; }' } } | ConvertTo-Json -Compress
+    $r = Invoke-Hook 'guard-write.ps1' $sv
+    Assert-Case -Name "require-plan: .$styleExt 값 치환 Edit plan 없이 통과 (감사 회귀 가드)" -R $r -ExpectExit 0
+}
+
 # ---- [P1T3] 신규 파일 Trivial (테스트·재현 스크립트 조건부 허용, v1.98.0) ----
 $c20 = (1..20 | ForEach-Object { "line$_ = $_" }) -join "`n"
 $c31 = (1..31 | ForEach-Object { "line$_ = $_" }) -join "`n"

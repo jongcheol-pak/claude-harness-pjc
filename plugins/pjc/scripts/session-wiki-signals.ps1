@@ -174,11 +174,9 @@ function Get-WikiSignals {
                                         $behindHit = ($behindKnown -and ($behind -ge 30)) -or ($daysKnown -and ($staleDays -ge 14))
                                         if ($behindHit) {
                                             $label = if ($projName) { $projName } else { $hubFile.BaseName }
-                                            $head = if ($behindHit) {
-                                                if ($behindKnown -and $daysKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha, ${staleDays}일 경과)" }
+                                            $head = if ($behindKnown -and $daysKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha, ${staleDays}일 경과)" }
                                                 elseif ($behindKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha)" }
                                                 else { "$label 위키가 ${staleDays}일째 미반영" }
-                                            } else { "$label 위키 반영이 밀려 있습니다" }
                                             # 표적은 **발화가 확정된 뒤에만** 계산한다 — 축이 전부
                                             #   미달이면 표적을 낼 대상도 없고, 평소 세션 시작 비용이 0 으로 유지된다.
                                             $featPart = ''

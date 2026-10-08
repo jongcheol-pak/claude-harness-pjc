@@ -75,9 +75,8 @@ if ($isHookScript -or $suspect83) {
     [Console]::Error.WriteLine("BLOCKED: 하니스 안전 hook 개조 시도 감지 — $why")
     [Console]::Error.WriteLine("대상: $targetPath")
     [Console]::Error.WriteLine("하니스 수정은 개발 repo(경로에 .claude 없음)에서 plan 게이트를 거쳐 진행하세요.")
-    # [이벤트 로깅] 차단 판정 완료 후 exit 직전 — 로드·호출 실패 전면 격리(차단 동작 무영향).
+    # [이벤트 로깅] 차단 판정 완료 후 exit 직전 — 호출 실패 전면 격리(차단 동작 무영향). 로드는 파일 머리에서 한 번 한다.
     try {
-        . (Join-Path $PSScriptRoot 'hook-event-log.ps1')
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
             Write-HookEvent 'guard-harness' 'block' $why ([string]$targetPath)
         }

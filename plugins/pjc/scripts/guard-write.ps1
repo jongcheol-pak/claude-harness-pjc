@@ -135,10 +135,6 @@ $isExecAsset = ($targetPath -match '(^|[\\/])\.github[\\/]workflows[\\/][^\\/]+\
                ($execAssetName -eq 'package.json')
 if (-not $isExecAsset -and ($alwaysAllowedExts -contains $ext)) { exit 0 }
 
-# .env 템플릿(.env.example/.env.sample)은 plan 없이 허용 (실제 시크릿 파일 .env는 제외)
-$baseNameEarly = [System.IO.Path]::GetFileName($targetPath)
-if ($baseNameEarly -match '^\.env\.(example|sample)$') { exit 0 }
-
 # 파일명 기반 예외 (확장자 없는 trivial 파일)
 $baseName = [System.IO.Path]::GetFileName($targetPath)
 $trivialFileNames = @($wgRules.trivialFileNames)
@@ -146,8 +142,8 @@ foreach ($name in $trivialFileNames) {
     if ($baseName -match "^$name(\..+)?$") { exit 0 }
 }
 
-# Android strings.xml, iOS Localizable.strings, .NET resx 같은 리소스 파일명
-if ($baseName -match '^(strings\.xml|Localizable\.strings|Info\.plist)$') { exit 0 }
+# iOS Localizable.strings·Info.plist 같은 리소스 파일명 (Android strings.xml 은 .xml 이라 위 alwaysAllowed 가 받는다)
+if ($baseName -match '^(Localizable\.strings|Info\.plist)$') { exit 0 }
 
 # 소스 코드 확장자 판정 — 근거는 `rules/write-gate-rationale.md`의 「§9 소스 코드 확장자 판정」
 $sourceCodeExts = @($wgRules.sourceCodeExts)
