@@ -83,7 +83,7 @@ Read한다. 없으면 규칙 8로 간다.
 python "<skill>/scripts/relocate-agents.py" "<레포 루트>" [--dry-run]
 ```
 
-- **`<skill>` 은 이 SKILL.md 가 있는 폴더다** — pjc plugin 설치면 `${CLAUDE_PLUGIN_ROOT}/skills/record-project-fact`, 독립 설치면 `~/.claude/skills/record-project-fact`. 이 문서와 `references/` 의 `<skill>/…` 는 모두 이 폴더 기준이다.
+- **`<skill>` 은 이 SKILL.md 가 있는 폴더다** — `${CLAUDE_PLUGIN_ROOT}/skills/record-project-fact`. 이 문서와 `references/` 의 `<skill>/…` 는 모두 이 폴더 기준이다.
 - **판정 서술을 읽어야 하면** 그 스크립트의 모듈 docstring을 연다(ⓐ 발동 ~ ⓗ 이관 불가).
 - **상한은 hook에서 읽는다** — `session-context.ps1`의 `$agentsMaxBytes`·`$agentsNearRatio`·`$agentsNearSlack`. 값을 스크립트에 박지 않으므로 hook이 임계를 바꾸면 판정도 따라간다.
 - **종료 코드** 0 = 이관했거나 발동하지 않음 / 1 = 검증 실패로 원복했다 / **2 = 입력 오류**(파일 부재·인자 부족 — 「검사할 것을 못 찾았다」이지 통과가 아니다). 0이 아니면 그 출력을 그대로 사용자에게 전달하고 **자동 재시도하지 않는다**. **1과 2를 합쳐 읽지 않는다** — 2에는 되돌릴 것이 없는데 「원복했다」로 보고하게 된다.

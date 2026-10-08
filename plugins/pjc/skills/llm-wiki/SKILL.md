@@ -18,7 +18,7 @@ description: >
 이 스킬은 위키 작업의 **실행 절차(A~M) + 규칙**을 담는다 — 본체(이 문서)는 시작 절차·공통 규칙만 담고, 절차는 전부 `references/`에 나눠 담는다(컨텍스트 예산 — 작업에 필요한 파일만 지연 로드). **어느 절차가 어느 파일에 있는지는 아래 「절차 목차」 표가 정본이다.** **vault에 아무 파일이 없어도(빈 폴더) 동작**한다.
 규칙·타입·예산의 진실원천은 **이 스킬 번들**의 schema 네 파일 — `<skill>/references/wiki-schema.md`(코어·목차)와 그 목차가 가리키는 `schema-types.md`(§2)·`schema-budget.md`(§4·§7-2·§8)·`schema-lint.md`(§7) — 다. vault에는 SCHEMA.md 사본을 두지 않는다(번들만 사용).
 
-> **`<skill>` 경로**: 이 SKILL.md가 위치한 폴더. pjc plugin으로 설치된 경우 `${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki`, 독립 설치된 경우 `~/.claude/skills/llm-wiki`. 본문의 `<skill>/...` 참조는 모두 이 폴더 기준이며, 실제로는 이 SKILL.md와 같은 디렉터리의 `references/`·`scripts/`·`config.json`을 가리킨다.
+> **`<skill>` 경로**: 이 SKILL.md가 위치한 폴더(`${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki`). 본문의 `<skill>/...` 참조는 모두 이 폴더 기준이며, 실제로는 이 SKILL.md와 같은 디렉터리의 `references/`·`scripts/`를 가리킨다.
 
 ## 절차 목차
 
@@ -80,8 +80,7 @@ vault 경로는 **사용자 설정 파일** `~/.claude/llm-wiki-config.json`에 
 1. 사용자가 이번 요청에 vault 경로를 명시 → 그 경로 (그리고 `~/.claude/llm-wiki-config.json`에 저장).
 2. `~/.claude/llm-wiki-config.json`의 `vault_path`가 있고 **그 폴더가 실제 존재** → 그 경로.
    - **경로는 있으나 폴더가 없는 경우**(vault 이동·삭제·이름변경): 그 경로를 그대로 쓰지 않는다 — 빈 위키로 오인해 잘못 부트스트랩하거나 파일 작업이 실패한다. 사용자에게 알리고 새 경로를 받아, 폴더 존재를 확인한 뒤 `~/.claude/llm-wiki-config.json`을 갱신한다.
-3. (사용자 config 없음) plugin 번들의 `<skill>/config.json`에 `vault_path`가 비어있지 않고 그 폴더가 존재하면 → 그 경로 (마이그레이션: `~/.claude/llm-wiki-config.json`에 복사 저장).
-4. 모두 실패 → **사용자에게 "LLM WIKI 폴더 경로를 알려주세요"라고 물어본다.** 답을 받으면 폴더를 만들고(없으면) **`~/.claude/llm-wiki-config.json`** 의 `vault_path`에 저장한다 (plugin 번들 config가 아니라 사용자 홈에 저장 — 업데이트 시 유지).
+3. 모두 실패 → **사용자에게 "LLM WIKI 폴더 경로를 알려주세요"라고 물어본다.** 답을 받으면 폴더를 만들고(없으면) **`~/.claude/llm-wiki-config.json`** 의 `vault_path`에 저장한다 (사용자 홈에 저장 — 플러그인 업데이트 시 유지).
 - 사용자가 "위키 폴더 변경/지정/설정" 등을 요청하면 `~/.claude/llm-wiki-config.json`의 `vault_path`를 갱신한다.
 
 > **저장된 경로는 매번 실재를 확인한다** — 폴더가 없으면(이동·삭제) 빈 위키로 오인하지 말고 사용자에게 재확인한다(판정의 정본은 `../WIKI.md` 0절이고, 절차 K 1의 `⚠ 판정 게이트`는 거기에 config 파일 조회를 더한 절차 K 전용 확장이다).
