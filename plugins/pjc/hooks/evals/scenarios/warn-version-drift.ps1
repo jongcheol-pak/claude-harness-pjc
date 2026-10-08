@@ -136,6 +136,16 @@ try {
         # v1.204.0 F-7이 같은 형태를 지적해 SC33d(잔량 단독 문구 고정)를 더한 선례가 있다.
         Assert-Case -Name "version-drift: 릴리즈 누락 문구가 두 소스를 밝힌다" -R $r -ExpectExit 0 -ExpectContains '로컬·원격'
 
+        # 8-1) [회차 3 T7] ①과 ② 사이 — 확인된 태그 캐시가 있으면 원격을 보지 않는다
+        #     원격에는 아직 태그가 없으므로, 원격을 조회하면 위 ①처럼 발화한다. 무출력이면 원격을 보지
+        #     않았다는 증거다. 캐시는 손으로 심고 확인 뒤 지운다 — ②·③ 이 캐시 없는 상태에서 돌아야 한다.
+        $vdCacheDir = Join-Path $env:USERPROFILE '.claude/.state/version-drift'
+        New-Item -ItemType Directory $vdCacheDir -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $vdCacheDir 'released-v3.4.5') -Value ''
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
+        Assert-Case -Name "version-drift: 확인된 태그 캐시가 있으면 원격 조회 없이 무출력 (회차 3 T7)" -R $r -ExpectExit 0 -ExpectSilent $true
+        Remove-Item -Recurse -Force $vdCacheDir -ErrorAction SilentlyContinue
+
         # 9) ② 로컬 태그만 생성(push하지 않음 — 원격에는 여전히 없다) → 무출력
         #    **원격 상태를 「없음」으로 못박는 것이 이 케이스의 전부다** — 원격에도 같은 태그가 있으면
         #    「원격 전용」 구현으로 바꿔도 결과가 같아 로컬 우선 분기를 전혀 고정하지 못한다.
@@ -151,6 +161,11 @@ try {
         try { & git push -q origin v3.4.5 2>$null; & git tag -d v3.4.5 2>$null } finally { Pop-Location }
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 원격에만 태그 있음(로컬 부재) → 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+
+        # 10-1) [회차 3 T7] ③ 바로 뒤 — 원격에서 태그를 찾은 결과는 캐시로 남는다
+        $vdCacheHit = Test-Path -LiteralPath (Join-Path $env:USERPROFILE '.claude/.state/version-drift/released-v3.4.5')
+        Assert-Case -Name "version-drift: 원격에서 찾은 태그를 캐시로 남긴다 (회차 3 T7)" -R @{ code = ([int](-not $vdCacheHit)); out = "캐시 파일=$vdCacheHit" } -ExpectExit 0
+        Remove-Item -Recurse -Force (Join-Path $env:USERPROFILE '.claude/.state/version-drift') -ErrorAction SilentlyContinue
     }
 } finally {
     $env:CLAUDE_PLUGIN_ROOT = $vdRealRoot

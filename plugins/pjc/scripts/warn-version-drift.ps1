@@ -32,13 +32,24 @@ try {
                 try { $pushedVer = ($pushedJson | ConvertFrom-Json).version } catch { $pushedVer = $null }
                 if (-not [string]::IsNullOrWhiteSpace($pushedVer)) {
                     $tag = & git tag -l "v$pushedVer" 2>$null
-                    if ($LASTEXITCODE -eq 0 -and [string]::IsNullOrWhiteSpace(($tag -join ''))) {
+                    # 원격에서 이미 찾은 태그는 기억해 두고 다시 묻지 않는다 — 「없음」은 기억하지 않는다.
+                    $vdHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+                    $releasedDir = Join-Path $vdHome '.claude/.state/version-drift'
+                    $releasedMark = Join-Path $releasedDir ('released-v' + $pushedVer)
+                    if ($LASTEXITCODE -eq 0 -and [string]::IsNullOrWhiteSpace(($tag -join '')) -and -not (Test-Path -LiteralPath $releasedMark)) {
                         # 로컬에 없다 → 원격 확인. — 근거는 `rules/version-drift-rationale.md`의 「§4 로컬에 없다 → 원격 확인.」
                         $env:GIT_TERMINAL_PROMPT = '0'
                         $remoteTag = & git ls-remote --tags origin "v$pushedVer" 2>$null
                         $remoteExit = $LASTEXITCODE   # 즉시 캡처 — 아래 문자열 연산이 값을 덮어쓰기 전에
                         if ($remoteExit -eq 0 -and [string]::IsNullOrWhiteSpace(($remoteTag -join ''))) {
                             Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '버전 업 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <full-sha> (short sha는 거부됩니다)."
+                        } elseif ($remoteExit -eq 0) {
+                            # 원격에 있다 — 다른 버전의 기록을 지우고 이 버전만 남긴다(캐시 실패는 삼킨다, 비차단).
+                            try {
+                                New-Item -ItemType Directory -Path $releasedDir -Force -ErrorAction Stop | Out-Null
+                                Get-ChildItem -LiteralPath $releasedDir -Filter 'released-v*' -File -ErrorAction Stop | Remove-Item -Force -ErrorAction SilentlyContinue
+                                New-Item -ItemType File -Path $releasedMark -Force -ErrorAction Stop | Out-Null
+                            } catch {}
                         }
                     }
                 }
