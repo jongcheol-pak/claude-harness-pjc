@@ -1,7 +1,7 @@
 # intent 산출물 규약 (정본)
 
 > 계획 세션이 확정한 **요구**를 어디에 · 어떤 형식으로 남기고 언제 커밋하는가의 정본이다 — 저장 경로 · 5항목 형식 · 커밋 시점 · `Open questions` 판정.
-> **읽는 쪽은 `pjc:plan`**(컨텍스트 수집 · plan 작성 · 리뷰와 승인 — `plan/SKILL.md`)과 그 서식(`plan-template.md` 「Open Questions」)이고, 그 뒤 `plan.md` 의 포인터를 따라 **두 리뷰어**(`agents/plan-reviewer.md` · `agents/completion-reviewer.md`)가 같은 파일을 연다. `plan.md` 는 `.gitignore` 라 회차마다 덮어써지지만 이 산출물은 **추적된다** — 요구가 남는 자리는 여기 하나다.
+> **읽는 쪽은 `pjc:plan`**(컨텍스트 수집 · plan 작성 · 리뷰와 승인 — `plan/SKILL.md`)과 그 서식(`plan-template.md` 「Open Questions」)이고, 그 뒤 `plan.md` 의 포인터를 따라 **두 리뷰어**(`agents/plan-reviewer.md` · `agents/completion-reviewer.md`)가 같은 파일을 연다. `plan.md` 는 회차마다 덮어써지고 gitignore 인 레포에서는 이력에도 남지 않지만 이 산출물은 **추적된다** — 요구가 남는 자리는 여기 하나다.
 
 **형식은 Anthropic 의 AI-Native SDLC Stage 1 을 따른다**(2026-09-08 확인 · `academy.claude.com/courses/ai-native-sdlc-playbook/capture-intent`). 항목 이름을 번역하지 않는 것은 그 출처와 대조할 수 있게 두기 위해서다.
 
@@ -66,7 +66,7 @@ Author: <발원자>. Status: draft | approved.
 - **별도 승인 대상이 아니다** — 로컬 커밋은 글로벌 지침의 *「작업이 끝나면 로컬 커밋은 승인 없이 진행한다」*에 해당한다. push · 병합 · 태그 · 릴리즈는 종전대로 별도 승인이다.
 - **왜 승인 직후인가** — 구현이 요구를 바꿔도 **원래 요구가 이력에 남는다**. 완료 커밋에 묶으면 그 구분이 사라져, 요구대로 만든 회차와 요구를 바꿔 가며 만든 회차가 같아 보인다.
 - **요구가 바뀌면 intent 를 고쳐 두 번째 커밋을 만든다** — 그 diff 가 곧 「요구가 언제 왜 바뀌었나」다. 조용히 덮어쓰면 남는 것이 결과뿐이다.
-- **그 커밋이 그 회차의 BASE 다** — SHA 를 `plan.md` 의 `## Goal` 바로 아래에 `> BASE: <SHA>` 1줄로 적는다. 회차의 diff 범위(`git diff <BASE>..HEAD`)를 완료 리뷰와 다음 회차가 이 한 줄로 얻는다. `plan.md` 는 추적되지 않으므로 **이 SHA 가 없으면 회차 경계를 되찾을 방법이 커밋 제목 추측뿐**이다. 그 바로 아래 줄은 승인 표지 `> 승인:` 이다(서식 정본 `plan-template.md` 「Goal」).
+- **그 커밋이 그 회차의 BASE 다** — SHA 를 `plan.md` 의 `## Goal` 바로 아래에 `> BASE: <SHA>` 1줄로 적는다. 회차의 diff 범위(`git diff <BASE>..HEAD`)를 완료 리뷰와 다음 회차가 이 한 줄로 얻는다. `plan.md` 가 gitignore 인 레포에서는 **이 SHA 가 없으면 회차 경계를 되찾을 방법이 커밋 제목 추측뿐**이다(추적하는 레포도 `plan.md` 는 마무리에 한 번만 커밋돼 회차 시작점을 주지 않는다). 그 바로 아래 줄은 승인 표지 `> 승인:` 이다(서식 정본 `plan-template.md` 「Goal」).
 
 ## `plan.md` 와의 관계
 

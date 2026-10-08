@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 
 호출자가 준다: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로.
 
-- **`plan.md` 는 gitignore 라 diff 에 안 나오므로 파일을 직접 Read 한다** — acceptance 가 *"…를 Progress Log 에 기록한다"* 형태면 산출물이 커밋 diff 에 없어, 빈 diff 를 미완료로 읽으면 판정이 어긋난다.
+- **`plan.md` 가 gitignore 인 레포에서는 diff 에 안 나오고 추적하는 레포에서도 마무리 커밋 전에는 diff 에 없으므로 파일을 직접 Read 한다** — acceptance 가 *"…를 Progress Log 에 기록한다"* 형태면 산출물이 커밋 diff 에 없어, 빈 diff 를 미완료로 읽으면 판정이 어긋난다.
 
 ## 검사 항목
 
