@@ -30,7 +30,7 @@ stdin 파싱 실패 · `session_id` 부재 · `cwd` 부재 · plan.md 읽기 실
 
 ## §5 상태 파일과 정리
 
-`~/.claude/.state/loop-continue/` 아래 세션별 마커 `<session_id>.active` 와 집합별 카운터 `<session_id>.<집합 해시 12자>.count` 를 둔다. 세션이 끝나도 지우지 않는다 — 다른 세션의 `session_id` 와는 겹치지 않아 해가 없고, `session-end-cleanup.ps1` 은 「다른 책임을 얹지 않는다」고 스스로 범위를 닫았다. 대신 마커를 쓸 때 **30일 지난 파일을 걷는다**(`suggest-agents-record.ps1` 의 같은 하우스키핑).
+`~/.claude/.state/loop-continue/` 아래 세션별 마커 `<session_id>.active` 와 집합별 카운터 `<session_id>.<집합 해시 12자>.count` 를 둔다. 세션이 끝나도 지우지 않는다 — 다른 세션의 `session_id` 와는 겹치지 않아 해가 없고, `session-end-cleanup.ps1` 은 「다른 책임을 얹지 않는다」고 스스로 범위를 닫았다. 30일 지난 파일은 **세션 시작에 한 번** `session-context.ps1` 이 걷는다(`session-context-rationale.md` §38 — 2026-10-08 전에는 마커를 쓸 때마다 이 hook 이 걷었다).
 
 ## §6 발동 마커의 두 경로
 

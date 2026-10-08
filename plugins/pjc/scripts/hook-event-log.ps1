@@ -15,7 +15,7 @@ function Write-HookEvent {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
         }
 
-        # 90일 초과 월 파일 정리 (suggest-agents-record의 30일 마커 정리와 동일 패턴 — best-effort)
+        # 90일 초과 월 파일 정리 (세션 시작 30일 마커 정리와 같은 패턴 — best-effort)
         try {
             $cutoff = (Get-Date).AddDays(-90)
             Get-ChildItem -LiteralPath $dir -Filter '*.jsonl' -ErrorAction SilentlyContinue |

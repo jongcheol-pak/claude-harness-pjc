@@ -1081,5 +1081,36 @@ if (Test-HookSelected @('session-context')) {
     Remove-Item -Recurse -Force $scToc -ErrorAction SilentlyContinue
 
     Remove-Item -Recurse -Force $isoV, $isoV2 -ErrorAction SilentlyContinue
+
+    # ---- [회차 3 T5] 세션 시작 1회 30일 마커 정리 ----
+    # 호출마다 돌던 정리(post-write-checks · suggest-agents-record · loop-continue)를 세션 시작으로
+    #   옮겼다. 폴더마다 「31일 마커는 지워지고 3일 마커는 남는다」를 따로 잰다 — 한 케이스에 묶으면
+    #   어느 폴더가 빠졌는지 갈리지 않는다. 격리 홈($iso)의 .claude/.state 아래에 직접 심는다.
+    #   ⚠ 이 자리에서는 앞 케이스들이 USERPROFILE 을 vault 홈($isoV)으로 바꿔 둔 채다 — hook 이
+    #   $iso 를 보도록 이 블록 동안만 되돌린다(:164 과 같은 형태).
+    $scMkProj = Join-Path $work 'sc-marker-proj'
+    New-Item -ItemType Directory $scMkProj -Force | Out-Null
+    $scMkDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue')
+    foreach ($d in $scMkDirs) {
+        $md = Join-Path $iso ('.claude/.state/' + $d)
+        New-Item -ItemType Directory $md -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $md 'sc-ttl-old') -Value ''
+        (Get-Item (Join-Path $md 'sc-ttl-old')).LastWriteTime = (Get-Date).AddDays(-31)
+        Set-Content -LiteralPath (Join-Path $md 'sc-ttl-new') -Value ''
+        (Get-Item (Join-Path $md 'sc-ttl-new')).LastWriteTime = (Get-Date).AddDays(-3)
+    }
+    $scMkSaved = $env:USERPROFILE
+    try {
+        $env:USERPROFILE = $iso
+        $null = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scMkProj } | ConvertTo-Json -Compress)
+    } finally { $env:USERPROFILE = $scMkSaved }
+    foreach ($d in $scMkDirs) {
+        $md = Join-Path $iso ('.claude/.state/' + $d)
+        $oldGone = -not (Test-Path -LiteralPath (Join-Path $md 'sc-ttl-old'))
+        $newKept = Test-Path -LiteralPath (Join-Path $md 'sc-ttl-new')
+        Assert-Case -Name "session-context: 세션 시작 30일 마커 정리 — $d (회차 3 T5)" -R @{ code = ([int](-not ($oldGone -and $newKept))); out = "31일 소실=$oldGone / 3일 잔존=$newKept" } -ExpectExit 0
+        Remove-Item -Force (Join-Path $md 'sc-ttl-new') -ErrorAction SilentlyContinue
+    }
+    Remove-Item -Recurse -Force $scMkProj -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 

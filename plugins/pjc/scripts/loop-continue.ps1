@@ -21,12 +21,6 @@ $marker = Join-Path $stateDir ($sidSafe + '.active')
 
 function Set-ActiveMarker {
     try { New-Item -Force -ItemType Directory -Path $stateDir -ErrorAction Stop | Out-Null } catch { return }
-    # 세션마다 파일이 쌓이므로 30일 지난 마커·카운터는 여기서 걷는다 — 근거는 `rules/loop-continue-rationale.md`의 「§5 상태 파일과 정리」
-    try {
-        Get-ChildItem -LiteralPath $stateDir -File -ErrorAction Stop |
-            Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
-            Remove-Item -Force -ErrorAction SilentlyContinue
-    } catch {}
     try { Set-Content -LiteralPath $marker -Value (Get-Date -Format o) -Encoding UTF8 -ErrorAction Stop } catch {}
 }
 

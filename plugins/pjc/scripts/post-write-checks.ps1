@@ -34,12 +34,6 @@ $sharedDiffOk = $false
 # 경고 디듑 마커 — 근거는 `rules/post-write-rationale.md`의 「§2 경고 디듑 마커」
 $pwStateDir = Join-Path $env:USERPROFILE '.claude/.state/post-write-warn'
 try { New-Item -Force -ItemType Directory -Path $pwStateDir | Out-Null } catch {}
-# 30일 지난 마커 자동 정리 — 마커는 세션×파일×경고 종류당 1개라 방치하면 무한 축적된다 — 근거는 `rules/post-write-rationale.md`의 「§3 30일 지난 마커 자동 정리 — 마커는 세션×파일×경고 종류당 1개라 방치하면 무한 축적된다」
-try {
-    Get-ChildItem -LiteralPath $pwStateDir -File -ErrorAction Stop |
-        Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
-        Remove-Item -Force -ErrorAction SilentlyContinue
-} catch {}
 $pwSid = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
 function Test-WarnOnce {
     param([string]$Key)

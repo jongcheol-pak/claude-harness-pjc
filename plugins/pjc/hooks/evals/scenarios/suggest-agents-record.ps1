@@ -126,14 +126,6 @@ Assert-Case -Name "suggest: 짝 없는 따옴표는 종전 동작이라 제안 (
 $r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7m' 'git commit -m ''빌드 $(npm run build)''')
 Assert-Case -Name "suggest: 인용 안 명령 치환은 미탐 수용 — 제안 안 함 (포기 고정 ④)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-# [H5/T4] 30일 지난 상태 마커 자동 정리 — 수정 후 삭제가 기대
-$stateDir = Join-Path $iso '.claude/.state/suggest-agents-record'
-New-Item -ItemType Directory $stateDir -Force | Out-Null
-$oldMarker = Join-Path $stateDir 'old_session_proj_build'
-New-Item -ItemType File $oldMarker -Force | Out-Null
-(Get-Item $oldMarker).LastWriteTime = (Get-Date).AddDays(-40)
-$r = Invoke-Hook 'suggest-agents-record.ps1' $sj2   # 아무 실행이나 1회 (정리 트리거)
-$cleaned = -not (Test-Path -LiteralPath $oldMarker)
-Assert-Case -Name "suggest: 30일 경과 마커 자동 정리 (H5)" -R @{ code = ([int](-not $cleaned)); out = '' } -ExpectExit 0
+# 30일 지난 상태 마커 정리는 2026-10-08 세션 시작 1회로 옮겼다 — 그 케이스는 scenarios/session-context.ps1 에 있다.
 }   # ---- §5 게이트 끝 (suggest-agents-record) ----
 
