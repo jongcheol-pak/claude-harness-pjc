@@ -12,7 +12,7 @@ r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것�
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.)
 
 **각 축이 왜 필요한가 · 무엇을 못 잡는가 · 축을 지운 이력은 `harness-consistency-rationale.md`
-가 정본이다.** 여기 복제하지 않는다 — 그 문서를 안 읽고 축을 고치면 폐지 근거를 모른 채
+가 정본이다(축 ①·㉑ 상세는 `harness-consistency-pointer-rationale.md`·`harness-consistency-tagenum-rationale.md`).** 여기 복제하지 않는다 — 그 문서를 안 읽고 축을 고치면 폐지 근거를 모른 채
 되살리게 된다.
 """
 import glob
@@ -106,7 +106,7 @@ def _md_files():
 
 
 # 축 ① 과 「줄이 지워진 절」 통지가 함께 쓰는 포인터 해석 — 두 곳에 두면 한쪽만 고쳐진다.
-# 근거는 `harness-consistency-rationale.md` 의 「축 ① — 왜 「절 이름 동반」만 포인터로 세는가」.
+# 근거는 `harness-consistency-pointer-rationale.md` 의 「축 ① — 왜 「절 이름 동반」만 포인터로 세는가」.
 # ⚠ **배제 문자를 늘리거나 절 이름 상한을 내리지 말 것** — 둘 다 무음 누락을 낸 전례가 있다.
 #   사유는 같은 문서의 「축 ① — 정규식을 좁히면 침묵한다」.
 _POINTER_RX = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
@@ -157,10 +157,10 @@ def _resolve_pointer(src, ref_path, by_suffix):
             target = hits[0]
     if target is None and "/" not in ref_path:
         # **같은 스킬 폴더 기준 해석.** `references/` 안의 문서가 자기 스킬의 `SKILL.md`를
-        #   이름만으로 가리키는 표기가 흔한데 ②③ 이 둘 다 실패한다(사유는 rationale).
+        #   이름만으로 가리키는 표기가 흔한데 ②③ 이 둘 다 실패한다(사유는 `harness-consistency-pointer-rationale.md`).
         #   출처에서 위로 거슬러 `skills/<name>/` 경계를 찾아 그 폴더에서만 찾으면
         #   후보가 하나로 확정된다(추측이 아니라 소속으로 정해진다).
-        #   한계는 `harness-consistency-rationale.md` 의 「축 ① — 같은 스킬 폴더 해석의 한계」.
+        #   한계는 `harness-consistency-pointer-rationale.md` 의 「축 ① — 같은 스킬 폴더 해석의 한계」.
         skill_dir = os.path.dirname(src)
         while True:
             up = os.path.dirname(skill_dir)
@@ -183,12 +183,12 @@ def check_pointer_reachability():
     대상으로 삼는 이유는, 경로 없는 「…」는 강조 표기와 구분되지 않아 오탐이 크기 때문이다.
     """
     pat = _POINTER_RX
-    # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 「절 이름 없는 참조」를 판정이 아니라 범위로 내는 이유」.
+    # 근거는 `harness-consistency-pointer-rationale.md` 의 「축 ① — 「절 이름 없는 참조」를 판정이 아니라 범위로 내는 이유」.
     pat_any = re.compile(r"`([A-Za-z0-9_./-]+\.md)`")
     # 자기 파일 내부 참조 — 대상이 **그 파일 자신**이라 경로가 선행하지 않는다. 위 `pat` 에도
     #   `pat_any` 에도 안 걸려 **계수조차 되지 않던 사각지대**였다(회차 66). 절을 지우는 회차가
     #   축 ① 로 재확인하면 끊긴 참조가 있어도 「0건」으로 통과했다.
-    # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 자기 파일 내부 참조를 같은 축에 넣는 이유」.
+    # 근거는 `harness-consistency-pointer-rationale.md` 의 「축 ① — 자기 파일 내부 참조를 같은 축에 넣는 이유」.
     pat_self = re.compile(r"(?:아래|위|같은 문서)(?:의)?\s*「([^」\n]{2,120})」")
     heading_cache = {}
     issues, checked, skipped, exempt = [], 0, [], []
@@ -242,7 +242,7 @@ def check_pointer_reachability():
             heading_cache[path] = hs
         return heading_cache[path]
 
-    # 근거는 `harness-consistency-rationale.md` 의 「축 ① — 검사 비대상 선언이 왜 별도 목록인가」.
+    # 근거는 `harness-consistency-pointer-rationale.md` 의 「축 ① — 검사 비대상 선언이 왜 별도 목록인가」.
     POINTER_EXEMPT = {
         ("docs/plans/deferred.md", "feat-safety-hooks-advisory.md"),
         ("docs/plans/deferred.md", "maid/feat-app-shell.md"),
@@ -294,7 +294,7 @@ def check_pointer_reachability():
         #   굵은 텍스트면 그것이 앵커로 잡혀 **자기 자신에 도달했다고 판정된다**. 실측:
         #   `golden-runner.md` 의 `⚠ 아래 「명령」 열은 … 아래 「실행·대기 절차 (정본)」이
         #   정본이다.` 가 그 형태라, 낡은 절 이름(실제 헤딩은 `실행 절차 (정본)`)이 조용히
-        #   통과했다. 근거는 `harness-consistency-rationale.md` 의
+        #   통과했다. 근거는 `harness-consistency-pointer-rationale.md` 의
         #   「축 ① — 양방향 부분 일치를 기각한 이유」.
         if rel_src not in POINTER_EXEMPT_SRC and not _POINTER_SKIP_RX.match(rel_src):
             self_hs = anchors_of(src)
@@ -1918,7 +1918,7 @@ def run_fix(dry_run):
 
 
 # ── 축 ㉑ 「큐 태그 열거 정합」 ────────────────────────
-# 왜 필요한가·무엇을 못 잡는가는 `harness-consistency-rationale.md` 의 「축 ㉑ — 큐 태그
+# 왜 필요한가·무엇을 못 잡는가는 `harness-consistency-tagenum-rationale.md` 의 「축 ㉑ — 큐 태그
 #  열거 정합」이 정본이다. 여기 복제하지 않는다.
 #
 # 큐는 `pending.md` 한 파일 세 태그다(2026-09-19 — 하니스 자기개선 큐 넷 폐지).

@@ -9,7 +9,7 @@
 `--ledger` 를 주면 대신 `docs/plans/deferred.md` 의 `## 대기` 구간만 본다(T9 용).
 
 **축이 셋이다 — 트리 경로에서는 전부 돈다.** 위가 「죽은 이름이 살아 있는 자산에 남았는가」라면
-아래 **산문 두 축**은 반대 방향이다: `PROSE_TARGETS` 의 **아홉** 문서가 **백틱으로 인용한 것이
+아래 **산문 두 축**은 반대 방향이다: `PROSE_TARGETS` 의 **열하나** 문서가 **백틱으로 인용한 것이
 지금도 실재하는가**. 이름 목록을 미리 적어 둘 수 없는 자리라 목록 대신 문서 본문을 모집단으로
 쓴다(대상을 늘리는 조건은 그 상수 주석이 정본이다).
 둘을 가르는 것은 **구분자**다 — 경로 축(회차 65)은 `/` 를 담은 토큰을, 심볼 축(회차 66)은
@@ -121,6 +121,8 @@ PROSE_TARGETS = (
     'plugins/pjc/skills/BUDGET.md',
     'plugins/pjc/skills/WIKI.md',
     'plugins/pjc/evals/harness-consistency-rationale.md',
+    'plugins/pjc/evals/harness-consistency-pointer-rationale.md',
+    'plugins/pjc/evals/harness-consistency-tagenum-rationale.md',
 )
 
 # 백틱 인라인 코드 스팬. 여는·닫는 백틱이 같은 줄에 있는 것만 본다(코드 펜스는 여러 줄이라

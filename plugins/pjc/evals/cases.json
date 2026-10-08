@@ -1256,7 +1256,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 경로 실존 ==",
-      "대상 9문서",
+      "대상 11문서",
       "docs/harness-conventions.md — 후보 4건 · 미실존 0건",
       "결과: 후보 5건 전부 실재"
     ],
@@ -1343,7 +1343,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 심볼 실존 ==",
-      "대상 9문서",
+      "대상 11문서",
       "docs/harness-conventions.md — 후보 3건 · 미실존 0건",
       "결과: 후보 5건 전부 실재"
     ],
