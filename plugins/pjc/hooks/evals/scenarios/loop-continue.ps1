@@ -1,6 +1,6 @@
 ﻿# scenarios/loop-continue.ps1 — loop-continue 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook)와 공유 변수($work·$iso)를 그대로 쓴다.
-# 무엇을 재는가: 발동 마커 3경로 · 주입 1경로 · 침묵 7경로 · 집합 변경 재주입. 판정 근거는
+# 무엇을 재는가: 발동 마커 3경로 · 주입 1경로 · 침묵 7경로 · 집합 변경 재주입 · plan 탐색(상위·docs/plan.md·레포 경계 둘·불릿 집합). 판정 근거는
 #   `plugins/pjc/scripts/rules/loop-continue-rationale.md` 의 §2·§6 이다.
 # 세션 id 를 케이스마다 다르게 쓴다 — 마커·카운터가 세션 단위라 앞 케이스의 상태가 뒤 케이스를 오염시키지 않게 한다.
 if (Test-HookSelected @('loop-continue')) {
@@ -80,6 +80,47 @@ $null = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-c1' $lcProj2)
 "- [x] **T1-1** a`n- [ ] **T1-2** b" | Set-Content -LiteralPath (Join-Path $lcProj2 'plan.md') -Encoding UTF8
 $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-c1' $lcProj2)
 Assert-Case -Name "loop-continue: 집합이 바뀌면 다시 주입" -R $r -ExpectExit 0 -ExpectContains 'T1-2'
+
+# ---- [회차 4 T2] plan 상위 탐색 · 레포 경계 · 불릿 집합 ----
+# session-context 와 같은 Find-PlanFileUpwards 사본으로 찾는다 — 근거는 `plugins/pjc/scripts/rules/loop-continue-rationale.md` 의
+#   「§4 미완 판정식과 plan 탐색」. 케이스마다 발동 마커를 먼저 세운다 — 마커가 없으면 탐색 전에 침묵해 경계 케이스가
+#   경계와 무관하게 통과한다. 부모 plan 의 미완 ID 는 그 케이스에만 있는 것(T9-9)이라 「잡았는가」가 ID 로 갈린다.
+$lcUp = Join-Path $work 'lc-up-repo'
+New-Item -ItemType Directory (Join-Path $lcUp '.git'), (Join-Path $lcUp 'src/sub') -Force | Out-Null
+"- [ ] **T9-9** 부모" | Set-Content -LiteralPath (Join-Path $lcUp 'plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-u1' 'pjc:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-u1' (Join-Path $lcUp 'src/sub'))
+Assert-Case -Name "loop-continue: 하위 폴더 cwd 는 레포 루트 plan 의 미완 ID 를 주입한다 (회차 4 T2)" -R $r -ExpectExit 0 -ExpectContains 'T9-9'
+
+$lcDp = Join-Path $work 'lc-docs-plan'
+New-Item -ItemType Directory (Join-Path $lcDp 'docs') -Force | Out-Null
+"- [ ] **T8-1** 문서 plan" | Set-Content -LiteralPath (Join-Path $lcDp 'docs/plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-u2' 'pjc:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-u2' $lcDp)
+Assert-Case -Name "loop-continue: docs/plan.md 를 찾아 그 라벨로 주입한다 (회차 4 T2)" -R $r -ExpectExit 0 -ExpectContains 'docs/plan.md 에 미완 task'
+
+$lcNest = Join-Path $work 'lc-nest'
+New-Item -ItemType Directory (Join-Path $lcNest 'child/.git') -Force | Out-Null
+"- [ ] **T9-9** 부모" | Set-Content -LiteralPath (Join-Path $lcNest 'plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-u3' 'pjc:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-u3' (Join-Path $lcNest 'child'))
+Assert-Case -Name "loop-continue: 중첩 레포(.git 폴더)는 부모 plan 으로 주입하지 않는다 (회차 4 T2)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+$lcWt = Join-Path $work 'lc-wt-parent'
+$lcWtChild = Join-Path $lcWt '.claude/worktrees/wt1'
+New-Item -ItemType Directory (Join-Path $lcWt '.git'), $lcWtChild -Force | Out-Null
+"- [ ] **T9-9** 부모" | Set-Content -LiteralPath (Join-Path $lcWt 'plan.md') -Encoding UTF8
+'gitdir: ../../../.git/worktrees/wt1' | Set-Content -LiteralPath (Join-Path $lcWtChild '.git') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-u4' 'pjc:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-u4' $lcWtChild)
+Assert-Case -Name "loop-continue: worktree(.git 파일)는 부모 레포 plan 으로 주입하지 않는다 (회차 4 T2)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+$lcBul = Join-Path $work 'lc-bullets'; New-Item -ItemType Directory $lcBul -Force | Out-Null
+"1. [ ] **T5-1** a`n+ [/] T5-2: b`n  - [ ] T5-3: c" | Set-Content -LiteralPath (Join-Path $lcBul 'plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-u5' 'pjc:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-u5' $lcBul)
+Assert-Case -Name "loop-continue: guard-write 불릿 집합의 미완 ID 를 모두 주입한다 (회차 4 T2)" -R $r -ExpectExit 0 -ExpectContains 'T5-1, T5-2, T5-3'
+Remove-Item -Recurse -Force $lcUp, $lcDp, $lcNest, $lcWt, $lcBul -ErrorAction SilentlyContinue
 
 # ---- 배선 — 위 케이스는 스크립트에 JSON 을 직접 넣어 hooks.json matcher 를 거치지 않는다 ----
 #   matcher 가 글자·|만으로 쓰이면 「정확 일치 목록」으로 판정돼 pjc: 접두 형태를 떨어뜨린다(hooks 문서 「Matcher patterns」 —
