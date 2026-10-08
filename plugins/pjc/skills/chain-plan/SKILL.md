@@ -106,9 +106,9 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 - **대기는 둘째 줄(`<skill>` 은 이 SKILL.md 의 폴더)을 Bash 도구 `run_in_background: true` 로 띄우고(샌드박스를 풀었으면 같은 플래그로) 경과 보고 없이 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 해 첫 줄 `RESULT: <갈래> — <지시>` 의 지시를 따른다. RESULT 줄이 없으면 `references/wait-exit.md`「RESULT 없음」 을 따른다** — 9분마다 이 세션이 깨어나 큰 컨텍스트를 다시 읽던 폴링을 스크립트가 맡는다.
 - **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤(`worker_done` 제외) · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다(자리 대기 중이면 `--place` 대기 — `references/cli-errors.md`「오류 응답」). 사용자에게 넘긴 질문이 열려 있는 동안은 띄우지 않는다** — 워커가 `ask` 에 막혀 화면이 그대로라 멈춤으로 오판한다.
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 빈 문자열이다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
-- **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 워커가 최종 보고를 다 그린 뒤 `worker-release --dispatch <id>` 하고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다.
+- **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 워커가 최종 보고를 다 그린 뒤 `references/release.md`「닫기」 로 탭을 닫고 다음 계획으로 간다** — 워커는 `worker_done` 을 최종 보고 텍스트보다 먼저 보내므로, 곧바로 닫으면 그 텍스트가 잘린다.
   - 최종 보고를 다 그렸는지는 `references/release.md`「완료 보고 확인」 으로 가른다.
-  - release 응답이 `outcome: "retained"` 여도 닫지 않는다(남은 탭 보고 재료) — 닫는 것은 사용자 몫이다.
+  - 입력창에 문구가 남아 release 가 `retained` 를 내도 그 탭을 닫고, 닫지 못하면 멈추지 않고 자리만 풀어 다음 워커를 옆 탭으로 띄운다 — 문구 하나로 체인이 사람이 탭을 닫을 때까지 서지 않게 한다(2026-10-08 사용자 지시).
   - **`남은 일` 이 「없음」이 아니면 다음 계획 전에 `references/continuation.md`「남은 일 판정」 을 따른다** — `succeeded` 라도 계획이 미완일 수 있다.
 - **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다.
 - **그 밖의 메시지 유형은 요지를 한 줄 알리고 ack 한 뒤 대기를 다시 띄운다.**
