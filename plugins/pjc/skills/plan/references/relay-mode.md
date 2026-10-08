@@ -66,6 +66,7 @@
   - 사용자에게 묻는 자리: <배정문 진행 2 대로 완성한 ask 명령 — 시한·Bash timeout·리다이렉트·만료 시 --resume 를 실제 값으로> (화면 질문 금지 · 만료마다 check 로 대기 신호(`사용자 확인 대기 중`) 확인 — 신호 없는 만료 3회면 아래 failed, 사유 코디네이터 무응답 · ask 직전·답 직후 check 로 신호 비움)
   - 실행 시점 승인(「멈추는 넷」의 파괴적·외부 비가역 작업): 위 ask 로 무엇을·왜·영향 범위·되돌리는 방법을 보내고 계속 — N 이면 의존 task 가 남을 때만 failed
   - 그 밖의 승인이 필요한 정지(동일 원인 3회 실패·인증정보·같은 수단을 3회 반복 등): 첫 항목의 send 에 --outcome failed, --body 에 사유·남은 task·환경 마찰
+  - worker_done 이 inactive_dispatch 로 거절되면(failed 보고 뒤 사용자가 이 탭에서 이어 가게 해 끝까지 간 경우): 같은 --body 로 <CLI> orchestration send --type status --subject "사후 완료 — plan <N>" --from <핸들> --body … (--to 없음 — 코디네이터로 간다) · 코디네이터가 완료로 받는다(`../../chain-plan/references/manual-resume.md`「사후 완료」)
   - 회차를 나눴으면 이 계획의 남은 회차만 worker_done 남은 일에 [다음 회차] 로(다른 체인 계획은 적지 않는다)
   - 체인 대조 거짓(착수 때): <[체인 대조] 줄들 | 없음> — worker_done 남은 일에 그대로
   - DB 변경 승인 목록: <spec 의 DB 변경 줄 값> — 목록 밖은 실행하지 않고 failed
