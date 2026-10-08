@@ -67,6 +67,7 @@ tools: Read, Grep, Glob
 
 - **plan의 task가 intent(`plan.md` 포인터)에 없는 일을 하는지 본다** — 요청되지 않은 리팩토링·정리가 task로 들어와 있으면 지적한다.
 - **반대로 intent 에 있는데 task가 없는 것도 본다** — 승인 게이트를 통과한 누락은 이후 어느 검토도 잡지 못한다.
+- **Investigation Log 가 드러낸 요청 범위 밖 연관 수정이 task·`## Out of Scope`·`## Deferred / Follow-up` 어디에도 없으면 지적한다 — 후보 라운드(`skills/plan/references/interview.md`「후보 라운드」)를 건너뛴 것이다** — 그 수정은 구현이 끝난 뒤에야 사용자에게 알려진다. Log 의 대장 행에 `→ 대장 유지` 로 남긴 항목과, 중계 모드에서 Decisions 의 회피 설계 근거나 `[요청 밖]` 문답이 있는 것은 지적하지 않는다.
 
 ### 요구 확정
 
