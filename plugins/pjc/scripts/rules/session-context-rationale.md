@@ -65,13 +65,27 @@
         #   요약 직후 세션에도 vault 라인이 붙는다).
 ```
 
-## §5 ---- plan 탐색: 루트 plan.md 하나
+## §5 ---- plan 탐색: 상위 탐색과 레포 경계
 
-```
-        # ---- plan 탐색: 루트 plan.md 하나 ----
-        # plan 위치는 루트 단일계다(v1.210.0) — 과거 회차 plan이 쌓인 디렉터리로 폴백하면
-        # 그 미완료분이 이번 세션의 상태로 주입된다.
-```
+**`guard-write` 와 같은 plan 을 본다** — 후보는 `plan.md` → `PLAN.md` → `docs/plan.md` 이고, `cwd` 부터 8단계 위까지 각 단계에서 후보를 먼저 찾은 뒤 경계를 본다. 종전에는 `cwd` 의 `plan.md` 하나만 봐서, 하위 폴더에서 연 세션은 `guard-write` 가 plan 이 있다고 쓰기를 통과시키는 동안 「plan 없음」으로 안내했다(회차 4 — 감사 결과 정리).
+
+**한 곳만 `guard-write` 와 다르다 — `.git` 은 폴더든 파일이든 레포 경계다.** `guard-write`·`guard-bash` 는 `.git` 을 폴더로만 봐서, worktree(`.git` 이 `gitdir:` 파일)에서는 부모 레포의 plan 을 잡는다(회차 4 착수 실측). 이 hook 은 그 plan 으로 세션 상태를 알리고 `loop-continue` 는 그 plan 의 미완 task 로 「계속」을 주입하므로, 다른 레포의 plan 을 잡지 않도록 경계를 넓혔다. 차단 hook 쪽은 동작 보존 제약으로 그대로 둔다. `.claude` 폴더에서도 멈춘다(사용자 홈이 이것으로 막힌다).
+
+**`docs/plans/` 의 날짜별 파일로는 폴백하지 않는다(v1.210.0)** — 과거 회차 plan 이 쌓인 디렉터리라, 폴백하면 그 미완료분이 이번 세션의 상태로 주입된다. 후보의 `docs/plan.md` 는 그 폴더가 아니라 단일 파일이다.
+
+**라벨** — `cwd` 에서 찾으면 후보 이름 그대로(`plan.md` · `docs/plan.md`), 위에서 찾으면 전체 경로다. 함수 안에서 계산해 두 hook 이 같은 라벨을 쓴다. `[System.IO.Path]::GetRelativePath` 는 PowerShell 5.1(.NET Framework)에 없어 쓰지 않는다 — hook 은 pwsh 7 이 없으면 5.1 로 돈다.
+
+**찾은 plan 을 따르는 판정은 셋 더 있다** — Deferred 미판정 계수(§7) · 압축 리마인더 조건(`-not $planPath`) · vault 줄 게이팅(§4 — plan 요약 줄도 cwd 수집 라인으로 센다). 하위 폴더 세션에서도 vault 줄이 나오는 것은 의도된 변화다. AGENTS.md 목차는 계속 `cwd` 기준이다.
+
+**의도적 사본이다** — `Find-PlanFileUpwards` 와 `$planBulletRx` 는 `loop-continue.ps1` 에 같은 글자로 있다. 공용 `.ps1` 로 빼면 `rules/harness-hooks.json`(목록 = 스크립트 전량)에 올라 차단 hook `guard-harness` 의 보호 범위가 바뀐다. 사본의 일치는 `plugins/pjc/evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 잰다(`skills/DESIGN.md` 2절의 복제 예외).
+
+## §5-1 task 계수식
+
+`$planBulletRx`(`guard-write.ps1` 이 정본인 불릿 집합 — `-`·`*`·`+`·번호, 들여쓰기 허용) 뒤에 `\[[ /xX]\]`(전체)·`\[[ /]\]`(미완)와 `[ \t]*\**T\d+` 를 잇는다. 템플릿 정본(plan-template.md 「작업 단계」)의 `- [ ] **T1-1** …`(볼드 하위 항목)과 구형 `- [x] T1: …` 을 함께 받는다.
+
+- **task 번호가 붙은 줄만 센다** — `guard-write` 는 번호 없는 체크박스도 세지만, 여기서 세면 통과 체크리스트가 task 수에 섞인다. 종전 정규식은 볼드를 못 받아 현행 plan 에서 0건으로 떨어졌다(대장 2026-09-06·09-08 등재분 — 회차 44 해소).
+- **`]` 와 `T` 사이는 `[ \t]*` 다** — `\s*` 는 줄을 넘어 `- [ ]` 만 있는 줄 다음 줄의 `T3` 을 task 로 센다.
+- **`loop-continue.ps1` 의 `Get-OpenTaskIds` 가 미완 식에 ID 캡처만 더해 쓴다** — 한쪽만 고치면 세션 안내와 계속 주입이 다른 미완 수를 본다. 뒷부분은 두 hook 에서 모양이 갈려(계수 ↔ ID 캡처) 기계 대조 밖이고, 골든(불릿 집합 케이스 — 두 hook 각각)이 잰다.
 
 ## §6 압축 직후 절 원문 주입이 쓰는 스킬 폴더
 

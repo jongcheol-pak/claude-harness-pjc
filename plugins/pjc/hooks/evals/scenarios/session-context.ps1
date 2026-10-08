@@ -1135,5 +1135,51 @@ if (Test-HookSelected @('session-context')) {
         Assert-Case -Name "session-context: 뒤처짐 계산이 시간 상한 0 에서 멈춘다 (회차 3 T6)" -R @{ code = ([int](-not $sfOk)); out = "TimedOut=$($sf.TimedOut) / Names=$(@($sf.Names) -join ',')" } -ExpectExit 0
         Remove-Item -Recurse -Force $sfRepo, $sfFeat -ErrorAction SilentlyContinue
     }
+
+    # ---- [회차 4 T1] plan 상위 탐색 · 체크박스 불릿 집합 ----
+    # guard-write 와 같은 후보(plan.md·PLAN.md·docs/plan.md)를 위로 찾되 `.git`(폴더·파일)에서 멈춘다 — 근거는
+    #   `plugins/pjc/scripts/rules/session-context-rationale.md` 의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」. 부모 plan 에는
+    #   그 케이스에만 있는 task 수를 심어, 경계에서 멈췄는지가 아니라 「부모 plan 의 고유 수가 안 나오는가」로 잰다.
+    #   USERPROFILE 은 위 30일 정리 블록과 같은 이유로 $iso 에 고정한다(vault 홈이면 출력이 vault 줄로 갈린다).
+    $scUpSaved = $env:USERPROFILE
+    try {
+        $env:USERPROFILE = $iso
+        $scPlanOf = { param([int]$n) @('# Plan') + @(1..$n | ForEach-Object { "- [ ] **T$_-1** todo" }) }
+        $scStart = { param([string]$cwd) Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $cwd } | ConvertTo-Json -Compress) }
+
+        $scUp = Join-Path $work 'sc-up-repo'
+        New-Item -ItemType Directory (Join-Path $scUp '.git'), (Join-Path $scUp 'src/sub') -Force | Out-Null
+        & $scPlanOf 7 | Set-Content -Encoding UTF8 (Join-Path $scUp 'plan.md')
+        $r = & $scStart (Join-Path $scUp 'src/sub')
+        Assert-Case -Name "session-context: 하위 폴더 cwd 는 레포 루트 plan 을 전체 경로로 알린다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains ((Join-Path $scUp 'plan.md') + ': task 7개')
+
+        $scDp = Join-Path $work 'sc-docs-plan'
+        New-Item -ItemType Directory (Join-Path $scDp 'docs') -Force | Out-Null
+        & $scPlanOf 6 | Set-Content -Encoding UTF8 (Join-Path $scDp 'docs/plan.md')
+        $r = & $scStart $scDp
+        Assert-Case -Name "session-context: docs/plan.md 를 찾아 상대 경로로 알린다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains 'docs/plan.md: task 6개'
+
+        $scNest = Join-Path $work 'sc-nest'
+        New-Item -ItemType Directory (Join-Path $scNest 'child/.git') -Force | Out-Null
+        & $scPlanOf 8 | Set-Content -Encoding UTF8 (Join-Path $scNest 'plan.md')
+        $r = & $scStart (Join-Path $scNest 'child')
+        Assert-Case -Name "session-context: 중첩 레포(.git 폴더)는 부모 plan 을 잡지 않는다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectNotContains 'task 8개'
+
+        $scWt = Join-Path $work 'sc-wt-parent'
+        $scWtChild = Join-Path $scWt '.claude/worktrees/wt1'
+        New-Item -ItemType Directory (Join-Path $scWt '.git'), $scWtChild -Force | Out-Null
+        & $scPlanOf 9 | Set-Content -Encoding UTF8 (Join-Path $scWt 'plan.md')
+        'gitdir: ../../../.git/worktrees/wt1' | Set-Content -Encoding UTF8 (Join-Path $scWtChild '.git')
+        $r = & $scStart $scWtChild
+        Assert-Case -Name "session-context: worktree(.git 파일)는 부모 레포 plan 을 잡지 않는다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectNotContains 'task 9개'
+
+        $scBul = Join-Path $work 'sc-bullets'
+        New-Item -ItemType Directory $scBul -Force | Out-Null
+        @('# Plan', '+ [ ] **T1-1** a', '1. [ ] T2: b', '  - [/] T3: c', '- [X] T4: d', '- [ ] 통과 체크(ID 없음)') |
+            Set-Content -Encoding UTF8 (Join-Path $scBul 'plan.md')
+        $r = & $scStart $scBul
+        Assert-Case -Name "session-context: guard-write 불릿 집합·[X] 로 task 를 센다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains 'task 4개 중 미완료 3개'
+    } finally { $env:USERPROFILE = $scUpSaved }
+    Remove-Item -Recurse -Force $scUp, $scDp, $scNest, $scWt, $scBul -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 

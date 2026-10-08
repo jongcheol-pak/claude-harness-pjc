@@ -44,6 +44,32 @@ function Get-SkillSection {
     } catch { return $null }
 }
 
+# plan 탐색과 task 체크박스 불릿 — guard-write 와 같은 규칙의 사본이고 loop-continue.ps1 에 같은 글자로 있다 — 근거는 `rules/session-context-rationale.md`의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」
+$planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
+function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {
+    if ([string]::IsNullOrEmpty($StartDir)) { return $null }
+    $base = [System.IO.Path]::GetFullPath($StartDir).TrimEnd('\', '/')
+    $dir = $base
+    for ($i = 0; $i -lt $MaxDepth; $i++) {
+        if (-not $dir) { break }
+        foreach ($cand in @('plan.md', 'PLAN.md', 'docs/plan.md')) {
+            $pf = Join-Path $dir $cand
+            if (Test-Path -LiteralPath $pf -PathType Leaf) {
+                $label = if ($dir -eq $base) { $cand } else { $pf }
+                return @{ Path = $pf; Label = $label }
+            }
+        }
+        if ((Test-Path -LiteralPath (Join-Path $dir '.git')) -or
+            (Test-Path -LiteralPath (Join-Path $dir '.claude') -PathType Container)) {
+            return $null
+        }
+        $parent = [System.IO.Path]::GetDirectoryName($dir)
+        if ($parent -eq $dir) { break }
+        $dir = $parent
+    }
+    return $null
+}
+
 try {
     # ---- 입력 파싱 (cwd·source) ----
     $raw = [Console]::In.ReadToEnd()
@@ -64,13 +90,13 @@ try {
         # cwd 수집으로 라인이 늘었는지 판정하는 기준 개수 — vault 라인 게이팅에 쓴다. — 근거는 `rules/session-context-rationale.md`의 「§4 cwd 수집으로 라인이 늘었는지 판정하는 기준 개수 — vault 라인 게이팅에 쓴다.」
         $cwdBaseCount = $lines.Count
 
-        # ---- plan 탐색: 루트 plan.md 하나 — 근거는 `rules/session-context-rationale.md`의 「§5 ---- plan 탐색: 루트 plan.md 하나」
-        $rootPlan = Join-Path $cwd 'plan.md'
+        # ---- plan 탐색: 상위 탐색과 레포 경계 — 근거는 `rules/session-context-rationale.md`의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」
         $planPath = $null
         $planLabel = $null
-        if (Test-Path -LiteralPath $rootPlan -PathType Leaf) {
-            $planPath = $rootPlan
-            $planLabel = 'plan.md'
+        $planHit = Find-PlanFileUpwards -StartDir $cwd
+        if ($planHit) {
+            $planPath = $planHit.Path
+            $planLabel = $planHit.Label
         }
 
         # 압축 직후 절 원문 주입이 쓰는 스킬 폴더 — 근거는 `rules/session-context-rationale.md`의 「§6 압축 직후 절 원문 주입이 쓰는 스킬 폴더」
@@ -80,11 +106,9 @@ try {
             $planText = $null
             try { $planText = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 } catch {}
             if ($planText) {
-                # task 라인만 카운트 — 템플릿 정본(plan-template.md 「작업 단계」)은 `- [ ] **T1-1** …`(볼드 하위 항목)이고 구형 `- [x] T1: …` 도 받는다.
-                #   통과 체크리스트 등 다른 체크박스는 제외. 종전 정규식은 볼드를 못 받아 현행 plan 에서 0건으로 떨어졌다(대장 2026-09-06·09-08 등재분 — 회차 44 해소).
-                $all = [regex]::Matches($planText, '(?m)^- \[[ /x]\] \**T\d+').Count
-                # loop-continue.ps1 의 Get-OpenTaskIds 가 이 식에 ID 캡처만 더해 쓴다 — 한쪽만 고치면 세션 안내와 계속 주입이 다른 미완 수를 본다
-                $open = [regex]::Matches($planText, '(?m)^- \[[ /]\] \**T\d+').Count
+                # task 번호가 붙은 체크박스만 센다 — 근거는 `rules/session-context-rationale.md`의 「§5-1 task 계수식」
+                $all = [regex]::Matches($planText, $planBulletRx + '\[[ /xX]\][ \t]*\**T\d+').Count
+                $open = [regex]::Matches($planText, $planBulletRx + '\[[ /]\][ \t]*\**T\d+').Count
 
                 # ---- Deferred 미판정 계수 — 근거는 `rules/session-context-rationale.md`의 「§7 ---- Deferred 미판정 계수」
                 # 마커의 백틱 코드 스팬을 허용한다 — 형식 정본(deferred-rules.md)이 마커를 표 안에서
