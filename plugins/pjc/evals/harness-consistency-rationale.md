@@ -314,7 +314,7 @@ AGENTS.md 목표선 — 상한(16,384B, `session-context.ps1`이 정본)과 **�
 
 ## §6 축 ③④ — 픽스처·이력·로컬 전용 파일을 빼는 이유
 
-ⓐ 픽스처는 **의도적으로 깨뜨린** 파일이라 검사 대상이 되면 축이 상시 실패한다 ⓑ `docs/plans/YYYY-MM-DD-*.md`는 과거 회차의 이력 자산이고 그 시점의 사실이라 고치지 않는다 (`deferred.md`는 살아 있는 자산이라 **제외하지 않는다** — 가장 활발히 편집되는 문서다) ⓑ-2 `docs/.agents-presplit/`도 같은 이유로 제외한다 — 이관 전 문서 사본이라 **고칠 수 없고**, (그 근거는 `harness-consistency-rationale.md` 의 「축 ③④ — 아카이브 제외의 근거」) ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
+ⓐ 픽스처는 **의도적으로 깨뜨린** 파일이라 검사 대상이 되면 축이 상시 실패한다 ⓑ docs/plans/ 의 날짜 이름 회차 문서(YYYY-MM-DD-이름.md)는 과거 회차의 이력 자산이고 그 시점의 사실이라 고치지 않는다 (`deferred.md`는 살아 있는 자산이라 **제외하지 않는다** — 가장 활발히 편집되는 문서다) ⓑ-2 docs/.agents-presplit/ 도 같은 이유로 제외한다 — 이관 전 문서 사본이라 **고칠 수 없고**, (그 근거는 `harness-consistency-rationale.md` 의 「축 ③④ — 아카이브 제외의 근거」) ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
 
 ## §7 축 ① — intent 를 자기 파일 참조 판정에서만 빼는 이유
 
