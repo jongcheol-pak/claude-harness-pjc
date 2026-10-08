@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """llm-wiki lint.py 골든 회귀 러너.
 
-사용법: python run_lint_evals.py   (llm-wiki/evals 폴더 기준, 인자 없음)
+사용법: python run_lint_evals.py [--jobs N]   (llm-wiki/evals 폴더 기준)
+  --jobs N  동시에 돌릴 케이스 수(기본 min(8, CPU 수)). `--jobs 1` 은 순차 실행이고,
+            병렬 출력이 순차와 같은지 대조하는 기준이다 — 출력은 어느 쪽이든 케이스 순서다.
 
 lint-cases.json의 각 case를 evals/fixtures/<fixture> vault에 대해 lint.py로 실행하고
 결과를 대조한다:
@@ -26,6 +28,8 @@ lint.py 자체는 수정하지 않고 subprocess로 호출만 한다(실사용 �
 
 exit code: 전 case PASS면 0, 하나라도 FAIL이면 1.
 """
+import argparse
+import concurrent.futures
 import datetime
 import glob
 import importlib.util
@@ -1154,10 +1158,27 @@ def main():
         print(f"lint-cases.json 로드 실패: {e}")
         sys.exit(2)
 
+    ap = argparse.ArgumentParser(description="llm-wiki lint.py 골든 회귀 러너")
+    ap.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1),
+                    help="동시에 돌릴 케이스 수 (1 = 순차)")
+    jobs = max(1, ap.parse_args().jobs)
+
+    # 단위 케이스가 쓰는 lint 모듈을 먼저 한 번 읽는다 — 여러 스레드가 동시에 처음 부르면
+    #  각자 모듈을 실행해 캐시 대입이 경합한다. 여기서 실패하면 삼키고 넘어간다 — 그 실패는
+    #  단위 케이스가 다시 부를 때 종전과 같은 자리에서 드러난다.
+    try:
+        load_lint_module()
+    except Exception:
+        pass
+
     print("== llm-wiki lint 골든 회귀 ==")
+    # 케이스마다 lint.py 를 subprocess 로 띄우므로 스레드로 충분하다. 쓰기 모드 케이스는
+    #  임시 사본에서 돌고 원본 픽스처 경로는 읽기만 해, 같은 픽스처를 동시에 읽어도 충돌하지 않는다.
+    #  `map` 은 결과를 입력 순서로 돌려주므로 출력이 순차 실행과 같다.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
+        outcomes = list(pool.map(check_case, cases))
     passed = 0
-    for case in cases:
-        ok, detail = check_case(case)
+    for case, (ok, detail) in zip(cases, outcomes):
         mark = "PASS" if ok else "FAIL"
         print(f"[{mark}] {case['fixture']} — {detail}")
         if ok:
