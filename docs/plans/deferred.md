@@ -13,7 +13,7 @@
 
 
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 5 / 종결 231 / 정리 삭제 누계 351 / 총 등재 누계 587
+**▶ 현행 잔량(기계 대조 대상)**: 대기 6 / 종결 231 / 정리 삭제 누계 351 / 총 등재 누계 588
 
 > 이 한 줄만 기계 대조 대상이다 — `plugins/pjc/evals/check-harness-consistency.py`가 파싱해 실측 집계와 대조한다. **아래 batch 기록 안의 "정리 직후 N건 / 현행 M건" 표기는 그 시점의 기록이므로 갱신하지 않는다** — 고치면 "정리 직후/현행 분리 표기" 관례가 깨지고 과거 판정의 근거가 사라진다. 대장을 편집한 task는 **이 줄만** 갱신한다.
 >
@@ -45,6 +45,7 @@
 ### hook · 안전망 (차단·경고·골든 러너)
 
 - [2026-10-08] **`post-write-checks.ps1` EOL 경고가 eol 속성 없는 파일에서 기계 설정 `core.autocrlf=true` 를 레포 규약으로 읽어 LF 레포에 오경보를 낸다** — Karina 는 시스템 gitconfig 가 autocrlf true · 대상 `eol: unspecified` · `git ls-files --eol` 이 `i/lf w/lf` 인데 「규약은 CRLF」로 경고하고, 문구가 하네스 레포 `AGENTS.md` 「줄바꿈」을 가리킨다. 처방: 속성이 없으면 그 파일의 커밋된 워킹트리 eol 과 견주고, 문구에서 하네스 레포 참조를 뺀다. (출처: 2026-10-08 Karina 체인 run_4b6b42f1 두 워커) (실해: 2026-10-08 오경보 11회 — 매번 `git ls-files --eol` 로 확인)
+- [2026-10-08] **`guard-bash` 의 require-task-checkbox 가 `-F`·변수 `-m` 메시지의 제목을 읽지 못해 체크박스 검사를 건너뛴다** — `guard-bash.ps1:282` 는 `-m`/`--message` 뒤 따옴표 문자열·토큰만 읽어 `git commit -F -` 는 매치 없이 통과, `-m $msg` 는 `$msg` 글자를 제목으로 읽어 통과한다. 처방: 미탐 보완(두 형태의 제목 판정)과 골든 실증 — PowerShell 작은따옴표 여러 줄 `-m` 골든도 함께. 차단 hook 수정이라 사용자 결정 대기(deferred-rules 예외). (출처: 2026-10-08 install-cache-and-commit-message 계획 리뷰) (실해: 2026-10-08 T 완료 커밋 6개가 `-F` 로 검사 없이 지났다 — 결과 손실 없음)
 
 
 
