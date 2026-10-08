@@ -88,6 +88,7 @@ def message_first_check():
     out = run(cli)
     assert first(out).startswith('RESULT: message — '), out
     assert any('dlv_1' in l for l in out), '원문 배치가 실려야 한다'
+    assert '사후 완료' in first(out), '사후 완료 status 도 대기를 다시 띄우지 않는 예외임을 지시에 담아야 한다'
 
 
 @case
@@ -112,6 +113,7 @@ def same_screen_three_screens_stalls():
     out = run(cli, dispatch='disp_9')
     assert first(out).startswith('RESULT: stall — '), out
     assert 'disp_9' in first(out), 'retain 할 dispatch 를 지시에 담아야 한다'
+    assert '직접 재개' in first(out), '멈춤 보고에 직접 재개 알림 안내를 싣게 지시해야 한다'
     assert len([c for c in cli.calls if c[0] == 'worker-read']) == 3, '첫 화면을 1장으로 센다'
     assert out[-1] == 'idle', '화면 끝 줄이 실려야 한다'
 

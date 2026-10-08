@@ -66,9 +66,10 @@ def _action(kind, dispatch, streak=0, on_place=False):
     if kind == 'message':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고, 배치를 chain-plan 「워커 루프」 규칙대로 '
                 '처리하고 ack 한 뒤 대기를 다시 띄운다 (이 배치의 deliveryId 를 이미 ack 했으면 처리하지 않고 대기만 다시 띄운다 · '
-                'worker_done 이면 다시 띄우지 않고 다음 계획의 worker-start 뒤에 띄운다)')
+                'worker_done·사후 완료 status 면 다시 띄우지 않고 다음 계획의 worker-start 뒤에 띄운다)')
     if kind == 'stall':
-        return ('같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 보고하고 멈춘다'
+        return ('같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 보고하고 멈춘다 '
+                '(보고의 멈춘 사유에 직접 재개 알림 안내를 싣는다 — references/report.md · references/manual-resume.md)'
                 % (streak, dispatch))
     if kind == 'error':
         return 'references/cli-errors.md 「오류 응답」 을 따른다'
