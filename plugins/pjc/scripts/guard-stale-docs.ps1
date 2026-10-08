@@ -91,11 +91,12 @@ function Get-GoldenTimingLag {
         줄인 뒤 `문서 최신 923 <-> 러너 상수 914` 가 매 커밋에 붙었다).
       **앵커가 없을 때만 최댓값으로 폴백한다** — 폴백을 지우면 그 문서에서 판정이 통째로
         사라진다. 첫 매치·마지막 매치를 쓰지 않는 것은 이력의 순서가 보장되지 않아서다.
+      **러너 상수는 호출부가 읽어 `-Base` 로 넘긴다** — 같은 상수를 층 2 의 총계 대조도 쓰므로 한 번만
+        읽는다. 러너가 없거나 상수를 못 읽었으면 `$null` 이 와서 판정 불가로 끝난다(종전과 같다).
     #>
-    param([string]$RepoRoot)
+    param([string]$RepoRoot, $Base)
     $doc = Join-Path $RepoRoot 'docs/golden-runner.md'
-    $runner = Join-Path $RepoRoot 'plugins/pjc/hooks/evals/run-hook-evals.ps1'
-    if (-not (Test-Path -LiteralPath $doc) -or -not (Test-Path -LiteralPath $runner)) { return $null }
+    if (-not (Test-Path -LiteralPath $doc) -or $null -eq $Base) { return $null }
     $text = Get-Content -LiteralPath $doc -Raw -ErrorAction SilentlyContinue
     if (-not $text) { return $null }
     # 현행값을 명시한 앵커가 있으면 그것이 최신이다 — 이력 최댓값보다 우선한다.
@@ -110,9 +111,7 @@ function Get-GoldenTimingLag {
         }
     }
     if ($docMax -le 0) { return $null }   # 문서에 실측이 없다 — 판정 불가이지 「최신」이 아니다
-    $rs = Select-String -LiteralPath $runner -Pattern '\$GoldenTotalBaseline\s*=\s*(\d+)' | Select-Object -First 1
-    if (-not $rs) { return $null }
-    $base = [int]$rs.Matches[0].Groups[1].Value
+    $base = [int]$Base
     if ($docMax -eq $base) { return $null }
     return @{ Doc = $docMax; Base = $base }
 }
@@ -171,16 +170,22 @@ function Invoke-WarnStaleDocs {
     #   뜨지 않는다. 커밋 직전은 그 자리다 — 문서와 러너 상수가 갈린 채 커밋되는 것을 잡는다.
     $runner = Join-Path $root 'plugins/pjc/hooks/evals/run-hook-evals.ps1'
     $conv = Join-Path $root 'docs/harness-conventions.md'
-    if ((Test-Path -LiteralPath $runner) -and (Test-Path -LiteralPath $conv)) {
+    # 러너 상수는 아래 두 대조(총계 갈림 · 골든 실측 낡음)가 함께 쓴다 — 한 번만 읽는다. 문서 존재 조건
+    #   **밖**에서 읽는 이유는 실측 낡음 대조가 러너만 있으면 판정해 왔기 때문이다(그 문서가 없어도 돈다).
+    $baseText = $null
+    if (Test-Path -LiteralPath $runner) {
         $rs = Select-String -LiteralPath $runner -Pattern '\$GoldenTotalBaseline\s*=\s*(\d+)' | Select-Object -First 1
+        if ($rs) { $baseText = $rs.Matches[0].Groups[1].Value }
+    }
+    if ($baseText -and (Test-Path -LiteralPath $conv)) {
         $cs = Select-String -LiteralPath $conv -Pattern '\*\*기준선 (\d+)케이스\*\*' | Select-Object -First 1
-        if ($rs -and $cs -and $rs.Matches[0].Groups[1].Value -ne $cs.Matches[0].Groups[1].Value) {
-            $lines.Add("[낡음] hook 골든 총계가 갈립니다 — 러너 상수 $($rs.Matches[0].Groups[1].Value) ↔ 문서 $($cs.Matches[0].Groups[1].Value). 이 수는 기계로 세어지지 않아 둘을 손으로 맞춰야 합니다")
+        if ($cs -and $baseText -ne $cs.Matches[0].Groups[1].Value) {
+            $lines.Add("[낡음] hook 골든 총계가 갈립니다 — 러너 상수 $baseText ↔ 문서 $($cs.Matches[0].Groups[1].Value). 이 수는 기계로 세어지지 않아 둘을 손으로 맞춰야 합니다")
         }
     }
 
     # --- 층 2: 골든 실측 낡음 ---
-    $gl = Get-GoldenTimingLag -RepoRoot $root
+    $gl = Get-GoldenTimingLag -RepoRoot $root -Base $(if ($baseText) { [int]$baseText } else { $null })
     if ($null -ne $gl) {
         $lines.Add("[낡음] 골든 실측이 낡았습니다 — 문서 최신 $($gl.Doc)케이스 ↔ 러너 상수 $($gl.Base)케이스. 전량 실행의 [TIMING] 값으로 golden-runner.md 를 갱신하세요")
     }
