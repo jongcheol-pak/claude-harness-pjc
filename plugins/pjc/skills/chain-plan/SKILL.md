@@ -16,7 +16,6 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
   - ⓒ Karina 의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.**
   - ⓓ `python --version` 이 3.x 를 낸다 — 워커 대기 스크립트(「워커 루프」)가 쓴다
 - **`<CLI>` 는 ⓐ 확인 전에 한 번 해석해 spec 에 싣는다 — 판은 탭 환경변수 `KARINA_APP_ID` 로 가른다(`Karina` → `karina-cli.exe` · `Karina-Dev` → `karina-dev-cli.exe`, 그 밖·없음 → 멈춤)** — 배정문은 실행 파일 이름을 `karina-cli` 로 고정해 적어, dev 판 환경에서 그대로 치면 명령을 못 찾거나 다른 앱으로 간다.
-  - **다른 판 이름으로 폴백하지 않는다** — 다른 판 CLI 는 이 앱이 아니라 `app_not_running` 을 돌려주고, ⓐ 가 그것을 앱 미실행으로 오진한다.
   - 그 이름이 PATH 에 없으면 `references/cli-errors.md`「CLI 경로」 를 읽고 따른다.
   - **명령 문법·플래그의 정본은 Karina 가이드(`<CLI> skills get karina-orchestration`)다** — 이 스킬은 명령을 쓰는 단계와 그 판정만 적고, 문법을 옮겨 적으면 CLI 가 바뀔 때 이쪽만 낡는다.
 
@@ -80,62 +79,15 @@ plan 2: …
 ```
 <CLI> orchestration run-create --json --objective "<계획 목록 한 줄> [체인 승인: <사용자 답 원문>]"
 <CLI> orchestration task-create --json --task-title "plan <N>/<총> — <한 줄>" --deps <앞 task id> --spec "$(cat <<'EOF'
-<아래 spec 서식을 채운 것>
+<spec 서식을 채운 것>
 EOF
 )"
 ```
 
+- **task 를 만들기 전에 `references/spec-format.md`「spec 서식」 을 Read 해 채운다** — 계획마다 한 번 쓰는 서식이라 본문에 상시 두지 않는다.
 - **압축 뒤 체인 승인 답 원문·task·dispatch id 가 안 보이면 `references/compaction.md`「압축 뒤 복원」 을 따른다.**
 - **`--task-title` 을 반드시 준다** — 없으면 배정문의 `Task:` 줄이 spec 전문을 되풀이한다.
 - **objective·spec·`reply` 본문은 spec 처럼 작은따옴표 heredoc 치환으로 넘긴다** — 세 명령 모두 파일·stdin 입력이 없고, 본문의 백틱·`$`·따옴표가 셸에서 변조된다.
-
-### spec 서식
-
-```
-[chain-plan 중계] plan <N>/<총>
-CLI: <해석한 실행 파일 이름 또는 따옴표 친 전체경로>
-인계: docs/plans/chain-<run-create 가 돌려준 Run id>.md
-실측 기준: <회차 실측·measure.md 의 실측 기준 | 없음>
-DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖은 금지(SELECT 는 허용)>
-근거로 정한 것: <① · ③ — 각 (근거: …)>
-체인 대조: <이 Run 앞 계획마다 plan M — 성공의 모습 | 없음>
-
-원문:
-<사용자의 계획 목록 중 이 계획의 줄>
-<문답 원문 | Q/A: 없음>
-
-재진술:
-- 결과:        …
-- 사용자:      …
-- 지금 하는 이유: …
-- 성공의 모습:  …
-- 제약조건:    …
-- 범위 밖:     …
-
-실측 요지:
-<실측(회차 실측 또는 measure.md 결과)의 task 초안·바뀌는 파일 — 항목마다 (근거: …) | 없음>
-다른 회차: plan <M> — <task 초안 한 줄> …
-
-진행:
-1. pjc:plan 을 Skill 도구로 부르되 args 첫 줄에 [chain-plan 중계] 를 두고 위 실측 기준·원문·재진술·실측 요지를 그대로 싣는다. 승인되면 pjc:implement 를 Skill 도구로 불러 마지막 task 까지 간다.
-2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 --timeout-ms 540000 과 2>/dev/null 을 더해 Bash 도구 timeout 600000 으로 보낸다(만료되면 ask --resume <questionId>). 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이거나 체인 승인 위임 답(Y (체인 승인 위임 — …))이거나 코디네이터 판정 답(… (코디네이터 판정 — …))이라, 셋 다 사용자 응답·승인으로 본다. 워커 화면에는 묻지 않는다(AskUserQuestion 금지).
-3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 아래 --body 를 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed 에 --body 로 사유·남은 task·환경 마찰을 싣는다.
-   --body "$(cat <<'BODY'
-   결과: <1줄>
-   사용자용 요약: <무엇이 바뀌었나 — 사용자 관점 2~3줄>
-   확인 방법: <사용자가 결과를 확인하는 방법>
-   남은 일: <없으면 「없음」>
-   승인 필요 항목: <없으면 「없음」>
-   HUMAN-VERIFY·미검증: <없으면 「없음」>
-   환경 마찰: <겪은 것마다 「<무엇> ×<횟수>」 — hook 차단·AGENTS.md 에 없어 찾거나 물은 명령·원인별 실패(1회도) · 겪을 때 Progress Log 에 적어 모은다(올린 곳이 있으면 그 위치) · 없으면 「없음」>
-   BODY
-   )"
-4. 문제가 생기면 pjc:pjc-systematic-debugging 절차로 근본 원인을 고친다 — 테스트 skip·예외 삼키기·하드코딩·검증 완화 같은 우회는 쓰지 않는다.
-```
-
-- **표식은 spec 첫 줄에 둔다** — 워커의 `pjc:plan` 이 그 자리(배정문 `할 일:` 바로 아래)와 Skill args 첫 줄로 중계 모드를 판정한다(`../plan/references/relay-mode.md`「중계 모드」).
-- **질문·보고 명령은 spec 에 새로 적지 않고 배정문 끝의 것을 가리킨다** — 핸들·task id·dispatch id 가 거기 이미 채워져 있고, 옮겨 적으면 값이 어긋날 자리가 하나 는다.
-- **`--body` 의 heredoc 구분자는 `BODY` 다** — spec 자체가 `EOF` heredoc 으로 넘어가, 그 안에 `EOF` 줄이 있으면 spec 이 거기서 끊긴다.
 
 ## 워커 루프
 
