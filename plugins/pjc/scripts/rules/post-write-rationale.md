@@ -52,7 +52,7 @@
 
 ```
 # ---- H2: 하니스 hook 개조 감지 (안전 게이트 감시, 비차단) ----
-# require-plan은 .claude 하위 쓰기를 무조건 허용하므로, 에이전트가 Write로 설치본 hook 스크립트·hooks.json을
+# plan 존재 게이트는 .claude 하위 쓰기를 무조건 허용하므로, 에이전트가 Write로 설치본 hook 스크립트·hooks.json을
 #   개조해 안전 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만 그 시도를 가시화한다.
 ```
 

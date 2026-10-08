@@ -132,7 +132,7 @@
 # ---- 작은 변경 통과 (Trivial Edit) ----
 # Edit/MultiEdit의 변경 규모가 작으면 코드 파일이라도 plan 없이 허용.
 # 문구 수정, 라벨 변경, 색상/값 1-2개 변경 등 1분이면 끝나는 작업.
-# 시그니처/구조 변경의 cross-file 영향은 PostToolUse impact-warn hook이 별도 검출.
+# 시그니처/구조 변경의 cross-file 영향은 post-write-checks 의 impact-warn 규칙이 별도 검출.
 ```
 
 ## §13 순수 값 치환 감지

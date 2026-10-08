@@ -300,7 +300,7 @@ if ($foundIn) {
                 if (Test-WarnOnce -Kind 'G4') {
                     $warnMsg = "[HARNESS] 이 plan은 완료된 것으로 보입니다 (task 체크박스 ${done}개 전부 [x], 미완료 0). " +
                                "이번 코드 변경이 이 완료된 plan의 범위 내 후속 작업(리뷰 지적 수정·마무리·문서 갱신 등)이면 새 plan 없이 그대로 진행하세요. " +
-                               "완료된 plan과 무관한 '새 작업'일 때만 pjc:plan으로 plan을 갱신하세요 — require-plan은 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다. (이 경고는 세션당 1회)"
+                               "완료된 plan과 무관한 '새 작업'일 때만 pjc:plan으로 plan을 갱신하세요 — plan 존재 게이트는 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다. (이 경고는 세션당 1회)"
                     [Console]::Error.WriteLine($warnMsg)
                     Write-RpEvent 'warn' 'G4: 완료된 plan으로 새 변경'
                     # PreToolUse additionalContext로 모델에 전달 (exit 0 비차단)
@@ -312,7 +312,7 @@ if ($foundIn) {
                 #   0바이트·골격만 있는 plan.md 하나로 게이트를 무력화하는 약점을 가시화한다(비차단).
                 if (Test-WarnOnce -Kind 'H3') {
                     $warnMsg = "[HARNESS] 이 plan.md에 task 체크박스(- [ ] / - [x])가 하나도 없습니다 — 빈/플레이스홀더 plan일 수 있습니다. " +
-                               "require-plan은 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. pjc:plan으로 실제 task를 작성하세요. " +
+                               "plan 존재 게이트는 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. pjc:plan으로 실제 task를 작성하세요. " +
                                "(이 경고는 세션당 1회)"
                     [Console]::Error.WriteLine($warnMsg)
                     Write-RpEvent 'warn' 'H3: 빈/플레이스홀더 plan'

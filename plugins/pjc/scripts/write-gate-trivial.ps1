@@ -48,7 +48,7 @@ function Invoke-TrivialEditGate {
                 # M7: 소스 파일의 3줄 이하 통과 중 상수·수치·로직 변경(타임아웃·한계·포트 등)은 plan 없이 새므로
                 #   impact-warn(사후 caller 검출)에 더해 검토 권장을 상기한다(차단 아님).
                 $extra = if ($isSourceCode) { ' 소스의 상수·수치·로직 변경이면 pjc:plan 검토를 권장합니다.' } else { '' }
-                [Console]::Error.WriteLine("[HARNESS] Trivial edit ($why): plan 검사 우회. 영향은 impact-warn hook이 검증합니다.$extra")
+                [Console]::Error.WriteLine("[HARNESS] Trivial edit ($why): plan 검사 우회. 영향은 post-write-checks 의 impact-warn 규칙이 검증합니다.$extra")
                 exit 0
             }
         }
@@ -61,7 +61,7 @@ function Invoke-TrivialEditGate {
         $isTestPath = ($targetPath -match '(?i)[\\/](tests?|__tests__|spec)[\\/]') -or
                       ($baseName -match '(?i)^(repro|scratch|tmp)[\w.-]*$')
         if ($wLines -le 30 -and $isTestPath) {
-            [Console]::Error.WriteLine("[HARNESS] Trivial write (테스트·재현 파일, ${wLines}줄 <= 30): plan 검사 우회. 영향은 impact-warn hook이 검증합니다.")
+            [Console]::Error.WriteLine("[HARNESS] Trivial write (테스트·재현 파일, ${wLines}줄 <= 30): plan 검사 우회. 영향은 post-write-checks 의 impact-warn 규칙이 검증합니다.")
             exit 0
         }
     }

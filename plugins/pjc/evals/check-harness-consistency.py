@@ -1395,7 +1395,7 @@ _DEPRECATED_ANCHOR = "**폐기 식별자(기계 대조)**:"
 #  (`.ps1`)·골든 케이스(`.json`)·검사기(`.py`) 주석에도 실재한다(회차 38 이 hooks/evals/ 5건).
 _DEPRECATED_EXTS = (".md", ".ps1", ".py", ".json")
 
-# 근거는 `harness-consistency-rationale.md` 의 「축 ⑫ — 폐기 식별자 스캔이 대장 3파일을 제외하는 이유」.
+# 근거는 `harness-consistency-rationale.md` 의 「축 ⑭ — 폐기 식별자 스캔이 대장 3파일을 제외하는 이유」.
 _DEPRECATED_SKIP_RELS_EXTRA = {"plugins/pjc/evals/cases.json"}
 _DEPRECATED_SKIP_RELS = {
     "docs/plans/deferred.md",

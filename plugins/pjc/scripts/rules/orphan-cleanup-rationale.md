@@ -22,7 +22,7 @@
 #   (Windows는 부모 종료 시 자식을 따라 죽이지 않고, MSYS 셸 강제 종료 시 신호도 전파되지 않는다).
 #   결과로 남는 고아가 CPU를 상시 점유한다 — 2026-08-20 실측: more.com 4개가 각 74%,
 #   find.exe 12개가 각 27%로 합계 코어 6개 상당을 먹고 있었다(누적 63.7 코어시간).
-# 무엇을: 부모가 죽은 more.com·find.exe를 Stop/SessionStart/SessionEnd 시점에 회수한다.
+# 무엇을: 부모가 죽은 more.com·find.exe를 SessionStart/SessionEnd 시점에 회수한다.
 #   살아 있는 셸이 쓰는 페이저·검색은 부모가 있으므로 대상이 아니다.
 # 안전 계약:
 #   ① 이 함수의 어떤 실패도 호출한 hook의 판정·출력에 영향을 주지 않는다(전 경로 fail-open).

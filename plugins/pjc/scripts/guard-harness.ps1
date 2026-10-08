@@ -85,7 +85,7 @@ if ($isHookScript -or $suspect83) {
     exit 2
 }
 
-# ---- 게이트 ③ AGENTS.md 내용 경계 ----
+# ---- 게이트 ② AGENTS.md 내용 경계 ----
 if ($env:CLAUDE_HARNESS_QUICK -eq '1') { exit 0 }
 
 # 대상 판정 — 파일명이 정확히 AGENTS.md 일 때만

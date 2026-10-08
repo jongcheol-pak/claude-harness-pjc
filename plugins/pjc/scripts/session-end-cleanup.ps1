@@ -1,7 +1,7 @@
 ﻿# session-end-cleanup.ps1 — SessionEnd: 고아 콘솔 프로세스 회수 (비차단, 무출력)
 #
-# 왜 SessionEnd에도 두는가: Stop hook은 응답마다 돌아 마지막 응답 직후까지 훑고, SessionStart는
-#   다음에 열 때 훑는다. 그 사이 — 마지막 응답 이후 세션이 닫힐 때까지 생긴 고아 — 를 다음 세션까지
+# 왜 SessionEnd에도 두는가: 회수는 SessionStart·SessionEnd 두 시점에 돈다. SessionStart는
+#   다음에 열 때 훑는다. 그 사이 — 세션이 닫히기 전에 생긴 고아 — 를 다음 세션까지
 #   기다리지 않고 그 자리에서 걷는 것이 이 hook의 몫이다. 세션당 1회라 콜드스타트 1회가 비용의 전부다.
 #   단 크래시·강제 종료 시 발화 여부는 공식 문서에 없으므로 SessionStart가 백스톱으로 남는다
 #   (이 hook은 SessionStart를 대체하지 않는다).

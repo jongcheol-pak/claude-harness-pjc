@@ -98,7 +98,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | 변경 파일 패턴 | 필수 검증 |
 |---|---|
 | `plugins/pjc/scripts/guard-stale-docs.ps1` · `hooks/evals/scenarios/guard-stale-docs.ps1` | 아래 hook 행에 더해 **`$scenarioGroups`(`run-hook-evals.ps1`)·`GoldenFilterNames`(`filter-spec.ps1`) 등록을 같은 task 에서 확인한다** — 시나리오는 자동 발견이 아니라 **파일만 넣으면 안 돌고 골든은 green** 이다(회차 55 실측) |
-| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 + **`python plugins/pjc/hooks/evals/check-block-coverage.py`**(차단 경로마다 사유 문구를 재는 케이스가 있는가 — 없으면 그 경로는 코드를 지워도 green 이다) + **`python plugins/pjc/evals/check-harness-consistency.py`** — 축 「복제 리터럴 동기」가 `session-context.ps1`의 마커 정규식과 골든 시나리오의 마커 주석을 읽고, 축 「추출 앵커 도달성」이 같은 hook의 절 앵커를 읽는다. 그 파일만 고치는 task도 이 검사가 필요하다 | + **`python plugins/pjc/evals/check-comment-truncation.py`**(근거 인용 주석이 단어 중간에서 잘렸는가 · rationale 헤딩과 짝이 맞는가 — v1.225.0이 34곳을 남겼다)
+| `plugins/pjc/scripts/*.ps1` · `plugins/pjc/hooks/**` | Build(전 ps1 parse) + Hook 골든 회귀 + **`python plugins/pjc/hooks/evals/check-block-coverage.py`**(차단 경로마다 사유 문구를 재는 케이스가 있는가 — 없으면 그 경로는 코드를 지워도 green 이다) + **`python plugins/pjc/evals/check-harness-consistency.py`** — 축 「추출 앵커 도달성」이 `session-context.ps1`의 절 앵커를 읽는다. 그 파일만 고치는 task도 이 검사가 필요하다 | + **`python plugins/pjc/evals/check-comment-truncation.py`**(근거 인용 주석이 단어 중간에서 잘렸는가 · rationale 헤딩과 짝이 맞는가 — v1.225.0이 34곳을 남겼다)
 | `plugins/pjc/skills/llm-wiki/**` (SKILL·references·lint.py·evals) | check_consistency + (lint.py·evals 수정 시) run_lint_evals — **`build_index`(생성기)를 고쳤으면 실 vault 사본으로 `--build-index --dry-run` 대조까지**(골든 픽스처는 작아 실물 규모의 분류 오류를 못 잡는다: v1.180.0 T13이 「가이드 / 레시피」 100행 소실을 그 대조에서 발견했다). **케이스 수를 바꿨으면 `python plugins/pjc/evals/check-harness-consistency.py`(축 ⑰ 계수 정합)도 필수다** — 「검증 명령 상세」의 기준선이 이 매니페스트를 적고 있어, 안 부르면 그 드리프트가 커밋까지 통과한다. |
 | `plugins/pjc/skills/llm-wiki/scripts/lint.py`의 **`--auto-split` 처방 구역**(롤오버 3종·산문 하위 분리) | 위 행에 더해 **`--auto-split` 골든**이 같은 러너에서 돈다 — 각 케이스가 dry-run 무변경 → 실제 수행 → 재lint → **2회째 수행(「수행 대상 없음」 요구)**을 태운다. **처방을 고쳤으면 실 vault 사본으로 한 번 더 돌려 신규 WARN 0을 확인한다**(골든 픽스처는 작아 실물 규모의 형상을 못 잡는다) |
 | `plugins/pjc/skills/record-project-fact/**`(`relocate-agents.py`·`evals/`) | `python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py` (1초 미만). **판정 서술을 고쳤으면 그 스크립트의 모듈 docstring이 정본이므로 스킬 문서가 아니라 거기를 고친다**. **케이스 수를 바꿨으면 `python plugins/pjc/evals/check-harness-consistency.py`(축 ⑰ 계수 정합)도 필수다** — 「검증 명령 상세」의 기준선이 이 매니페스트를 적고 있어, 안 부르면 그 드리프트가 커밋까지 통과한다. |
@@ -323,27 +323,7 @@ plan **존재** 게이트에만 있는 경로다. plan **작성** 게이트(plan
 - **요청 없는 절을 신설하지 않는다** — 기능 변경이 없으면 README도 손대지 않는다.
 
 ## Repository Structure
-```
-<repo>/
-├── .claude-plugin/marketplace.json
-├── plugins/pjc/
-│   ├── .claude-plugin/plugin.json   # 플러그인 버전·메타
-│   ├── hooks/hooks.json             # PreToolUse/PostToolUse/UserPromptExpansion/Stop/SessionStart/SessionEnd 배선
-│   ├── skills/llm-wiki/scripts/lint.py  # 검사 + `--fix`(안전 3종) + `--build-index`(index.md 생성 구역 파생 · sub-index 생성) / migrate-index-labels.py  # index 라벨 역이관(레거시 vault 전용 · 1회성, 기본 dry-run)
-│   ├── scripts/*.ps1                # hook 구현 10 + dot-source 헬퍼 8. 진입점: block-destructive(Bash 파괴적 명령 — 독립 실행, 끌 수 없음) · guard-bash(외부작업·커밋 시크릿·task 체크박스·전역 탐색·위험값 대입을 한 프로세스에서) · guard-write(plan 게이트) · guard-harness(자기보호 + AGENTS.md 내용 경계) · post-write-checks(인코딩·민감정보) · suggest-agents-record(기록 제안) · session-context(SessionStart 주입) · warn-version-drift(버전 드리프트) · session-end-cleanup(SessionEnd 회수) · loop-continue(implement 루프의 Stop 계속 주입). 헬퍼: guard-commit-secrets · secret-patterns · write-gate-trivial · write-gate-exempt · session-wiki-signals · session-ledger-signal · session-end-cleanup-lib · hook-event-log. 판정 데이터·근거는 scripts/rules/ 가 정본이다 — 데이터 4(destructive.json · harness-hooks.json · write-gate.json · external-ops.json) + 근거 19(`*-rationale.md`). **근거 문서는 20,000 B 를 넘으면 주제로 쪼갠다**(`skills/BUDGET.md` 처방 ②) — `destructive-rationale-targets.md` · `session-context-rationale-plan.md` · `session-context-rationale-wiki.md` 가 그렇게 갈라져 나왔다.
-│   ├── agents/*.md                  # reviewer 2종 · wiki-page-writer 정의
-│   └── skills/*/SKILL.md            # plan·implement 등 (+ references/)
-├── docs/
-│   ├── golden-runner.md             # hook 골든 러너 실행·대기·판정 정본 (v1.223.0 분리 — 조건부 참조)
-│   ├── harness-conventions.md       # 하니스 전역 규약 상세 (hook 차단·검증 매핑·문서 예산·리뷰어 각주의 정본)
-│   └── plans/                       # 대장 3파일 (v1.198.0 분할)
-│       ├── deferred.md              #   `## 대기` — 계획 때 여는 유일한 파일 + 계수 앵커
-│       ├── deferred-closed.md       #   `## 종결` — 기각 종결분 (계수 축이 합산)
-│       └── deferred-history.md      #   소진 batch 회고 (차수 수열 축이 대조)
-├── validate.ps1                     # 설치본 검증
-├── install.ps1
-└── README.md                        # (notes.md·plan.md·notes-archive/ 는 .gitignore — 로컬 전용)
-```
+구조·디렉터리 설명의 정본은 위키 프로젝트 허브다(`AGENTS.md` 「위키」).
 
 
 ## 자격증명 취급 (기록 금지 대상과 검증 스크립트 제약)
