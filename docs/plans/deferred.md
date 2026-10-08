@@ -13,7 +13,7 @@
 
 
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 4 / 종결 231 / 정리 삭제 누계 348 / 총 등재 누계 583
+**▶ 현행 잔량(기계 대조 대상)**: 대기 8 / 종결 231 / 정리 삭제 누계 348 / 총 등재 누계 587
 
 > 이 한 줄만 기계 대조 대상이다 — `plugins/pjc/evals/check-harness-consistency.py`가 파싱해 실측 집계와 대조한다. **아래 batch 기록 안의 "정리 직후 N건 / 현행 M건" 표기는 그 시점의 기록이므로 갱신하지 않는다** — 고치면 "정리 직후/현행 분리 표기" 관례가 깨지고 과거 판정의 근거가 사라진다. 대장을 편집한 task는 **이 줄만** 갱신한다.
 >
@@ -44,10 +44,16 @@
 
 ### hook · 안전망 (차단·경고·골든 러너)
 
+- [2026-10-08] **`post-write-checks.ps1` EOL 경고가 eol 속성 없는 파일에서 기계 설정 `core.autocrlf=true` 를 레포 규약으로 읽어 LF 레포에 오경보를 낸다** — Karina 는 시스템 gitconfig 가 autocrlf true · 대상 `eol: unspecified` · `git ls-files --eol` 이 `i/lf w/lf` 인데 「규약은 CRLF」로 경고하고, 문구가 하네스 레포 `AGENTS.md` 「줄바꿈」을 가리킨다. 처방: 속성이 없으면 그 파일의 커밋된 워킹트리 eol 과 견주고, 문구에서 하네스 레포 참조를 뺀다. (출처: 2026-10-08 Karina 체인 run_4b6b42f1 두 워커) (실해: 2026-10-08 오경보 11회 — 매번 `git ls-files --eol` 로 확인)
+
 
 
 
 ### 하니스 스킬 (plan · implement · 리뷰어 · 템플릿)
+
+- [2026-10-08] **chain-plan 이 stall 로 체인을 멈춘 뒤 사용자가 워커를 직접 재개하면 워커의 승인 `ask` 를 받을 대기가 없다** — `wait-worker.py` stall 뒤 코디네이터는 retain·보고하고 대기를 다시 띄우지 않는다(「멈춘 워커의 자동 재개」 금지). 처방: stall 보고에 「워커를 직접 재개하면 코디네이터에 알린다」 1줄, 또는 retain 뒤 질문만 받는 대기를 남긴다. (출처: 2026-10-08 Karina 체인 run_4b6b42f1 코디네이터) (실해: 2026-10-08 plan 2 승인 ask 가 540초×3 만료돼 워커가 failed 보고 — 사용자가 워커 화면에서 직접 승인)
+- [2026-10-08] **배정이 `failed` 로 닫힌 뒤 같은 워커가 끝까지 가면 `worker_done` 이 `inactive_dispatch` 로 거절돼 사후 완료를 보고할 경로가 없다** — 워커는 `status` 메시지로 대신 알렸고, chain-plan 「워커 루프」는 그 유형을 「요지 한 줄 알림」으로만 다뤄 체인 보고가 완료를 반영하지 못한다. 처방: relay-mode·워커 루프에 사후 완료 status 서식과 코디네이터의 반영 절차를 둔다. (출처: 2026-10-08 Karina 체인 run_4b6b42f1 plan 2 워커) (실해: 2026-10-08 plan 2 완료 보고가 inactive_dispatch 로 거절 — status 2건으로 우회)
+- [2026-10-08] **중계 워커가 대상 레포의 `plan.md` 를 gitignore 로 오판해 커밋하지 않았다** — Karina 는 `plan.md` 를 추적하는데(`git check-ignore` 음성 · plan 1 은 커밋됨) 워커 보고는 「미커밋 · gitignore」였다. 하네스 레포 `AGENTS.md` 의 「plan.md 는 .gitignore」를 옮겨 적용한 것으로 추정. 처방: implement 완료 절차에 `git check-ignore plan.md` 로 갈라 추적 레포면 `plan.md` 커밋을 확인하는 1줄. (출처: 2026-10-08 Karina 체인 run_4b6b42f1 코디네이터 검증) (실해: 2026-10-08 plan 2 의 plan.md 가 작업 트리에만 남아 사용자 지시로 별도 커밋)
 ### llm-wiki · vault
 
 
