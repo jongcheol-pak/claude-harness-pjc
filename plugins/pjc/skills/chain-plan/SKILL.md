@@ -135,5 +135,5 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 
 ## 하지 않는 것
 
-- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다.
+- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제 하나다(`references/report.md`「인계 파일 정리」).
 - **멈춘 워커의 자동 재개** — 재개는 사용자가 「plan N부터」로 부른다. 중단·무관한 요청은 `references/interrupt.md`「사용자 중단」·「무관한 요청」 을 따른다.
