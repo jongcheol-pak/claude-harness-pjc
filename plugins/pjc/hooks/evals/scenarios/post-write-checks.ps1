@@ -218,6 +218,20 @@ if ($gitOk) {
     $r = Invoke-Hook 'post-write-checks.ps1' $ij2
     Assert-Case -Name "impact: caller 없는 심볼 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+    # ---- [회차 3 T4] 대문자 확장자 caller — caller 검색 pathspec 의 icase 를 잰다 ----
+    # caller 판정은 확장자를 소문자로 바꿔 대조하므로 `.CS` 도 코드 파일이다. `git grep` 에 확장자
+    #   pathspec 을 붙이면서 대소문자를 가리면 이 caller 가 검색 단계에서 빠진다.
+    $impU = Join-Path $work 'imprepo-upper'; New-Item -ItemType Directory $impU -Force | Out-Null
+    Push-Location $impU
+    git init -q; git config user.email t@t; git config user.name t
+    'namespace D { }' | Set-Content Widget.cs
+    'var s = Gadget.RecomputeIndex();' | Set-Content CallerUpper.CS
+    git add .; git commit -qm base
+    "public class Gadget {`n    public static void RecomputeIndex() { }`n}" | Set-Content Widget.cs
+    Pop-Location
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $impU; tool_input = @{ file_path = (Join-Path $impU 'Widget.cs') } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "impact: 대문자 확장자 caller(.CS)도 제시 (회차 3 T4)" -R $r -ExpectExit 0 -ExpectContains 'CallerUpper.CS'
+
     # ---- [P1T4] stop-list 흔한 식별자 제외 (Name/Type 등 — 무관 파일 다독 유도 방지) ----
     $imp2 = Join-Path $work 'imprepo-stop'; New-Item -ItemType Directory $imp2 -Force | Out-Null
     Push-Location $imp2

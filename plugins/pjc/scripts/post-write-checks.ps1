@@ -207,9 +207,16 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         $extImpact = [System.IO.Path]::GetExtension($file).ToLower()
 
         if ($codeExtsImpact -contains $extImpact) {
-            # git 저장소일 때만 진행
-            $gitDir = & git rev-parse --git-dir 2>$null
-            if ($gitDir -and $LASTEXITCODE -eq 0) {
+            # git 저장소일 때만 진행 — 섹션 1의 diff 를 공유 값으로 쓰는 조건이면 그 `ls-files` 가 이미
+            #   레포를 확인했으므로 `rev-parse` 를 부르지 않는다(근거는 아래 공유 diff 주석이 가리키는 rationale 절).
+            $cwdPrefix = (((Get-Location).Path -replace '\\', '/').TrimEnd('/')) + '/'
+            $useSharedDiff = $sharedDiffOk -and ($file -replace '\\', '/').StartsWith($cwdPrefix, [System.StringComparison]::OrdinalIgnoreCase)
+            $inRepo = $useSharedDiff
+            if (-not $inRepo) {
+                $gitDir = & git rev-parse --git-dir 2>$null
+                $inRepo = [bool]$gitDir -and $LASTEXITCODE -eq 0
+            }
+            if ($inRepo) {
                 # ---- 변경된 public/internal 심볼 추출 (git diff의 + 라인) ----
                 # 섹션 1이 이미 같은 파일의 diff를 떴으면 그것을 쓴다 — 근거는 `rules/post-write-rationale.md`의 「§11-1 섹션 1의 diff 재사용과 폴백」
                 #   못 떴을 때만 자기가 부르고, 그래서 두 섹션의 격리가 유지된다. 폴백도 `--unified=0` 이다
@@ -218,10 +225,9 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                 #   cwd 기준이라 둘이 다른 레포면 「파일 레포의 diff로 뽑은 심볼을 cwd 레포에서 caller
                 #   검색」하게 되어 기준이 섞인다. 종전 동작은 그때 cwd 기준 diff가 실패해 침묵이었고,
                 #   폴백이 그것을 그대로 복원한다.
-                $cwdPrefix = (((Get-Location).Path -replace '\\', '/').TrimEnd('/')) + '/'
                 $diffOk = $false
                 $diffLines = $null
-                if ($sharedDiffOk -and ($file -replace '\\', '/').StartsWith($cwdPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                if ($useSharedDiff) {
                     $diffOk = $true
                     $diffLines = $sharedDiffLines
                 }
@@ -273,10 +279,13 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
 
                         # 배치 grep — 근거는 `rules/post-write-rationale.md`의 「§20 caller 배치 검색」
                         $symAlt = ($symbols | ForEach-Object { [regex]::Escape($_) }) -join '|'
-                        $grepOut = & git grep -n --untracked -E "\b($symAlt)\b" 2>$null
+                        #   검색 범위를 코드 확장자 pathspec 으로 좁힌다 — 아래 확장자 필터가 어차피 버릴 파일을
+                        #   git 이 읽지 않게 한다. `icase` 인 이유는 아래 대조가 확장자를 소문자로 바꿔 보기 때문이다.
+                        $extSpecs = @($codeExtsImpact | ForEach-Object { ':(icase)*' + $_ })
+                        $grepOut = & git grep -n --untracked -E "\b($symAlt)\b" -- $extSpecs 2>$null
 
                         foreach ($sym in $symbols) {
-                            $callers = @()
+                            $callers = New-Object System.Collections.Generic.List[string]
                             foreach ($g in $grepOut) {
                                 if ($g -match '^([^:]+):(\d+):(.*)$') {
                                     # $matches 덮어쓰기 방지 — 그룹을 먼저 보관
@@ -297,7 +306,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                                     # 라인이 현재 심볼을 포함할 때만 귀속(「§20」)
                                     if ($callerContent -notmatch "\b$sym\b") { continue }
 
-                                    $callers += "${callerFileRaw}:${callerLine}"
+                                    $callers.Add("${callerFileRaw}:${callerLine}")
                                 }
                             }
 
