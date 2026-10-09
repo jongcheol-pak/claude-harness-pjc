@@ -10,7 +10,7 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 try { . (Join-Path $PSScriptRoot 'session-end-cleanup-lib.ps1'); $null = Invoke-OrphanProcessCleanup -Hook 'session-context' } catch {}
 
 # [상태 마커 정리] 30일 지난 디듑 마커를 세션 시작에 한 번 걷는다 — 근거는 `rules/session-context-rationale.md`의 「§38 [상태 마커 정리] 30일 지난 디듑 마커를 세션 시작에 한 번 걷는다」
-$staleMarkerDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue')
+$staleMarkerDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue', 'trivial-tally')
 $staleMarkerHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 foreach ($d in $staleMarkerDirs) {
     try {

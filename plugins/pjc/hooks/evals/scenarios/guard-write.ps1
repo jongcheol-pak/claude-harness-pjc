@@ -98,6 +98,73 @@ Test-SymbolEdit -Name "새 정의 통과: else 호출 (SYMN26)" 'java' 'else Foo
 Test-SymbolEdit -Name "새 정의 통과: useEffect 콜백 (SYMN27)" 'ts' 'useEffect(() => {' 0
 Test-SymbolEdit -Name "새 정의 통과: 정적 호출 (SYMN28)" 'cs' 'Console.WriteLine(x)' 0
 
+# [2026-10-09 T2] 요청 단위 누적 — 같은 promptId 안에서 trivial 통과가 서로 다른 파일 3개째
+#   또는 4회째에 이르면 exit 0 을 건너뛰고 plan 존재·PLAN-EXEMPT 검사로 흐른다(미탐 보완).
+#   갈래마다 고유 promptId 를 쓴다 — 그룹이 격리 홈 하나를 함께 써 같은 값을 다시 쓰면
+#   누적 상태가 케이스 순서에 달린다. ⓒ·ⓓ·ⓔ·ⓕ·ⓖ 가 새 경계의 델타 음성이다.
+function New-TallyTranscript([string]$Path, [string]$PromptId, [string[]]$Extra = @()) {
+    $lines = @()
+    if ($PromptId) {
+        $lines += ([ordered]@{ type = 'user'; promptId = $PromptId; message = [ordered]@{ role = 'user'; content = 'req' } } | ConvertTo-Json -Compress -Depth 5)
+    } else {
+        $lines += (New-TranscriptLine -Type user -Text 'req')
+    }
+    $lines += $Extra
+    $lines += (New-TranscriptLine -Type assistant -Text 'edit')
+    $lines | Set-Content -LiteralPath $Path
+}
+function Invoke-TallyEdit([string]$Dir, [string]$File, [string]$Transcript) {
+    $j = @{ tool_name = 'Edit'; cwd = $Dir; transcript_path = $Transcript; tool_input = @{ file_path = (Join-Path $Dir $File); old_string = 'int x = 1;'; new_string = 'int x = 2;' } } | ConvertTo-Json -Compress
+    return (Invoke-Hook 'guard-write.ps1' $j)
+}
+# ⓐ 파일 임계 — 서로 다른 파일 둘은 통과, 셋째 파일은 차단 + 누적 사유
+$ttDir = Join-Path $work 'proj-tally';  New-Item -ItemType Directory $ttDir -Force | Out-Null
+$trTA = Join-Path $work 'tr-tally-a.jsonl'; New-TallyTranscript $trTA '0a000000-0000-4000-8000-00000000000a'
+$r = Invoke-TallyEdit $ttDir 'A1.cs' $trTA
+Assert-Case -Name "누적: 첫 파일 trivial 통과 (TT1a)" -R $r -ExpectExit 0 -ExpectContains 'Trivial'
+$r = Invoke-TallyEdit $ttDir 'B1.cs' $trTA
+Assert-Case -Name "누적: 둘째 파일 trivial 통과 (TT1b)" -R $r -ExpectExit 0 -ExpectContains 'Trivial'
+$r = Invoke-TallyEdit $ttDir 'C1.cs' $trTA
+Assert-Case -Name "누적: 셋째 파일은 plan 검사로 넘어가 차단 (TT1)" -R $r -ExpectExit 2 -ExpectContains 'trivial 누적'
+# ⓑ 횟수 임계 — 같은 파일 3회는 통과, 4회째는 차단
+$trTB = Join-Path $work 'tr-tally-b.jsonl'; New-TallyTranscript $trTB '0b000000-0000-4000-8000-00000000000b'
+foreach ($i in 1..3) { $null = Invoke-TallyEdit $ttDir 'X2.cs' $trTB }
+$r = Invoke-TallyEdit $ttDir 'X2.cs' $trTB
+Assert-Case -Name "누적: 같은 파일 4회째는 plan 검사로 넘어가 차단 (TT2)" -R $r -ExpectExit 2 -ExpectContains 'trivial 누적'
+# ⓒ 임계 직전 — 파일 2개에 3회는 셋째도 통과
+$trTC = Join-Path $work 'tr-tally-c.jsonl'; New-TallyTranscript $trTC '0c000000-0000-4000-8000-00000000000c'
+$null = Invoke-TallyEdit $ttDir 'P3.cs' $trTC
+$null = Invoke-TallyEdit $ttDir 'P3.cs' $trTC
+$r = Invoke-TallyEdit $ttDir 'Q3.cs' $trTC
+Assert-Case -Name "누적: 파일 2개 3회는 임계 직전이라 통과 (TT3)" -R $r -ExpectExit 0 -ExpectContains 'Trivial'
+# ⓓ 새 요청 — 임계를 넘긴 뒤 transcript 끝에 새 promptId 가 오면 누적이 다시 시작한다
+$trTD = Join-Path $work 'tr-tally-d.jsonl'; New-TallyTranscript $trTD '0d000000-0000-4000-8000-00000000000d'
+foreach ($f in @('D1.cs', 'D2.cs', 'D3.cs')) { $null = Invoke-TallyEdit $ttDir $f $trTD }
+([ordered]@{ type = 'user'; promptId = '0d000000-0000-4000-8000-0000000000d2'; message = [ordered]@{ role = 'user'; content = 'next' } } | ConvertTo-Json -Compress -Depth 5) | Add-Content -LiteralPath $trTD
+$r = Invoke-TallyEdit $ttDir 'D4.cs' $trTD
+Assert-Case -Name "누적: 새 요청이면 다시 trivial 통과 (TT4)" -R $r -ExpectExit 0 -ExpectContains 'Trivial'
+# ⓔ plan 있음 — 임계를 넘겨도 plan 존재 검사가 통과시킨다(trivial 문구 없이)
+$ttPlanDir = Join-Path $work 'proj-tally-plan';  New-Item -ItemType Directory $ttPlanDir -Force | Out-Null
+"# plan`n- [ ] T1: work" | Set-Content (Join-Path $ttPlanDir 'plan.md')
+$trTE = Join-Path $work 'tr-tally-e.jsonl'; New-TallyTranscript $trTE '0e000000-0000-4000-8000-00000000000e'
+$null = Invoke-TallyEdit $ttPlanDir 'E1.cs' $trTE
+$null = Invoke-TallyEdit $ttPlanDir 'E2.cs' $trTE
+$r = Invoke-TallyEdit $ttPlanDir 'E3.cs' $trTE
+Assert-Case -Name "누적: 임계 초과여도 plan 이 있으면 통과 (TT5)" -R $r -ExpectExit 0 -ExpectNotContains 'Trivial'
+# ⓕ 면제 표식 — 임계를 넘겨도 표식에 적힌 파일은 통과
+$ttPxDir = Join-Path $work 'proj-tally-px';  New-Item -ItemType Directory $ttPxDir -Force | Out-Null
+$trTF = Join-Path $work 'tr-tally-f.jsonl'
+New-TallyTranscript $trTF '0f000000-0000-4000-8000-00000000000f' @((New-TranscriptLine -Type assistant -Text '[PLAN-EXEMPT] proj-tally-px/F3.cs'))
+$null = Invoke-TallyEdit $ttPxDir 'F1.cs' $trTF
+$null = Invoke-TallyEdit $ttPxDir 'F2.cs' $trTF
+$r = Invoke-TallyEdit $ttPxDir 'F3.cs' $trTF
+Assert-Case -Name "누적: 임계 초과여도 면제 표식의 파일은 통과 (TT6)" -R $r -ExpectExit 0 -ExpectContains 'PLAN-EXEMPT'
+# ⓖ fail-open — promptId 가 없는 transcript 는 누적하지 않는다(오늘의 동작)
+$trTG = Join-Path $work 'tr-tally-g.jsonl'; New-TallyTranscript $trTG ''
+foreach ($f in @('G1.cs', 'G2.cs', 'G3.cs', 'G4.cs')) { $null = Invoke-TallyEdit $ttDir $f $trTG }
+$r = Invoke-TallyEdit $ttDir 'G1.cs' $trTG
+Assert-Case -Name "누적: promptId 없으면 5회·4파일도 trivial 통과 (TT7)" -R $r -ExpectExit 0 -ExpectContains 'Trivial'
+
 # [H3] 시스템 임시 폴더의 검증 스크립트 — plan 없이도 통과가 기대(회귀 가드)
 $tempFile = Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'scratch/check.py'
 New-Item -ItemType Directory (Split-Path $tempFile) -Force | Out-Null

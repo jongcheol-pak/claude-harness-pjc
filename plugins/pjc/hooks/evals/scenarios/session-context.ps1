@@ -1090,7 +1090,7 @@ if (Test-HookSelected @('session-context')) {
     #   $iso 를 보도록 이 블록 동안만 되돌린다(:164 과 같은 형태).
     $scMkProj = Join-Path $work 'sc-marker-proj'
     New-Item -ItemType Directory $scMkProj -Force | Out-Null
-    $scMkDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue')
+    $scMkDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue', 'trivial-tally')
     foreach ($d in $scMkDirs) {
         $md = Join-Path $iso ('.claude/.state/' + $d)
         New-Item -ItemType Directory $md -Force | Out-Null

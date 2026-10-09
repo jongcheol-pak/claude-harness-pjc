@@ -340,6 +340,12 @@ foreach ($s in $searchStarts) {
 [Console]::Error.WriteLine("찾는 위치 (각 시작점에서 부모로 최대 8단계):")
 [Console]::Error.WriteLine("  - plan.md, PLAN.md, docs/plan.md")
 [Console]::Error.WriteLine("위 위치 어디에도 plan이 없습니다.")
+if ($script:TrivialTallyReason) {
+    # 3줄 이하 편집이 왜 막혔는지 — 근거는 `rules/trivial-gate-rationale.md`의 「§3 요청 단위 누적 판정」
+    [Console]::Error.WriteLine("")
+    [Console]::Error.WriteLine("※ trivial 누적: 이 편집은 작은 변경이지만 $($script:TrivialTallyReason)라 plan 검사 대상이 됐습니다")
+    [Console]::Error.WriteLine("   (서로 다른 파일 3개째 또는 4회째부터). 아래 4)의 A/B 절차로 면제 표식을 받으세요.")
+}
 
 # 진단 분기(v1.210.0): 과거 회차 plan이 쌓인 디렉터리를 보고 "plan이 있는데 왜 막지"라고 여길 수
 #   있으므로, plan 위치가 루트 하나임을 명시한다. fail-closed는 진단 가능할 때만 안전측이다.

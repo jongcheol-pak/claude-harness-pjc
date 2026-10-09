@@ -198,7 +198,7 @@
 
 ## §38 [상태 마커 정리] 30일 지난 디듑 마커를 세션 시작에 한 번 걷는다
 
-**대상은 `post-write-warn`·`suggest-agents-record`·`loop-continue` 폴더다**(목록 정본은 `session-context.ps1` 의 `$staleMarkerDirs`). 마커는 세션×파일(또는 프로젝트·카테고리)×경고 종류당 1개라 걷지 않으면 무한히 쌓인다. 파일명에 세션 ID 가 들어가 세션이 끝나면 다시 매치되지 않으므로 지워도 잃는 것이 없다.
+**대상은 `post-write-warn`·`suggest-agents-record`·`loop-continue`·`trivial-tally` 폴더다**(목록 정본은 `session-context.ps1` 의 `$staleMarkerDirs`). `trivial-tally` 는 `guard-write` 의 요청 단위 누적 기록이다(2026-10-09 — 차단 hook 쪽에 정리 코드를 새로 넣지 않으려고 여기 모았다 · 근거 `trivial-gate-rationale.md` 「§3 요청 단위 누적 판정」). 마커는 세션×파일(또는 프로젝트·카테고리)×경고 종류당 1개라 걷지 않으면 무한히 쌓인다. 파일명에 세션 ID 가 들어가 세션이 끝나면 다시 매치되지 않으므로 지워도 잃는 것이 없다.
 
 **왜 세션 시작인가.** 2026-10-08 전에는 그 마커를 쓰는 hook 이 **호출마다** 폴더를 열거했다 — 파일 쓰기·Bash·Skill 호출마다 한 번씩이다. 30일 기준은 하루 단위로만 의미가 있어 세션당 한 번이면 충분하다. 2026-08-19 결정이 정리를 공통 모듈로 빼지 않은 근거(「호출마다 뜨는 hook 에 상시 로드 의존이 생긴다」)는 세션 시작 한 곳으로 옮기면 사라진다.
 
