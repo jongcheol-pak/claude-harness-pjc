@@ -25,6 +25,21 @@ function Invoke-TrivialEditGate {
                                 $newStr -match '(?m)\b(public|private|protected|internal|static)\s+[\w<>\[\],\s]+\s+\w+\s*\(' -or
                                 $newStr -match '(?m)\b(def|func|fun|function)\s+\w+\s*\('
 
+            # 언어별 정의 형태 — 확장자를 가려 적용한다 — 근거는 `rules/trivial-gate-rationale.md`의 「§2 새 정의 감지 — 언어별 형태」
+            if (-not $definesNewSymbol) {
+                $jsExts = @('.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs')
+                $langSymbolRules = @(
+                    @{ Exts = @('.rs'); Rx = '(?m)\bfn\s+\w+\s*[<(]' },
+                    @{ Exts = @('.go'); Rx = '(?m)^\s*func\s*\([^)]*\)\s*\w+\s*[(\[]' },
+                    @{ Exts = $jsExts; Rx = '(?m)\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*(?::[^=]+)?=\s*(?:async\s+)?(?:function\b|(?:\([^()]*\)|[A-Za-z_$][\w$]*)\s*(?::\s*[^=]+?)?\s*=>)' },
+                    @{ Exts = $jsExts; Rx = '(?m)^\s*(?:(?:async|static|get|set|override|public|private|protected|readonly)\s+)*(?!(?:if|for|while|switch|catch|with|function|return|do|else|try|finally)\b)[A-Za-z_$#][\w$]*\s*\([^()]*\)\s*(?::\s*[^{;=()]+)?\{\s*$' },
+                    @{ Exts = @('.cs', '.java', '.c', '.cpp', '.cc', '.h', '.hpp'); Rx = '(?m)^\s*(?!(?:return|new|else|throw|await|yield|case|goto|using|var|let|const|lock|fixed|if|for|foreach|while|switch|catch|do|try|sizeof|typeof|nameof|delete|in|out|ref|is|as|not|and|or)\b)[A-Za-z_][\w<>\[\],.?:*&]*\s+\**[A-Za-z_]\w*\s*\([^()]*\)\s*(?:const\s*)?(?:\{|=>|$)' }
+                )
+                foreach ($lr in $langSymbolRules) {
+                    if (($lr.Exts -contains $ext) -and ($newStr -match $lr.Rx)) { $definesNewSymbol = $true; break }
+                }
+            }
+
             # 순수 값 치환 감지 — 근거는 `rules/write-gate-rationale.md`의 「§13 순수 값 치환 감지」
             $normValue = {
                 param([string]$s)

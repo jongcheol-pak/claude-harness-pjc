@@ -48,6 +48,55 @@ Assert-Case -Name "require-plan: trivial Edit 통과" -R $r -ExpectExit 0 -Expec
 $newsym = @{ tool_name = 'Edit'; cwd = $noplan; tool_input = @{ file_path = (Join-Path $noplan 'A.cs'); old_string = '// x'; new_string = 'public class Foo { }' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'guard-write.ps1' $newsym
 Assert-Case -Name "require-plan: 새 클래스 정의 Edit 차단" -R $r -ExpectExit 2
+# [2026-10-09 T1] 새 정의 감지 보완 — 언어 확장자마다 정의 형태를 새 정의로 본다(미탐 보완).
+#   양성(SYM)은 plan 없는 곳에서 차단되고, 델타 음성(SYMN)은 같은 확장자의 제어문·호출문이라
+#   새 규칙이 실제로 발화할 수 있는 자리인데도 trivial 로 통과해야 한다(오차단 0 실증).
+#   transcript 를 주지 않으므로 누적 판정(T2)은 fail-open 으로 끼지 않는다.
+function Test-SymbolEdit([string]$Name, [string]$Ext, [string]$New, [int]$Exit) {
+    $j = @{ tool_name = 'Edit'; cwd = $noplan; tool_input = @{ file_path = (Join-Path $noplan "S.$Ext"); old_string = '// x'; new_string = $New } } | ConvertTo-Json -Compress
+    $rr = Invoke-Hook 'guard-write.ps1' $j
+    if ($Exit -eq 2) { Assert-Case -Name $Name -R $rr -ExpectExit 2 -ExpectNotContains 'Trivial' }
+    else { Assert-Case -Name $Name -R $rr -ExpectExit 0 -ExpectContains 'Trivial' }
+}
+Test-SymbolEdit -Name "새 정의 차단: Rust fn (SYM1)" 'rs' 'fn parse(s: &str) -> i32 {' 2
+Test-SymbolEdit -Name "새 정의 차단: Rust pub fn 제네릭 (SYM2)" 'rs' 'pub fn run<T>(x: T) {' 2
+Test-SymbolEdit -Name "새 정의 차단: const 화살표 함수 (SYM3)" 'ts' 'const f = (a) => a + 1;' 2
+Test-SymbolEdit -Name "새 정의 차단: export const async 화살표 (SYM4)" 'ts' 'export const g = async () => {' 2
+Test-SymbolEdit -Name "새 정의 차단: let 단일 인자 화살표 (SYM5)" 'js' 'let h = x => x * 2;' 2
+Test-SymbolEdit -Name "새 정의 차단: JS 이름만 메서드 (SYM6)" 'js' '  render() {' 2
+Test-SymbolEdit -Name "새 정의 차단: TS async 타입 메서드 (SYM7)" 'ts' '  async load(id: string): Promise<void> {' 2
+Test-SymbolEdit -Name "새 정의 차단: Go 리시버 메서드 (SYM8)" 'go' 'func (r *T) Name() int {' 2
+Test-SymbolEdit -Name "새 정의 차단: C# 반환형만 메서드 (SYM9)" 'cs' 'void Foo() {' 2
+Test-SymbolEdit -Name "새 정의 차단: Java 반환형만 메서드 (SYM10)" 'java' 'int Bar(int x) {' 2
+Test-SymbolEdit -Name "새 정의 차단: C# 올맨식 메서드 (SYM11)" 'cs' "void Foo()`n{" 2
+Test-SymbolEdit -Name "새 정의 통과: if 블록 (SYMN1)" 'ts' 'if (x) {' 0
+Test-SymbolEdit -Name "새 정의 통과: else if 블록 (SYMN2)" 'cs' '} else if (y) {' 0
+Test-SymbolEdit -Name "새 정의 통과: for 블록 (SYMN3)" 'java' 'for (int i = 0; i < n; i++) {' 0
+Test-SymbolEdit -Name "새 정의 통과: switch 블록 (SYMN4)" 'cs' 'switch (x) {' 0
+Test-SymbolEdit -Name "새 정의 통과: catch 블록 (SYMN5)" 'ts' 'catch (e) {' 0
+Test-SymbolEdit -Name "새 정의 통과: 호출문 (SYMN6)" 'ts' 'foo(bar);' 0
+Test-SymbolEdit -Name "새 정의 통과: return 호출 (SYMN7)" 'cs' 'return foo(x);' 0
+Test-SymbolEdit -Name "새 정의 통과: 인자 화살표 (SYMN8)" 'ts' 'items.map(x => x.id);' 0
+Test-SymbolEdit -Name "새 정의 통과: const 호출 대입 (SYMN9)" 'ts' 'const x = foo(1);' 0
+Test-SymbolEdit -Name "새 정의 통과: Java 익명 생성 (SYMN10)" 'java' 'new Foo() {' 0
+Test-SymbolEdit -Name "새 정의 통과: Go defer 호출 (SYMN11)" 'go' 'defer cleanup()' 0
+Test-SymbolEdit -Name "새 정의 통과: describe 화살표 콜백 (SYMN12)" 'ts' "describe('x', () => {" 0
+Test-SymbolEdit -Name "새 정의 통과: describe function 콜백 (SYMN13)" 'js' "describe('x', function () {" 0
+Test-SymbolEdit -Name "새 정의 통과: Swift 뷰 빌더 (SYMN14)" 'swift' 'VStack(spacing: 8) {' 0
+Test-SymbolEdit -Name "새 정의 통과: Kotlin 람다 블록 (SYMN15)" 'kt' 'repeat(3) {' 0
+Test-SymbolEdit -Name "새 정의 통과: while 블록 (SYMN16)" 'cs' 'while (x) {' 0
+Test-SymbolEdit -Name "새 정의 통과: using 블록 (SYMN17)" 'cs' 'using (var s = Open()) {' 0
+Test-SymbolEdit -Name "새 정의 통과: lock 블록 (SYMN18)" 'cs' 'lock (o) {' 0
+Test-SymbolEdit -Name "새 정의 통과: Go go func (SYMN19)" 'go' 'go func() {' 0
+Test-SymbolEdit -Name "새 정의 통과: Go defer func (SYMN20)" 'go' 'defer func() {' 0
+Test-SymbolEdit -Name "새 정의 통과: 올맨식 else if (SYMN21)" 'cs' 'else if (y)' 0
+Test-SymbolEdit -Name "새 정의 통과: const 배열 메서드 화살표 (SYMN22)" 'ts' 'const ids = items.map(x => x.id);' 0
+Test-SymbolEdit -Name "새 정의 통과: await 호출 (SYMN23)" 'cs' 'await Task.Delay(1)' 0
+Test-SymbolEdit -Name "새 정의 통과: throw new (SYMN24)" 'cs' 'throw new InvalidOperationException(msg)' 0
+Test-SymbolEdit -Name "새 정의 통과: var 호출 대입 (SYMN25)" 'cs' 'var x = Foo(y)' 0
+Test-SymbolEdit -Name "새 정의 통과: else 호출 (SYMN26)" 'java' 'else Foo()' 0
+Test-SymbolEdit -Name "새 정의 통과: useEffect 콜백 (SYMN27)" 'ts' 'useEffect(() => {' 0
+Test-SymbolEdit -Name "새 정의 통과: 정적 호출 (SYMN28)" 'cs' 'Console.WriteLine(x)' 0
 
 # [H3] 시스템 임시 폴더의 검증 스크립트 — plan 없이도 통과가 기대(회귀 가드)
 $tempFile = Join-Path (Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName) 'scratch/check.py'
