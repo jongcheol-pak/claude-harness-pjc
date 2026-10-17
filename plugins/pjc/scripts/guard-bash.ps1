@@ -1,9 +1,6 @@
 ﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 7종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
-# 아래 검사 함수 7종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
-
-# 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 커밋 판정 라이브러리 둘은 커밋 명령에서만
-#   dot-source 되므로(아래 로드 루프) 거기 두면 나머지 검사가 돌 수 없다.
+# 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
     param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null)
     return @{ Block = $Block; Stderr = $Stderr; Context = $Context }
@@ -12,7 +9,6 @@ function New-HookResult {
 # heredoc 블록 정규식 — 아래 함수들과 커밋 판정 라이브러리의 스트립이 공유한다(dot-source 라 같은 스코프).
 $script:HeredocBlockRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
 # heredoc 본문 전량 스트립 (커밋 판정 전용) — 근거는 `rules/commit-secrets-rationale.md` §3a
-#   쓰는 쪽은 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1` 둘이다. 여기 두면 한쪽 파일이 없어도 다른 쪽의 스트립이 유지된다.
 function Remove-HeredocBodyForJudge([string]$s) {
     if ([string]::IsNullOrEmpty($s)) { return $s }
     if (-not $script:HeredocBlockRx) { return $s }   # 단독 dot-source 시 fail-open(보수측: 스트립 없이 판정)
@@ -24,7 +20,6 @@ function Remove-HeredocDataSink([string]$s) {
     return [regex]::Replace($s, $script:HeredocBlockRx, {
         param($m)
         $line = $m.Groups['line'].Value
-        # 싱크 판정은 heredoc 을 받는 세그먼트(소비자)로 하고, 스크립트(.sh·.py 등)로 쓰는 본문은 걷지 않는다 — 근거는 `rules/bash-guard-rationale.md` §16
         $target = Get-HeredocSinkTarget $line $script:IsPsTool
         $isDataSink = ($null -ne $target) -and -not (Test-ScriptSinkTarget $target $line)
         if ($isDataSink) { $line } else { $m.Value }
@@ -36,17 +31,20 @@ function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
     if ($null -eq $cons) { return $null }
     $rest = $line.Substring($line.IndexOf($cons) + $cons.Length)
     $t = $null
-    if ($cons -match '(?i)^\s*cat\b[^>]*>\s*(\S+)') { $t = $Matches[1] }
-    elseif ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $t = $Matches[1] }
-    elseif ($cons -match '(?i)^\s*cat\b' -and $rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { return $Matches[1] }
-    # 출력이 다시 파이프로 나가거나 대상이 표준출력이면 본문이 다음 명령(셸)으로 흘러간다 — 싱크가 아니다
-    if ($null -eq $t -or $rest -match '^\s*\|(?!\|)' -or $t.Trim('"', "'") -match '^/(dev|proc/self)/(stdout|fd/)') { return $null }
+    if ($cons -match '(?i)^\s*cat\b') {
+        $ms = [regex]::Matches($cons, '(?<![0-9&>])>>?\s*(\S+)')
+        if ($ms.Count) { $t = $ms[$ms.Count - 1].Groups[1].Value }
+        elseif ($rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { $t = $Matches[1]; $rest = '' }
+    } elseif ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $t = $Matches[1] }
+    if ($null -eq $t -or ($rest -split '&&|\|\||;', 2)[0] -match '\|' -or $t.Trim('"', "'") -match '^(/(dev|proc/self)/(stdout|fd/)|[<>]\(|&)') { return $null }
     return $t
 }
 function Test-ScriptSinkTarget([string]$target, [string]$line) {
     $t = $target.Trim('"', "'")
-    if ($t -match '^\$\{?(\w+)\}?$') {
-        if ($line -match ('(?:^|[\s;&|])' + $Matches[1] + '=("[^"]*"|''[^'']*''|[^\s;&|]+)')) { $t = $Matches[1].Trim('"', "'") } else { return $false }
+    if ($t -match '\$\{?(\w+)\}?$') {
+        $as = [regex]::Matches($line, '(?:^|[\s;&|])' + $Matches[1] + '=("[^"]*"|''[^'']*''|[^\s;&|]+)')
+        if ($as.Count -eq 0) { return $false }
+        $t = $as[$as.Count - 1].Groups[1].Value.Trim('"', "'")
     }
     return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
 }
@@ -59,7 +57,7 @@ function Remove-DataQuotes([string[]]$segs, [string]$src, $ops) {
         if (-not $ops.dataCommandRx -or $segs[$i] -notmatch $ops.dataCommandRx) { continue }
         $bare = $segs[$i] -replace $qRx, ''
         if ($bare -match '(?<![0-9&])>|\b1>' -and $bare -notmatch '>\s*(/dev/null|\$null|NUL)\s*$') { continue }
-        if ($src.Substring($pos[$i] + $segs[$i].Length) -match '^\s*&>') { continue }
+        if ($src.Substring($pos[$i] + $segs[$i].Length) -match '^\s*&(?!&)') { continue }
         $ok = $true; $j = $i
         while ($ok -and $j + 1 -lt $segs.Count -and $src.Substring($pos[$j] + $segs[$j].Length) -match '^\s*\|(?!\|)') {
             $j++; $ok = $segs[$j] -match $ops.dataReceiverRx
@@ -133,7 +131,7 @@ function Invoke-WarnGlobalFind {
         }
         if ([string]::IsNullOrWhiteSpace($start)) { continue }
 
-        # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 범위가 한정돼 통과한다. — 근거는 `rules/bash-guard-rationale.md` §4
+        # 탐색 시작점의 대상 범위 — 근거는 `rules/bash-guard-rationale.md` §4
         if ($start -match '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\/]?)$') { $hits.Add($start) }
     }
 
@@ -452,8 +450,6 @@ $script:IsPsTool = ([string]$data.tool_name -eq 'PowerShell')
 $cmdText = [string]$data.tool_input.command
 
 # 커밋 시점 검사 둘은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
-#   존재는 매 호출 확인하고(부재 경고를 커밋 때만 내면 고장이 오래 숨는다), dot-source 는 명령에 commit 이 있을 때만 한다 —
-#   두 검사의 커밋 판정(`git\s+…commit\b`)이 참이면 명령에 commit 이 반드시 있어 이 조건은 그 판정의 상위 집합이다.
 $loadCommitLibs = $cmdText -match 'commit'
 foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets'),
                    @('guard-stale-docs.ps1', 'Invoke-WarnStaleDocs'))) {
@@ -466,8 +462,7 @@ foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets'),
     [Console]::Error.WriteLine("[guard-bash] $($lib[0]) 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.")
 }
 
-# [이벤트 로깅] 차단/경고 이벤트를 오탐 리뷰 데이터로 적재 — lib 함수·얇은 래퍼는 무수정(골든 격리 유지),
-#   로깅은 디스패처 수준에서 결과 객체로 수행한다. 실패는 전면 격리(검사 판정 무영향).
+# [이벤트 로깅] 차단/경고 이벤트를 오탐 리뷰 데이터로 적재 — 근거는 `rules/bash-guard-rationale.md` §8
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
 function Write-DispatchEvent {
     param([string]$HookName, [string]$Decision, [object]$Result)

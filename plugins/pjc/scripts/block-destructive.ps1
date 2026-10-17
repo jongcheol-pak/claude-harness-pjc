@@ -112,18 +112,22 @@ function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
     if ($null -eq $cons) { return $null }
     $rest = $line.Substring($line.IndexOf($cons) + $cons.Length)
     $t = $null
-    if ($cons -match '(?i)^\s*cat\b[^>]*>\s*(\S+)') { $t = $Matches[1] }
-    elseif ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $t = $Matches[1] }
-    elseif ($cons -match '(?i)^\s*cat\b' -and $rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { return $Matches[1] }
-    # 출력이 다시 파이프로 나가거나 대상이 표준출력이면 본문이 다음 명령(셸)으로 흘러간다 — 싱크가 아니다
-    if ($null -eq $t -or $rest -match '^\s*\|(?!\|)' -or $t.Trim('"', "'") -match '^/(dev|proc/self)/(stdout|fd/)') { return $null }
+    if ($cons -match '(?i)^\s*cat\b') {
+        $ms = [regex]::Matches($cons, '(?<![0-9&>])>>?\s*(\S+)')
+        if ($ms.Count) { $t = $ms[$ms.Count - 1].Groups[1].Value }
+        elseif ($rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { $t = $Matches[1]; $rest = '' }
+    } elseif ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $t = $Matches[1] }
+    if ($null -eq $t -or ($rest -split '&&|\|\||;', 2)[0] -match '\|' -or $t.Trim('"', "'") -match '^(/(dev|proc/self)/(stdout|fd/)|[<>]\(|&)') { return $null }
     return $t
 }
-# 싱크 대상이 실행될 스크립트인가 — 변수 대상(`"$N"`)은 같은 줄의 대입값(`N=run.sh`)으로 보고, 대입이 없으면 데이터로 본다.
+#   출력이 같은 명령 안에서 다시 파이프로 나가거나(`2>&1 |` 포함) 대상이 표준출력·`>&2`·프로세스 치환이면 본문이 다음 명령으로 흘러가 싱크가 아니다.
+# 싱크 대상이 실행될 스크립트인가 — 변수 대상(`"$N"`·끝 성분 `"$D/$F"`)은 같은 줄의 마지막 대입값으로 보고, 대입이 없으면 데이터로 본다.
 function Test-ScriptSinkTarget([string]$target, [string]$line) {
     $t = $target.Trim('"', "'")
-    if ($t -match '^\$\{?(\w+)\}?$') {
-        if ($line -match ('(?:^|[\s;&|])' + $Matches[1] + '=("[^"]*"|''[^'']*''|[^\s;&|]+)')) { $t = $Matches[1].Trim('"', "'") } else { return $false }
+    if ($t -match '\$\{?(\w+)\}?$') {
+        $as = [regex]::Matches($line, '(?:^|[\s;&|])' + $Matches[1] + '=("[^"]*"|''[^'']*''|[^\s;&|]+)')
+        if ($as.Count -eq 0) { return $false }
+        $t = $as[$as.Count - 1].Groups[1].Value.Trim('"', "'")
     }
     return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
 }

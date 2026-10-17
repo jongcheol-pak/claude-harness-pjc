@@ -1096,6 +1096,60 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — >> 로 스크립트에 덧붙이는 본문은 실행될 수 있다 (차단 유지)",
+      "command": "true && cat >> run.sh <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — >> 로 비스크립트에 덧붙이는 본문은 데이터 (음성 짝)",
+      "command": "true && cat >> notes.md <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — tee 출력을 셸로 파이프하면 본문은 실행된다 (차단 유지)",
+      "command": "true && tee notes.md <<'EOF' | bash\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 2>&1 뒤 셸로 파이프해도 본문은 실행된다 (차단 유지)",
+      "command": "true && tee notes.md <<'EOF' 2>&1 | bash\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 프로세스 치환 대상은 셸이다 (차단 유지)",
+      "command": "true && cat > >(bash) <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 변수 대상은 마지막 대입값으로 본다 (차단 유지)",
+      "command": "N=a.md; N=run.sh; cat > \"$N\" <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 경로 끝 성분 변수도 대입값으로 본다 (차단 유지)",
+      "command": "F=run.sh; cat > \"$D/$F\" <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — || 뒤 명령은 파이프가 아니다 (음성 짝)",
+      "command": "true && cat > notes.md <<'EOF' || echo fail\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "P1T1-B2 무필터 열거 재귀 삭제 차단 유지 (rm -rf ./* 등가)",
       "command": "Get-ChildItem . -Recurse | Remove-Item -Force",
       "expect_exit": 2,
@@ -2143,6 +2197,34 @@
       "command": "cat > notes.md <<'EOF' && echo done\nhello; cp notes.md plan.md\nEOF",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 소비자 판정 — >> 로 스크립트에 덧붙이는 본문은 실행될 수 있다 (차단 유지)",
+      "command": "cat >> run.sh <<'EOF'\ncp notes.md plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 소비자 판정 — 2>&1 뒤 셸로 파이프해도 본문은 실행된다 (차단 유지)",
+      "command": "tee notes.md <<'EOF' 2>&1 | bash\ncp notes.md plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 소비자 판정 — >> 로 비스크립트에 덧붙이는 본문은 데이터 (음성 짝)",
+      "command": "cat >> notes.md <<'EOF'\nhello; cp notes.md plan.md\nEOF",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 2>&1 뒤 파일로 쓰는 echo 문자열은 경고 유지",
+      "command": "echo \"git push origin main\" 2>&1 > deploy.sh",
+      "expect_exit": 0,
+      "expect_contains": "git push"
     },
     {
       "hook": "guard-bash.ps1",
