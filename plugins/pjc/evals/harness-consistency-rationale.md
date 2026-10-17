@@ -67,11 +67,10 @@
   ⑮ 등재 근거 실측  — 대장 `## 대기` 의 각 항목이 **실해 근거 필드**(`(실해: YYYY-MM-DD …)`)를
      갖는가. 등재 하한선(「실해가 관측된 것만 올린다」)의 정본은 `plan/references/deferred-rules.md`
      「Deferred / Follow-up」이고 이 축은 그것을 기계로 잰다.
-  ⑯ 복제 사본 동기  — **의도적 복제**의 사본이 원본과 같은가. 묶음은 여섯이고 각 묶음의 첫
+  ⑯ 복제 사본 동기  — **의도적 복제**의 사본이 원본과 같은가. 묶음은 넷이고 각 묶음의 첫
      파일이 원본이다(목록 정본은 검사기 `COPY_SYNC_GROUPS`):
        · `Split-TopLevel` 함수 — `block-destructive.ps1` → `guard-bash.ps1`
        · `Find-PlanFileUpwards` 함수 — `session-context.ps1` → `loop-continue.ps1`
-       · `Get-HeredocSinkTarget`·`Test-ScriptSinkTarget` 함수 — `block-destructive.ps1` → `guard-bash.ps1`(heredoc 싱크 판정 — 2026-10-17)
        · 불릿 정규식 `$planBulletRx` — `guard-write.ps1`(불릿 집합 정본) → `session-context.ps1`·`loop-continue.ps1`
        · heredoc 정규식 — `block-destructive.ps1` 의 `$heredocRx` → `guard-bash.ps1` 의 `$script:HeredocBlockRx`
          (변수 이름이 다르다 — 둘 다 차단 hook 이라 이름을 맞추지 않는다. 그래서 묶음은 (파일, 이름) 쌍이다)

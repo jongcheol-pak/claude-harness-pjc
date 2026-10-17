@@ -20,39 +20,15 @@ function Remove-HeredocDataSink([string]$s) {
     return [regex]::Replace($s, $script:HeredocBlockRx, {
         param($m)
         $line = $m.Groups['line'].Value
-        $target = Get-HeredocSinkTarget $line $script:IsPsTool $s.Substring($m.Index + $m.Length)
-        $isDataSink = ($null -ne $target) -and -not (Test-ScriptSinkTarget $target $line)
+        $segs = @(Split-TopLevel $line $script:IsPsTool)
+        $target = $null
+        if (@($segs | Where-Object { $_ -match '<<' })[0] -match '(?i)^\s*(cat|tee)\b') {
+            if ($segs[-1] -match '(?i)^\s*cat\b.*>\s*(\S+)') { $target = $Matches[1] }
+            elseif ($segs[-1] -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $target = $Matches[1] }
+        }
+        $isDataSink = $target -and ($target.Trim('"', "'") -notmatch '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
         if ($isDataSink) { $line } else { $m.Value }
     })
-}
-function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting, [string]$after = '') {
-    if ([regex]::Matches(($line -replace '"[^"]*"|''[^'']*''', '""'), '<<').Count -ne 1) { return $null }
-    $cons = $null
-    foreach ($sg in @(Split-TopLevel $line $PsQuoting)) { if ($sg -match '<<') { $cons = $sg; break } }
-    if ($null -eq $cons) { return $null }
-    $i = $line.IndexOf($cons); $rest = $line.Substring($i + $cons.Length)
-    $c = $cons -replace '<<-?\s*(["'']?)\w+\1', ''
-    $tRx = '("[^"<>]*"|''[^''<>]*''|[^\s<>&|()"'']+)\s*$'
-    if ($c -match ('(?i)^\s*cat\s*1?>>?\s*' + $tRx) -or $c -match ('(?i)^\s*tee(?:\s+(?:-a|--append))?\s+' + $tRx)) { $t = $Matches[1] }
-    elseif ($c -match '(?i)^\s*cat\s*$' -and $rest -match ('(?i)^\s*\|\s*tee(?:\s+(?:-a|--append))?\s+' + $tRx)) { $t = $Matches[1]; $rest = '' }
-    else { return $null }
-    if ($t.Trim('"', "'") -match '^(/(dev|proc/self)/|-$)') { return $null }
-    if ($line -match '(?i)^\s*(cat|tee)\b') { $after = '' }
-    $okRx = '(?i)^($|true$|\w+=(\$\(mktemp\b[^()`]*\)|"\$\(mktemp\b[^()`"]*\)"|"[^"$`]*"|''[^'']*''|[^\s$`()|&<>]+)$|(mkdir|rm|echo|gh\s+(release\s+create|pr\s+(create|comment)))\b[^`<>|&()]*$)'
-    foreach ($sg in ($line.Substring(0, $i) + $rest + "`n" + $after) -split '&&|\|\||;|\r?\n') {
-        if ($sg.Trim() -notmatch $okRx) { return $null }
-    }
-    return $t
-}
-function Test-ScriptSinkTarget([string]$target, [string]$line) {
-    $t = $target.Trim('"', "'")
-    if ($t -match '\$\{?(\w+)\}?$') {
-        $as = [regex]::Matches($line, '(?:^|[\s;&|])' + $Matches[1] + '=("[^"]*"|''[^'']*''|[^\s;&|]+)')
-        if ($as.Count -eq 0) { return $line -notmatch '(?i)^\s*(cat|tee)\b' }
-        $t = $as[$as.Count - 1].Groups[1].Value.Trim('"', "'")
-        if ($t -match '^\$\(mktemp\b') { return $t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)\b' }
-    }
-    return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$' -or ($t -split '[\\/]')[-1] -notmatch '\.')
 }
 # 데이터 명령 세그먼트의 따옴표 문자열 스트립 — 근거는 `rules/bash-guard-rationale.md` §17
 function Remove-DataQuotes([string[]]$segs, [string]$src, $ops) {
