@@ -513,6 +513,13 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — &> 로 파일에 쓰는 echo 문자열은 경고 유지",
+      "command": "echo \"git push origin main\" &> deploy.sh",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "npm publish 경고 (H5)",
       "command": "npm publish",
       "expect_exit": 0,
@@ -1049,6 +1056,41 @@
       "hook": "block-destructive.ps1",
       "name": "heredoc 소비자 판정 — 실행자 출력을 tee 로 받아도 본문은 실행된다 (차단 유지)",
       "command": "bash <<'EOF' 2>&1 | tee run.log\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 대입 뒤 ; 가 붙어도 대입값 확장자로 본다 (N=run.sh; 차단 유지)",
+      "command": "N=run.sh; cat > \"$N\" <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 공백 없이 && 로 이어진 대입값 (N=run.sh&&cat 차단 유지)",
+      "command": "N=run.sh&&cat > \"$N\" <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 따옴표 친 대입값 (N=\"run.sh\"; 차단 유지)",
+      "command": "N=\"run.sh\"; cat > \"$N\" <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — tee 변수 대상의 대입값 (N=run.sh; tee 차단 유지)",
+      "command": "N=run.sh; tee \"$N\" <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 표준출력으로 써서 셸로 파이프하면 본문은 실행된다 (차단 유지)",
+      "command": "true && cat > /dev/stdout <<'EOF' | bash\ngit push --force-with-lease origin main\nEOF",
       "expect_exit": 2,
       "expect_contains": "BLOCKED"
     },

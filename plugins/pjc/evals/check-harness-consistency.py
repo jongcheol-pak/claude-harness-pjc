@@ -1546,6 +1546,10 @@ def check_ledger_evidence(ledger):
 COPY_SYNC_GROUPS = (
     ("Split-TopLevel", "function",
      (("block-destructive.ps1", "Split-TopLevel"), ("guard-bash.ps1", "Split-TopLevel"))),
+    ("Get-HeredocSinkTarget", "function",
+     (("block-destructive.ps1", "Get-HeredocSinkTarget"), ("guard-bash.ps1", "Get-HeredocSinkTarget"))),
+    ("Test-ScriptSinkTarget", "function",
+     (("block-destructive.ps1", "Test-ScriptSinkTarget"), ("guard-bash.ps1", "Test-ScriptSinkTarget"))),
     ("Find-PlanFileUpwards", "function",
      (("session-context.ps1", "Find-PlanFileUpwards"), ("loop-continue.ps1", "Find-PlanFileUpwards"))),
     ("불릿 정규식", "literal",

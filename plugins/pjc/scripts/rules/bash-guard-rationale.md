@@ -187,6 +187,8 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게).
 
+**검사 범위(코드 구획 제목에서 옮김 — 2026-10-17)**: warn-external-ops 는 외부·비가역 작업(push·merge·gh pr — plan·스킬 안이면 진행 / tag·gh release·배포 — 항상 승인)·로컬 비가역(reset --hard 등) 경고 를 본다.
+
 ## §14 완료 커밋 제목 판정
 
 완료 커밋은 **제목(첫 줄)** 이 `{유형}: T<N> — …`(글로벌 「Git」 의 다섯 유형 · 회차 44 정본) 또는 구형 `T<N>: …` 일 때만 판정한다 — 본문이나 괄호 안의 `T<N>` 언급으로 오탐하지 않기 위해서다.
@@ -215,11 +217,11 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **싱크 판정은 heredoc 을 받는 세그먼트(여는 줄을 최상위 분할한 조각 중 `<<` 를 가진 것 — 소비자)로 하고, 대상이 실행 가능 스크립트(`.sh`·`.py`·`.ps1` 등)면 스트립하지 않는다** — `mkdir … && cat > f <<EOF` 와 `cat <<EOF | tee f` 도 싱크이고, 변수 대상(`"$N"`)은 같은 줄의 대입값으로 확장자를 본다. **마지막 세그먼트로 보면 안 된다** — `bash <<EOF | tee log` 의 마지막 조각이 `tee` 라 실행 본문을 데이터로 지운다(2026-10-17 계획 리뷰 실측 · 그 전까지 이 판정이 그 미탐을 갖고 있었다). `cat > run.sh` 본문은 뒤에 실행될 수 있다. block-plan-write 는 ⓑ 리다이렉션 검사만 스트립한 명령을 보고 ⓐ `open(w)`·`[System.IO.File]` 는 원문을 본다 — 파일로 쓰고 실행하는 형태를 놓치지 않으려는 것이고, 데이터 싱크 본문 속 `open('plan.md','w')` 까지 막히는 오탐은 수용한다(2026-10-13 D5).
 
-**`block-destructive.ps1` 의 같은 스트립을 복제 이식했다.** 그쪽은 함수가 아니라 최상위 인라인 코드라 판정 블록은 「복제 사본 동기」 축의 함수 본문 대조(`_ps_function_body`)가 잡지 못하고, **정규식 리터럴만** 그 축의 리터럴 묶음(`$heredocRx` ↔ `$script:HeredocBlockRx`)이 잰다. 그래서 이쪽은 별도 함수 `Remove-HeredocDataSink` 로 두었다 — `Split-TopLevel` 본문에 넣으면 그 축이 두 파일의 갈림으로 읽는다. **`block-destructive.ps1` 사본도 같은 소비자 판정(`Get-HeredocSinkTarget`·`Test-ScriptSinkTarget`)을 쓴다** — 단 그쪽은 여는 줄이 `cat`·`tee` 로 시작하는 종전 꼴을 그대로 싱크로 두고 새로 인정하는 꼴에만 확장자 제외를 건다(차단 hook 은 오탐 수정만 — `destructive-rationale.md`「heredoc 파일-리다이렉트 본문 스트립」). 정규식 리터럴만 「복제 사본 동기」 축이 재고 두 함수 본문은 재지 않으므로, 한쪽을 고치면 다른 쪽을 손으로 맞춘다.
+**`block-destructive.ps1` 의 같은 스트립을 복제 이식했다.** 그쪽은 함수가 아니라 최상위 인라인 코드라 판정 블록은 「복제 사본 동기」 축의 함수 본문 대조(`_ps_function_body`)가 잡지 못하고, **정규식 리터럴만** 그 축의 리터럴 묶음(`$heredocRx` ↔ `$script:HeredocBlockRx`)이 잰다. 그래서 이쪽은 별도 함수 `Remove-HeredocDataSink` 로 두었다 — `Split-TopLevel` 본문에 넣으면 그 축이 두 파일의 갈림으로 읽는다. **`block-destructive.ps1` 사본도 같은 소비자 판정(`Get-HeredocSinkTarget`·`Test-ScriptSinkTarget`)을 쓴다** — 단 그쪽은 여는 줄이 `cat`·`tee` 로 시작하는 종전 꼴을 그대로 싱크로 두고 새로 인정하는 꼴에만 확장자 제외를 건다(차단 hook 은 오탐 수정만 — `destructive-rationale.md`「heredoc 파일-리다이렉트 본문 스트립」). 두 함수는 함수라 「복제 사본 동기」 축이 본문을 대조한다(`check-harness-consistency.py` `COPY_SYNC_GROUPS` — 2026-10-17 추가) — 스트립 블록 자체는 여전히 그쪽 최상위 인라인 코드라 위 리터럴 묶음만 잰다.
 
 **스트립 함수는 둘이고 합치지 않는다** — `Remove-HeredocDataSink`(실행 판정)와 `Remove-HeredocBodyForJudge`(커밋 판정 전용). 정규식은 같고 묻는 것이 다르다 — 대조표는 `commit-secrets-rationale.md`「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」가 정본이다.
 
-**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: `block-destructive.ps1` 의 같은 스트립을 복제 이식했다(그쪽은 최상위 인라인 코드라 「복제 사본 동기」 축이 정규식 리터럴만 잰다). · heredoc 소비자의 싱크 대상($null = 실행 본문)·스크립트 대상 판정 — `block-destructive.ps1` 과 같은 사본이다(§16)
+**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: `block-destructive.ps1` 의 같은 스트립을 복제 이식했다(그쪽은 최상위 인라인 코드라 「복제 사본 동기」 축이 정규식 리터럴만 잰다 — 그 뒤 싱크 판정은 두 함수로 추출돼 축이 본문도 잰다). · heredoc 소비자의 싱크 대상($null = 실행 본문)·스크립트 대상 판정 — `block-destructive.ps1` 과 같은 사본이다(§16)
 
 ## §17 데이터 명령의 따옴표 문자열
 

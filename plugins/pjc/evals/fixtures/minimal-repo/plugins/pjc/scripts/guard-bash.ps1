@@ -24,3 +24,9 @@ function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
 
 # heredoc 정규식 — 같은 축의 리터럴 묶음 대상
 $script:HeredocBlockRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
+function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
+    return $null
+}
+function Test-ScriptSinkTarget([string]$target, [string]$line) {
+    return $false
+}

@@ -34,18 +34,19 @@ function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
     $cons = $null
     foreach ($sg in @(Split-TopLevel $line $PsQuoting)) { if ($sg -match '<<') { $cons = $sg; break } }
     if ($null -eq $cons) { return $null }
-    if ($cons -match '(?i)^\s*cat\b[^>]*>\s*(\S+)') { return $Matches[1] }
-    if ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { return $Matches[1] }
-    if ($cons -match '(?i)^\s*cat\b') {
-        $rest = $line.Substring($line.IndexOf($cons) + $cons.Length)
-        if ($rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { return $Matches[1] }
-    }
-    return $null
+    $rest = $line.Substring($line.IndexOf($cons) + $cons.Length)
+    $t = $null
+    if ($cons -match '(?i)^\s*cat\b[^>]*>\s*(\S+)') { $t = $Matches[1] }
+    elseif ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $t = $Matches[1] }
+    elseif ($cons -match '(?i)^\s*cat\b' -and $rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { return $Matches[1] }
+    # 출력이 다시 파이프로 나가거나 대상이 표준출력이면 본문이 다음 명령(셸)으로 흘러간다 — 싱크가 아니다
+    if ($null -eq $t -or $rest -match '^\s*\|(?!\|)' -or $t.Trim('"', "'") -match '^/(dev|proc/self)/(stdout|fd/)') { return $null }
+    return $t
 }
 function Test-ScriptSinkTarget([string]$target, [string]$line) {
     $t = $target.Trim('"', "'")
     if ($t -match '^\$\{?(\w+)\}?$') {
-        if ($line -match ('(?:^|[\s;&|])' + $Matches[1] + '=(\S+)')) { $t = $Matches[1].Trim('"', "'") } else { return $false }
+        if ($line -match ('(?:^|[\s;&|])' + $Matches[1] + '=("[^"]*"|''[^'']*''|[^\s;&|]+)')) { $t = $Matches[1].Trim('"', "'") } else { return $false }
     }
     return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
 }
@@ -58,6 +59,7 @@ function Remove-DataQuotes([string[]]$segs, [string]$src, $ops) {
         if (-not $ops.dataCommandRx -or $segs[$i] -notmatch $ops.dataCommandRx) { continue }
         $bare = $segs[$i] -replace $qRx, ''
         if ($bare -match '(?<![0-9&])>|\b1>' -and $bare -notmatch '>\s*(/dev/null|\$null|NUL)\s*$') { continue }
+        if ($src.Substring($pos[$i] + $segs[$i].Length) -match '^\s*&>') { continue }
         $ok = $true; $j = $i
         while ($ok -and $j + 1 -lt $segs.Count -and $src.Substring($pos[$j] + $segs[$j].Length) -match '^\s*\|(?!\|)') {
             $j++; $ok = $segs[$j] -match $ops.dataReceiverRx
@@ -246,7 +248,7 @@ function Invoke-BlockPlanWrite {
     ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
 }
 
-# ---- warn-external-ops: 외부·비가역 작업(push·merge·gh pr — plan·스킬 안이면 진행 / tag·gh release·배포 — 항상 승인)·로컬 비가역(reset --hard 등) 경고 ----
+# ---- warn-external-ops ----
 function Invoke-WarnExternalOps {
     param($data)
     $cmd = $data.tool_input.command
