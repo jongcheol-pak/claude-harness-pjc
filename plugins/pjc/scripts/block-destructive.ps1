@@ -61,14 +61,86 @@ function Deny {
     exit 2
 }
 
+# ---- 최상위 구분자 분리 (따옴표 인식) ----
+# 단순 -split는 따옴표 안의 구분자에서 쪼개 인용이 깨지고, 그러면 데이터 인자 제거가 작동하지 않아
+#   오탐이 난다. 개행도 최상위 구분자다 — 아니면 둘째 줄의 파괴 명령이 ^앵커 패턴을 벗어난다.
+#   heredoc 싱크 판정이 이 함수를 쓰므로 그 스트립보다 앞에 정의한다(최상위 스크립트는 정의가 호출보다 먼저 실행돼야 한다).
+function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
+    # $PsQuoting: PowerShell 도구 입력이면 `\` 를 이스케이프로 보지 않는다. bash 규칙으로 읽으면 `echo "C:\"; Remove-Item C:\ -Recurse -Force` 의
+    #   `\"` 가 인용을 열어 둔 채로 남아 `;` 분리가 안 되고, echo 스트립이 뒤 명령까지 지워 exit 0 이었다(회차 44 실측 — PowerShell 에서 `"C:\"` 는 닫힌 문자열이다).
+    #   PowerShell 의 큰따옴표 안 이스케이프는 백틱이므로 그쪽을 대신 소비한다.
+    $parts = New-Object System.Collections.Generic.List[string]
+    $cur = ''
+    $q = $null
+    $chars = $s.ToCharArray()
+    for ($i = 0; $i -lt $chars.Length; $i++) {
+        $ch = $chars[$i]
+        if ($q -eq "'") {
+            # 작은따옴표 안은 bash에서 이스케이프가 없다 — 다음 ' 까지 전부 리터럴
+            $cur += $ch
+            if ($ch -eq "'") { $q = $null }
+        } elseif ($q -eq '"') {
+            $esc = if ($PsQuoting) { '`' } else { '\' }
+            if ($ch -eq $esc -and $i + 1 -lt $chars.Length) {
+                $cur += $ch; $cur += $chars[$i + 1]; $i++
+            } else {
+                $cur += $ch
+                if ($ch -eq '"') { $q = $null }
+            }
+        } else {
+            # 인용 밖 백슬래시도 다음 문자를 이스케이프한다 — \" 가 인용을 열어 구분자 분리를 깨뜨리던 미탐 방어
+            if ((-not $PsQuoting) -and $ch -eq '\' -and $i + 1 -lt $chars.Length) {
+                $cur += $ch; $cur += $chars[$i + 1]; $i++
+            } elseif ($ch -eq '"' -or $ch -eq "'") {
+                $q = $ch; $cur += $ch
+            } elseif ($ch -eq ';' -or $ch -eq '|' -or $ch -eq '&' -or $ch -eq "`n" -or $ch -eq "`r") {
+                $parts.Add($cur); $cur = ''
+            } else {
+                $cur += $ch
+            }
+        }
+    }
+    $parts.Add($cur)
+    return $parts
+}
+
+# heredoc 소비자의 싱크 대상 — 여는 줄에서 `<<` 를 가진 세그먼트(본문을 받는 명령)가 `cat … > 대상`·`tee 대상`·`cat | tee 대상` 이면
+#   그 대상을, 실행자면 $null 을 돌려준다. 마지막 세그먼트로 보면 `bash <<EOF | tee log` 의 실행 본문을 데이터로 읽는다.
+function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
+    $cons = $null
+    foreach ($sg in @(Split-TopLevel $line $PsQuoting)) { if ($sg -match '<<') { $cons = $sg; break } }
+    if ($null -eq $cons) { return $null }
+    if ($cons -match '(?i)^\s*cat\b[^>]*>\s*(\S+)') { return $Matches[1] }
+    if ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { return $Matches[1] }
+    if ($cons -match '(?i)^\s*cat\b') {
+        $rest = $line.Substring($line.IndexOf($cons) + $cons.Length)
+        if ($rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { return $Matches[1] }
+    }
+    return $null
+}
+# 싱크 대상이 실행될 스크립트인가 — 변수 대상(`"$N"`)은 같은 줄의 대입값(`N=run.sh`)으로 보고, 대입이 없으면 데이터로 본다.
+function Test-ScriptSinkTarget([string]$target, [string]$line) {
+    $t = $target.Trim('"', "'")
+    if ($t -match '^\$\{?(\w+)\}?$') {
+        if ($line -match ('(?:^|[\s;&|])' + $Matches[1] + '=(\S+)')) { $t = $Matches[1].Trim('"', "'") } else { return $false }
+    }
+    return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
+}
+
 # ---- heredoc 파일-리다이렉트 본문 스트립 ----
 # 데이터-싱크(cat + '>' 리다이렉트 · tee)로 가는 heredoc 본문은 기록될 데이터라 실행되지 않는다.
 #   실행자(bash·psql 등)로 가는 본문은 보존한다 — 허용목록 방식이라 모르는 명령은 보존이 기본이다.
+#   여는 줄이 cat·tee 로 시작하는 꼴은 종전대로 싱크다. 앞에 다른 명령이 이어진 꼴(`N=x.md && cat > "$N" <<EOF`)은
+#   소비자 판정으로 싱크를 인정하되 스크립트 대상은 제외한다 — 종전 꼴에 확장자 제외를 걸면 오탐 수정이 아니라 미탐 보완이 된다.
 $heredocRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
 $cmd = [regex]::Replace($cmd, $heredocRx, {
     param($m)
     $line = $m.Groups['line'].Value
     $isDataSink = ($line -match '(?i)^\s*cat\b' -and $line -match '>\s*\S') -or ($line -match '(?i)^\s*tee\b')
+    if (-not $isDataSink) {
+        $target = Get-HeredocSinkTarget $line $isPowerShellTool
+        $isDataSink = ($null -ne $target) -and -not (Test-ScriptSinkTarget $target $line)
+    }
     if ($isDataSink) { $line } else { $m.Value }
 })
 
@@ -120,47 +192,6 @@ if (($beforePipe -match $enumSource) -and (Test-DangerTarget $enumSrcScan) -and 
     Deny "위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지" '열거 파이프 삭제' $cmd
 }
 
-# ---- 최상위 구분자 분리 (따옴표 인식) ----
-# 단순 -split는 따옴표 안의 구분자에서 쪼개 인용이 깨지고, 그러면 데이터 인자 제거가 작동하지 않아
-#   오탐이 난다. 개행도 최상위 구분자다 — 아니면 둘째 줄의 파괴 명령이 ^앵커 패턴을 벗어난다.
-function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
-    # $PsQuoting: PowerShell 도구 입력이면 `\` 를 이스케이프로 보지 않는다. bash 규칙으로 읽으면 `echo "C:\"; Remove-Item C:\ -Recurse -Force` 의
-    #   `\"` 가 인용을 열어 둔 채로 남아 `;` 분리가 안 되고, echo 스트립이 뒤 명령까지 지워 exit 0 이었다(회차 44 실측 — PowerShell 에서 `"C:\"` 는 닫힌 문자열이다).
-    #   PowerShell 의 큰따옴표 안 이스케이프는 백틱이므로 그쪽을 대신 소비한다.
-    $parts = New-Object System.Collections.Generic.List[string]
-    $cur = ''
-    $q = $null
-    $chars = $s.ToCharArray()
-    for ($i = 0; $i -lt $chars.Length; $i++) {
-        $ch = $chars[$i]
-        if ($q -eq "'") {
-            # 작은따옴표 안은 bash에서 이스케이프가 없다 — 다음 ' 까지 전부 리터럴
-            $cur += $ch
-            if ($ch -eq "'") { $q = $null }
-        } elseif ($q -eq '"') {
-            $esc = if ($PsQuoting) { '`' } else { '\' }
-            if ($ch -eq $esc -and $i + 1 -lt $chars.Length) {
-                $cur += $ch; $cur += $chars[$i + 1]; $i++
-            } else {
-                $cur += $ch
-                if ($ch -eq '"') { $q = $null }
-            }
-        } else {
-            # 인용 밖 백슬래시도 다음 문자를 이스케이프한다 — \" 가 인용을 열어 구분자 분리를 깨뜨리던 미탐 방어
-            if ((-not $PsQuoting) -and $ch -eq '\' -and $i + 1 -lt $chars.Length) {
-                $cur += $ch; $cur += $chars[$i + 1]; $i++
-            } elseif ($ch -eq '"' -or $ch -eq "'") {
-                $q = $ch; $cur += $ch
-            } elseif ($ch -eq ';' -or $ch -eq '|' -or $ch -eq '&' -or $ch -eq "`n" -or $ch -eq "`r") {
-                $parts.Add($cur); $cur = ''
-            } else {
-                $cur += $ch
-            }
-        }
-    }
-    $parts.Add($cur)
-    return $parts
-}
 
 # 줄-이음(백틱/백슬래시 '직후' 개행만)은 셸이 한 명령으로 잇는다 — 분리 전에 합쳐 미탐을 막는다.
 #   \s*를 넣지 않는 이유: '\ <개행>'은 줄-이음이 아니라 이스케이프된 공백 + 종결 개행이다.

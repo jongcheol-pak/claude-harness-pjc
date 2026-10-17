@@ -25,15 +25,31 @@ function Remove-HeredocDataSink([string]$s) {
     return [regex]::Replace($s, $script:HeredocBlockRx, {
         param($m)
         $line = $m.Groups['line'].Value
-        # 싱크 판정은 여는 줄의 마지막 최상위 세그먼트로 한다 — `mkdir … && cat > f <<EOF` 도 싱크다.
-        #   실행될 수 있는 스크립트(.sh·.py 등)로 쓰는 본문은 데이터가 아니라 걷지 않는다 — 근거는 `rules/bash-guard-rationale.md` §16
-        $last = @(Split-TopLevel $line $script:IsPsTool)[-1]
-        $target = $null
-        if ($last -match '(?i)^\s*cat\b.*>\s*(\S+)') { $target = $Matches[1] }
-        elseif ($last -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $target = $Matches[1] }
-        $isDataSink = $target -and ($target.Trim('"', "'") -notmatch '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
+        # 싱크 판정은 heredoc 을 받는 세그먼트(소비자)로 하고, 스크립트(.sh·.py 등)로 쓰는 본문은 걷지 않는다 — 근거는 `rules/bash-guard-rationale.md` §16
+        $target = Get-HeredocSinkTarget $line $script:IsPsTool
+        $isDataSink = ($null -ne $target) -and -not (Test-ScriptSinkTarget $target $line)
         if ($isDataSink) { $line } else { $m.Value }
     })
+}
+# heredoc 소비자의 싱크 대상($null = 실행 본문)·스크립트 대상 판정 — `block-destructive.ps1` 과 같은 사본이다(§16)
+function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
+    $cons = $null
+    foreach ($sg in @(Split-TopLevel $line $PsQuoting)) { if ($sg -match '<<') { $cons = $sg; break } }
+    if ($null -eq $cons) { return $null }
+    if ($cons -match '(?i)^\s*cat\b[^>]*>\s*(\S+)') { return $Matches[1] }
+    if ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { return $Matches[1] }
+    if ($cons -match '(?i)^\s*cat\b') {
+        $rest = $line.Substring($line.IndexOf($cons) + $cons.Length)
+        if ($rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { return $Matches[1] }
+    }
+    return $null
+}
+function Test-ScriptSinkTarget([string]$target, [string]$line) {
+    $t = $target.Trim('"', "'")
+    if ($t -match '^\$\{?(\w+)\}?$') {
+        if ($line -match ('(?:^|[\s;&|])' + $Matches[1] + '=(\S+)')) { $t = $Matches[1].Trim('"', "'") } else { return $false }
+    }
+    return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
 }
 # 최상위 구분자 분리(따옴표 인식) — 근거는 `rules/bash-guard-rationale.md` §11
 function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
