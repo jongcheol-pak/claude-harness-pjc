@@ -2069,6 +2069,13 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 파일로 쓴 뒤 2>/dev/null 이 붙어도 echo 문자열은 경고 유지",
+      "command": "echo \"git push origin main\" > deploy.sh 2>/dev/null",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "실행 판정은 비-data-sink heredoc 본문도 보존한다 (회차 58 델타 음성 — 판정 전용 스트립이 실행 경로로 새지 않았는가)",
       "command": "python3 - <<PY\nsed -i 's/a/b/' plan.md\nPY",
       "expect_exit": 2,

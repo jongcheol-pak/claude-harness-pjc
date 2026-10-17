@@ -38,7 +38,7 @@ function Remove-DataQuotes([string[]]$segs, [string]$src, $ops) {
     for ($i = 0; $i -lt $segs.Count; $i++) {
         if (-not $ops.dataCommandRx -or $segs[$i] -notmatch $ops.dataCommandRx) { continue }
         $bare = $segs[$i] -replace $qRx, ''
-        if ($bare -match '(?<![0-9&])>|\b1>' -and $bare -notmatch '>\s*(/dev/null|\$null|NUL)\s*$') { continue }
+        if (@([regex]::Matches($bare, '(?:(?<![0-9&>])|\b1)>>?\s*(\S*)') | Where-Object { $_.Groups[1].Value -notmatch '^(/dev/null|\$null|NUL)$' }).Count) { continue }
         if ($src.Substring($pos[$i] + $segs[$i].Length) -match '^\s*&(?!&)') { continue }
         $ok = $true; $j = $i
         while ($ok -and $j + 1 -lt $segs.Count -and $src.Substring($pos[$j] + $segs[$j].Length) -match '^\s*\|(?!\|)') {
