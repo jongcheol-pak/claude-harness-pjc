@@ -31,25 +31,49 @@ try {
                 $pushedVer = $null
                 try { $pushedVer = ($pushedJson | ConvertFrom-Json).version } catch { $pushedVer = $null }
                 if (-not [string]::IsNullOrWhiteSpace($pushedVer)) {
-                    $tag = & git tag -l "v$pushedVer" 2>$null
-                    # 원격에서 이미 찾은 태그는 기억해 두고 다시 묻지 않는다 — 「없음」은 기억하지 않는다.
+                    # 원격에서 이미 찾은 태그는 기억해 두고 다시 묻지 않는다 — 「없음」은 기억하지 않는다. 파일 내용은 태그 커밋 sha(빈 파일은 종전 형식).
                     $vdHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
                     $releasedDir = Join-Path $vdHome '.claude/.state/version-drift'
                     $releasedMark = Join-Path $releasedDir ('released-v' + $pushedVer)
-                    if ($LASTEXITCODE -eq 0 -and [string]::IsNullOrWhiteSpace(($tag -join '')) -and -not (Test-Path -LiteralPath $releasedMark)) {
+                    $hasMark = Test-Path -LiteralPath $releasedMark
+                    # 미배포 판정의 기준점(태그 커밋) — 로컬 태그 → 캐시 → 원격 순 — 근거는 `rules/version-drift-rationale.md` §5
+                    $tagSha = ((& git rev-parse -q --verify "refs/tags/v$pushedVer^{commit}" 2>$null) -join '').Trim()
+                    if (-not $tagSha -and $hasMark) {
+                        $markText = ((Get-Content -LiteralPath $releasedMark -Raw -ErrorAction SilentlyContinue) -join '').Trim()
+                        if ($markText -match '^[0-9a-f]{40}$') { $tagSha = $markText }
+                    }
+                    if (-not $tagSha) {
                         # 로컬에 없다 → 원격 확인. — 근거는 `rules/version-drift-rationale.md` §4
                         $env:GIT_TERMINAL_PROMPT = '0'
-                        $remoteTag = & git ls-remote --tags origin "v$pushedVer" 2>$null
+                        $remoteTag = @(& git ls-remote --tags origin "v$pushedVer" "v$pushedVer^{}" 2>$null)
                         $remoteExit = $LASTEXITCODE   # 즉시 캡처 — 아래 문자열 연산이 값을 덮어쓰기 전에
-                        if ($remoteExit -eq 0 -and [string]::IsNullOrWhiteSpace(($remoteTag -join ''))) {
-                            Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '버전 전용 PR merge(또는 버전 커밋 push) 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <main 에 올라간 버전 커밋 — 버전 전용 PR 이면 그 merge 커밋 — 의 full-sha> (short sha는 거부됩니다)."
-                        } elseif ($remoteExit -eq 0) {
-                            # 원격에 있다 — 다른 버전의 기록을 지우고 이 버전만 남긴다(캐시 실패는 삼킨다, 비차단).
-                            try {
-                                New-Item -ItemType Directory -Path $releasedDir -Force -ErrorAction Stop | Out-Null
-                                Get-ChildItem -LiteralPath $releasedDir -Filter 'released-v*' -File -ErrorAction Stop | Remove-Item -Force -ErrorAction SilentlyContinue
-                                New-Item -ItemType File -Path $releasedMark -Force -ErrorAction Stop | Out-Null
-                            } catch {}
+                        if ($remoteExit -eq 0) {
+                            $peel = $remoteTag | Where-Object { $_ -match "\srefs/tags/v$([regex]::Escape($pushedVer))\^\{\}$" } | Select-Object -First 1
+                            $plain = $remoteTag | Where-Object { $_ -match "\srefs/tags/v$([regex]::Escape($pushedVer))$" } | Select-Object -First 1
+                            $line = if ($peel) { $peel } else { $plain }
+                            if (-not $line) {
+                                if (-not $hasMark) {
+                                    Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '버전 전용 PR merge(또는 버전 커밋 push) 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <main 에 올라간 버전 커밋 — 버전 전용 PR 이면 그 merge 커밋 — 의 full-sha> (short sha는 거부됩니다)."
+                                }
+                            } else {
+                                $tagSha = ($line -split '\s+')[0]
+                                # 원격에 있다 — 다른 버전의 기록을 지우고 이 버전의 태그 커밋 sha 만 남긴다(캐시 실패는 삼킨다, 비차단).
+                                try {
+                                    New-Item -ItemType Directory -Path $releasedDir -Force -ErrorAction Stop | Out-Null
+                                    Get-ChildItem -LiteralPath $releasedDir -Filter 'released-v*' -File -ErrorAction Stop | Remove-Item -Force -ErrorAction SilentlyContinue
+                                    Set-Content -LiteralPath $releasedMark -Value $tagSha -NoNewline -ErrorAction Stop
+                                } catch {}
+                            }
+                        }
+                    }
+                    # 미배포 — 태그 커밋 뒤 origin/main 의 plugins/ 커밋. sha 를 못 얻거나 그 커밋이 로컬에 없으면 건너뛴다(폴백 없음).
+                    if ($tagSha) {
+                        & git cat-file -e "$tagSha^{commit}" 2>$null
+                        if ($LASTEXITCODE -eq 0) {
+                            $undeployed = @(& git log --format=%h "$tagSha..origin/main" -- plugins/ 2>$null | Where-Object { $_ })
+                            if ($LASTEXITCODE -eq 0 -and $undeployed.Count -gt 0) {
+                                Write-Output "[pjc 미배포] 마지막 릴리즈 v${pushedVer}(태그 커밋 $($tagSha.Substring(0,8))) 뒤 origin/main 에 plugins/ 커밋 $($undeployed.Count)건이 버전·릴리즈 없이 올라가 있습니다 — 설치본 사용자에게 가지 않은 변경입니다. 버전 전용 PR 로 버전을 올린 뒤 릴리즈를 발행하세요(docs/harness-conventions.md 「판정 시점」)."
+                            }
                         }
                     }
                 }

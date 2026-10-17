@@ -90,6 +90,23 @@ try {
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdGitJson
         Assert-Case -Name "version-drift: origin/main 부재 무출력(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+        # 7-1) [미배포 판정] 버전 커밋 뒤 plugins/ 커밋이 있어도, 태그 sha 를 얻지 못하면(로컬 태그 없음 · 빈 캐시 ·
+        #      origin 원격 없음) 판정을 건너뛴다(무출력). plugin.json 마지막 커밋으로 폴백하는 구현이면 여기서 발화한다 —
+        #      그 폴백은 오프라인에서 이미 배포된 변경을 미배포로 센다(계획 리뷰 2R).
+        Push-Location -LiteralPath $vdGit
+        try {
+            New-Item -ItemType Directory 'plugins/pjc/skills' -Force | Out-Null
+            'x' | Set-Content 'plugins/pjc/skills/a.md'
+            & git add -A 2>$null; & git commit -q -m 'plugins 변경' 2>$null
+            & git update-ref refs/remotes/origin/main HEAD 2>$null
+        } finally { Pop-Location }
+        $vdCacheDir = Join-Path $env:USERPROFILE '.claude/.state/version-drift'
+        New-Item -ItemType Directory $vdCacheDir -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $vdCacheDir 'released-v2.3.4') -Value ''
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdGitJson
+        Assert-Case -Name "version-drift: 미배포 — 태그 sha 를 못 얻으면 판정을 건너뛴다(오프라인·빈 캐시 무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+        Remove-Item -Recurse -Force $vdCacheDir -ErrorAction SilentlyContinue
+
         # ---- 원격 태그 폴백 (v1.205.0) ----
         # 위 5~7은 `origin` remote가 **없는** 픽스처라 원격 조회 경로를 밟지 못한다(전부 exit 128로 끝난다).
         # 여기서는 bare 레포를 실제 `origin`으로 붙여 그 경로를 건다 — `gh release create`가 태그를 원격에만
@@ -172,6 +189,53 @@ try {
         $vdCacheHit = Test-Path -LiteralPath (Join-Path $env:USERPROFILE '.claude/.state/version-drift/released-v3.4.5')
         Assert-Case -Name "version-drift: 원격에서 찾은 태그를 캐시로 남긴다 (회차 3 T7)" -R @{ code = ([int](-not $vdCacheHit)); out = "캐시 파일=$vdCacheHit" } -ExpectExit 0
         Remove-Item -Recurse -Force (Join-Path $env:USERPROFILE '.claude/.state/version-drift') -ErrorAction SilentlyContinue
+
+        # ---- 미배포 판정 — 마지막 릴리즈 태그 커밋 뒤의 plugins/ 커밋 ----
+        # 이어지는 단조 전이: 태그(원격 전용)는 v3.4.5 커밋 위 → docs 만 바뀐 커밋 → plugins 커밋 → 태그를 HEAD 로 옮김.
+        $vdPushCommit = {
+            param($path, $msg)
+            Push-Location -LiteralPath $vdWork
+            try {
+                New-Item -ItemType Directory (Split-Path $path) -Force | Out-Null
+                $msg | Set-Content $path
+                & git add -A 2>$null; & git commit -q -m $msg 2>$null
+                & git push -q origin HEAD:main 2>$null
+                & git update-ref refs/remotes/origin/main HEAD 2>$null
+            } finally { Pop-Location }
+        }
+        $vdCacheFile = Join-Path $env:USERPROFILE '.claude/.state/version-drift/released-v3.4.5'
+
+        # 11) 태그 뒤 docs/ 만 바뀐 커밋 → 무출력 (음성 짝)
+        & $vdPushCommit 'docs/note.md' 'docs 변경'
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
+        Assert-Case -Name "version-drift: 미배포 — 태그 뒤 plugins 밖 변경만 있으면 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+
+        # 12) 이어서 plugins/ 커밋 → 미배포 발화
+        & $vdPushCommit 'plugins/pjc/skills/b.md' 'plugins 변경'
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
+        Assert-Case -Name "version-drift: 미배포 — 태그 뒤 plugins/ 커밋이 있으면 발화" -R $r -ExpectExit 0 -ExpectContains '미배포'
+
+        # 13) 원격 태그를 HEAD 로 옮겨도(주석 달린 태그) 캐시에 옛 sha 가 있으면 캐시를 쓴다 → 발화
+        #     원격을 다시 물었다면 HEAD 를 기준으로 삼아 조용했을 것이다 — 캐시를 썼다는 증거다.
+        Push-Location -LiteralPath $vdWork
+        try { & git tag -a -m 'v3.4.5' v3.4.5 HEAD 2>$null; & git push -q -f origin v3.4.5 2>$null; & git tag -d v3.4.5 2>$null } finally { Pop-Location }
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
+        Assert-Case -Name "version-drift: 미배포 — 캐시의 태그 sha 를 원격보다 먼저 쓴다" -R $r -ExpectExit 0 -ExpectContains '미배포'
+
+        # 14) 캐시를 지우면 원격의 주석 달린 태그를 peel 해 HEAD 를 기준으로 삼는다 → 무출력
+        #     (릴리즈가 버전 커밋 뒤 커밋에 붙은 경우 — plugin.json 마지막 커밋 기준이면 발화한다)
+        Remove-Item -Recurse -Force (Split-Path $vdCacheFile) -ErrorAction SilentlyContinue
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
+        Assert-Case -Name "version-drift: 미배포 — 릴리즈 태그가 버전 커밋 뒤 커밋에 있으면 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+
+        # 15) 빈 캐시 파일(종전 형식) → 미배포 판정만 원격을 다시 물어 sha 를 채운다(무출력 · 캐시에 sha)
+        New-Item -ItemType Directory (Split-Path $vdCacheFile) -Force | Out-Null
+        Set-Content -LiteralPath $vdCacheFile -Value ''
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
+        Assert-Case -Name "version-drift: 미배포 — 빈 캐시는 원격 조회로 sha 를 채우고 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+        $vdCacheSha = ((Get-Content -LiteralPath $vdCacheFile -Raw -ErrorAction SilentlyContinue) -join '').Trim()
+        Assert-Case -Name "version-drift: 미배포 — 빈 캐시에 태그 커밋 sha 를 적는다" -R @{ code = $(if ($vdCacheSha -match '^[0-9a-f]{40}$') { 0 } else { 1 }); out = "캐시=$vdCacheSha" } -ExpectExit 0
+        Remove-Item -Recurse -Force (Split-Path $vdCacheFile) -ErrorAction SilentlyContinue
     }
 } finally {
     $env:CLAUDE_PLUGIN_ROOT = $vdRealRoot
