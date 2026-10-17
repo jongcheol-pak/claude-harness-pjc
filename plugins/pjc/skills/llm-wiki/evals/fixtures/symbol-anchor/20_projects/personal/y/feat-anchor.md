@@ -20,7 +20,7 @@ WARN 이어야 한다. 심볼을 안 적은 행(`src/Anchor.cs` 재기재 없이
 - `src/Anchor.cs` — 실재 심볼 (진입점: `AnchorService`)
 - `src/Anchor.cs` — 부재 심볼 (진입점: `VanishedService`)
 
-## 구현 방법
+## 설계 메모
 AnchorService 가 처리한다[^src-y].
 
 [^src-y]: 픽스처 각주 — `src/Anchor.cs`

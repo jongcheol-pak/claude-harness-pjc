@@ -411,8 +411,7 @@ def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
                 "confidence: medium\nupdated: 2026-07-02\ntags: [feature, demo]\n---\n\n"
                 "# 대량 %03d (bulk %03d)\n\n## 개요\n순번 분할 골든용 최소 feature.\n\n"
                 "## 관련 파일\n- `src/Demo/Bulk%03d.cs` — 더미\n\n"
-                "## 동작(사용법)\n없음.\n\n## 구현 방법\n없음.[^src-b]\n\n"
-                "## UI·UX\n없음.\n\n## 관련 지식·레시피\n- 없음\n\n"
+                "## 관련 지식·레시피\n- 없음[^src-b]\n\n"
                 "[^src-b]: [[10_sources/personal/src-demo|소스: Demo]] — `src/Demo/Bulk%03d.cs`\n"
                 % (i, i, i, i, i, i, i))
     for name in stale_names:

@@ -16,7 +16,7 @@ tags: [feature, demo]
 ## 관련 파일
 - `src/Demo/Silent.cs` — 더미 구현
 
-## 구현 방법
+## 설계 메모
 옮길 수 있는 본문이다.[^src-near]
 
 ### 구역 1

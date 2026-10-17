@@ -22,11 +22,11 @@ index_label: 것 (Thing) — UI·UX
 
 - `src/Demo/Thing.cs` — 본체
 
-## 구현 방법
+## 설계 메모
 
-정본은 [[20_projects/personal/demo/feat-thing|것 (Thing)]]의 「구현 방법」이다.[^src-thing]
+정본은 [[20_projects/personal/demo/feat-thing|것 (Thing)]]의 「설계 메모」이다.[^src-thing]
 
-## UI·UX
+## 화면 구성
 
 
 [UI·UX] 이 문단은 예산 발동 구간을 만들기 위한 본문이다. 내용 자체는 판정에 쓰이지 않지만 원문 무변조를 확인할 수 있도록 섹션마다 다른 표지를 둔다.

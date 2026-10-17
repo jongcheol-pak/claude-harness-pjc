@@ -20,7 +20,7 @@ tags: [feature, path]
 - `src/Real.cs` — 실재 (무경고 기대)
 - `src/AlsoGone.cs` — 부재 (WARN 기대)
 
-## 구현 방법
+## 설계 메모
 Real 클래스가 처리한다[^src-x].
 
 [^src-x]: 픽스처 각주 — `src/Gone.cs`

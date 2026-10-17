@@ -20,12 +20,12 @@ tags: [feature, demo]
 
 - `src/Demo/Thing.cs` — 본체
 
-## 구현 방법
+## 설계 메모
 
 왜 이 구조인지 얇게 적는다[^src-thing].
 
-## UI·UX
+## 화면 구성
 
-**정본은 [[20_projects/personal/demo/feat-thing-2|것 (Thing) — UI·UX]]의 「UI·UX」이다** — 본문 100자를 옮겼다(§7-2 발동 처방).
+**정본은 [[20_projects/personal/demo/feat-thing-2|것 (Thing) — UI·UX]]의 「화면 구성」이다** — 본문 100자를 옮겼다(§7-2 발동 처방).
 
 [^src-thing]: [[10_sources/personal/src-demo\|소스: Demo]] — `src/Demo/Thing.cs`

@@ -20,11 +20,11 @@ tags: [feature, demo]
 
 - `src/Demo/Thing.cs` — 본체
 
-## 구현 방법
+## 설계 메모
 
 왜 이 구조인지 얇게 적는다[^src-thing].
 
-## 동작(사용법)
+## 흐름(사용법)
 
 ### 흐름
 

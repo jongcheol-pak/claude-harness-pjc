@@ -18,7 +18,7 @@ tags: [feature, relempty]
 ## 관련 파일
 - 핵심 로직은 Thing 클래스가 담당 (경로 백틱 없음)
 
-## 구현 방법
+## 설계 메모
 Thing 클래스가 처리한다[^src-x].
 
 [^src-x]: 픽스처용 각주 — `src/X/Thing.cs`

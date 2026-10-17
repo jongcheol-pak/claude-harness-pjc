@@ -5,9 +5,9 @@
 검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
-      / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature '## 구현 방법' 섹션 부재(§7-18 확장)
+      / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature 폐지 절 보유(§7-38 — 구현 방법·동작(사용법)·UI·UX)
       / 고아 페이지(간이) / 미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
-      / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계 / feature 구현 근거 각주
+      / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
@@ -2118,8 +2118,6 @@ PRESCRIPTIONS.append(rollover_hub_changes)
 # ── §4 처방 ③: 산문 타입의 섹션 하위 분리 ────────────────────────────────
 # **본문까지 원본에 남기는 섹션** — 지도(§7-21은 `## 관련 파일` 목록이 비면 위반이다)와
 #  정체성(`## 개요`), 그리고 도달 경로·다른 처방의 대상 구역(`## 하위 문서`·`## 아카이브`)이다.
-#  **`## 구현 방법`은 여기 넣지 않는다** — §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을
-#  옮겨도 게이트가 깨지지 않고, 실 vault에서 발동을 만드는 최대 섹션이 바로 그 자리다.
 RELOCATE_KEEP_COMMON = ("개요", "관련 파일", "하위 문서", "아카이브", "아카이브 인덱스")
 # 타입별 추가 유지 섹션 — 롤오버·포인터가 대상으로 삼는 구역이거나(project) 그 타입의
 #  정체성 섹션이라(entity `## 핵심`) 옮기면 다른 규정이 깨진다.
@@ -2128,9 +2126,9 @@ TYPE_KEEP_SECTIONS = {
     "entity": ("핵심",),
 }
 # **하위에도 재현해야 하는 필수 섹션**(이동 제외와 다른 축이다) — 하위는 원본과 같은 타입이라
-#  §7-18ⓐ·§7-21 게이트가 하위에도 그대로 걸린다.
+#  §7-21 게이트가 하위에도 그대로 걸린다.
 TYPE_REQUIRED_SECTIONS = {
-    "feature": ("개요", "관련 파일", "구현 방법"),
+    "feature": ("개요", "관련 파일"),
     "project": ("기능 목록", "최근 주요 변경", "레포 정보", "관련 위키 지식"),
     "entity": ("핵심",),
     "concept": ("개요",),
@@ -2149,6 +2147,8 @@ TYPE_REQUIRED_SECTIONS = {
 #  조건을 여기 다시 쓰지 않고 그 상수에서 파생하는 것이 단일 출처를 지키는 방법이다.
 RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS
                        if t != "project" and t not in BUDGET_OVER_ONLY_TYPES)
+# §7-38 폐지 절 — schema §2.3 이 feature 에서 걷은 세 절. 줄 머리 헤딩만 센다.
+ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX)[ \t]*$")
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
 
 
@@ -2237,7 +2237,7 @@ def _label_with_section(base, title):
 def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap, label_title=None):
     """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다.
 
-    **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번) §7-18ⓐ·
+    **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번)
     §7-21 같은 필수 섹션 게이트가 하위에도 그대로 걸린다 — 재현하지 않으면 자동 분할이
     스스로 새 위반을 만든다. 재현 방식은 결정론이다: 전부 **상위를 가리키는 한 줄**을 둔다
     (정본은 하나라는 것을 문면으로 못박는다). **`## 관련 파일`도 복제하지 않는다** — 종전에는
@@ -2258,8 +2258,8 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap, label_tit
     out = head + "# %s\n\n" % _label_with_section(h1.group(1).strip() if h1 else label, suffix) + back
 
     # 각주 정의는 **원본에 남기고 하위에도 복제**한다 — 각주는 파일 로컬이라 본문만
-    #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본의 `[^src-` 가 0이 되어
-    #  §7-18ⓑ가 곧바로 새 위반을 낸다(자동 분할이 스스로 만든 위반).
+    #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본에 남은 참조가 깨지며
+    #  §7-20 이 원본의 각주 경로를 더는 재지 못한다.
     keep_body = ""
     for req in TYPE_REQUIRED_SECTIONS.get(typ, ()):
         if req == title:
@@ -2268,10 +2268,6 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap, label_tit
         if src is None:
             continue
         ref = "정본은 [[%s|%s]]의 「%s」이다." % (rel[:-len(".md")], label, req)
-        # `## 구현 방법`은 각주 0개가 곧 위반이라(§7-18ⓑ) 원본 각주를 한 번 인용한다.
-        fns = re.findall(r"\[\^[^\]\n]+\]", src)
-        if fns:
-            ref += fns[0]
         keep_body += "## %s\n\n%s\n\n" % (req, ref)
     out += keep_body + "## %s\n\n" % title + body
 
@@ -2375,11 +2371,11 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
         #  안에서만 살아 있어(지역 변수) 다음 호출이 같은 스텁을 다시 최대 후보로 집는다.
         #  파일 내용으로 가르면 호출 경계와 무관해진다.
         #  **스텁의 생산자는 둘이고 둘 다 정상 동작이다** — 이동 자리에 남는 포인터와
-        #  _sub_page_text가 하위에 재현하는 필수 섹션 포인터(§7-18ⓐ·§7-21 게이트가 하위에도
+        #  _sub_page_text가 하위에 재현하는 필수 섹션 포인터(§7-21 게이트가 하위에도
         #  걸리므로 재현이 필요하다). 그 재현을 없애는 것은 처방이 아니다.
         # 각주 정의 줄도 함께 뺀다 — 옮긴 자리에 포인터와 **원본에 남긴 각주 정의**가 남는데,
         #  정의만으로는 옮길 실 내용이 아니다. 빼지 않으면 그 스텁이 다음 라운드에 다시 최대
-        #  후보로 잡혀, 각주를 데리고 하위로 갔다가 §7-18ⓑ 위반이 되돌아온다.
+        #  후보로 잡혀, 각주를 데리고 하위로 갔다가 원본에 남은 참조가 깨진다.
         if not FOOTNOTE_DEF_RX.sub("", PTR_ONLY_LINE_RX.sub("", c_body)).strip():
             continue
         # **옮겨도 문서가 줄지 않는 절은 후보에서 뺀다.** 이동 자리에는 정본 포인터가 남는데,
@@ -2571,7 +2567,7 @@ def _trim_dup_related(vault, rel, fm, text):
 
     절 경계는 `_md_sections`로 잡는다(코드펜스 안의 `## `를 헤딩으로 오인하지 않는다). 각주 정의가
     그 절 안에 있으면 건드리지 않는다 — 문서 끝 절이면 정의가 섹션 경계 안에 들어오는데,
-    그것까지 걷으면 §7-18ⓑ가 곧바로 새 위반을 낸다."""
+    그것까지 걷으면 원본에 남은 각주 참조가 깨진다."""
     if str(fm.get("type", "")).strip() != "feature":
         return None
     m = SUBDOC_BACK_RX.search(text)
@@ -2643,7 +2639,7 @@ def prescribable(rel, fm, text, nl, vault=None):
 def relocate_sections(ses):
     """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다.
 
-    헤딩과 포인터 1줄은 원본에 남는다 — 통째로 들어내면 §7-18ⓐ·§7-21이 곧 새 위반을
+    헤딩과 포인터 1줄은 원본에 남는다 — 통째로 들어내면 §7-21이 곧 새 위반을
     내고, 제목까지 지우면 목차에서 그 주제가 사라져 물을 실마리가 없어진다.
 
     **관련 파일 복제 정리(`_trim_dup_related`)를 선행 단계로 같이 돈다** — 별도 처방으로 두면
@@ -2707,8 +2703,8 @@ def relocate_sections(ses):
             hd_end = cur.index("\n", s0) + 1
             ptr = _relocation_pointer(sub_rel, label, title, len(body))
             # **본문 안의 각주 정의는 원본에 남긴다** — 각주는 파일 로컬이라, 정의가
-            #  옮기는 절 안에 있으면 본문과 함께 빠져 **원본의 `[^src-` 가 0이 된다**(§7-18ⓑ가
-            #  곧바로 새 위반을 낸다). 하위에는 body 에 이미 딸려 가므로 여기서 복제하지 않는다.
+            #  옮기는 절 안에 있으면 본문과 함께 빠져 **원본에 남은 참조가 깨진다**(§7-20 도
+            #  원본의 각주 경로를 더는 재지 못한다). 하위에는 body 에 이미 딸려 가므로 여기서 복제하지 않는다.
             #  마지막 절이 옮겨질 때 실제로 일어나는 경로다 — 각주 정의는 관례상 문서 끝에 모인다.
             kept_defs = FOOTNOTE_DEF_RX.findall(body)
             tail = ("\n".join(kept_defs) + "\n\n") if kept_defs else ""
@@ -3329,20 +3325,15 @@ def main():
             # F1-ⓑ 폐기 안내 정합: deprecated인데 "코드에서 제거" 안내가 없으면 경고
             if "코드에서 제거" not in text:
                 warn(f"deprecated 표기 안내 누락: {r} ('⚠ 코드에서 제거됨' 안내 권장, schema §2.3)", r)
-        # F2 구현 근거 각주 게이트(§7-18): '## 구현 방법'은 필수 섹션(§2.3)이므로 ⓐ 섹션 자체가 없으면
-        #  WARN(섹션을 통째로 빼서 각주 게이트를 우회하는 구멍 차단), ⓑ 섹션이 있는데 [^src-...] 각주가
-        #  0개면 얕은 feature 의심 WARN. 각주 '존재'는 여기서, 각주 경로의 레포 실존은 §7-20 블록이
-        #  기계 검사; 서술↔코드 사실 정합은 §7-10(에이전트 표본)이 담당.
-        #  섹션 판정은 줄 시작 헤딩 정규식으로 — 산문이 '## 구현 방법'을 인용만 해도 존재로
-        #  오인하지 않게 한다(단순 포함 검사의 오탐).
+        # §7-38 feature 폐지 절 보유 — 폐지한 세 절(schema §2.3)을 새 ingest 가 다시 만들지
+        #  못하게 하는 재성장 방지 신호다. 헤딩 존재로 판정해 정본 포인터만 남은 헤딩도 잡는다.
+        #  펜스 안의 예시 헤딩은 세지 않는다 — 위키 문서는 자기 서식을 코드블록으로 예시하는
+        #  것이 관례라 그 오차가 구조적이다(폐지된 §7-18 이 같은 판정을 썼다).
         if typ == "feature" and not is_dep and not in_archive:
-            # 펜스 안의 예시 헤딩은 세지 않는다 — 이 레포·위키 문서는 자기 서식을
-            #  코드블록으로 예시하는 것이 관례라 그 오차가 구조적이다(실측: 절 수 계수가
-            #  같은 회차에 두 번 그렇게 틀렸다).
-            if not re.search(r"(?m)^##\s*구현 방법[ \t]*$", strip_code(text)):
-                warn(f"구현 방법 섹션 누락: {r} ('## 구현 방법'은 필수 섹션 — 얇게라도 유지, schema §2.3·§7-18)", r)
-            elif "[^src-" not in text:
-                warn(f"구현 근거 각주 누락: {r} (## 구현 방법 있으나 [^src-...] 0개 — 얕은 feature 의심, schema §2.3)", r)
+            abolished = ABOLISHED_FEATURE_RX.findall(strip_code(text))
+            if abolished:
+                names = "·".join(dict.fromkeys(abolished))
+                warn(f"폐지 절 보유: {r} (## {names} — 함정·이유는 '## 관련 지식·레시피'로 옮기고 나머지는 지운다, schema §2.3·§7-38)", r)
 
         # wikilink: 깨진 링크(경로형) + 경로 없는 링크(명시적 경로 필수 위반)
         # 코드펜스/인라인코드 안 텍스트는 제외 — 추출·정규화는 wikilink_targets(§7-6·23과 공용)
@@ -4132,7 +4123,7 @@ def main():
         if typ != "feature" or r.startswith("90_archive/"):
             continue
         if (fm.get("status") == "deprecated") or bool(fm.get("deprecated")):
-            continue  # deprecated는 frozen 이력 — 경로가 이미 제거된 게 정상 (§7-18과 동일 제외)
+            continue  # deprecated는 frozen 이력 — 경로가 이미 제거된 게 정상 (§7-38과 동일 제외)
         # 각주 정의 줄 판별은 strip_code 사본으로(코드펜스 안 유사 줄 제외 — 줄 구조 보존),
         #  백틱 토큰 추출은 원문 줄에서(strip_code는 인라인코드를 공백화해 토큰이 사라지므로).
         raw_lines = text.splitlines()

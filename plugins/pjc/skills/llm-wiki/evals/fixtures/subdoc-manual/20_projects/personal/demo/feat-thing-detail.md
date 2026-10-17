@@ -22,6 +22,6 @@ tags: [feature, demo]
 
 - `src/Demo/Thing.cs` — 본체
 
-## UI·UX
+## 화면 구성
 
 옮겨 온 본문이다.
