@@ -1259,6 +1259,81 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 따옴표 안의 <<EOF 는 heredoc 이 아니다 (차단 유지)",
+      "command": "true && cat > \"a.md<<EOF\"\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 작은따옴표 안의 <<EOF (차단 유지)",
+      "command": "true && cat > a.md'<<EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — tee 의 따옴표 안 <<EOF (차단 유지)",
+      "command": "true && tee \"a.md<<EOF\"\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 글롭으로 쓴 파일을 실행 (차단 유지)",
+      "command": "true && cat > x.md <<'EOF'\ngit push --force-with-lease origin main\nEOF\nbash x.*",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — git alias 로 쓴 파일을 실행 (차단 유지)",
+      "command": "true && cat > y.md <<'EOF'\ngit push --force-with-lease origin main\nEOF\ngit -c alias.r='!sh y.md' r",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — git mv 로 옮겨 실행 (차단 유지)",
+      "command": "true && cat > x.md <<'EOF'\ngit push --force-with-lease origin main\nEOF\ngit add x.md && git mv x.md run.sh && bash run.sh",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 앞 줄 대입 변수의 스크립트 대상 (차단 유지)",
+      "command": "F=run.sh\ntrue && cat > \"$F\" <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 앞 줄 대입 변수 대상을 실행 (차단 유지)",
+      "command": "F=run.sh\ntrue && cat > \"$F\" <<'EOF'\ngit push --force-with-lease origin main\nEOF\nbash run.sh",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 암묵 소비자(npm run) 가 읽는 파일 (차단 유지)",
+      "command": "true && cat > package.json <<'EOF'\n{\"scripts\":{\"x\":\"git push --force-with-lease origin main\"}}\nEOF\nnpm run x",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 릴리즈 노트를 gh 로 올리고 지운다 (음성 짝)",
+      "command": "N=x.md && cat > \"$N\" <<'EOF'\ngit push --force-with-lease origin main\nEOF\ngh release create v1.0.0 -F \"$N\" && rm \"$N\"",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — mktemp 대입 릴리즈 노트 (음성 짝)",
+      "command": "N=$(mktemp) && cat > \"$N\" <<'EOF'\ngit push --force-with-lease origin main\nEOF\ngh release create v1.0.0 --title \"v1.0.0\" -F \"$N\"",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "P1T1-B2 무필터 열거 재귀 삭제 차단 유지 (rm -rf ./* 등가)",
       "command": "Get-ChildItem . -Recurse | Remove-Item -Force",
       "expect_exit": 2,
@@ -2354,6 +2429,27 @@
       "name": "heredoc 싱크 허용목록 — 쓴 파일을 gh 가 읽기만 하면 데이터 (음성 짝)",
       "command": "cat > notes.md <<'EOF'\nhello; cp notes.md plan.md\nEOF\ngh release create v1.0.0 -F notes.md",
       "expect_exit": 0
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 같은 줄에서 글롭으로 실행 (차단 유지)",
+      "command": "cat > x.md <<'EOF' && bash x.*\ncp notes.md plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 따옴표 안의 <<EOF 는 heredoc 이 아니다 (차단 유지)",
+      "command": "true && cat > \"a.md<<EOF\"\ncp notes.md plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 전 세그먼트 허용목록 — 같은 줄에서 git alias 로 실행 (차단 유지)",
+      "command": "cat > y.md <<'EOF' && git -c alias.r='!sh y.md' r\ncp notes.md plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
     },
     {
       "hook": "guard-bash.ps1",

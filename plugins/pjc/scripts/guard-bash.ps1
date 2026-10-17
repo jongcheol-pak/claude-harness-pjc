@@ -6,7 +6,7 @@ function New-HookResult {
     return @{ Block = $Block; Stderr = $Stderr; Context = $Context }
 }
 
-# heredoc 블록 정규식 — 아래 함수들과 커밋 판정 라이브러리의 스트립이 공유한다(dot-source 라 같은 스코프).
+# heredoc 블록 정규식 — 아래 함수들과 커밋 판정 라이브러리의 스트립이 공유한다.
 $script:HeredocBlockRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
 # heredoc 본문 전량 스트립 (커밋 판정 전용) — 근거는 `rules/commit-secrets-rationale.md` §3a
 function Remove-HeredocBodyForJudge([string]$s) {
@@ -26,20 +26,21 @@ function Remove-HeredocDataSink([string]$s) {
     })
 }
 function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting, [string]$after = '') {
-    if ([regex]::Matches($line, '<<').Count -ne 1) { return $null }
+    if ([regex]::Matches(($line -replace '"[^"]*"|''[^'']*''', '""'), '<<').Count -ne 1) { return $null }
     $cons = $null
     foreach ($sg in @(Split-TopLevel $line $PsQuoting)) { if ($sg -match '<<') { $cons = $sg; break } }
     if ($null -eq $cons) { return $null }
     $i = $line.IndexOf($cons); $rest = $line.Substring($i + $cons.Length)
     $c = $cons -replace '<<-?\s*(["'']?)\w+\1', ''
-    if ($c -match '(?i)^\s*cat\s*1?>>?\s*([^\s<>&|()]+)\s*$' -or $c -match '(?i)^\s*tee(?:\s+(?:-a|--append))?\s+([^\s<>&|()]+)\s*$') { $t = $Matches[1] }
-    elseif ($c -match '(?i)^\s*cat\s*$' -and $rest -match '(?i)^\s*\|\s*tee(?:\s+(?:-a|--append))?\s+([^\s<>&|()]+)\s*$') { $t = $Matches[1]; $rest = '' }
+    $tRx = '("[^"<>]*"|''[^''<>]*''|[^\s<>&|()"'']+)\s*$'
+    if ($c -match ('(?i)^\s*cat\s*1?>>?\s*' + $tRx) -or $c -match ('(?i)^\s*tee(?:\s+(?:-a|--append))?\s+' + $tRx)) { $t = $Matches[1] }
+    elseif ($c -match '(?i)^\s*cat\s*$' -and $rest -match ('(?i)^\s*\|\s*tee(?:\s+(?:-a|--append))?\s+' + $tRx)) { $t = $Matches[1]; $rest = '' }
     else { return $null }
-    if ($rest -notmatch '^\s*($|&&|\|\||;)' -or $t.Trim('"', "'") -match '^(/(dev|proc/self)/|-$)') { return $null }
-    $n = $t.Trim('"', "'")
-    $nRx = if ($n -match '\$\{?(\w+)\}?$') { '\$\{?' + $Matches[1] + '\b' } else { '(?<![\w.-])' + [regex]::Escape(($n -split '[\\/]')[-1]) + '(?![\w.-])' }
+    if ($t.Trim('"', "'") -match '^(/(dev|proc/self)/|-$)') { return $null }
+    if ($line -match '(?i)^\s*(cat|tee)\b') { $after = '' }
+    $okRx = '(?i)^($|true$|\w+=(\$\(mktemp\b[^()`]*\)|"\$\(mktemp\b[^()`"]*\)"|"[^"$`]*"|''[^'']*''|[^\s$`()|&<>]+)$|(mkdir|rm|echo|gh\s+(release\s+create|pr\s+(create|comment)))\b[^`<>|&()]*$)'
     foreach ($sg in ($line.Substring(0, $i) + $rest + "`n" + $after) -split '&&|\|\||;|\r?\n') {
-        if ($sg -match $nRx -and ($sg -match '\|' -or $sg -notmatch '(?i)^\s*(gh|git|rm|ls|stat|test|wc|diff|Remove-Item|Test-Path)\b')) { return $null }
+        if ($sg.Trim() -notmatch $okRx) { return $null }
     }
     return $t
 }
@@ -47,8 +48,9 @@ function Test-ScriptSinkTarget([string]$target, [string]$line) {
     $t = $target.Trim('"', "'")
     if ($t -match '\$\{?(\w+)\}?$') {
         $as = [regex]::Matches($line, '(?:^|[\s;&|])' + $Matches[1] + '=("[^"]*"|''[^'']*''|[^\s;&|]+)')
-        if ($as.Count -eq 0) { return $false }
+        if ($as.Count -eq 0) { return $line -notmatch '(?i)^\s*(cat|tee)\b' }
         $t = $as[$as.Count - 1].Groups[1].Value.Trim('"', "'")
+        if ($t -match '^\$\(mktemp\b') { return $t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)\b' }
     }
     return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$' -or ($t -split '[\\/]')[-1] -notmatch '\.')
 }
