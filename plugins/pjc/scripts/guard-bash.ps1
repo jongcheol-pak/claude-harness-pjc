@@ -19,7 +19,6 @@ function Remove-HeredocBodyForJudge([string]$s) {
     return [regex]::Replace($s, $script:HeredocBlockRx, { param($m) $m.Groups['line'].Value })
 }
 # heredoc 데이터-싱크 본문 스트립 — 근거는 `rules/bash-guard-rationale.md` §16
-#   `block-destructive.ps1` 의 같은 스트립을 복제 이식했다(그쪽은 최상위 인라인 코드라 「복제 사본 동기」 축이 정규식 리터럴만 잰다).
 function Remove-HeredocDataSink([string]$s) {
     if ([string]::IsNullOrEmpty($s)) { return $s }
     return [regex]::Replace($s, $script:HeredocBlockRx, {
@@ -31,7 +30,6 @@ function Remove-HeredocDataSink([string]$s) {
         if ($isDataSink) { $line } else { $m.Value }
     })
 }
-# heredoc 소비자의 싱크 대상($null = 실행 본문)·스크립트 대상 판정 — `block-destructive.ps1` 과 같은 사본이다(§16)
 function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
     $cons = $null
     foreach ($sg in @(Split-TopLevel $line $PsQuoting)) { if ($sg -match '<<') { $cons = $sg; break } }
@@ -50,6 +48,23 @@ function Test-ScriptSinkTarget([string]$target, [string]$line) {
         if ($line -match ('(?:^|[\s;&|])' + $Matches[1] + '=(\S+)')) { $t = $Matches[1].Trim('"', "'") } else { return $false }
     }
     return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
+}
+# 데이터 명령 세그먼트의 따옴표 문자열 스트립 — 근거는 `rules/bash-guard-rationale.md` §17
+function Remove-DataQuotes([string[]]$segs, [string]$src, $ops) {
+    $qRx = '"(?:[^"\\]|\\.)*"|''[^'']*'''
+    $pos = @(); $p = 0
+    foreach ($s in $segs) { $a = $src.IndexOf($s, $p); if ($a -lt 0) { $a = $p }; $pos += $a; $p = $a + $s.Length }
+    for ($i = 0; $i -lt $segs.Count; $i++) {
+        if (-not $ops.dataCommandRx -or $segs[$i] -notmatch $ops.dataCommandRx) { continue }
+        $bare = $segs[$i] -replace $qRx, ''
+        if ($bare -match '(?<![0-9&])>|\b1>' -and $bare -notmatch '>\s*(/dev/null|\$null|NUL)\s*$') { continue }
+        $ok = $true; $j = $i
+        while ($ok -and $j + 1 -lt $segs.Count -and $src.Substring($pos[$j] + $segs[$j].Length) -match '^\s*\|(?!\|)') {
+            $j++; $ok = $segs[$j] -match $ops.dataReceiverRx
+        }
+        if ($ok) { $segs[$i] = [regex]::Replace($segs[$i], $qRx, { param($m) if ($m.Value -match '\$\(|`') { $m.Value } else { '""' } }) }
+    }
+    return $segs
 }
 # 최상위 구분자 분리(따옴표 인식) — 근거는 `rules/bash-guard-rationale.md` §11
 function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
@@ -102,15 +117,12 @@ function Invoke-WarnGlobalFind {
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
     $hits = New-Object System.Collections.Generic.List[string]
-    # 연결·파이프로 나눈다 — `cd /tmp && find / …`처럼 뒤 세그먼트에 있는 것도 잡아야 한다.
     foreach ($seg in Split-TopLevel (Remove-HeredocDataSink $cmd) $script:IsPsTool) {
         $tokens = Get-EffectiveTokens $seg
         if ($tokens.Count -eq 0) { continue }
 
-        # 첫 실효 토큰이 find여야 한다(경로 붙은 형태와 .exe도 인정).
         if ($tokens[0] -notmatch '(?i)^(.*[\/])?find(\.exe)?$') { continue }
 
-        # 그 뒤 첫 비플래그 인자가 탐색 시작점이다(`find -L / -name x`처럼 플래그가 앞설 수 있다).
         $start = $null
         for ($j = 1; $j -lt $tokens.Count; $j++) {
             if ($tokens[$j].StartsWith('-')) { continue }
@@ -138,7 +150,6 @@ function Invoke-WarnDangerousAssignment {
 
     # 위험값: 루트·홈 최상위·드라이브 루트. — 근거는 `rules/bash-guard-rationale.md` §6
     $dangerRx = '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\\/]?)$'
-    # 삭제 계열만 본다 — chmod·chown 같은 권한 변경까지 넓히면 정상 스크립트에서 자주 발화한다.
     $deleteRx = '(?i)^(.*[\\/])?(rm|rmdir|unlink|shred|del|erase|rd|remove-item|ri)(\.exe)?$'
 
     $assigned = @{}
@@ -147,7 +158,6 @@ function Invoke-WarnDangerousAssignment {
         $t = $seg.Trim()
         if ([string]::IsNullOrWhiteSpace($t)) { continue }
 
-        # ① 대입 기록 — bash `NAME=값` / PowerShell `$NAME = 값`. 선언 접두어는 벗긴다.
         $decl = $t -replace '^(?i)(export|declare|local|typeset)\s+', ''
         $asg = [regex]::Match($decl, '^\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\S*)$')
         if ($asg.Success) {
@@ -155,7 +165,6 @@ function Invoke-WarnDangerousAssignment {
             continue
         }
 
-        # ② 사용 판정 — 접두어를 벗긴 첫 토큰이 삭제 계열일 때만.
         $tokens = Get-EffectiveTokens $t
         if ($tokens.Count -eq 0 -or $tokens[0] -notmatch $deleteRx) { continue }
 
@@ -184,12 +193,10 @@ function Invoke-BlockPlanWrite {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # 변수 대입 기록 — 이름을 거쳐 지시하는 형태를 역참조한다(§10).
     $assigned = @{}
     foreach ($m in [regex]::Matches($cmd, '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[''"]([^''"]*)[''"]')) {
         $assigned[$m.Groups[1].Value] = $m.Groups[2].Value
     }
-    # 인자가 plan.md 를 가리키는가 — 리터럴이거나 값이 plan.md 인 변수 이름이거나(§10).
     function Test-PlanTarget([string]$arg) {
         if ([string]::IsNullOrWhiteSpace($arg)) { return $false }
         $a = $arg.Trim().Trim('"', "'", '(', ')', ',')
@@ -201,12 +208,9 @@ function Invoke-BlockPlanWrite {
 
     $hits = New-Object System.Collections.Generic.List[string]
 
-    # ⓐ open(…,'w') 의 첫 인자 · ⓑ 리다이렉션 대상.
     foreach ($m in [regex]::Matches($cmd, '(?i)\bopen\s*\(\s*([^,()]+?)\s*,\s*[''"]([rwaxb+]+)[''"]')) {
         if ($m.Groups[2].Value -match '[wa]' -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('open(w)') }
     }
-    # ⓑ 는 데이터 싱크 heredoc 본문을 걷은 명령을 본다 — 본문 속 `> plan.md` 는 실행되지 않는 문자열이다.
-    #   ⓐ·[System.IO.File] 는 원문을 본다 — 싱크 본문의 open(w) 는 뒤에 실행될 수 있어 걷으면 차단 범위가 준다(§16).
     $stripped = Remove-HeredocDataSink $cmd
     foreach ($m in [regex]::Matches($stripped, '>>?\s*(\S+)')) {
         if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
@@ -214,20 +218,16 @@ function Invoke-BlockPlanWrite {
     foreach ($m in [regex]::Matches($cmd, '(?i)\[System\.IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
         if (Test-PlanTarget $m.Groups[2].Value) { $hits.Add('[System.IO.File]') }
     }
-    # ⓒⓓⓔⓕ 쓰기 동사는 **세그먼트의 첫 실효 토큰일 때만** 본다 — 어디에 있든 찾으면
-    #   `grep -n 'Copy-Item' plan.md` 같은 조회가 막힌다(완료 리뷰 BLOCKER).
     foreach ($seg in Split-TopLevel $stripped $script:IsPsTool) {
         $tk = Get-EffectiveTokens $seg
         if ($tk.Count -eq 0) { continue }
         $verb = ($tk[0] -replace '^.*[\\/]', '') -replace '(?i)\.exe$', ''
-        # 리다이렉션 토큰은 인자가 아니다 — `2>&1` 의 & 에서 세그먼트가 갈려 `2>` 가 마지막 토큰이 된다
         $rest = if ($tk.Count -gt 1) { @($tk[1..($tk.Count - 1)] | Where-Object { $_ -notmatch '^\d*[<>]' }) } else { @() }
         if ($verb -match '^(?i)(cp|mv|copy-item|move-item|rename-item)$') {
             if (Test-PlanTarget (@($rest) | Select-Object -Last 1)) { $hits.Add('cp/mv') }
         } elseif ($verb -match '^(?i)sed$') {
             if (($seg -match '(?i)(\s-[a-z]*i\b|--in-place)') -and (Test-PlanTarget (@($rest) | Select-Object -Last 1))) { $hits.Add('sed -i') }
         } elseif ($verb -match '^(?i)(set-content|add-content|out-file|tee)$') {
-            # PowerShell 은 named parameter 가 표준이라 -Path 계열 값을 먼저 읽는다.
             $t = $null
             for ($j = 0; $j -lt $rest.Count - 1; $j++) {
                 if ($rest[$j] -match '^(?i)-(Path|LiteralPath|FilePath|Destination)$') { $t = $rest[$j + 1]; break }
@@ -269,9 +269,9 @@ function Invoke-WarnExternalOps {
         return New-HookResult
     }
 
-    # 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게).
     #   넘기는 것은 `$cmd` 가 아니라 `$scanCmd` 다(근거는 위 §7 인용의 문단 끝).
-    $segments = Split-TopLevel (Remove-HeredocDataSink $scanCmd) $script:IsPsTool
+    $src = Remove-HeredocDataSink $scanCmd
+    $segments = Remove-DataQuotes @(Split-TopLevel $src $script:IsPsTool) $src $ops
     $hits = New-Object System.Collections.Generic.List[string]
     $hitsLocal = New-Object System.Collections.Generic.List[string]
     $hitContext = $false; $hitAlways = $false
@@ -312,15 +312,11 @@ function Invoke-WarnExternalOps {
 }
 
 # 커밋 제목 읽기 — 근거는 `rules/bash-guard-rationale.md` §14
-#   돌려주는 값: 제목 문자열 · $null(메시지 플래그 없음 — 편집기 커밋) · $false(끝내 못 읽음 — 호출자가 경고).
-#   플래그 위치는 heredoc·here-string 본문을 걷은 명령의 commit 세그먼트에서만 찾고(본문 속 ` -m `·다른 명령의 `-F` 배제),
-#   값은 원문에서 읽는다.
 function Get-CommitTitle([string]$cmd, [string]$baseDir) {
     $judge = [regex]::Replace((Remove-HeredocBodyForJudge $cmd), '(?s)@([''"])[ \t]*\r?\n.*?\r?\n\1@', { param($m) '@' + $m.Groups[1].Value + ' ' + $m.Groups[1].Value + '@' })
     $cm = [regex]::Match($judge, 'git\s+((-c|-C)\s+\S+\s+)*commit\b')
     if (-not $cm.Success) { return $null }
     $seg = @(Split-TopLevel $judge.Substring($cm.Index) $script:IsPsTool)[0]
-    # 원문에서 commit 여는 줄을 가진 heredoc 본문 · here-string 본문의 첫 줄
     $hereDocFirst = $null
     foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
         if ($hm.Groups['line'].Value -match 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { $hereDocFirst = @($hm.Groups['body'].Value -split '\r?\n')[0]; break }
@@ -345,7 +341,6 @@ function Get-CommitTitle([string]$cmd, [string]$baseDir) {
         if ($null -ne $hereStrFirst) { return $hereStrFirst }
         return $false
     }
-    # MSYS 경로 변환 — Git Bash 의 /tmp 는 %TEMP%, /c/… 는 C:\…
     if ($path -match '^/tmp(/.*)?$') { $path = $env:TEMP + ($Matches[1] -replace '/', '\') }
     elseif ($path -match '^/([A-Za-z])/(.*)$') { $path = $Matches[1] + ':\' + ($Matches[2] -replace '/', '\') }
     if (-not [System.IO.Path]::IsPathRooted($path)) {
@@ -365,7 +360,6 @@ function Invoke-RequireTaskCheckbox {
 
     if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
 
-    # 단일 plan 파일 상향 탐색의 시작점 — plan 위치는 루트 plan.md 하나다.
     $startDir = $null
     if ($data.cwd) { $startDir = $data.cwd }
     elseif ($env:CLAUDE_PROJECT_DIR) { $startDir = $env:CLAUDE_PROJECT_DIR }
@@ -375,7 +369,6 @@ function Invoke-RequireTaskCheckbox {
     $msgTitle = Get-CommitTitle $cmd $startDir
     if ($null -eq $msgTitle) { return New-HookResult }
     if ($msgTitle -is [bool]) {
-        # 끝내 못 읽음 — 막지 않고, plan 이 있을 때만 알린다(QUICK 이면 검사 전체를 건너뛴다)
         if ($env:CLAUDE_HARNESS_QUICK -eq '1' -or -not (Find-SinglePlanUpwards -StartDir $startDir)) { return New-HookResult }
         $w = '[HARNESS] 커밋 제목을 읽지 못해 task 체크박스 검사를 건너뜁니다 — heredoc -m 을 쓰세요(변수 -m · 본문 없는 -F - · 없는 -F 파일).'
         return New-HookResult -Stderr @($w) -Context $w
@@ -420,7 +413,6 @@ function Invoke-RequireTaskCheckbox {
     return New-HookResult -Block $true -Stderr $lines
 }
 
-# require-task-checkbox의 단일 plan 파일 상향 탐색 헬퍼(래퍼·디스패처 공유).
 function Find-SinglePlanUpwards {
     param([string]$StartDir, [int]$MaxDepth = 8)
     if ([string]::IsNullOrEmpty($StartDir)) { return $null }
@@ -444,8 +436,6 @@ function Find-SinglePlanUpwards {
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
-# stdin도 UTF-8로 디코딩 (v1.129.0) — Claude Code는 UTF-8 바이트로 보내는데 콘솔 기본 코드페이지(cp949)로
-#   읽으면 한글 경로·명령이 깨진다(디스패처가 lib 함수로 넘기는 명령 원문까지 손상). 실패해도 종전 동작 유지.
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 $inputJson = [Console]::In.ReadToEnd()
@@ -455,7 +445,6 @@ try {
     exit 0   # 파싱 실패 시 통과 (검사 실패가 차단보다 안전)
 }
 
-# PowerShell 도구는 따옴표 규칙이 bash 와 다르다(이스케이프는 백틱, `\` 는 리터럴) — 분리기에 넘긴다(회차 44).
 $script:IsPsTool = ([string]$data.tool_name -eq 'PowerShell')
 
 $cmdText = [string]$data.tool_input.command
@@ -501,19 +490,16 @@ $checks = @(
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {
-    # 커밋 판정 라이브러리를 불러오지 않은(비커밋 명령) 또는 못 불러온 검사는 건너뛴다.
     if (-not (Get-Command $c.fn -ErrorAction SilentlyContinue)) { continue }
     try {
         $r = & $c.fn $data
         if ($r) { $r['Name'] = $c.name; $results.Add($r) }
     } catch {
-        # 한 검사의 예외는 나머지를 막지 않는다(런타임 격리 — 안전측 통과).
     }
 }
 
 $blocked = @($results | Where-Object { $_.Block })
 if ($blocked.Count -gt 0) {
-    # 차단: 차단 사유만 출력(warn 경고는 버림 — D4 트레이드오프), exit 2로 도구 차단.
     foreach ($b in $blocked) {
         foreach ($l in $b.Stderr) { [Console]::Error.WriteLine($l) }
         Write-DispatchEvent $b['Name'] 'block' $b
@@ -521,7 +507,6 @@ if ($blocked.Count -gt 0) {
     exit 2
 }
 
-# 비차단: warn 경고 stderr 전부 + additionalContext 병합(Claude Code는 hook당 1 JSON 파싱).
 $contexts = New-Object System.Collections.Generic.List[string]
 foreach ($r in $results) {
     foreach ($l in $r.Stderr) { [Console]::Error.WriteLine($l) }
