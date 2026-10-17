@@ -1150,6 +1150,115 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — tee 대상이 둘이면 싱크로 보지 않는다 (차단 유지)",
+      "command": "true && tee notes.md run.sh <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — tee 뒤 파일 리다이렉트가 있으면 싱크로 보지 않는다 (차단 유지)",
+      "command": "true && tee notes.md <<'EOF' > run.sh\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — tee 인자의 프로세스 치환 (차단 유지)",
+      "command": "true && tee notes.md >(bash) <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — tee 출력의 프로세스 치환 (차단 유지)",
+      "command": "true && tee notes.md > >(bash) <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — |& 로 셸에 넘기면 싱크가 아니다 (차단 유지)",
+      "command": "true && cat > notes.md <<'EOF' |& bash\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 한 줄에 heredoc 둘이면 싱크로 보지 않는다 — && (차단 유지)",
+      "command": "true && cat > n.md <<'A' && bash <<'EOF'\nx\nA\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 한 줄에 heredoc 둘이면 싱크로 보지 않는다 — ; (차단 유지)",
+      "command": "true; cat > n.md <<'A'; bash <<'EOF'\nx\nA\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 쓴 파일을 같은 줄에서 실행 (차단 유지)",
+      "command": "true && cat > notes.txt <<'EOF' && bash notes.txt\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 쓴 파일을 다음 줄에서 실행 (차단 유지)",
+      "command": "true && cat > notes.txt <<'EOF'\ngit push --force-with-lease origin main\nEOF\nbash notes.txt",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 쓴 파일을 source 로 실행 (차단 유지)",
+      "command": "true && cat > x.md <<'EOF' && . ./x.md\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 대입 없는 변수 대상을 뒤에서 실행 — cat (차단 유지)",
+      "command": "true && cat > \"$S\" <<'EOF'\ngit push --force-with-lease origin main\nEOF\nbash \"$S\"",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 대입 없는 변수 대상을 뒤에서 실행 — tee (차단 유지)",
+      "command": "true && tee \"$S\" <<'EOF'\ngit push --force-with-lease origin main\nEOF\nsh \"$S\"",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 확장자 없는 대상은 실행 파일로 본다 (차단 유지)",
+      "command": "mkdir -p .git/hooks && cat > .git/hooks/pre-push <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 쓴 파일을 gh 가 읽기만 하면 데이터 (음성 짝 — 릴리즈 노트)",
+      "command": "N=notes.md && cat > \"$N\" <<'EOF'\ngit push --force-with-lease origin main\nEOF\ngh release create v1.0.0 -F \"$N\"",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — 1> 리다이렉트도 싱크 (음성 짝)",
+      "command": "true && cat 1> notes.md <<'EOF'\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 싱크 허용목록 — cat 을 tee 로 받는 본문은 데이터 (음성 짝 — tee 대상은 재사용이 아니다)",
+      "command": "true && cat <<'EOF' | tee notes.md\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "P1T1-B2 무필터 열거 재귀 삭제 차단 유지 (rm -rf ./* 등가)",
       "command": "Get-ChildItem . -Recurse | Remove-Item -Force",
       "expect_exit": 2,
@@ -2218,6 +2327,33 @@
       "command": "cat >> notes.md <<'EOF'\nhello; cp notes.md plan.md\nEOF",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 싱크 허용목록 — 한 줄에 heredoc 둘이면 싱크로 보지 않는다 (차단 유지)",
+      "command": "true && cat > n.md <<'A' && bash <<'EOF'\nx\nA\ncp notes.md plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 싱크 허용목록 — 쓴 파일을 다음 줄에서 실행 (차단 유지)",
+      "command": "true && cat > notes.txt <<'EOF'\ncp notes.md plan.md\nEOF\nbash notes.txt",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 싱크 허용목록 — tee 인자의 프로세스 치환 (차단 유지)",
+      "command": "true && tee notes.md >(bash) <<'EOF'\ncp notes.md plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 싱크 허용목록 — 쓴 파일을 gh 가 읽기만 하면 데이터 (음성 짝)",
+      "command": "cat > notes.md <<'EOF'\nhello; cp notes.md plan.md\nEOF\ngh release create v1.0.0 -F notes.md",
+      "expect_exit": 0
     },
     {
       "hook": "guard-bash.ps1",

@@ -104,24 +104,28 @@ function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     return $parts
 }
 
-# heredoc 소비자의 싱크 대상 — 여는 줄에서 `<<` 를 가진 세그먼트(본문을 받는 명령)가 `cat … > 대상`·`tee 대상`·`cat | tee 대상` 이면
-#   그 대상을, 실행자면 $null 을 돌려준다. 마지막 세그먼트로 보면 `bash <<EOF | tee log` 의 실행 본문을 데이터로 읽는다.
-function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
+# heredoc 싱크 대상 — 허용목록: 여는 줄의 `<<` 가 하나이고 그것을 받는 세그먼트가 정확히 `cat [1]>[>] 대상`·`tee [-a] 대상`·`cat | tee 대상` 이며
+#   뒤에 파이프·리다이렉트가 없고 대상이 본문 밖에서 읽기 명령(gh·git·rm 등) 말고는 다시 쓰이지 않을 때만 대상을, 그 밖은 $null(실행 본문)을 돌려준다.
+#   근거는 `rules/bash-guard-rationale.md` §16(같은 사본).
+function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting, [string]$after = '') {
+    if ([regex]::Matches($line, '<<').Count -ne 1) { return $null }
     $cons = $null
     foreach ($sg in @(Split-TopLevel $line $PsQuoting)) { if ($sg -match '<<') { $cons = $sg; break } }
     if ($null -eq $cons) { return $null }
-    $rest = $line.Substring($line.IndexOf($cons) + $cons.Length)
-    $t = $null
-    if ($cons -match '(?i)^\s*cat\b') {
-        $ms = [regex]::Matches($cons, '(?<![0-9&>])>>?\s*(\S+)')
-        if ($ms.Count) { $t = $ms[$ms.Count - 1].Groups[1].Value }
-        elseif ($rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { $t = $Matches[1]; $rest = '' }
-    } elseif ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $t = $Matches[1] }
-    if ($null -eq $t -or ($rest -split '&&|\|\||;', 2)[0] -match '\|' -or $t.Trim('"', "'") -match '^(/(dev|proc/self)/(stdout|fd/)|[<>]\(|&)') { return $null }
+    $i = $line.IndexOf($cons); $rest = $line.Substring($i + $cons.Length)
+    $c = $cons -replace '<<-?\s*(["'']?)\w+\1', ''
+    if ($c -match '(?i)^\s*cat\s*1?>>?\s*([^\s<>&|()]+)\s*$' -or $c -match '(?i)^\s*tee(?:\s+(?:-a|--append))?\s+([^\s<>&|()]+)\s*$') { $t = $Matches[1] }
+    elseif ($c -match '(?i)^\s*cat\s*$' -and $rest -match '(?i)^\s*\|\s*tee(?:\s+(?:-a|--append))?\s+([^\s<>&|()]+)\s*$') { $t = $Matches[1]; $rest = '' }
+    else { return $null }
+    if ($rest -notmatch '^\s*($|&&|\|\||;)' -or $t.Trim('"', "'") -match '^(/(dev|proc/self)/|-$)') { return $null }
+    $n = $t.Trim('"', "'")
+    $nRx = if ($n -match '\$\{?(\w+)\}?$') { '\$\{?' + $Matches[1] + '\b' } else { '(?<![\w.-])' + [regex]::Escape(($n -split '[\\/]')[-1]) + '(?![\w.-])' }
+    foreach ($sg in ($line.Substring(0, $i) + $rest + "`n" + $after) -split '&&|\|\||;|\r?\n') {
+        if ($sg -match $nRx -and ($sg -match '\|' -or $sg -notmatch '(?i)^\s*(gh|git|rm|ls|stat|test|wc|diff|Remove-Item|Test-Path)\b')) { return $null }
+    }
     return $t
 }
-#   출력이 같은 명령 안에서 다시 파이프로 나가거나(`2>&1 |` 포함) 대상이 표준출력·`>&2`·프로세스 치환이면 본문이 다음 명령으로 흘러가 싱크가 아니다.
-# 싱크 대상이 실행될 스크립트인가 — 변수 대상(`"$N"`·끝 성분 `"$D/$F"`)은 같은 줄의 마지막 대입값으로 보고, 대입이 없으면 데이터로 본다.
+# 싱크 대상이 실행될 스크립트인가(스크립트 확장자 또는 확장자 없음) — 변수 대상(`"$N"`·끝 성분 `"$D/$F"`)은 같은 줄의 마지막 대입값으로 보고, 대입이 없으면 데이터로 본다.
 function Test-ScriptSinkTarget([string]$target, [string]$line) {
     $t = $target.Trim('"', "'")
     if ($t -match '\$\{?(\w+)\}?$') {
@@ -129,7 +133,7 @@ function Test-ScriptSinkTarget([string]$target, [string]$line) {
         if ($as.Count -eq 0) { return $false }
         $t = $as[$as.Count - 1].Groups[1].Value.Trim('"', "'")
     }
-    return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
+    return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$' -or ($t -split '[\\/]')[-1] -notmatch '\.')
 }
 
 # ---- heredoc 파일-리다이렉트 본문 스트립 ----
@@ -143,7 +147,7 @@ $cmd = [regex]::Replace($cmd, $heredocRx, {
     $line = $m.Groups['line'].Value
     $isDataSink = ($line -match '(?i)^\s*cat\b' -and $line -match '>\s*\S') -or ($line -match '(?i)^\s*tee\b')
     if (-not $isDataSink) {
-        $target = Get-HeredocSinkTarget $line $isPowerShellTool
+        $target = Get-HeredocSinkTarget $line $isPowerShellTool $cmd.Substring($m.Index + $m.Length)
         $isDataSink = ($null -ne $target) -and -not (Test-ScriptSinkTarget $target $line)
     }
     if ($isDataSink) { $line } else { $m.Value }

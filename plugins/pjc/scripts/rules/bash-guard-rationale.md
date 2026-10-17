@@ -63,7 +63,7 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 - **`block-destructive.ps1` 은 여기 합치지 않는다** — 「끌 수 없는 마지막 방어선」이라
   공유 로드 실패에 결합시키지 않고 `hooks.json` 독립 엔트리로 직접 실행한다(결정 B).
 
-**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 공용 헬퍼 `New-HookResult`·`Remove-HeredocBodyForJudge` 를 `guard-bash.ps1` 에 두는 이유 — 커밋 판정 라이브러리 둘은 커밋 명령에서만 dot-source 되므로(로드 루프) 거기 두면 나머지 검사가 돌 수 없다. · `Remove-HeredocBodyForJudge` 를 쓰는 쪽은 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1` 둘이다 — 여기 두면 한쪽 파일이 없어도 다른 쪽의 스트립이 유지된다.
+**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 공용 헬퍼 `New-HookResult`·`Remove-HeredocBodyForJudge` 를 `guard-bash.ps1` 에 두는 이유 — 커밋 판정 라이브러리 둘은 커밋 명령에서만 dot-source 되므로(로드 루프) 거기 두면 나머지 검사가 돌 수 없다. · `Remove-HeredocBodyForJudge` 를 쓰는 쪽은 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1` 둘이다 — 여기 두면 한쪽 파일이 없어도 다른 쪽의 스트립이 유지된다. · `Remove-HeredocBodyForJudge` 는 `$script:HeredocBlockRx` 가 없으면(단독 dot-source) 스트립 없이 그대로 돌려준다 — fail-open 이되 보수측(본문까지 판정)이다.
 
 ## §3 warn-global-find: 루트 전역 탐색 경고
 
@@ -189,7 +189,7 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **`-ErrorAction Stop` 이 없으면 `catch` 가 걸리지 않는다.** `Get-Content` 의 파일 부재는 non-terminating error 라 `try/catch` 를 그냥 지나가고, `$ops` 가 `$null` 이 되어 루프가 0회 돌고 **조용히 통과**한다. 회차 52 의 골든 EOJ1 이 그 침묵을 red 로 잡았다.
 
-**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게).
+**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 셸 구분자(&&·;·|·개행)로 세그먼트를 나눠 세그먼트별로 판정(다른 세그먼트의 --dry-run 텍스트가 앞 경고를 삼키지 않게). · 조회성 세그먼트(실제 반영 아님)는 건너뛴다 — 같은 세그먼트의 dry-run·help 만 인정한다. · 외부 작업 판정에 넘기는 것은 `$cmd` 가 아니라 `$scanCmd` 다(근거는 §7 인용의 문단 끝).
 
 **검사 범위(코드 구획 제목에서 옮김 — 2026-10-17)**: warn-external-ops 는 외부·비가역 작업(push·merge·gh pr — plan·스킬 안이면 진행 / tag·gh release·배포 — 항상 승인)·로컬 비가역(reset --hard 등) 경고 를 본다.
 
@@ -203,7 +203,7 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **`-m` 밖의 제목도 읽는다**(`Get-CommitTitle`) — `-F <파일>` 은 그 파일 첫 줄, `-F -` 는 같은 명령에서 commit 여는 줄을 가진 heredoc 본문 첫 줄이나 here-string 본문 첫 줄, PowerShell `-m @'…'@` 는 here-string 본문 첫 줄이다. 종전에는 `-m` 만 읽어 `-F` 커밋이 체크박스 검사를 조용히 건너뛰었다(2026-10-08 실해 — T 완료 커밋 6개). **플래그 위치는 heredoc·here-string 본문을 걷은 명령의 commit 세그먼트에서만 찾고 값은 원문에서 읽는다** — 원문 전체에서 찾으면 본문 속 ` -m 이면` 같은 문장이나 앞 명령의 `grep -F` 를 플래그로 잡는다. `-F` 경로는 `git -C` → cwd 기준이고 Git Bash 의 `/tmp`·`/c/…` 를 `%TEMP%`·`C:\…` 로 바꾼다. **끝내 못 읽으면(변수 `-m` · 본문 없는 `-F -` · 없는 파일) 막지 않는다** — 값을 모르는 채 막으면 T 번호 없는 일반 커밋까지 막힌다. plan 파일이 있을 때만 경고하고(없는 레포에서 경고하면 소음이다), 작은따옴표 값은 치환이 없는 리터럴이라 변수로 보지 않는다.
 
-**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 돌려주는 값: 제목 문자열 · $null(메시지 플래그 없음 — 편집기 커밋) · $false(끝내 못 읽음 — 호출자가 경고). · 플래그 위치는 heredoc·here-string 본문을 걷은 명령의 commit 세그먼트에서만 찾고(본문 속 ` -m `·다른 명령의 `-F` 배제), · 값은 원문에서 읽는다. · 원문에서 commit 여는 줄을 가진 heredoc 본문 · here-string 본문의 첫 줄 · MSYS 경로 변환 — Git Bash 의 /tmp 는 %TEMP%, /c/… 는 C:\…
+**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 돌려주는 값: 제목 문자열 · $null(메시지 플래그 없음 — 편집기 커밋) · $false(끝내 못 읽음 — 호출자가 경고). · 플래그 위치는 heredoc·here-string 본문을 걷은 명령의 commit 세그먼트에서만 찾고(본문 속 ` -m `·다른 명령의 `-F` 배제), · 값은 원문에서 읽는다. · 원문에서 commit 여는 줄을 가진 heredoc 본문 · here-string 본문의 첫 줄 · MSYS 경로 변환 — Git Bash 의 /tmp 는 %TEMP%, /c/… 는 C:\… · 메시지 값이 작은따옴표면 치환 없는 리터럴이라 그대로 읽고, 값이 변수(`$X`·`${X}`)면 값을 알 수 없어 `$false` 다.
 
 ## §15 미완료 마커 매칭
 
@@ -223,7 +223,7 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **`block-destructive.ps1` 의 같은 스트립을 복제 이식했다.** 그쪽은 함수가 아니라 최상위 인라인 코드라 판정 블록은 「복제 사본 동기」 축의 함수 본문 대조(`_ps_function_body`)가 잡지 못하고, **정규식 리터럴만** 그 축의 리터럴 묶음(`$heredocRx` ↔ `$script:HeredocBlockRx`)이 잰다. 그래서 이쪽은 별도 함수 `Remove-HeredocDataSink` 로 두었다 — `Split-TopLevel` 본문에 넣으면 그 축이 두 파일의 갈림으로 읽는다. **`block-destructive.ps1` 사본도 같은 소비자 판정(`Get-HeredocSinkTarget`·`Test-ScriptSinkTarget`)을 쓴다** — 단 그쪽은 여는 줄이 `cat`·`tee` 로 시작하는 종전 꼴을 그대로 싱크로 두고 새로 인정하는 꼴에만 확장자 제외를 건다(차단 hook 은 오탐 수정만 — `destructive-rationale.md`「heredoc 파일-리다이렉트 본문 스트립」). 두 함수는 함수라 「복제 사본 동기」 축이 본문을 대조한다(`check-harness-consistency.py` `COPY_SYNC_GROUPS` — 2026-10-17 추가) — 스트립 블록 자체는 여전히 그쪽 최상위 인라인 코드라 위 리터럴 묶음만 잰다.
 
-**본문이 셸로 흘러가는 꼴과 대상 해석(2026-10-17 완료 리뷰 1·2차)**: 싱크 대상을 찾은 뒤에도 셋이면 싱크가 아니다 — ① 같은 명령 안에서 출력이 다시 파이프로 나간다(다음 최상위 `;`·`&&`·`||` 전까지의 `|` — `2>&1 | bash` 는 `&` 에서 세그먼트가 갈려 바로 뒤 문자로는 못 본다) ② 대상이 `/dev/stdout`·`/proc/self/fd/…`·`>&2` ③ 대상이 프로세스 치환(`>(bash)`). `cat` 의 대상은 fd 번호 없는 마지막 `>`·`>>` 리다이렉트다(`cat >> run.sh` 의 대상을 두 번째 `>` 로 읽던 결함 · `cat 2>/dev/null > out.sh`). 변수 대상은 끝 성분이 변수인 경로(`"$D/$F"`)까지 보고 같은 줄의 **마지막** 대입값으로 푼다(`N=a.md; N=run.sh`). 대입이 없으면 판정할 값이 없어 데이터로 본다. 골든은 `hook-cases.json` 「heredoc 소비자 판정」.
+**싱크는 허용목록 문법으로만 인정한다(2026-10-17 완료 리뷰 3차)**: 변형을 하나씩 막는 판정은 리뷰 세 차례 동안 매번 같은 부류의 회피(`cat >>`·`2>&1 | bash`·`>(bash)`·tee 다중 인자·한 줄 heredoc 둘·쓴 파일 실행)를 남겼다. 그래서 싱크로 보는 꼴을 좁게 정하고 나머지는 모두 실행 본문으로 본다(fail-closed). 조건 다섯이 모두 참일 때만 싱크다 — ① 여는 줄의 `<<` 가 하나다 ② `<<` 를 받는 세그먼트에서 heredoc 연산자를 뺀 나머지가 정확히 `cat [1]>[>] 대상`·`tee [-a|--append] 대상`·`cat`(뒤가 `| tee [-a] 대상` 으로 줄 끝)이다 — 대상에 `<>&|()` 가 없어 프로세스 치환·`>&2` 가 빠진다 ③ 그 세그먼트 뒤가 줄 끝이거나 `&&`·`||`·`;` 다(파이프·`2>&1 |`·`|&`·추가 리다이렉트 없음) ④ 대상이 `/dev/…`·`/proc/self/…`·`-` 가 아니다 ⑤ 대상 이름(변수면 `$이름`)이 본문 밖(여는 줄의 나머지·종결 태그 뒤)에서 다시 나오면 그 세그먼트가 파이프 없이 읽기 명령(`gh`·`git`·`rm`·`ls`·`stat`·`test`·`wc`·`diff`·`Remove-Item`·`Test-Path`)으로 시작할 때만이다 — 릴리즈 노트를 `gh release create -F` 로 읽는 꼴은 남기고 `bash notes.txt`·`. ./x.md` 는 실행으로 본다. 그 뒤 `Test-ScriptSinkTarget` 이 스크립트 확장자·확장자 없는 대상(`.git/hooks/pre-push`)을 실행 파일로 본다. 변수 대상은 끝 성분이 변수인 경로(`"$D/$F"`)까지 같은 줄의 **마지막** 대입값으로 풀고, 대입이 없으면 데이터로 본다(⑤가 실행 재사용을 따로 잡는다). 골든은 `hook-cases.json` 「heredoc 소비자 판정」·「heredoc 싱크 허용목록」.
 
 **스트립 함수는 둘이고 합치지 않는다** — `Remove-HeredocDataSink`(실행 판정)와 `Remove-HeredocBodyForJudge`(커밋 판정 전용). 정규식은 같고 묻는 것이 다르다 — 대조표는 `commit-secrets-rationale.md`「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」가 정본이다.
 

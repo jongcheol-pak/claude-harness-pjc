@@ -11,7 +11,7 @@ $script:HeredocBlockRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<
 # heredoc 본문 전량 스트립 (커밋 판정 전용) — 근거는 `rules/commit-secrets-rationale.md` §3a
 function Remove-HeredocBodyForJudge([string]$s) {
     if ([string]::IsNullOrEmpty($s)) { return $s }
-    if (-not $script:HeredocBlockRx) { return $s }   # 단독 dot-source 시 fail-open(보수측: 스트립 없이 판정)
+    if (-not $script:HeredocBlockRx) { return $s }
     return [regex]::Replace($s, $script:HeredocBlockRx, { param($m) $m.Groups['line'].Value })
 }
 # heredoc 데이터-싱크 본문 스트립 — 근거는 `rules/bash-guard-rationale.md` §16
@@ -20,23 +20,27 @@ function Remove-HeredocDataSink([string]$s) {
     return [regex]::Replace($s, $script:HeredocBlockRx, {
         param($m)
         $line = $m.Groups['line'].Value
-        $target = Get-HeredocSinkTarget $line $script:IsPsTool
+        $target = Get-HeredocSinkTarget $line $script:IsPsTool $s.Substring($m.Index + $m.Length)
         $isDataSink = ($null -ne $target) -and -not (Test-ScriptSinkTarget $target $line)
         if ($isDataSink) { $line } else { $m.Value }
     })
 }
-function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting) {
+function Get-HeredocSinkTarget([string]$line, [bool]$PsQuoting, [string]$after = '') {
+    if ([regex]::Matches($line, '<<').Count -ne 1) { return $null }
     $cons = $null
     foreach ($sg in @(Split-TopLevel $line $PsQuoting)) { if ($sg -match '<<') { $cons = $sg; break } }
     if ($null -eq $cons) { return $null }
-    $rest = $line.Substring($line.IndexOf($cons) + $cons.Length)
-    $t = $null
-    if ($cons -match '(?i)^\s*cat\b') {
-        $ms = [regex]::Matches($cons, '(?<![0-9&>])>>?\s*(\S+)')
-        if ($ms.Count) { $t = $ms[$ms.Count - 1].Groups[1].Value }
-        elseif ($rest -match '(?i)^\s*\|\s*tee\b(?:\s+-\S+)*\s+(\S+)\s*$') { $t = $Matches[1]; $rest = '' }
-    } elseif ($cons -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $t = $Matches[1] }
-    if ($null -eq $t -or ($rest -split '&&|\|\||;', 2)[0] -match '\|' -or $t.Trim('"', "'") -match '^(/(dev|proc/self)/(stdout|fd/)|[<>]\(|&)') { return $null }
+    $i = $line.IndexOf($cons); $rest = $line.Substring($i + $cons.Length)
+    $c = $cons -replace '<<-?\s*(["'']?)\w+\1', ''
+    if ($c -match '(?i)^\s*cat\s*1?>>?\s*([^\s<>&|()]+)\s*$' -or $c -match '(?i)^\s*tee(?:\s+(?:-a|--append))?\s+([^\s<>&|()]+)\s*$') { $t = $Matches[1] }
+    elseif ($c -match '(?i)^\s*cat\s*$' -and $rest -match '(?i)^\s*\|\s*tee(?:\s+(?:-a|--append))?\s+([^\s<>&|()]+)\s*$') { $t = $Matches[1]; $rest = '' }
+    else { return $null }
+    if ($rest -notmatch '^\s*($|&&|\|\||;)' -or $t.Trim('"', "'") -match '^(/(dev|proc/self)/|-$)') { return $null }
+    $n = $t.Trim('"', "'")
+    $nRx = if ($n -match '\$\{?(\w+)\}?$') { '\$\{?' + $Matches[1] + '\b' } else { '(?<![\w.-])' + [regex]::Escape(($n -split '[\\/]')[-1]) + '(?![\w.-])' }
+    foreach ($sg in ($line.Substring(0, $i) + $rest + "`n" + $after) -split '&&|\|\||;|\r?\n') {
+        if ($sg -match $nRx -and ($sg -match '\|' -or $sg -notmatch '(?i)^\s*(gh|git|rm|ls|stat|test|wc|diff|Remove-Item|Test-Path)\b')) { return $null }
+    }
     return $t
 }
 function Test-ScriptSinkTarget([string]$target, [string]$line) {
@@ -46,7 +50,7 @@ function Test-ScriptSinkTarget([string]$target, [string]$line) {
         if ($as.Count -eq 0) { return $false }
         $t = $as[$as.Count - 1].Groups[1].Value.Trim('"', "'")
     }
-    return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
+    return ($t -match '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$' -or ($t -split '[\\/]')[-1] -notmatch '\.')
 }
 # 데이터 명령 세그먼트의 따옴표 문자열 스트립 — 근거는 `rules/bash-guard-rationale.md` §17
 function Remove-DataQuotes([string[]]$segs, [string]$src, $ops) {
@@ -269,7 +273,6 @@ function Invoke-WarnExternalOps {
         return New-HookResult
     }
 
-    #   넘기는 것은 `$cmd` 가 아니라 `$scanCmd` 다(근거는 위 §7 인용의 문단 끝).
     $src = Remove-HeredocDataSink $scanCmd
     $segments = Remove-DataQuotes @(Split-TopLevel $src $script:IsPsTool) $src $ops
     $hits = New-Object System.Collections.Generic.List[string]
@@ -280,7 +283,7 @@ function Invoke-WarnExternalOps {
         $segIsQuery = $seg -match '--dry-run|(^|\s)--help(\s|$)'
         foreach ($op in $ops.externalOps) {
             if ($seg -match $op.rx) {
-                if ($segIsQuery) { continue }   # 조회성(실제 반영 아님) — 같은 세그먼트의 dry-run·help만 인정
+                if ($segIsQuery) { continue }
                 if (-not $hits.Contains($op.label)) { $hits.Add($op.label) }
                 if ($op.approval -eq 'context') { $hitContext = $true } else { $hitAlways = $true }
             }
@@ -326,11 +329,11 @@ function Get-CommitTitle([string]$cmd, [string]$baseDir) {
 
     $mm = [regex]::Match($seg, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
     if ($mm.Success) {
-        if ($mm.Groups[2].Success) { return @($mm.Groups[2].Value -split '\r?\n')[0] }   # 작은따옴표 — 치환 없는 리터럴
+        if ($mm.Groups[2].Success) { return @($mm.Groups[2].Value -split '\r?\n')[0] }
         $val = if ($mm.Groups[1].Success) { $mm.Groups[1].Value } else { $mm.Groups[3].Value }
         if ($val -match '^\s*\$\(\s*cat\s+<<') { if ($null -ne $hereDocFirst) { return $hereDocFirst } else { return $false } }
         if ($val -match '^@[''"]') { if ($null -ne $hereStrFirst) { return $hereStrFirst } else { return $false } }
-        if ($val -match '^\$(\{|[A-Za-z_])') { return $false }   # 변수 — 값을 알 수 없다
+        if ($val -match '^\$(\{|[A-Za-z_])') { return $false }
         return @($val -split '\r?\n')[0]
     }
     $fm = [regex]::Match($seg, '(?:^|\s)(?:-F|--file)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
