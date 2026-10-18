@@ -64,7 +64,7 @@ PowerShell: & "<스크립트>" -Since '<시작>'
 
 **task 에 `**화면**` 줄(서식 `../../plan/references/plan-template.md`「작업 단계」)이 있으면 `AGENTS.md` 의 `Verify (앱 조작)` 줄이 가리키는 검증 스킬로 그 시나리오를 HEAD 에서 돌리고, 스크린샷을 그 스킬의 Evidence 위치에 줄에 적힌 이름으로 남겨 통과 조건으로 판정한다.** 순서는 그 스킬의 Launch → Doctor → Drive → Evidence → Cleanup 이고, 증거 기준은 아래 「사실 주장의 실측」 이다. 계획 시점에 정한 시나리오를 그대로 돌려야 실행 시점의 즉흥 설계가 판정을 대신하지 않는다.
 
-- **검증 스킬이 없으면(`Verify (앱 조작)` 줄이 없거나 「없음」) 화면 줄을 그대로 HUMAN-VERIFY 로 옮긴다** — 시나리오·스크린샷 이름·통과 조건을 그대로 적어야 사용자가 같은 것을 돌린다.
+- **검증 스킬이 없으면(`Verify (앱 조작)` 줄이 없거나 「없음」) 화면 줄을 그대로 HUMAN-VERIFY 로 옮기고, 커밋 본문에 `화면: 미촬영(HUMAN-VERIFY) · 스크린샷 <이름>` 줄을 남긴다** — 시나리오·스크린샷 이름·통과 조건을 그대로 적어야 사용자가 같은 것을 돌린다. 커밋 줄이 없으면 체인 끝 PR 이 화면 task 를 찾지 못해 ship 의 화면 게이트가 걸리지 않는다(`../../chain-plan/references/pr-mode.md`「Y 체인 끝 PR」).
 - **`(BASE 대조)` 가 붙은 줄은 BASE 에서도 같은 시나리오를 돌린다** — `git worktree add --detach <스크래치>/base-<sha7> <plan.md 의 > BASE:>` 로 BASE 를 받고, 검증 스킬의 Launch 를 그 worktree 경로에서 돌린 뒤 같은 Drive·Evidence(스크린샷 이름 앞에 `base-`)·Cleanup 을 거쳐 `git worktree remove <경로>` 로 지운다. 사용자의 체크아웃은 건드리지 않는다(선례 `../../pr/references/ship.md` 3·6번).
 - **판정은 넷으로 갈린다 — 「BASE 에서 거짓·HEAD 에서 참」 만 통과다** — 변경 전에도 참인 시나리오는 이 변경을 재지 않는다.
 
