@@ -13,7 +13,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 3 / 종결 232 / 정리 삭제 누계 357 / 총 등재 누계 592
+**▶ 현행 잔량(기계 대조 대상)**: 대기 2 / 종결 232 / 정리 삭제 누계 358 / 총 등재 누계 592
 
 > 이 한 줄만 기계 대조 대상이다 — `plugins/pjc/evals/check-harness-consistency.py`가 파싱해 실측 집계와 대조한다. **아래 batch 기록 안의 "정리 직후 N건 / 현행 M건" 표기는 그 시점의 기록이므로 갱신하지 않는다** — 고치면 "정리 직후/현행 분리 표기" 관례가 깨지고 과거 판정의 근거가 사라진다. 대장을 편집한 task는 **이 줄만** 갱신한다.
 >
@@ -53,8 +53,6 @@
 - [2026-10-15] **chain-plan 후보 라운드에 「설계 결함」 종류가 없다** — `plan/references/interview.md` 「후보 라운드」는 코디네이터도 그 절을 따른다고 하나 `chain-plan/SKILL.md` 후보 라운드 줄·`references/measure.md` 반환 칸에 그 종류가 없다. 코디네이터가 물을지, 워커 몫(`relay-mode.md` 2-3)으로 두고 interview.md 에 예외를 적을지 정해 한쪽 문면을 고친다 (출처: v1.374.0 회차 후보 라운드 ④) (실해: 2026-10-15 prompt-audit 2회차가 interview.md 와 chain-plan 문면이 갈리는 것을 관측)
 
 ### llm-wiki · vault
-
-- [2026-10-15] **llm-wiki E-2 의 §7-2 처방이 SKILL 라우팅 조건에 없다** — `references/procedures-content.md` E-2 는 §7-2 발동 시 분리를 요구하나 `SKILL.md` 의 이어 읽기 조건은 A·B·F-2·I 넷이라 E 경로에서 분리 절차 문서를 읽지 않는다. E 를 신호 경로에 넣을지 다음 lint 에 맡길지 정해 고친다 (출처: v1.374.0 회차 후보 라운드 ⑤) (실해: 2026-10-15 prompt-audit 2회차가 procedures-content.md 와 SKILL.md 라우팅이 갈리는 것을 관측)
 
 
 ### eval · 측정
