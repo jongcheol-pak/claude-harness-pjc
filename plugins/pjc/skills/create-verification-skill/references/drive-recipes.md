@@ -47,7 +47,7 @@
   $btn = $win.FindFirst('Descendants', $C::new($A::AutomationIdProperty, 'SaveButton'))
   $btn.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
   ```
-- **Launch** — 빌드 산출물의 exe 를 `Start-Process -PassThru` 로 띄워 PID 를 남긴다. 준비 판정은 **기대 AutomationId 를 가진 최상위 창이 나타나고 사용 가능(`IsEnabled`)한가**를 짧은 간격으로 재는 것이다. MSIX 로 패키징된 앱(WinUI 기본)은 `explorer.exe shell:AppsFolder\<AUMID>` 로 띄우므로 `Start-Process` 의 PID 가 앱이 아니다 — 창의 `ProcessId` 속성으로 PID 를 얻어 Cleanup 이 쓰게 한다.
+- **Launch** — 빌드 산출물의 exe 를 `Start-Process -PassThru` 로 띄워 PID 를 남긴다. 준비 판정은 **기대 AutomationId 를 가진 최상위 창이 나타나고 사용 가능(`IsEnabled`)한가**를 짧은 간격으로 재는 것이다. MSIX 로 패키징된 앱(WinUI 기본)은 `Start-Process "shell:AppsFolder\<AUMID>"` 로 띄우므로 `Start-Process` 의 PID 가 앱이 아니다 — 창의 `ProcessId` 속성으로 PID 를 얻어 Cleanup 이 쓰게 한다.
 - **Drive** — `AutomationId` → `Name` + `ControlType` 순으로 찾는다. 좌표 클릭·`SendKeys` 는 마지막 수단이다. 패턴을 쓴다: 버튼 `InvokePattern` · 입력 `ValuePattern.SetValue` · 목록 항목 `SelectionItemPattern.Select` · 체크박스 `TogglePattern` · 펼침 `ExpandCollapsePattern`. AutomationId 가 없는 컨트롤이 많으면 그것이 지도 `Gotchas` 와 제품 쪽 보고 대상이다(XAML 의 `AutomationProperties.AutomationId`).
 - **Evidence** — 대상 창 영역의 스크린샷(`System.Drawing` 으로 창 `BoundingRectangle` 을 캡처 — 앱 제목이 보이게) + 조작 전후의 UIA 트리 덤프(이름·AutomationId·ControlType·값) + 부수 효과(쓴 파일·레지스트리·DB)를 앱 밖에서 다시 읽은 결과.
 - **Cleanup** — Launch 가 남긴 PID 만 `Stop-Process -Id` 로 내린다. 같은 이름의 다른 인스턴스(사용자가 연 앱)는 건드리지 않는다.
