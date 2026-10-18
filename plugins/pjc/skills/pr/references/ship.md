@@ -16,6 +16,7 @@
 8. **merge 한다 — 검증한 head 에 묶는다** — 제목·본문을 파일로 넘겨 squash 커밋 메시지를 레포 설정에 맡기지 않는다:
    `gh pr merge <n> --squash --match-head-commit <검증한 head full SHA> --subject "<PR 제목>" --body-file <PR 본문 파일>`
    head 가 바뀌어 거부되면 merge 하지 않고 보고한다. `--auto` 는 쓰지 않는다.
+   - **merge 전에 1번의 `title` 이 커밋 제목 형식인지 본다 — 형식은 그 레포 `AGENTS.md` 의 커밋 형식이고, 없으면 `^(기능|수정|리팩토링|문서|설정): ` 다.** 아니면 유형을 `gh pr view <n> --json commits -q '.commits[].messageHeadline'` 의 유형 접두 중 가장 많은 것(없으면 `기능`)으로 정해 `gh pr edit <n> --title "<유형>: <제목>"` 로 고치고, 고친 제목을 `--subject` 로 쓴다. 고친 사실을 보고에 싣는다 — squash 하면 이 제목이 그대로 기본 브랜치의 커밋 제목이 된다(2026-10-18 PR #3 은 손으로 열려 유형 없이 main `33d47b3d` 가 됐다).
 9. **다시 읽어 확인한다** — `gh pr view <n> --json state,mergedAt,baseRefName,mergeCommit`. `state` 가 `MERGED` 이고 `baseRefName` 이 1번의 `baseRefName` 과 같아야 merge 다. 명령이 성공을 말해도 큐에 들어가기만 했거나 auto-merge 가 걸린 것은 merge 가 아니다.
 10. **로컬을 맞춘다** — 작업 트리가 깨끗하면(`git status --porcelain` 빈 출력) `git switch <1번의 baseRefName>` → `git pull --ff-only`. 깨끗하지 않거나 `switch`·`pull --ff-only` 가 실패하면 하지 않고 그 사실을 보고한다.
 
