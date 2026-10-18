@@ -223,6 +223,22 @@ AGENTS.md 목표선 — 상한(16,384B, `session-context.ps1`이 정본)과 **�
 - **넘으면 그 스킬이 로드되지 않으므로 통지가 아니라 게이트다** — 길이 상한과 같은 등급이다.
 - **사정거리는 `plugins/pjc/skills/*/SKILL.md` 다.** `plugins/pjc/agents/*.md` 는 이 루프 밖이고 기존 길이 축도 마찬가지다 — 에이전트 정의는 Agent Skills 가 아니라 **설계상 제외**다. 그 사실은 `skills/AUTHORING.md`「description 작성」에도 적혀 있다(안 적으면 다음 세션이 재어지는 줄 안다).
 
+### 축 ⑰ — description 합계 통지선
+
+- **재는 단위가 스킬별이 아니라 합계다** — Claude Code 의 스킬 목록 예산은 컨텍스트 비율(`skillListingBudgetFraction`, 1% — `skills/AUTHORING.md`「description 작성」)이고, 1,024자는 스킬별 상한일 뿐이다.
+- **6,000 은 2026-10-04 합계 4,900자의 여유선이다.**
+- **넘어도 로드는 되고 목록이 잘릴 뿐이라 게이트가 아니라 통지다.**
+
+### 축 ⑰ — 스킬 이름·README 목록 대조
+
+출처는 pstack 원본 두 커밋이다 — a968159(`name` 이 폴더 이름과 다르면 Claude Code 가 `/pstack:Poteto Mode` 처럼 실행할 수 없는 이름으로 싣는다 · Agent Skills 규격은 소문자·숫자·하이픈과 폴더 일치를 요구한다)와 019a6a2(README·가이드를 스킬 트리와 대조하는 검사).
+
+- **형식 위반이면 폴더 불일치는 따로 내지 않는다** — 형식이 틀린 이름은 어떤 폴더와도 같을 수 없어, 둘을 함께 내면 한 결함이 두 줄로 보인다. 골든도 둘을 가른다(`harness-fm-name-format` · `harness-fm-name-folder-mismatch`).
+- **README 대조는 표 첫 칸만 본다** — 「Skills」 는 첫 칸의 `pjc:<id>`, 「Subagents」 는 첫 칸 이름이다. 다른 칸은 설명문이라 다른 스킬 이름이 정당하게 들어간다(「PR 운영」 행 셋째 칸의 `pjc:pr` 처럼).
+- **모집단은 frontmatter 가 있는 스킬 폴더와 `agents/*.md` 파일 이름이다 — frontmatter 없는 `SKILL.md` 는 frontmatter 축 전체(길이·예약어·XML·이름)가 스킵한다** — 픽스처의 `sample/SKILL.md` 가 그 형태이고 정상 케이스(`harness-ok`)의 픽스처라, 에러로 처리하면 그 케이스가 깨진다. 스킬이 아닌 마크다운이 그 경로에 놓일 수도 있어 관용이 안전측이다.
+- **`plugin.json`·`README.md` 가 있는데 절이 없으면 통과가 아니라 issue 다** — 버전 축이 README 의 `**버전**:` 줄을 못 읽으면 issue 를 내는 것과 같다. 절 제목만 바뀌어도 검사가 조용히 꺼지는 길을 막는다(`harness-readme-*-section-missing`). 그래서 이 축을 도는 픽스처 셋(`minimal-repo`·`tagenum-ok`·`tagenum-count-bad`)의 README 는 정상 표를 담는다.
+- **에이전트 `name` 형식은 재지 않는다** — 근거 규격(Agent Skills)이 스킬만 다룬다. 위 「사정거리」 불릿과 같은 설계상 제외다.
+
 ### 축 ⑱ — 규칙 근거 보유
 
 `DESIGN.md`§1 의 `- **<규칙>** — <근거>` 형식을 갖추지 못한 규칙을 센다.

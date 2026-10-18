@@ -2096,5 +2096,108 @@
       "[FIXED]"
     ],
     "why": "**상한 초과는 `--fix` 가 손대지 않는다(회귀).** 기록값은 맞고 상한만 실측보다 작다 — 상한을 올리는 것은 처방이 아니라 판단이라(`AGENTS.md` 「파일 크기」) `--fix` 대상이 아니다."
+  },
+  {
+    "id": "harness-fm-name-folder-mismatch",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: fm-other"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter name 폴더 불일치:",
+      "name `fm-other` 이 폴더 이름 `fm-sample` 과 다르다"
+    ],
+    "expect_absent": [
+      "frontmatter name 형식:"
+    ]
+  },
+  {
+    "id": "harness-fm-name-format",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: Fm_Sample"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter name 형식:",
+      "name `Fm_Sample` 이 소문자·숫자·하이픈 형식이 아니다"
+    ]
+  },
+  {
+    "id": "harness-readme-skill-mismatch",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "`pjc:fm-sample`",
+        "replace": "`pjc:ghost`"
+      }
+    ],
+    "expect_keywords": [
+      "README 목록: 「Skills」 표에 없는 스킬 — fm-sample",
+      "README 목록: 「Skills」 표의 실재하지 않는 id — ghost"
+    ]
+  },
+  {
+    "id": "harness-readme-agent-mismatch",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "| sample-agent |",
+        "replace": "| ghost-agent |"
+      }
+    ],
+    "expect_keywords": [
+      "README 목록: 「Subagents」 표에 없는 에이전트 — sample-agent",
+      "README 목록: 「Subagents」 표의 실재하지 않는 이름 — ghost-agent"
+    ]
+  },
+  {
+    "id": "harness-readme-skills-section-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "### Skills\r\n",
+        "replace": "### 기능 목록\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "README 목록: `README.md` 에 `### Skills` 절이 없다"
+    ]
+  },
+  {
+    "id": "harness-readme-agents-section-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "### Subagents\r\n",
+        "replace": "### 검토자 목록\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "README 목록: `README.md` 에 `### Subagents` 절이 없다"
+    ]
   }
 ]

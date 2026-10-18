@@ -1686,15 +1686,14 @@ def _json_case_count(rel):
 #  **단위가 바이트가 아니라 문자**라 한글 스킬에서 바이트로 재면 3배로 어긋난다.
 #  넘으면 스킬이 로드되지 않으므로 통지가 아니라 게이트다.
 SKILL_FM_MAX = {"name": 64, "description": 1024}
-# 스킬 description **합계** 통지선. Claude Code 의 스킬 목록 예산은 컨텍스트 비율
-#  (`skillListingBudgetFraction`, 1% — AUTHORING.md 「description 작성」)이라 재는 단위가 스킬별이
-#  아니라 합계이고, 위 1,024자는 스킬별 상한일 뿐이다. 6,000 은 2026-10-04 합계 4,900자의 여유선이다.
-#  넘어도 로드는 되고 목록이 잘릴 뿐이라 게이트가 아니라 통지다.
+# 스킬 description **합계** 통지선 — 근거는 `harness-consistency-rationale.md` 「축 ⑰ — description 합계 통지선」.
 SKILL_DESC_TOTAL_MAX = 6000
 # 같은 출처의 **하드 제약 2종** — 근거는 `harness-consistency-rationale.md` 의
 #  「축 ⑰ — frontmatter 하드 제약 2종」.
 SKILL_FM_RESERVED = ("anthropic", "claude")
 _RX_FM_XML = re.compile(r"<[A-Za-z/!]")
+# Agent Skills 규격의 name 형식 — 근거는 rationale 「축 ⑰ — 스킬 이름·README 목록 대조」.
+_RX_SKILL_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _RX_FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---", re.S)
 
 
@@ -1756,16 +1755,16 @@ def check_count_and_version(conv):
                 issues.append("계수 정합: `%s` 는 %d건인데 문서는 %s건으로 적었다"
                               % (hit, actual, fm.group(2)))
 
-    desc_total = 0
+    desc_total, skill_ids = 0, set()
     for path in sorted(glob.glob(os.path.join(ROOT, "plugins", "pjc", "skills",
                                                "*", "SKILL.md"))):
         fm = _RX_FRONTMATTER.match(read(path))
-        # **frontmatter 가 없으면 스킵한다** — 픽스처의 `sample/SKILL.md` 가 그 형태이고
-        #  정상 케이스(`harness-ok`)의 픽스처라, 에러로 처리하면 그 케이스가 깨진다.
-        #  스킬이 아닌 마크다운이 그 경로에 놓일 수도 있어 관용이 안전측이다.
+        # frontmatter 가 없으면 스킵 — 근거는 rationale 「축 ⑰ — 스킬 이름·README 목록 대조」.
         if not fm:
             continue
         rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+        folder = os.path.basename(os.path.dirname(path))
+        skill_ids.add(folder)
         for field, cap in sorted(SKILL_FM_MAX.items()):
             m = re.search(r"(?ms)^%s:\s*(.*?)(?=\r?\n[a-z-]+:|\Z)" % field, fm.group(1))
             if not m:
@@ -1786,6 +1785,12 @@ def check_count_and_version(conv):
                     issues.append("frontmatter 예약어: `%s` 의 name `%s` 이 예약어 `%s` 를 "
                                   "담았다 — 공식이 금지하는 낱말이라 그 스킬이 로드되지 "
                                   "않는다" % (rel, val, hit))
+                if not _RX_SKILL_NAME.match(val):
+                    issues.append("frontmatter name 형식: `%s` 의 name `%s` 이 소문자·숫자·하이픈 "
+                                  "형식이 아니다" % (rel, val))
+                elif val != folder:
+                    issues.append("frontmatter name 폴더 불일치: `%s` 의 name `%s` 이 폴더 이름 "
+                                  "`%s` 과 다르다" % (rel, val, folder))
             if _RX_FM_XML.search(val):
                 issues.append("frontmatter XML 태그: `%s` 의 %s 가 `<` 로 시작하는 태그꼴을 "
                               "담았다 — 공식이 두 필드 모두에 금지한다" % (rel, field))
@@ -1806,7 +1811,31 @@ def check_count_and_version(conv):
     elif plugin_v != readme_m.group(1):
         issues.append("버전 정합: `plugin.json` %s ↔ `README.md` %s — 버전은 한 커밋에서 "
                       "두 곳을 함께 올린다" % (plugin_v, readme_m.group(1)))
+    n += 1
+    issues += _readme_list_issues(skill_ids)
     return issues, n, notices
+
+
+def _readme_list_issues(skill_ids):
+    """README 「Skills」·「Subagents」 표 첫 칸 ↔ 스킬 폴더·에이전트 파일(근거는 rationale 같은 절)."""
+    text = read(README_MD)
+    agents = {os.path.splitext(os.path.basename(p))[0] for p in
+              glob.glob(os.path.join(ROOT, "plugins", "pjc", "agents", "*.md"))}
+    out = []
+    for head, want, kind, unk, rx in (
+            ("Skills", skill_ids, "스킬", "id", r"`pjc:([a-z0-9-]+)`"),
+            ("Subagents", agents, "에이전트", "이름", r"^`?([a-z][a-z0-9-]*)`?$")):
+        m = re.search(r"(?ms)^### %s\b.*?(?=^#{2,3} |\Z)" % head, text)
+        if not m:
+            out.append("README 목록: `README.md` 에 `### %s` 절이 없다" % head)
+            continue
+        got = set()
+        for cell in re.findall(r"(?m)^\|([^|\r\n]*)\|", m.group(0)):
+            got.update(re.findall(rx, cell.strip()))
+        out += ["README 목록: 「%s」 표에 없는 %s — %s" % (head, kind, x) for x in sorted(want - got)]
+        out += ["README 목록: 「%s」 표의 실재하지 않는 %s — %s" % (head, unk, x)
+                for x in sorted(got - want)]
+    return out
 
 
 
