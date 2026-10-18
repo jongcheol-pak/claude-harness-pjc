@@ -1,7 +1,7 @@
 ﻿# scenarios/check-plan.ps1 — check-plan 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case)와 공유 변수($pluginRoot·$work)를 그대로 쓴다.
 # 무엇을 재는가: plan.md 결정적 검사(skills/plan/scripts/check-plan.ps1)의 판정 갈래마다 한 케이스 —
-#   정상 1 · A1~A6 · B1~B4 위반 · 하위 항목 상태 · 펜스 무시 · 입력 오류 · PS 5.1 · 출력 ASCII · git 밖 건너뜀 ·
+#   정상 1 · A1~A6 · B1~B4 위반 · 하위 항목 상태 · 화면 줄 세 요소 · 펜스 무시 · 입력 오류 · PS 5.1 · 출력 ASCII · git 밖 건너뜀 ·
 #   증거 대조(-Base) — 커밋 없음·본문 증거 없음·T10≠T1·BASE 이전 제외·통과·HUMAN-VERIFY·불요/열린 task 제외·BASE 오류·git 밖·PS 5.1.
 #   코드와 뜻의 정본은 스크립트 머리 주석이다.
 # 정상 plan 하나를 두고 케이스가 한 군데씩 망가뜨린다 — 정상 형상이 여러 벌이면 한쪽만 고친 채 갈린다.
@@ -137,6 +137,22 @@ Assert-Case -Name "check-plan: B4 task 에 검증 줄이 없으면 잡는다" -R
 $r = Invoke-CheckPlan ($cpBase.Replace('- [ ] **T1-1** 한다', "- [x] **T1-1** 한다`n- [X] **T1-2** 한다`n- [/] **T1-3** 하는 중`n- [x] **T1-4** (불요 — 근거)`n- [x] (불요 — 근거) **T1-5** 끝"))
 Assert-Case -Name "check-plan: 하위 항목 상태 x·X·/·불요 표기를 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 
+# ---- 화면 줄 — 줄이 있으면 시나리오·스크린샷·통과 조건 셋을 다 가져야 한다 ----
+$cpScreen = '- **화면**: 시나리오 메뉴에서 데모 열기 · 스크린샷 demo.png · 통과 조건 데모 창이 보인다'
+function New-ScreenPlan([string]$Line) { return $cpBase.Replace('- **Acceptance**:', ($Line + "`n- **Acceptance**:")) }
+$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + ' · (BASE 대조)'))
+Assert-Case -Name "check-plan: 화면 줄 세 요소와 (BASE 대조) 표지를 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace(' · 통과 조건 데모 창이 보인다', ''))
+Assert-Case -Name "check-plan: 화면 줄에 통과 조건이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-line T1 predicate'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace(' · 스크린샷 demo.png', ''))
+Assert-Case -Name "check-plan: 화면 줄에 스크린샷이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-line T1 screenshot'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace('시나리오 메뉴에서 데모 열기 · ', ''))
+Assert-Case -Name "check-plan: 화면 줄에 시나리오가 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-line T1 scenario'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace('통과 조건 데모 창이 보인다', '통과 조건 '))
+Assert-Case -Name "check-plan: 화면 줄의 라벨만 있고 값이 빈 요소를 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-line T1 predicate'
+$r = Invoke-CheckPlan (New-ScreenPlan "``````text`n- **화면**: 시나리오만 있다`n``````")
+Assert-Case -Name "check-plan: 펜스 안의 화면 줄은 판정하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+
 # ---- 펜스 · 입력 오류 ----
 $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', ("| 크기 | ``wc -c a.ps1`` | 10 |`n`n``````text`n| 가짜 |  | 빈 |`n## 가짜 절`n- [ ] T9-9 가짜`n```````n")))
 Assert-Case -Name "check-plan: 펜스 안의 표 행·절·체크박스는 판정하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
@@ -156,10 +172,13 @@ if ($cpWinPs) {
     Assert-Case -Name "check-plan: PS 5.1 에서도 위반을 잡는다" -R $r -ExpectExit 1 -ExpectContains 'empty-command'
     $r = Invoke-CheckPlan $cpBase '' $cpWinPs.Source
     Assert-Case -Name "check-plan: PS 5.1 에서 정상 plan 은 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+    $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace(' · 통과 조건 데모 창이 보인다', '')) '' $cpWinPs.Source
+    Assert-Case -Name "check-plan: PS 5.1 에서도 화면 줄 요소 누락을 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-line T1 predicate'
 } else {
     # 이 레포는 Windows 검증이라 5.1 이 없으면 건너뛰지 않고 실패로 낸다 — 건너뛰면 5.1 결함을 볼 자리가 사라진다.
     Assert-Case -Name "check-plan: PS 5.1 에서도 위반을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'empty-command'
     Assert-Case -Name "check-plan: PS 5.1 에서 정상 plan 은 통과한다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+    Assert-Case -Name "check-plan: PS 5.1 에서도 화면 줄 요소 누락을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'screen-line T1 predicate'
 }
 
 # ---- 증거 대조 (-Base) — 임시 git 레포에 BASE 커밋을 두고 그 앞뒤로 task 커밋을 쌓는다 ----

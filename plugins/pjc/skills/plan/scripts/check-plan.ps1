@@ -21,6 +21,8 @@
 #   goal-head <줄>               request(첫 절 앞 「> 요구:」 원문 인용)·base·approval·start·done(Goal 절의 「> BASE:」 등) 없음
 #   task-item T<N>               하위 항목이 「- [ ]·[x]·[X]·[/]」 뒤 (불요 …) 를 지나 **T<N>-<M>** 가 아니거나 번호가 제목과 다름
 #   task-line T<N> <줄>          task 에 files·acceptance·verify 줄 없음
+#   screen-line T<N> <요소>      「- **화면**:」 줄에 scenario(시나리오)·screenshot(스크린샷)·predicate(통과 조건) 조각이 없거나 값이 빔
+#                                (화면 줄이 없는 task 는 재지 않는다 — 있어야 할 task 인지는 plan-reviewer 가 본다)
 # -Base 모드의 코드 — 대상은 하위 항목이 전부 [x]·[X] 인 task 이고, 전부 「(불요」 인 task 는 뺀다:
 #   no-task-commit T<N>          BASE..HEAD 에 제목이 「{유형}: T<N> —」(또는 「T<N>:」)인 커밋이 없음
 #   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」·HUMAN-VERIFY 가 없음
@@ -223,6 +225,12 @@ if (Find-Section $tasksTitle) {
     $verifyLabel = '- **' + [char]0xAC80 + [char]0xC99D + '**:'    # - **검증**:
     $baseline = [string][char]0xCC29 + [char]0xC218                # 착수
     $exempt = '[' + [char]0xBA74 + [char]0xC81C                     # [면제
+    $screenLabel = '- **' + (Get-Text @(0xD654, 0xBA74)) + '**:'    # - **화면**:
+    $screenParts = [ordered]@{
+        'scenario' = Get-Text @(0xC2DC, 0xB098, 0xB9AC, 0xC624)            # 시나리오
+        'screenshot' = Get-Text @(0xC2A4, 0xD06C, 0xB9B0, 0xC0F7)          # 스크린샷
+        'predicate' = Get-Text @(0xD1B5, 0xACFC, 0x20, 0xC870, 0xAC74)     # 통과 조건
+    }
     foreach ($b in $blocks) {
         $tag = 'T' + $b.Id
         $items = 0
@@ -246,6 +254,15 @@ if (Find-Section $tasksTitle) {
         }
         if ($accept -and $accept.Text.Contains('`') -and -not $accept.Text.Contains($baseline)) {
             Add-Problem $accept.N ('acceptance-baseline ' + $tag)
+        }
+        foreach ($s in @($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel })) {
+            $pieces = @($s.Text.Substring($screenLabel.Length).Split([char]0xB7) | ForEach-Object { $_.Trim() })
+            foreach ($key in $screenParts.Keys) {
+                $head = $screenParts[$key] + ' '
+                if (-not @($pieces | Where-Object { (Test-Prefix $_ $head) -and $_.Substring($head.Length).Trim() }).Count) {
+                    Add-Problem $s.N ('screen-line ' + $tag + ' ' + $key)
+                }
+            }
         }
     }
 }
