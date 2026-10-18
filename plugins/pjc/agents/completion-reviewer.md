@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력
 
-호출자가 준다: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로(Deferred 대장 위치는 그 `## Plan Location`).
+호출자가 준다: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로(Deferred 대장 위치는 그 `## Plan Location`) · 증거 대조 출력(`check-plan.ps1 -Base` — 또는 「증거 대조 미실행」 줄).
 
 - **`plan.md` 가 gitignore 인 레포에서는 diff 에 안 나오고 추적하는 레포에서도 마무리 커밋 전에는 diff 에 없으므로 파일을 직접 Read 한다** — acceptance 가 *"…를 Progress Log 에 기록한다"* 형태면 산출물이 커밋 diff 에 없어, 빈 diff 를 미완료로 읽으면 판정이 어긋난다.
 
@@ -28,7 +28,9 @@ tools: Read, Grep, Glob, Bash
 - **Progress Log 의 `판정:` 줄 · `(불요 — 근거)` · `[다음 회차]` 의 `(근거: …)` 에 적힌 사실 주장이 잴 수 있는 것인데 실측 없이 짐작으로 적혔으면 지적한다** — 최종 보고는 이 리뷰 뒤에 그 줄들을 옮겨 쓰므로, 원천에서 잡지 않으면 보고가 짐작을 싣는다(정본 `skills/implement/references/report-format.md`「사실 주장의 실측」).
 - **`git diff BASE..HEAD` 에 기존 케이스·골든의 기대값 변경·skip·삭제·단언 완화가 보이면 그 케이스가 plan Files 에 있거나 Progress Log `판정:` 줄이 근거를 대는지 보고, 둘 다 없으면 지적한다 — 관측 동작 케이스의 기대값 변경은 옛·새 단언 기록이 없으면 지적하고, 리팩토링 전 구현 세부만 단언하던 케이스의 삭제는 커밋 본문 근거가 있으면 지적하지 않는다** — 구현에 맞춘 케이스는 통과 기록만 남겨, 계약을 깬 회차가 완료된 회차와 같아 보인다(정본 `skills/implement/references/loop-exceptions.md`「실패 처리」).
 - **`[ ]`나 `[/]`가 남아 있으면 완료가 아니다** — 체크박스가 진행 상태의 정본이라 열린 칸이 곧 남은 작업이다(`implement/SKILL.md`「완료 정의」).
-- **plan 이 Files 에 지목한 케이스가 실재하고 그 실행이 검증 기록에 있는지, `[면제 ①~⑤]` 로 닫힌 자리는 그 범주가 사실인지 본다** — 계획이 케이스를 적고 구현이 만들지 않아도 통과하면 그 요구는 형식만 남는다(`skills/plan/references/plan-template.md` 「작업 단계」).
+- **plan 이 Files 에 지목한 케이스가 실재하고 그 실행이 검증 기록에 있는지, `[면제 ①~⑤]` 로 닫힌 자리는 그 범주가 사실인지 본다 — 검증 기록은 task 커밋 본문의 「검증 결과」다** — 계획이 케이스를 적고 구현이 만들지 않아도 통과하면 그 요구는 형식만 남는다(`skills/plan/references/plan-template.md` 「작업 단계」).
+- **증거 대조 출력에 `no-task-commit`·`no-commit-evidence` 가 남았으면 BLOCKER 다. 「미실행」 줄이 오면 `git log BASE..HEAD` 로 `[x]` task 마다 그 커밋 본문을 직접 대조한다** — 커밋 본문은 `[x]` 의 증거가 놓이는 유일한 자리라, 증거 없는 `[x]` 는 검증 전 `[x]` 와 같다.
+- **`[x]` task 표본(최소 1개)의 커밋 본문에 적힌 판정용 명령을 다시 돌려 본문 기록과 대조한다(표본 재실행) — 러너 밖 명령(`grep`·계수·파일 실재)만 돌리고, 그런 명령이 없으면 그 사실을 적는다. 어긋나면 BLOCKER 다** — 기록이 있다는 것과 그 기록이 참이라는 것은 다르다. 고른 표본과 결과를 적는다.
 
 ### Goal 성공 기준
 
