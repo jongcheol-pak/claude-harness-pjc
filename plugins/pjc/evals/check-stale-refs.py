@@ -71,13 +71,16 @@ DEAD = [
     # 구 chain-plan 참조 2 (2026-10-12 감사 2회차) — 이웃 파일의 절로 합쳤다(cli-errors 「시작 이상 응답」·user-relay 「봉투 밖 승인 요청」).
     #  'delegation.md' 만 쓰면 살아 있는 `plan/references/measure-delegation.md` 가 부분 일치로 잡혀 경로 접두를 붙인다.
     'references/delegation.md', 'worker-start.md',
+    # 구 plan 참조 1 (2026-10-18 체인 plan 3) — intent 산출물 폐지. 요구·BASE 는 plan-template 「Goal」 로 옮겼다.
+    #  옛 intent/ 파일들이 이 이름을 인용하지만 intent/ 는 스캔 범위 밖이다.
+    'intent-rules.md',
 ]
 
 # DEAD **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 목록이 곧 검사 대상이라
 #  항목이 조용히 빠지면 그 이름의 잔존이 **검출되지 않는 채 통과**한다(축이 좁아진 것과
 #  전건 통과가 구분되지 않는다). 정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가
 #  목록 변경의 기록이다(`check-harness-consistency.py` 의 허용목록 기준선과 같은 형태).
-DEAD_BASELINE = 30
+DEAD_BASELINE = 31
 
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 

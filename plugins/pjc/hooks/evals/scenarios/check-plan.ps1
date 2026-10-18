@@ -15,7 +15,7 @@ $cpSeq = 0
 $cpBase = @'
 # plan — demo
 
-> 요구: `intent/2026-01-01-demo.md`
+> 요구: 데모 기능을 추가해줘
 
 ## Goal
 
@@ -123,8 +123,8 @@ $r = Invoke-CheckPlan ($cpBase.Replace("## 검증 방법`n", "`n"))
 Assert-Case -Name "check-plan: B1 필수 절이 빠지면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'missing-section verification'
 $r = Invoke-CheckPlan ($cpBase.Replace("> 승인: <date>`n", ''))
 Assert-Case -Name "check-plan: B2 Goal 머리 줄이 빠지면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'goal-head approval'
-$r = Invoke-CheckPlan ($cpBase.Replace("> 요구: ``intent/2026-01-01-demo.md```n", ''))
-Assert-Case -Name "check-plan: B2 첫 절 앞의 요구 포인터가 빠지면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'goal-head intent'
+$r = Invoke-CheckPlan ($cpBase.Replace("> 요구: 데모 기능을 추가해줘`n", ''))
+Assert-Case -Name "check-plan: B2 첫 절 앞의 요구 줄이 빠지면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'goal-head request'
 
 # ---- B3 · B4 ----
 $r = Invoke-CheckPlan ($cpBase.Replace('- [ ] **T1-1** 한다', '- [ ] T1-1 한다'))

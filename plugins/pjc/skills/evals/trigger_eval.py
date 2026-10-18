@@ -174,7 +174,7 @@ def build_workspace(kind, dest):
     if kind in ("with_plan", "draft_plan"):
         # 두 종류는 승인 표지 두 줄만 다르다 — 초안은 템플릿 자리표시를 그대로 둔다.
         marks = ("> BASE: 3f2a9c1\n> 승인: 2026-10-01 · 화면 Y\n" if kind == "with_plan" else
-                 "> BASE: <승인 직후 intent 커밋의 SHA>\n"
+                 "> BASE: <승인 시점 HEAD 의 SHA>\n"
                  "> 승인: <승인일 YYYY-MM-DD> · <승인 경로 — 화면 Y | 중계 답 첫 줄>\n")
         with open(os.path.join(dest, "plan.md"), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(

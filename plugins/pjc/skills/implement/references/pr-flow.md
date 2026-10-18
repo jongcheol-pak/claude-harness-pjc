@@ -21,19 +21,19 @@
 | `pjc/*` 이고 그 PR 이 MERGED | 기본 브랜치에서 시작한 것으로 본다 — 아래 「merge 된 브랜치에서 시작할 때」 |
 | 그 밖(다른 기능 브랜치 · PR 이 OPEN·CLOSED 이거나 없는 `pjc/*`) | 그대로 둔다. 회차 끝 PR 은 이 브랜치에서 연다 |
 
-- **`<슬러그>` 는 이 회차 intent 파일명의 날짜 뒤다** — `intent/2026-10-17-pr-flow.md` 면 `pjc/pr-flow`. 같은 이름의 로컬·원격 브랜치가 있으면 `-2`·`-3` 을 붙인다. **`pjc/` 접두가 필요한 이유**: 차단 hook 이 force-with-lease 를 `pjc/<이름>` 을 명시한 push 에만 허용한다(`../../../scripts/rules/destructive-rationale.md`「자기 `pjc/` 브랜치의 force-with-lease」).
-- **로컬 기본 브랜치를 원격에 맞추는 이유** — intent 커밋과 앞서 쌓인 미push 커밋이 로컬 기본 브랜치에 남으면, PR 이 squash 로 들어간 뒤 로컬 기본 브랜치가 원격과 갈라진다. 그 커밋들은 `pjc/` 브랜치에 그대로 있으므로 잃는 것이 없다. **원격보다 앞서 있던 커밋 수를 최종 보고에 싣고**, 이 회차 밖 커밋이 섞였으면 PR 본문 `## 범위` 에 그 목록을 적는다.
+- **`<슬러그>` 는 이 회차가 정해 `plan.md` `## Next Steps` 에 적는 영문 kebab-case 이름이다** — 예: 회차 「PR 흐름 정리」면 `pjc/pr-flow`. 한글 제목의 번역은 실행마다 갈려 재개 세션이 다른 브랜치를 만들므로, 처음 정한 이름을 `plan.md` 에 적고 재개 세션은 그것을 쓴다. 같은 이름의 로컬·원격 브랜치가 있으면 `-2`·`-3` 을 붙인다. **`pjc/` 접두가 필요한 이유**: 차단 hook 이 force-with-lease 를 `pjc/<이름>` 을 명시한 push 에만 허용한다(`../../../scripts/rules/destructive-rationale.md`「자기 `pjc/` 브랜치의 force-with-lease」).
+- **로컬 기본 브랜치를 원격에 맞추는 이유** — 앞서 쌓인 미push 커밋이 로컬 기본 브랜치에 남으면, PR 이 squash 로 들어간 뒤 로컬 기본 브랜치가 원격과 갈라진다. 그 커밋들은 `pjc/` 브랜치에 그대로 있으므로 잃는 것이 없다. **원격보다 앞서 있던 커밋 수를 최종 보고에 싣고**, 이 회차 밖 커밋이 섞였으면 PR 본문 `## 범위` 에 그 목록을 적는다.
 - **`git branch -f` 가 거부되면 로컬 기본 브랜치를 그대로 두고 그 사실을 보고에 싣고, 멈추지 않는다** — 기본 브랜치가 다른 worktree 에 체크아웃돼 있으면 거부된다. 이 회차 작업은 `pjc/` 브랜치에서 그대로 이어지고, 갈라짐은 merge 뒤 `git pull --ff-only` 실패로 드러나 사용자가 그때 맞춘다.
 - **체크아웃의 HEAD 가 바뀌었다는 사실을 보고에 싣는다** — 병행 세션이 같은 체크아웃을 쓰면 그쪽 커밋도 이 브랜치로 온다.
 
 ### merge 된 브랜치에서 시작할 때
 
-앞 회차 PR 이 GitHub 화면에서 merge 됐거나 ship 이 기본 브랜치로 돌아가지 못했으면, 이 회차의 intent 커밋이 이미 squash 된 옛 브랜치 위에 있다. 그대로 쓰면 새 PR diff 에 merge 된 변경이 다시 섞인다.
+앞 회차 PR 이 GitHub 화면에서 merge 됐거나 ship 이 기본 브랜치로 돌아가지 못했으면, 이 회차의 출발점(`> BASE:`)이 이미 squash 된 옛 브랜치 위에 있다. 그대로 쓰면 새 PR diff 에 merge 된 변경이 다시 섞인다.
 
 1. `gh pr view <옛 브랜치> --json state,headRefOid` 로 옛 PR head 를 얻는다.
 2. `git fetch origin <기본>` → `git switch -c pjc/<슬러그> origin/<기본>`.
-3. `git cherry-pick <headRefOid>..<옛 브랜치>` 로 옛 PR head 뒤의 커밋(intent 커밋 포함)을 옮긴다.
-4. `plan.md` 의 `> BASE:` 를 옮겨진 intent 커밋 SHA 로 고친다.
+3. `git rev-list --count <headRefOid>..<옛 브랜치>` 가 0 이 아니면 `git cherry-pick <headRefOid>..<옛 브랜치>` 로 옛 PR head 뒤의 커밋을 옮긴다 — 0 이면 옮길 커밋이 없어 건너뛴다(빈 범위의 cherry-pick 은 아래 충돌 경로로 떨어진다).
+4. `plan.md` 의 `> BASE:` 를 새 브랜치의 지금 HEAD(`git rev-parse --short HEAD`)로 고친다.
 
 - **cherry-pick 이 충돌하면 `git cherry-pick --abort` → `git switch <옛 브랜치>` → 새 브랜치를 지우고, 이 회차의 브랜치 전환과 PR 을 건너뛴다** — 사유를 보고에 싣고 루프는 계속한다. 충돌 해결은 이 회차의 승인 범위 밖이다.
 

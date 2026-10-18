@@ -16,7 +16,7 @@
 #   acceptance-baseline T<N>     Acceptance 줄에 백틱(판정 명령·리터럴)이 있는데 「착수」 가 없음
 #   case-mark T<N>               Files 줄에 (RED)·(GREEN·[면제 가 하나도 없음
 #   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
-#   goal-head <줄>               intent(첫 절 앞 「> 요구:」)·base·approval·start·done(Goal 절의 「> BASE:」 등) 없음
+#   goal-head <줄>               request(첫 절 앞 「> 요구:」 원문 인용)·base·approval·start·done(Goal 절의 「> BASE:」 등) 없음
 #   task-item T<N>               하위 항목이 「- [ ]·[x]·[X]·[/]」 뒤 (불요 …) 를 지나 **T<N>-<M>** 가 아니거나 번호가 제목과 다름
 #   task-line T<N> <줄>          task 에 files·acceptance·verify 줄 없음
 #
@@ -93,9 +93,9 @@ foreach ($key in $required.Keys) {
     if (-not (Find-Section $required[$key])) { Add-Problem 1 ('missing-section ' + $key) }
 }
 
-# ---- B2 머리 줄 — 요구 포인터는 첫 절 앞, 나머지 넷은 Goal 절 ----
-$intentLabel = '> ' + [char]0xC694 + [char]0xAD6C + ':'    # > 요구:
-if (-not ($head | Where-Object { -not $_.Code -and (Test-Prefix $_.Text $intentLabel) })) { Add-Problem 1 'goal-head intent' }
+# ---- B2 머리 줄 — 요구 줄은 첫 절 앞, 나머지 넷은 Goal 절 ----
+$requestLabel = '> ' + [char]0xC694 + [char]0xAD6C + ':'    # > 요구:
+if (-not ($head | Where-Object { -not $_.Code -and (Test-Prefix $_.Text $requestLabel) })) { Add-Problem 1 'goal-head request' }
 $goal = Find-Section 'Goal'
 if ($goal) {
     $goalHeads = [ordered]@{

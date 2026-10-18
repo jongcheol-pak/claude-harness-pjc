@@ -62,7 +62,7 @@
   ```
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
 - **Release**: 버전 정본은 `plugin.json` 하나, `README.md` 상단 `**버전**:` 줄은 함께 올리는 파생. **버전 전용 PR**(PR 모드 밖은 버전만 올린 커밋) → main → **곧바로 릴리즈 발행**. ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」이고 **릴리즈 발행은 별도 승인**이다(버전 PR·push 는 승인된 plan·스킬 안이면 무승인).
-  - **⚠ 발행 여부는 「이번 push 에 버전이 올랐는가」가 아니라 「마지막 릴리즈 태그 커밋 이후 `plugins/` 에 변경이 있는가」로 판정한다** — `git fetch -q origin tag v<버전>` 뒤 `git log v<버전>..HEAD -- plugins/`(세션 시작 hook 이 origin/main 기준으로 같은 것을 알린다). 위키·`docs/`·`intent/` 만 고친 회차가 이어지면 앞 회차의 플러그인 변경이 **미배포로 남는다**(정본의 「판정 시점」).
+  - **⚠ 발행 여부는 「이번 push 에 버전이 올랐는가」가 아니라 「마지막 릴리즈 태그 커밋 이후 `plugins/` 에 변경이 있는가」로 판정한다** — `git fetch -q origin tag v<버전>` 뒤 `git log v<버전>..HEAD -- plugins/`(세션 시작 hook 이 origin/main 기준으로 같은 것을 알린다). 위키·`docs/` 만 고친 회차가 이어지면 앞 회차의 플러그인 변경이 **미배포로 남는다**(정본의 「판정 시점」).
 - **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — 도구 경로 보호가 오차단한다(회피법은 정본).
 
 ### 검증 매핑 (task 검증 선택)
@@ -106,8 +106,8 @@
 ## Plan Location
 
 - **plan은 루트 `plan.md` 하나**다(덮어쓰기). 선택지가 없어 `Plan Location:` 선언을 두지 않는다.
-- **`plan.md`·`notes.md`·notes-archive/는 `.gitignore`(`intent/`는 추적)** — **영구 기록은 git 커밋**이고 미처리 Deferred 는 **대장 3파일**이 담는다(`docs/plans/deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 셋 다 `docs/plans/` · 연산 규칙은 그 머리말이 정본).
-- **PRD는 쓰지 않는다** — 요구는 `intent/`, 결정은 위키 `decisions.md`, 미착수는 대장이 담는다.
+- **`plan.md`·`notes.md`·notes-archive/는 `.gitignore`(옛 `intent/`는 추적)** — **영구 기록은 git 커밋**이고 미처리 Deferred 는 **대장 3파일**이 담는다(`docs/plans/deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 셋 다 `docs/plans/` · 연산 규칙은 그 머리말이 정본).
+- **PRD는 쓰지 않는다** — 요구는 `plan.md`, 결정은 위키 `decisions.md`, 미착수는 대장이 담는다.
 
 ## OS/플랫폼
 

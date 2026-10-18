@@ -15,7 +15,7 @@ tools: Read, Grep, Glob
 
 중계 모드(`skills/plan/references/relay-mode.md`)에서는 아래 줄이 더 온다 — 그 줄이 있으면 해당 검사를 이렇게 읽는다.
 
-- **「중계 모드 — 인터뷰는 코디네이터 세션에서…」** — 원문은 spec 의 「원문:」 블록(intent `Problem` 에 인용)과 그 Q/A 다. 아래 「요구 확정」은 확정 요구를 그 블록과 대조하고, Q/A 가 담은 제약·범위 밖이 intent 에 있으면 재진술뿐이라고 지적하지 않는다. Problem 의 문답 `A:` 가 intent Constraints·Proposed outcome 이나 plan 의 task·Decisions 와 어긋나거나 빠졌으면 지적하고, Problem 에 문답도 `Q/A: 없음` 도 없으면 원문을 줄여 옮긴 것으로 지적한다(이어받기 intent 는 그것이 가리키는 원 intent 의 Problem 으로 본다).
+- **「중계 모드 — 인터뷰는 코디네이터 세션에서…」** — 원문은 spec 의 「원문:」 블록(`plan.md` `> 요구:` 에 인용)과 그 Q/A 다. 아래 「요구 확정」은 `## Goal` 을 그 블록과 대조하고, Q/A 가 담은 제약·범위 밖이 Goal·`## Out of Scope` 에 있으면 재진술뿐이라고 지적하지 않는다. 문답 `A:` 가 Goal·Out of Scope 나 task·Decisions 와 어긋나거나 빠졌으면 지적하고, `> 요구:` 에 문답도 `Q/A: 없음` 도 없으면 원문을 줄여 옮긴 것으로 지적한다.
 - **「이어받기 <k> — …」** — 이 회차 몫은 spec 실측 요지 항목뿐이다. 아래 「범위」의 누락 검사는 그 항목만 센다 — 나머지는 앞 워커가 커밋했다.
 - **「check-plan 미실행 — <사유>」 또는 `skip` 줄** — 그 줄이 오면 Log 명령 칸 빈 행 · `위키 참조` 행 · 종결 대장(`deferred-closed.md`) 조회 흔적 · Open Questions `[ ]` 중 건너뛴 것을 직접 본다.
 - **Log 의 `check-plan 오탐` 행 · `check-plan 미해소` 행** — 그 plan 줄을 직접 열어 오탐인지 위반인지 판정한다.
@@ -62,13 +62,13 @@ tools: Read, Grep, Glob
 
 ### 범위
 
-- **plan의 task가 intent(`plan.md` 포인터)에 없는 일을 하는지 본다** — 요청되지 않은 기능 추가와 바꾸는 영역 밖의 리팩토링·정리가 task로 들어와 있으면 지적한다 — 바꾸는 영역 안의 삭제 먼저(`skills/implement/references/code-style.md`)는 대상이 아니다.
-- **반대로 intent 에 있는데 task가 없는 것도 본다** — 여기서 놓치면 구현이 끝난 뒤 완료 리뷰(`completion-reviewer` 「intent ↔ 산출물」)에서야 드러난다.
+- **plan의 task가 `> 요구:`·`## Goal` 에 없는 일을 하는지 본다** — 요청되지 않은 기능 추가와 바꾸는 영역 밖의 리팩토링·정리가 task로 들어와 있으면 지적한다 — 바꾸는 영역 안의 삭제 먼저(`skills/implement/references/code-style.md`)는 대상이 아니다.
+- **반대로 Goal 에 있는데 task가 없는 것도 본다** — 여기서 놓치면 구현이 끝난 뒤 완료 리뷰(`completion-reviewer` 「요구 ↔ 산출물」)에서야 드러난다.
 - **Investigation Log 가 드러낸 요청 범위 밖 연관 수정이 task·`## Out of Scope`·`## Deferred / Follow-up` 어디에도 없으면 지적한다 — 후보 라운드(`skills/plan/references/interview.md`「후보 라운드」)를 건너뛴 것이다** — 그 수정은 구현이 끝난 뒤에야 사용자에게 알려진다. Log 의 대장 행에 `→ 대장 유지` 로 남긴 항목과, 중계 모드에서 Decisions 의 회피 설계 근거나 `[요청 밖]` 문답이 있는 것은 지적하지 않는다.
 
 ### 요구 확정
 
-- **intent 의 확정된 요구가 원문 요청의 재진술뿐이면 지적한다** — 어느 절도 원문에서 도출할 수 없는 정보(제약조건·범위 밖·지금 하는 이유)를 담지 않았다면 인터뷰 없이 채운 것이고, 그것을 근거로 한 승인은 사용자가 자기 요청을 다시 읽은 것에 지나지 않는다.
+- **`## Goal` 이 `> 요구:` 원문의 재진술뿐이면 지적한다** — Goal·Out of Scope 가 원문에서 도출할 수 없는 정보(제약조건·범위 밖·지금 하는 이유)를 담지 않았다면 인터뷰 없이 채운 것이고, 그것을 근거로 한 승인은 사용자가 자기 요청을 다시 읽은 것에 지나지 않는다.
 
 ## 보고 형식
 

@@ -136,7 +136,7 @@ def _pointer_sources():
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
         # 판정을 `_is_record_doc` 와 공유한다 — 따로 두면 한쪽만 낡는다.
-        # `intent/` 는 승인 시점의 기록이라 고칠 대상이 아니다 — 근거는 `harness-consistency-rationale.md` §7
+        # `intent/` 는 폐지 전 회차의 요구 기록이라 고칠 대상이 아니다 — 근거는 `harness-consistency-rationale.md` §7
         if not (_is_record_doc(rel_src) or rel_src.startswith("intent/")):
             out.append((src, rel_src))
     return out
@@ -768,7 +768,7 @@ RULE_EXCLUDE_LABEL_RX = re.compile(r"^- \*\*\d+\*\*[:：]")
 RULE_EXCLUDE_PLACEHOLDER_RX = re.compile(r"<[^>]{2,40}>")
 RULE_FORM_RX = re.compile(r"^- \*\*.+?\*\*[^\S\n]*—[^\S\n]")
 # 자리표시자를 **담기만 한** 줄은 템플릿이 아니다 — 규칙이 꺾쇠를 예시로 인용할 수 있다
-#   (`설정: intent — <제목>` 제목으로 커밋한다). 줄 전체에 `search` 를 걸면 그런 규칙이
+#   (`기능: T<N> — <무엇을>` 제목으로 커밋한다). 줄 전체에 `search` 를 걸면 그런 규칙이
 #   영구히 배제돼 축이 침묵한다. 볼드를 닫은 뒤 남는 것이
 #   **자리표시자와 구두점뿐일 때만** 템플릿으로 본다.
 TEMPLATE_RESIDUE_MAX = 10
@@ -1053,7 +1053,7 @@ CRITICAL_POINTERS_BASELINE = 1
 #   같은 파일의 *규칙 서술 줄*이 함께 매치돼 **슬롯만 지워도 통과**한다(각각 실측 2건).
 CRITICAL_LITERALS = [
     ("plugins/pjc/skills/plan/references/plan-template.md",
-     "> BASE: <승인 직후 intent 커밋의 SHA>",
+     "> BASE: <승인 시점 HEAD 의 SHA>",
      "회차 BASE 를 적을 자리 — 서식에 슬롯이 없으면 규약이 요구해도 빠지고, 그 회차는 diff 범위를 되찾을 수단을 잃는다"),
     ("plugins/pjc/skills/WIKI.md",
      "무엇을 해야 하는가} ({근거})",
@@ -1960,8 +1960,8 @@ _QUEUE_TAG_GATE = 3
 _QUEUE_TAG_BLOCK_MAX = 30
 _QUEUE_TAG_EXTS = (".md", ".py", ".ps1", ".json")
 # 회차 기록은 대상이 아니다 — `plan.md`·`notes.md`·`intent/` 는 **그 시점의 기록**이지
-#  태그 집합을 따라가야 하는 사본이 아니다. 특히 `intent/` 는 승인 시점 요구를 얼려 두는
-#  자리라, 태그가 늘 때마다 과거 요구를 고치는 것은 그 파일의 존재 이유를 깬다.
+#  태그 집합을 따라가야 하는 사본이 아니다. 특히 `intent/` 는 폐지 전 회차의 요구를 얼려 둔
+#  기록이라, 태그가 늘 때마다 과거 요구를 고치는 것은 그 파일의 존재 이유를 깬다.
 _QUEUE_TAG_SKIP_RELS = {"plan.md", "notes.md"}
 _QUEUE_TAG_SKIP_PREFIXES = ("intent/",)
 
