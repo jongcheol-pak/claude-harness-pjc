@@ -25,7 +25,7 @@
 
 ## 버전 전용 PR 잇기
 
-**대상 레포 `AGENTS.md` 의 Release 줄이 「버전 전용 PR」 을 지목하고, 방금 merge 한 PR 이 그 레포가 정한 배포 대상을 바꿨으면 버전 PR 을 이어서 연다.** 이 하니스 레포는 `plugins/` 가 배포 대상이고 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 이다(`docs/harness-conventions.md` 「Release」). **체인 PR 모드의 병렬 워커는 이 절을 건너뛴다 — `../../chain-plan/references/pr-mode.md`「병렬」**(그룹원끼리 같은 다음 버전을 다툰다).
+**대상 레포 `AGENTS.md` 의 Release 줄이 「버전 전용 PR」 을 지목하고, 방금 merge 한 PR 이 그 레포가 정한 배포 대상을 바꿨으면 버전 PR 을 이어서 연다.** 이 하니스 레포는 `plugins/` 가 배포 대상이고 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 이다(`docs/harness-conventions.md` 「Release」). **체인 PR 모드 워커는 이 절을 건너뛴다 — 버전은 체인 끝 PR 의 ship 이 한 번 올린다(`../../chain-plan/references/pr-mode.md`「P 체인 끝 PR」)**(계획 PR 은 기본 브랜치가 아닌 체인 브랜치로 merge 돼, 여기서 올리면 체인 끝 PR 에 버전 커밋이 섞인다). 요청에 「체인 PR 모드」 가 있으면 체인 PR 모드 워커다.
 
 1. 10번에서 1번의 `baseRefName` 으로 돌아온 뒤 `git switch -c pjc/release-v<다음 버전>`. 다음 버전은 그 레포 규약이 정한다 — 정하지 않았으면 minor 를 1 올린다.
 2. 그 레포 규약이 지목한 버전 자리만 고친다(이 레포는 `plugin.json` 의 `version` 과 `README.md` 상단 `**버전**:` 줄). 다른 변경을 섞지 않는다 — squash 해도 기본 브랜치에 「버전만 올린 커밋」 하나가 남아야 그 위에 발행한 릴리즈 태그가 다음 판정(`git fetch -q origin tag v<버전>` 뒤 `git log v<버전>..HEAD -- plugins/`)의 기준점이 된다.

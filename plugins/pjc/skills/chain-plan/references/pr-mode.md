@@ -43,6 +43,7 @@
   - **충돌은 재진술을 기준으로 양쪽 의도를 살려 풀고, spec 「근거로 정한 것」 ③ 검증을 돌려 통과하면 커밋·push 한 뒤 babysit 부터 다시 한다** — `parallel.md`「충돌·검증 실패」 의 병합 준비와 같은 기준이다. 풀 수 없으면 아래 정지다.
   - **한 PR 에서 세 번째 합치기가 필요하면 합치지 않고 정지한다** — base 가 계속 움직이면 검증이 끝나지 않는다(*"If trunk would force a third rebase past merge prep, hold and report"*).
 - **PR 을 연 뒤 `pjc:pr` 을 Skill 도구로 「PR <URL> 을 babysit 뒤 ship — 체인 PR 모드」 로 부른다** — 요청이 babysit 과 merge 를 함께 말해 `../../pr/SKILL.md`「모드 고르기」 대로 merge-ready 뒤 ship 으로 잇는다. 이 요청이 `pr-flow.md`「PR 을 연 뒤」 의 「babysit 을 시작하지 않는다」 의 예외다.
+  - **ship 은 「버전 전용 PR 잇기」 를 건너뛴다 — 요청의 「체인 PR 모드」 가 표지다(`../../pr/references/ship.md`)** — 계획 PR 은 체인 브랜치로 merge 되고, 버전은 「P 체인 끝 PR」 을 merge 하는 ship 이 한 번 올린다.
 - **babysit·ship 이 멈춘 자리마다 아래로 간다:**
 
   | 멈춘 자리 | 워커가 할 일 |
@@ -67,11 +68,11 @@
 ## 병렬
 
 - **그룹을 띄우기 전에 `git -C "<대상 레포 경로>" fetch origin <체인 브랜치>` 뒤 `git -C "<대상 레포 경로>" rev-list --count origin/<체인 브랜치>..<체인 브랜치>` 가 0 이 아니면 그 그룹을 묶지 않고 직렬로 돌린다** — worktree 는 로컬 체인 브랜치에서 갈라져(`parallel.md`「띄우기」) 원격보다 앞선 커밋이 그룹원 PR 마다 함께 실린다. 직렬 워커의 `pr-flow.md`「브랜치」 는 그 커밋을 첫 PR 하나로 옮긴다. 화면 직렬 워커가 base 에 남긴 미push 인계 커밋(「워커」 의 화면 줄 task 직렬 예외) 때문에 뒤 그룹이 직렬로 도는 것도 이 정상 경로다.
-- **병렬 워커는 ship 의 10번(로컬 맞추기)과 「버전 전용 PR 잇기」 를 건너뛴다** — 체인 브랜치가 주 레포에 체크아웃돼 있어 worktree 에서 `git switch <체인 브랜치>` 가 거부되고, 그룹원마다 버전 PR 을 열면 같은 다음 버전을 다툰다. spec `병렬:` 줄이 그 워커를 가린다.
+- **병렬 워커는 ship 의 10번(로컬 맞추기)도 건너뛴다(「버전 전용 PR 잇기」 는 「워커」 대로 모든 워커가 건너뛴다)** — 체인 브랜치가 주 레포에 체크아웃돼 있어 worktree 에서 `git switch <체인 브랜치>` 가 거부된다. spec `병렬:` 줄이 그 워커를 가린다.
 - **`worker_done`(succeeded)을 받으면 `parallel.md`「병합」 ⓐ~ⓔ 대신 주 레포를 맞춘다 — ⓐ 와 같이 주 레포가 깨끗하고 체인 브랜치일 때만 `git -C "<대상 레포 경로>" fetch origin <체인 브랜치>` → `git -C "<대상 레포 경로>" merge --ff-only origin/<체인 브랜치>` 이고, 아니거나 실패하면 보고하고 멈춘다** — 워커가 이미 base 를 합쳐 검증한 head 를 merge 했으므로 코디네이터가 다시 병합·검증할 것이 없다. 이 fast-forward 는 `../SKILL.md`「하지 않는 것」 「파일 수정」의 예외다.
 - **그룹원이 화면 확인 대기로 succeeded 하면 merge 되지 않았으므로 fast-forward 할 것이 없고, 아래 그룹 버전 PR 의 「병합된 그룹원」 으로 세지 않는다** — `병렬 병합:` 칸에 `미병합 — 화면 확인 대기 · <PR URL>` 로 싣고 worktree·브랜치는 남긴다. 그 PR 에 인계 절이 실려 있어 뒤 계획이 그 절을 base 에서 읽지 못하므로, 코디네이터는 그룹 뒤 계획 앞에서 멈춘다.
 - **충돌·검증 실패의 병합 준비 재배정은 없다** — 워커가 「워커」 의 base 합치기로 직접 푼다.
-- **그룹 버전 PR — 대상 레포 `AGENTS.md` 에 버전 규약이 있을 때만, 그룹의 마지막 succeeded 워커를 fast-forward 한 뒤 그 탭에 「버전 PR」 task 를 `--terminal` 로 재배정한다(병합된 그룹원이 없으면 하지 않는다)** — `parallel.md`「버전」 의 마지막 워커 재배정과 같은 형태이고, PR 모드 워커는 `worker_done` 전에 ship 을 끝내므로 재배정은 그 뒤 별도 task 다. task 서식은 `parallel.md`「충돌·검증 실패」 의 병합 준비 task 와 같고 표식·`할 일:` 만 바꾼다:
+- **그룹 버전 PR — 대상 레포 `AGENTS.md` 에 버전 규약이 있고 그 Release 가 「버전 전용 PR」 이 아닐 때만, 그룹의 마지막 succeeded 워커를 fast-forward 한 뒤 그 탭에 「버전 PR」 task 를 `--terminal` 로 재배정한다(병합된 그룹원이 없으면 하지 않는다)** — `parallel.md`「버전」 의 마지막 워커 재배정과 같은 형태이고, PR 모드 워커는 `worker_done` 전에 ship 을 끝내므로 재배정은 그 뒤 별도 task 다. 「버전 전용 PR」 레포는 「P 체인 끝 PR」 을 merge 하는 ship 이 체인 전체의 버전을 한 번 올리므로 재배정하지 않는다. task 서식은 `parallel.md`「충돌·검증 실패」 의 병합 준비 task 와 같고 표식·`할 일:` 만 바꾼다:
 
   ```
   [chain-plan 버전 PR] 그룹 <g> (plan <목록>)
