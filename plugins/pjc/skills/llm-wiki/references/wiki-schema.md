@@ -1,7 +1,7 @@
 ---
 type: schema
-version: "2.51"
-updated: 2026-10-07
+version: "2.52"
+updated: 2026-10-18
 language: ko
 ---
 
