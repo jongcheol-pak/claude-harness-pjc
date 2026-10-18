@@ -26,3 +26,14 @@
 - **내린 결정과 근거**: 지우는 절 = §7-38 세 이름 + 옛 이름 `## 동작`·`## 동작 (사용법)` + 접두 `구현 방법 — ` 등(인계 술어는 lint 신호와 맞추는 하한) · 폐지 절 본문은 함정·이유까지 전부 삭제(코디네이터 판정 A — 「옮긴다」는 새 ingest 규칙) · 관련 지식·관련 파일 절은 조각 안 본문까지 전부 보존(폐지 계보 조각에 실제 관련 절이 있으면 관련 조각으로 전환) · 합침은 lint `budget_state` 가 over·critical 이 아닐 때만 · 페이지 `updated`·허브 `synced_commit` 은 건드리지 않음 · vault 커밋은 경로 한정(`pending.md` 제외)
 - **뒤 계획이 지킬 제약**: vault feature 에는 폐지 절이 0이다(lint §7-38 WARN 0) — plan 3 이 기록 규칙을 바꿔도 lint 기준선은 정리 뒤 WARN 8(karina conventions·decisions 예산 초과 7 + karina feat-orchestration 진입점 심볼 1)이다 · vault 를 대상으로 하는 pjc:plan 은 vault 루트에 `intent/` 를 만들면 lint WARN(타입 미지정·고아)이, 위키링크가 든 `plan.md` 는 깨진 링크 ERR 이 난다
 - **미해결 사항**: vault AGENTS.md 의 요약·압축 저장 금지 · 나눠서 옮긴다 · 설계 결정 삭제 금지 문면이 plan 1 의 삭제 우선 규칙과 어긋난다(같은 파일 20행 `index-personal.md` 도 실제는 `-1/-2`) · vault 대상 plan 의 intent 위치·lint 스캔 제외 규약 부재 · 뿌리 3쪽의 표준 밖 `##` 절과 `90_archive/` 의 지운 조각 링크 13건은 남김
+
+## plan 3
+
+- **BASE**: c6e71d65 · **intent**: `intent/2026-10-18-record-slim.md`(폐지 전 절차로 쓴 마지막 intent) · **커밋**: 3c9d7d14…a6b8a4cd
+- **바꾼 파일·새 심볼**:
+  - `[DECISION]` — `llm-wiki/references/queue-rules.md` K 5-2: 대상은 보류·기각과 기록된 보류·기각의 번복, 배치 시점은 `pjc:implement` 종료 하나 + 수동(채택은 큐잉 안 함) · `plan/SKILL.md` Step 6 큐잉 불릿 삭제 · `implement/SKILL.md` 「완료 시 위키 기록」 · 정합 검사기 `CRITICAL_LITERALS_BASELINE` 3
+  - Deferred — `deferred-closed.md` 기각 119건만 `- [등록일 → 종결일] **요지** — 기각: 사유` 1줄(지운 113건은 git 이력) · `deferred.md` 앵커 `대기 N / 종결 M` 2필드(누계·불변식 삭제) · 검사기 축 ② 2필드 · 축 ⑨ `CLOSED_REJECT_RX`(기각 1줄 형식·항목 밖 줄) · cases 122
+  - intent — `plan/references/intent-rules.md` 삭제(`check-stale-refs.py` `DEAD` 에 추가 · `DEAD_BASELINE` 31) · 요구는 `plan.md` `> 요구:`(원문 인용)·`## Goal`, BASE 는 승인 직후 HEAD(`plan-template.md` 「Goal」) · check-plan 코드 `goal-head request` · 완료 리뷰 절 「요구 ↔ 산출물」
+- **내린 결정과 근거**: 배치 시점은 구현 완료(승인 때 보류는 구현 중 해소될 수 있다) · 번복은 계속 큐잉(뒤집힌 기각이 남으면 오판) · 종결 분류는 본문 최종 판정(사유 꼬리 없는 항목 180건)
+- **뒤 계획이 지킬 제약**: 새 계획은 `intent/` 파일을 쓰지 않는다 · 종결 대장에는 기각만 넣는다
+- **미해결 사항**: vault `feat-plan.md`·`feat-chain-plan.md` 의 관련 파일에 지운 `intent-rules.md` 가 남아 vault lint WARN 이 8 → 10(§7-21) — 체인 대조 「plan 2 — 새 경고 0」 미달. 코드 세션은 위키 본문을 고치지 않으므로(K 5) 「위키 업데이트」(ingest — D 트리거)가 받는다. 같은 두 페이지가 intent 절차를 서술하는지도 그때 갱신
