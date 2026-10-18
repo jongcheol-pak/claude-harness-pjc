@@ -2,6 +2,8 @@
 
 > `../SKILL.md` 「체인 승인」이 승인 화면의 `PR 모드:` 줄을 채울 때(「켜기」), 체인이 `P` 로 승인돼 워커가 spec 의 `PR 모드: 켬` 줄을 받았을 때(「워커」), 코디네이터가 PR 모드 체인의 계획을 잇거나 병렬 그룹을 다룰 때(「직렬」·「병렬」) 이 파일을 연다. `Y` 로 승인한 체인은 계획 사이를 로컬 병합으로 잇고, 체인이 끝나면 「Y 체인 끝 PR」 하나만 쓴다(`report.md`「인계 파일 정리」 뒤).
 > 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 스택 PR·Graphite·rebase 는 들이지 않았다 — 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 pjc 에서 별도 승인이다).
+>
+> 목차: 켜기 · 워커(마무리 순서 · 화면 줄 task 직렬 예외 · base 합치기 · 멈춘 자리 표) · 직렬 · 병렬 · Y 체인 끝 PR
 
 ## 켜기
 
@@ -12,13 +14,18 @@
 - **`Y` 일 때 버전 커밋을 막는 경우가 하나 있다 — 대상 레포가 끝 PR 대상이고 그 `AGENTS.md` Release 가 「버전 전용 PR」 을 지목하면 spec 재진술 `제약조건` 끝에 「버전 올리기 task 를 만들지 않는다(체인 끝 PR — merge 를 맡는 `pjc:pr` ship 이 버전 전용 PR 을 잇는다)」 를 더한다(`spec-format.md`「spec 서식」)** — 버전 커밋이 끝 PR 에 squash 되면 기능 변경과 섞이고, ship 의 「버전 전용 PR 잇기」(`../../pr/references/ship.md`)가 버전을 한 번 더 올린다. Release 가 다른 형식인 레포는 지금처럼 체인 안에서 버전 커밋을 만들고 그 커밋이 끝 PR 에 실린다.
 - **`P` 는 `Y` 와 같은 위임에 PR 모드를 더한 답이다** — objective 의 `[체인 승인: <답 원문>]` 이 `P` 를 담아 압축 뒤에도 모드를 되찾는다(`compaction.md`「압축 뒤 복원」).
 - **`P` 면 모든 계획 spec 에 `PR 모드: 켬 — base <체인 브랜치>` 를, 아니면 `PR 모드: 꺼짐` 을 싣는다(`spec-format.md`「spec 서식」)** — 워커의 `pr-flow.md` 는 `PR 모드: 켬` 으로 시작하는 줄이 있을 때만 브랜치를 바꾸고 PR 을 연다.
-- **대기 명령 끝에 `--pr <체인 브랜치>` 를 더한다** — 대기 스크립트가 PR 단계(열림·CI green·merged)를 진행 줄에 싣고, CI 가 pending 인 동안 같은 화면을 멈춤으로 세지 않는다(근거 정본은 `wait-worker-rationale.md`「PR 단계」). 워커는 CI 를 기다리는 동안 turn 을 끝내 화면과 HEAD 가 함께 멈춘다.
+- **대기 명령 끝에 `--pr <체인 브랜치>` 를 더한다** — 대기 스크립트가 PR 단계(열림·CI green·화면 확인 대기·merged)를 진행 줄에 싣고, CI 가 pending 인 동안 같은 화면을 멈춤으로 세지 않는다(근거 정본은 `wait-worker-rationale.md`「PR 단계」). 워커는 CI 를 기다리는 동안 turn 을 끝내 화면과 HEAD 가 함께 멈춘다.
 
 ## 워커
 
 **spec 에 `PR 모드: 켬 — base <브랜치>` 줄이 있는 중계 모드 워커가 따른다.** 아래 `<base>` 는 그 줄의 브랜치다.
 
 - **마무리 순서는 「plan 파일 커밋 → 인계 절 커밋 → PR 열기 → `pjc:pr` babysit·ship → `worker_done` → 최종 보고」다** — 인계 절이 PR 에 실려야 squash merge 뒤 base 에 남는다. 인계 절을 쓰지 않는 계획(`../../plan/references/relay-mode.md`「중계 모드」 의 마지막 계획)이면 그 칸만 건너뛴다.
+  - **화면 줄 task 직렬 예외 — plan 에 `**화면**` 줄 task 가 든 직렬 워커는 인계 절을 PR 앞에 커밋하지 않는다** — 그 PR 은 ship 화면 게이트에서 멈춰 merge 되지 않으므로, PR 에 실린 인계 절은 다음 워커의 base 에 없고 뒤 절과 merge 충돌을 낸다(babysit 은 충돌을 고치지 않는다). 순서는 셋이다.
+    - 「브랜치」 에서 `git fetch origin <base>` 뒤 `git switch -c pjc/<슬러그> origin/<base>` 로 가른다. 로컬 base 의 미push 커밋(앞 화면 워커의 인계 커밋)을 옮기지 않고 `git branch -f` 도 하지 않는다.
+    - ship 이 화면 게이트에서 멈추면 아래 표대로 `git switch <base>` 하고, 인계 절을 base 의 로컬 커밋(push 안 함)으로 남긴다. 다음 비화면 워커의 `pr-flow.md`「브랜치」 가 쌓인 미push 커밋을 자기 PR 로 옮긴다. 마지막 계획이면 `report.md`「인계 파일 정리」 의 정리 커밋처럼 로컬에 남는다.
+    - 작업 트리가 깨끗하지 않아 switch 를 못 하면 PR 을 열어 둔 채 `--outcome failed` 로 정지하고 `PR:` 필드에 `열림 — <URL> · 화면 확인 대기 · 인계 절 미커밋` 을 싣는다.
+    - 병렬 워커는 이 예외 없이 지금 순서다(PR 에 인계 절) — 처리는 「병렬」.
   - **인계 절 머리에 `PR 브랜치: <브랜치>` 를 더한다** — babysit·ship 의 수정 커밋은 인계 절 커밋 뒤라 절의 커밋 범위에 들지 않는다. 뒤 계획은 그 브랜치의 PR 로 나머지를 찾는다.
 - **PR 본문 끝 줄에 `체인: <인계 파일 이름의 Run id> · plan <N>/<총>` 을 싣는다** — 이 체인이 멈추면 재개가 이 표지로 열린 PR 을 찾는다(`resume.md`「열린 PR」). 마지막 계획은 인계 절을 쓰지 않아 인계 파일로는 그 브랜치를 못 찾는다.
 - **PR 을 열기 전과 ship 을 부르기 전마다 base 를 합친다 — `git fetch origin <base>` 뒤 `git merge-base --is-ancestor origin/<base> HEAD` 가 거짓이면 `git merge origin/<base>` 다(rebase 금지)** — merge 는 검증한 조합이 착지할 base 위에 있어야 한다(*"The owner merges only what you verified, tested on the trunk it lands on."*). 병렬 그룹에서는 앞 그룹원의 merge 로 base 가 움직이는 것이 정상 경로이고, squash 된 앞 PR 을 담은 base 를 같은 브랜치에 합치면 PR diff 가 새 커밋만으로 줄어든다.
@@ -33,6 +40,7 @@
   | 충돌 · 낡은 base(`../../pr/references/babysit.md`「1. 충돌」·「3. CI」) | 위 base 합치기 뒤 babysit 부터 다시 |
   | `pr-verifier` FAIL | 지적한 결함을 고쳐 커밋·push 한 뒤 babysit 부터 다시 — 지적은 하나의 수정으로 모은다(*"Send every proven finding … to the owner in one fix-forward"*) |
   | head 가 바뀌어 merge 거부(`--match-head-commit`) | ship 1번부터 다시 |
+  | 화면 확인 대기(`../../pr/references/ship.md` 7번 화면 게이트) | PR 을 열어 둔 채 작업 트리가 깨끗하면 `git switch <base>`(병렬 워커는 건너뛴다) 뒤 `--outcome succeeded` 로 보고한다 — `PR:` 필드는 `열림 — <URL> · 화면 확인 대기`, `남은 일` 에 `PR <URL> 화면 확인 대기 — 사용자가 스크린샷을 보고 「화면 확인함」 으로 pjc:pr ship 을 요청`. 질문이 아니라 보고다 — 사용자 몫으로 넘기지 않는다 |
   | 사람 판단 대기(`CHANGES_REQUESTED`·`REVIEW_REQUIRED`·보고만 한 스레드) · 브랜치 보호 등 그 밖의 merge 거부 | 곧바로 정지 — 사람이 정할 자리이고 체인은 그것을 대신 정하지 못한다 |
   | CI 실패가 같은 원인으로 3회 · `pr-verifier` FAIL 3회 · 세 번째 합치기 | 정지 — `../../implement/SKILL.md`「멈추는 넷」 의 동일 원인 3회와 같은 수다 |
 
@@ -42,13 +50,15 @@
 ## 직렬
 
 - **워커의 ship 10번이 체인 브랜치로 돌아와 `git pull --ff-only` 한 뒤 `worker_done` 을 보낸다 — 코디네이터는 succeeded 뒤 지금처럼 다음 계획을 띄운다** — 다음 워커는 같은 체크아웃에서 merge 된 커밋을 본다(`release.md`「닫기」 가 같은 폴더를 고집하는 이유와 같다).
+- **워커가 화면 확인 대기로 succeeded 하면 `continuation.md`「남은 일 판정」 으로 가른다** — 그 PR 은 merge 되지 않아 다음 워커의 base 에 그 변경이 없다. 뒤 계획이 그 변경에 의존하면 멈추고, 아니면 다음 계획을 띄운다.
 - **10번이 돌아오지 못했어도(작업 트리가 깨끗하지 않음·`pull --ff-only` 실패) 코디네이터는 손대지 않는다** — 다음 워커의 `pr-flow.md`「merge 된 브랜치에서 시작할 때」 가 merge 된 `pjc/*` 브랜치에서 원격 base 로 갈라 받는다.
 
 ## 병렬
 
-- **그룹을 띄우기 전에 `git -C "<대상 레포 경로>" fetch origin <체인 브랜치>` 뒤 `git -C "<대상 레포 경로>" rev-list --count origin/<체인 브랜치>..<체인 브랜치>` 가 0 이 아니면 그 그룹을 묶지 않고 직렬로 돌린다** — worktree 는 로컬 체인 브랜치에서 갈라져(`parallel.md`「띄우기」) 원격보다 앞선 커밋이 그룹원 PR 마다 함께 실린다. 직렬 워커의 `pr-flow.md`「브랜치」 는 그 커밋을 첫 PR 하나로 옮긴다.
+- **그룹을 띄우기 전에 `git -C "<대상 레포 경로>" fetch origin <체인 브랜치>` 뒤 `git -C "<대상 레포 경로>" rev-list --count origin/<체인 브랜치>..<체인 브랜치>` 가 0 이 아니면 그 그룹을 묶지 않고 직렬로 돌린다** — worktree 는 로컬 체인 브랜치에서 갈라져(`parallel.md`「띄우기」) 원격보다 앞선 커밋이 그룹원 PR 마다 함께 실린다. 직렬 워커의 `pr-flow.md`「브랜치」 는 그 커밋을 첫 PR 하나로 옮긴다. 화면 직렬 워커가 base 에 남긴 미push 인계 커밋(「워커」 의 화면 줄 task 직렬 예외) 때문에 뒤 그룹이 직렬로 도는 것도 이 정상 경로다.
 - **병렬 워커는 ship 의 10번(로컬 맞추기)과 「버전 전용 PR 잇기」 를 건너뛴다** — 체인 브랜치가 주 레포에 체크아웃돼 있어 worktree 에서 `git switch <체인 브랜치>` 가 거부되고, 그룹원마다 버전 PR 을 열면 같은 다음 버전을 다툰다. spec `병렬:` 줄이 그 워커를 가린다.
 - **`worker_done`(succeeded)을 받으면 `parallel.md`「병합」 ⓐ~ⓔ 대신 주 레포를 맞춘다 — ⓐ 와 같이 주 레포가 깨끗하고 체인 브랜치일 때만 `git -C "<대상 레포 경로>" fetch origin <체인 브랜치>` → `git -C "<대상 레포 경로>" merge --ff-only origin/<체인 브랜치>` 이고, 아니거나 실패하면 보고하고 멈춘다** — 워커가 이미 base 를 합쳐 검증한 head 를 merge 했으므로 코디네이터가 다시 병합·검증할 것이 없다. 이 fast-forward 는 `../SKILL.md`「하지 않는 것」 「파일 수정」의 예외다.
+- **그룹원이 화면 확인 대기로 succeeded 하면 merge 되지 않았으므로 fast-forward 할 것이 없고, 아래 그룹 버전 PR 의 「병합된 그룹원」 으로 세지 않는다** — `병렬 병합:` 칸에 `미병합 — 화면 확인 대기 · <PR URL>` 로 싣고 worktree·브랜치는 남긴다. 그 PR 에 인계 절이 실려 있어 뒤 계획이 그 절을 base 에서 읽지 못하므로, 코디네이터는 그룹 뒤 계획 앞에서 멈춘다.
 - **충돌·검증 실패의 병합 준비 재배정은 없다** — 워커가 「워커」 의 base 합치기로 직접 푼다.
 - **그룹 버전 PR — 대상 레포 `AGENTS.md` 에 버전 규약이 있을 때만, 그룹의 마지막 succeeded 워커를 fast-forward 한 뒤 그 탭에 「버전 PR」 task 를 `--terminal` 로 재배정한다(병합된 그룹원이 없으면 하지 않는다)** — `parallel.md`「버전」 의 마지막 워커 재배정과 같은 형태이고, PR 모드 워커는 `worker_done` 전에 ship 을 끝내므로 재배정은 그 뒤 별도 task 다. task 서식은 `parallel.md`「충돌·검증 실패」 의 병합 준비 task 와 같고 표식·`할 일:` 만 바꾼다:
 
@@ -70,5 +80,6 @@
   - **슬러그는 `chain-<Run id 의 run_ 뒤 앞 8자>` 다** — 끝 PR 은 체인 끝에 1회만 열리고, 압축 뒤에도 `run-current` 로 같은 id 를 얻는다.
   - **제목은 `<유형>: <계획 제목들을 · 로 이은 한 줄>` 이다** — 유형은 `git log --format=%s origin/<기본 브랜치>..HEAD` 의 유형 접두 중 가장 많은 것이고 같으면 `기능` 이다. 길면 앞 계획부터 줄인다.
   - **본문 `## 범위` 에 plan 번호와 제목 목록을 싣는다** — 나머지 절은 「PR 열기」 의 본문 규칙 그대로다.
+  - **`git log --format=%B origin/<기본 브랜치>..HEAD` 에 `화면: ` 으로 시작하는 줄(미촬영 줄 포함 — `../../implement/references/report-format.md`「화면 시나리오 실행」)이 있으면 본문에 `## 화면` 절을 싣는다** — 그 줄을 옮기고, 스크린샷 위치는 검증 스킬의 Evidence 위치를 환경변수 표기로 적는다. 이 세션은 워커의 `plan.md` 를 읽지 않아 커밋 본문이 화면 task 를 찾는 유일한 자리이고, 이 절이 있어야 사용자가 나중에 부르는 ship 의 화면 게이트가 걸린다.
 - **babysit·merge 는 하지 않는다 — URL 을 보고하고 끝낸다** — merge 는 사용자가 `pjc:pr` 로 요청할 때다(*"Opening a PR does not start a babysit."*).
 - **어느 단계든 실패하면 오류 원문을 보고의 `PR:` 줄에 싣고 멈추지 않는다** — 체인은 이미 끝났고, 커밋은 로컬 체인 브랜치에 그대로 있다.

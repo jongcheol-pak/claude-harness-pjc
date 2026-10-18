@@ -17,7 +17,7 @@
 
 | 지금 브랜치 | 할 일 |
 |---|---|
-| 기본 브랜치 | `git switch -c pjc/<슬러그>` 로 옮긴다. 그다음 `git fetch origin <기본>` → `git branch -f <기본> origin/<기본>` 으로 로컬 기본 브랜치를 원격에 맞춘다 |
+| 기본 브랜치 | `git switch -c pjc/<슬러그>` 로 옮긴다. 그다음 `git fetch origin <기본>` → `git branch -f <기본> origin/<기본>` 으로 로컬 기본 브랜치를 원격에 맞춘다(중계 PR 모드의 화면 줄 task 직렬 예외 — `../../chain-plan/references/pr-mode.md`「워커」) |
 | `pjc/*` 이고 그 PR 이 MERGED | 기본 브랜치에서 시작한 것으로 본다 — 아래 「merge 된 브랜치에서 시작할 때」 |
 | 그 밖(다른 기능 브랜치 · PR 이 OPEN·CLOSED 이거나 없는 `pjc/*`) | 그대로 둔다. 회차 끝 PR 은 이 브랜치에서 연다 |
 
