@@ -1,6 +1,6 @@
 # 성능 측정 규율
 
-> `../SKILL.md` 1-B 가 **성능 증상(느려짐·메모리 증가)일 때만** 가리킨다. 성능 수치로 원인을 판정하거나 수정의 효과를 주장하기 전에 이 절을 그대로 거친다.
+> 세 스킬이 가리키는 공용 규율이다 — `pjc-systematic-debugging/SKILL.md` 1-B(성능 증상일 때) · `plan/references/plan-template.md`「작업 단계」(성능 task 의 `**성능**` 줄) · `implement/SKILL.md`「검증」(그 줄이 있는 task 의 판정). 성능 수치로 원인을 판정하거나 수정·task 의 효과를 주장하기 전에 이 절을 그대로 거친다.
 
 ## 성능 수치의 판정
 
