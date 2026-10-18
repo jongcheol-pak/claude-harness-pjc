@@ -193,7 +193,7 @@ try {
                 $cwdBaseCount++
             }
 
-            # 같은 분기에서 큐 기록 규약도 넣는다 — 계획 세션의 배치 시점 — 근거는 `rules/session-context-rationale-plan.md` §21
+            # 같은 분기에서 큐 기록 규약도 넣는다 — 구현 완료 단계의 배치 시점 — 근거는 `rules/session-context-rationale-plan.md` §21
             $secQueueRules = Get-SkillSection -Path (Join-Path $skillsDir 'llm-wiki/references/queue-rules.md') -StartHeading '### K 5-2. 결정 큐잉 ([DECISION])' -StopHeading '### K 5-5. 증상 큐잉 ([SYMPTOM])'
             if ($secQueueRules) {
                 $lines.Add("[pjc 세션 컨텍스트] 압축 직후 큐 기록 규약 (원문 발췌 — llm-wiki/references/queue-rules.md 「K 5-2~5-3」)`n$secQueueRules")

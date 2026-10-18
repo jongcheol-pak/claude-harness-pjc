@@ -91,7 +91,6 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 - **`plan.md`를 쓴 뒤 화면에 요약을 내고 승인을 받는다** — 서식은 `references/interview.md`의 「승인 제시」. 중계 모드면 화면 대신 `ask` 로 보낸다(`references/relay-mode.md`「중계 모드」).
 - **승인 직후 `references/intent-rules.md`의 커밋 절차를 실행한다** — 승인 시점의 요구를 이력에 남긴다.
 - **그 커밋 직후 `plan.md` `## Goal` 의 `> BASE:` 와 `> 승인:` 줄을 채운다 — 중계 모드면 코디네이터의 승인 답을 받은 뒤다(서식 정본 `references/plan-template.md` 「Goal」)** — `pjc:implement` 가 `> 승인:` 줄 없는 `plan.md` 를 승인 전 초안으로 보고 확인을 묻는다.
-- **같은 자리에서 `[DECISION]`을 1회 일괄 큐잉한다 — 이 plan의 기능 채택 · `## Out of Scope` 기각 · `## Deferred / Follow-up` 보류가 대상이고, 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약이 지목하는 배치 시점 둘 중 하나가 여기인데 호출하는 자리가 없어, 결정이 대화에만 남고 위키로 가지 않는다. **`queue-rules.md` 는 파일째 읽지 않는다 — K 5·K 5-2·K 6 절만 `grep -n '^### K' <queue-rules.md 경로>` 경계로 Read 한다**(K 5-2 가 K 5 의 게이트·폴백과 K 6 커밋에 기댄다).
 - **커밋을 마치면 같은 turn에서 `pjc:implement` 를 Skill 도구로 부른다** — 승인이 곧 실행 요청이라 「구현」을 다시 받지 않는다. 부르지 않고 그냥 이어 구현하면 `loop-continue` 의 발동 마커가 서지 않아, 루프가 중간에 멈췄을 때 계속을 주입하는 안전망이 꺼진다. 실행 중 멈추는 자리는 `pjc:implement`의 「멈추는 넷 — 그리고 목록 밖의 넷」이 가른다.
   - **승인 답이 `S`(승인·새 세션에서 구현)면 부르지 않고 `references/interview.md`「승인 제시」의 새 세션 한 줄을 내고 끝낸다** — 계획 단계의 컨텍스트를 구현에 끌고 가지 않으려는 선택이라, 같은 turn 에서 부르면 그 선택이 무효가 된다.
 

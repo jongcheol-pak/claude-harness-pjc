@@ -111,7 +111,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 판정 기준·기록 형식·vault 판정은 `../WIKI.md`가 정본이고, **`../WIKI.md` 는 §0 과 §3 만 Read 한다** — 파일째 읽지 않는다: `grep -n '^## ' <WIKI.md 경로>` 로 두 절과 각각 다음 절의 시작 줄을 얻어 Read 의 offset·limit 으로 준다(WIKI.md 는 위키 페이지가 아니고 펜스 안에 `## ` 줄이 없다).
 
-- **구현 중 확정된 `[DECISION]`도 여기서 1회 일괄 큐잉한다 — 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약이 지목하는 배치 시점 둘 중 하나가 여기이고, `[PROJECT-FACT]`는 위 판정이 이미 맡는다. **`queue-rules.md` 는 파일째 읽지 않는다 — K 5~K 5-3 과 K 6 절만 `grep -n '^### K' <queue-rules.md 경로>` 경계로 Read 한다**(K 5-2 가 K 5 의 게이트·폴백과 K 6 커밋에, 위 §3 의 `[PROJECT-FACT]` 가 K 5-3 에 기댄다).
+- **이 회차의 보류·기각 `[DECISION]` 을 여기서 1회 일괄 큐잉한다 — 대상은 plan 의 `## Out of Scope` 기각 · 완료 시점에 남은 `## Deferred / Follow-up` 보류 · 구현 중 새로 생긴 것과 기록된 보류·기각의 번복이고, 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약의 배치 시점은 여기 하나이고(채택은 코드·커밋이 담아 큐잉하지 않는다), `[PROJECT-FACT]`는 위 판정이 이미 맡는다. **`queue-rules.md` 는 파일째 읽지 않는다 — K 5~K 5-3 과 K 6 절만 `grep -n '^### K' <queue-rules.md 경로>` 경계로 Read 한다**(K 5-2 가 K 5 의 게이트·폴백과 K 6 커밋에, 위 §3 의 `[PROJECT-FACT]` 가 K 5-3 에 기댄다).
 
 ## 완료 정의
 

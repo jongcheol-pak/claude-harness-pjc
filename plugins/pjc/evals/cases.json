@@ -1334,13 +1334,13 @@
     "mutate": [
       {
         "file": "plugins/pjc/evals/check-harness-consistency.py",
-        "find": "CRITICAL_LITERALS_BASELINE = 4",
-        "replace": "CRITICAL_LITERALS_BASELINE = 5"
+        "find": "CRITICAL_LITERALS_BASELINE = 3",
+        "replace": "CRITICAL_LITERALS_BASELINE = 4"
       }
     ],
     "expect_keywords": [
       "[MISMATCH]",
-      "핵심 리터럴 총량이 기준선과 다르다: 4 != 5",
+      "핵심 리터럴 총량이 기준선과 다르다: 3 != 4",
       "CRITICAL_LITERALS_BASELINE"
     ]
   },

@@ -1069,14 +1069,11 @@ CRITICAL_LITERALS = [
      "`[PROJECT-FACT]` 큐 항목의 근거 꼬리 — 이 꼬리가 없으면 소비된 뒤에도 근거 미보유로 집계돼, 그 줄을 얼마나 믿을지 정할 근거가 사라진다"),
     ("plugins/pjc/skills/implement/SKILL.md",
      "K 5-2",
-     "구현 종료 시점의 `[DECISION]` 일괄 큐잉 호출 — 규약이 지목하는 배치 시점 둘 중 하나라, 부르는 자리가 없으면 결정이 대화에만 남는다"),
-    ("plugins/pjc/skills/plan/SKILL.md",
-     "K 5-2",
-     "plan 승인 시점의 `[DECISION]` 일괄 큐잉 호출 — 위와 짝인 나머지 한 배치 시점이다"),
+     "구현 종료 시점의 `[DECISION]`(보류·기각) 일괄 큐잉 호출 — 규약이 지목하는 유일한 배치 시점이라, 부르는 자리가 없으면 결정이 대화에만 남는다"),
 ]
 
 # 리터럴 총량 기준선(= 목록 길이) — 근거는 `harness-consistency-rationale.md` §9
-CRITICAL_LITERALS_BASELINE = 4
+CRITICAL_LITERALS_BASELINE = 3
 
 
 # 축 11이 대장 실재로 인정하는 파일. 종결된 항목은 `deferred-closed.md` 로 옮겨지므로
