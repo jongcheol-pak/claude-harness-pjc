@@ -13,7 +13,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 5 / 종결 119
+**▶ 현행 잔량(기계 대조 대상)**: 대기 7 / 종결 119
 
 > 이 한 줄만 기계 대조 대상이다 — `plugins/pjc/evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -46,6 +46,8 @@
 - [2026-10-18] **디버깅 재현 BASE 대조** — `pjc-systematic-debugging` 재현 단계에서 같은 재현 시나리오를 BASE worktree 에서도 돌려 회귀가 이 변경에서 생겼는지 가른다(절차 선례 `implement/references/report-format.md`「화면 시나리오 실행」의 (BASE 대조)) (출처: 계획 체인 run_60c0ebe3 plan 3 후보 라운드 — 사용자 「보류」) (실해: 2026-10-18 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 디버깅 재현은 현재 HEAD 에서만 돌아 회귀 시점을 가르지 못함)
 - [2026-10-18] **체인 워커 보고 HUMAN-VERIFY 칸 화면 증거** — `chain-plan` 워커 `worker_done` 의 `HUMAN-VERIFY·미검증` 칸에 화면 시나리오 스크린샷 경로를 싣게 한다(`chain-plan/references/spec-format.md` 보고 필드) (출처: 계획 체인 run_60c0ebe3 plan 3 후보 라운드 — 사용자 「보류」) (실해: 2026-10-18 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 보고 칸에 화면 증거 자리가 없어 코디네이터가 스크린샷을 보지 못함)
 - [2026-10-19] **워커 UX 질문 스크린샷** — 중계 모드 워커가 `ask` 로 묻는 UX 갈림길에도 `plan/references/interview.md` 2-3 의 변형 스크린샷 경로를 싣게 한다(`plan/references/relay-mode.md` 갈림길 질문) (출처: 계획 체인 run_60c0ebe3 plan 5 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 워커의 UX 질문은 relay-mode 가 2-3 을 읽지 않아 말로만 간다)
+- [2026-10-19] **체인 병렬 그룹의 넘긴 질문 시한 대기** — `chain-plan/scripts/wait-worker.py --answer-by` 는 `--dispatch` 하나에만 받아, 병렬 그룹이 돌 때 사용자에게 넘긴 ②·③ 질문은 상한 없이 기다린다. 병렬 대기와 미답 시한을 함께 재는 갈래를 둔다(`chain-plan/references/user-relay.md`「미답 기본값」·`parallel.md`) (출처: 계획 체인 run_60c0ebe3 plan 6 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 병렬 그룹 중 넘긴 질문은 미답 기본값이 걸리지 않아 체인이 선다)
+- [2026-10-19] **체인 실행 시점 승인·기존 것을 깨는 변경 대기의 재알림** — 사용자 몫 ①·④ 로 넘긴 질문은 상한 없이 기다리고 처음 한 번만 `PushNotification` 으로 알린다. 일정 시간(예: 30분)마다 다시 알리는 장치를 둔다(`chain-plan/references/user-relay.md`「사용자에게 넘기기」) (출처: 계획 체인 run_60c0ebe3 plan 6 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 첫 알림을 놓치면 ①·④ 질문이 열린 채 체인이 선다)
 
 ### llm-wiki · vault
 
