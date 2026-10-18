@@ -1,12 +1,14 @@
-﻿# check-plan.ps1 — plan.md 의 기계로 갈리는 서식을 검사한다 (pjc:plan Step 6 이 리뷰어보다 먼저 부르는 헬퍼 — hook 아님)
+﻿# check-plan.ps1 — plan.md 의 기계로 갈리는 서식과, 회차 끝에 [x] task 의 실행 증거를 검사한다
+#   (pjc:plan Step 6 과 pjc:implement 최종 리뷰가 리뷰어보다 먼저 부르는 헬퍼 — hook 아님)
 #
-# 사용: check-plan.ps1 <plan.md 경로>
+# 사용: check-plan.ps1 <plan.md 경로>                 서식 검사(계획 시점)
+#       check-plan.ps1 <plan.md 경로> -Base <sha>     증거 대조만(회차 끝) — 서식 검사는 돌리지 않는다
 # 출력은 ASCII 만이고 줄 종류는 넷이다:
 #   check-plan <줄>: <코드> <세부>        위반 하나
 #   check-plan: skip <검사> <사유>        건너뛴 검사 하나(위반 아님)
 #   check-plan: <N> problems              마지막 줄 — 위반 수
 #   check-plan: ERROR <사유>              입력 오류(exit 2)
-# 종료 코드: 0 위반 없음 · 1 위반 있음 · 2 입력 오류(경로 없음·파일 없음·읽기 실패).
+# 종료 코드: 0 위반 없음 · 1 위반 있음 · 2 입력 오류(경로 없음·파일 없음·읽기 실패 · -Base 모드의 git 밖·없는 BASE).
 #
 # 코드와 뜻 — 이 표가 정본이다(plan/SKILL.md Step 6 은 여기를 가리킨다):
 #   empty-command                Investigation Log 표의 명령 칸이 비었거나 줄표(-·—·–)뿐인 행
@@ -19,6 +21,11 @@
 #   goal-head <줄>               request(첫 절 앞 「> 요구:」 원문 인용)·base·approval·start·done(Goal 절의 「> BASE:」 등) 없음
 #   task-item T<N>               하위 항목이 「- [ ]·[x]·[X]·[/]」 뒤 (불요 …) 를 지나 **T<N>-<M>** 가 아니거나 번호가 제목과 다름
 #   task-line T<N> <줄>          task 에 files·acceptance·verify 줄 없음
+# -Base 모드의 코드 — 대상은 하위 항목이 전부 [x]·[X] 인 task 이고, 전부 「(불요」 인 task 는 뺀다:
+#   no-task-commit T<N>          BASE..HEAD 에 제목이 「{유형}: T<N> —」(또는 「T<N>:」)인 커밋이 없음
+#   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」·HUMAN-VERIFY 가 없음
+#   ERROR no-git · ERROR bad-base  plan 이 git 밖 · BASE 가 커밋이 아님(exit 2)
+# 제목 형식의 정본은 guard-bash 의 완료 커밋 판정이다(scripts/rules/bash-guard-rationale.md §14) — 같은 정규식을 쓴다.
 #
 # 왜 결정적 스크립트인가: 문자열로 갈리는 판정을 리뷰어(LLM)가 매 라운드 읽어 가르면 놓칠 수 있고 라운드를 쓴다.
 #   항목 단위 판정(케이스 경로마다의 표시·명령마다의 착수값·면제 사유의 옳음)은 리뷰어에 남는다.
@@ -27,10 +34,17 @@
 # 왜 「\|」 를 칸 경계로 보지 않는가: 표 칸 안의 정규식은 「\|」 로 적히고, 그것으로 가르면 명령 칸 자리가 밀린다.
 # Deferred 마커 서식은 재지 않는다 — session-context hook 의 계수와 하니스 정합 검사가 이미 각자 구현한다.
 # stdin 은 읽지 않는다. PS 5.1·7 양쪽에서 돈다 — Windows 에는 5.1 만 있을 수 있다.
-param([string]$PlanPath = '')
+param([string]$PlanPath = '', [string]$Base = '')
 
 $problems = New-Object System.Collections.Generic.List[string]
 function Add-Problem([int]$Line, [string]$Text) { $problems.Add(('check-plan {0}: {1}' -f $Line, $Text)) }
+function Complete-Check {
+    foreach ($p in $problems) { Write-Output $p }
+    Write-Output ('check-plan: {0} problems' -f $problems.Count)
+    if ($problems.Count) { exit 1 }
+    exit 0
+}
+function Get-Text([int[]]$Codes) { return -join ($Codes | ForEach-Object { [char]$_ }) }
 
 if (-not $PlanPath) { Write-Output 'check-plan: ERROR no-path'; exit 2 }
 if (-not (Test-Path -LiteralPath $PlanPath -PathType Leaf)) { Write-Output 'check-plan: ERROR not-found'; exit 2 }
@@ -82,10 +96,65 @@ function Split-Row([string]$Row) {
     return @()
 }
 
+# task 블록 — `### T<N>.` 줄부터 다음 그 줄 앞까지.
+$tasksTitle = Get-Text @(0xC791, 0xC5C5, 0x20, 0xB2E8, 0xACC4)    # 작업 단계
+function Get-TaskBlocks {
+    $blocks = @()
+    foreach ($l in (Get-ProseLines (Find-Section $tasksTitle))) {
+        if ($l.Text -match '^### T(\d+)\.') {
+            $blocks += [pscustomobject]@{ Id = [int]$Matches[1]; N = $l.N; Lines = (New-Object System.Collections.Generic.List[object]) }
+        } elseif ($blocks.Count) {
+            $blocks[-1].Lines.Add($l)
+        }
+    }
+    return $blocks
+}
+
+# ---- 증거 대조 (-Base) — [x] 로 닫힌 task 마다 BASE..HEAD 의 T<N> 커밋 본문에 검증 기록이 있는가 ----
+if ($Base) {
+    # PS 5.1 은 네이티브 출력을 콘솔 코드페이지로 디코딩해 커밋의 한글을 깨뜨린다. 콘솔 없는 호스트에서는 setter 가 던진다.
+    try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
+    $planDir = Split-Path -Parent (Resolve-Path -LiteralPath $PlanPath).Path
+    $top = $null
+    try { $top = (& git -C $planDir rev-parse --show-toplevel 2>$null) } catch { $top = $null }
+    if ($LASTEXITCODE -ne 0 -or -not $top) { Write-Output 'check-plan: ERROR no-git'; exit 2 }
+    $null = & git -C $top rev-parse --verify -q ($Base + '^{commit}') 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Output 'check-plan: ERROR bad-base'; exit 2 }
+
+    # 커밋 경계는 NUL — 본문의 줄바꿈과 섞이지 않는다.
+    $logText = (& git -C $top log --format='%B%x00' ($Base + '..HEAD') 2>$null) -join "`n"
+    $types = (@(@(0xAE30, 0xB2A5), @(0xC218, 0xC815), @(0xB9AC, 0xD329, 0xD1A0, 0xB9C1), @(0xBB38, 0xC11C), @(0xC124, 0xC815)) | ForEach-Object { Get-Text $_ }) -join '|'    # 기능|수정|리팩토링|문서|설정
+    $titleRx = '^\s*(?:(?:' + $types + ')\s*:\s*)?T(\d+)\s*(?::|' + [char]0x2014 + '|-)'
+    $verify = Get-Text @(0xAC80, 0xC99D)    # 검증
+    $evidenceRx = $verify + '\s*(?:' + (Get-Text @(0xACB0, 0xACFC)) + '|:)|HUMAN-VERIFY'    # 검증 결과 · 검증: · HUMAN-VERIFY
+    $commits = @()
+    foreach ($msg in ($logText -split "`0")) {
+        $msg = $msg.Trim()
+        if (-not $msg) { continue }
+        $parts = $msg -split "`n", 2
+        $m = [regex]::Match($parts[0], $titleRx)
+        if (-not $m.Success) { continue }
+        $body = if ($parts.Count -gt 1) { $parts[1] } else { '' }
+        $commits += [pscustomobject]@{ Id = [int]$m.Groups[1].Value; Evidence = [regex]::IsMatch($body, $evidenceRx) }
+    }
+
+    $unneeded = '(' + (Get-Text @(0xBD88, 0xC694))    # (불요
+    foreach ($b in @(Get-TaskBlocks)) {
+        $items = @($b.Lines | Where-Object { $_.Text -match '^- \[[ xX/]\]' })
+        if (-not $items.Count) { continue }
+        if (@($items | Where-Object { $_.Text -notmatch '^- \[[xX]\]' }).Count) { continue }
+        if (-not @($items | Where-Object { -not $_.Text.Contains($unneeded) }).Count) { continue }
+        $mine = @($commits | Where-Object { $_.Id -eq $b.Id })
+        if (-not $mine.Count) { Add-Problem $b.N ('no-task-commit T' + $b.Id) }
+        elseif (-not @($mine | Where-Object { $_.Evidence }).Count) { Add-Problem $b.N ('no-commit-evidence T' + $b.Id) }
+    }
+    Complete-Check
+}
+
 # ---- B1 필수 절 ----
 $required = [ordered]@{
     'goal' = 'Goal'; 'out-of-scope' = 'Out of Scope'; 'investigation-log' = 'Investigation Log'
-    'tasks' = ([string][char]0xC791 + [char]0xC5C5 + ' ' + [char]0xB2E8 + [char]0xACC4)    # 작업 단계
+    'tasks' = $tasksTitle
     'verification' = ([string][char]0xAC80 + [char]0xC99D + ' ' + [char]0xBC29 + [char]0xBC95)    # 검증 방법
     'deferred' = 'Deferred / Follow-up'
 }
@@ -149,16 +218,8 @@ foreach ($l in (Get-ProseLines (Find-Section 'Open Questions'))) {
 }
 
 # ---- A5·A6·B3·B4 task 마다 ----
-$tasks = Find-Section $required['tasks']
-if ($tasks) {
-    $blocks = @()
-    foreach ($l in (Get-ProseLines $tasks)) {
-        if ($l.Text -match '^### T(\d+)\.') {
-            $blocks += [pscustomobject]@{ Id = [int]$Matches[1]; N = $l.N; Lines = (New-Object System.Collections.Generic.List[object]) }
-        } elseif ($blocks.Count) {
-            $blocks[-1].Lines.Add($l)
-        }
-    }
+if (Find-Section $tasksTitle) {
+    $blocks = @(Get-TaskBlocks)
     $verifyLabel = '- **' + [char]0xAC80 + [char]0xC99D + '**:'    # - **검증**:
     $baseline = [string][char]0xCC29 + [char]0xC218                # 착수
     $exempt = '[' + [char]0xBA74 + [char]0xC81C                     # [면제
@@ -189,7 +250,4 @@ if ($tasks) {
     }
 }
 
-foreach ($p in $problems) { Write-Output $p }
-Write-Output ('check-plan: {0} problems' -f $problems.Count)
-if ($problems.Count) { exit 1 }
-exit 0
+Complete-Check

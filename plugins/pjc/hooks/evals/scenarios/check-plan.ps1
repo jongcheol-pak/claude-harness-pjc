@@ -1,7 +1,8 @@
 ﻿# scenarios/check-plan.ps1 — check-plan 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case)와 공유 변수($pluginRoot·$work)를 그대로 쓴다.
 # 무엇을 재는가: plan.md 결정적 검사(skills/plan/scripts/check-plan.ps1)의 판정 갈래마다 한 케이스 —
-#   정상 1 · A1~A6 · B1~B4 위반 · 하위 항목 상태 · 펜스 무시 · 입력 오류 · PS 5.1 · 출력 ASCII · git 밖 건너뜀.
+#   정상 1 · A1~A6 · B1~B4 위반 · 하위 항목 상태 · 펜스 무시 · 입력 오류 · PS 5.1 · 출력 ASCII · git 밖 건너뜀 ·
+#   증거 대조(-Base) — 커밋 없음·본문 증거 없음·T10≠T1·BASE 이전 제외·통과·HUMAN-VERIFY·불요/열린 task 제외·BASE 오류·git 밖·PS 5.1.
 #   코드와 뜻의 정본은 스크립트 머리 주석이다.
 # 정상 plan 하나를 두고 케이스가 한 군데씩 망가뜨린다 — 정상 형상이 여러 벌이면 한쪽만 고친 채 갈린다.
 # 대상은 hook 이 아니라 스킬 로컬 헬퍼라 `Invoke-Hook` 을 쓰지 않고 인자를 넘기는 자식 셸을 직접 띄운다.
@@ -159,6 +160,76 @@ if ($cpWinPs) {
     # 이 레포는 Windows 검증이라 5.1 이 없으면 건너뛰지 않고 실패로 낸다 — 건너뛰면 5.1 결함을 볼 자리가 사라진다.
     Assert-Case -Name "check-plan: PS 5.1 에서도 위반을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'empty-command'
     Assert-Case -Name "check-plan: PS 5.1 에서 정상 plan 은 통과한다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+}
+
+# ---- 증거 대조 (-Base) — 임시 git 레포에 BASE 커밋을 두고 그 앞뒤로 task 커밋을 쌓는다 ----
+# 커밋 메시지는 파일(-F)로 넘긴다 — 한글 메시지가 인자 인코딩을 거치지 않게 한다.
+$cpEvSeq = 0
+function New-EvidenceRepo([string[]]$After = @(), [string[]]$Before = @()) {
+    $script:cpEvSeq++
+    $dir = Join-Path $cpRoot ('ev' + $script:cpEvSeq)
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    & git -C $dir init -q 2>$null
+    $msgFile = Join-Path $cpRoot ('ev' + $script:cpEvSeq + '.msg')
+    $commit = {
+        param([string]$Msg)
+        [System.IO.File]::WriteAllText($msgFile, $Msg, (New-Object System.Text.UTF8Encoding($false)))
+        & git -C $dir -c user.name=eval -c user.email=eval@example.invalid -c commit.gpgsign=false commit -q --allow-empty -F $msgFile 2>$null
+    }
+    foreach ($m in $Before) { & $commit $m }
+    & $commit 'base'
+    $base = ((& git -C $dir rev-parse HEAD 2>$null) | Out-String).Trim()
+    foreach ($m in $After) { & $commit $m }
+    return @{ dir = $dir; base = $base }
+}
+function Invoke-CheckEvidence([string]$Text, [string]$Dir, [string]$Base, [string]$Exe = 'pwsh') {
+    Assert-EvalParentAlive
+    $file = Join-Path $Dir 'plan.md'
+    [System.IO.File]::WriteAllText($file, $Text, (New-Object System.Text.UTF8Encoding($false)))
+    $out = & $Exe -NoProfile -ExecutionPolicy Bypass -File $cpPath $file -Base $Base 2>&1
+    return @{ code = $LASTEXITCODE; out = (($out | Out-String)).Trim() }
+}
+
+$cpDone = $cpBase.Replace('- [ ] **T1-1** 한다', '- [x] **T1-1** 한다')
+$cpOk = "기능: T1 — 한다`n`n검증 결과: run → OK"
+$ev = New-EvidenceRepo @()
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: [x] task 에 T<N> 커밋이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
+$ev = New-EvidenceRepo @("기능: T1 — 한다`n`n무엇을 바꿨는지만 적었다")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: T<N> 커밋 본문에 검증 결과가 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
+$ev = New-EvidenceRepo @("기능: T10 — 다른 task`n`n검증 결과: run → OK")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: T10 커밋은 T1 의 증거가 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
+$ev = New-EvidenceRepo @() @($cpOk)
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: BASE 이전 커밋은 세지 않는다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
+$ev = New-EvidenceRepo @($cpOk)
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 한글 제목·한글 검증 결과 본문이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @("문서: T1 — 한다`n`nHUMAN-VERIFY: 화면 배치는 사용자 확인")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 본문의 HUMAN-VERIFY 를 증거로 받는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$cpSkip = $cpBase.Replace('- [ ] **T1-1** 한다', '- [x] **T1-1** (불요 — 근거)').Replace("## 검증 방법`n", "### T2. 둘`n`n- [ ] **T2-1** 아직`n- **Files**: ``b.ps1`` [면제 ①] 문서`n- **Acceptance**: 참`n- **검증**: ``run`` → OK`n`n## 검증 방법`n")
+$ev = New-EvidenceRepo @()
+$r = Invoke-CheckEvidence $cpSkip $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 전부 불요인 task 와 열린 task 는 대조하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckEvidence $cpDone $ev.dir 'deadbeefdeadbeef'
+Assert-Case -Name "check-plan 증거: 없는 BASE 는 ERROR 와 exit 2" -R $r -ExpectExit 2 -ExpectContains 'check-plan: ERROR bad-base'
+$cpNoGit = Join-Path $cpRoot 'ev-nogit'
+New-Item -ItemType Directory -Path $cpNoGit -Force | Out-Null
+$r = Invoke-CheckEvidence $cpDone $cpNoGit 'HEAD'
+Assert-Case -Name "check-plan 증거: git 밖이면 ERROR no-git 와 exit 2" -R $r -ExpectExit 2 -ExpectContains 'check-plan: ERROR no-git'
+if ($cpWinPs) {
+    $ev = New-EvidenceRepo @($cpOk)
+    $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base $cpWinPs.Source
+    Assert-Case -Name "check-plan 증거: PS 5.1 에서 한글 제목·본문 증거를 읽어 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+    $ev = New-EvidenceRepo @("기능: T1 — 한다`n`n무엇을 바꿨는지만 적었다")
+    $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base $cpWinPs.Source
+    Assert-Case -Name "check-plan 증거: PS 5.1 에서도 본문 증거 없음을 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
+} else {
+    Assert-Case -Name "check-plan 증거: PS 5.1 에서 한글 제목·본문 증거를 읽어 통과한다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+    Assert-Case -Name "check-plan 증거: PS 5.1 에서도 본문 증거 없음을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
 }
 
 }
