@@ -29,12 +29,12 @@
 ### Phase 4 — Fix
 - Test added: <테스트 파일:케이스>
 - Change: <파일:라인 + 한 줄 요약>
-- Defense in depth: <선택, 있다면>
 
 ### Verification
 - Build: OK
-- Tests: <X/Y>
-- Manual repro: 더 이상 재현 안 됨
+- RED: <명령> → <실패 판정 줄 원문 — 잘라 낸 자리는 …(N줄 생략)>
+- GREEN: <명령> → <통과 판정 줄 원문>
+- Original repro (같은 환경 재실행): <재현 절차 → 결과 판정 줄 원문 | 미검증 — <사유>>
 ```
 
 ## 피드백 루프 유형 (1-B)
