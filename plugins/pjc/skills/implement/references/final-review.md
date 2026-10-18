@@ -4,7 +4,10 @@
 
 ## 절차
 
-- **`completion-reviewer` 서브에이전트를 호출한다** — 회차 전체를 계획과 대조하는 것은 각 task를 지나온 쪽이 보기 어려운 각도다. 전달: `plan.md` 경로 · BASE SHA(`plan.md` `## Goal` 아래 `> BASE:` 줄의 값 — 커밋 제목으로 짐작하면 사이에 낀 커밋이 diff 범위를 틀어 놓는다) · HEAD SHA · `AGENTS.md` 경로.
+- **리뷰어를 부르기 전에 증거 대조를 1회 돌린다 — `"<skill>/../plan/scripts/check-plan.ps1" "<plan.md>" -Base <BASE>` 를 work-clock 과 같은 호출형(`report-format.md`「소요 기록」)으로 부르고, `<BASE>` 는 아래 BASE SHA 와 같은 값이다** — `[x]` 는 완료 커밋보다 먼저 바뀌어(`../SKILL.md`「자율 루프」 4번) 커밋도 검증 기록도 없이 닫힌 task 가 리뷰까지 기계 검사 없이 온다. 커밋 본문을 증거 자리로 정한 것은 pstack multi-phase-plan 의 *"Check a box only when its evidence exists"* 를 들인 것이다(`https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/multi-phase-plan.md`).
+  - **exit 1 이면 걸린 task 마다 그 task 의 검증 명령을 다시 돌려 `git commit --allow-empty` 로 보충 커밋(제목 `{유형}: T<N> — 검증 기록 보충` · 본문에 검증 결과)을 남기고 다시 돌린다** — 이력을 고치는(rebase·amend) 대신 증거를 더한다. 체크박스는 이미 `[x]` 라 보충 커밋은 체크박스 갱신과 따로 부른다.
+  - **exit 2 나 출력이 없으면 `증거 대조 미실행 — <사유>` 줄을 만든다.** 대조 출력이나 그 줄을 리뷰어 전달물에 싣는다 — 미실행이면 리뷰어가 커밋 본문을 직접 대조한다.
+- **`completion-reviewer` 서브에이전트를 호출한다** — 회차 전체를 계획과 대조하는 것은 각 task를 지나온 쪽이 보기 어려운 각도다. 전달: `plan.md` 경로 · BASE SHA(`plan.md` `## Goal` 아래 `> BASE:` 줄의 값 — 커밋 제목으로 짐작하면 사이에 낀 커밋이 diff 범위를 틀어 놓는다) · HEAD SHA · `AGENTS.md` 경로 · 위 증거 대조 출력(또는 미실행 줄).
 - **결과를 받아 판정한 뒤에 완료 선언으로 간다** — 호출만 하고 다음으로 넘어가면 리뷰가 없는 것과 같다.
 - **BLOCKER·MAJOR는 고치고 다시 호출한다** — 지적이 남은 산출물을 통과시키면 그 결함이 다음 회차로 간다. MINOR 는 아래 「필터 패스」가 가른다. (중계 모드 예외는 `../../plan/references/relay-mode.md`「중계 모드」)
 
