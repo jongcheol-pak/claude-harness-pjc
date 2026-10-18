@@ -66,7 +66,7 @@ plan 2: …
 미답 시한: 30분 — 넘긴 답 뒤집기·범위 변경 질문은 이 시간 뒤 보수 기본값(`E: 미답 시한 <N>분` · 45분 이하 — `references/user-relay.md`「미답 기본값」)
 대기 보호: <켜짐 | 꺼짐 — `references/wait-exit.md`「대기 보호」>
 병렬: <그룹 · 동시 상한 · 체인 브랜치 | 없음 — `references/parallel.md`「병렬 그룹」>
-PR 모드: <꺼짐(끝에 PR 하나) — [P] 로 켠다 | 불가 — <사유> — `references/pr-mode.md`「켜기」>
+PR 모드: <꺼짐(끝에 PR 하나) — [P] 로 켠다(<기본>에서 새 체인 브랜치) | 불가 — <사유> — `references/pr-mode.md`「켜기」>
 
 [Y] 승인 / [P] PR 모드로 승인 / [E] 수정 요청 / [N] 중단
 ```
@@ -75,7 +75,7 @@ PR 모드: <꺼짐(끝에 PR 하나) — [P] 로 켠다 | 불가 — <사유> �
 
 - **위임되지 않는 것이 있다 — `../plan/references/plan-template.md` 「승인 필요 항목」의 「실행 시점에 별도 승인」 목록이다** — 체인 승인에 적혀 있어도 그 실행은 그때 사용자에게 간다. 목록 안의 DB 변경이라도 파괴적 형태는 여기에 든다. 단 병렬 그룹의 worktree 로컬 병합은 `references/parallel.md`「병렬 그룹」 대로 `Y` 가 위임한다.
 - **`Y` 는 `판정 범위:` 줄에 대한 동의이기도 하다 — 글로벌 「외부 공개 API 삭제·호환을 깨는 변경은 승인」 밖의 API·설정 변경을 이 줄이 채운다** — 외부 공개 API 를 깨는 변경은 사용자 몫 ④ 로 남는다.
-- **`P` 는 `Y` 에 PR 모드를 더한다 — `references/pr-mode.md` 를 따른다.**
+- **`P` 는 `Y` 에 PR 모드를 더한다 — 새 체인 브랜치를 만들고 끝에 기본 브랜치 PR 을 연다(`references/pr-mode.md`「켜기」·「P 체인 끝 PR」).**
 - **`E` 면 그 계획의 재진술·체크리스트·판정 원칙을 고쳐 다시 내고, `N` 이면 Run 을 만들지 않고 보고한 뒤 끝낸다.**
 
 ## Run·Task
@@ -139,5 +139,5 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 
 ## 하지 않는 것
 
-- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제(`references/report.md`「인계 파일 정리」)와 병렬 병합 커밋(`references/parallel.md`「병합」)·PR 모드의 fast-forward(`references/pr-mode.md`「병렬」)·`Y` 의 체인 끝 PR(같은 파일 「Y 체인 끝 PR」)이다.
+- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제(`references/report.md`「인계 파일 정리」)와 병렬 병합 커밋(`references/parallel.md`「병합」)·PR 모드의 체인 브랜치 생성·push(`references/pr-mode.md`「켜기」)·fast-forward(같은 파일 「병렬」)·체인 끝 PR(「Y 체인 끝 PR」·「P 체인 끝 PR」)이다.
 - **멈춘 워커의 자동 재개** — 재개는 사용자가 「plan N부터」로 부른다. 중단·무관한 요청은 `references/interrupt.md`「사용자 중단」·「무관한 요청」 을 따른다. 사용자가 stall·`failed` 로 멈춘 워커를 탭에서 직접 이어 가게 했다고 알리면 `references/manual-resume.md`「직접 재개」 를 따른다. 예외는 `references/manual-resume.md`「무응답 실패 뒤 늦은 답」 하나다 — 사용자가 워커 탭에 입력해야 이어진다. **멈춘 계획에 새 워커를 띄우는 선택지도 내지 않는다** — 새 워커는 계획을 처음부터 다시 실측해 앞 워커의 진척을 버린다. 새 워커는 사용자가 「plan N부터」로 부를 때만이다.
