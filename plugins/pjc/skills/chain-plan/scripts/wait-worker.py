@@ -9,12 +9,14 @@
              Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
 - freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 — message 와 같은 축약).
 - orphaned   대기를 띄운 셸·세션이 사라졌다(두 모드 공통 · 본문 없음).
+- deadline   (`--answer-by` 만) 시한까지 배치가 없었다(본문 없음).
 
 진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄,
 `--pr <base>` 면 PR 단계마다 한 줄(문면은 `pr_stage.py` 모듈 docstring). 따로 깨우지 않고
 message·stall·error 원문 앞에 싣는다.
 
 모드: `--dispatch` 하나(단일) · 여럿(병렬 — `--repo`·`--label` 도 같은 수·같은 순서) · `--place <dispatch>`(자리 대기).
+`--answer-by <epoch 초>` 는 단일에만 — 사용자에게 넘긴 질문의 미답 시한 대기다(화면을 읽지 않는다 · 45분 안).
 
 판정 근거(멈춤·진행 감지·PR 단계·고아 감시·외부 호출 시한·stdout 인코딩)는
 `../references/wait-worker-rationale.md` 가 정본이다.
@@ -44,13 +46,20 @@ CLI_WAIT_MARGIN_SEC = 60     # check --wait 는 자기 --timeout-ms 에 이만�
 GIT_TIMEOUT_SEC = 30         # lint.py·relocate-agents.py 의 git 시한과 같다
 SWEEP_AGE_SEC = 7 * 24 * 3600
 PR_PENDING_MAX = 6           # CI pending 인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
+ANSWER_MAX_SEC = 2700        # --answer-by 상한 — 백그라운드 대기 생존 실측 45분
 
 
 def screen_hash(lines):
     return hashlib.sha1('\n'.join(lines).encode('utf-8')).hexdigest()[:16]
 
 
-def _action(kind, dispatch, streak=0, on_place=False, parallel=False):
+def _action(kind, dispatch, streak=0, on_place=False, parallel=False, answer_by=None):
+    if kind == 'message' and answer_by is not None:
+        return ('배치를 chain-plan 「워커 루프」 규칙대로 처리하고 ack 한 뒤, 사용자에게 넘긴 질문이 아직 열려 있으면 '
+                '같은 --answer-by %d 로 다시 띄운다 (답을 reply 했으면 --answer-by 없이)' % answer_by)
+    if kind == 'deadline':
+        return ('사용자에게 넘긴 질문에 시한까지 답이 없다 — references/user-relay.md 「미답 기본값」 대로 '
+                '기본값으로 reply 하고 알린 뒤 --answer-by 없이 대기를 다시 띄운다')
     if kind == 'message' and on_place:
         return ('배치를 chain-plan 「워커 루프」 규칙대로 처리하고 ack 한 뒤 같은 --place 대기를 다시 띄운다 '
                 '(자리 대기 중이라 --dispatch 대기를 띄우지 않는다)')
@@ -74,8 +83,6 @@ def _action(kind, dispatch, streak=0, on_place=False, parallel=False):
     if kind == 'error':
         return '앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고, references/cli-errors.md 「오류 응답」 을 따른다'
     if kind == 'orphaned':
-        # 띄운 세션이 죽었으면 아무도 읽지 않는다. 읽는 쪽이 있다면 감시가 오판한 것이라 대기를 잇되,
-        # 오판이 거듭되면 주기마다 깨어나는 폴링이 되살아나므로 두 번째에서 멈춘다.
         return ('대기를 띄운 셸·세션이 사라졌다 — 이 줄을 읽고 있다면 같은 대기를 다시 띄운다 '
                 '(직전 대기도 orphaned 였으면 다시 띄우지 않고 보고하고 멈춘다)')
     return '같은 dispatch 의 새 대기가 이어받았다 — 아무것도 하지 않는다'
@@ -112,13 +119,13 @@ def _parse(raw):
     return data, None
 
 
-def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=None, alive=None):
+def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=None, alive=None,
+              answer_by=None, now=time.time):
     """대기 반복. call(args)->str 은 `<CLI> orchestration <args>` 의 stdout, lock.owned() 는 잠금 소유,
-    progress 는 진행 감지(Progress — 없으면 끈다)다 — 바깥에서 넣어 골든이 Karina·git 없이 갈래를 잰다.
-    poll_ms 가 없으면 timeout_ms 와 같아 주기마다 화면을 읽는다. 시한은 두지 않는다 — 백그라운드 실행은
-    45분(2,700초)까지 살아 완료 알림을 냈다 — 그 이상은 미측정(2026-10-06 실측).
-    dispatch 는 하나(str) 또는 병렬 워커 여럿(list)이고, progress 도 하나 또는 같은 순서의 list 다 —
-    배치는 코디네이터 터미널에 오므로 check 는 한 번이고, 화면 비교·멈춤만 dispatch 마다 따로 센다."""
+    progress 는 진행 감지(Progress — 없으면 끈다), now 는 시계다 — 바깥에서 넣어 골든이 Karina·git 없이 갈래를 잰다.
+    poll_ms 가 없으면 timeout_ms 와 같아 주기마다 화면을 읽는다. answer_by(epoch 초)가 있으면 화면을 읽지 않고
+    그 시각에 deadline 으로 끝나며, 없으면 시한이 없다(근거는 rationale 「미답 시한」·「병렬 대기」).
+    dispatch 는 하나(str) 또는 병렬 워커 여럿(list)이고, progress 도 하나 또는 같은 순서의 list 다."""
     ids = [dispatch] if isinstance(dispatch, str) else list(dispatch)
     progs = [] if progress is None else (list(progress) if isinstance(progress, list) else [progress])
     parallel = len(ids) > 1
@@ -141,21 +148,19 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             p.commit()
 
     def emit(kind, body, lines_done, who=head, **kw):
-        # 진행 줄을 실어 내보낼 때만 그 상태를 저장한다 — 진행만 있는 주기에는 깨우지도 저장하지도 않아,
-        # 다음 주기가 같은 기준에서 같은 줄을 다시 계산한다(물러나거나 끊겨도 줄을 잃지 않는다).
         commit_all()
         return _result(kind, who, lines_done + list(body), **kw)
 
     while True:
         wait = min(poll, remaining)
+        if answer_by is not None:
+            wait = max(1, min(wait, int((answer_by - now()) * 1000)))
         try:
             raw = call(['check', '--json', '--wait', '--timeout-ms', str(wait)])
         except OSError as e:
             return _result('error', head, ['CLI 실행 실패: %s' % e])
         if alive is not None and not alive():
             return _result('orphaned', head)
-        # 진행 감지(git 하위 프로세스)를 잠금 확인보다 먼저 한다 — 확인 뒤에 돌리면 그 사이 잠금을 잃은
-        # 대기가 배치를 싣고 나간다. poll 은 저장하지 않으므로 앞에 둬도 상태를 쓰지 않는다.
         lines_done = poll_all()
         if not lock.owned():
             return _result('superseded', head)
@@ -163,11 +168,13 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
         if err is not None:
             return emit('error', [err], lines_done)
         if data.get('count', 0) > 0:
-            return emit('message', [_compact(data)[:RESULT_CAP]], lines_done)
+            return emit('message', [_compact(data)[:RESULT_CAP]], lines_done, answer_by=answer_by)
         if not lines_done and progs:
-            # 줄 없는 갱신(HEAD 시드·무효 기준 복구·비 task 커밋만 지난 sha 전진)은 이 주기에 저장한다 —
-            # 미루면 첫 출력 때 그 사이 task 커밋이 기준 뒤로 묻힌다.
             commit_all()
+        if answer_by is not None:
+            if now() >= answer_by:
+                return emit('deadline', [], lines_done)
+            continue
         remaining -= wait
         if remaining > 0:
             continue
@@ -185,10 +192,6 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
                 return emit('error', [err], lines_done)
             lines = [str(l) for l in data.get('lines') or []]
             h = screen_hash(lines)
-            # 화면이 같아도 그 사이 HEAD 가 움직였으면 일하는 워커다 — worker-read 가 고정된 화면을 돌려준
-            # 사례가 있다(2026-10-15). 진행 줄(lines_done)은 내보낼 때까지 매 주기 다시 나와 기준이 될 수 없다.
-            # HEAD 를 처음 본 비교(None → sha)는 진행으로 세지 않는다.
-            # `head` 는 이 함수에서 dispatch 이름이라 다른 이름을 쓴다 — 덮으면 뒤의 error·superseded 가 해시를 받는다.
             cur_head = progs[i].last_head if i < len(progs) else None
             moved = None not in (cur_head, head_at_read[d]) and cur_head != head_at_read[d]
             head_at_read[d] = cur_head
@@ -197,9 +200,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             moved = moved or (busy and pending_run[d] <= PR_PENDING_MAX)
             streak[d] = streak[d] + 1 if h == last_hash[d] and not moved else 0
             last_hash[d] = h
-            # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
             if streak[d] + 1 >= stall:
-                # 진행 줄이 있으면 화면과 섞이지 않게 구분 줄을 둔다 — 화면 끝 40줄은 형식이 정해져 있지 않다.
                 sep = ['— 화면 끝 %d줄 —' % STALL_TAIL] if lines_done else []
                 return emit('stall', sep + lines[-STALL_TAIL:], lines_done, who=d,
                             streak=streak[d] + 1, parallel=parallel)
@@ -384,9 +385,6 @@ def _cli_timeout(args):
 
 def make_call(cli):
     def call(args):
-        # keepalive 줄이 stderr 로 15초마다 오므로 버린다. 출력에 서로게이트가 섞여 엄격 디코딩이 깨진다(실측).
-        # 시한을 넘긴 CLI 는 응답 불능이다 — OSError 로 바꿔 기존 「CLI 실행 실패」 → error 갈래로 보낸다
-        # (TimeoutExpired 는 OSError 하위가 아니라 그대로 두면 호출부 except 를 지나 대기가 RESULT 없이 죽는다).
         try:
             p = subprocess.run([cli, 'orchestration'] + args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                stderr=subprocess.DEVNULL, timeout=_cli_timeout(args))
@@ -407,8 +405,6 @@ class Progress:
         self.git, self.read_plan, self.store, self.label = git, read_plan, store, label
         self.pr = pr
         self.pending = None
-        # 마지막으로 본 HEAD — 멈춤 판정이 화면 비교 사이의 커밋을 진행으로 센다. 저장 기준(`sha`)과 달리
-        # 메모리에만 두고, git 이 실패한 주기에는 바꾸지 않는다(실패를 「달라짐」으로 세지 않게).
         self.last_head = None
 
     def start(self):
@@ -506,8 +502,6 @@ class FileStore:
         return data if isinstance(data, dict) else {}
 
     def save(self, st):
-        # 임시 파일에 쓰고 바꿔 넣는다 — 제자리 쓰기는 다른 대기의 load() 에 반쯤 쓴 JSON 을 보인다.
-        # 저장 실패는 삼킨다: 진행 표시는 부가 기능인데 크래시로 RESULT 줄을 잃으면 체인이 선다.
         folder, name = os.path.split(self.path)
         tmp = None
         try:
@@ -576,11 +570,16 @@ def main(argv=None):
     ap.add_argument('--label', action='append', default=None)
     ap.add_argument('--poll-ms', type=int, default=None)
     ap.add_argument('--pr', default=None)
+    ap.add_argument('--answer-by', type=int, default=None)
     a = ap.parse_args(argv)
     if (a.dispatch is None) == (a.place is None):
         ap.error('--dispatch 와 --place 중 하나만 준다')
     if a.pr is not None and not a.repo:
         ap.error('--pr 는 --repo 와 함께 준다')
+    if a.answer_by is not None and (a.place is not None or len(a.dispatch) > 1):
+        ap.error('--answer-by 는 --dispatch 하나와만 준다')
+    if a.answer_by is not None and a.answer_by - time.time() > ANSWER_MAX_SEC:
+        ap.error('--answer-by 는 지금부터 %d초 안이어야 한다' % ANSWER_MAX_SEC)
     for name, vals in (('--repo', a.repo), ('--label', a.label)):
         if vals is not None and a.dispatch is not None and len(vals) != len(a.dispatch):
             ap.error('%s 는 --dispatch 와 같은 수만큼 같은 순서로 준다' % name)
@@ -603,7 +602,7 @@ def main(argv=None):
         poll_ms = poll_ms or 60000
     lock = FileLock(ids[0]) if len(ids) == 1 else AllLocks([FileLock(d) for d in ids])
     out = wait_loop(make_call(a.cli), lock, dispatch=ids if len(ids) > 1 else ids[0], timeout_ms=a.timeout_ms,
-                    stall=a.stall, poll_ms=poll_ms, progress=progress, alive=alive)
+                    stall=a.stall, poll_ms=poll_ms, progress=progress, alive=alive, answer_by=a.answer_by)
     lock.release()
     print('\n'.join(out), flush=True)
     return 0
