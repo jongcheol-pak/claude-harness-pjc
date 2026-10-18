@@ -437,20 +437,19 @@ LEDGER_ITEM_MAX = 600
 
 
 def check_deferred_stats(ledger, closed):
-    """대기(`deferred.md`)와 종결(`deferred-closed.md`) 두 파일을 합산해 앵커와 대조한다.
+    """대기(`deferred.md`)와 종결(`deferred-closed.md`) 두 파일을 각각 세어 앵커와 대조한다.
 
     **앵커는 대기 파일에만 있다** — 계수의 정본을 한 곳에 두어야 두 파일이 갈리지 않는다.
-    ⚠ 종결 파일을 읽지 않으면 `done`이 0이 되어 불변식이 통째로 어긋난다(조용한 통과가
-    아니라 즉시 FAIL이므로 위험 방향은 안전하나, 인자를 빠뜨린 호출이 없어야 한다).
+    ⚠ 종결 파일을 읽지 않으면 `done`이 0이 되어 앵커와 즉시 어긋난다(조용한 통과가
+    아니라 FAIL이므로 위험 방향은 안전하나, 인자를 빠뜨린 호출이 없어야 한다).
     """
     # 줄 끝(`$`)까지 앵커링한다 — 접두 매치로 두면 필드가 빠지거나 늘어도 조용히 통과해
-    # 대장↔대조기 lockstep이 성립하지 않는다(4필드 도입 시 실측으로 드러났다).
+    # 대장↔대조기 lockstep이 성립하지 않는다(필드 수를 바꾼 회차마다 실측으로 드러났다).
     m = re.search(
-        r"현행 잔량\(기계 대조 대상\)\*\*: 대기 (\d+) / 종결 (\d+)"
-        r" / 정리 삭제 누계 (\d+) / 총 등재 누계 (\d+)\s*$",
+        r"현행 잔량\(기계 대조 대상\)\*\*: 대기 (\d+) / 종결 (\d+)\s*$",
         ledger, re.M)
     if not m:
-        die("대장에서 「현행 잔량」 전용 앵커를 찾지 못함(4필드 형식이 아닐 수 있다)")
+        die("대장에서 「현행 잔량」 전용 앵커를 찾지 못함(`대기 N / 종결 M` 2필드 형식이 아닐 수 있다)")
     lines = ledger.split("\n")
     closed_lines = closed.split("\n")
     try:
@@ -464,22 +463,20 @@ def check_deferred_stats(ledger, closed):
     # 대기는 날짜 '접두'만 본다 — `[등록일, **vN에서 부분 해소**]` 부기 형식이 실재해
     # `\]`로 닫으면 조용히 누락된다. 종결은 `[등록일 → 종결일]` 범위 형식.
     wait = sum(1 for l in lines[w:] if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l))
-    done = sum(1 for l in closed_lines[d:] if re.match(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]", l))
-    a_wait, a_done, purged, enrolled = (int(g) for g in m.groups())
+    done = sum(1 for l in closed_lines[d:] if CLOSED_ITEM_RX.match(l))
+    a_wait, a_done = (int(g) for g in m.groups())
     issues = []
     if (wait, done) != (a_wait, a_done):
         issues.append("Deferred 집계 — 앵커 대기 %d/종결 %d / 실측 대기 %d/종결 %d"
                       % (a_wait, a_done, wait, done))
-    # 누계 2종은 실측 대조가 불가능하므로(삭제된 항목은 파일에 없다) 불변식으로만 구속한다.
-    # 어긋나면 누계를 서로 맞춰 green을 만들지 말고 원인 연산을 고칠 것 — 대장 「카운트 기준」.
-    if a_wait + a_done + purged != enrolled:
-        issues.append("Deferred 불변식 — 대기 %d + 종결 %d + 삭제누계 %d = %d ≠ 총등재누계 %d"
-                      % (a_wait, a_done, purged, a_wait + a_done + purged, enrolled))
     # 항목 상한 600자는 대장 머리말이 선언하지만 **재는 축이 없어 2배까지 자랐다**. **통지 등급인 이유**: 게이트로 두면 기존 초과분이
     #  전부 red 라 그 회차가 통째로 멈춘다 — 재는 것이 먼저이고 조이는 것은 그 다음이다.
+    #  종결 항목도 같은 상한으로 잰다 — 기각 1줄이 조사 기록으로 다시 자라지 않게 한다.
     over = [(l[:36], len(l)) for l in lines[w:]
             if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l)
             and len(l) > LEDGER_ITEM_MAX]
+    over += [(l[:36], len(l)) for l in closed_lines[d:]
+             if CLOSED_ITEM_RX.match(l) and len(l) > LEDGER_ITEM_MAX]
     notices = []
     if over:
         notices.append("대장 항목 상한 초과 %d건(상한 %d자) — 통지 등급이라 exit 0 을 "
@@ -1001,44 +998,38 @@ def check_line_endings():
     return issues, n
 
 
-# 축 9가 인정하는 종결 사유. 「대상 소멸」은 독립 범주가 아니라 `기각(대상 소멸 — …)` 형태의
-#   하위 사유라 넣지 않는다(넣어도 기각과 중복 매치일 뿐이다). `확인 종결`·`실측 종결`은
-#   실사용 4건이 있어 인정한다 — 사유를 안 적은 것이 아니라 다른 말로 적은 것이다.
-CLOSE_REASON_RX = re.compile(r"기각|반영|병합|해소|확인 종결|실측 종결|사유 미상")
-# 인정하되 세는 표현 — 근거는 `harness-consistency-rationale.md` §3
-VAGUE_REASON_RX = re.compile(r"(?<!`)사유 미상(?!`)")
-# 근거는 `harness-consistency-rationale.md` 의 「축 ⑨ — 종결 사유 표기와 `사유 미상`의 취급」.
-CLOSE_REASON_TAG = "**종결 사유**:"
+# 축 9 — 종결 대장은 기각만 담고 항목은 `- [등록일 → 종결일] **요지** — 기각: 사유` 1줄이다.
+#   반영·해소·병합으로 닫힌 것은 대장에서 지우고 근거는 커밋 본문에 둔다(`deferred.md` 머리말).
+#   근거는 `harness-consistency-rationale.md` 의 「축 ⑨ — 종결 대장을 기각 1줄로 묶는 이유」.
 CLOSED_ITEM_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\]")
+CLOSED_REJECT_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}\] \*\*[^*\n]+?\*\* — 기각: \S")
 
 
 def check_close_reasons():
-    """종결 사유 명시 — `deferred-closed.md`의 각 항목이 왜 닫혔는지 적었는가.
+    """종결 사유 명시 — `deferred-closed.md` `## 종결` 의 각 항목이 기각 1줄 형식인가.
 
-    **재는 것은 「사유가 있는가」이지 「기각인가」가 아니다.** 대장 규약은 한때
-    *「기각만 여기로」*였으나 실측은 다르다 — 반영·병합·해소가 이미 그 파일에 산다.
-    규약을 문자 그대로 강제하면 이력 본문 61건을 파일에서 들어내야 하므로, 회차 24가
-    **실태를 규약으로** 삼고 이 축은 사유 명시만 잰다.
-
-    왜 필요한가는 `harness-consistency-rationale.md` 의 「축 ⑨ — 종결 사유 명시가 왜 필요한가」.
+    재는 것은 둘이다 — 항목 줄이 형식(볼드 요지 + `— 기각:` + 사유)을 갖췄는가, 항목 밖의
+    줄(하위 불릿·이어 쓴 줄)이 없는가. 반영·해소·병합이 다시 이 파일로 들어오면 형식에서 걸린다.
     """
-    issues, notices, n, vague = [], [], 0, 0
-    for line in read(LEDGER_CLOSED_MD).splitlines():
+    issues, n = [], 0
+    lines = read(LEDGER_CLOSED_MD).splitlines()
+    try:
+        d = next(i for i, l in enumerate(lines) if l.strip() == "## 종결")
+    except StopIteration:
+        die("`deferred-closed.md`에서 `## 종결` 구간 헤딩을 찾지 못함")
+    for line in lines[d + 1:]:
+        if not line.strip():
+            continue
         if not CLOSED_ITEM_RX.match(line):
+            issues.append("종결 대장의 항목 밖 줄(하위 불릿·이어 쓴 줄 — 기각은 1줄이다): %s"
+                          % line.strip()[:70])
             continue
         n += 1
-        tag = line.find(CLOSE_REASON_TAG)
-        if VAGUE_REASON_RX.search(line if tag < 0 else line[tag:]):
-            vague += 1
-        if not CLOSE_REASON_RX.search(line):
+        if not CLOSED_REJECT_RX.match(line):
             head = re.search(r"\*\*(.+?)\*\*", line)
-            issues.append("종결 사유 없음: %s" % (head.group(1)[:70] if head else line[:70]))
-    if vague:
-        notices.append(
-            "종결 사유 `사유 미상` %d건 — **막지 않고 센다**. 인정 표현에서 빼면 정말 모를 때 적을 자리가"
-            " 없어져 red 를 피하려 억지 사유를 적게 되고, 그것은 지금보다 나쁘다. 회차 25 가 23건을"
-            " 전수 재판정해 0 으로 내렸고, 그때 **본문을 읽으면 안 갈리는 것은 하나도 없었다**." % vague)
-    return issues, n, notices
+            issues.append("기각 1줄 형식이 아닌 종결 항목: %s"
+                          % (head.group(1)[:70] if head else line[:70]))
+    return issues, n, []
 
 
 # 축 10이 검사하는 포인터. **손으로 관리한다** — 「유일한 방어선」·「정본」 같은 말을 grep 하는

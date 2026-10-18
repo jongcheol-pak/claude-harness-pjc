@@ -174,7 +174,7 @@ try {
         }
 
         # Deferred 대장 최고령 신호는 `session-ledger-signal.ps1`이 계산한다 —
-        #   그 신호만 대장 3파일을 파싱해(항목별 날짜 부기 인식·미래 날짜 배제) 입력이 다르다.
+        #   그 신호만 대기 파일(`deferred.md`)의 `## 대기` 를 파싱해(항목별 날짜 부기 인식·미래 날짜 배제) 입력이 다르다.
         . (Join-Path $PSScriptRoot 'session-ledger-signal.ps1')
         $ledgerLine = Get-LedgerSignal -cwd $cwd
         if ($ledgerLine) { $lines.Add($ledgerLine); $cwdBaseCount++ }

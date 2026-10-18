@@ -51,9 +51,9 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 
 ### frontmatter 필드 (pjc가 쓸 수 있는 것)
 
-**출처**: code.claude.com/docs/en/skills (2026-07-29 확인) — 아래 필드 목록·치환 변수·`disallowed-tools` 해제 규칙·`background`의 도구 축소는 모두 이 문서 기준이다.
+**출처**: code.claude.com/docs/en/skills (2026-07-29 확인) — 아래 필드 목록·치환 변수·disallowed-tools 해제 규칙·`background`의 도구 축소는 모두 이 문서 기준이다.
 
-공식 지원 필드는 17종이며, 그중 이 하니스에서 실제로 쓸 만한 것만 추린다. **표준(agentskills.io) 밖의 Claude Code 확장 필드는 다른 도구에서 무시되므로, 그 필드에 의존하는 동작은 문서 규칙으로도 한 겹 받쳐 둔다**(예: `disallowed-tools`에 기댄 자율 루프의 질문 금지).
+공식 지원 필드는 17종이며, 그중 이 하니스에서 실제로 쓸 만한 것만 추린다. **표준(agentskills.io) 밖의 Claude Code 확장 필드는 다른 도구에서 무시되므로, 그 필드에 의존하는 동작은 문서 규칙으로도 한 겹 받쳐 둔다**(예: disallowed-tools에 기댄 자율 루프의 질문 금지).
 
 | 필드 | 용도 |
 |---|---|
@@ -62,8 +62,8 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 | when_to_use | 트리거 조건을 `description`에서 분리 — 목록 예산은 둘의 **합산**으로 잡힌다 |
 | `argument-hint` | `/skill` 입력 시 보이는 인자 힌트 |
 | `arguments` | 이름 있는 위치 인자 선언 — 본문에서 `$name`으로 치환 |
-| `allowed-tools` | 이 스킬이 쓸 도구를 화이트리스트로 한정 |
-| `disallowed-tools` | 이 스킬 활성 중 제거할 도구. **사용자의 다음 메시지에서 해제**되므로 영구 차단이 아니다 |
+| allowed-tools | 이 스킬이 쓸 도구를 화이트리스트로 한정 |
+| disallowed-tools | 이 스킬 활성 중 제거할 도구. **사용자의 다음 메시지에서 해제**되므로 영구 차단이 아니다 |
 | `model` | 이 스킬이 쓸 모델 고정 |
 | `effort` | 이 스킬 활성 중 effort 오버라이드 — `low`·`medium`·`high`·`xhigh`·`max` (모델에 따라 가용 등급이 다르다) |
 | `context` | 스킬에 주입할 추가 컨텍스트 |

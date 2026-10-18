@@ -62,13 +62,14 @@
     "mutate": [
       {
         "file": "docs/plans/deferred.md",
-        "find": "총 등재 누계 6",
-        "replace": "총 등재 누계 7"
+        "find": "대기 2 / 종결 1",
+        "replace": "대기 2 / 종결 2"
       }
     ],
     "expect_keywords": [
       "[MISMATCH]",
-      "Deferred 불변식"
+      "Deferred 집계",
+      "실측 대기 2/종결 1"
     ]
   },
   {
@@ -95,8 +96,8 @@
     "mutate": [
       {
         "file": "docs/plans/deferred.md",
-        "find": "대기 2 / 종결 1 / 정리 삭제 누계 3 / 총 등재 누계 6",
-        "replace": "대기 3 / 종결 1 / 정리 삭제 누계 2 / 총 등재 누계 6"
+        "find": "대기 2 / 종결 1",
+        "replace": "대기 3 / 종결 1"
       }
     ],
     "expect_keywords": [
@@ -112,8 +113,8 @@
     "mutate": [
       {
         "file": "docs/plans/deferred-closed.md",
-        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — **반영**: 처리 완료.",
-        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — **반영**: **처리 완료."
+        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: 처리하지 않기로 했다.",
+        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: **처리하지 않기로 했다."
       }
     ],
     "expect_keywords": [
@@ -512,81 +513,55 @@
     ]
   },
   {
-    "id": "harness-close-reason-vague-in-tag",
+    "id": "harness-close-reason-not-reject",
     "checker": "harness",
     "fixture": "minimal-repo",
-    "expect_rc": 0,
+    "expect_rc": 1,
     "mutate": [
       {
         "file": "docs/plans/deferred-closed.md",
-        "find": "**종결된 항목** — **반영**: 처리 완료.",
-        "replace": "**종결된 항목** — **종결 사유**: 사유 미상 — 종결 시점 서술이 없다."
+        "find": "— 기각: 처리하지 않기로 했다.",
+        "replace": "— 반영: 처리 완료."
       }
     ],
     "expect_keywords": [
-      "[NOTICE] 종결 사유 `사유 미상` 1건",
-      "결과: 대조 전부 일치"
+      "[MISMATCH]",
+      "기각 1줄 형식이 아닌 종결 항목: 종결된 항목"
     ]
   },
   {
-    "id": "harness-close-reason-vague-backtick",
+    "id": "harness-close-reason-empty",
     "checker": "harness",
     "fixture": "minimal-repo",
-    "expect_rc": 0,
+    "expect_rc": 1,
     "mutate": [
       {
         "file": "docs/plans/deferred-closed.md",
-        "find": "**종결된 항목** — **반영**: 처리 완료.",
-        "replace": "**종결된 항목** — **반영**: 축 ⑨ 의 `사유 미상` 통지를 논한다."
+        "find": "— 기각: 처리하지 않기로 했다.",
+        "replace": "— 기각:"
       }
     ],
     "expect_keywords": [
-      "결과: 대조 전부 일치"
-    ],
-    "expect_absent": [
-      "[NOTICE] 종결 사유",
-      "[MISMATCH]"
+      "[MISMATCH]",
+      "기각 1줄 형식이 아닌 종결 항목"
     ]
   },
   {
-    "id": "harness-close-reason-vague-in-body",
+    "id": "harness-close-reason-subbullet",
     "checker": "harness",
     "fixture": "minimal-repo",
-    "expect_rc": 0,
+    "expect_rc": 1,
     "mutate": [
       {
         "file": "docs/plans/deferred-closed.md",
-        "find": "**종결된 항목** — **반영**: 처리 완료.",
-        "replace": "**종결된 항목** — 사유 미상 항목을 재판정한 회차의 후속이다. **종결 사유**: 반영 — 처리 완료."
+        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: 처리하지 않기로 했다.",
+        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: 처리하지 않기로 했다.\r\n  - 조사 경위를 이어 적은 하위 불릿"
       }
     ],
     "expect_keywords": [
-      "결과: 대조 전부 일치"
-    ],
-    "expect_absent": [
-      "[NOTICE] 종결 사유",
-      "[MISMATCH]"
-    ]
-  },
-  {
-    "id": "harness-close-reason-vague-notice",
-    "checker": "harness",
-    "fixture": "minimal-repo",
-    "expect_rc": 0,
-    "mutate": [
-      {
-        "file": "docs/plans/deferred-closed.md",
-        "find": "**종결된 항목** — **반영**: 처리 완료.",
-        "replace": "**종결된 항목** — **사유 미상**: 종결 시점 서술이 없다."
-      }
-    ],
-    "expect_keywords": [
-      "[NOTICE] 종결 사유 `사유 미상` 1건",
-      "막지 않고 센다",
-      "결과: 대조 전부 일치"
-    ],
-    "expect_absent": [
-      "[MISMATCH]"
+      "[MISMATCH]",
+      "종결 대장의 항목 밖 줄",
+      "조사 경위를 이어 적은 하위 불릿"
     ]
   },
   {
@@ -597,13 +572,13 @@
     "mutate": [
       {
         "file": "docs/plans/deferred-closed.md",
-        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — **반영**: 처리 완료.",
-        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 처리 완료."
+        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: 처리하지 않기로 했다.",
+        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 처리하지 않기로 했다."
       }
     ],
     "expect_keywords": [
       "[MISMATCH]",
-      "종결 사유 없음"
+      "기각 1줄 형식이 아닌 종결 항목"
     ]
   },
   {
@@ -615,7 +590,8 @@
       "종결 사유 명시"
     ],
     "expect_absent": [
-      "종결 사유 없음"
+      "기각 1줄 형식이 아닌",
+      "종결 대장의 항목 밖 줄"
     ]
   },
   {
@@ -869,11 +845,6 @@
         "file": "docs/plans/deferred.md",
         "find": "대기 2 / 종결 1",
         "replace": "대기 3 / 종결 1"
-      },
-      {
-        "file": "docs/plans/deferred.md",
-        "find": "총 등재 누계 6",
-        "replace": "총 등재 누계 7"
       }
     ],
     "expect_keywords": [
