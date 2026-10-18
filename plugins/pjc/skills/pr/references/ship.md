@@ -9,7 +9,7 @@
 1. **PR 을 읽는다** — `gh pr view <n> --json number,state,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,reviewDecision,title,body`. `state` 가 `OPEN` 이 아니면 멈추고 보고한다.
 2. **사람의 판단이 걸려 있으면 merge 하지 않는다** — `reviewDecision` 이 `CHANGES_REQUESTED` 이거나 미해결 리뷰 스레드가 있으면(조회는 `babysit.md` 「2. 리뷰 스레드」 의 `reviewThreads` 쿼리) 「사람 판단 대기」 로 보고하고 멈춘다. 스레드를 다루는 것은 babysit(`babysit.md`)이다.
 3. **PR head 를 받아 worktree 를 만든다** — `git fetch origin pull/<n>/head` 뒤 `git rev-parse FETCH_HEAD` 가 1번의 `headRefOid` 와 같은지 본다. 다르면 그 사이 push 가 들어온 것이니 1번부터 다시 한다. 같으면 `git worktree add --detach <스크래치 경로>/pr-<n> <headRefOid>`. 사용자의 체크아웃은 건드리지 않는다.
-4. **`pr-verifier` 를 부른다** — 입력은 PR 번호 · head full SHA · base 브랜치와 `baseRefOid` · worktree 경로 · 그 레포 `AGENTS.md` 경로다. **PR 에 이미 달린 판정 코멘트는 merge 근거로 쓰지 않고 ship 할 때마다 새로 돌린다** — 코멘트는 로그인한 누구나 달 수 있어 작성자를 믿을 수 없다.
+4. **`pr-verifier` 를 부른다** — 입력은 PR 번호 · head full SHA · base 브랜치와 `baseRefOid` · worktree 경로 · 그 레포 `AGENTS.md` 경로 · 1번의 PR 본문(`body` — 본문의 `화면 시나리오:` 줄을 head 에서 돌린다)이다. **PR 에 이미 달린 판정 코멘트는 merge 근거로 쓰지 않고 ship 할 때마다 새로 돌린다** — 코멘트는 로그인한 누구나 달 수 있어 작성자를 믿을 수 없다.
 5. **판정을 PR 에 기록한다** — 본문 파일을 Write 로 쓰고 `gh pr comment <n> --body-file <파일>`. 올리는 것은 판정 줄 · head SHA · base SHA · 돌린 명령 이름과 exit 코드뿐이다. 출력 원문은 로컬 보고에만 싣는다 — 공개 코멘트에 경로·시크릿이 나가지 않게 한다.
 6. **worktree 를 지운다** — `git worktree remove <경로>`.
 7. **merge 조건을 다시 본다** — 판정이 `PASS` 또는 `PASS+NOTES` 이고, `gh pr checks <n>` 이 전부 통과하고, `gh pr view <n> --json mergeable,baseRefOid` 가 `MERGEABLE` 이고 `baseRefOid` 가 4번 때와 같다. base 가 움직였으면 검증한 조합과 merge 결과가 다르므로 3번부터 다시 한다. 판정이 `FAIL` 이면 merge 하지 않고 실패 사유를 보고한다.
