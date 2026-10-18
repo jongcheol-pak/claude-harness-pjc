@@ -218,7 +218,7 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 |---|---|---|---|
 | plan-reviewer | Opus | 계획 완성 후(지적을 고치면 다시 — 최대 3라운드, 3라운드는 2라운드에 BLOCKER가 있었을 때만 · 남은 지적은 승인 화면에) | 계획이 **실측 위에 서 있는지** — 적힌 명령이 그 주장을 낼 수 있는지(조사 기록의 빈 명령 칸·위키 기록 유무는 사전 스크립트가 먼저 거르고, 스크립트가 못 돌았을 때만 리뷰어가 직접 본다), 읽은 함정이 계획·구현 어느 자리로든 갔는지, 바꿀 심볼의 호출자가 파일 목록에 다 있는지, 승인이 필요한 항목에 그것이 생기지 않는 다른 설계(회피 설계)가 있는지, 검증 명령이 프로젝트 지침(`AGENTS.md`)에 있는지, 삭제 대상을 되살릴 수 있는지(복구 경로)를 쟀는지, 계획이 고른 설계의 결함을 스스로 받아들이지 않았는지, 설명 속 사실 주장을 잴 수 있는데 실측도 추정 표시도 없이 썼는지 |
 | completion-reviewer | Opus | 모든 task 완료 후 1회 | 계획 전체와 최종 상태의 대조 — 요구가 산출물에 나타났는지, 완료 표시가 진실인지, 성공 기준을 직접 재봤을 때 참인지, 판정·근거 줄의 주장을 잴 수 있는데 재지 않고 추정으로 남겼는지 |
-| pr-verifier | Opus | `pjc:pr` ship 이 merge 하기 전 PR 마다 1회 | PR head 를 받아 둔 worktree 에서 그 레포 `AGENTS.md` 의 빌드·테스트·검증 명령과 Verify 레시피를 돌려 PASS / PASS+NOTES / FAIL 을 낸다 — 코드를 쓰지 않은 쪽의 판정만 merge 근거가 된다 |
+| pr-verifier | Opus | `pjc:pr` ship 이 merge 하기 전 PR 마다 1회 | PR head 를 받아 둔 worktree 에서 그 레포 `AGENTS.md` 의 빌드·테스트·검증 명령과 Verify 검증 스킬을 돌려 PASS / PASS+NOTES / FAIL 을 낸다 — 코드를 쓰지 않은 쪽의 판정만 merge 근거가 된다 |
 
 **검토자 호출은 이 두 곳뿐입니다(독립 검증자는 `pjc:pr` ship 이 merge 전에만 부릅니다).** task마다 검토자를 부르지 않습니다 — Claude Opus 5는 지시 없이도 자기 작업을 검증하므로, 그 위에 검토 단계를 얹으면 비용과 시간만 배가 되고 품질은 오르지 않습니다([Anthropic 프롬프팅 가이드](https://platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5)의 권고).
 

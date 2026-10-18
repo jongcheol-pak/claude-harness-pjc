@@ -62,10 +62,11 @@ disable-model-invocation: true
 
 증명에 성공했을 때만 한다. 순서가 정해져 있다.
 
-1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/verify-<app>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되는 경로면 등록하지 않고 그 사실을 보고한다 — `pr-verifier` 는 PR head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다.
-2. **`pjc:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 `.claude/skills/verify-<app>/` 를 적는다** — `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고 승인을 받는다.
-3. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git commit -m "설정: 검증 스킬 verify-<app> 생성" -- .claude/skills/verify-<app> AGENTS.md`. 포인터만 커밋되고 대상이 빠지거나 그 반대면 PR head 에서 한쪽이 없다. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 있으면 커밋하지 않고 보고한다** — 경로 한정 커밋도 그 파일의 다른 변경을 함께 담는다.
-4. **앱이 바뀌면 `/pjc:maintain-verification-skill` 로 지도를 다시 맞춘다고 안내한다** — 주기는 사용자가 물을 때만 제안한다.
+1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/verify-<app>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되는 경로면 등록하지 않고, `git check-ignore -v` 출력(어느 ignore 파일의 몇째 줄인지)과 해결 수단을 함께 보고한다 — 레포 `.gitignore` 에 `!.claude/skills/verify-<app>/` 를 더하거나 `git add -f` 로 추적을 시작하면 된다(전역 `core.excludesfile` 이 `.claude/` 를 무시하는 PC 가 흔하다). `pr-verifier` 는 PR head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다.
+2. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 없는지 먼저 본다** — `git status --porcelain -- AGENTS.md` 가 비어 있지 않으면 등록하지 않고 보고한다. 아래 커밋이 그 파일의 다른 변경까지 담기 때문이다.
+3. **`pjc:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 `.claude/skills/verify-<app>/` 를 적는다** — `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고 승인을 받는다.
+4. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git add -- .claude/skills/verify-<app> AGENTS.md` 뒤 `git commit -m "설정: 검증 스킬 verify-<app> 생성" -- .claude/skills/verify-<app> AGENTS.md`. 새 폴더는 추적 전이라 `add` 없이 경로를 지정하면 `pathspec … did not match` 로 실패한다. 포인터만 커밋되고 대상이 빠지거나 그 반대면 PR head 에서 한쪽이 없다.
+5. **앱이 바뀌면 `/pjc:maintain-verification-skill` 로 지도를 다시 맞춘다고 안내한다** — 주기는 사용자가 물을 때만 제안한다.
 
 ## 보고
 

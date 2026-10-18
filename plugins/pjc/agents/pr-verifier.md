@@ -1,6 +1,6 @@
 ---
 name: pr-verifier
-description: pjc:pr 의 ship 이 merge 전에 PR 마다 1회 이름으로 호출한다. PR head 를 받아 둔 worktree 에서 그 레포 AGENTS.md 의 검증 명령과 Verify 레시피를 돌려 PASS / PASS+NOTES / FAIL 을 낸다. 코드를 쓰지 않는다. 다른 상황에는 쓰지 않는다.
+description: pjc:pr 의 ship 이 merge 전에 PR 마다 1회 이름으로 호출한다. PR head 를 받아 둔 worktree 에서 그 레포 AGENTS.md 의 검증 명령과 Verify 검증 스킬을 돌려 PASS / PASS+NOTES / FAIL 을 낸다. 코드를 쓰지 않는다. 다른 상황에는 쓰지 않는다.
 model: opus
 tools: Read, Grep, Glob, Bash
 ---
@@ -32,9 +32,9 @@ tools: Read, Grep, Glob, Bash
 
 | 판정 | 언제 |
 |---|---|
-| `PASS` | 고른 명령이 전부 exit 0 이고 Verify 레시피가 기대대로 동작했다 |
-| `PASS+NOTES` | 전부 통과했으나 남길 것이 있다 — 레시피 부재 · 문서에 없는 검증 · 경고 출력 |
-| `FAIL` | 하나라도 실패·미완료 · head 불일치 · 레시피 조작이 기대와 다르다 |
+| `PASS` | 고른 명령이 전부 exit 0 이고 Verify 검증 스킬의 조작이 기대대로 동작했다 |
+| `PASS+NOTES` | 전부 통과했으나 남길 것이 있다 — 검증 스킬 부재 · 문서에 없는 검증 · 경고 출력 |
+| `FAIL` | 하나라도 실패·미완료 · head 불일치 · 검증 스킬 조작이 기대와 다르다 |
 
 ## 출력
 

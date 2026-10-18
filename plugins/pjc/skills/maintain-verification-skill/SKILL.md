@@ -37,7 +37,7 @@ disable-model-invocation: true
    - 분류(5)에서 나온 하네스 수정은 내기 전에 다시 실제로 조작한다. 마지막 정리는 그 재증명까지 포함한 이번 실행의 마지막 조작 뒤에 한다(증거는 그 스킬대로 남는다).
 5. **분류한다** — 사용자 관점 설명이 틀렸거나 빠졌으면 **지도 드리프트** → 고친다. 동작은 하는데 하네스가 조작하지 못하면 **하네스 공백** → 고친다(생성 때와 같은 헬퍼 규칙 — 실행 가능 · 호출 방법을 본문에 · `helpers/` 아래). 앱 동작이 실제로 깨졌으면 **제품 공백** → 사용자에게 기록하고 이 PR 에는 넣지 않는다.
 6. **내거나 멈춘다** — changed 면 고친 파일을 모두 다시 읽은 뒤:
-   - `../implement/references/pr-flow.md`「적용 판정」 의 앞 두 조건(GitHub 원격 · `gh auth status` exit 0)이 참이면 같은 파일 「브랜치」 표를 따르되 `<슬러그>` 를 `verify-<app>-map` 으로 둔다(브랜치 `pjc/verify-<app>-map` — 같은 이름이 있으면 `-2`·`-3`). 경로 한정 로컬 커밋 `git commit -m "문서: 검증 스킬 verify-<app> 지도 보정" -- .claude/skills/verify-<app>` 뒤 「PR 열기」 1~4 로 PR 하나를 연다. 본문 `## 검증` 에 덮은 기능 수와 실제로 조작한 기능을 적는다.
+   - `../implement/references/pr-flow.md`「적용 판정」 의 앞 두 조건(GitHub 원격 · `gh auth status` exit 0)이 참이면 같은 파일 「브랜치」 표를 따르되 `<슬러그>` 를 `verify-<app>-map` 으로 둔다(브랜치 `pjc/verify-<app>-map` — 같은 이름이 있으면 `-2`·`-3`). `git add -- .claude/skills/verify-<app>` 뒤 경로 한정 로컬 커밋 `git commit -m "문서: 검증 스킬 verify-<app> 지도 보정" -- .claude/skills/verify-<app>` 를 하고(`add` 가 없으면 색인 정리·하네스 공백 수정이 새로 만든 파일이 커밋에서 빠진다) 「PR 열기」 1~4 로 PR 하나를 연다. 본문 `## 검증` 에 덮은 기능 수와 실제로 조작한 기능을 적는다.
    - 앞 두 조건 중 하나라도 거짓이면 브랜치를 바꾸지 않고 같은 로컬 커밋만 하고 그 사실을 보고한다.
    - clean·blocked 는 PR 이 없다 — 결과와 덮은 범위를 정직하게 보고한다.
 
