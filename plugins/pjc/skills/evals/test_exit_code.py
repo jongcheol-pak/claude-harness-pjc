@@ -130,6 +130,19 @@ LOAD_CASES = [
     ("ⓠ 스킬 전부 로드 -> 누락 없음", ["pjc:plan", "pjc:implement", "other:x"], []),
     ("ⓠ 스킬 하나 빠짐 -> 그 이름", ["pjc:plan", "other:x"], ["pjc:implement"]),
 ]
+# 수동 호출 갈래 — frontmatter 의 `disable-model-invocation: true` 스킬은 init 에서 빠질 수 있어 요구하지
+#   않는다. 본문에만 그 문자열이 있거나 값이 false 인 스킬은 계속 요구한다(문자열 검색 구현을 가른다).
+MANUAL_SKILLS = {
+    "manual": "---\nname: manual\ndisable-model-invocation: true\n---\n본문\n",
+    "body-only": "# body-only\n\ndisable-model-invocation: true\n",
+    "false-value": "---\nname: false-value\ndisable-model-invocation: false\n---\n본문\n",
+}
+MANUAL_CASES = [
+    ("ⓢ 수동 호출 스킬 미로드 -> 누락 아님",
+     ["pjc:plan", "pjc:implement", "pjc:body-only", "pjc:false-value"], []),
+    ("ⓢ 본문 문자열·false 값 스킬 미로드 -> 누락",
+     ["pjc:plan", "pjc:implement"], ["pjc:body-only", "pjc:false-value"]),
+]
 
 
 def _call(mod, name, *args):
@@ -205,6 +218,17 @@ def main():
             ok = got == want
             failed += 0 if ok else 1
             print(f"[{'PASS' if ok else 'FAIL'}] {name}: {got} (기대 {want})")
+    with tempfile.TemporaryDirectory() as plugin_dir:
+        for skill in ("plan", "implement", *MANUAL_SKILLS):
+            os.makedirs(os.path.join(plugin_dir, "skills", skill))
+            with open(os.path.join(plugin_dir, "skills", skill, "SKILL.md"), "w",
+                      encoding="utf-8") as f:
+                f.write(MANUAL_SKILLS.get(skill, ""))
+        for name, loaded, want in MANUAL_CASES:
+            got = _call(_TE, "missing_skills", loaded, plugin_dir)
+            ok = got == want
+            failed += 0 if ok else 1
+            print(f"[{'PASS' if ok else 'FAIL'}] {name}: {got} (기대 {want})")
     for name, summaries, want in CASES:
         got = _TE.exit_code(summaries)
         ok = got == want
@@ -219,7 +243,8 @@ def main():
         print(f"[{mark}] {name}: judged_negative {got_n} (기대 {want_n})"
               f" · 오발동률 {got_rate} (기대 {want_rate})")
     total = (len(CASES) + len(SUMMARIZE_CASES) + len(JUDGE_CASES)
-             + len(STOP_CASES) + len(DIAG_CASES) + len(LOAD_CASES) + 1)  # +1: stderr 배수 갈래
+             + len(STOP_CASES) + len(DIAG_CASES) + len(LOAD_CASES) + len(MANUAL_CASES)
+             + 1)  # +1: stderr 배수 갈래
     print(f"\n결과: {total - failed}/{total} PASS")
     sys.exit(1 if failed else 0)
 

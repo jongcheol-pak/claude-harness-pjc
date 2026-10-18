@@ -36,6 +36,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -474,11 +475,21 @@ def missing_skills(loaded, plugin_dir):
     frontmatter YAML 이 깨진 SKILL.md 는 오류 없이 목록에서 빠진다 — 플러그인 로드만 보면
     그 run 이 통과 자격을 가진 채 그 스킬 케이스를 전부 「발동 없음」으로 센다(2026-10-04
     실측: run 153358 이 6종 중 5종으로 돌아 FAIL 8건 중 7건이 그 원인이었다).
+    frontmatter 에 `disable-model-invocation: true` 가 있는 스킬은 기대 목록에서 뺀다 — 공식 문서가
+    그 필드를 "removes the skill from Claude's context entirely" 로 적어 init 에서 빠질 수 있다.
     """
     expected = sorted(
         "pjc:" + os.path.basename(os.path.dirname(path))
-        for path in glob.glob(os.path.join(plugin_dir, "skills", "*", "SKILL.md")))
+        for path in glob.glob(os.path.join(plugin_dir, "skills", "*", "SKILL.md"))
+        if not _manual_only(path))
     return [name for name in expected if name not in loaded]
+
+
+def _manual_only(skill_md):
+    """SKILL.md 의 frontmatter(첫 `---` 블록)에 `disable-model-invocation: true` 가 있는가."""
+    with open(skill_md, encoding="utf-8") as f:
+        m = re.match(r"\A---\r?\n(.*?)\r?\n---", f.read(), re.S)
+    return bool(m and re.search(r"(?m)^disable-model-invocation:\s*true\s*$", m.group(1)))
 
 
 def assert_plugin_loaded(init_ev, isolation):
