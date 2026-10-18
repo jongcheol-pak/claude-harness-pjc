@@ -18,6 +18,11 @@
 #   acceptance-baseline T<N>     Acceptance 줄에 백틱(판정 명령·리터럴)이 있는데 「착수」 가 없음
 #   case-mark T<N>               Files 줄에 (RED)·(GREEN·[면제 가 하나도 없음
 #   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
+#                                (Goal 절에 「> 경량:」 줄이 있는 경량 plan 은 out-of-scope·verification 을 재지 않는다)
+#   light-files <N>              경량 plan 의 task Files 줄 백틱 경로(줄의 첫 「[면제」 앞까지) 합집합이 2 를 넘음
+#   light-structure T<N>         경량 plan 의 task 에 「- **구조**:」 줄이 있음(새 파일·공개 표면)
+#   light-approval               경량 plan 에 「승인 필요 항목」 절이 있음
+#   light-relay                  경량 plan 의 「> 요구:」 가 「코디네이터 인터뷰 경유」(중계 모드는 경량 불허)
 #   goal-head <줄>               request(첫 절 앞 「> 요구:」 원문 인용)·base·approval·start·done(Goal 절의 「> BASE:」 등) 없음
 #   task-item T<N>               하위 항목이 「- [ ]·[x]·[X]·[/]」 뒤 (불요 …) 를 지나 **T<N>-<M>** 가 아니거나 번호가 제목과 다름
 #   task-line T<N> <줄>          task 에 files·acceptance·verify 줄 없음
@@ -153,7 +158,10 @@ if ($Base) {
     Complete-Check
 }
 
-# ---- B1 필수 절 ----
+# ---- B1 필수 절 — 경량 plan 은 Out of Scope·검증 방법을 뺀다(task 의 검증 줄이 대신한다) ----
+$goal = Find-Section 'Goal'
+$lightLabel = '> ' + (Get-Text @(0xACBD, 0xB7C9)) + ':'    # > 경량:
+$isLight = [bool]@(Get-ProseLines $goal | Where-Object { Test-Prefix $_.Text $lightLabel }).Count
 $required = [ordered]@{
     'goal' = 'Goal'; 'out-of-scope' = 'Out of Scope'; 'investigation-log' = 'Investigation Log'
     'tasks' = $tasksTitle
@@ -161,13 +169,14 @@ $required = [ordered]@{
     'deferred' = 'Deferred / Follow-up'
 }
 foreach ($key in $required.Keys) {
+    if ($isLight -and @('out-of-scope', 'verification') -contains $key) { continue }
     if (-not (Find-Section $required[$key])) { Add-Problem 1 ('missing-section ' + $key) }
 }
 
 # ---- B2 머리 줄 — 요구 줄은 첫 절 앞, 나머지 넷은 Goal 절 ----
 $requestLabel = '> ' + [char]0xC694 + [char]0xAD6C + ':'    # > 요구:
-if (-not ($head | Where-Object { -not $_.Code -and (Test-Prefix $_.Text $requestLabel) })) { Add-Problem 1 'goal-head request' }
-$goal = Find-Section 'Goal'
+$requestLines = @($head | Where-Object { -not $_.Code -and (Test-Prefix $_.Text $requestLabel) })
+if (-not $requestLines.Count) { Add-Problem 1 'goal-head request' }
 if ($goal) {
     $goalHeads = [ordered]@{
         'base' = '> BASE:'
@@ -179,6 +188,28 @@ if ($goal) {
     foreach ($key in $goalHeads.Keys) {
         if (-not ($goalProse | Where-Object { Test-Prefix $_.Text $goalHeads[$key] })) { Add-Problem $goal.N ('goal-head ' + $key) }
     }
+}
+
+# ---- B5 경량 조건 — 사용자 승인 말고도 기계로 갈리는 조건은 여기서 잰다(모델 판정만으로 경량을 열지 않는다) ----
+if ($isLight) {
+    $exemptMark = '[' + (Get-Text @(0xBA74, 0xC81C))                                  # [면제
+    $structLabel = '- **' + (Get-Text @(0xAD6C, 0xC870)) + '**:'                       # - **구조**:
+    $paths = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($b in @(Get-TaskBlocks)) {
+        foreach ($l in $b.Lines) {
+            if (Test-Prefix $l.Text $structLabel) { Add-Problem $l.N ('light-structure T' + $b.Id) }
+            if (-not (Test-Prefix $l.Text '- **Files**:')) { continue }
+            $t = $l.Text
+            $cut = $t.IndexOf($exemptMark, [System.StringComparison]::Ordinal)
+            if ($cut -ge 0) { $t = $t.Substring(0, $cut) }
+            foreach ($m in [regex]::Matches($t, '`([^`]+)`')) { $null = $paths.Add($m.Groups[1].Value.Trim()) }
+        }
+    }
+    if ($paths.Count -gt 2) { Add-Problem $goal.N ('light-files ' + $paths.Count) }
+    $approval = Find-Section (Get-Text @(0xC2B9, 0xC778, 0x20, 0xD544, 0xC694, 0x20, 0xD56D, 0xBAA9))    # 승인 필요 항목
+    if ($approval) { Add-Problem $approval.N 'light-approval' }
+    $relayMark = Get-Text @(0xCF54, 0xB514, 0xB124, 0xC774, 0xD130, 0x20, 0xC778, 0xD130, 0xBDF0, 0x20, 0xACBD, 0xC720)    # 코디네이터 인터뷰 경유
+    if (@($requestLines | Where-Object { $_.Text.Contains($relayMark) }).Count) { Add-Problem $requestLines[0].N 'light-relay' }
 }
 
 # ---- A1·A2·A3 Investigation Log ----
