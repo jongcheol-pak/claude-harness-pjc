@@ -1,6 +1,6 @@
 # PR 모드 (`pjc:chain-plan` — 계획마다 PR 을 merge 까지)
 
-> `../SKILL.md` 「체인 승인」이 승인 화면의 `PR 모드:` 줄을 채울 때(「켜기」), 체인이 `P` 로 승인돼 워커가 spec 의 `PR 모드: 켬` 줄을 받았을 때(「워커」), 코디네이터가 PR 모드 체인의 계획을 잇거나 병렬 그룹을 다룰 때(「직렬」·「병렬」) 이 파일을 연다. `Y` 로 승인한 체인은 이 파일을 쓰지 않는다 — 지금의 로컬 병합 그대로다.
+> `../SKILL.md` 「체인 승인」이 승인 화면의 `PR 모드:` 줄을 채울 때(「켜기」), 체인이 `P` 로 승인돼 워커가 spec 의 `PR 모드: 켬` 줄을 받았을 때(「워커」), 코디네이터가 PR 모드 체인의 계획을 잇거나 병렬 그룹을 다룰 때(「직렬」·「병렬」) 이 파일을 연다. `Y` 로 승인한 체인은 계획 사이를 로컬 병합으로 잇고, 체인이 끝나면 「Y 체인 끝 PR」 하나만 쓴다(`report.md`「인계 파일 정리」 뒤).
 > 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 스택 PR·Graphite·rebase 는 들이지 않았다 — 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 pjc 에서 별도 승인이다).
 
 ## 켜기
@@ -8,7 +8,8 @@
 **코디네이터가 체인 승인 화면을 내기 전에 1회 판정한다.**
 
 - **PR 모드는 셋이 모두 참일 때만 고를 수 있다 — `git -C "<대상 레포 경로>" remote get-url origin` 이 `github.com` 을 담고 · `gh auth status` 가 exit 0 이고 · `git -C "<대상 레포 경로>" ls-remote --exit-code --heads origin <체인 브랜치>` 가 성공한다** — 앞의 둘은 워커의 `../../implement/references/pr-flow.md`「적용 판정」 과 같은 조건이고, 셋째가 거짓이면 PR base 로 쓸 브랜치가 원격에 없다. 체인 브랜치는 체인 시작 때 대상 레포의 `git branch --show-current` 다.
-- **승인 화면의 줄은 `PR 모드: 꺼짐 — [P] 로 켠다` 이고, 셋 중 하나라도 거짓이면 `PR 모드: 불가 — <거짓인 조건>` 이며 선택지 줄에서 `[P]` 를 뺀다** — 코디네이터는 체인 브랜치를 원격에 올리지 않는다. 올리는 것은 사용자가 정한다.
+- **승인 화면의 줄은 `PR 모드: 꺼짐(끝에 PR 하나) — [P] 로 켠다` 이고, 셋 중 하나라도 거짓이면 `PR 모드: 불가 — <거짓인 조건>` 이며 선택지 줄에서 `[P]` 를 뺀다** — 꺼짐이어도 체인이 끝까지 성공하면 코디네이터가 「Y 체인 끝 PR」 로 PR 하나를 연다. 끝 PR 이 없는 대상(아래 「Y 체인 끝 PR」 의 조건이 거짓)이면 괄호를 `(끝 PR 없음 — <거짓인 조건>)` 으로 바꾼다.
+- **`Y` 일 때 버전 커밋을 막는 경우가 하나 있다 — 대상 레포가 끝 PR 대상이고 그 `AGENTS.md` Release 가 「버전 전용 PR」 을 지목하면 spec 재진술 `제약조건` 끝에 「버전 올리기 task 를 만들지 않는다(체인 끝 PR — merge 를 맡는 `pjc:pr` ship 이 버전 전용 PR 을 잇는다)」 를 더한다(`spec-format.md`「spec 서식」)** — 버전 커밋이 끝 PR 에 squash 되면 기능 변경과 섞이고, ship 의 「버전 전용 PR 잇기」(`../../pr/references/ship.md`)가 버전을 한 번 더 올린다. Release 가 다른 형식인 레포는 지금처럼 체인 안에서 버전 커밋을 만들고 그 커밋이 끝 PR 에 실린다.
 - **`P` 는 `Y` 와 같은 위임에 PR 모드를 더한 답이다** — objective 의 `[체인 승인: <답 원문>]` 이 `P` 를 담아 압축 뒤에도 모드를 되찾는다(`compaction.md`「압축 뒤 복원」).
 - **`P` 면 모든 계획 spec 에 `PR 모드: 켬 — base <체인 브랜치>` 를, 아니면 `PR 모드: 꺼짐` 을 싣는다(`spec-format.md`「spec 서식」)** — 워커의 `pr-flow.md` 는 `PR 모드: 켬` 으로 시작하는 줄이 있을 때만 브랜치를 바꾸고 PR 을 연다.
 - **대기 명령 끝에 `--pr <체인 브랜치>` 를 더한다** — 대기 스크립트가 PR 단계(열림·CI green·merged)를 진행 줄에 싣고, CI 가 pending 인 동안 같은 화면을 멈춤으로 세지 않는다(근거 정본은 `wait-worker-rationale.md`「PR 단계」). 워커는 CI 를 기다리는 동안 turn 을 끝내 화면과 HEAD 가 함께 멈춘다.
@@ -59,3 +60,15 @@
   - **succeeded 면 위와 같이 주 레포를 fast-forward 한다.**
 - **닫기는 fast-forward 뒤이고, 버전 PR 을 재배정했으면 그 dispatch 로 닫는다** — `release.md`「닫기」 의 「그 탭의 마지막 dispatch」 규칙 그대로다.
 - **보고의 `병렬 병합:` 칸에는 그룹마다 plan · PR URL · merge 커밋 · worktree 경로 · 브랜치를 싣는다(`report.md`「보고 서식」).**
+
+## Y 체인 끝 PR
+
+**`Y` 로 승인한 체인이 끝까지 성공했을 때(`report.md`「인계 파일 정리」 의 성공 조건과 같다) 그 정리 커밋 뒤, 보고 전에 1회 한다.** pstack 은 모든 playbook 끝에 PR 을 연다(*"Invoked at the end of every other playbook."* — `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`). 끝 PR 이 없으면 체인 커밋이 로컬에만 남는다(2026-10-18 PR #3 이 그 뒤 손으로 열려 제목 유형이 빠진 채 main 커밋이 됐다).
+
+- **계획마다의 대상 레포 가운데 아래 셋이 참인 레포마다 한다** — 대상 레포 경로가 세션 시작 때 주입된 위키 vault 경로와 같지 않다(vault 는 `pjc:llm-wiki` 가 직접 push 한다) · `../../implement/references/pr-flow.md`「적용 판정」 의 앞 두 조건(GitHub 원격 · `gh auth status` exit 0)이 참이다 · `git -C "<대상 레포 경로>" rev-list --count origin/<기본 브랜치>..HEAD` 가 0 이 아니다. 거짓인 레포는 보고의 `PR:` 줄에 `건너뜀 — <거짓인 조건>` 으로 싣는다.
+- **`pr-flow.md`「브랜치」 의 표와 「merge 된 브랜치에서 시작할 때」 를 체인 브랜치에 그대로 적용한 뒤 「PR 열기」 1~4 를 따른다** — 같은 절차를 두 곳에 두면 한쪽만 고쳐진다. 그 절차가 `plan.md` 에 적게 한 것(슬러그·`> BASE:` 이동)은 이 세션이 `plan.md` 를 쓰지 않으므로 보고에 싣는다.
+  - **슬러그는 `chain-<Run id 의 run_ 뒤 앞 8자>` 다** — 끝 PR 은 체인 끝에 1회만 열리고, 압축 뒤에도 `run-current` 로 같은 id 를 얻는다.
+  - **제목은 `<유형>: <계획 제목들을 · 로 이은 한 줄>` 이다** — 유형은 `git log --format=%s origin/<기본 브랜치>..HEAD` 의 유형 접두 중 가장 많은 것이고 같으면 `기능` 이다. 길면 앞 계획부터 줄인다.
+  - **본문 `## 범위` 에 plan 번호와 제목 목록을 싣는다** — 나머지 절은 「PR 열기」 의 본문 규칙 그대로다.
+- **babysit·merge 는 하지 않는다 — URL 을 보고하고 끝낸다** — merge 는 사용자가 `pjc:pr` 로 요청할 때다(*"Opening a PR does not start a babysit."*).
+- **어느 단계든 실패하면 오류 원문을 보고의 `PR:` 줄에 싣고 멈추지 않는다** — 체인은 이미 끝났고, 커밋은 로컬 체인 브랜치에 그대로 있다.
