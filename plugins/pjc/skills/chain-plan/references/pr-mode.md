@@ -3,16 +3,27 @@
 > `../SKILL.md` 「체인 승인」이 승인 화면의 `PR 모드:` 줄을 채울 때(「켜기」), 체인이 `P` 로 승인돼 워커가 spec 의 `PR 모드: 켬` 줄을 받았을 때(「워커」), 코디네이터가 PR 모드 체인의 계획을 잇거나 병렬 그룹을 다룰 때(「직렬」·「병렬」) 이 파일을 연다. `Y` 로 승인한 체인은 계획 사이를 로컬 병합으로 잇고, 체인이 끝나면 「Y 체인 끝 PR」 하나만 쓴다(`report.md`「인계 파일 정리」 뒤).
 > 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 스택 PR·Graphite·rebase 는 들이지 않았다 — 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 pjc 에서 별도 승인이다).
 >
-> 목차: 켜기 · 워커(마무리 순서 · 화면 줄 task 직렬 예외 · base 합치기 · 멈춘 자리 표) · 직렬 · 병렬 · Y 체인 끝 PR
+> 목차: 켜기(출발 브랜치 · 체인 브랜치 만들기) · 워커(마무리 순서 · 화면 줄 task 직렬 예외 · base 합치기 · 멈춘 자리 표) · 직렬 · 병렬 · Y 체인 끝 PR
 
 ## 켜기
 
 **코디네이터가 체인 승인 화면을 내기 전에 1회 판정한다.**
 
-- **PR 모드는 셋이 모두 참일 때만 고를 수 있다 — `git -C "<대상 레포 경로>" remote get-url origin` 이 `github.com` 을 담고 · `gh auth status` 가 exit 0 이고 · `git -C "<대상 레포 경로>" ls-remote --exit-code --heads origin <체인 브랜치>` 가 성공한다** — 앞의 둘은 워커의 `../../implement/references/pr-flow.md`「적용 판정」 과 같은 조건이고, 셋째가 거짓이면 PR base 로 쓸 브랜치가 원격에 없다. 체인 브랜치는 체인 시작 때 대상 레포의 `git branch --show-current` 다.
-- **승인 화면의 줄은 `PR 모드: 꺼짐(끝에 PR 하나) — [P] 로 켠다` 이고, 셋 중 하나라도 거짓이면 `PR 모드: 불가 — <거짓인 조건>` 이며 선택지 줄에서 `[P]` 를 뺀다** — 꺼짐이어도 체인이 끝까지 성공하면 코디네이터가 「Y 체인 끝 PR」 로 PR 하나를 연다. 끝 PR 이 없는 대상(아래 「Y 체인 끝 PR」 의 조건이 거짓)이면 괄호를 `(끝 PR 없음 — <거짓인 조건>)` 으로 바꾼다.
-- **`Y` 일 때 버전 커밋을 막는 경우가 하나 있다 — 대상 레포가 끝 PR 대상이고 그 `AGENTS.md` Release 가 「버전 전용 PR」 을 지목하면 spec 재진술 `제약조건` 끝에 「버전 올리기 task 를 만들지 않는다(체인 끝 PR — merge 를 맡는 `pjc:pr` ship 이 버전 전용 PR 을 잇는다)」 를 더한다(`spec-format.md`「spec 서식」)** — 버전 커밋이 끝 PR 에 squash 되면 기능 변경과 섞이고, ship 의 「버전 전용 PR 잇기」(`../../pr/references/ship.md`)가 버전을 한 번 더 올린다. Release 가 다른 형식인 레포는 지금처럼 체인 안에서 버전 커밋을 만들고 그 커밋이 끝 PR 에 실린다.
+- **PR 모드는 셋이 모두 참일 때만 고를 수 있다 — `git -C "<대상 레포 경로>" remote get-url origin` 이 `github.com` 을 담고 · `gh auth status` 가 exit 0 이고 · 출발 브랜치가 깨끗하다** — 앞의 둘은 워커의 `../../implement/references/pr-flow.md`「적용 판정」 과 같은 조건이다. 셋째는 아래 셋이 모두 참인 것이고, `P` 는 지금 브랜치를 버리고 기본 브랜치에서 새 체인 브랜치를 가르므로 지금 브랜치에만 있는 것이 체인에서 빠지지 않게 막는다(사용자 답 「PR 모드 불가로 표시」).
+  - 기본 브랜치를 정한다 — `pr-flow.md`「브랜치」 머리의 `git symbolic-ref --short refs/remotes/origin/HEAD` → `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` 순서다.
+  - `git -C "<대상 레포 경로>" status --porcelain --untracked-files=no` 가 비어 있다 — `parallel.md`「병합」 ⓐ 와 같이 stash·폐기하지 않는다. untracked 는 보지 않는다 — 새 브랜치로 넘어가도 커밋되지 않고, 워커 커밋은 경로 한정이다.
+  - `git -C "<대상 레포 경로>" fetch -q origin` 뒤 지금 브랜치에 기본 브랜치에 없는 커밋이 0 이다 — 지금 브랜치가 `pjc/*` 이고 `gh pr view <브랜치> --json state,headRefOid` 가 MERGED 면 `git rev-list --count <headRefOid>..HEAD`, 그 밖이면 `git rev-list --count origin/<기본>..HEAD` 다. squash merge 된 옛 `pjc/*` 는 커밋이 기본 브랜치 조상이 아니어서 둘째 식이 늘 0 이 아니다(`pr-flow.md`「merge 된 브랜치에서 시작할 때」 의 headRefOid 선례). push 안 된 커밋도, push 됐지만 merge 안 된 기능 브랜치의 커밋도 여기서 걸린다. 재개가 옛 체인 브랜치를 다시 쓰고 지금 브랜치가 그 브랜치면 이 줄은 재지 않는다(`resume.md`「재개」).
+- **체인 브랜치는 `Y` 면 체인 시작 때 대상 레포의 `git branch --show-current` 이고, `P` 면 위에서 만든 `pjc/chain-<Run id 의 run_ 뒤 앞 8자>` 다** — `P` 의 PR 들이 이미 merge 된 옛 브랜치로 들어가지 않게 한다(2026-10-19 체인 승인 화면의 체인 브랜치가 merge 된 `pjc/release-v1.392.0` 이었다).
+- **승인 화면의 줄은 `PR 모드: 꺼짐(끝에 PR 하나) — [P] 로 켠다(<기본>에서 새 체인 브랜치)` 이고, 셋 중 하나라도 거짓이면 `PR 모드: 불가 — <거짓인 조건과 수치>` 이며 선택지 줄에서 `[P]` 를 뺀다** — 꺼짐이어도 체인이 끝까지 성공하면 코디네이터가 「Y 체인 끝 PR」 로 PR 하나를 연다. 끝 PR 이 없는 대상(아래 「Y 체인 끝 PR」 의 조건이 거짓)이면 괄호를 `(끝 PR 없음 — <거짓인 조건>)` 으로 바꾼다.
+- **`Y`·`P` 둘 다 버전 커밋을 막는 경우가 하나 있다 — 대상 레포가 끝 PR 대상이고 그 `AGENTS.md` Release 가 「버전 전용 PR」 을 지목하면 spec 재진술 `제약조건` 끝에 「버전 올리기 task 를 만들지 않는다(체인 끝 PR — merge 를 맡는 `pjc:pr` ship 이 버전 전용 PR 을 잇는다)」 를 더한다(`spec-format.md`「spec 서식」)** — 버전 커밋이 끝 PR 에 squash 되면 기능 변경과 섞이고, ship 의 「버전 전용 PR 잇기」(`../../pr/references/ship.md`)가 버전을 한 번 더 올린다. `P` 의 계획 PR 도 기본 브랜치가 아닌 체인 브랜치로 merge 되므로 같다. Release 가 다른 형식인 레포는 지금처럼 체인 안에서 버전 커밋을 만들고 그 커밋이 끝 PR 에 실린다.
 - **`P` 는 `Y` 와 같은 위임에 PR 모드를 더한 답이다** — objective 의 `[체인 승인: <답 원문>]` 이 `P` 를 담아 압축 뒤에도 모드를 되찾는다(`compaction.md`「압축 뒤 복원」).
+- **`P` 면 run-create 뒤 task-create 전에 체인 브랜치를 만든다 — 이름은 Run id 로 정해져 run-create 앞에 둘 수 없다** — 순서는 넷이다. 재개가 옛 체인 브랜치를 다시 쓰면 넷 대신 `resume.md`「재개」 의 전환이다.
+  1. 위 미커밋 줄을 다시 잰다 — 승인 화면 뒤에 생긴 tracked 변경은 `switch -c` 가 새 브랜치로 끌고 가 다음 커밋에 섞인다.
+  2. `git -C "<대상 레포 경로>" fetch origin <기본>`
+  3. `git -C "<대상 레포 경로>" switch -c pjc/chain-<Run id 의 run_ 뒤 앞 8자> origin/<기본>`
+  4. `git -C "<대상 레포 경로>" push -u origin pjc/chain-<Run id 의 run_ 뒤 앞 8자>` — refspec 을 생략하지 않는다(`pr-flow.md`「PR 열기」 1). push 는 스킬 안이라 승인 대상이 아니다.
+  - **하나라도 실패하면 task 를 만들지 않고 오류 원문을 보고하고 멈춘다 — `Y` 로 바꿔 잇지 않는다** — 사용자가 고른 `P` 를 바꾸면 사용자 답 뒤집기다(`../SKILL.md`「답하는 기준」 ②). 3 뒤에 실패했으면 `git switch <시작 브랜치>` 로 돌아가고 만든 로컬 브랜치 이름을 보고에 싣는다(지우지 않는다).
+  - **이 체크아웃의 HEAD 가 체인 브랜치로 바뀐 사실을 보고에 싣는다** — 직렬 워커는 이 체크아웃에서 돌고, 병행 세션이 같은 폴더를 쓰면 그쪽도 이 브랜치를 본다.
 - **`P` 면 모든 계획 spec 에 `PR 모드: 켬 — base <체인 브랜치>` 를, 아니면 `PR 모드: 꺼짐` 을 싣는다(`spec-format.md`「spec 서식」)** — 워커의 `pr-flow.md` 는 `PR 모드: 켬` 으로 시작하는 줄이 있을 때만 브랜치를 바꾸고 PR 을 연다.
 - **대기 명령 끝에 `--pr <체인 브랜치>` 를 더한다** — 대기 스크립트가 PR 단계(열림·CI green·화면 확인 대기·merged)를 진행 줄에 싣고, CI 가 pending 인 동안 같은 화면을 멈춤으로 세지 않는다(근거 정본은 `wait-worker-rationale.md`「PR 단계」). 워커는 CI 를 기다리는 동안 turn 을 끝내 화면과 HEAD 가 함께 멈춘다.
 
