@@ -89,7 +89,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 ### 최종 리뷰 (4번 통과 후 1회)
 
 - **완료 순서는 「4번 검증 → Deferred 판정·대장 이관(「완료 정의」) → 위키 기록(「완료 시 위키 기록」) → 리뷰 → 필터 패스 등재분 대장 이관 → 완료 시각 기록(`references/report-format.md`「소요 기록」) → 추적 레포면 plan 파일 커밋(`references/report-format.md`「plan 파일 커밋」) → PR 열기(`references/pr-flow.md`「PR 열기」) → 최종 보고」다** — 리뷰어가 대장 판정 결과와 위키 기록을 검사하므로 그 둘이 리뷰보다 먼저다. 필터 패스(`references/final-review.md`)가 리뷰 뒤에 `[등재]` 로 남긴 항목은 앞의 대장 이관이 이미 지나간 뒤에 생기므로 그 자리에서 한 번 더 옮긴다 — 안 옮기면 `plan.md` 와 함께 다음 회차에 덮어써진다.
-- **`completion-reviewer` 서브에이전트를 호출한다 — 호출 인자·판정·재호출 한계·리뷰어 부재 처리는 `references/final-review.md`「절차」가 정본이다** — 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
+- **`completion-reviewer` 서브에이전트를 호출한다 — 호출 조건·인자·판정·재호출 한계·리뷰어 부재 처리는 `references/final-review.md`「절차」가 정본이다** — 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
 
 ### 실패 처리
 
