@@ -125,7 +125,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 51,708 | 137,000 |
+| `docs/harness-conventions.md` | 51,816 | 137,000 |
 | `docs/golden-runner.md` | 13,596 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 11,775 | 37,000 |
 
@@ -298,7 +298,7 @@ plan **존재** 게이트에만 있는 경로다. plan **작성** 게이트(plan
 
 **대신 남은 것이 있다 — 역할 서술이 가리키는 스킬이 이 vault에서 사라지면 예외가 주인을 잃는다.** 이름으로 박혀 있을 때는 `grep`이 그 결합을 드러냈지만 역할 서술은 검색으로 걸리지 않는다. **판정은 「그 역할을 수행하는 스킬이 있는가」이고, 없으면 예외 조항 둘을 걷어낸다** — 아무도 쓰지 않는 면제는 다음 세션에게 「무엇엔가 면제가 있다」는 오해만 남긴다.
 
-**같은 형태의 결합이 하나 더 있다 — 글로벌 「스킬·계획 우선」의 예외 2(체인 worktree 로컬 병합)는 `pjc:chain-plan` 과 그 「체인 승인」을 이름으로 부른다.** 스킬 이름·체인 승인 이름을 바꾸거나 `plugins/pjc/skills/chain-plan/references/parallel.md` 「병합」이 로컬 병합 밖(rebase 같은 history rewrite)으로 넓어지면 그 예외 2 와 예외 3(자기 `pjc/` 브랜치 force-with-lease)을 함께 확인한다 — 이쪽도 repo 밖이라 검사기가 잡지 못한다. **PR 모드(`plugins/pjc/skills/chain-plan/references/pr-mode.md`)는 원격 merge 이고 로컬에서 하는 것은 앞선 base 를 merge 로 합치기와 fast-forward 뿐이다** — 그것이 rebase 로 넓어지면 예외 2·3 을 함께 확인한다. 예외 2 는 체인 승인을 `Y` 로 부르는데 `P`(PR 모드로 승인)도 같은 위임이다. 그 문면은 repo 밖이라 고칠지는 사용자가 정한다.
+**같은 형태의 결합이 하나 더 있다 — 글로벌 「스킬·계획 우선」의 예외 2(체인 worktree 로컬 병합)는 `pjc:chain-plan` 과 그 「체인 승인」을 이름으로 부른다.** 스킬 이름·체인 승인 이름을 바꾸거나 `plugins/pjc/skills/chain-plan/references/parallel.md` 「병합」이 로컬 병합 밖(rebase 같은 history rewrite)으로 넓어지면 그 예외 2 와 예외 3(자기 `pjc/` 브랜치 force-with-lease)을 함께 확인한다 — 이쪽도 repo 밖이라 검사기가 잡지 못한다. **PR 모드(`plugins/pjc/skills/chain-plan/references/pr-mode.md`)는 원격 merge 이고 로컬에서 하는 것은 앞선 base 를 merge 로 합치기와 fast-forward, 그리고 `P` 승인 직후 기본 브랜치에서 새 `pjc/chain-<Run id 8자>` 체인 브랜치를 가르는 것(`git switch -c` 뒤 push — history rewrite 아님)뿐이다** — 그것이 rebase 로 넓어지면 예외 2·3 을 함께 확인한다. 예외 2 는 체인 승인을 `Y` 로 부르는데 `P`(PR 모드로 승인)도 같은 위임이다. 그 문면은 repo 밖이라 고칠지는 사용자가 정한다.
 
 ## 편집 스크립트 사고 (lone CR · heredoc · `-replace` 그룹 참조)
 
