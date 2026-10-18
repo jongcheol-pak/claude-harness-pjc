@@ -43,8 +43,8 @@
 ### 하니스 스킬 (plan · implement · 리뷰어 · 템플릿)
 
 - [2026-10-15] **chain-plan 후보 라운드에 「설계 결함」 종류가 없다** — `plan/references/interview.md` 「후보 라운드」는 코디네이터도 그 절을 따른다고 하나 `chain-plan/SKILL.md` 후보 라운드 줄·`references/measure.md` 반환 칸에 그 종류가 없다. 코디네이터가 물을지, 워커 몫(`relay-mode.md` 2-3)으로 두고 interview.md 에 예외를 적을지 정해 한쪽 문면을 고친다 (출처: v1.374.0 회차 후보 라운드 ④) (실해: 2026-10-15 prompt-audit 2회차가 interview.md 와 chain-plan 문면이 갈리는 것을 관측)
-- [2026-10-18] **디버깅 재현 BASE 대조** — `pjc-systematic-debugging` 재현 단계에서 같은 재현 시나리오를 BASE worktree 에서도 돌려 회귀가 이 변경에서 생겼는지 가른다(절차 선례 `implement/references/report-format.md`「화면 시나리오 실행」의 (BASE 대조)) (출처: 계획 체인 run_60c0ebe3 plan 3 후보 라운드 — 사용자 「보류」) (실해: 2026-10-18 사용자 보류 결정 — 디버깅 재현은 현재 HEAD 에서만 돌아 회귀 시점을 가르지 못함)
-- [2026-10-18] **체인 워커 보고 HUMAN-VERIFY 칸 화면 증거** — `chain-plan` 워커 `worker_done` 의 `HUMAN-VERIFY·미검증` 칸에 화면 시나리오 스크린샷 경로를 싣게 한다(`chain-plan/references/spec-format.md` 보고 필드) (출처: 계획 체인 run_60c0ebe3 plan 3 후보 라운드 — 사용자 「보류」) (실해: 2026-10-18 사용자 보류 결정 — 보고 칸에 화면 증거 자리가 없어 코디네이터가 스크린샷을 보지 못함)
+- [2026-10-18] **디버깅 재현 BASE 대조** — `pjc-systematic-debugging` 재현 단계에서 같은 재현 시나리오를 BASE worktree 에서도 돌려 회귀가 이 변경에서 생겼는지 가른다(절차 선례 `implement/references/report-format.md`「화면 시나리오 실행」의 (BASE 대조)) (출처: 계획 체인 run_60c0ebe3 plan 3 후보 라운드 — 사용자 「보류」) (실해: 2026-10-18 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 디버깅 재현은 현재 HEAD 에서만 돌아 회귀 시점을 가르지 못함)
+- [2026-10-18] **체인 워커 보고 HUMAN-VERIFY 칸 화면 증거** — `chain-plan` 워커 `worker_done` 의 `HUMAN-VERIFY·미검증` 칸에 화면 시나리오 스크린샷 경로를 싣게 한다(`chain-plan/references/spec-format.md` 보고 필드) (출처: 계획 체인 run_60c0ebe3 plan 3 후보 라운드 — 사용자 「보류」) (실해: 2026-10-18 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 보고 칸에 화면 증거 자리가 없어 코디네이터가 스크린샷을 보지 못함)
 
 ### llm-wiki · vault
 
