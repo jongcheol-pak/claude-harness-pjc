@@ -55,7 +55,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - **계획이 실제 코드와 달라 그 task가 불요해졌으면 닫고 넘어간다** — `[x] (불요 — 근거)`로 적고 근거를 Progress Log에 남긴다. 계획이 실측과 어긋나는 것은 정상이고, 그것을 발견해 처리하는 것이 실행자의 일이다.
 - **외부 계약(공개 API·스키마·UX 동작)이 갈리는 지점만 plan에서 확정돼 있어야 한다** — 그 밖의 결정은 스스로 한다.
 - **그렇게 스스로 정한 것은 `## Progress Log`에 `판정: <무엇을> — <왜> — <틀리면 무엇을 치르는가>`로 그 자리에서 적는다** — 최종 보고가 이 줄을 전량 옮겨 싣는 자리라, 미루면 근거가 흐려지고 빠지면 사용자가 되돌릴 기회를 못 가진 결정이 남는다.
-- **눈으로 봐야 하는 것은 `HUMAN-VERIFY`로 표기하고 계속 간다 — `AGENTS.md` 의 `Verify (앱 조작)` 줄이 검증 스킬을 가리키면 그 SKILL.md 의 「변경 검증」 절(없으면 전체)을 따라 먼저 조작하고(실패하면 HUMAN-VERIFY 로 · 증거 기준 `references/report-format.md`「사실 주장의 실측」), 그래도 사람 눈이 필요한 것만 표기한다** — GUI 조작감·시각 확인은 최종 보고에서 사용자가 한 번에 확인한다. 이 표기는 정직한 보고 수단이지 정지 신호가 아니다.
+- **눈으로 봐야 하는 것은 `HUMAN-VERIFY`로 표기하고 계속 간다 — `AGENTS.md` 의 `Verify (앱 조작)` 줄이 검증 스킬을 가리키면 task 의 `**화면**` 줄(없으면 그 SKILL.md 「변경 검증」 절)대로 먼저 조작하고(절차·`(BASE 대조)` 판정은 `references/report-format.md`「화면 시나리오 실행」), 그래도 사람 눈이 필요한 것만 표기한다** — GUI 조작감·시각 확인은 최종 보고에서 사용자가 한 번에 확인한다. 이 표기는 정직한 보고 수단이지 정지 신호가 아니다.
 - **컨텍스트가 차 가도 멈추지 않는다** — 현재 task를 끝내고 `plan.md`에 상태를 쓴 뒤 계속 진행한다. 압축이 일어나면 첫 행동은 이 SKILL.md와 `plan.md`를 다시 읽는 것이다 — **`AGENTS.md`는 컨텍스트에 전문이 없을 때만 읽는다.** CLAUDE.md 가 없으면 Claude Code(v2.1.277+)가, 있으면 SessionStart 가(16KB 이하일 때만) 전문을 싣고, `compact` 뒤에도 다시 싣는다.
 
 단 **plan 승인이 덮지 않는 변경**(되돌릴 수 없는 것 — 환경변수/시크릿·DB 데이터·외부 호출·새 패키지 소스·외부 공개 API 삭제나 호환을 깨는 변경)이나 plan 에 없던 다른 변경이 필요해지면 **`references/loop-exceptions.md`「plan 밖 변경」 을 Read 한다** — 멈출지 진행할지가 거기서 갈린다.
@@ -129,6 +129,6 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - `pjc:plan` — 이 스킬이 실행할 plan을 만든다
 - `references/code-style.md` — 코드를 쓰는 순간의 규약(확인 가능성·멱등·옛 경로 정리·억제 주석·도메인 모델 신호·저장 관례·주석)
 - `references/final-review.md` — 회차 끝 리뷰 절차
-- `references/report-format.md` — 회차 끝 보고 서식
+- `references/report-format.md` — 회차 끝 보고 서식 · 화면 시나리오 실행
 - `../WIKI.md` — 위키를 언제 읽고 언제 쓰는가
 - `../DESIGN.md` — 이 스킬의 문면이 따르는 설계 원칙
