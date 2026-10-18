@@ -11,7 +11,7 @@
 - orphaned   대기를 띄운 셸·세션이 사라졌다(두 모드 공통 · 본문 없음).
 
 진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄,
-`--pr <base>` 면 PR 단계마다 `<label>: PR #<n> 열림 — <url>` · `… CI green` · `… merged` 한 줄. 따로 깨우지 않고
+`--pr <base>` 면 PR 단계마다 한 줄(문면은 `pr_stage.py` 모듈 docstring). 따로 깨우지 않고
 message·stall·error 원문 앞에 싣는다.
 
 모드: `--dispatch` 하나(단일) · 여럿(병렬 — `--repo`·`--label` 도 같은 수·같은 순서) · `--place <dispatch>`(자리 대기).

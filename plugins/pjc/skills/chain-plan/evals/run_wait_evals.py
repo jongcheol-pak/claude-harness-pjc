@@ -1022,8 +1022,11 @@ def message_action_mentions_remaining_parallel():
 
 # ── PR 단계(`--pr <base>`) — 계획 체인 PR 모드 ──
 
-def pr_list(state, number=7, url='https://github.com/o/r/pull/7'):
-    return (True, json.dumps([{'number': number, 'state': state, 'url': url}]))
+def pr_list(state, number=7, url='https://github.com/o/r/pull/7', body=''):
+    return (True, json.dumps([{'number': number, 'state': state, 'url': url, 'body': body}]))
+
+
+SCREEN_BODY = '## 왜\n화면을 바꾼다\n\n## 화면\n- main.png — %TEMP%\\pjc-verify\\main.png\n'
 
 
 def pr_checks(*buckets):
@@ -1100,6 +1103,50 @@ def pr_stage_lines_in_order_once():
 def pr_first_seen_merged_emits_all():
     # ⓒ merged 를 처음 본 주기에 앞 단계까지 함께 낸다 — 1분 주기 안에 열림부터 merge 까지 끝날 수 있다.
     gh = FakeGh(lists=[pr_list('MERGED')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green',
+                             'Plan 3: PR #7 merged'], out
+
+
+@case
+def pr_screen_stage_after_green_with_marker():
+    # ⓙ 본문에 `## 화면` 이 있는 OPEN PR 이 CI green 이면 화면 확인 대기 줄을 green 뒤에 낸다.
+    gh = FakeGh(lists=[pr_list('OPEN', body=SCREEN_BODY)], checks=[pr_checks('pass')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green',
+                             'Plan 3: PR #7 화면 확인 대기'], out
+
+
+@case
+def pr_screen_marker_crlf_body():
+    # ⓙ 본문 줄 끝이 CRLF 여도 같은 표지로 읽는다.
+    gh = FakeGh(lists=[pr_list('OPEN', body=SCREEN_BODY.replace('\n', '\r\n'))], checks=[pr_checks('pass')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert 'Plan 3: PR #7 화면 확인 대기' in pr_lines(out), out
+
+
+@case
+def pr_screen_list_requests_body():
+    # ⓙ 표지를 보려면 `gh pr list` 가 본문을 함께 받아야 한다.
+    gh = FakeGh(lists=[pr_list('OPEN')], checks=[pr_checks('pass')])
+    runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    fields = [c[c.index('--json') + 1] for c in gh.calls if c[:2] == ['pr', 'list']]
+    assert fields and all('body' in f.split(',') for f in fields), gh.calls
+
+
+@case
+def pr_screen_absent_without_marker():
+    # ⓙ 음성 짝 — 표지 없는 green PR 은 화면 확인 대기 줄을 내지 않는다(`## 화면 시나리오` 같은 다른 머리도 표지가 아니다).
+    gh = FakeGh(lists=[pr_list('OPEN', body='## 검증\n화면 시나리오: a · 스크린샷 a.png\n## 화면 시나리오\n')],
+                checks=[pr_checks('pass')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green'], out
+
+
+@case
+def pr_screen_skipped_when_merged():
+    # ⓙ 음성 짝 — merged 를 본 주기에는 화면 확인 대기를 내지 않는다(사용자가 이미 확인했다).
+    gh = FakeGh(lists=[pr_list('MERGED', body=SCREEN_BODY)])
     out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
     assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green',
                              'Plan 3: PR #7 merged'], out
