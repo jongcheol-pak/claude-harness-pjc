@@ -18,3 +18,11 @@
   - 폐지 절의 함정·채택 이유·제약은 `## 관련 지식·레시피` 로 옮기고 나머지(코드가 답하는 「어떻게」)는 지운다 — 근거 보존 4요소(성립 조건·예외·적용 범위·채택 이유와 기각 대안)는 지우지 않는다
   - `queue-rules.md` 는 plan 3 몫이라 이 계획이 건드리지 않았다
 - **미해결 사항**: 없음
+
+## plan 2
+
+- **BASE**: vault 535b135 · **intent**: `intent/2026-10-18-wiki-vault-feature-cleanup.md`(하니스 커밋 43bf0740 — vault 안 intent 는 lint WARN 2건을 더해 하니스에 둠) · **커밋**: vault 27cbd5f…d52637a (둘 다 push 완료 — `main -> main`)
+- **바꾼 파일**: (vault) `20_projects/**/feat-*.md` 268쪽 남김(조각 파일 118 삭제 = 폐지 계보 92 + 부모로 합친 관련 지식·관련 파일 조각 26, 남긴 조각 25) · 허브 행 · `30_knowledge/patterns` 4쪽·`40_guides/recipes` 1쪽·`index.md` 증상 표(지운 조각 링크를 살아남는 상위로 재지정) · `index*.md`(`--build-index` 재생성) · `log.md` 1줄. feature 문자 3,843,062 → 1,539,272. 정리 스크립트는 레포 밖(scratchpad)이라 하니스·vault 에 새 심볼 없음
+- **내린 결정과 근거**: 지우는 절 = §7-38 세 이름 + 옛 이름 `## 동작`·`## 동작 (사용법)` + 접두 `구현 방법 — ` 등(인계 술어는 lint 신호와 맞추는 하한) · 폐지 절 본문은 함정·이유까지 전부 삭제(코디네이터 판정 A — 「옮긴다」는 새 ingest 규칙) · 관련 지식·관련 파일 절은 조각 안 본문까지 전부 보존(폐지 계보 조각에 실제 관련 절이 있으면 관련 조각으로 전환) · 합침은 lint `budget_state` 가 over·critical 이 아닐 때만 · 페이지 `updated`·허브 `synced_commit` 은 건드리지 않음 · vault 커밋은 경로 한정(`pending.md` 제외)
+- **뒤 계획이 지킬 제약**: vault feature 에는 폐지 절이 0이다(lint §7-38 WARN 0) — plan 3 이 기록 규칙을 바꿔도 lint 기준선은 정리 뒤 WARN 8(karina conventions·decisions 예산 초과 7 + karina feat-orchestration 진입점 심볼 1)이다 · vault 를 대상으로 하는 pjc:plan 은 vault 루트에 `intent/` 를 만들면 lint WARN(타입 미지정·고아)이, 위키링크가 든 `plan.md` 는 깨진 링크 ERR 이 난다
+- **미해결 사항**: vault `AGENTS.md` 의 「요약·압축 저장 금지 · 나눠서 옮긴다 · 설계 결정 삭제 금지」 문면이 plan 1 의 삭제 우선 규칙과 어긋난다(같은 파일 20행 `index-personal.md` 도 실제는 `-1/-2`) · vault 대상 plan 의 intent 위치·lint 스캔 제외 규약 부재 · 뿌리 3쪽의 표준 밖 `##` 절과 `90_archive/` 의 지운 조각 링크 13건은 남김
