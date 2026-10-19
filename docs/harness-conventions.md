@@ -110,6 +110,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | **agent·skill·hook 신설** | 해당 행에 더해 **`validate.ps1` 의 화이트리스트 배열을 같은 task 에서 갱신한다** — 빠지면 재설치 후 통합 검증이 `[WARN] validate 미등록` 을 적재한 채로 남는다(v1.169.0 T1 이 신설한 agent 를 등재하지 않아 완료 리뷰가 BLOCKER 로 잡을 때까지 그 상태로 갔다). **워킹트리 검사기 어느 축도 이것을 잡지 못한다** — `validate.ps1` 이 보는 것은 설치 캐시다 |
 | `validate.ps1`·`install.ps1` | Build(전 ps1 parse) + **`python plugins/pjc/evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 두 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
+| `.github/**` | **`python .github/scripts/test_hook_golden_needed.py`**(CI 의 Hook 골든 경로 판정) + **`python plugins/pjc/evals/check-stale-refs.py`** — 정합 검사는 `.github` 를 보지 않고 stale-refs 만 본다. 워크플로 YAML 은 로컬에서 재는 검사가 없어 PR 의 실제 CI 실행이 판정한다 |
 | **모든 `*.md` 변경 (공통 — 다른 행에 걸려도 **더해진다**)** · `agents/*.md` · 기타 skills | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — **행 이름이 「그 외」였을 때 배타로 오독됐다**(2026-09-11 2R 리뷰가 판정을 유보했다). 머리말대로 **합집합**이라, `*.md` 를 고치는 task 는 다른 행에 걸리더라도 이 행을 함께 돈다. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(`plugins/pjc/evals/check-harness-consistency.py` 의 두 축 함수 주석). md를 고치면 그 두 축의 대상이 된다 | 여기에 **`python plugins/pjc/evals/check-stale-refs.py`**를 함께 돌린다 — 여러 회차가 없앤 이름이 살아 있는 자산(레포 루트의 `*.ps1`·`*.md` 포함)에 남았는지 본다(실행에 영향이 없어 골든이 못 잡는 축이다).
 | `plugins/pjc/skills/*/SKILL.md` 의 frontmatter **`description`** (`disable-model-invocation: true` 스킬은 제외 — 설명이 모델 컨텍스트에 실리지 않아 트리거를 바꾸지 못한다) | 위 「모든 `*.md` 변경」 행에 더해 **`python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>`** — `description` 이 트리거의 1차 메커니즘이라(`plugins/pjc/skills/AUTHORING.md` 「description 작성」) 한 구만 고쳐도 발동·미발동 경계가 함께 움직인다. 케이스 id 접두는 `plan`·`impl`·`rec`·`wiki`·`dbg`·`chain`·`pr`. **자수도 함께 잰다** — 운용 기준 **1,024자**를 넘으면 잘린다(회차 30 실측: `record-project-fact` 가 1,045자로 넘어 있었고 재는 축이 0건이었다). 전량 실행은 명시 호출 전용이다 |
 | 위키 회로 6파일 — `implement/SKILL.md` · `plugins/pjc/skills/WIKI.md` · `plan/SKILL.md` · `plugins/pjc/skills/llm-wiki/**` | 해당 행에 더해 **`python plugins/pjc/skills/evals/check_wiki_circuit.py`**(8단계, 모델 호출 없음 · 1초 미만) — 「같은 함정에 두 번 걸리지 않는다」가 성립하려면 기록 → 소비 → 조회가 한 줄로 이어져야 하는데, 어느 한 곳을 고쳐도 다른 일곱은 그대로 통과한다. **비용이 없으므로 스모크가 아니라 전량이 기본이다** |
@@ -125,7 +126,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 51,816 | 137,000 |
+| `docs/harness-conventions.md` | 52,055 | 137,000 |
 | `docs/golden-runner.md` | 13,596 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 11,775 | 37,000 |
 
