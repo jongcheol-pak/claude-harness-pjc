@@ -31,8 +31,8 @@ def needs_hook_golden(paths):
     if not paths:
         return True, 'no changed files detected'
     for raw in paths:
-        if raw.startswith('"'):
-            return True, f'quoted path: {raw}'
+        if raw.startswith('"') or '\n' in raw or '\r' in raw:
+            return True, 'quoted or multi-line path'
         path = normalize(raw)
         if path in INPUT_FILES or path.startswith(INPUT_PREFIXES):
             return True, f'input path changed: {path}'

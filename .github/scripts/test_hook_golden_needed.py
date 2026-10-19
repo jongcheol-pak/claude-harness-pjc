@@ -62,6 +62,8 @@ check(12, False, h.decide('pull_request', fake_git(diff_out='README.md\0plugins/
       'NUL 구분 입력 밖')
 
 paths(13, ['"plugins/pjc/skills/\\355\\225\\234.md"'], True, '따옴표로 감싼 경로')
+paths(13, ['README.md\nhook_golden=false'], True, '줄바꿈이 든 경로')
+check(13, False, '\n' in h.needs_hook_golden(['plugins/pjc/hooks/a\nhook_golden=false'])[1], '사유에 줄바꿈 없음')
 
 print(f'{len(results)} cases')
 sys.exit(0 if all(results) else 1)
