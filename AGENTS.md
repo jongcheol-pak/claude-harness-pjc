@@ -56,7 +56,7 @@
   ```
   python plugins/pjc/skills/evals/trigger_eval.py --filter <plan|impl|rec|wiki|dbg|chain|pr>
   ```
-- **위키 회로 검사** (`implement/SKILL.md`·`WIKI.md`·`plan/SKILL.md`·`skills/llm-wiki/**` 수정 시 필수):
+- **위키 회로 검사** (`implement/SKILL.md`·`WIKI.md`·`REPO-CONVENTIONS.md`·`plan/SKILL.md`·`agents/completion-reviewer.md`·`skills/llm-wiki/**` 수정 시 필수):
   ```
   python plugins/pjc/skills/evals/check_wiki_circuit.py
   ```

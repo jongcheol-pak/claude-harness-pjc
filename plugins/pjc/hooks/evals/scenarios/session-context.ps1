@@ -278,7 +278,7 @@ if (Test-HookSelected @('session-context')) {
     # SC42c (델타 음성): startup엔 주입하지 않는다(SC41c와 같은 취지).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: startup엔 큐 규약 미주입 (SC42c)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
-    # SC42d (델타 음성): compact + 미완료 task 세션엔 새지 않는다 — 그쪽이 쓰는 [PROJECT-FACT] 형식은 skills/WIKI.md 가 담는다.
+    # SC42d (델타 음성): compact + 미완료 task 세션엔 새지 않는다 — 그쪽의 함정 기록 형식은 skills/REPO-CONVENTIONS.md 가 담는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미완료 task 세션엔 큐 규약 미주입 (SC42d)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
 
@@ -474,7 +474,7 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: [다음 회차]와 무마커가 섞이면 무마커만 센다 (SC40m2)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 미판정 1건'
 
     # SC40p: `[1회 실패]`도 세지 않는다 — 등재 판정 대상이 아니라 재발 판정용 기록이다.
-    #   그 표식은 `WIKI.md` §3 ⓐ·`implement/SKILL.md` 「실패 처리」가 이 절에 두도록 **의무로**
+    #   그 표식은 `REPO-CONVENTIONS.md` 「쓰기」·`implement/SKILL.md` 「실패 처리」가 이 절에 두도록 **의무로**
     #   규정했는데 마커 4종에는 없어 skip 셋에서 빠져 있었다 — 회차 68이 그 줄을 실제로 놓아
     #   「미판정 1건」이 발화했다(완료 리뷰 MAJOR · 실측 defUnjudged=1). §36과 같은 형태다.
     #   ⚠ SC40m과 같은 이유로 백틱 있는/없는 형태를 섞는다 — 무백틱만 재면 백틱 옵셔널을

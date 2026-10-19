@@ -207,7 +207,7 @@ try {
             #   한다(:284 의 여섯 겹 백틱). 파일째 Read 는 계획 세션이 쓰지 않는 §3 이하까지 싣는다.
             $awkList = 'awk ''/^(```|~~~)/{f=!f} !f&&/^## /{c++; print c": "$0}'' "' + $lookupPath + '"'
             $awkPick = 'awk -v n=<순번> ''/^(```|~~~)/{f=!f} !f&&/^## /{c++} c==n'' "' + $lookupPath + '"'
-            $lines.Add("[pjc 세션 컨텍스트] 위키 조회 절차: $lookupPath — 파일째 읽지 말고 0절(vault 판정 게이트가 그 안에 있습니다)과 호출측 스킬이 지목한 절만 읽으세요(계획 — pjc:plan Step 1 · 완료 기록 — pjc:implement 「완료 시 위키 기록」). 절 목록 $awkList · 추출 $awkPick")
+            $lines.Add("[pjc 세션 컨텍스트] 위키 조회 절차: $lookupPath — 파일째 읽지 말고 0절(vault 판정 게이트가 그 안에 있습니다)과 호출측 스킬이 지목한 절만 읽으세요(계획 — pjc:plan Step 1 · 완료 기록 — pjc:implement 「완료 시 함정 기록」). 절 목록 $awkList · 추출 $awkPick")
             # 위 둘과 같은 짝 — 라인이 하나 늘었으므로 기준선도 하나 올린다.
             #   주입과 달리 추출 실패 분기가 없어 무조건 올린다.
             $cwdBaseCount++

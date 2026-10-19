@@ -88,7 +88,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 최종 리뷰 (4번 통과 후 1회)
 
-- **완료 순서는 「4번 검증 → Deferred 판정·대장 이관(「완료 정의」) → 위키 기록(「완료 시 위키 기록」) → 리뷰 → 필터 패스 등재분 대장 이관 → 완료 시각 기록(`references/report-format.md`「소요 기록」) → 추적 레포면 plan 파일 커밋(`references/report-format.md`「plan 파일 커밋」) → PR 열기(`references/pr-flow.md`「PR 열기」) → 최종 보고」다** — 리뷰어가 대장 판정 결과와 위키 기록을 검사하므로 그 둘이 리뷰보다 먼저다. 필터 패스(`references/final-review.md`)가 리뷰 뒤에 `[등재]` 로 남긴 항목은 앞의 대장 이관이 이미 지나간 뒤에 생기므로 그 자리에서 한 번 더 옮긴다 — 안 옮기면 `plan.md` 와 함께 다음 회차에 덮어써진다.
+- **완료 순서는 「4번 검증 → Deferred 판정·대장 이관(「완료 정의」) → 함정 기록(「완료 시 함정 기록」) → 리뷰 → 필터 패스 등재분 대장 이관 → 완료 시각 기록(`references/report-format.md`「소요 기록」) → 추적 레포면 plan 파일 커밋(`references/report-format.md`「plan 파일 커밋」) → PR 열기(`references/pr-flow.md`「PR 열기」) → 최종 보고」다** — 리뷰어가 대장 판정 결과와 함정 기록을 검사하므로 그 둘이 리뷰보다 먼저다. 필터 패스(`references/final-review.md`)가 리뷰 뒤에 `[등재]` 로 남긴 항목은 앞의 대장 이관이 이미 지나간 뒤에 생기므로 그 자리에서 한 번 더 옮긴다 — 안 옮기면 `plan.md` 와 함께 다음 회차에 덮어써진다.
 - **`completion-reviewer` 서브에이전트를 호출한다 — 호출 조건·인자·판정·재호출 한계·리뷰어 부재 처리는 `references/final-review.md`「절차」가 정본이다** — 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
 
 ### 실패 처리
@@ -107,13 +107,11 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - **`plan.md`의 체크박스가 진행 상태의 정본이다** — 첫 미완료 task부터 시작한다.
 - **2 task마다 `## Progress Log`에 1~2줄 남긴다** — 이후 task는 대화 히스토리 대신 이 요약과 git log를 본다.
 
-## 완료 시 위키 기록
+## 완료 시 함정 기록
 
-전 task 완료 후, 이번 회차에 **① 같은 원인으로 2회 이상 막힌 것**이나 **② 다음 작업자가 모르면 다시 걸릴 함정**이 있었는지 판정한다. 있으면 기록한다.
+전 task 완료 후, 이번 회차에 **① 같은 원인으로 2회 이상 막힌 것**이나 **② 다음 작업자가 모르면 다시 걸릴 함정**이 있었는지 판정하고, 있으면 레포 `docs/conventions.md` 에 기록한다 — 판정·형식·위치는 `../REPO-CONVENTIONS.md` 「쓰기」 가 정본이고 완료 때 그 절만 Read 한다.
 
-판정 기준·기록 형식·vault 판정은 `../WIKI.md`가 정본이고, **`../WIKI.md` 는 §0 과 §3 만 Read 한다** — 파일째 읽지 않는다: `grep -n '^## ' <WIKI.md 경로>` 로 두 절과 각각 다음 절의 시작 줄을 얻어 Read 의 offset·limit 으로 준다(WIKI.md 는 위키 페이지가 아니고 펜스 안에 `## ` 줄이 없다).
-
-- **이 회차의 보류·기각 `[DECISION]` 을 여기서 1회 일괄 큐잉한다 — 대상은 plan 의 `## Out of Scope` 기각 · 완료 시점에 남은 `## Deferred / Follow-up` 보류 · 구현 중 새로 생긴 것과 기록된 보류·기각의 번복이고, 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약의 배치 시점은 여기 하나이고(채택은 코드·커밋이 담아 큐잉하지 않는다), `[PROJECT-FACT]`는 위 판정이 이미 맡는다. **`queue-rules.md` 는 파일째 읽지 않는다 — K 5~K 5-3 과 K 6 절만 `grep -n '^### K' <queue-rules.md 경로>` 경계로 Read 한다**(K 5-2 가 K 5 의 게이트·폴백과 K 6 커밋에, 위 §3 의 `[PROJECT-FACT]` 가 K 5-3 에 기댄다).
+- **이 회차의 보류·기각 `[DECISION]` 을 여기서 1회 일괄 큐잉한다 — 대상은 plan 의 `## Out of Scope` 기각 · 완료 시점에 남은 `## Deferred / Follow-up` 보류 · 구현 중 새로 생긴 것과 기록된 보류·기각의 번복이고, 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약의 배치 시점은 여기 하나다(채택은 코드·커밋이 담아 큐잉하지 않는다). vault 판정은 `../WIKI.md` §0 이다. **`queue-rules.md` 는 파일째 읽지 않는다 — K 5~K 5-2 와 K 6 절만 `grep -n '^### K' <queue-rules.md 경로>` 경계로 Read 한다**(K 5-2 가 K 5 의 게이트·폴백과 K 6 커밋에 기댄다).
 
 ## 완료 정의
 

@@ -224,7 +224,7 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 - **트리거**: 수동 요청 (예: "위키 업데이트", "DevDashboard 변경분 반영")
 
 ### 금지 사항
-- 코드 작업 세션에서 wiki 갱신 혼합 금지 — 단 **read-only 참조(절차 K, §6)는 허용**(쓰기만 금지). 예외: **기획·설계 결정 큐잉(`[DECISION]`, `references/queue-rules.md` 절차 K 5-2), 프로젝트 작업 사실 큐잉(`[PROJECT-FACT]`, 절차 K 5-3), 증상 큐잉(`[SYMPTOM]`, 절차 K 5-5)** 시 **vault 루트 `pending.md` 1줄 append**만 허용한다(§6 — 본문 페이지·인덱스·log는 계속 금지)
+- 코드 작업 세션에서 wiki 갱신 혼합 금지 — 단 **read-only 참조(절차 K, §6)는 허용**(쓰기만 금지). 예외: **기획·설계 결정 큐잉(`[DECISION]`, `references/queue-rules.md` 절차 K 5-2), 증상 큐잉(`[SYMPTOM]`, 절차 K 5-5)** 시 **vault 루트 `pending.md` 1줄 append**만 허용한다(§6 — 본문 페이지·인덱스·log는 계속 금지)
 - Lint는 Ingest 세션과 별도로 실행
 
 ### 병렬 다중 에이전트 분업 규칙
