@@ -7,7 +7,7 @@
 
 - **프로젝트 페이지**: 20_projects/personal/claude-harness-pjc.md (LLM WIKI vault)
 - 프로젝트 성격·기술 스택·구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다(단 `## Conventions` 의 아키텍처 선언 1줄은 남는다).
-- 작업 규약·함정: 같은 폴더의 `conventions.md`(+ `conventions-*.md` 하위)
+- 작업 함정: 레포 `docs/conventions.md` (규약 `plugins/pjc/skills/REPO-CONVENTIONS.md`)
 
 ## Build & Test
 
