@@ -76,7 +76,7 @@ tags: [project, 카테고리, 프로젝트태그]
 ## 관련 위키 지식
 - [[30_knowledge/tech/해당기술|표시이름]] — 간단 설명
 - [[20_projects/{카테고리}/{프로젝트}/decisions|결정 이력]] — 채택·보류·기각·번복 (생성 시 1회 추가)
-- [[20_projects/{카테고리}/{프로젝트}/conventions|작업 규약]] — 이 프로젝트 작업 규약·함정 (생성 시 1회 추가)
+- [[20_projects/{카테고리}/{프로젝트}/conventions|작업 규약]] — (레거시 — 이관 전 페이지만. 새 프로젝트는 레포 `docs/conventions.md`) 이 프로젝트 작업 규약·함정 (생성 시 1회 추가)
 
 ## 프로젝트 간 공유 패턴
 - **패턴명**: 어떤 프로젝트와 어떻게 공유하는지
@@ -145,6 +145,46 @@ tags: [feature, 기능태그, 프로젝트태그]
 {그 주제의 서술}
 
 [^src-태그]: [[10_sources/{카테고리}/src-{태그}|소스: 프로젝트명]] — `ViewModels/{기능}ViewModel.cs`, `Views/{기능}Page.xaml` (근거 소스 파일 경로 병기)
+```
+
+**facts 변형** — 새로 만들거나 갱신하는 feature 는 이 형식으로 쓴다(`wiki-schema.md` §1 「facts 형식」 · `schema-types.md` §2.3 facts 변형).
+
+```markdown
+---
+type: feature
+format: facts
+project: 프로젝트명
+category: personal | work
+feature_name: "기능명"
+description: "한 줄 요약"
+platform: windows-desktop | web | mobile | cli | cross
+status: active
+origin: agent-synthesized | human-validated
+confidence: high | medium | low
+updated: YYYY-MM-DD
+tags: [feature, 기능태그, 프로젝트태그]
+---
+
+# 기능명
+
+## 개요
+- {기능이 무엇이고 왜 있는가 — 한 줄} (근거: `{레포 상대경로}`@{커밋 7자 이상})
+
+## 동작
+<!-- 사용자 관점 사실만: 무엇을 넣으면 무엇이 나오고, 실패하면 어떻게 되는가. 단계 나열·화면 묘사 금지.
+     줄마다 근거 꼬리 필수 — 그 커밋 이후 근거 파일이 바뀌면 lint §7-39 가 알린다. -->
+- {입력 → 결과 — 한 줄} (근거: `{경로}`@{커밋})
+- 없음: {이 기능이 하지 않는 것} (근거: `{경로}`@{커밋})
+
+## 구조
+<!-- 구성요소·연결·흐름과 그렇게 만든 이유. 함수 시그니처·상수 값·개수는 쓰지 않는다(코드가 정본). -->
+- {구성요소 A} → {구성요소 B}: {무엇을 건네는가} — {왜 이렇게 나눴는가} (근거: `{경로}`@{커밋})
+
+## 관련 파일
+- `{경로}` — {역할} (진입점: `{심볼}`)
+
+## 관련 지식·레시피
+- {함정·채택 이유·기각한 대안 — 한 줄} (근거: `{경로}`@{커밋})
 ```
 
 ## entity
@@ -275,6 +315,8 @@ tags: [decision-log, 프로젝트태그]
 ```
 
 ## convention
+> **레거시 — 새로 만들지 않는다(2026-10-19 · `schema-types.md` §2.9).** 작업 규약·함정은 레포 `docs/conventions.md` 가 담는다.
+
 ```markdown
 ---
 type: convention
