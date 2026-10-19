@@ -15,7 +15,7 @@ language: ko
 | § | 내용 | 읽는 시점 | 파일 |
 |---|------|----------|------|
 | 1 | 위키 개요 / 핵심 원칙(출처 우선순위·injection 방어)·3대 용도 | 모든 작업 공통 기본(짧음) | `wiki-schema.md` |
-| 2 | 페이지 타입 정의 (source-stub/project/feature/entity/concept/guide/question/decision-log/convention) | 페이지 신규 작성·갱신 시 **해당 타입 절(§2.N)만** | `schema-types.md` |
+| 2 | 페이지 타입 정의 (source-stub/project/feature/entity/concept/guide/question/decision-log) | 페이지 신규 작성·갱신 시 **해당 타입 절(§2.N)만** | `schema-types.md` |
 | 3 | 네이밍 / 태깅 / 링킹 / 통제 어휘 (platform·스택) | 페이지 생성·인덱스 행 등록 시 | `wiki-schema.md` |
 | 4 | 파일 예산 | 예산 확인·index 분할 시 | `schema-budget.md` |
 | 5 | Ingest 워크플로우 | 절차 A/B 수행 시 | `wiki-schema.md` |
@@ -54,7 +54,7 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 - **담는다** — 프로젝트 개요·기능 목록(허브) · 기능이 무엇을 하는가 · 구성 요소와 그렇게 나눈 이유 · 결정 · 함정 · 결정 이력(채택·보류·기각·번복과 이유 — §2.8) · 다른 프로젝트에 재사용할 패턴·레시피(`30_knowledge/`·`40_guides/`).
 - **담지 않는다** — 프로젝트 작업 함정·작업 규약(레포 `docs/conventions.md` — 규약은 하니스 `skills/REPO-CONVENTIONS.md`) · 진행 상태(레포 `plan.md`) · 커밋마다 바뀌는 수치(§5 「재사용 지식 vs 레포 소유 이력」) · 함수 시그니처·상수 값 같은 코드 세부.
 - **쓰지 않는 코드 정보** — 파일·디렉터리 경로 · 함수·클래스·변수 이름 · 개수·크기·케이스 수 · 규약 문서 원문의 재기재(있다는 것과 이유만). 코드가 바뀌면 틀어진다. **영구 예외**: 각주 `[^src-…]`·facts `근거: 경로@커밋` 의 출처 경로 — 본문이 아니라 검증용 출처이고 lint §7-20·§7-39 가 그 경로로 실존·낡음을 잰다. 본문의 경로는 lint §7-40 이 잡는다.
-- **convention 페이지(§2.9)는 레거시다** — 새로 만들지 않고, 레포 `docs/conventions.md` 로 이관한 뒤 지운다.
+- **옛 작업 규약 타입(§2.9)은 폐지됐다** — 남은 페이지는 레포 `docs/conventions.md` 로 옮긴 뒤 지운다(lint §7-41).
 
 **facts 형식 (`format: facts` — 이 자리가 정본)**: 새로 만들거나 ingest 로 갱신하는 project·feature·decision-log 페이지는 이 형식으로 쓰고 frontmatter 에 `format: facts` 를 단다. feature 사실 줄은 `## 개요`·`## 관련 지식·레시피` 에 둔다. 기존 페이지는 갱신될 때 바뀐다. 독자가 맥락 없이 들어오는 LLM 이라 뜻이 비면 추측으로 채우고, 그 추측이 잘못된 답이 된다 — 아래 규칙은 그 빈칸을 막는다.
 1. **사실 하나에 줄 하나** — `- ` 로 시작하는 한 줄이 그 줄만 뽑아 읽어도 뜻이 선다. 판단 여러 개를 한 줄에 잇지 않는다(과압축 금지).
@@ -95,8 +95,6 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 | guide (recipe) | `40_guides/` | `recipes/{스택}/{영문소문자하이픈}.md` | `recipes/winui/startup-autostart.md` |
 | 질문 | `30_knowledge/questions/` | `q-{YYYYMMDD}-{짧은설명}.md` | `q-20260607-scrollview-issue.md` |
 | 결정 이력 | `20_projects/{카테고리}/` | `{프로젝트폴더}/decisions.md` (파일명 고정) | `devdashboard-winui/decisions.md` |
-| 작업 규약(레거시 — 새로 만들지 않는다) | `20_projects/{카테고리}/` | `{프로젝트폴더}/conventions.md` (파일명 고정) | `devdashboard-winui/conventions.md` |
-| 작업 규약 하위 | `20_projects/{카테고리}/` | `{프로젝트폴더}/conventions-{주제}.md` — **사람이 나눌 때만 생긴다**(자동 경로는 v1.303.0에 폐지. 그 전에 만들어진 순번 하위 `conventions-{n}.md` 는 그대로 남는다, §2.9) | `devdashboard-winui/conventions-release.md` · `devdashboard-winui/conventions-2.md` |
 
 ### Wikilink 규칙
 - 형식: `[[경로/파일명|한글 표시이름]]` (명시적 경로 필수)
@@ -117,17 +115,16 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 - **동의어 명명 일관성**: 새 기능명을 등록하기 전에 기존 기능별 인덱스를 한/영 키워드로 검색한다 — **다른 프로젝트에 같은 기능이 이미 등록돼 있으면 그 행의 한/영 키워드를 재사용해 명명**한다(같은 기능 = 같은 검색어 — 프로젝트마다 다른 이름으로 등록하면 교차 프로젝트 검색("A의 이 기능이 다른 프로젝트에도 있나")이 누락된다). 새 이름이 더 적절하면 기존 키워드도 괄호에 병기해 양쪽 검색이 모두 잡히게 한다. (의미 유사성은 기계 검사 불가 — 등록 절차 규칙, A-3 1·B-2 1-1)
 
 ### 태그 / 통제 어휘
-- 계층 태그: `project`, `feature`, `entity`, `concept`, `guide`, `recipe`, `question`, `source`, `decision-log`, `convention`
+- 계층 태그: `project`, `feature`, `entity`, `concept`, `guide`, `recipe`, `question`, `source`, `decision-log`
 - 기술 태그: `winui3`, `rust`, `dotnet`, `tauri`, `mvvm`, `sqlite`, `wpf` …
 - 기능 태그: `tray`, `dpi`, `notification`, `launcher`, `drag-drop`, `import-export` …
 - UI 태그: `xaml`, `navigation`, `theming`, `dialog`, `localization` …
 - **`platform` 통제 어휘(고정)**: `windows-desktop` | `web` | `mobile` | `cli` | `cross`
 - **`origin` 통제 어휘(고정)**: `agent-synthesized` | `human-validated` — project/feature/entity/concept/guide 공통 필수 필드
-- **`confidence` 통제 어휘(고정)**: `high` | `medium` | `low` — project/feature/entity/concept/guide 공통 필수 필드 (decision-log·convention은 대상 아님 — §2.8·§2.9)
-- **`category` 통제 어휘(고정)**: `personal` | `work` — source-stub/project/feature/decision-log/convention 공통(디렉터리 분류 `{personal|work}`와 일치, §2). 값 오타는 lint §7-7이 ERR로 검사(값이 있을 때만 — 부재는 경로 규약과 이중 방지 위해 미검사)
+- **`confidence` 통제 어휘(고정)**: `high` | `medium` | `low` — project/feature/entity/concept/guide 공통 필수 필드 (decision-log는 대상 아님 — §2.8)
+- **`category` 통제 어휘(고정)**: `personal` | `work` — source-stub/project/feature/decision-log 공통(디렉터리 분류 `{personal|work}`와 일치, §2). 값 오타는 lint §7-7이 ERR로 검사(값이 있을 때만 — 부재는 경로 규약과 이중 방지 위해 미검사)
 - **`format` 통제 어휘(고정)**: `facts` — project·feature·decision-log 의 선택 필드. 있으면 §1 「facts 형식」을 따르고 lint §7-39 의 대상이다(없으면 기존 형식).
 - **결정 통제 어휘(고정, decision-log 항목)**: `채택` | `보류` | `기각` | `번복` (§2.8)
-- **근거 통제 어휘(고정, convention 항목)**: `실측` | `사용자 지시` | `문서 대조` (§2.9 — 항목 끝 `({근거})` 자리에 쓰는 어휘. lint §7-34가 미보유 건수를 집계하고 `check_consistency.py`가 이 줄을 `lint.py`의 `EVIDENCE_VOCAB`과 대조한다)
 - **`budget_split` 3필드 (선택 — 「분리 불가 판정」)**: 단일 주제라 §4의 이동·분리 처방이 성립하지 않는 페이지에만 쓴다(단일 레시피·단일 개념 등). 세 필드는 **함께** 적는다 — ① `budget_split`: 판정 어휘(정본은 `references/wiki-ops-rules.md` 「예산 단계 신호」 표의 `판정 어휘` 행, lint 상수 `BUDGET_SPLIT_VOCAB`) ② `budget_split_chars`: lint이 **예산 판정에 쓰는 것과 같은 기준의 문자 수**다 — 임박 메시지의 `{현재}/{예산}자` 왼쪽 값이 그 값이며, platform-bootstrap·ui-ux guide는 **펜스 내부를 제외한 유효 문자 수**(§2.6)라 파일 전체 길이와 다르다. 기준을 예산 판정과 맞추는 이유는 재판정이 「자랐는가」를 예산과 같은 축에서 재야 하기 때문이다 — 전체 길이로 적으면 펜스가 큰 guide에서 기록값이 비교값보다 항상 커져 억제가 마진보다 훨씬 넓게 유지된다. 판정 필드 자체도 그 길이에 포함되므로 **부착 → 재측정 → 값 수렴**의 1회 왕복으로 확정한다(부재·비정수면 억제하지 않는다) ③ `budget_split_reason`: **왜 나눌 수 없는가**(*"작아서"* 는 사유가 아니다). 효과는 **임박 WARN이 「분리 불가 판정 유지」 INFO로 강등**되는 것이며 초과 WARN은 그대로 난다(§7-2). 침묵시키지 않는 이유는 억제를 영구 면제로 두면 「한 번 판정하면 초과까지 무신호」가 되기 때문이다. 판정 시점 대비 `BUDGET_REJUDGE_MARGIN`을 넘게 자라면 억제가 풀린다.
 - **`스택`(recipe 폴더 분류, 개방 목록)**: 프레임워크/언어 기준 — `winui` | `wpf` | `csharp` | `dotnet` | `unity` | `rust` | `web` | `tauri` … 가장 구체적인 것을 선택(예: WinUI 전용은 `winui`, 언어 일반은 `csharp`).
 
@@ -228,7 +225,7 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 > 코드 프로젝트 세션에서 기능 구현·버그 수정 전에 위키를 참고할 때.
 > **절차 전문은 스킬 `references/lookup-rules.md` "K. 작업 참조"에 단일 정의** — 인덱스 식별 → 식별 페이지만 read → 소스 점프 → `origin`/`confidence` 반영.
 > 규칙 측 핵심(**read-only** · 유일한 쓰기 예외 vault 루트 `pending.md` 1줄 append)도 그 절차가 정본이다 — 기록 형식은 `references/queue-rules.md`(K 5~6), 소비는 `references/queue-consume-rules.md`.
-> **`pending.md`는 소비 대기 큐이지 지식 페이지가 아니다** — 작업 참조(K)·질문(G)의 검색 결과에서 제외하고 계획·디버깅·답변의 근거로 인용하지 않는다(읽기는 중복 억제 판정 목적만). 예외 둘(캘러를 명시한 ⓐ · 캘러를 가리지 않는 ⓑ)과 식별 단계의 대상 범위(`decisions.md`·`conventions.md`·`index.md` 의 tech/·미해결 질문)는 `references/lookup-rules.md` K 2 가 정본이다.
+> **`pending.md`는 소비 대기 큐이지 지식 페이지가 아니다** — 작업 참조(K)·질문(G)의 검색 결과에서 제외하고 계획·디버깅·답변의 근거로 인용하지 않는다(읽기는 중복 억제 판정 목적만). 예외(대상 프로젝트 `[DECISION]` 의 존재 보고)와 식별 단계의 대상 범위(`decisions.md`·`index.md` 의 tech/·미해결 질문)는 `references/lookup-rules.md` K 2 가 정본이다.
 
 ---
 
@@ -297,7 +294,7 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 - **project / feature / entity / concept / guide** 5타입 frontmatter에 `description: "한 줄 요약"`을 권장한다(OKF v0.2 §4.1 Frontmatter — 인덱스 생성·검색 스니펫·미리보기용). §2 각 타입 블록·`references/templates.md`에 반영되어 있다.
 - **신규 페이지는 작성 시 포함**(templates.md 정본)하고, **기존 페이지는 ingest 갱신 시 채운다**(절차 B-2 점진 보강 — 일괄 백필 세션을 요구하지 않는다).
 - **lint 기계 검사는 하지 않는다** — 기존 페이지 다수가 아직 부재라 WARN을 신설하면 lint 보고가 노이즈에 묻힌다. 점진 보강이 원칙.
-- source-stub(불변 스텁·본문 "요약" 줄 기존재)·question·decision-log·convention(제목·항목이 자명)은 대상이 아니다.
+- source-stub(불변 스텁·본문 "요약" 줄 기존재)·question·decision-log(제목·항목이 자명)은 대상이 아니다.
 
 ### updated ↔ OKF 콘텐츠 시각 필드 매핑
 

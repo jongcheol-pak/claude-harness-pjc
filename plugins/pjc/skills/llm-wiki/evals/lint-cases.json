@@ -82,22 +82,6 @@
       "rationale": "§7-33 기각·보류 방향 미기재 (WARN) — 판정 직후 마침표 1건 + 괄호 부기 1건. 괄호가 `:`를 대체하지 못함을 함께 실증하고, 같은 파일의 채택 항목(본문이 대안을 「기각」으로 언급)이 세어지지 않아 건수가 3이 아니라 2다"
     },
     {
-      "fixture": "convention-evidence",
-      "expect_keywords": [
-        "conventions 근거 표기 없음",
-        "3건 / 전체 5건"
-      ],
-      "rationale": "§7-34 conventions 근거 표기 집계 (INFO) — 집계 수를 분자·분모 둘 다 잰다. 5항목 중 보유 2(줄 끝 앵커) · 미보유 3(꼬리 붙은 앵커 · 어휘 밖 표기 · 날짜 부기 항목). 날짜 부기 항목이 분모에 드는 것과, 줄 끝이 아닌 앵커가 보유로 세어지지 않는 것이 이 케이스의 두 경계다"
-    },
-    {
-      "fixture": "convention-evidence-ok",
-      "expect_absent": [
-        "conventions 근거 표기 없음"
-      ],
-      "expect_clean": true,
-      "rationale": "§7-34 음성 방향 — 전 항목이 줄 끝 앵커를 가진 vault는 집계 줄을 내지 않는다(0건이면 생략)"
-    },
-    {
       "fixture": "pattern-case-section",
       "expect_keywords": [
         "patterns 관측 폭",
@@ -251,7 +235,6 @@
       "fixture": "pending-backlog",
       "expect_keywords": [
         "pending.md 미처리 잔량",
-        "PROJECT-FACT 1건",
         "DECISION 1건",
         "SYMPTOM 1건",
         "큐 정리(절차 M)"
@@ -262,7 +245,7 @@
         "형식 위반",
         "구현 완료 시점"
       ],
-      "rationale": "§7-25 pending 잔량 집계 INFO — [PROJECT-FACT]·[DECISION]·[SYMPTOM] 세 태그의 집계 무회귀. **추가(§7-1 pending 제외, v1.116.0)**: [SYMPTOM] 행의 대응 페이지가 부재 대상 wikilink여도 깨진 링크 ERR·경로없음 WARN이 나지 않아야 함 — 루트 pending.md는 소비 대기 큐라 링크 규약 대상이 아니다(제외가 빠지면 큐 항목이 lint를 exit 1로 죽인다)"
+      "rationale": "§7-25 pending 잔량 집계 INFO — [DECISION]·[SYMPTOM] 두 태그의 집계 무회귀. **추가(§7-1 pending 제외, v1.116.0)**: [SYMPTOM] 행의 대응 페이지가 부재 대상 wikilink여도 깨진 링크 ERR·경로없음 WARN이 나지 않아야 함 — 루트 pending.md는 소비 대기 큐라 링크 규약 대상이 아니다(제외가 빠지면 큐 항목이 lint를 exit 1로 죽인다)"
     },
     {
       "fixture": "pending-malformed",
@@ -272,8 +255,7 @@
         "SYMPTOM 1건"
       ],
       "expect_absent": [
-        "DECISION 1건",
-        "PROJECT-FACT 1건"
+        "DECISION 1건"
       ],
       "rationale": "§7-25 형식 위반 WARN(pending.md) — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두가 아닌 줄이 잔량 집계에서 조용히 누락되던 사각지대를 검출한다(실측: 실 vault 큐 17줄이 0건으로 집계돼 20건 잔량 경고가 통째로 침묵). 픽스처는 위반 3종을 담는다 — ⓐ 날짜가 끝 괄호로 밀린 줄 ⓑ 대시 뒤 공백 없는 줄 ⓒ **날짜 형식 불일치**(`[2026-8-2]` 한 자리 월·일). ⓒ는 Phase F-7 M1이 잡은 미커버 축이다 — 판정을 선두 태그 기준으로 좁히는 과정에서 접두를 날짜 형식으로 제한하면 이런 줄이 **집계에도 위반에도 안 잡혀** 조용히 사라진다(이 WARN이 존재하는 이유의 정중앙)(불릿 판별을 pend_ok_rx보다 엄격하게 두면 정상에도 위반에도 안 잡히는 2차 사각지대가 생겨, 두 정규식의 공백 폭을 맞춘 것을 고정). 정상 줄 1건을 섞어 **위반 WARN과 잔량 INFO가 병존**함을 검증하고, expect_absent로 위반 줄이 태그별 집계에 잘못 포함되지 않음(과다 집계 0)을 못 박는다. 짝: 정상 픽스처 pending-backlog의 expect_absent '형식 위반'이 오탐 0을 고정한다"
     },
@@ -472,33 +454,6 @@
       "rationale": "§7-14 순번 sub-index 자동 분할 신호(INFO) — index-work-1.md가 본문 400줄 임계 초과라 '순번 파일 자동 분할' INFO를 낸다(schema-budget §4 3단계). 동시에 index.md에 순번 stem(index-work-1/-2)이 등록됐는데 §7-15 '미등록' WARN이 안 나는지 실증 — mentioned 정규식 index-[a-z]+(?:-\\d+)?가 순번 suffix를 포착(구 index-[a-z]+는 index-work로만 잡혀 index-work-1을 미등록 오탐, expect_absent가 그 회귀를 가드)."
     },
     {
-      "fixture": "convention-over",
-      "expect_keywords": [
-        "예산 초과: 20_projects/personal/demo/conventions.md 13059/12000자 (type=convention)",
-        "무효 항목을 제거한다"
-      ],
-      "rationale": "§7-2 convention 예산(12000자) **초과 WARN + 처방 힌트**와 그 **델타 음성**을 한 픽스처에서 잰다. 양성 `demo/conventions.md`는 13,059자로 초과라 WARN이 나고 힌트가 「무효 항목을 제거한다」 하나로 좁혀진다 — v1.303.0이 구역화·하위 분리·재분할을 없앴으므로 남는 처방이 그것뿐이고, 옛 힌트의 「하위 파일」이 되살아나면 expect_absent에서 FAIL한다. 델타 음성 `demo2/conventions.md`는 **11,520자(96%)로 임박 구간인데 아무 신호도 나지 않는다** — convention은 근접·임박·억제 세 갈래(ⓑ·ⓑ′·ⓒ)에서 모두 빠지고 초과에서만 발화하기 때문이다. 「한계를 이미 넘은 대상은 처방 가능 여부와 무관하게 알린다」가 이 케이스의 양성이고, 「그 아래에서는 조용하다」가 음성이다. 근접 분기만 막고 ⓒ(분리 불가 판정 유지) 갈래를 남긴 구현은 이 음성에서 FAIL한다(실제로 T1이 그 상태를 한 번 만들었다).",
-      "expect_absent": [
-        "예산 임박: 20_projects/personal/demo2/conventions.md",
-        "예산 임박(분리 불가 판정 유지): 20_projects/personal/demo2/conventions.md",
-        "구역화 필요",
-        "하위 파일"
-      ]
-    },
-    {
-      "fixture": "convention-legacy-hub",
-      "expect_keywords": [
-        "작업 규약 미마이그레이션",
-        "레포 docs/conventions.md 이관 대상"
-      ],
-      "rationale": "§7-31 검출 — 허브에 옛 '## 작업 규약·주의사항' 섹션이 남아 있으면 레포 docs/conventions.md 이관 대상으로 알린다(schema-types §2.9 레거시 — 위키에 새 conventions.md 를 만들지 않는다). 미마이그레이션 허브를 매 lint에서 가시화해 다음 ingest가 처리하게 만드는 신호다."
-    },
-    {
-      "fixture": "convention-legacy-hub",
-      "expect_clean": true,
-      "rationale": "§7-31 심각도 가드(INFO 고정) — 위 케이스와 같은 픽스처를 ERR·WARN 0으로 검증한다. 사용자가 기존 허브 12개의 점진 마이그레이션을 택했으므로 이 신호가 WARN이면 미마이그레이션 허브 전부가 매 lint마다 경고를 내 실제 결함이 묻히고, ERR이면 exit code까지 바뀐다. expect_clean과 expect_keywords는 한 케이스에 합칠 수 없어(runner의 clean 분기가 early return) 축을 두 케이스로 나눴다."
-    },
-    {
       "fixture": "convention-broken",
       "expect_keywords": [
         "변경 이력 아카이브 포인터 깨짐",
@@ -508,18 +463,6 @@
         "포인터 누락"
       ],
       "rationale": "§7-30ⓐ 정방향 — 허브 '## 아카이브' 포인터가 실재하지 않는 changes.md를 가리키면 WARN(schema-types §2.2 · schema-budget §8). 롤오버한 변경 이력에 도달하지 못하면 이동이 곧 유실이므로 §7-24 decisions 포인터와 같은 계열로 검사한다. expect_absent '포인터 누락'은 역방향 오발화 가드 — 이 픽스처에는 90_archive 하위 changes.md가 없어 역방향은 침묵해야 한다."
-    },
-    {
-      "fixture": "convention-broken",
-      "expect_keywords": [
-        "규약 하위 문서 목록 누락",
-        "conventions-release.md",
-        "조회 홉 1"
-      ],
-      "expect_absent": [
-        "목록 깨짐"
-      ],
-      "rationale": "§7-30ⓑ 역방향 — conventions-release.md가 실재하는데 conventions.md '## 하위 문서' 목록에 없으면 WARN(schema-types §2.9). 목록이 조회 진입점이라 미등재는 분리한 규약이 절차 K의 조회 경로 밖으로 나가는 것이다(조회 홉 1 위반). expect_absent '목록 깨짐'은 정방향 오발화 가드 — 목록이 가리키는 없는 파일이 없으므로 정방향은 침묵해야 한다. 고아 페이지 WARN이 함께 나오는 것은 미등재 상태의 필연적 동반 신호(링크 부재)이며 이 케이스 판정에 영향이 없다."
     },
     {
       "fixture": "budget-critical",
@@ -1142,7 +1085,10 @@
           "# 허브\n\n## 아카이브 인덱스\n\n- 2026-07.md: 3건 (2026-07-01~2026-07-31)\n\n## 아카이브\n\n- 이전 이력: 90_archive/x/changes.md\n",
           "아카이브"
         ],
-        "expect": [61, 103]
+        "expect": [
+          61,
+          103
+        ]
       },
       "rationale": "**`--fix` 쓰기 경로의 섹션 경계가 읽기 경로(`section()`)와 같은가 — 접두 오매치.** `section_span` 은 `apply_fixes` 가 decisions `## 아카이브` 포인터 행을 지우고 `## 미해결 질문`·`## 아카이브` 에 행을 넣을 때 쓴다. 종전에는 중첩 함수에 옛 `\\b` 경계가 따로 남아 `## 아카이브` 를 찾으면 앞의 `## 아카이브 인덱스` 를 먼저 물었다 — 읽기는 고쳐지고 쓰기는 남은 상태였다. 기대 오프셋은 입력 문자열의 `str.index(\"## 아카이브\\n\")`·`len()` 으로 구했다(구현 정규식과 다른 축)."
     },
@@ -1154,7 +1100,10 @@
           "# 인덱스\n\n## 기술 스택 지식 (tech/)\n\n| 기술 | 사용 |\n\n## 범용 패턴 (patterns/)\n\n행\n",
           "기술 스택 지식"
         ],
-        "expect": [7, 41]
+        "expect": [
+          7,
+          41
+        ]
       },
       "rationale": "**`section_span` 도 괄호 부기 헤딩을 받고 다음 헤딩에서 끊는다.** 위 `section` 괄호 케이스의 쓰기 경로 짝이다 — 경계를 한 헬퍼로 합친 뒤 한쪽만 좁혀지면 이 케이스가 잡는다. 기대값은 `str.index(\"## 기술\")`·`str.index(\"## 범용\")`."
     },
@@ -1166,7 +1115,10 @@
           "# 허브\r\n\r\n## 미해결 질문\r\n\r\n- [[q1]]\r\n\r\n## 아카이브\r\n\r\n- x\r\n",
           "미해결 질문"
         ],
-        "expect": [8, 33]
+        "expect": [
+          8,
+          33
+        ]
       },
       "rationale": "**`section_span` 은 CRLF 원문을 받는다.** `section()` 은 정규화 텍스트를 받지만 `section_span` 은 `apply_fixes` 의 원문(`raws[r]`)을 받고, 그 원문은 CRLF vault 에서 `\\r\\n` 을 그대로 갖는다. Python `re.M` 의 `$` 는 `\\n` 앞에서만 성립하므로 경계를 `$` 로 끝내면 `## 미해결 질문\\r\\n` 이 매치되지 않아, 행 제거는 조용히 0건이 되고 `insert_into_section` 은 같은 이름의 섹션을 문서 끝에 하나 더 만든다. 입력에 `\\r\\n` 을 명시해 체크아웃 줄바꿈과 무관하게 잰다. 기대값은 `str.index(\"## 미해결\")`·`str.index(\"## 아카이브\")`."
     },
@@ -1565,16 +1517,6 @@
       "rationale": "**복귀 링크 신호의 음성.** 파일명에 순번이 붙었을 뿐 분리해 나온 하위가 아닌 독립 페이지다 — 복귀 링크가 없으므로 이 검사의 대상이 아니다. **판정 신호를 복귀 링크 단일로 좁힌 뒤에도 이 케이스가 음성으로 남는 것이 그 설계의 핵심**이고, 복귀 링크 요구를 빼면 이것이 곧바로 「목록에서 빠진 하위」로 오탐된다."
     },
     {
-      "fixture": "subdoc-double-warn",
-      "expect_keywords": [
-        "규약 하위 문서 목록 누락"
-      ],
-      "expect_absent": [
-        "분리한 본문이 조회 경로 밖"
-      ],
-      "rationale": "**이중 WARN 방지.** convention 하위가 목록에서 빠진 상태는 §7-30ⓑ가 이미 보는 쌍이다 — ⓔ가 같은 쌍을 다시 지적하면 한 결함에 두 줄이 나와 처방이 흐려진다. ⓔ의 convention·guide 제외를 빼면 이 케이스가 두 WARN을 함께 내어 FAIL한다. **needle은 ⓑ와 구분되는 문면을 쓴다** — ⓔ 메시지의 접두(`하위 문서 목록 누락`)는 ⓑ의 `규약 하위 문서 목록 누락`에 부분 문자열로 들어가 ⓑ 자신을 잡는다(실측). 그래서 처방 문구(`분리한 본문이 …` / `분리한 규약이 …`)로 가른다."
-    },
-    {
       "fixture": "subdoc-otherparent",
       "expect_keywords": [
         "[ERR] 오류 0건"
@@ -1774,15 +1716,6 @@
       "expect_clean": true
     },
     {
-      "fixture": "convention-fenced-section",
-      "expect_absent": [
-        "규약 하위 문서 목록 깨짐",
-        "규약 하위 문서 목록 누락"
-      ],
-      "rationale": "§2.9 하위 문서 목록 — **`section()` 이 코드펜스 안의 `## ` 를 헤딩으로 오인하지 않는지**를 고정한다(회차 71). 픽스처는 `## 문서를 쓸 때` 절 안에 서식 예시를 펜스로 담고 그 안에 `## 하위 문서` + 실재하지 않는 링크를 둔 뒤, 문서 끝에 **진짜** `## 하위 문서`(실재하는 `conventions-2.md` 등재)를 둔다. 규약 문서가 자기 서식을 펜스 예시로 적는 것은 드문 형상이 아니다. **수정 전 red 를 실측했다** — 오탐 2건이 동시에 났다: 펜스 안 가짜 링크를 등재분으로 읽어 「목록 깨짐: … conventions-없는파일.md 없음」, 진짜 등재분을 못 읽어 「목록 누락: … conventions-2.md 미등재」. 한 픽스처가 ⓐ 가짜 절을 반환하는 것과 ⓑ 진짜 절을 놓치는 것을 **양방향으로** 잡는다 — 한쪽만 재면 반대 방향 회귀가 green 으로 통과한다",
-      "expect_clean": true
-    },
-    {
       "fixture": "prose-split",
       "auto_split": true,
       "git_vault": true,
@@ -1800,7 +1733,9 @@
         "산문 분리 — 20_projects/personal/demo/feat-thing.md"
       ],
       "expect_file_not_contains": {
-        "log.md": ["[SCHEMA]"]
+        "log.md": [
+          "[SCHEMA]"
+        ]
       },
       "rationale": "**git vault 에서는 `--auto-split` 이 log.md 에 `[SCHEMA]` 를 쓰지 않는다**(2026-10-12 감사 — 그 줄을 읽는 절차가 없고 git 이력·체크포인트 커밋과 겹치며 log 롤오버만 앞당겼다). 분할이 실제로 수행됐는지는 키워드가, 기록이 없는지는 log.md 대조가 잰다 — 비 git vault 의 기록은 `split-recheck-log` 가 그대로 잰다."
     },
@@ -2149,6 +2084,40 @@
         "본문 코드 경로"
       ],
       "rationale": "§7-40 음성 짝(archived-page) — `90_archive/` 아래 페이지는 검사 밖이다. 제외 축마다 케이스를 따로 둔다(축 분리)"
+    },
+    {
+      "fixture": "retired-type",
+      "expect_keywords": [
+        "폐지 타입·태그 보유: 20_projects/personal/x/conventions.md"
+      ],
+      "rationale": "§7-41 양성(타입) — 옛 작업 규약 타입 페이지를 잡는다. 타입을 걷으면 lint 에 알 수 없는 타입 검사가 없어 새로 생긴 페이지가 아무 검사에도 안 걸린다"
+    },
+    {
+      "fixture": "retired-tag",
+      "expect_keywords": [
+        "폐지 타입·태그 보유: pending.md"
+      ],
+      "rationale": "§7-41 양성(태그) — 큐의 `- [날짜] [PROJECT-FACT]` 항목 줄을 잡는다. 태그를 큐 집계에서 걷으면 그 줄은 집계·형식 검사 어디에도 안 걸린다"
+    },
+    {
+      "fixture": "retired-ok-archive",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "폐지 타입·태그 보유"
+      ],
+      "rationale": "§7-41 음성 짝(아카이브) — `90_archive/` 아래 옛 페이지는 frozen 이력이라 잡지 않는다"
+    },
+    {
+      "fixture": "retired-ok-note",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "폐지 타입·태그 보유"
+      ],
+      "rationale": "§7-41 음성 짝(인용 주석) — 큐 머리 인용 주석 속 태그 문자열은 항목 줄이 아니라 잡지 않는다"
     }
   ]
 }

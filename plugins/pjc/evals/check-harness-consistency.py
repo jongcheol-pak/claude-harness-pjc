@@ -919,8 +919,8 @@ def _line_ending_targets():
     """`git ls-files` 로 검사 대상 경로를 낸다. git 이 없거나 실패하면 `die()` 로 합류한다.
 
     `--others --exclude-standard` 를 함께 준다 — **`git add` 전의 새 파일을 보기 위해서다**.
-    Write 도구가 만든 신규 파일은 LF 로 저장되는데(위키 conventions-verification
-    `[2026-08-23]`), tracked 만 열거하면 그 파일이 커밋된 **다음 실행**에서야 잡히고
+    Write 도구가 만든 신규 파일은 LF 로 저장되는데(레포 `docs/conventions.md`
+    `[2026-08-23]` 항목), tracked 만 열거하면 그 파일이 커밋된 **다음 실행**에서야 잡히고
     회차 마지막 task 라면 다음 회차로 밀린다 — 그 항목이 *"파일을 만든 회차가 스스로
     확인해야 한다"* 를 요구하던 이유다. `--exclude-standard` 가 gitignore 대상을
     걸러 내므로 `plan.md`·`notes.md` 제외는 그대로 유지된다.
@@ -1904,17 +1904,17 @@ def run_fix(dry_run):
 # 왜 필요한가·무엇을 못 잡는가는 `harness-consistency-tagenum-rationale.md` 의 「축 ㉑ — 큐 태그
 #  열거 정합」이 정본이다. 여기 복제하지 않는다.
 #
-# 큐는 `pending.md` 한 파일 세 태그다(2026-09-19 — 하니스 자기개선 큐 넷 폐지).
+# 큐는 `pending.md` 한 파일 두 태그다(2026-10-20 — [PROJECT-FACT] 폐지. 그 전 2026-09-19 에 하니스 자기개선 큐 넷 폐지로 셋).
 #  종전에는 정본 집합이 셋이었다(pending 여섯 + skill-feedback 하나 + 전체 일곱).
 # **이 선언은 한 줄을 유지한다** — 줄 게이트가 먼저 걸리므로 여러 줄로 나누면 첫 줄이
 #  부분 집합으로 잡혀 자기 자신이 불일치가 된다(2026-09-16 실측).
-QUEUE_TAGS_PENDING = frozenset({"DECISION", "PROJECT-FACT", "SYMPTOM"})
+QUEUE_TAGS_PENDING = frozenset({"DECISION", "SYMPTOM"})
 QUEUE_TAGS_ALL = QUEUE_TAGS_PENDING
 _QUEUE_TAG_CANON = (
     ("pending", QUEUE_TAGS_PENDING),
 )
 
-# 대괄호형(`[DECISION]`)과 맨이름형(`DECISION·PROJECT-FACT·…`)을 함께 잡는다 —
+# 대괄호형(`[DECISION]`)과 맨이름형(`DECISION·SYMPTOM`)을 함께 잡는다 —
 #  대괄호 없이 열거하는 자리가 있어 대괄호형만 보면 그 줄이 잘못 세어져 **오탐**이 된다.
 # **대소문자를 구분한다** — `re.IGNORECASE` 를 붙이면 `decision-log`(64파일 196회)가
 #  통째로 `DECISION` 으로 잡혀 축이 무의미해진다.
@@ -1926,14 +1926,14 @@ _RX_QUEUE_TAG = re.compile(
 #  주석이 아닌 자리(JSON 문자열 등)에는 닫는 기호가 없어 줄 끝까지 빨려 들어간다.
 _RX_TAG_ENUM_EXEMPT = re.compile(r"tag-enum:\s*exempt\s+(\S.{0,119}?)\s*(?:-->|$)")
 
-# 게이트 임계. **태그가 셋으로 줄어 3 이 곧 전체 집합이다**(2026-09-19 큐 4종 폐기).
-#  종전 4 를 유지하면 어떤 열거도 게이트를 넘지 못해 축이 죽는다.
-# **3종 구간에서 이 축은 양성을 낼 수 없다** — 열거가 정본과 어긋나려면 태그 이름이
+# 게이트 임계. **태그가 둘로 줄어 2 가 곧 전체 집합이다**(2026-10-20 [PROJECT-FACT] 폐지 — 그 전은 3).
+#  종전 값을 유지하면 어떤 열거도 게이트를 넘지 못해 축이 죽는다.
+# **전체 집합 크기가 게이트인 구간에서 이 축은 양성을 낼 수 없다** — 열거가 정본과 어긋나려면 태그 이름이
 #  틀려야 하는데, 틀린 이름은 정규식(정본 집합으로 만든다)이 아예 못 잡아 2종으로
 #  세어지고 게이트에 걸리지 않는다. 2 로 내리는 것은 실측 기각이다 — 정당한 부분 열거
 #  17자리가 전부 red 가 된다. 그래서 **양성 골든을 두지 않고 음성(tagenum-ok)만 남긴다** —
 #  태그가 4종 이상으로 늘면 이 축은 저절로 되살아나고, 그때 양성 골든을 함께 세운다.
-_QUEUE_TAG_GATE = 3
+_QUEUE_TAG_GATE = 2
 # 블록 길이 상한. 빈 줄이 없는 `lint-cases.json`(1,721줄)이 통째로 한 블록이 되는 것을 막는다.
 #  이 상한으로 빠지는 진짜 열거는 없다 — 초과 블록 둘은 줄 게이트가 덮는다(정본의 실측).
 _QUEUE_TAG_BLOCK_MAX = 30

@@ -12,7 +12,7 @@
       / 본문 코드 경로(§7-40 — project·feature·decision-log 본문의 `a/b.ext` 백틱 토큰. 각주 정의 줄·펜스·허브 경로 줄·URL·아카이브 포인터 제외)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
       / 큐 잔량 집계(INFO — 절차 K 큐 `pending.md`, §7-25)
-        · pending.md: [DECISION]/[PROJECT-FACT]/[SYMPTOM] 태그별
+        · pending.md: [DECISION]/[SYMPTOM] 태그별
         + 형식 위반(WARN — 태그는 있으나 날짜 선두가 아니라 집계에서 누락되는 줄, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
@@ -25,12 +25,10 @@
       / (미검증)·미해결 question 집계(INFO)
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
       / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
-      / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향
-        ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향)
-      / 작업 규약 미마이그레이션(§7-31 — 허브에 '## 작업 규약·주의사항' 잔존 시 INFO, conventions.md 이전 대상)
+      / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향)
+      / 폐지 타입·태그 보유(§7-41 — 옛 작업 규약 타입 페이지·pending.md 의 [PROJECT-FACT] 항목 줄 WARN)
       / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 초과하면서 '### ' 0개면 INFO).
       / decision-log 방향 미기재(§7-33 — 기각·보류 항목의 판정 직후 ': {실제 방향}' 부재).
-      / conventions 근거 표기 집계(INFO — 항목 끝 '({근거})' 미보유 건수 / 전체, §7-34).
       / patterns 관측 폭 집계(INFO — '## 프로젝트 사례' 절 미보유 건수 / 전체, §7-35).
       / decision-log 정정 표기 형식(§7-36 — '정정'을 적은 항목의 '(정정 날짜: 옛 → 새, 근거 …)' 형식 위반).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
@@ -97,20 +95,7 @@ BUDGET = {  # type -> 최대 문자 수 (references/wiki-ops-rules.md 「파일 
     "source-stub": 1800, "project": 13000, "feature": 22000,
     "entity": 6000, "concept": 5000, "question": 3500,
     "decision-log": 6000,  # 결정 이력 (schema-types §2.8 — §7-2 발동 시 90_archive 원경로 이동)
-    #  작업 규약 (§2.9 — §7-2 발동 시 무효 항목 제거. 분리·재분할은 하지 않는다: 아래 BUDGET_OVER_ONLY_TYPES.
-    #  아카이브 롤오버도 안 한다: 절차 K가 매 작업 전에 읽으므로 아카이브로 옮기면 조회 경로 밖이 되어 이동이 곧 유실이다)
-    "convention": 12000,
 }
-# 예산 값은 두되 **초과 신호만** 내는 타입 — 근접·임박 계층과 `--auto-split` 분할에서 빠진다.
-#  왜 값을 지우지 않는가: `BUDGET`에서 빼면 `budget_state`가 None을 돌려 초과 WARN까지 함께 죽는다.
-#  절차 K가 `conventions.md` 본문을 매 작업 전에 읽으므로 크기 신호는 남겨야 한다 — 실측으로
-#  본체 평균이 9,420B(2026-08-19) → 13,250B(09-04)로 자랐다가 분리로 10,950B(09-19)까지 내려왔다.
-#  왜 분할을 뺐는가: vault 산문 분리 47건 중 24건이 convention이라 파편과 세션 손작업의 절반이
-#  이 한 타입에서 나오는데, 근접 계층의 「구역화 필요」 WARN은 실제로 한 번도 발화한 적이 없다
-#  (근접 이상 8건이 전부 처방 가능이라 침묵). 없애서 잃는 신호가 없고 줄어드는 것은 분할 자체다.
-#  **이 상수가 단일 출처다** — 근접 분기와 `RELOCATE_TYPES`가 각자 조건을 쓰지 않고 여기서 파생한다.
-#  신호 술어와 처방 술어가 갈리면 *조용한데 처리도 안 되는* 파일이 생긴다(`prescribable` docstring).
-BUDGET_OVER_ONLY_TYPES = ("convention",)
 GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
 # §7-16(병기)·§7-14(행수)가 「기능별 인덱스 유형 행」으로 인정하는 **대상 토큰**.
 #  (feature 파일명 접두, guide 경로 조각) 순이며 매칭 방식이 서로 다르다 -- 앞은 basename
@@ -169,15 +154,10 @@ DECISION_FIX_RX = re.compile(
 PATTERN_CASE_SECTION = "프로젝트 사례"
 PATTERNS_DIR = "30_knowledge/patterns/"
 
-# §7-34 convention 항목의 근거 통제 어휘 (wiki-schema §3 「근거 통제 어휘」가 정본 —
-#  check_consistency.py의 VOCAB_LINES가 이 상수와 그 줄을 대조한다). convention은
-#  origin·confidence를 두지 않아(§2.9·§11 비대상) 이 표기가 유일한 신뢰도 축이다.
-EVIDENCE_VOCAB = {"실측", "사용자 지시", "문서 대조"}
-# 항목 끝 `({근거} …)` 앵커. **줄 끝 괄호**를 요구하는 것은 §2.9 항목 형식이 이미 그 자리를
-#  정했기 때문이고, 느슨하게(어휘가 줄 어디든) 재면 위치가 제각각인 표기까지 보유로 세어
-#  「형식을 지켰는가」가 아니라 「단어가 있는가」를 재게 된다.
-EVIDENCE_TAIL_RX = re.compile(
-    r"\((?:" + "|".join(re.escape(v) for v in sorted(EVIDENCE_VOCAB)) + r")[^)]*\)\s*$")
+# §7-41 폐지 타입·태그 — 작업 규약은 레포 docs/conventions.md 로 옮겼다(2026-10-20). 타입·태그를
+#  걷으면 lint 에 알 수 없는 타입 검사가 없어 새로 생긴 것이 아무 검사에도 안 걸린다.
+RETIRED_PAGE_TYPES = ("convention",)
+RETIRED_QUEUE_TAG_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2}\] \[PROJECT-FACT\]")
 # §7-39 facts 형식(wiki-schema §1 「facts 형식」·§3 `format` 통제 어휘가 정본 — check_consistency.py
 #  VOCAB_LINES 가 이 상수와 그 줄을 대조한다). 근거 꼬리 `(근거: `경로`@커밋 · …)` 와
 #  상대 참조 고정 표현 — 표현을 넓게 잡으면 「위 절차」 같은 정상 문장이 오탐하므로 고정 목록만 쓴다.
@@ -234,7 +214,7 @@ ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 CATEGORY_VOCAB = {"personal", "work"}
 # updated 필수 타입 (§7-9 — 필드가 없으면 미래날짜 검사가 조용히 건너뛰어져 추적 사각.
 #  source-stub은 불변 스텁이라 ingested를 쓰므로 제외)
-UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log", "convention"}
+UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, schema-budget §4·§8)
 SPECIAL_BUDGET = {"log.md": 6000}
 # 타입별 **더 낮은 목표치** — 처방을 어디까지 수행하고 멈추는가(§7-2 종료 조건의 마지막 문장:
@@ -255,7 +235,6 @@ INFRA_TYPES = {"index", "log", "schema"}
 #  있을 때만 존재한다.)
 # §7-28 본문 릴리즈 마커 검사에서 제외하는 타입 — 재작성 대상이 아닌 동결 기록이라 WARN이
 #  수리 불가능한 소음이 된다(decision-log는 항목 불변 이력, question은 발견 원문 인용 보존).
-#  convention은 미편입 — 규약은 갱신이 정상이라 동결 기록이 아니다(§5 changelog 미러링 금지가 그대로 적용).
 RELEASE_MARKER_EXEMPT_TYPES = {"decision-log", "question"}
 # §7-29 장식 이모지 검사에서 제외하는 타입 — decision-log는 §2.8 「항목 불변」이라 항목에 이모지가
 #  섞여 들어오면 **고칠 수 없는 WARN**이 영구히 남는다(규약이 수정을 금지한 파일에 수리를 요구하는 모순).
@@ -272,8 +251,8 @@ INDEX_FEAT_ROWS = 200    # '## 기능별 인덱스' 표의 feature/recipe 행 �
 
 # 인덱스 등록 검사 대상(§7-30 ⓒ) — feature는 종전대로 §7-6이 따로 보므로 여기서 제외한다.
 #  이 세 타입은 등록처가 서로 다른데(guide→index-guides / entity→기술 스택 지식 / concept→범용 패턴)
-#  **어느 곳에도 안 실리면 조회 경로 밖**이 된다는 점은 같다. convention·question은 대상이 아니다 —
-#  전자는 §7-30 ⓑ가 허브 목록으로, 후자는 §7-23이 미해결 질문 표로 각각 도달성을 이미 본다.
+#  **어느 곳에도 안 실리면 조회 경로 밖**이 된다는 점은 같다. question은 대상이 아니다 —
+#  §7-23이 미해결 질문 표로 도달성을 이미 본다.
 INDEXED_TYPES = {"guide", "entity", "concept"}
 
 # 시크릿 의심 패턴 (schema-lint §7-22 — 키워드+구분자+실값 형태만 매칭하는 보수 정규식.
@@ -2049,7 +2028,7 @@ def rollover_hub_changes(ses):
 
     **트리거가 문자 예산과 별개다**(§7-2 「별개 트리거」ⓑ). 그래서 `budget_state`를 보지
     않고 항목 수만 센다 — 허브가 문자 신호 대상이어도 항목이 5개 이하면 이 처방의 대상이
-    아니고(그쪽 처방은 작업 규약 절의 레포 `docs/conventions.md` 이관 — §2.9 레거시다), 신호가 없어도 6개가 되면 수행한다."""
+    아니고(그쪽 처방은 작업 규약 절의 레포 `docs/conventions.md` 이관이다), 신호가 없어도 6개가 되면 수행한다."""
     for rel in sorted(_project_hub_paths(ses.vault)):
         path = os.path.join(ses.vault, rel.replace("/", os.sep))
         text, bom, nl = _read_page(path)
@@ -2142,20 +2121,15 @@ TYPE_REQUIRED_SECTIONS = {
     "entity": ("핵심",),
     "concept": ("개요",),
     "guide": ("개요",),
-    "convention": (),
 }
 # **project 허브는 산문 하위 분리 대상이 아니다.** 하위는 원본과 같은 타입이라(§4 2번)
 #  `type: project`가 되는데, 그러면 `_project_hub_paths`·`_rows_projects`와 §7-20·
 #  §7-26·§7-30이 그 하위를 **별개 프로젝트**로 잡는다 — 인덱스 프로젝트 표에 한 줄이 더 생기고,
 #  `## 레포 정보`가 없다고 경고하고, 뒤처짐 계측이 그것을 따로 센다. 자동 분할이 스스로 새
 #  위반을 만드는 자리라 문자 축 처방을 두지 않는다(§4 표 project 행 — 그 자리는 사람이 하는
-#  정리 §2.9가 맡는다). `TYPE_REQUIRED_SECTIONS`에는 남긴다 — 그 dict 는 필수 섹션의 정의이지
+#  정리가 맡는다). `TYPE_REQUIRED_SECTIONS`에는 남긴다 — 그 dict 는 필수 섹션의 정의이지
 #  분리 대상 목록이 아니다.
-# **`BUDGET_OVER_ONLY_TYPES`(convention)도 같은 이유로 빠진다** — 그 타입은 초과 신호만 내고
-#  분할 처방을 갖지 않으므로, 여기 남겨 두면 `relocatable`이 참을 돌려 근접 분기와 갈린다.
-#  조건을 여기 다시 쓰지 않고 그 상수에서 파생하는 것이 단일 출처를 지키는 방법이다.
-RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS
-                       if t != "project" and t not in BUDGET_OVER_ONLY_TYPES)
+RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS if t != "project")
 # §7-38 폐지 절 — schema §2.3 이 feature 에서 걷은 절(facts 변형의 동작·구조 포함). 줄 머리 헤딩만 센다.
 ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX|관련 파일|동작|구조)[ \t]*$")
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
@@ -3194,12 +3168,10 @@ def main():
                 #  안내하고 초과 WARN에서 침묵하면, 정작 고쳐야 할 시점에 방법을 못 받는다.
                 hint = {
                     "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (schema-types §2.8)",
-                    "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약 절은 레포 docs/conventions.md 이관 대상 (schema-types §2.2·§2.9 레거시)",
-                    "convention": " — 무효 항목을 제거한다 (schema-types §2.9)",
+                    "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신 (schema-types §2.2)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{eff_note}){hint}", r)
-            elif (budget and st.near and not is_lint_report(r) and not st.suppressed
-                  and st.typ not in BUDGET_OVER_ONLY_TYPES):
+            elif budget and st.near and not is_lint_report(r) and not st.suppressed:
                 # v1.207.0 — 임박 계층을 **처방 가능 여부**로 가른다(§7-2 발동 ⓐ/ⓑ′).
                 #  판정 술어는 `relocatable`이며 그것은 `relocate_sections`가 실제로 쓰는
                 #  게이트를 그대로 뽑은 것이다 — 「신호를 낼지」와 「옮길지」가 다른 술어를
@@ -3221,7 +3193,7 @@ def main():
                     #  `critical`로 두는 것은 이 갈래가 v1.207.0 이전과 **완전히 같은 동작**이기
                     #  때문이다(바뀐 것은 처방이 있는 파일이 여기서 빠졌다는 것뿐이다).
                     np_hint = {
-                        "project": " — '최근 주요 변경'이 5개 이하라 §2.2 롤오버 대상이 아니다. 작업 규약 절은 레포 docs/conventions.md 이관 대상 (schema-types §2.9 레거시)",
+                        "project": " — '최근 주요 변경'이 5개 이하라 §2.2 롤오버 대상이 아니다. 내용을 줄여야 한다 (schema-types §2.2)",
                         "decision-log": " — 옮길 항목을 찾지 못했다. §2.8 롤오버 대상 형식을 확인 (schema-types §2.8)",
                     }.get(typ, "")
                     if not np_hint:
@@ -3231,14 +3203,10 @@ def main():
                     warn(f"예산 임박: {r} {eff_chars}/{budget}자 "
                          f"({eff_chars / budget * 100:.0f}%, 여유 {budget - eff_chars}자, type={typ})"
                          f"{np_hint}", r)
-            elif (budget and st.critical and not is_lint_report(r)
-                  and st.typ not in BUDGET_OVER_ONLY_TYPES):
+            elif budget and st.critical and not is_lint_report(r):
                 # ⓒ L-4: 위 분기가 budget_split 억제로 건너뛴 파일이 여기로 내려온다.
                 #   침묵시키지 않는 이유: 억제를 영구 면제로 두면 "한 번 판정하면 초과까지 무신호"가 되어
                 #   판정 자체가 사각이 된다. 상태는 보이되 수리 의무는 없으므로 WARN이 아니라 INFO다.
-                #   **`BUDGET_OVER_ONLY_TYPES`는 여기서도 빠진다** — 그 타입에 근접·임박 계층이
-                #   없으므로 「억제로 강등된 임박」이라는 상태 자체가 성립하지 않는다. 위 근접
-                #   분기만 막으면 임박인 파일이 이 갈래로 흘러 같은 신호가 이름만 바꿔 되살아난다.
                 infos.append(f"예산 임박(분리 불가 판정 유지): {r} {eff_chars}/{budget}자 "
                              f"({eff_chars / budget * 100:.0f}%, type={typ}) "
                              f"— 재판정 마진 초과 시 자동 재발화")
@@ -3557,25 +3525,23 @@ def main():
                  f"롤오버가 훑지 않는 구역이라 아카이브로 넘어가지 않는다('## 최근 변경'으로 이동)",
                  "log.md")
 
-    # pending.md 미처리 잔량 집계 (절차 K 큐 — K 5-2/K 5-3/K 5-5/B-1 0): 잔량이 있으면 INFO로 알려
+    # pending.md 미처리 잔량 집계 (절차 K 큐 — K 5-2/K 5-5/B-1 0): 잔량이 있으면 INFO로 알려
     #  다음 소비 세션이 소비하게 한다 (0건·파일 없음이면 생략). 소비 주체는 ingest/lint 세션이고,
-    #  [DECISION]·[PROJECT-FACT] 둘은 사용자 요청으로 도는 절차 M(큐 소비 경량)도 소비 주체다
+    #  [DECISION]은 사용자 요청으로 도는 절차 M(큐 소비 경량)도 소비 주체다
     #  — 한 번의 소비는 그 요청이 지목한 범위만 닿으므로 이 INFO가 0이 되지 않는 것은 정상. 태그별 분리 —
     #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비),
-    #  [PROJECT-FACT]는 해당 프로젝트 conventions.md(§2.9)에 반영 후 제거(자가 소비),
     #  [SYMPTOM]은 증상별 인덱스(§6)에 등재 게이트 검증 후 반영 또는 보류(해법 페이지 부재)·기각(미검증 원인) 후 제거.
     #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
     # **이 빈 줄은 서식이 아니라 판정 장치다** — 축 ㉑ 의 블록 게이트가 빈 줄로 블록을 끊고
     #  길이가 30줄보다 긴 블록은 오탐 방지로 통째로 건너뛴다. 주석과 집계 코드가 한 덩어리면
     #  31줄이 되면 **태그 목록이 낡아도 축이 못 잡는다**(2026-09-16 실측).
-    #  끊어 두면 위 주석 덩어리와 아래 pend_tags 가 **각각** 세 태그를 담아 둘 다 검사 대상이 된다.
+    #  끊어 두면 위 주석 덩어리와 아래 pend_tags 가 **각각** 두 태그를 담아 둘 다 검사 대상이 된다.
 
     if "pending.md" in pages:
         pend_text = pages["pending.md"][2]
         # 태그 목록은 아래 잔량 집계와 형식 위반 검사가 공유한다 — 한쪽만 태그를 추가하면
         #  새 태그가 집계되지 않거나 위반 검출에서 빠져 조용히 사각지대가 생긴다(단일 출처).
         pend_tags = (("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트분만 즉시 소비, 타 프로젝트분은 lint F-2·큐 정리 M 승인 시 소비)"),
-                     ("PROJECT-FACT", "PROJECT-FACT {n}건(프로젝트 작업 사실 — conventions.md 반영 대상(§2.9), 소비 주체·게이트는 DECISION 동형)"),
                      ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)"))
         parts = []
         for tag, label in pend_tags:
@@ -3614,6 +3580,11 @@ def main():
         if malformed:
             warn(f"pending.md 형식 위반 {malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
                  f"아니라 위 잔량 집계에서 누락됨(K 5 큐 형식 규약, 정규화 필요)", "pending.md")
+        # §7-41 폐지 태그 — 항목 줄만 센다(머리 인용 주석 속 문자열은 항목이 아니다).
+        retired_tag = sum(1 for line in pend_text.splitlines() if RETIRED_QUEUE_TAG_RX.match(line))
+        if retired_tag:
+            warn(f"폐지 타입·태그 보유: pending.md [PROJECT-FACT] 항목 {retired_tag}건 — 작업 함정은 "
+                 f"그 레포 docs/conventions.md 로 옮기고 큐에서 지운다(schema §7-41)", "pending.md")
 
     # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
     #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시
@@ -3676,9 +3647,8 @@ def main():
             warn(f"decisions 아카이브 포인터 누락: {cur}의 '## 아카이브'에 {r} 미등재 "
                  f"— 오래된 결정이 검색에서 유실 (schema-types §2.8)", cur)
 
-    # 이동·분리한 내용의 도달 경로 정합 (§7-30): ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향
-    #  ⓑ conventions.md '## 하위 문서' 목록 ↔ 하위 파일 양방향. 둘 다 "옮긴 자리를 읽는 경로"를 검사한다 —
-    #  §2.2 롤오버·§2.9 하위 분리는 압축을 없앤 대가로 도달 경로에 의존하므로, 그 경로가 깨지면
+    # 이동·분리한 내용의 도달 경로 정합 (§7-30): ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향.
+    #  "옮긴 자리를 읽는 경로"를 검사한다 — §2.2 롤오버는 압축을 없앤 대가로 도달 경로에 의존하므로, 그 경로가 깨지면
     #  이동이 곧 유실이 된다(§7-24 decisions 포인터·§7-15 sub-index 목록·§7-19 log 인덱스와 동일 계열).
     #  --fix 대상은 아니다 — §7 서두가 --fix를 참조 무결성 3종으로 한정한다.
     for r, (fm, typ, text) in pages.items():
@@ -3688,12 +3658,6 @@ def main():
         for m in CHG_PTR_RX.finditer(text):
             if m.group(1) not in pages:
                 warn(f"변경 이력 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (schema-types §2.2 · schema-budget §8)", r)
-        # §7-31: 허브에 '## 작업 규약·주의사항' 잔존 = conventions.md 미마이그레이션 신호.
-        #  INFO 고정 — 사용자가 점진 마이그레이션을 택했고(각 프로젝트 ingest 때 적용) WARN이면
-        #  미마이그레이션 허브 전부가 매 lint마다 경고를 낸다. exit code 불변.
-        if section(text, "작업 규약·주의사항"):
-            infos.append(f"작업 규약 미마이그레이션: {r}의 '## 작업 규약·주의사항'을 "
-                         f"레포 docs/conventions.md 이관 대상 (schema-types §2.9 레거시 — 위키에 새 conventions.md 를 만들지 않는다)")
     # ⓐ-역방향: changes 아카이브가 실재하는데 대응 현행 허브에 포인터 미등재 (검색 유실).
     #  경로 도출이 §7-24와 다르다 — decisions는 아카이브·현행이 같은 파일명이라 접두만 떼면 되지만,
     #  changes는 '90_archive/20_projects/{cat}/{proj}/changes.md' → 현행 허브 '20_projects/{cat}/{proj}.md'로
@@ -3706,31 +3670,17 @@ def main():
         if hub in pages and r not in pages[hub][2]:
             warn(f"변경 이력 아카이브 포인터 누락: {hub}의 '## 아카이브'에 {r} 미등재 "
                  f"— 롤오버한 변경 이력이 검색에서 유실 (schema-types §2.2 · schema-budget §8)", hub)
-    # ⓑ conventions '## 하위 문서' 목록 ↔ 하위 파일 양방향.
-    #  wikilink(무확장자)·평문 경로 둘 다 인정한다 — §7-24 포인터가 평문, §7-15 목록이 파일명 언급
-    #  기준인 두 선례를 모두 수용(형식 위반은 §7-1 링크 검사가 별도로 본다).
-    #  본체 문자 클래스에서 `.`·`\`를 배제한다 — 배제하지 않으면 Obsidian 표의 이스케이프 파이프
-    #  (`conventions-git.md\|`)에서 `.md\`가 본체로 흡수돼 코드가 다시 '.md'를 붙여 실재하지 않는
-    #  경로를 만들고, 정상 등재 항목을 "목록 깨짐"으로 오탐한다. 확장자는 `(?:\.md)?`가 담당하고
-    #  주제명은 네이밍 규약상 영문소문자·하이픈뿐(§3)이라 본체에 `.`이 올 일이 없다.
-    sub_conv_rx = re.compile(r"(20_projects/[^\s`()|\]\\.]+/conventions-[^\s`()|\]\\.]+?)(?:\.md)?(?=[\s`()|\]\\.]|$)")
-    for r, (fm, typ, text) in pages.items():
-        if typ != "convention" or r.startswith("90_archive/"):
+    # §7-41 폐지 타입 — 옛 작업 규약 타입 페이지(deprecated·아카이브는 frozen 이력이라 제외).
+    for r, (fm, typ, text) in sorted(pages.items()):
+        if typ not in RETIRED_PAGE_TYPES or r.startswith("90_archive/"):
             continue
-        if os.path.basename(r) != "conventions.md":
-            continue          # 하위 파일(conventions-*.md) 자신은 목록 보유 대상이 아니다
-        listed = {m.group(1) + ".md" for m in sub_conv_rx.finditer(section(text, "하위 문서") or "")}
-        for t in sorted(listed):
-            if t not in pages:
-                warn(f"규약 하위 문서 목록 깨짐: {r} -> {t} 없음 (schema-types §2.9)", r)
-        prefix = r[:-len("conventions.md")] + "conventions-"
-        for other in sorted(pages):
-            if other.startswith(prefix) and other.endswith(".md") and other not in listed:
-                warn(f"규약 하위 문서 목록 누락: {r}의 '## 하위 문서'에 {other} 미등재 "
-                     f"— 분리한 규약이 조회 경로 밖(조회 홉 1 위반, schema-types §2.9)", r)
+        if (fm.get("status") == "deprecated") or bool(fm.get("deprecated")):
+            continue
+        warn(f"폐지 타입·태그 보유: {r} (type={typ}) — 작업 함정은 그 레포 docs/conventions.md 로 옮기고 "
+             f"이 페이지를 지운다(schema §7-41)", r)
 
     # ⓓ guide 허브 `## 하위 문서` 목록 ↔ 하위 파일 양방향.
-    #  convention과 달리 guide에는 `conventions-{주제}.md` 같은 **파일명 접두 규약이 없다** —
+    #  guide에는 하위 파일 이름의 접두 규약이 없다 —
     #  같은 폴더·같은 guide_kind만으로 하위를 특정하면 서로 무관한 독립 가이드끼리 하위로 잡힌다
     #  (실측: `40_guides/ui-ux/`에 분할 하위 2개와 무관한 가이드 1개가 함께 있다).
     #  그래서 **하위→허브 역링크**를 신호로 쓴다 — §2.6이 "하위 문서는 상단에 허브 복귀 링크"를
@@ -3771,7 +3721,7 @@ def main():
                      f"(하위가 아니라 단순 참조면 그 링크를 떼거나 목록에 올린다, schema-types §2.6)", hub)
 
     # ⓔ 자동 분할 하위(`{stem}-{n}.md`) ↔ 진입 파일 `## 하위 문서` 양방향 + 포인터 도달성.
-    #  ⓑ·ⓓ는 타입이 정해진 두 경로(convention·guide)만 보는데, `--auto-split`은 feature·
+    #  ⓓ는 guide 만 보는데, `--auto-split`은 feature·
     #  entity·concept에도 하위를 만든다(project 는 `RELOCATE_TYPES` 밖) — 그 산출물이 목록 밖에
     #  남으면 조회가 닿지 못한다.
     #  **판정 신호는 복귀 링크 하나이고, 상위도 그 링크에서 도출한다.**
@@ -3780,9 +3730,9 @@ def main():
     #  **스스로 「나는 X의 하위다」라고 선언한 것**이라 접두보다 강한 신호이며, 상위를 이름 규칙으로
     #  추측하지 않고 링크가 가리키는 문서로 확정하므로 ⓓ가 겪은 오탐(같은 폴더의 무관한 페이지 —
     #  그런 페이지에는 복귀 링크가 없다)도 그대로 막힌다.
-    #  **ⓑ·ⓓ가 이미 보는 타입은 제외**해 같은 쌍을 두 번 지적하지 않는다.
+    #  **ⓓ가 이미 보는 guide 는 제외**해 같은 쌍을 두 번 지적하지 않는다.
     for r, (fm, typ, text) in pages.items():
-        if r.startswith("90_archive/") or typ in ("convention", "guide"):
+        if r.startswith("90_archive/") or typ == "guide":
             continue
         back = SUBDOC_BACK_RX.search(text)
         if not back:
@@ -3798,9 +3748,9 @@ def main():
         if r[:-3] not in listed:
             warn(f"하위 문서 목록 누락: {parent}의 '## 하위 문서'에 {r} 미등재 "
                  f"— 분리한 본문이 조회 경로 밖(조회 홉 1 위반, schema-budget §4)", parent)
-    #  정방향 — 목록이 가리키는 하위가 실재하는가(ⓑ·ⓓ가 보는 타입은 그쪽이 담당한다).
+    #  정방향 — 목록이 가리키는 하위가 실재하는가(guide 는 ⓓ가 담당한다).
     for r, (fm, typ, text) in pages.items():
-        if r.startswith("90_archive/") or typ in ("convention", "guide"):
+        if r.startswith("90_archive/") or typ == "guide":
             continue
         for tgt in sorted(wikilink_targets(section(text, "하위 문서") or "")):
             tf = tgt if tgt.endswith(".md") else tgt + ".md"
@@ -3824,7 +3774,7 @@ def main():
 
     # §7-32: feature의 한 `## ` 섹션이 통짜로 커서 부분 조회가 안 되는 상태를 알린다.
     #  **INFO 고정** -- 구역화는 내용 판단이라 코드가 대신할 수 없고(어디서 끊을지가 판단이다),
-    #  WARN이면 점진 적용 대상 전부가 매 lint마다 경고를 내 실제 결함이 묻힌다(§7-31과 같은 계열).
+    #  WARN이면 점진 적용 대상 전부가 매 lint마다 경고를 내 실제 결함이 묻힌다.
     #  판정은 `strip_code` 사본으로 한다 -- 코드펜스 안의 `### `를 소제목으로 세면 통짜 섹션이
     #  구역화된 것처럼 보인다. `## 목차`는 대상이 아니다(그 자체가 조회 진입점이라 소제목이 없다).
     for r, (fm, typ, text) in pages.items():
@@ -3840,33 +3790,8 @@ def main():
             infos.append(f"섹션 구역화 권장: {r}의 '## {ti}' {len(body)}자에 '### ' 소제목 0개 "
                          f"— 부분 조회가 안 된다(다음 편집에서 구역화, schema §2.3·§7-32)")
 
-    # §7-34: convention 항목의 근거 표기(§2.9 항목 형식 `({근거})`) 미보유 건수를 **vault 집계 1줄**로 낸다.
-    #  **INFO 고정 + 집계 1줄**인 이유는 둘이다 -- ⓐ 소급 부여는 항목마다 근거를 되짚는 판단이라
-    #  코드가 대신할 수 없고, WARN이면 점진 적용 대상 전부가 매 lint마다 경고를 내 실제 결함이
-    #  묻힌다(§7-31·§7-32와 같은 계열) ⓑ 파일별로 내면 신설 시점 실측으로 291줄이 된다.
-    #  **분모를 함께 내는 것이 이 집계의 요점이다** -- 291/293은 「축이 고장났다」가 아니라
-    #  「형식이 아직 안 쓰인다」는 뜻이고, 두 수를 함께 보여야 그것이 한 줄에서 읽힌다.
-    conv_total = conv_missing = 0
-    for r, (fm, typ, text) in pages.items():
-        if typ != "convention" or r.startswith("90_archive/"):
-            continue
-        for ln in text.splitlines():
-            # 닫는 `]`를 요구하지 않는다 — 실 vault에 `- [2026-07-15 갱신]`·
-            #  `- [2026-08-14 → 2026-09-05 실측으로 정정]` 같은 **날짜 부기** 형태가 있고,
-            #  요구하면 그 둘이 집계에서 조용히 빠져 "표기 없음"과 "형식이 달라 못 셈"이
-            #  구분되지 않는다(§7-25가 큐 형식 위반을 별도 WARN으로 내는 것과 같은 취지).
-            if not re.match(r"^-\s*\[\d{4}-\d{2}-\d{2}", ln):
-                continue
-            conv_total += 1
-            if not EVIDENCE_TAIL_RX.search(ln):
-                conv_missing += 1
-    if conv_missing:
-        infos.append(f"conventions 근거 표기 없음: {conv_missing}건 / 전체 {conv_total}건 "
-                     f"— 항목 끝 '({'|'.join(sorted(EVIDENCE_VOCAB))})'가 이 타입의 유일한 신뢰도 축이다"
-                     f"(schema §2.9 항목 형식·§3 근거 통제 어휘·§7-34)")
-
     # §7-35: patterns 페이지의 관측 기록 절(`## 프로젝트 사례`) 미보유 건수를 **집계 1줄**로 낸다.
-    #  **§7-34와 같은 등급·형태다**(INFO 고정 + 분모 병기). 이유도 같다 — ⓐ 절 이름을 고치는 것은
+    #  **INFO 고정 + 분모 병기**인 이유는 둘이다 — ⓐ 절 이름을 고치는 것은
     #  그 절이 「관측 기록」인지 「쓰는 법」인지 읽어야 갈리는 판단이라 코드가 대신할 수 없고(실측
     #  2026-09-07: `사용 사례` 9건이 그 갈림에 걸린다) ⓑ WARN이면 점진 적용 대상 전부가 매 lint마다
     #  경고를 내 실제 결함이 묻힌다. **분모를 함께 내는 것이 요점이다** — 20/35는 「축이 고장났다」가

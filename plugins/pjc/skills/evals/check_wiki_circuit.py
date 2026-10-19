@@ -8,7 +8,7 @@
 기록이 도착하지 않는다. 그 연결을 파일 내용으로 검사한다.
 
 함정의 기록처는 레포 docs/conventions.md 이고 규약 정본은 skills/REPO-CONVENTIONS.md 다
-(2026-10-19 — 그 전에는 vault pending.md 의 [PROJECT-FACT] 를 거쳐 위키 conventions.md 로 갔다).
+(2026-10-19 — 그 전에는 vault 큐를 거쳐 위키 conventions.md 로 갔다. 2026-10-20 에 위키 쪽 폴백을 걷었다).
 
 회로:
   1. implement/SKILL.md 가 완료 시 REPO-CONVENTIONS.md 를 따르라고 지시한다
@@ -16,10 +16,8 @@
   3. REPO-CONVENTIONS.md 「쓰기」 절이 docs/conventions.md 에 쓰라고 지시한다
   4. REPO-CONVENTIONS.md 「읽기」 절이 계획 단계(pjc:plan)에 docs/conventions.md 를 읽으라고 지시한다
   5. plan/SKILL.md 가 REPO-CONVENTIONS.md 와 docs/conventions.md 를 가리킨다
-  6. REPO-CONVENTIONS.md 「읽기」 절이 파일 부재 시 위키(WIKI.md) 폴백을 지시한다
-     — 위키 conventions 를 레포로 이관하기 전인 프로젝트의 함정이 끊기지 않게 한다
-  7. 디버깅 조회(llm-wiki lookup-rules.md)가 docs/conventions.md 를 본다
-  8. 완료 리뷰(agents/completion-reviewer.md)가 2회 기록을 docs/conventions.md 와 대조한다
+  6. 디버깅 조회(llm-wiki lookup-rules.md)가 docs/conventions.md 를 본다
+  7. 완료 리뷰(agents/completion-reviewer.md)가 2회 기록을 docs/conventions.md 와 대조한다
 
 판정은 「한 줄에 두 키워드」 또는 「한 절 안에」로 한다 — 파일 전체 `in` 판정은 서로 다른
 맥락에 따로 있는 두 문자열로 참이 되는 거짓 통과를 낸 전력이 있다(옛 회로 4 — 소비 규칙이
@@ -102,11 +100,9 @@ def main() -> int:
          "pjc:plan" in read_sec and SINK in read_sec),
         (f"5. plan 이 {RULES} 와 {SINK} 를 가리킨다",
          any_line(plan, RULES, SINK)),
-        ("6. 「읽기」 절이 파일 부재 시 위키 폴백(WIKI.md)을 지시",
-         any_line(read_sec, "폴백", "WIKI.md")),
-        (f"7. 디버깅 조회(lookup-rules)가 {SINK} 를 본다",
+        (f"6. 디버깅 조회(lookup-rules)가 {SINK} 를 본다",
          any_line(lookup, SINK, RULES)),
-        (f"8. 완료 리뷰가 2회 기록을 {SINK} 와 대조",
+        (f"7. 완료 리뷰가 2회 기록을 {SINK} 와 대조",
          any_line(reviewer, SINK, "2회")),
     ]
 

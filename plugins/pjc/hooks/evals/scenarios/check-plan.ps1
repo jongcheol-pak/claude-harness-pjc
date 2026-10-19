@@ -39,7 +39,7 @@ $cpBase = @'
 
 | 주장 | 실행한 명령 | 출력 요지 |
 |---|---|---|
-| 위키 참조 — conventions | `grep x conventions.md` | 0 |
+| 위키 참조 — decisions | `grep x decisions.md` | 0 |
 | 크기 | `wc -c a.ps1` | 10 |
 
 ## 작업 단계
@@ -91,9 +91,9 @@ $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', '| a \
 Assert-Case -Name "check-plan: A1 주장 칸의 이스케이프 파이프에 칸이 밀리지 않는다" -R $r -ExpectExit 1 -ExpectContains 'empty-command'
 
 # ---- A2 위키 참조 행 ----
-$r = Invoke-CheckPlan ($cpBase.Replace('| 위키 참조 — conventions |', '| 규약 조회 |'))
+$r = Invoke-CheckPlan ($cpBase.Replace('| 위키 참조 — decisions |', '| 규약 조회 |'))
 Assert-Case -Name "check-plan: A2 위키 참조 행이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-wiki-row'
-$r = Invoke-CheckPlan ($cpBase.Replace('| 위키 참조 — conventions | `grep x conventions.md` | 0 |', '| 규약 조회 | `grep x conventions.md` | 위키 conventions 0 |'))
+$r = Invoke-CheckPlan ($cpBase.Replace('| 위키 참조 — decisions | `grep x decisions.md` | 0 |', '| 규약 조회 | `grep x decisions.md` | 위키 decisions 0 |'))
 Assert-Case -Name "check-plan: A2 위키가 출력 칸에만 있으면 위키 참조 행으로 치지 않는다" -R $r -ExpectExit 1 -ExpectContains 'no-wiki-row'
 
 # ---- A3 종결 대장 조회 흔적 (git 임시 레포) ----
