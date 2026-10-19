@@ -768,10 +768,10 @@ if (Test-HookSelected @('session-context')) {
         $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC36 순서 위반 (exit=$($r.code), vault=$iVault, stale=$iStale, agents=$iMarker)" })
     }
 
-    # SC33e/SC33f — 뒤처진 feature 표적. **이 묶음의 맨 끝에 둔다**: 아래에서 커밋을 하나 더
+    # SC33e — 기능별 뒤처짐 표기 폐지. **이 묶음의 맨 끝에 둔다**: 아래에서 커밋을 하나 더
     #   만들므로 HEAD~30 / HEAD~29 기준을 쓰는 케이스보다 뒤여야 한다.
-    # 픽스처 레포는 빈 커밋만 쌓아 **커밋된 파일이 없고**, 경로 토큰은 구분자를 포함해야
-    #   후보가 되므로(무구분자 토큰은 클래스·멤버명이라 오탐), 하위 경로 파일을 만들어 커밋한다.
+    # 옛 `## 관련 파일` 절을 가진 feature 의 경로가 synced 이후 바뀌어도 허브 커밋 수만 내고
+    #   `뒤처진 feature` 표기는 없어야 한다(위키가 코드 경로를 담지 않으므로 그 절을 읽지 않는다).
     $scFeatDir = Join-Path $scHubDir 'scwiki'
     New-Item -ItemType Directory $scFeatDir -Force | Out-Null
     New-Item -ItemType Directory (Join-Path $scRepo 'docs') -Force | Out-Null
@@ -786,25 +786,7 @@ if (Test-HookSelected @('session-context')) {
     Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scSha31 -DaysAgo 0
     Remove-Item -Force $scPendPath -ErrorAction SilentlyContinue
     $r = Invoke-ScRepoHook
-    Assert-Case -Name "session-context: 뒤처진 feature 표적 표기 (SC33e)" -R $r -ExpectExit 0 -ExpectContains '뒤처진 feature 1건: feat-sc.md'
-
-    # SC33f (G7 — 부작용 없음): 3축 전부 미달이면 feature 폴더가 있든 없든 **출력이 바이트로 같다**.
-    #   `ExpectNotContains` 로는 「그 표식이 안 보인다」만 재어 SC33c 의 동어반복이 된다 —
-    #   여기서 재는 것은 **출력 전체의 동일성**이라 `Add-EvalResult` 를 직접 부른다
-    #   (`Assert-Case` 에는 정확 일치 파라미터가 없다).
-    $scHeadNow = $null
-    Push-Location $scRepo
-    try { $scHeadNow = (& git rev-parse HEAD 2>$null | Select-Object -First 1) } finally { Pop-Location }
-    Write-ScHub -Path $scHubPath -RepoPath $scRepo -Sha $scHeadNow -DaysAgo 0
-    $rWithFeat = Invoke-ScRepoHook
-    Remove-Item -Recurse -Force $scFeatDir -ErrorAction SilentlyContinue
-    $rNoFeat = Invoke-ScRepoHook
-    $scNm = 'session-context: 미달 경로 출력 불변 (SC33f)'
-    if (($rWithFeat.out -ceq $rNoFeat.out) -and ($rWithFeat.code -eq $rNoFeat.code)) {
-        Add-EvalResult $true "[PASS] $scNm" $scNm
-    } else {
-        Add-EvalResult $false "[FAIL] $scNm — feature 유무로 출력이 갈립니다" $scNm
-    }
+    Assert-Case -Name "session-context: 기능별 뒤처짐 표기 없음 (SC33e)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐' -ExpectNotContains '뒤처진 feature'
 
     # SC37~SC37d: 허브 매칭의 **URL 축** (v1.206.0 T3).
     #   위 SC32~SC36b 는 허브에 repo_url 이 없어 전부 **경로 축**으로 통과한다 — 그것이 축②
@@ -1148,55 +1130,6 @@ if (Test-HookSelected @('session-context')) {
         Assert-Case -Name "session-context: 상태 파일이 없으면 compact 에도 작업 시작 줄이 없다" -R $r -ExpectExit 0 -ExpectNotContains '[pjc 작업 시작]'
     } finally { $env:USERPROFILE = $scWsSaved }
     Remove-Item -Recurse -Force $scWsProj, $scWsDir -ErrorAction SilentlyContinue
-
-    # ---- [회차 3 T6] Get-StaleFeatures 전체 시간 상한 (단위 — 함수를 직접 부른다) ----
-    # 상한 0 이면 feature 를 하나도 재지 않고 `TimedOut` 으로 멈춰야 한다. 상한이 없던 구현은
-    #   `TimedOut` 키가 없고 뒤처진 feature 를 그대로 낸다. hook 을 거치지 않는 이유는 상한이 함수
-    #   인자라 hook 입력으로 바꿀 길이 없고, 정상 경로는 위 뒤처짐 케이스들이 이미 hook 으로 잰다.
-    if ($gitOk) {
-        . (Join-Path $scriptsDir 'session-wiki-signals.ps1')
-        $sfRepo = Join-Path $work 'sf-budget-repo'
-        $sfFeat = Join-Path $work 'sf-budget-feat'
-        New-Item -ItemType Directory (Join-Path $sfRepo 'src') -Force | Out-Null
-        New-Item -ItemType Directory $sfFeat -Force | Out-Null
-        Push-Location $sfRepo
-        git init -q; git config user.email t@t; git config user.name t
-        'x' | Set-Content (Join-Path $sfRepo 'src/a.txt')
-        git add .; git commit -qm base
-        Pop-Location
-        @('---', 'type: feature', 'updated: 2000-01-01', '---', '', '## 관련 파일', '', '- `src/a.txt` — 대상') |
-            Set-Content -Encoding UTF8 (Join-Path $sfFeat 'feat-a.md')
-        $sf = Get-StaleFeatures -FeatureDir $sfFeat -RepoRoot $sfRepo -BudgetMs 0
-        $sfOk = ($sf.TimedOut -eq $true) -and (@($sf.Names).Count -eq 0)
-        Assert-Case -Name "session-context: 뒤처짐 계산이 시간 상한 0 에서 멈춘다 (회차 3 T6)" -R @{ code = ([int](-not $sfOk)); out = "TimedOut=$($sf.TimedOut) / Names=$(@($sf.Names) -join ',')" } -ExpectExit 0
-        Remove-Item -Recurse -Force $sfRepo, $sfFeat -ErrorAction SilentlyContinue
-
-        # ---- git stderr 배수 — stderr 를 리다이렉트만 하고 읽지 않으면 git 이 stderr 쓰기에서 막혀 상한에 걸린다 ----
-        # `GIT_TRACE=1` 은 git 인자 전체를 stderr 에 적어, 긴 경로 120개면 파이프 버퍼를 넘긴다(2026-10-14 실측 —
-        #   배수 없이 5초 상한 초과, 배수하면 46ms). 경로는 실재·커밋돼야 git 까지 간다(`Test-Path` 통과분만 넘긴다).
-        $seRepo = Join-Path $work 'sf-stderr-repo'
-        $seFeat = Join-Path $work 'sf-stderr-feat'
-        New-Item -ItemType Directory (Join-Path $seRepo 'src') -Force | Out-Null
-        New-Item -ItemType Directory $seFeat -Force | Out-Null
-        $seNames = 1..120 | ForEach-Object { 'src/src_file_with_a_rather_long_name_number_{0:000}.txt' -f $_ }
-        Push-Location $seRepo
-        git init -q; git config user.email t@t; git config user.name t
-        $seNames | ForEach-Object { 'x' | Set-Content (Join-Path $seRepo $_) }
-        git add .; git commit -qm base
-        Pop-Location
-        @('---', 'type: feature', 'updated: 2000-01-01', '---', '', '## 관련 파일', '') + ($seNames | ForEach-Object { '- `' + $_ + '` — 대상' }) |
-            Set-Content -Encoding UTF8 (Join-Path $seFeat 'feat-a.md')
-        $seTraceSaved = $env:GIT_TRACE
-        try {
-            $env:GIT_TRACE = '1'
-            $se = Get-StaleFeatures -FeatureDir $seFeat -RepoRoot $seRepo -BudgetMs 10000
-        } finally {
-            $env:GIT_TRACE = $seTraceSaved
-        }
-        $seOk = ($se.TimedOut -eq $false) -and ((@($se.Names) -join ',') -eq 'feat-a.md')
-        Assert-Case -Name "session-context: 뒤처짐 계산이 git stderr 가 많아도 상한 안에 끝난다 (stderr 배수)" -R @{ code = ([int](-not $seOk)); out = "TimedOut=$($se.TimedOut) / Names=$(@($se.Names) -join ',')" } -ExpectExit 0
-        Remove-Item -Recurse -Force $seRepo, $seFeat -ErrorAction SilentlyContinue
-    }
 
     # ---- [회차 4 T1] plan 상위 탐색 · 체크박스 불릿 집합 ----
     # guard-write 와 같은 후보(plan.md·PLAN.md·docs/plan.md)를 위로 찾되 `.git`(폴더·파일)에서 멈춘다 — 근거는

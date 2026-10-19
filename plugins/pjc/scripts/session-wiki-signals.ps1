@@ -1,102 +1,5 @@
 ﻿# session-wiki-signals.ps1 — 세션 시작 주입의 위키 신호 2종 — 근거는 `rules/wiki-signals-rationale.md` §1
 
-# Get-StaleFeatures — 허브가 가리키는 프로젝트의 feature 중 `updated` 이후 소스가 바뀐 것을 고른다.
-#   현행 뒤처짐 신호는 프로젝트 단위 수치(N커밋 미반영)까지만 말해 **어느 페이지를 볼지가 통째로
-#   사람 몫**이었다. 실측(회차 64): 이 프로젝트 feature 12건 중 8건이 updated 이후 소스 변경.
-# ⚠ **이 파서는 `lint.py` 의 `## 관련 파일` 수집 규칙과 수동 동기화 대상이다** — 코드를 공유하지
-#   않기로 했으므로(같은 판정을 두 벌 두지 않는다), 그쪽 형식이 바뀌면 여기도 확인해야 한다.
-# ⚠ **건수 상한과 시간 상한을 둔다** — vault 실측 최대가 31 feature 라 40 이면 현 vault 전체가 들어오고
-#   이상 증식만 걸린다. 전체 시간 상한(`-BudgetMs`, 기본 3초)은 이 hook 의 상한(10초) 안에서 계산이
-#   끝나게 한다 — git 대기 10초가 feature 마다 걸리면 hook 이 죽어 세션 시작 주입 전체가 사라진다.
-#   어느 상한이든 넘으면 **거기서 멈추되 「일부만 검사」를 남긴다**(조용히 자르면 0건과 구분되지 않는다).
-#   git 한 번의 대기는 남은 시간과 10초 중 작은 값이다 — 10초는 `lint.py` 가 같은 목적으로 쓰는 값이다.
-# ⚠ `Start-Job` 을 쓰지 않는다 — feature 마다 runspace 가 생겨 세션 시작이 수 초 늘어난다.
-#   외부 프로세스를 직접 띄우고 `WaitForExit(ms)` 로 잰다. **출력은 비동기 `ReadToEndAsync` 로 받는다** —
-#   `ReadToEnd()` 를 먼저 부르면 프로세스가 끝날 때까지 거기서 막혀 `WaitForExit` 의 상한이 걸리지
-#   않는다(실측: 4초 걸리는 프로세스에 1초 상한을 줘도 4,422ms 를 기다렸다). **stderr 도 같이 비동기로
-#   비운다** — 리다이렉트만 하고 읽지 않으면 git 이 stderr 쓰기에서 막혀 상한에 걸린다(실측: `GIT_TRACE=1` +
-#   긴 경로 120개에서 5초 상한 초과, 비우면 46ms). 리다이렉트를 풀면 git 경고가 hook stderr 로 샌다.
-function Get-StaleFeatures {
-    param([string]$FeatureDir, [string]$RepoRoot, [int]$BudgetMs = 3000)
-    $scanCap = 40
-    $result = @{ Names = @(); Truncated = $false; TimedOut = $false }
-    $budgetWatch = [System.Diagnostics.Stopwatch]::StartNew()
-    if (-not (Test-Path -LiteralPath $FeatureDir -PathType Container)) { return $result }
-    if (-not (Test-Path -LiteralPath $RepoRoot -PathType Container)) { return $result }
-    $files = @(Get-ChildItem -LiteralPath $FeatureDir -Filter '*.md' -File -ErrorAction SilentlyContinue | Sort-Object Name)
-    $names = New-Object System.Collections.Generic.List[string]
-    $seen = 0
-    foreach ($f in $files) {
-        if ($seen -ge $scanCap) { $result.Truncated = $true; break }
-        $remainMs = $BudgetMs - [int]$budgetWatch.ElapsedMilliseconds
-        if ($remainMs -le 0) { $result.TimedOut = $true; break }
-        $body = $null
-        try { $body = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8 } catch { continue }
-        if (-not $body) { continue }
-        if ($body -notmatch '(?m)^type:\s*feature\s*$') { continue }
-        $seen++
-        $um = [regex]::Match($body, '(?m)^updated:\s*(\d{4}-\d{2}-\d{2})')
-        if (-not $um.Success) { continue }
-        $upd = $um.Groups[1].Value
-        # `## 관련 파일` 섹션의 백틱 토큰 중 **구분자를 포함한 것만** 경로로 본다
-        #   (무구분자 토큰은 클래스·멤버명이라 오탐이 된다 — lint 쪽과 같은 필터).
-        $sec = [regex]::Match($body, '(?ms)^##\s*관련 파일\b(.*?)(?=^##\s|\z)')
-        if (-not $sec.Success) { continue }
-        $paths = New-Object System.Collections.Generic.List[string]
-        # **`lint.py` 의 §7-21 과 같은 것을 읽어야 한다** — 정본 서식이 `- ` 목록이라
-        #   ⓐ `- ` 로 시작하는 줄만 보고 ⓑ 코드펜스 안은 뺀다. 회차 67 전까지 이쪽은 섹션
-        #   전체의 백틱을 전부 모으고 펜스를 무시해 두 구현이 갈려 있었다(드리프트 2건 실측).
-        #   갈리면 lint 가 WARN 을 안 내는 자리에서 이 신호만 뜨거나 그 반대가 된다.
-        #   재발은 `check-harness-consistency.py` 의 「관련 파일 파서 동기」 축이 잡는다.
-        $inFence = $false
-        foreach ($rawLine in ($sec.Groups[1].Value -split "\n")) {
-            if ($rawLine.TrimStart() -like '```*') { $inFence = -not $inFence; continue }
-            if ($inFence -or $rawLine.TrimStart() -notlike '-*') { continue }
-            foreach ($pm in [regex]::Matches($rawLine, '`([^`\r\n]+)`')) {
-                $tok = $pm.Groups[1].Value
-                if ($tok -notmatch '[/\\]') { continue }
-                if (Test-Path -LiteralPath (Join-Path $RepoRoot $tok)) { $paths.Add($tok) }
-            }
-        }
-        if ($paths.Count -eq 0) { continue }
-        # 경로 전체를 **한 번의 git log** 로 잰다 — 하나씩 재면 호출이 N배가 된다.
-        $lastDate = $null
-        try {
-            $psi = New-Object System.Diagnostics.ProcessStartInfo
-            $psi.FileName = 'git'
-            # ⚠ `$psi.ArgumentList` 를 쓰지 않는다 — **.NET Framework 에 없는 멤버**라 Windows
-            #   PowerShell 5.1 에서 null 이고, `.Add()` 가 던지는 예외를 아래 catch 가 삼켜
-            #   **feature 전건이 조용히 건너뛰어진다**(경고도 판정불가 표시도 없이 0건). 이 hook 은
-            #   pwsh 7 이 없으면 5.1 로 폴백하므로(`hooks.json` 의 「스크립트는 5.1 호환 유지」)
-            #   그 경로에서 이 축이 통째로 죽는다. 문자열 `Arguments` 는 양쪽에 다 있다.
-            # 경로에 공백이 있으므로 전부 큰따옴표로 감싼다. `"` 를 품은 토큰은 인용이 깨지므로
-            #   버린다 — 조용한 오판정보다 누락이 낫다.
-            #   ⚠ **역슬래시로 끝나는 토큰**은 `\"` 가 이스케이프된 따옴표로 읽혀 인용이 깨지고
-            #   git 이 exit≠0 을 내 건너뛰어진다 — 두 셸이 같게 동작하므로 폴백 격차는 아니다(실측).
-            $gitArgs = @('-C', $RepoRoot, 'log', '-1', '--format=%cI', '--') + @($paths)
-            $psi.Arguments = (($gitArgs | Where-Object { $_ -notmatch '"' } | ForEach-Object { '"' + $_ + '"' }) -join ' ')
-            $psi.RedirectStandardOutput = $true
-            $psi.RedirectStandardError = $true
-            $psi.UseShellExecute = $false
-            $psi.CreateNoWindow = $true
-            $proc = [System.Diagnostics.Process]::Start($psi)
-            $outTask = $proc.StandardOutput.ReadToEndAsync()
-            $null = $proc.StandardError.ReadToEndAsync()
-            if (-not $proc.WaitForExit([Math]::Min(10000, [Math]::Max(1, $remainMs)))) {
-                try { $proc.Kill() } catch {}
-                $result.TimedOut = $true
-                break
-            }
-            if ($proc.ExitCode -ne 0) { continue }
-            $lastDate = ("$($outTask.Result)").Trim()
-        } catch { continue }
-        if (-not $lastDate -or $lastDate.Length -lt 10) { continue }
-        if ($lastDate.Substring(0, 10) -gt $upd) { $names.Add($f.Name) }
-    }
-    $result.Names = $names.ToArray()
-    return $result
-}
-
 function Get-WikiSignals {
     param([string]$cwd)
     $vaultLine = $null; $staleLine = $null
@@ -191,19 +94,7 @@ function Get-WikiSignals {
                                             $head = if ($behindKnown -and $daysKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha, ${staleDays}일 경과)" }
                                                 elseif ($behindKnown) { "$label 위키가 ${behind}커밋 미반영 (synced: $syncedSha)" }
                                                 else { "$label 위키가 ${staleDays}일째 미반영" }
-                                            # 표적은 **발화가 확정된 뒤에만** 계산한다 — 축이 전부
-                                            #   미달이면 표적을 낼 대상도 없고, 평소 세션 시작 비용이 0 으로 유지된다.
-                                            $featPart = ''
-                                            try {
-                                                $sf = Get-StaleFeatures -FeatureDir (Join-Path $hubFile.DirectoryName $hubFile.BaseName) -RepoRoot $cwd
-                                                if ($sf.Names.Count -gt 0) {
-                                                    $top = (@($sf.Names | Select-Object -First 3) -join ', ')
-                                                    $more = if ($sf.Names.Count -gt 3) { ' …' } else { '' }
-                                                    $cap = if ($sf.TimedOut) { ' · 시간 상한으로 일부만 검사' } elseif ($sf.Truncated) { ' · 40건까지만 검사' } else { '' }
-                                                    $featPart = " · 뒤처진 feature $($sf.Names.Count)건: ${top}${more}${cap}"
-                                                }
-                                            } catch { }
-                                            $staleLine = "[pjc 세션 컨텍스트] 위키 뒤처짐: ${head}${featPart} — 기능 목록·아키텍처 서술은 지도로만 쓰고 코드를 1차 출처로 하세요. 반영하려면 `"위키 업데이트`"라고 하세요."
+                                            $staleLine = "[pjc 세션 컨텍스트] 위키 뒤처짐: ${head} — 기능 목록·아키텍처 서술은 지도로만 쓰고 코드를 1차 출처로 하세요. 반영하려면 `"위키 업데이트`"라고 하세요."
                                         }
                                         break   # 허브 하나면 족하다 — 같은 경로를 가리키는 둘째가 있어도 라인을 두 번 내지 않는다
                                     }
