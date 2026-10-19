@@ -143,6 +143,14 @@
       "rationale": "§7-38 feature 폐지 절 보유 (WARN) — 세 이름(구현 방법·동작(사용법)·UI·UX)을 각각 잡고, 펜스 안 예시 헤딩·deprecated·90_archive 는 잡지 않는다. 단정은 키워드+경로 결합(다른 경고의 파일명과 섞이지 않게)"
     },
     {
+      "fixture": "abolished-related",
+      "expect_keywords": [
+        "폐지 절 보유: 20_projects/personal/x/feat-related.md (## 관련 파일",
+        "폐지 절 보유: 20_projects/personal/x/feat-facts.md (## 동작·구조"
+      ],
+      "rationale": "§7-38 확장 — 위키가 코드 정보를 담지 않기로 하며(wiki-schema §1 「쓰지 않는 코드 정보」) 폐지한 feature `## 관련 파일` 과 facts 변형의 `## 동작`·`## 구조` 를 폐지 절로 잡는다. 규칙만 바꾸면 ingest 가 옛 절을 다시 만들기 때문이다(직전 폐지 절 셋과 같은 재성장 방지). 펜스 안 예시는 `minor-guards` m3 가 음성 짝으로 잰다"
+    },
+    {
       "fixture": "feat-no-impl-section",
       "expect_clean": true,
       "expect_absent": [
@@ -150,7 +158,7 @@
         "구현 근거 각주 누락",
         "폐지 절 보유"
       ],
-      "rationale": "3절(개요·관련 파일·관련 지식·레시피)만 가진 feature 는 구조 경고를 내지 않는다 — 옛 §7-18(구현 방법 필수·구현 근거 각주) 폐지와 §7-38 음성 짝"
+      "rationale": "2절(개요·관련 지식·레시피)만 가진 feature 는 구조 경고를 내지 않는다 — 옛 §7-18(구현 방법 필수·구현 근거 각주) 폐지와 §7-38 음성 짝"
     },
     {
       "fixture": "no-updated",
@@ -1983,20 +1991,10 @@
       "git_repo": true,
       "synced_mode": "first",
       "expect_keywords": [
-        "facts 근거 꼬리 없음",
-        "입력을 받으면 출력한다"
-      ],
-      "rationale": "§7-39 ⓐ — facts 페이지의 `## 동작`·`## 구조` 사실 줄에 근거 꼬리가 없으면 WARN 이다. 근거 없는 줄은 낡아도 알아챌 수단이 없어 폐지 절과 같은 사본이 된다"
-    },
-    {
-      "fixture": "facts-bad",
-      "git_repo": true,
-      "synced_mode": "first",
-      "expect_keywords": [
         "facts 근거 경로 레포에 없음",
         "nope.txt"
       ],
-      "rationale": "§7-39 ⓑ — 근거 경로가 레포 HEAD 에 없으면 WARN 이다(§7-20·21 과 같은 실존 기준)"
+      "rationale": "§7-39 ⓑ — 근거 경로가 레포 HEAD 에 없으면 WARN 이다(§7-20 과 같은 실존 기준)"
     },
     {
       "fixture": "facts-bad",
@@ -2029,7 +2027,6 @@
         "위키 뒤처짐"
       ],
       "expect_absent": [
-        "facts 근거 꼬리 없음",
         "facts 근거 경로 레포에 없음",
         "facts 근거 낡음 가능",
         "facts 상대 참조"
@@ -2044,24 +2041,11 @@
         "위키 뒤처짐"
       ],
       "expect_absent": [
-        "facts 근거 꼬리 없음",
         "facts 근거 경로 레포에 없음",
         "facts 근거 낡음 가능",
         "facts 상대 참조"
       ],
       "rationale": "§7-39 ⓕ 음성 짝 — 형식을 지킨 facts 페이지(근거가 첫 커밋 뒤 안 바뀐 f0.txt · `없음:` 사실 포함)는 무경고다"
-    },
-    {
-      "fixture": "facts-ok",
-      "git_repo": true,
-      "synced_mode": "first",
-      "expect_keywords": [
-        "위키 뒤처짐"
-      ],
-      "expect_absent": [
-        "폐지 절 보유"
-      ],
-      "rationale": "§7-39 ⓖ 음성 짝 — facts 페이지의 `## 동작` 은 §7-38 폐지 절(`## 동작(사용법)`)이 아니다(schema-types §2.3 facts 변형)"
     },
     {
       "fixture": "facts-ok",

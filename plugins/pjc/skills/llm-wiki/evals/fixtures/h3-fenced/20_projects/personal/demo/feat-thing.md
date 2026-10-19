@@ -16,10 +16,6 @@ tags: [feature, demo]
 
 데모 기능이다.
 
-## 관련 파일
-
-- `src/Demo/Thing.cs` — 본체
-
 ## 설계 메모
 
 왜 이 구조인지 얇게 적는다[^src-thing].

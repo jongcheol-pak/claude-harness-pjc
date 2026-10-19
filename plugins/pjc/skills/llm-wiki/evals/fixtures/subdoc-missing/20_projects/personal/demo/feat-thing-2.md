@@ -18,10 +18,6 @@ tags: [feature, demo]
 
 정본은 [[20_projects/personal/demo/feat-thing|것 (Thing)]]의 「개요」이다.
 
-## 관련 파일
-
-- `src/Demo/Thing.cs` — 본체
-
 ## 화면 구성
 
 옮겨 온 본문이다.

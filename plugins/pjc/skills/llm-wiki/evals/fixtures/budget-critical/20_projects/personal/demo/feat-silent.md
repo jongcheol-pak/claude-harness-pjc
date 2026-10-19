@@ -13,9 +13,6 @@ tags: [feature, demo]
 ## 개요
 처방이 있어 신호를 내지 않는 쪽(ⓐ).[^src-near]
 
-## 관련 파일
-- `src/Demo/Silent.cs` — 더미 구현
-
 ## 설계 메모
 옮길 수 있는 본문이다.[^src-near]
 

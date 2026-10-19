@@ -15,9 +15,6 @@ tags: [feature, thing, demo]
 ## 개요
 데모 기능이다. 픽스처 검증용 최소 feature.
 
-## 관련 파일
-- `src/Demo/Thing.cs` — 핵심 로직
-
 ## 흐름(사용법)
 버튼을 누르면 동작한다.
 

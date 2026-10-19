@@ -13,12 +13,8 @@ tags: [feature, path]
 # 경로검사 (path)
 
 ## 개요
-§7-20·21 실존 검사 픽스처 — 부재 경로 2건(각주 `src/Gone.cs`·관련 파일 `src/AlsoGone.cs`)은 WARN,
+§7-20 실존 검사 픽스처 — 각주의 부재 경로(`src/Gone.cs`)는 WARN,
 실재 경로(`src/Real.cs`)는 무경고여야 한다.
-
-## 관련 파일
-- `src/Real.cs` — 실재 (무경고 기대)
-- `src/AlsoGone.cs` — 부재 (WARN 기대)
 
 ## 설계 메모
 Real 클래스가 처리한다[^src-x].

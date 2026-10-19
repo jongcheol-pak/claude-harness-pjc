@@ -18,10 +18,6 @@ tags: [feature, demo]
 
 이름은 `feat-thing-2`지만 상위는 `feat-other`다.
 
-## 관련 파일
-
-- `src/Demo/Other.cs` — 본체
-
 ## 설계 메모
 
 왜 이 구조인지 얇게 적는다[^src-other].

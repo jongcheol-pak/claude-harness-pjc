@@ -5,7 +5,7 @@
 검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
-      / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature 폐지 절 보유(§7-38 — 구현 방법·동작(사용법)·UI·UX)
+      / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature 폐지 절 보유(§7-38 — 구현 방법·동작(사용법)·UI·UX·관련 파일·facts 동작·구조)
       / 고아 페이지(간이) / 미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
@@ -19,7 +19,7 @@
       / index.md 부재·읽기 실패(ERR — 인덱스 기반 검사 불능 신호. 두 사유는 처방이 정반대라
         각각 다른 ERR: 부재는 골격 생성, 읽기 실패는 인코딩 복구)
       / 위키 뒤처짐(INFO — 허브 synced_commit 이후 레포에 쌓인 커밋 수, §7-26. fail-open)
-      / facts 형식 페이지 검사(§7-39 — `format: facts` 페이지만: 근거 꼬리 누락·근거 경로 부재·상대 참조 WARN,
+      / facts 형식 페이지 검사(§7-39 — `format: facts` 페이지만: 근거 경로 부재·상대 참조 WARN,
         근거 커밋 이후 근거 파일 변경 INFO. 레포·커밋을 못 찾으면 fail-open)
       / (미검증)·미해결 question 집계(INFO)
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
@@ -183,7 +183,6 @@ EVIDENCE_TAIL_RX = re.compile(
 FORMAT_VOCAB = {"facts"}
 FACTS_EVIDENCE_RX = re.compile(r"\(근거:([^)]*)\)")
 FACTS_REF_RX = re.compile(r"`?([^`@\s·()]+)`?@([0-9a-f]{7,40})\b")
-FACTS_SECTIONS = ("동작", "구조")
 FACTS_RELATIVE_REFS = ("위 절", "아래 절", "앞 절", "위 표", "아래 표", "앞 회차", "이전 회차")
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
 #  2필드(v1.2)·v 없는 버전(2.9.2)은 제품 라인·라이브러리 버전일 수 있어 비검출(오탐 회피가 1급 요건).
@@ -2156,8 +2155,8 @@ TYPE_REQUIRED_SECTIONS = {
 #  조건을 여기 다시 쓰지 않고 그 상수에서 파생하는 것이 단일 출처를 지키는 방법이다.
 RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS
                        if t != "project" and t not in BUDGET_OVER_ONLY_TYPES)
-# §7-38 폐지 절 — schema §2.3 이 feature 에서 걷은 세 절. 줄 머리 헤딩만 센다.
-ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX)[ \t]*$")
+# §7-38 폐지 절 — schema §2.3 이 feature 에서 걷은 절(facts 변형의 동작·구조 포함). 줄 머리 헤딩만 센다.
+ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX|관련 파일|동작|구조)[ \t]*$")
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
 
 
@@ -3939,8 +3938,8 @@ def main():
 
     # facts 형식 페이지 (schema-lint §7-39): `format: facts` 를 단 project·feature·decision-log 만 본다
     #  (wiki-schema §1 「facts 형식」 — 기존 페이지는 갱신될 때 바뀌므로 표지 없는 페이지는 대상 밖).
-    #  ⓐ `## 동작`·`## 구조` 의 `- ` 사실 줄에 근거 꼬리가 없으면 WARN — 근거 없는 줄은 낡아도 알 수단이 없다.
-    #  ⓑ 근거 경로가 레포 HEAD 에 없으면 WARN(§7-20·21 과 같은 실존 기준).
+    #  (ⓐ 근거 꼬리 누락은 폐지 — 그 대상 절 `## 동작`·`## 구조` 가 §7-38 폐지 절이 됐다.)
+    #  ⓑ 근거 경로가 레포 HEAD 에 없으면 WARN(§7-20 과 같은 실존 기준).
     #  ⓒ 근거 커밋 이후 그 파일이 바뀌었으면 INFO — (레포, 커밋)마다 git diff --name-only 1회만 부른다.
     #  ⓓ 상대 참조 고정 표현은 WARN. 레포·커밋을 못 찾으면 fail-open(§7-26 과 같은 관례).
     facts_diff_cache = {}  # (root, 커밋) -> 바뀐 경로 집합 또는 None(이력에 없음·git 실패)
@@ -3952,17 +3951,10 @@ def main():
         raw_lines = text.splitlines()
         stripped_lines = strip_code(text).splitlines()
         refs = []
-        cur = None
         for i, sl in enumerate(stripped_lines):
-            if sl.startswith("## "):
-                cur = sl[3:].strip()
-                continue
             m_ev = FACTS_EVIDENCE_RX.search(raw_lines[i]) if "(근거:" in sl else None
             if m_ev:
                 refs += FACTS_REF_RX.findall(m_ev.group(1))
-            elif cur in FACTS_SECTIONS and sl.startswith("- "):
-                warn(f"facts 근거 꼬리 없음: {r} -> '{raw_lines[i][2:62].strip()}' "
-                     f"(사실 줄 끝에 '(근거: `경로`@커밋)' — wiki-schema §1 facts 형식 2, schema §7-39)", r)
         body = "\n".join(stripped_lines)
         for phrase in FACTS_RELATIVE_REFS:
             if phrase in body:

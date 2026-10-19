@@ -410,10 +410,9 @@ def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
                 "platform: windows-desktop\nstatus: active\norigin: agent-synthesized\n"
                 "confidence: medium\nupdated: 2026-07-02\ntags: [feature, demo]\n---\n\n"
                 "# 대량 %03d (bulk %03d)\n\n## 개요\n순번 분할 골든용 최소 feature.\n\n"
-                "## 관련 파일\n- `src/Demo/Bulk%03d.cs` — 더미\n\n"
                 "## 관련 지식·레시피\n- 없음[^src-b]\n\n"
                 "[^src-b]: [[10_sources/personal/src-demo|소스: Demo]] — `src/Demo/Bulk%03d.cs`\n"
-                % (i, i, i, i, i, i, i))
+                % (i, i, i, i, i, i))
     for name in stale_names:
         with open(os.path.join(dest, name), "w", encoding="utf-8", newline="") as fh:
             fh.write("---\ntype: index\ntags: [index]\n---\n\n# 옛 순번 파일\n\n"
