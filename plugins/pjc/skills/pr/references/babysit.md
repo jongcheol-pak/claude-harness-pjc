@@ -1,6 +1,6 @@
 # babysit — PR 하나를 merge-ready 까지
 
-> `../SKILL.md` 가 babysit 요청일 때 읽는다. 출처는 Cursor pstack 의 babysit 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/babysit.md`. 스택 PR·merge queue·Origin·`watch-pr` 스크립트는 들이지 않았다 — 포지는 `gh` 하나이고 대상은 PR 하나다.
+> `../SKILL.md` 가 babysit 요청일 때 읽는다. 출처는 Cursor pstack 의 babysit 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/babysit.md`. 스택 PR 은 체인 스택 워커가 자기 PR 하나를 babysit 하는 것으로만 받고(`../../chain-plan/references/stack-mode.md`「워커」 — base 는 바꾸지 않는다), merge queue·Origin·`watch-pr` 스크립트는 들이지 않았다 — 포지는 `gh` 하나이고 대상은 PR 하나다.
 
 ## 모드
 
