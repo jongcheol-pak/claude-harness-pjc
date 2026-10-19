@@ -12,6 +12,7 @@ CLI: <해석한 실행 파일 이름 또는 따옴표 친 전체경로>
 실측 기준: <회차 실측·measure.md 의 실측 기준 | 없음>
 DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖은 금지(SELECT 는 허용)>
 근거로 정한 것: <① · ③ — 각 (근거: …)>
+실험 결정: <<명령> → <결론> (Q: <갈림길>) — 여럿이면 ; 로 잇는다 | 없음>
 판정 원칙: <체인 승인의 그 계획 판정 원칙 줄 값>
 체인 대조: <이 Run 앞 계획마다 plan M — 성공의 모습 | 없음>
 병렬: <그룹 <g> — 별도 worktree 에서 돈다 · 버전 올리기 task 를 만들지 않는다 · 병합은 코디네이터(PR 모드면 워커 PR — ship 의 로컬 맞추기·버전 PR 을 건너뛴다) | 없음>
@@ -34,7 +35,7 @@ PR 모드: <켬 — base <체인 브랜치> | 꺼짐>
 다른 회차: plan <M> — <task 초안 한 줄> …
 
 진행:
-1. pjc:plan 을 Skill 도구로 부르되 args 첫 줄에 [chain-plan 중계] 를 두고 위 실측 기준·판정 원칙·병렬·PR 모드·원문·재진술·실측 요지를 그대로 싣는다. 승인되면 pjc:implement 를 Skill 도구로 불러 마지막 task 까지 간다. PR 모드가 켬이면 PR 을 연 뒤 최종 보고 전에 chain-plan/references/pr-mode.md「워커」 를 따른다.
+1. pjc:plan 을 Skill 도구로 부르되 args 첫 줄에 [chain-plan 중계] 를 두고 위 실측 기준·실험 결정·판정 원칙·병렬·PR 모드·원문·재진술·실측 요지를 그대로 싣는다. 승인되면 pjc:implement 를 Skill 도구로 불러 마지막 task 까지 간다. PR 모드가 켬이면 PR 을 연 뒤 최종 보고 전에 chain-plan/references/pr-mode.md「워커」 를 따른다.
 2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 --timeout-ms 86400000 과 2>/dev/null 을 더해 Bash 도구 run_in_background: true 로 보내고 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 하고, answered:true 가 아니면 relay-edge-cases.md「ask 만료」 를 따른다(포그라운드는 Bash 10분 상한 때문에 기다리는 동안 9분마다 turn 이 돈다). 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이거나 체인 승인 위임 답(Y (체인 승인 위임 — …))이거나 코디네이터 판정 답(… (코디네이터 판정 — …))이라, 셋 다 사용자 응답·승인으로 본다. 워커 화면에는 묻지 않는다(AskUserQuestion 금지).
 3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 아래 --body 를 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed 에 --body 로 사유·남은 task·판정·환경 마찰을 싣는다.
    --body "$(cat <<'BODY'
@@ -56,6 +57,7 @@ PR 모드: <켬 — base <체인 브랜치> | 꺼짐>
 
 - **표식은 spec 첫 줄에 둔다** — 워커의 `pjc:plan` 이 그 자리(배정문 `할 일:` 바로 아래)와 Skill args 첫 줄로 중계 모드를 판정한다(`../../plan/references/relay-mode.md`「중계 모드」).
 - **`체인 결정:` 줄은 모든 계획 task(이어받기 포함)에 같은 경로이고, 그 파일은 첫 task 를 만들기 전에 `chain-decisions.md`「결정 기록」 대로 만든다** — spec 은 만든 뒤 고칠 수 없지만 경로가 고정이면 체인 도중에 덧붙인 결정이 미리 만든 뒤 계획의 워커에게도 닿는다(`../../plan/references/relay-mode.md`「중계 모드」 가 Step 1 에서 Read 한다).
+- **`실험 결정:` 줄에는 이 계획의 인터뷰에서 묻지 않고 일회성 실험으로 정한 갈림길(`../../plan/references/interview.md` 2-3)을 명령째 싣는다 — 없으면 `없음` 이다** — 워커가 착수 때 그 명령을 다시 돌려 앞 계획이 바꾼 코드에서도 결론이 같은지 본다(`../../plan/references/relay-mode.md`「중계 모드」). 결론만 실으면 다시 돌릴 수 없다.
 - **질문·보고 명령은 spec 에 새로 적지 않고 배정문 끝의 것을 가리킨다** — 핸들·task id·dispatch id 가 거기 이미 채워져 있고, 옮겨 적으면 값이 어긋날 자리가 하나 는다.
 - **`병렬:` 이 「없음」이 아니면 재진술 `제약조건` 끝에도 「버전 올리기 task 를 만들지 않는다(병렬 그룹 — 그룹 병합 뒤 한 번 올린다)」를 더한다** — 워커의 `pjc:plan` 은 제약조건을 task 분해의 제약으로 읽고, 대상 레포 규약이 계획마다 버전 커밋을 요구해도 그룹원마다 올리면 병합 때마다 충돌한다(`parallel.md`「버전」). PR 모드면 그룹 버전 PR 은 코디네이터가 마지막 워커에게 재배정하고, Release 가 「버전 전용 PR」 인 레포는 체인 끝 PR 의 ship 이 올린다(`pr-mode.md`「병렬」).
 - **`Y`·`P` 승인에서 대상 레포가 체인 끝 PR 대상이고 그 `AGENTS.md` Release 가 「버전 전용 PR」 을 지목하면 재진술 `제약조건` 끝에 「버전 올리기 task 를 만들지 않는다(체인 끝 PR — merge 를 맡는 `pjc:pr` ship 이 버전 전용 PR 을 잇는다)」를 더한다(`pr-mode.md`「켜기」)** — 버전 커밋이 체인 끝 PR 에 squash 되면 기능 변경과 섞이고 ship 이 버전을 한 번 더 올린다.
