@@ -129,6 +129,7 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 - **넷 중 하나인지 애매하면 되돌리기 어려운 것만(복구 경로 없는 삭제·기존 데이터·외부에 공개되는 것) 사용자 몫이고, 그 밖에 애매하면 판정하고 기록한다** — 애매함을 모두 넘기면 규칙이 조금만 겹쳐도 체인이 선다.
 - **워커의 `plan.md` 승인 요청은 봉투를 대조해 답한다 — 대조와 어긋날 때는 `references/user-relay.md`「봉투 대조」·「봉투 밖 승인 요청」 을 읽고 따른다** — 사용자는 체인 승인에서 이미 답했고, 봉투 밖이라는 사실만으로 사용자에게 넘기지 않는다.
 - **앞 워커에게 답한 질문이 컨텍스트에 있으면 `references/prior-answers.md`「앞선 답」, 사용자에게 넘길 때는 `references/user-relay.md`「사용자에게 넘기기」 를 읽고 따른다.**
+- **답하기 전·뒤에 `references/chain-decisions.md`「결정 기록」 을 따른다** — 압축 뒤에도 앞 결정이 남는다.
 
 ## 보고
 
