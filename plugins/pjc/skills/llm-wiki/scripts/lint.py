@@ -9,6 +9,7 @@
       / 고아 페이지(간이) / 미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
+      / 본문 코드 경로(§7-40 — project·feature·decision-log 본문의 `a/b.ext` 백틱 토큰. 각주 정의 줄·펜스·허브 경로 줄·URL·아카이브 포인터 제외)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
       / 큐 잔량 집계(INFO — 절차 K 큐 `pending.md`, §7-25)
         · pending.md: [DECISION]/[PROJECT-FACT]/[SYMPTOM] 태그별
@@ -2158,6 +2159,10 @@ RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS
 # §7-38 폐지 절 — schema §2.3 이 feature 에서 걷은 절(facts 변형의 동작·구조 포함). 줄 머리 헤딩만 센다.
 ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX|관련 파일|동작|구조)[ \t]*$")
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
+# §7-40 본문 코드 경로 — 위키는 코드 경로를 쓰지 않는다(wiki-schema §1 「쓰지 않는 코드 정보」).
+#  `a/b.ext` 형 백틱 토큰만 센다 — 구분자 없는 이름·확장자 없는 토큰은 경로로 단정하기 어렵다.
+BODY_PATH_TYPES = ("project", "feature", "decision-log")
+BODY_PATH_RX = re.compile(r"`([^`\s]*[\w.-]/[^`\s]*\.[A-Za-z0-9]{1,6})`")
 
 
 def _prose_page_paths(vault):
@@ -3106,6 +3111,22 @@ def main():
             if abolished:
                 names = "·".join(dict.fromkeys(abolished))
                 warn(f"폐지 절 보유: {r} (## {names} — 함정·이유는 '## 관련 지식·레시피'로 옮기고 나머지는 지운다, schema §2.3·§7-38)", r)
+
+        # §7-40 본문 코드 경로 — 제외: 펜스 · 각주 정의 줄(출처 — 영구 예외) · 허브 `**경로**` 줄(레포 위치)
+        #  · URL · `90_archive/` 포인터(롤오버 --fix·§7-30ⓐ 가 쓰는 장치). deprecated·아카이브 페이지는 frozen 이력.
+        if typ in BODY_PATH_TYPES and not is_dep and not in_archive:
+            body_paths, fence = [], False
+            for ln in text.splitlines():
+                if re.match(r"[ \t>]*(```|~~~)", ln):
+                    fence = not fence
+                    continue
+                if fence or FOOTNOTE_DEF_RX.match(ln) or ln.lstrip().startswith("- **경로**"):
+                    continue
+                body_paths += [t for t in BODY_PATH_RX.findall(ln)
+                               if "://" not in t and not t.startswith("90_archive/")]
+            if body_paths:
+                warn(f"본문 코드 경로: {r} {len(body_paths)}개 (예: `{body_paths[0]}`) — 경로 대신 기능·역할로 쓴다"
+                     f"(wiki-schema §1 「쓰지 않는 코드 정보」, schema §7-40)", r)
 
         # wikilink: 깨진 링크(경로형) + 경로 없는 링크(명시적 경로 필수 위반)
         # 코드펜스/인라인코드 안 텍스트는 제외 — 추출·정규화는 wikilink_targets(§7-6·23과 공용)

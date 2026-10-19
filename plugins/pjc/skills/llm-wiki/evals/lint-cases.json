@@ -2058,6 +2058,97 @@
         "facts 근거 낡음 가능"
       ],
       "rationale": "§7-39 ⓗ 음성 짝 — 근거 커밋이 레포 이력에 없으면(rebase·다른 레포) 낡음을 지어내지 않고 fail-open INFO 1줄이다(§7-26 과 같은 관례)"
+    },
+    {
+      "fixture": "body-code-path-feature",
+      "expect_keywords": [
+        "본문 코드 경로: 20_projects/personal/x/feat-a.md"
+      ],
+      "rationale": "§7-40 양성 — feature 본문의 `a/b.ext` 형 백틱 경로를 잡는다. 위키는 코드 경로를 쓰지 않는다(wiki-schema §1 「쓰지 않는 코드 정보」) — 경로는 코드가 바뀌면 틀어진다. 타입마다 케이스를 따로 두어 한 타입만 걸려도 통과하는 것을 막는다"
+    },
+    {
+      "fixture": "body-code-path-hub",
+      "expect_keywords": [
+        "본문 코드 경로: 20_projects/personal/x.md"
+      ],
+      "rationale": "§7-40 양성 — hub 본문의 `a/b.ext` 형 백틱 경로를 잡는다. 위키는 코드 경로를 쓰지 않는다(wiki-schema §1 「쓰지 않는 코드 정보」) — 경로는 코드가 바뀌면 틀어진다. 타입마다 케이스를 따로 두어 한 타입만 걸려도 통과하는 것을 막는다"
+    },
+    {
+      "fixture": "body-code-path-decision",
+      "expect_keywords": [
+        "본문 코드 경로: 20_projects/personal/x/decisions.md"
+      ],
+      "rationale": "§7-40 양성 — decision 본문의 `a/b.ext` 형 백틱 경로를 잡는다. 위키는 코드 경로를 쓰지 않는다(wiki-schema §1 「쓰지 않는 코드 정보」) — 경로는 코드가 바뀌면 틀어진다. 타입마다 케이스를 따로 두어 한 타입만 걸려도 통과하는 것을 막는다"
+    },
+    {
+      "fixture": "body-code-path-ok-footnote",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "본문 코드 경로"
+      ],
+      "rationale": "§7-40 음성 짝(footnote) — 각주 정의 줄의 경로는 출처라 영구 예외다. 제외 축마다 케이스를 따로 둔다(축 분리)"
+    },
+    {
+      "fixture": "body-code-path-ok-fence",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "본문 코드 경로"
+      ],
+      "rationale": "§7-40 음성 짝(fence) — 펜스 안 예시는 본문이 아니다. 제외 축마다 케이스를 따로 둔다(축 분리)"
+    },
+    {
+      "fixture": "body-code-path-ok-hubpath",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "본문 코드 경로"
+      ],
+      "rationale": "§7-40 음성 짝(hubpath) — 허브 `- **경로**:` 줄은 레포 위치라 남긴다. 제외 축마다 케이스를 따로 둔다(축 분리)"
+    },
+    {
+      "fixture": "body-code-path-ok-url",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "본문 코드 경로"
+      ],
+      "rationale": "§7-40 음성 짝(url) — `://` 가 든 토큰은 URL 이다. 제외 축마다 케이스를 따로 둔다(축 분리)"
+    },
+    {
+      "fixture": "body-code-path-ok-archive",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "본문 코드 경로"
+      ],
+      "rationale": "§7-40 음성 짝(archive) — `90_archive/` 포인터는 롤오버 --fix·§7-30ⓐ 가 쓰는 장치다. 제외 축마다 케이스를 따로 둔다(축 분리)"
+    },
+    {
+      "fixture": "body-code-path-ok-deprecated",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "본문 코드 경로"
+      ],
+      "rationale": "§7-40 음성 짝(deprecated) — deprecated 페이지는 frozen 이력이다(§7-20·§7-38 과 같은 제외). 제외 축마다 케이스를 따로 둔다(축 분리)"
+    },
+    {
+      "fixture": "body-code-path-ok-archived-page",
+      "expect_keywords": [
+        "[ERR] 오류"
+      ],
+      "expect_absent": [
+        "본문 코드 경로"
+      ],
+      "rationale": "§7-40 음성 짝(archived-page) — `90_archive/` 아래 페이지는 검사 밖이다. 제외 축마다 케이스를 따로 둔다(축 분리)"
     }
   ]
 }
