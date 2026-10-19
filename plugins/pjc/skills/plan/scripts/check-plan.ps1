@@ -20,7 +20,7 @@
 #   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
 #                                (Goal 절에 「> 경량:」 줄이 있는 경량 plan 은 out-of-scope·verification 을 재지 않는다)
 #   light-files <N>              경량 plan 의 task Files 줄 백틱 경로(줄의 첫 「[면제」 앞까지) 합집합이 2 를 넘음
-#   light-structure T<N>         경량 plan 의 task 에 「- **구조**:」 줄이 있음(새 파일·공개 표면)
+#   light-structure T<N>         경량 plan 의 task 에 「- **구조**:」 줄이 있음(새 파일·공개 표면·경계를 넘는 재구성)
 #   light-approval               경량 plan 에 「승인 필요 항목」 절이 있음
 #   light-relay                  경량 plan 의 「> 요구:」 가 「코디네이터 인터뷰 경유」(중계 모드는 경량 불허)
 #   goal-head <줄>               request(첫 절 앞 「> 요구:」 원문 인용)·base·approval·start·done(Goal 절의 「> BASE:」 등) 없음
