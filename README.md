@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
 > <br>(계획·검증 로직은 OS 무관 — 단 `chain-plan` 은 Karina(Windows)가 필요하다, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
-**버전**: 1.397.0
+**버전**: 1.398.0
 **저장소**: https://github.com/jongcheol-pak/claude-harness-pjc
 **Claude Code**: 최소 v2.0 — 플러그인을 쓰는 데는 이것으로 충분하다. CLAUDE.md 가 없는 프로젝트에서 Claude Code 가 AGENTS.md 를 직접 불러오는 것은 v2.1.277+ 이고, 그 미만이면 세션 시작 hook 의 Read 지시가 대신한다 · **하니스 자체를 고칠 때(eval 러너)는 권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이라, 그 미만에서는 부분 실행 필터가 조용히 0건을 돌 수 있다. <!-- verified: 2026-09-12 -->
 
