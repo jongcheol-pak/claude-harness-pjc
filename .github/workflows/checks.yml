@@ -1,11 +1,16 @@
-# 하니스 검사기 13종을 CI 에서 돌린다.
+# 하니스 검사기 13종과 Hook 골든 경로 판정을 CI 에서 돌린다.
 #
 # **windows-latest 인 이유**: hook 스크립트가 PowerShell 이고 `run-hook-evals.ps1` 이
 #   pwsh 로 골든을 돌린다. 검증 환경은 Windows 이고(`AGENTS.md` 「OS/플랫폼」)
 #   macOS/Linux 는 실험적이라 CI 를 그쪽에 맞추면 재는 것과 쓰는 것이 갈린다.
 #
-# **명령은 `AGENTS.md` 「Build & Test」에서 그대로 옮긴다** — 문자열을 여기서 고쳐 쓰면
-#   정본이 둘이 되고 한쪽만 갱신된다.
+# **검사기 명령은 `AGENTS.md` 「Build & Test」에서 그대로 옮긴다** — 문자열을 여기서 고쳐 쓰면
+#   정본이 둘이 되고 한쪽만 갱신된다. 경로 판정 두 단계의 명령은
+#   `docs/harness-conventions.md` 「검증 매핑」 의 `.github/**` 행이 정본이다.
+#
+# **Hook 골든은 PR 에서 입력 경로가 바뀌었을 때만 돈다** — job 시간의 85% 안팎(약 540초)이다.
+#   입력 경로와 판정 규칙의 정본은 `.github/scripts/hook_golden_needed.py` 다. main push 는
+#   늘 전부 돌아 PR 에서 놓친 회귀를 merge 직후 잡고, 판정하지 못하면 돌린다.
 #
 # **순서는 싼 것부터다** — 구문 검사·매니페스트가 먼저 깨지면 뒤 검사기는 볼 필요가 없다.
 #
@@ -33,6 +38,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
@@ -81,7 +88,26 @@ jobs:
       - name: AGENTS.md 이관 골든
         run: python plugins/pjc/skills/record-project-fact/evals/run_relocation_evals.py
 
+      # ── Hook 골든 경로 판정 ──────────────────────────────────────────
+      - name: CI 경로 판정 테스트
+        run: python .github/scripts/test_hook_golden_needed.py
+
+      - name: Hook 골든 경로 판정
+        id: paths
+        shell: pwsh
+        run: |
+          $out = python .github/scripts/hook_golden_needed.py --event ${{ github.event_name }}
+          if ($LASTEXITCODE -ne 0) { $out = @('hook_golden=true', 'reason=judge script failed') }
+          $out | ForEach-Object { Write-Host $_ }
+          $out | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
       # ── pwsh 검사기 1종 ─────────────────────────────────────────────
       - name: Hook 골든 회귀
+        if: steps.paths.outputs.hook_golden == 'true'
         shell: pwsh
         run: pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
+
+      - name: Hook 골든 회귀 건너뜀
+        if: steps.paths.outputs.hook_golden != 'true'
+        shell: pwsh
+        run: Write-Host "Hook 골든 회귀 건너뜀 — ${{ steps.paths.outputs.reason }}"
