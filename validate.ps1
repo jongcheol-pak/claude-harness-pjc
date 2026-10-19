@@ -7,7 +7,7 @@
 #   1. plugin 디렉터리 존재
 #   2. plugin.json + marketplace.json 유효
 #   3. skill 10개 모두 등록
-#   3-1. 가이드 문서 7개 존재 (DESIGN/AUTHORING/BUDGET/WIKI/AGENTS-BOUNDARY/WRITING/PERF-MEASUREMENT)
+#   3-1. 가이드 문서 8개 존재 (DESIGN/AUTHORING/BUDGET/WIKI/AGENTS-BOUNDARY/WRITING/PERF-MEASUREMENT/REPO-CONVENTIONS)
 #   4. agent 전부 등록
 #   5. hook 11개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
@@ -133,7 +133,7 @@ Write-Host ""
 # 3-1. 가이드 문서 (설치본에 실재하는가)
 #   스킬 문서(SKILL.md·references)가 가리키는 설계·예산 문서와 공통 참조다. 3번은 SKILL.md 만
 #   보므로 이 파일들이 설치본에서 빠져도 잡히지 않고, 그때 포인터는 존재하는데 대상이 없는 상태가 된다.
-$guides = @('DESIGN.md', 'AUTHORING.md', 'BUDGET.md', 'WIKI.md', 'AGENTS-BOUNDARY.md', 'WRITING.md', 'PERF-MEASUREMENT.md')
+$guides = @('DESIGN.md', 'AUTHORING.md', 'BUDGET.md', 'WIKI.md', 'AGENTS-BOUNDARY.md', 'WRITING.md', 'PERF-MEASUREMENT.md', 'REPO-CONVENTIONS.md')
 Write-Host "3-1. 가이드 문서 $($guides.Count)개" -ForegroundColor Yellow
 foreach ($g in $guides) {
     Test-Item-Exists (Join-Path $pluginRoot "skills/$g") "guide: $g" | Out-Null
