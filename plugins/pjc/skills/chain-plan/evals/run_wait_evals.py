@@ -1361,10 +1361,18 @@ def orphaned_when_middle_parent_killed():
     inner = subprocess.list2cmdline([sys.executable, SCRIPT, '--cli', cli, '--dispatch', dispatch,
                                      '--timeout-ms', '600000', '--poll-ms', '1000'])
     # cmd /c 는 따옴표가 셋 이상이면 첫·끝 따옴표를 벗겨 공백 경로가 깨진다 — /s 와 바깥 따옴표로 통째로 넘긴다.
+    try:
+        os.remove(lock_path)
+    except OSError:
+        pass
     proc = subprocess.Popen('cmd /s /c "%s"' % inner, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     got = {}
     try:
-        time.sleep(4)
+        # 잠금 파일은 감시를 세운 make_alive() 뒤에 생긴다(wait-worker.py main) — 그 전에 죽이면 고아를 못 잡는다.
+        deadline = time.time() + 30
+        while not os.path.exists(lock_path) and time.time() < deadline:
+            time.sleep(0.2)
+        assert os.path.exists(lock_path), '30초 안에 대기가 잠금을 만들지 않았다'
         proc.kill()
         reader = threading.Thread(target=lambda: got.update(out=proc.stdout.read()), daemon=True)
         reader.start()

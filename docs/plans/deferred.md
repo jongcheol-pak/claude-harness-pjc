@@ -12,9 +12,8 @@
 ## 대기
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
-- [2026-10-19] **chain-plan 대기 골든 흔들림** — `python plugins/pjc/skills/chain-plan/evals/run_wait_evals.py` 가 같은 트리에서 98/99 → 재실행 99/99 로 갈렸다. 흔들린 케이스를 찾아 시한·순서 의존을 고정한다 (출처: 2026-10-19 체인 보완 계획 착수 측정) (실해: 2026-10-19 첫 실행 1건 FAIL — 같은 트리 재실행 PASS)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 9 / 종결 119
+**▶ 현행 잔량(기계 대조 대상)**: 대기 8 / 종결 119
 
 > 이 한 줄만 기계 대조 대상이다 — `plugins/pjc/evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
