@@ -301,6 +301,7 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | "PR 12 지켜봐" · "PR 12 검증하고 머지해" | PR 운영(`pjc:pr` babysit · ship) |
 | `/pjc:create-verification-skill` | 검증 스킬 만들기 (직접 호출 전용) |
 | `/pjc:maintain-verification-skill` | 검증 스킬 유지 (직접 호출 전용) |
+| `/pjc:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |
 
 ---
 
@@ -555,6 +556,13 @@ PowerShell 인코딩 문제일 수 있습니다. pjc의 모든 스크립트는 U
 <summary>화면 확인을 매번 저한테 넘겨요</summary>
 
 `/pjc:create-verification-skill` 을 한 번 돌려 검증 스킬을 만드세요. 실행 증명을 통과하면 그 스킬이 `AGENTS.md`의 `Verify (앱 조작)` 줄에 경로를 적습니다. 구현이 화면 확인을 넘기기 전에 그 스킬로 먼저 조작하고, 그래도 사람 눈이 필요한 것만 완료 보고에 남깁니다.
+
+</details>
+
+<details>
+<summary>동시성·재시도 버그가 테스트로 안 잡혀요</summary>
+
+`/pjc:create-formal-verification-skill` 을 돌리세요. 레포에서 깨지면 사용자가 다치고 테스트가 잘 닿지 않는 속성 하나(동시성·재시도·상태 기계·파서)를 골라 형식 검증하고, 일부러 깨뜨린 변경을 잡는지 한 번 증명한 뒤 `AGENTS.md`의 `Verify (형식 검증)` 줄에 등록합니다. 그 뒤로 구현·PR 검증·디버깅 수정이 그 코드를 건드릴 때마다 검사를 다시 돌리고, 이미 알고 있는 위반과 새 위반을 갈라 보고합니다. 검증 도구(예: TLA+)가 없으면 무엇을 어디서 받는지 보여 주고 승인을 받은 뒤에만 설치합니다.
 
 </details>
 
