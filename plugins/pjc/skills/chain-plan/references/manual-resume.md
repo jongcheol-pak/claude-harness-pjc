@@ -23,7 +23,7 @@
 ## 사후 완료
 
 - **`status` 의 제목이 `사후 완료 — plan <N>` 이면 `--body` 를 그 계획의 `worker_done`(succeeded) `--body` 로 받는다** — `failed` 로 정산된 배정에는 `worker_done` 이 `inactive_dispatch` 로 거절돼, 워커가 같은 본문을 이 유형으로 보낸다(`../../plan/references/relay-edge-cases.md`「사후 완료」).
-- **순서는 셋이다 — ① `<CLI> orchestration task-update --json --id <task id> --status completed --result "<결과 줄>"` ② `release.md`「닫기」 ③ 「워커 루프」의 succeeded 이후(`남은 일` 이 「없음」이 아니면 `continuation.md`「남은 일 판정」, 아니면 다음 계획)** — ① 을 빼면 뒤 task 가 `--deps` 로 `failed` task 에 걸려 `worker-start` 가 `deps_not_ready` 로 막힌다. 응답의 `offTable: true` 는 표 밖 전이(failed → completed)를 알릴 뿐 정상이다. ② 는 `failed` 때 retain 한 탭이라 `retained` 갈래로 닫힌다.
+- **순서는 셋이다 — ① `<CLI> orchestration task-update --json --id <task id> --status completed --result "<결과 줄>"` ② `release.md`「닫기」 ③ 「워커 루프」의 succeeded 이후(PR 모드 꺼짐·병렬 밖이면 `continuation.md`「코디네이터 검증」 을 먼저 하고, `남은 일` 이 「없음」이 아니면 `continuation.md`「남은 일 판정」, 아니면 다음 계획)** — ① 을 빼면 뒤 task 가 `--deps` 로 `failed` task 에 걸려 `worker-start` 가 `deps_not_ready` 로 막힌다. 응답의 `offTable: true` 는 표 밖 전이(failed → completed)를 알릴 뿐 정상이다. ② 는 `failed` 때 retain 한 탭이라 `retained` 갈래로 닫힌다.
 - **병렬 그룹의 계획이면 ③ 대신 `parallel.md`「중단·이어받기·사후 완료」 를 따른다** — 다음 계획 전에 그 worktree 브랜치를 병합해야 한다.
 - **`ok: false` 는 `cli-errors.md`「오류 응답」 을 따르고, 복구되지 않으면 보고하고 멈춘다.**
 - **보고의 그 plan 결과에 `사후 완료` 를 적고, `report.md`「인계 파일 정리」 에서는 succeeded 로 센다** — 계획은 끝까지 갔고, 실패로 닫힌 것은 보고 경로뿐이다.
