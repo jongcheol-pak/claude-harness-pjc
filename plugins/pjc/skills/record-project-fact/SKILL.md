@@ -1,6 +1,6 @@
 ---
 name: record-project-fact
-description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into AGENTS.md — on the suggest-agents-record hook's acceptance, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "빌드 명령 기록해줘", "DB 접근법 적어둬", "AGENTS.md에서 이 항목 빼줘", and remembering a confirmed build/test COMMAND ("이 테스트 명령 기억해둬"); a "기억해둬" about a work convention or pitfall is NOT this skill (wiki queue). Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 넘었어", the hook's "주입 상한 임박") — Step 5 relocates oversized sections and leaves a pointer. Also for RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘", "소급 정리") — measures, judges each section's destination, and hands off to pjc:plan instead of editing. Also creates a missing AGENTS.md when that alone is asked. Do NOT trigger for code work (pjc:plan/pjc:implement). Writes to AGENTS.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's verbatim relocation, which reports afterward.
+description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into AGENTS.md — on the suggest-agents-record hook's acceptance, or on request. Add, update, or remove. Triggers on "AGENTS.md에 기록", "빌드 명령 기록해줘", "DB 접근법 적어둬", "AGENTS.md에서 이 항목 빼줘", and "기억해둬" for a confirmed build/test COMMAND ("이 테스트 명령 기억해둬") or a work pitfall/convention (→ docs/conventions.md). Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 넘었어", the hook's "주입 상한 임박") — Step 5 relocates oversized sections and leaves a pointer. Also for RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘", "소급 정리") — measures, judges each section's destination, and hands off to pjc:plan instead of editing. Also creates a missing AGENTS.md when that alone is asked. Do NOT trigger for code work (pjc:plan/pjc:implement). Writes to AGENTS.md or docs/conventions.md ONLY, never CLAUDE.md, and only after showing the change and getting approval; the sole exception is Step 5's verbatim relocation, which reports afterward.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
@@ -13,7 +13,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ## 절대 규칙
 
 1. **승인 없이 쓰지 않는다** — 어느 섹션에 무엇을 추가/갱신/제거하는지 정확히 보여주고 승인받은 뒤에만 Edit한다. hook 제안은 「기록 제안」일 뿐 자동 위임이 아니다. 삭제도 같다. **예외는 Step 5 하나뿐**이다(근거는 `references/record-fact-rationale.md` §1).
-2. **`AGENTS.md`만 대상** — `CLAUDE.md`는 수정하지 않는다(지침 파일이라 위험). **예외는 Step 5의 이관처 하나뿐이고, 그 이관처에 `CLAUDE.md`는 들어가지 않는다** — 스크립트가 후보에서 배제한다(`relocate-agents.py` 판정 ⓓ). **새 사실을 이관처에 직접 적는 것도 금지**다(§2).
+2. **`AGENTS.md` 와 레포 `docs/conventions.md` 만 대상** — `CLAUDE.md`는 수정하지 않는다(지침 파일이라 위험). **예외는 Step 5의 이관처 하나뿐이고, 그 이관처에 `CLAUDE.md`는 들어가지 않는다** — 스크립트가 후보에서 배제한다(`relocate-agents.py` 판정 ⓓ). **새 사실을 이관처에 직접 적는 것도 금지**다(§2).
 3. **실제 시크릿 금지** — DB 연결 문자열·비밀번호·API 키·토큰·내부 IP/호스트를 적지 않는다. **환경변수 이름·설정 키 이름만** 적고 값은 `.env`(gitignore)로.
 4. **확인된 사실만** — 직접 실행·확인한 명령/경로만. 추측("아마 이 명령일 것")은 적지 않는다.
 5. **「의도적 비대상」은 사용자 확인으로만 성립한다** — 테스트가 없는 계층을 발견한 것만으로는 비대상이 아니다(빠뜨린 것일 수도 있다). 사용자가 의도라고 확인해야 적는다.
@@ -31,6 +31,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 | DB 접근 방법 | `## 데이터 접근` |
 | 파일·산출물 관리 | `## 산출물·파일 관리` |
 | 테스트 비대상 계층·의도된 제약 | `## Conventions` |
+| 작업 함정·작업 규약(사용자 「기억해둬」 — 명령이 아닌 것) | `AGENTS.md` 가 아니라 레포 `docs/conventions.md` — 항목 형식·절 선택은 `../REPO-CONVENTIONS.md` 「항목 형식」·「쓰기」, 파일이 없으면 만든다 |
 
 **섹션이 없으면 신설한다.** 위치는 `../AGENTS-BOUNDARY.md`의 **「생성물 골격」 뼈대 순서**가 정본이다 — 그 문서가 절 구성과 배치 순서를 함께 정하므로, 새 절은 뼈대 순서 자리(뼈대에서 그 절보다 앞에 오는 절 가운데 파일에 있는 마지막 절 바로 뒤)에 넣는다. 기존 파일의 순서가 뼈대와 달라도 기존 절은 옮기지 않는다 — Step 4 의 「다른 섹션 불변」이다(근거 `references/record-fact-rationale.md` §9). 섹션이 이미 있으면 그 안에 항목을 추가·갱신한다.
 
@@ -38,7 +39,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 
 **무엇을 담고 무엇을 담지 않는지의 경계도, 담지 않는 것의 대체 저장처도 `../AGENTS-BOUNDARY.md`의 저장처 표와 그 아래 증가 억제 규칙·서술 밀도 규칙이 정본**이다(남는 절 안에서도 명령만 남기고 해석·근거는 내보낸다) — 그 문서가 *"여기를 가리키기만 하고 각자 재서술하지 않는다"*로 못박은 대상이라 여기서 다시 적지 않는다.
 
-- **위키 `conventions.md` 와 매핑 표의 `## Conventions` 는 이름만 같고 대상이 다르다**(§3).
+- **레포 `docs/conventions.md`(작업 함정) 와 매핑 표의 `## Conventions`(인코딩·아키텍처 선언 등) 는 이름만 같고 대상이 다르다**(§3).
 - **기록 요청이 그 경계에 걸리면** 거절하지 말고 **대체 저장처를 제안**한다.
 - **이미 들어가 있는 것을 발견하면** 규칙 7의 승인 게이트를 거쳐 제거를 제안한다.
 
