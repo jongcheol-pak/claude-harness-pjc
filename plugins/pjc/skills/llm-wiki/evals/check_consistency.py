@@ -230,6 +230,7 @@ VOCAB_LINES = {
     "category": (r"\*\*`category` 통제 어휘\(고정\)\*\*:(.+)", "CATEGORY_VOCAB"),
     "decision": (r"\*\*결정 통제 어휘\(고정, decision-log 항목\)\*\*:(.+)", "DECISION_VOCAB"),
     "evidence": (r"\*\*근거 통제 어휘\(고정, convention 항목\)\*\*:(.+)", "EVIDENCE_VOCAB"),
+    "format": (r"\*\*`format` 통제 어휘\(고정\)\*\*:(.+)", "FORMAT_VOCAB"),
 }
 
 

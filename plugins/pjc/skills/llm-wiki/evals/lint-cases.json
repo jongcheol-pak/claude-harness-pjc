@@ -497,9 +497,9 @@
       "fixture": "convention-legacy-hub",
       "expect_keywords": [
         "작업 규약 미마이그레이션",
-        "conventions.md로 이전 대상"
+        "레포 docs/conventions.md 이관 대상"
       ],
-      "rationale": "§7-31 검출 — 허브에 옛 '## 작업 규약·주의사항' 섹션이 남아 있으면 conventions.md 이전 대상으로 알린다(schema-types §2.9). 미마이그레이션 허브를 매 lint에서 가시화해 다음 ingest가 처리하게 만드는 신호다."
+      "rationale": "§7-31 검출 — 허브에 옛 '## 작업 규약·주의사항' 섹션이 남아 있으면 레포 docs/conventions.md 이관 대상으로 알린다(schema-types §2.9 레거시 — 위키에 새 conventions.md 를 만들지 않는다). 미마이그레이션 허브를 매 lint에서 가시화해 다음 ingest가 처리하게 만드는 신호다."
     },
     {
       "fixture": "convention-legacy-hub",
@@ -2206,6 +2206,103 @@
         }
       },
       "rationale": "**4-백틱 인라인 코드가 든 항목을 옮겨도 원본의 절 경계가 무너지지 않는가.** `prose-related-flat` 에 실 vault `feat-source-control` 형상을 심었다 — 옮겨질 가운데 묶음의 항목 하나에 ```` ```mermaid ```` 가, 원본에 남는 `## 개요`에 ```` ``` ```` 가 있다. 종전 `strip_code` 는 둘을 펜스로 짝지어 원본에서 이미 그 사이 헤딩(`## 관련 파일`)을 지웠고, 항목이 하위로 가자 원본에 짝 잃은 ``` 가 남아 **그 뒤 전부가 미닫힘 펜스**가 됐다 — 실 vault 사본에서 `## 하위 문서`가 네 벌로 중복되고 다음 단위 선택이 그 목록을 집었다. 원본에 `## 하위 문서`가 한 벌인지(`expect_file_count`)와 `## 설계 메모`(옛 `## 구현 방법` 자리)가 보이는지, 옮겨진 것이 그 항목이 든 묶음인지로 잰다."
+    },
+    {
+      "fixture": "facts-bad",
+      "git_repo": true,
+      "synced_mode": "first",
+      "expect_keywords": [
+        "facts 근거 꼬리 없음",
+        "입력을 받으면 출력한다"
+      ],
+      "rationale": "§7-39 ⓐ — facts 페이지의 `## 동작`·`## 구조` 사실 줄에 근거 꼬리가 없으면 WARN 이다. 근거 없는 줄은 낡아도 알아챌 수단이 없어 폐지 절과 같은 사본이 된다"
+    },
+    {
+      "fixture": "facts-bad",
+      "git_repo": true,
+      "synced_mode": "first",
+      "expect_keywords": [
+        "facts 근거 경로 레포에 없음",
+        "nope.txt"
+      ],
+      "rationale": "§7-39 ⓑ — 근거 경로가 레포 HEAD 에 없으면 WARN 이다(§7-20·21 과 같은 실존 기준)"
+    },
+    {
+      "fixture": "facts-bad",
+      "git_repo": true,
+      "synced_mode": "first",
+      "expect_keywords": [
+        "facts 근거 낡음 가능",
+        "f2.txt"
+      ],
+      "expect_absent": [
+        "'f0.txt'"
+      ],
+      "rationale": "§7-39 ⓒ — 근거 커밋(러너의 첫 커밋) 이후 근거 파일이 바뀌면(f2.txt 는 셋째 커밋에 생겼다) INFO 다. f0.txt 는 첫 커밋 뒤 바뀌지 않아 신호가 없어야 한다 — (레포, 커밋)별 git diff --name-only 1회 대조(D7)"
+    },
+    {
+      "fixture": "facts-bad",
+      "git_repo": true,
+      "synced_mode": "first",
+      "expect_keywords": [
+        "facts 상대 참조",
+        "위 절"
+      ],
+      "rationale": "§7-39 ⓓ — 상대 참조 고정 표현(위 절 등)은 절 단위로 뽑아 읽으면 가리키던 것이 사라져 WARN 이다(wiki-schema §1 facts 형식 5)"
+    },
+    {
+      "fixture": "facts-noformat",
+      "git_repo": true,
+      "synced_mode": "first",
+      "expect_keywords": [
+        "위키 뒤처짐"
+      ],
+      "expect_absent": [
+        "facts 근거 꼬리 없음",
+        "facts 근거 경로 레포에 없음",
+        "facts 근거 낡음 가능",
+        "facts 상대 참조"
+      ],
+      "rationale": "§7-39 ⓔ 음성 짝 — 같은 위반을 담아도 `format: facts` 가 없는 페이지는 검사 대상이 아니다(사용자 답 「갱신되는 페이지부터」 — 기존 페이지에 경고를 쏟지 않는다)"
+    },
+    {
+      "fixture": "facts-ok",
+      "git_repo": true,
+      "synced_mode": "first",
+      "expect_keywords": [
+        "위키 뒤처짐"
+      ],
+      "expect_absent": [
+        "facts 근거 꼬리 없음",
+        "facts 근거 경로 레포에 없음",
+        "facts 근거 낡음 가능",
+        "facts 상대 참조"
+      ],
+      "rationale": "§7-39 ⓕ 음성 짝 — 형식을 지킨 facts 페이지(근거가 첫 커밋 뒤 안 바뀐 f0.txt · `없음:` 사실 포함)는 무경고다"
+    },
+    {
+      "fixture": "facts-ok",
+      "git_repo": true,
+      "synced_mode": "first",
+      "expect_keywords": [
+        "위키 뒤처짐"
+      ],
+      "expect_absent": [
+        "폐지 절 보유"
+      ],
+      "rationale": "§7-39 ⓖ 음성 짝 — facts 페이지의 `## 동작` 은 §7-38 폐지 절(`## 동작(사용법)`)이 아니다(schema-types §2.3 facts 변형)"
+    },
+    {
+      "fixture": "facts-ok",
+      "git_repo": true,
+      "synced_mode": "missing",
+      "expect_keywords": [
+        "facts 근거 커밋 확인 불가"
+      ],
+      "expect_absent": [
+        "facts 근거 낡음 가능"
+      ],
+      "rationale": "§7-39 ⓗ 음성 짝 — 근거 커밋이 레포 이력에 없으면(rebase·다른 레포) 낡음을 지어내지 않고 fail-open INFO 1줄이다(§7-26 과 같은 관례)"
     }
   ]
 }

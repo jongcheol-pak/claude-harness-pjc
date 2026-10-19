@@ -20,6 +20,8 @@
       / index.md 부재·읽기 실패(ERR — 인덱스 기반 검사 불능 신호. 두 사유는 처방이 정반대라
         각각 다른 ERR: 부재는 골격 생성, 읽기 실패는 인코딩 복구)
       / 위키 뒤처짐(INFO — 허브 synced_commit 이후 레포에 쌓인 커밋 수, §7-26. fail-open)
+      / facts 형식 페이지 검사(§7-39 — `format: facts` 페이지만: 근거 꼬리 누락·근거 경로 부재·상대 참조 WARN,
+        근거 커밋 이후 근거 파일 변경 INFO. 레포·커밋을 못 찾으면 fail-open)
       / (미검증)·미해결 question 집계(INFO)
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
       / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
@@ -176,6 +178,14 @@ EVIDENCE_VOCAB = {"실측", "사용자 지시", "문서 대조"}
 #  「형식을 지켰는가」가 아니라 「단어가 있는가」를 재게 된다.
 EVIDENCE_TAIL_RX = re.compile(
     r"\((?:" + "|".join(re.escape(v) for v in sorted(EVIDENCE_VOCAB)) + r")[^)]*\)\s*$")
+# §7-39 facts 형식(wiki-schema §1 「facts 형식」·§3 `format` 통제 어휘가 정본 — check_consistency.py
+#  VOCAB_LINES 가 이 상수와 그 줄을 대조한다). 근거 꼬리 `(근거: `경로`@커밋 · …)` 와
+#  상대 참조 고정 표현 — 표현을 넓게 잡으면 「위 절차」 같은 정상 문장이 오탐하므로 고정 목록만 쓴다.
+FORMAT_VOCAB = {"facts"}
+FACTS_EVIDENCE_RX = re.compile(r"\(근거:([^)]*)\)")
+FACTS_REF_RX = re.compile(r"`?([^`@\s·()]+)`?@([0-9a-f]{7,40})\b")
+FACTS_SECTIONS = ("동작", "구조")
+FACTS_RELATIVE_REFS = ("위 절", "아래 절", "앞 절", "위 표", "아래 표", "앞 회차", "이전 회차")
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
 #  2필드(v1.2)·v 없는 버전(2.9.2)은 제품 라인·라이브러리 버전일 수 있어 비검출(오탐 회피가 1급 요건).
 #  경계를 \b로 하지 않는 이유: 한글도 \w라 "v1.2.3에서"(실vault 최빈 형태)의 꼬리 경계가 실패한다 —
@@ -2040,7 +2050,7 @@ def rollover_hub_changes(ses):
 
     **트리거가 문자 예산과 별개다**(§7-2 「별개 트리거」ⓑ). 그래서 `budget_state`를 보지
     않고 항목 수만 센다 — 허브가 문자 신호 대상이어도 항목이 5개 이하면 이 처방의 대상이
-    아니고(그쪽 처방은 `conventions.md` 분리 §2.9다), 신호가 없어도 6개가 되면 수행한다."""
+    아니고(그쪽 처방은 작업 규약 절의 레포 `docs/conventions.md` 이관 — §2.9 레거시다), 신호가 없어도 6개가 되면 수행한다."""
     for rel in sorted(_project_hub_paths(ses.vault)):
         path = os.path.join(ses.vault, rel.replace("/", os.sep))
         text, bom, nl = _read_page(path)
@@ -3401,7 +3411,7 @@ def main():
                 #  안내하고 초과 WARN에서 침묵하면, 정작 고쳐야 할 시점에 방법을 못 받는다.
                 hint = {
                     "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (schema-types §2.8)",
-                    "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약은 conventions.md로 분리 (schema-types §2.2·§2.9)",
+                    "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신, 작업 규약 절은 레포 docs/conventions.md 이관 대상 (schema-types §2.2·§2.9 레거시)",
                     "convention": " — 무효 항목을 제거한다 (schema-types §2.9)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{eff_note}){hint}", r)
@@ -3428,7 +3438,7 @@ def main():
                     #  `critical`로 두는 것은 이 갈래가 v1.207.0 이전과 **완전히 같은 동작**이기
                     #  때문이다(바뀐 것은 처방이 있는 파일이 여기서 빠졌다는 것뿐이다).
                     np_hint = {
-                        "project": " — '최근 주요 변경'이 5개 이하라 §2.2 롤오버 대상이 아니다. 작업 규약을 conventions.md로 분리 (schema-types §2.9)",
+                        "project": " — '최근 주요 변경'이 5개 이하라 §2.2 롤오버 대상이 아니다. 작업 규약 절은 레포 docs/conventions.md 이관 대상 (schema-types §2.9 레거시)",
                         "decision-log": " — 옮길 항목을 찾지 못했다. §2.8 롤오버 대상 형식을 확인 (schema-types §2.8)",
                     }.get(typ, "")
                     if not np_hint:
@@ -3900,7 +3910,7 @@ def main():
         #  미마이그레이션 허브 전부가 매 lint마다 경고를 낸다. exit code 불변.
         if section(text, "작업 규약·주의사항"):
             infos.append(f"작업 규약 미마이그레이션: {r}의 '## 작업 규약·주의사항'을 "
-                         f"conventions.md로 이전 대상 (schema-types §2.9 — 다음 ingest에서 처리)")
+                         f"레포 docs/conventions.md 이관 대상 (schema-types §2.9 레거시 — 위키에 새 conventions.md 를 만들지 않는다)")
     # ⓐ-역방향: changes 아카이브가 실재하는데 대응 현행 허브에 포인터 미등재 (검색 유실).
     #  경로 도출이 §7-24와 다르다 — decisions는 아카이브·현행이 같은 파일명이라 접두만 떼면 되지만,
     #  changes는 '90_archive/20_projects/{cat}/{proj}/changes.md' → 현행 허브 '20_projects/{cat}/{proj}.md'로
@@ -4232,6 +4242,65 @@ def main():
             if body is not None and sym not in body:
                 warn(f"진입점 심볼 소스에 없음: {r} -> '{sym_token}'의 `{sym}` "
                      f"(이름 변경·삭제 가능 — 조회가 엉뚱한 자리로 간다, schema §7-21)", r)
+
+    # facts 형식 페이지 (schema-lint §7-39): `format: facts` 를 단 project·feature·decision-log 만 본다
+    #  (wiki-schema §1 「facts 형식」 — 기존 페이지는 갱신될 때 바뀌므로 표지 없는 페이지는 대상 밖).
+    #  ⓐ `## 동작`·`## 구조` 의 `- ` 사실 줄에 근거 꼬리가 없으면 WARN — 근거 없는 줄은 낡아도 알 수단이 없다.
+    #  ⓑ 근거 경로가 레포 HEAD 에 없으면 WARN(§7-20·21 과 같은 실존 기준).
+    #  ⓒ 근거 커밋 이후 그 파일이 바뀌었으면 INFO — (레포, 커밋)마다 git diff --name-only 1회만 부른다.
+    #  ⓓ 상대 참조 고정 표현은 WARN. 레포·커밋을 못 찾으면 fail-open(§7-26 과 같은 관례).
+    facts_diff_cache = {}  # (root, 커밋) -> 바뀐 경로 집합 또는 None(이력에 없음·git 실패)
+    for r, (fm, typ, text) in sorted(pages.items()):
+        if typ not in ("project", "feature", "decision-log") or r.startswith("90_archive/"):
+            continue
+        if str(fm.get("format", "")).strip() not in FORMAT_VOCAB:
+            continue
+        raw_lines = text.splitlines()
+        stripped_lines = strip_code(text).splitlines()
+        refs = []
+        cur = None
+        for i, sl in enumerate(stripped_lines):
+            if sl.startswith("## "):
+                cur = sl[3:].strip()
+                continue
+            m_ev = FACTS_EVIDENCE_RX.search(raw_lines[i]) if "(근거:" in sl else None
+            if m_ev:
+                refs += FACTS_REF_RX.findall(m_ev.group(1))
+            elif cur in FACTS_SECTIONS and sl.startswith("- "):
+                warn(f"facts 근거 꼬리 없음: {r} -> '{raw_lines[i][2:62].strip()}' "
+                     f"(사실 줄 끝에 '(근거: `경로`@커밋)' — wiki-schema §1 facts 형식 2, schema §7-39)", r)
+        body = "\n".join(stripped_lines)
+        for phrase in FACTS_RELATIVE_REFS:
+            if phrase in body:
+                warn(f"facts 상대 참조: {r} -> '{phrase}' "
+                     f"(대상의 이름·경로로 쓴다 — wiki-schema §1 facts 형식 5, schema §7-39)", r)
+        if not refs:
+            continue
+        hub = r if typ == "project" else r.rsplit("/", 1)[0] + ".md"
+        if hub not in repo_cache:
+            hub_text = pages[hub][2] if hub in pages else ""
+            repo_cache[hub] = repo_root_for_hub(hub_text) if hub_text else None
+        root = repo_cache[hub]
+        if root is None:
+            infos.append(f"facts 근거 확인 불가(허브 레포 경로 미기재/부재): {r} — 근거 경로·낡음 검사 건너뜀 (schema §7-39)")
+            continue
+        for path, sha in refs:
+            p = path.replace("\\", "/").strip()
+            if p.startswith("./"):
+                p = p[2:]
+            if not os.path.exists(os.path.join(root, p)):
+                warn(f"facts 근거 경로 레포에 없음: {r} -> '{p}' (이동·삭제·오기 가능, schema §7-39)", r)
+                continue
+            key = (root, sha)
+            if key not in facts_diff_cache:
+                out = _git(root, "diff", "--name-only", f"{sha}..HEAD")
+                facts_diff_cache[key] = None if out is None else set(out.split())
+                if out is None:
+                    infos.append(f"facts 근거 커밋 확인 불가: {r} -> {sha[:7]} "
+                                 f"(레포 이력에 없음 — rebase·다른 레포 가능, schema §7-39)")
+            changed = facts_diff_cache[key]
+            if changed is not None and p in changed:
+                infos.append(f"facts 근거 낡음 가능: {r} -> '{p}' ({sha[:7]} 이후 변경 — 그 사실 줄을 코드와 대조, schema §7-39)")
 
     # 위키 뒤처짐 (schema-lint §7-26): 허브 synced_commit(§2.2) 이후 레포에 쌓인 커밋 수를 센다.
     #  updated는 "언제 손댔나"라서, 날짜만 갱신되고 내용이 레포를 못 따라온 상태를 그대로
