@@ -363,7 +363,7 @@ def strip_code(text):
     # **펜스는 줄머리(들여쓰기·인용 `>` 허용)에서만 연다.** 줄 중간의 ``` 까지 펜스로 보면
     #  ```` ```mermaid ```` 처럼 인라인 코드 **안에** 든 백틱 셋이 멀리 떨어진 다른 줄의 것과
     #  짝지어져, 그 사이 헤딩이 통째로 지워진다(실 vault: `## 동작(사용법)`이 보이지 않아
-    #  `## 관련 파일`이 그 절까지 먹었고, 분할이 그 짝을 갈라 뒤의 절 전부가 사라졌다).
+    #  앞 절이 그 절까지 먹었고, 분할이 그 짝을 갈라 뒤의 절 전부가 사라졌다).
     text = re.sub(r"(?ms)^[ \t>]*```.*?^[ \t>]*```[^\n]*$", blank, text)   # 펜스 블록
     # 미닫힘 펜스 → 끝까지 코드 간주(보수적). `.`(re.S로 줄바꿈 포함)로 EOF까지 공백화한다 —
     #   기존 `[^\n]*`는 줄바꿈을 못 넘어 파일 중간의 '여러 줄' 미닫힘 펜스를 공백화하지 못했다(T6).
@@ -1401,7 +1401,7 @@ def _git(repo_root, *args):
 
 
 # §4 7번 기록의 사유 — 처방 종류별로 다른 것만 둔다(없으면 분할·롤오버의 기본 사유).
-LOG_REASON = {"관련 파일 복제 정리": "관련 파일 복제", "허브 하위 행 정리": "분할 하위 허브 미등재"}
+LOG_REASON = {"허브 하위 행 정리": "분할 하위 허브 미등재"}
 
 
 class SplitSession:
@@ -2125,9 +2125,9 @@ def rollover_hub_changes(ses):
 PRESCRIPTIONS.append(rollover_hub_changes)
 
 # ── §4 처방 ③: 산문 타입의 섹션 하위 분리 ────────────────────────────────
-# **본문까지 원본에 남기는 섹션** — 지도(§7-21은 `## 관련 파일` 목록이 비면 위반이다)와
-#  정체성(`## 개요`), 그리고 도달 경로·다른 처방의 대상 구역(`## 하위 문서`·`## 아카이브`)이다.
-RELOCATE_KEEP_COMMON = ("개요", "관련 파일", "하위 문서", "아카이브", "아카이브 인덱스")
+# **본문까지 원본에 남기는 섹션** — 정체성(`## 개요`)과 도달 경로·다른 처방의 대상 구역
+#  (`## 하위 문서`·`## 아카이브`)이다.
+RELOCATE_KEEP_COMMON = ("개요", "하위 문서", "아카이브", "아카이브 인덱스")
 # 타입별 추가 유지 섹션 — 롤오버·포인터가 대상으로 삼는 구역이거나(project) 그 타입의
 #  정체성 섹션이라(entity `## 핵심`) 옮기면 다른 규정이 깨진다.
 TYPE_KEEP_SECTIONS = {
@@ -2135,9 +2135,9 @@ TYPE_KEEP_SECTIONS = {
     "entity": ("핵심",),
 }
 # **하위에도 재현해야 하는 필수 섹션**(이동 제외와 다른 축이다) — 하위는 원본과 같은 타입이라
-#  §7-21 게이트가 하위에도 그대로 걸린다.
+#  그 타입의 정체성 절을 원본을 가리키는 포인터로 둔다.
 TYPE_REQUIRED_SECTIONS = {
-    "feature": ("개요", "관련 파일"),
+    "feature": ("개요",),
     "project": ("기능 목록", "최근 주요 변경", "레포 정보", "관련 위키 지식"),
     "entity": ("핵심",),
     "concept": ("개요",),
@@ -2145,7 +2145,7 @@ TYPE_REQUIRED_SECTIONS = {
     "convention": (),
 }
 # **project 허브는 산문 하위 분리 대상이 아니다.** 하위는 원본과 같은 타입이라(§4 2번)
-#  `type: project`가 되는데, 그러면 `_project_hub_paths`·`_rows_projects`와 §7-20·§7-21·
+#  `type: project`가 되는데, 그러면 `_project_hub_paths`·`_rows_projects`와 §7-20·
 #  §7-26·§7-30이 그 하위를 **별개 프로젝트**로 잡는다 — 인덱스 프로젝트 표에 한 줄이 더 생기고,
 #  `## 레포 정보`가 없다고 경고하고, 뒤처짐 계측이 그것을 따로 센다. 자동 분할이 스스로 새
 #  위반을 만드는 자리라 문자 축 처방을 두지 않는다(§4 표 project 행 — 그 자리는 사람이 하는
@@ -2243,28 +2243,21 @@ def _label_with_section(base, title):
     return base + " — " + title
 
 
-def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap, label_title=None):
+def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
     """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다.
 
-    **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번)
-    §7-21 같은 필수 섹션 게이트가 하위에도 그대로 걸린다 — 재현하지 않으면 자동 분할이
-    스스로 새 위반을 만든다. 재현 방식은 결정론이다: 전부 **상위를 가리키는 한 줄**을 둔다
-    (정본은 하나라는 것을 문면으로 못박는다). **`## 관련 파일`도 복제하지 않는다** — 종전에는
-    원본 목록을 통째로 실었는데, 지도가 큰 feature 는 그 복제만으로 하위가 곧 예산에 닿아
-    어느 절도 옮길 수 없게 됐다(실 vault 6쪽이 그 상태로 굳었다). 포인터만 둔 하위는 §7-21 이
-    복귀 링크 + 포인터 줄로 알아보고 「경로 항목 0개」를 내지 않는다."""
+    **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번) 그 타입의
+    정체성 절이 있어야 한다. 재현 방식은 결정론이다: 전부 **상위를 가리키는 한 줄**을 둔다
+    (정본은 하나라는 것을 문면으로 못박는다)."""
     head = "---\n"
     for k, v in fm.items():
         if k == "index_label":
             continue
         head += "%s: %s\n" % (k, v)
-    # `label_title`은 라벨에 붙는 접미 — 관련 파일 단위는 절 이름(「관련 파일」)만으로는 하위끼리
-    #  라벨이 같아지므로 `관련 파일 · {그룹}`을 따로 받는다. 없으면 절 이름을 쓴다.
-    suffix = label_title or title
-    head += "index_label: %s\n---\n\n" % _label_with_section(fm.get("index_label", label), suffix)
+    head += "index_label: %s\n---\n\n" % _label_with_section(fm.get("index_label", label), title)
     h1 = re.search(r"(?m)^#[ \t]+(.+)$", text)
     back = "> 상위 문서: [[%s|%s]]\n\n" % (rel[:-len(".md")], label)
-    out = head + "# %s\n\n" % _label_with_section(h1.group(1).strip() if h1 else label, suffix) + back
+    out = head + "# %s\n\n" % _label_with_section(h1.group(1).strip() if h1 else label, title) + back
 
     # 각주 정의는 **원본에 남기고 하위에도 복제**한다 — 각주는 파일 로컬이라 본문만
     #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본에 남은 참조가 깨지며
@@ -2335,16 +2328,13 @@ def _hub_without_sub_rows(vault, hub_text):
     return hub_text[:s0] + "".join(kept) + hub_text[s1:]
 
 
-def _relocation_pointer(sub_rel, label, title, moved, section=None):
+def _relocation_pointer(sub_rel, label, title, moved):
     """이동 자리에 남기는 정본 포인터 줄을 합성한다(§4 ③-1).
 
     **합성하는 쪽과 「그 줄보다 본문이 큰가」를 재는 쪽이 이 하나를 쓴다** — 서식을 한쪽에만
-    두면 포인터가 길어져도 판정이 옛 길이로 남아, 옮길수록 커지는 절을 다시 옮기게 된다.
-    `section`은 대상 하위에서 그 본문이 놓이는 절 이름이다 — 관련 파일 단위는 표시 라벨
-    (`관련 파일 · {그룹}`)과 절 이름(「관련 파일」)이 달라, 절 이름을 따로 주지 않으면 §7-30 이
-    하위에서 `## 관련 파일 · {그룹}`을 찾다가 「정본 포인터 절 없음」을 낸다."""
+    두면 포인터가 길어져도 판정이 옛 길이로 남아, 옮길수록 커지는 절을 다시 옮기게 된다."""
     return ("**정본은 [[%s|%s — %s]]의 「%s」이다** — 본문 %d자를 옮겼다(§7-2 발동 처방).\n\n"
-            % (sub_rel[:-len(".md")], label, title, section or title, moved))
+            % (sub_rel[:-len(".md")], label, title, title, moved))
 
 
 def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra_keep=()):
@@ -2361,9 +2351,8 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
     keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(typ, ())) | set(extra_keep)
     movable = [x for x in secs if x[0] not in keep]
     # 섹션이 하나뿐이면 옮기지 않는다 -- 옮기면 원본이 껍데기만 남는다(정지 가드).
-    #  그래도 관련 파일 단위 후보는 본다 — 그쪽은 첫 단위를 원본에 남기므로 껍데기가 되지 않는다.
     if len(secs) < 2:
-        movable = []
+        return None
     # **옮겨도 하위가 곧바로 발동할 섹션은 후보에서 뺀다.** 그런 섹션을 옮기면 같은
     #  크기의 파일이 하나 더 생길 뿐이고, 다음 실행이 그 하위를 또 쪼개 `-2-2`·`-2-2-2`로
     #  끝없이 번진다(실측). 한 섹션은 더 쪼갤 수 없으므로 여기서 멈추는 것이 §7-2의
@@ -2380,8 +2369,7 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
         #  안에서만 살아 있어(지역 변수) 다음 호출이 같은 스텁을 다시 최대 후보로 집는다.
         #  파일 내용으로 가르면 호출 경계와 무관해진다.
         #  **스텁의 생산자는 둘이고 둘 다 정상 동작이다** — 이동 자리에 남는 포인터와
-        #  _sub_page_text가 하위에 재현하는 필수 섹션 포인터(§7-21 게이트가 하위에도
-        #  걸리므로 재현이 필요하다). 그 재현을 없애는 것은 처방이 아니다.
+        #  _sub_page_text가 하위에 재현하는 필수 섹션 포인터. 그 재현을 없애는 것은 처방이 아니다.
         # 각주 정의 줄도 함께 뺀다 — 옮긴 자리에 포인터와 **원본에 남긴 각주 정의**가 남는데,
         #  정의만으로는 옮길 실 내용이 아니다. 빼지 않으면 그 스텁이 다음 라운드에 다시 최대
         #  후보로 잡혀, 각주를 데리고 하위로 갔다가 원본에 남은 참조가 깨진다.
@@ -2398,143 +2386,7 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
         sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
         if sst and (sst.critical or sst.over):
             continue
-        return (cand, c_body, sub_text, False)
-    # `## ` 절로 풀리지 않으면 **최후 수단**으로 관련 파일을 단위로 나눈다(D6) — 지도는
-    #  원본에 두는 것이 기본이라 절 이동이 먼저다. 같은 함수에 두는 이유는 위 docstring 그대로다.
-    return _pick_related_unit(cur, text, fm, typ, label, rel, nl, secmap, sub_rel)
-
-
-# 관련 파일 항목 묶음 한 덩어리의 목표 크기 — 그 타입 예산에 대한 비율. 절반이면 하위가
-#  필수 섹션 포인터를 더해도 발동선 한참 아래에 머물고, 원본도 한두 번 옮기면 풀린다.
-RELATED_CHUNK_RATIO = 0.5
-
-
-def _unit_name(raw):
-    """`###` 그룹명을 라벨에 넣을 수 있게 정제한다(D9).
-
-    라벨은 `[[경로|라벨]]`(하위 문서 목록·허브 표·정본 포인터)과 따옴표 없는 frontmatter
-    `index_label:` 값에 그대로 들어간다. 그룹명에 wikilink 가 있으면 바깥 링크가 끊기고,
-    `|` 는 허브 표 셀을 가르며, `]` 는 포인터 정규식(`PROSE_PTR_RX`)의 인식을 깨고, `: ` 는
-    YAML 값을 망가뜨린다 — 실 vault 그룹명에 wikilink·백틱이 실재한다. 그래서 wikilink 는
-    표시 텍스트로 바꾸고 나머지 기호는 지운다."""
-    s = re.sub(r"\[\[[^\]|]+\|([^\]]*)\]\]", r"\1", raw)
-    s = re.sub(r"\[\[([^\]]+)\]\]", lambda m: m.group(1).rsplit("/", 1)[-1], s)
-    s = re.sub(r"[`|#\[\]:]", " ", s)
-    return re.sub(r"\s+", " ", s).strip()
-
-
-def _item_chunks(cur, g0, g1, chunk):
-    """`cur[g0:g1]` 안의 `- ` 항목을 순서대로 `chunk` 자 안팎으로 묶어 [(시작, 끝)]을 돌려준다.
-
-    항목은 `- `로 시작하는 줄과 그 뒤 들여쓴 연속 줄이다. **정본 포인터 줄을 가운데 두고 묶지 않는다** —
-    이미 옮긴 묶음이 남긴 포인터를 가운데 두고 앞뒤를 한 묶음으로 잡으면, 그 포인터까지 하위로
-    딸려 가 원본의 도달 경로가 사라진다."""
-    items, cur_item = [], None
-    pos = g0
-    for line in cur[g0:g1].splitlines(keepends=True):
-        ls, pos = pos, pos + len(line)
-        if line.startswith("- "):
-            if cur_item:
-                items.append(cur_item)
-            cur_item = [ls, pos]
-        elif cur_item and line[:1] in (" ", "\t") and line.strip():
-            cur_item[1] = pos
-        else:
-            if cur_item:
-                items.append(cur_item)
-                cur_item = None
-            if PTR_ONLY_LINE_RX.match(line):
-                items.append(None)
-    if cur_item:
-        items.append(cur_item)
-    chunks, a, b = [], None, None
-    for it in items:
-        if it is None:
-            if a is not None:
-                chunks.append((a, b))
-            a = None
-        elif a is None:
-            a, b = it
-        elif b - a >= chunk:
-            chunks.append((a, b))
-            a, b = it
-        else:
-            b = it[1]
-    if a is not None:
-        chunks.append((a, b))
-    return chunks
-
-
-def _related_units(cur, budget):
-    """`## 관련 파일` 안의 이동 단위 [(이름, 시작, 끝)] — 오프셋은 `cur` 기준이다(D1).
-
-    단위는 `###` 그룹이고, 그룹이 없거나 한 그룹이 묶음 목표보다 크면 그 안의 `- ` 항목 묶음이다.
-    **첫 단위는 원본에 남는 몫**이라 호출측이 후보에서 뺀다. 그룹 머리는 `strip_code` 사본으로
-    찾는다(코드펜스 안의 `### `를 그룹으로 오인하지 않는다 — 사본은 길이를 보존한다)."""
-    span = next(((s0, s1) for t, s0, s1 in _md_sections(cur) if t == "관련 파일"), None)
-    if not span:
-        return []
-    s0, s1 = span
-    b0 = cur.find("\n", s0, s1)
-    if b0 < 0:
-        return []
-    b0 += 1
-    probe = strip_code(cur)
-    heads = [b0 + m.start() for m in re.finditer(r"(?m)^###[ \t]+\S", probe[b0:s1])]
-    if heads:
-        groups = []
-        for i, g0 in enumerate(heads):
-            g1 = heads[i + 1] if i + 1 < len(heads) else s1
-            line_end = cur.find("\n", g0, g1)
-            groups.append((_unit_name(cur[g0:line_end if line_end >= 0 else g1].lstrip("#")), g0, g1))
-    else:
-        groups = [("", b0, s1)]
-    chunk = int(budget * RELATED_CHUNK_RATIO)
-    units = []
-    for name, g0, g1 in groups:
-        if name and g1 - g0 <= chunk:
-            units.append((name, g0, g1))
-            continue
-        parts = _item_chunks(cur, g0, g1, chunk)
-        units += [(("%s %d" % (name, k)) if name else "", a, b)
-                  for k, (a, b) in enumerate(parts, 1)]
-    return units
-
-
-def _pick_related_unit(cur, text, fm, typ, label, rel, nl, secmap, sub_rel):
-    """관련 파일 단위 중 **실제로 옮길 수 있는 것**을 고른다(D1·D6). 없으면 None.
-
-    반환 형태는 `_pick_relocatable`과 같다 — 마지막 칸이 참이면 관련 파일 단위다. 첫 칸의
-    제목은 라벨 접미(`관련 파일 · {이름}`)이고, 이름이 없는 항목 묶음은 하위 순번으로 가른다.
-    **첫 단위는 옮기지 않는다** — 원본의 `## 관련 파일`에 경로가 하나도 남지 않으면 §7-21 이
-    원본에서 깨지고, 기능명 → 관련 파일 조회가 원본에서 바로 끝나지 않는다."""
-    if typ != "feature":
-        return None
-    st = budget_state(rel, fm, cur)
-    if not st:
-        return None
-    units = _related_units(cur, st.budget)
-    if len(units) < 2 or not re.search(r"`[^`\n]*[/\\][^`\n]*`", cur[units[0][1]:units[0][2]]):
-        return None
-    sub_n = re.search(r"-(\d+)\.md$", sub_rel).group(1)
-    for name, u0, u1 in sorted(units[1:], key=lambda u: u[2] - u[1], reverse=True):
-        body = cur[u0:u1]
-        # 이미 옮긴 단위(그룹 머리 + 포인터만 남은 자리)는 옮길 실 내용이 없다 — 절 단위의
-        #  「포인터뿐인 절」 판정과 같은 이유로, 호출 경계와 무관하게 내용으로 가른다.
-        if not PTR_ONLY_LINE_RX.sub("", re.sub(r"(?m)^###[^\n]*$", "", body)).strip():
-            continue
-        # 각주 정의가 끼어 있으면 옮기지 않는다 — 문서 끝 절이면 정의가 단위 경계 안에 든다.
-        if FOOTNOTE_DEF_RX.search(body):
-            continue
-        suffix = "관련 파일 · " + (name or sub_n)
-        if len(body) <= len(_relocation_pointer(sub_rel, label, suffix, len(body), "관련 파일")):
-            continue
-        sub_text = _sub_page_text(text, fm, typ, "관련 파일", body.strip("\n") + "\n",
-                                  label, rel, nl, secmap, label_title=suffix)
-        sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
-        if sst and (sst.critical or sst.over):
-            continue
-        return ((suffix, u0, u1), body, sub_text, True)
+        return (cand, c_body, sub_text)
     return None
 
 
@@ -2564,58 +2416,14 @@ def _rollover_movable(items, keep_min=1):
     return len(items) > keep_min and any(d is not None for d, _b in items)
 
 
-def _trim_dup_related(vault, rel, fm, text):
-    """분할 하위의 `## 관련 파일`이 원본 목록의 **복제**면 정본 포인터로 바꾼 본문을 돌려준다.
-    대상이 아니면 None(§7 결과 처리 예외 ⑤ — 관련 파일 복제 정리).
-
-    복제는 구 `_sub_page_text`가 만든 산출물이다 — 그 함수는 이제 포인터를 두지만 이미 만들어진
-    하위에는 원본 지도 전체가 남아 있고, 그 복제가 하위를 예산에 묶는다. **판정은 「복귀 링크가
-    가리키는 원본의 `## 관련 파일` 본문과 글자까지 같은가」 하나다** — 원본에 정본이 그대로
-    있으므로 걷어도 잃는 것이 없고, 조금이라도 다르면(사람이 하위에 맞게 고친 목록) 건드리지 않는다.
-    예산과 무관하게 판정한다 — 복제는 크기가 아니라 형상의 문제다.
-
-    절 경계는 `_md_sections`로 잡는다(코드펜스 안의 `## `를 헤딩으로 오인하지 않는다). 각주 정의가
-    그 절 안에 있으면 건드리지 않는다 — 문서 끝 절이면 정의가 섹션 경계 안에 들어오는데,
-    그것까지 걷으면 원본에 남은 각주 참조가 깨진다."""
-    if str(fm.get("type", "")).strip() != "feature":
-        return None
-    m = SUBDOC_BACK_RX.search(text)
-    if not m:
-        return None
-    parent_rel = m.group(1) if m.group(1).endswith(".md") else m.group(1) + ".md"
-    ptext, _pb, _pn = _read_page(os.path.join(vault, parent_rel.replace("/", os.sep)))
-    if ptext is None:
-        return None
-
-    def rel_span(t):
-        """(절 시작, 절 끝, 헤딩 줄 뒤 본문). 헤딩이 파일 마지막 줄이면 본문은 빈 문자열이다."""
-        for title, s0, s1 in _md_sections(t):
-            if title == "관련 파일":
-                nl_at = t.find("\n", s0, s1)
-                return s0, s1, (t[nl_at + 1:s1] if nl_at >= 0 else "")
-        return None
-
-    own, par = rel_span(text), rel_span(ptext)
-    if not own or not par:
-        return None
-    body = own[2]
-    if (not body.strip() or body.strip() != par[2].strip()
-            or FOOTNOTE_DEF_RX.search(body) or PTR_ONLY_LINE_RX.search(body)):
-        return None
-    pfm = frontmatter(ptext)
-    plabel = pfm.get("index_label", "").strip() or os.path.basename(parent_rel)[:-len(".md")]
-    ptr = "정본은 [[%s|%s]]의 「관련 파일」이다." % (parent_rel[:-len(".md")], plabel)
-    return text[:own[0]] + "## 관련 파일\n\n%s\n\n" % ptr + text[own[1]:]
-
-
 def prescribable(rel, fm, text, nl, vault=None):
     """`--auto-split`이 이 파일에 **수행할 처방을 갖는가**(§7-2 발동 ⓐ/ⓑ′ 판정용).
 
     `relocatable`만으로는 부족하다 — auto-split의 처방은 다섯인데(§8 log 롤오버 · §2.8
-    decision-log 롤오버 · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리 · 관련 파일 복제 정리)
-    그 함수는 산문 분리 하나만 답한다. **이 함수가 판정하는 것은 그중 넷**이다 — log 롤오버는
-    호출부가 먼저 갈라 자기 분기에서 답하므로 여기 오지 않는다. 복제 정리는 원본을 읽어야
-    판정되므로 `vault`가 주어질 때만 본다. 앞 셋을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
+    decision-log 롤오버 · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리 · 허브 하위 행 정리) 그
+    함수는 산문 분리 하나만 답한다. **이 함수가 판정하는 것은 그중 넷**이다 — log 롤오버는 호출부가 먼저 갈라
+    자기 분기에서 답하므로 여기 오지 않는다. 허브 하위 행 정리는 하위를 읽어야 판정되므로
+    `vault`가 주어질 때만 본다. 롤오버 셋을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
     사람에게 할 일이 없는 경고가 다시 쌓이고, 반대로 산문 술어만 참으로 두면
     `source-stub`처럼 **어느 처방도 없는 타입이 조용해진다**(초과 전까지 무신호).
 
@@ -2641,34 +2449,21 @@ def prescribable(rel, fm, text, nl, vault=None):
     # **술어 밖에 남는 것 둘** — `_prose_page_paths`가 `index*`를 제외하는 것(:1634 부근)과
     #  `ses.claim`·`backup` 실패로 「하위 분리 건너뜀」이 나는 것은 **파일 구조가 아니라
     #  실행 사정**이라 여기서 답하지 않는다. 다음 회차가 그것을 이 함수의 사각으로 오판하지 않게.
-    if vault and _trim_dup_related(vault, rel, fm, text) is not None:
-        return True
     return relocatable(rel, fm, text, nl)
 
 def relocate_sections(ses):
     """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다.
 
-    헤딩과 포인터 1줄은 원본에 남는다 — 통째로 들어내면 §7-21이 곧 새 위반을
-    내고, 제목까지 지우면 목차에서 그 주제가 사라져 물을 실마리가 없어진다.
-
-    **관련 파일 복제 정리(`_trim_dup_related`)를 선행 단계로 같이 돈다** — 별도 처방으로 두면
-    정리에서 claim 한 하위를 같은 실행의 분리가 다시 claim 하지 못해(`claim()`은 실행 전체
-    기준이다) 그 하위의 분리가 다음 실행으로 밀린다. 한 파일의 정리와 분리는 claim 1회로 묶는다.
-    정렬 순서상 하위(`feat-x-2.md`)가 원본(`feat-x.md`)보다 먼저 오므로, 원본이 이번 실행에서
-    바뀌기 전의 목록과 대조된다."""
+    헤딩과 포인터 1줄은 원본에 남는다 — 제목까지 지우면 목차에서 그 주제가 사라져 물을
+    실마리가 없어진다."""
     for rel in sorted(_prose_page_paths(ses.vault)):
         path = os.path.join(ses.vault, rel.replace("/", os.sep))
         text, bom, nl = _read_page(path)
         if text is None:
             continue
         fm = frontmatter(text)
-        trimmed = _trim_dup_related(ses.vault, rel, fm, text)
-        if trimmed is not None:
-            text = trimmed
         st = budget_state(rel, fm, text)
         if not st or not (st.critical or st.over) or st.suppressed:
-            if trimmed is not None:
-                _write_trimmed(ses, path, rel, text, bom, nl)
             continue
         keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(st.typ, ()))
         label = fm.get("index_label", "").strip() or os.path.basename(rel)[:-len(".md")]
@@ -2691,24 +2486,7 @@ def relocate_sections(ses):
             pick = _pick_relocatable(cur, text, fm, st.typ, label, rel, nl, secmap, sub_rel, keep)
             if pick is None:
                 break
-            (title, s0, s1), body, sub_text, is_unit = pick
-            if is_unit:
-                # 관련 파일 단위 — 그룹이면 `### ` 머리를 원본에 남겨 목차에서 그 묶음이 보이게
-                #  하고, 이름 없는 항목 묶음이면 그 자리를 포인터로 바꾼다. 단위는 제목이 아니라
-                #  내용(포인터뿐인가)으로 재선택을 막으므로 `keep`에 넣지 않는다 — 넣으면 같은
-                #  「관련 파일」 절 안의 두 번째 단위까지 막힌다.
-                ptr = _relocation_pointer(sub_rel, label, title, len(body), "관련 파일")
-                if body.startswith("###"):
-                    hl_end = cur.index("\n", s0) + 1
-                    cur = cur[:hl_end] + "\n" + ptr + cur[s1:]
-                else:
-                    cur = cur[:s0] + ptr + cur[s1:]
-                created.append((sub_path, sub_rel, sub_text))
-                entries.append((sub_rel[:-len(".md")], "%s — %s" % (label, title), title, label))
-                nst = budget_state(rel, fm, cur)
-                if not nst or budget_resolved(nst):
-                    break
-                continue
+            (title, s0, s1), body, sub_text = pick
             hd_end = cur.index("\n", s0) + 1
             ptr = _relocation_pointer(sub_rel, label, title, len(body))
             # **본문 안의 각주 정의는 원본에 남긴다** — 각주는 파일 로컬이라, 정의가
@@ -2733,8 +2511,6 @@ def relocate_sections(ses):
             if not nst or budget_resolved(nst):
                 break
         if not created:
-            if trimmed is not None:
-                _write_trimmed(ses, path, rel, text, bom, nl)
             continue
 
         # 이전 회차에 나온 형제 하위도 함께 등재한다 — 이번 것만 넣으면 재분할할 때마다
@@ -2783,8 +2559,6 @@ def relocate_sections(ses):
                 #  남길 수 있고(치환 직전 실패), 등록 전에 죽으면 그것이 원복 대상에서 빠진다
                 _write_or_abort(sub_path, body_text, bom, nl, sub_rel_)
             _write_or_abort(path, cur, bom, nl, rel)
-        if trimmed is not None:
-            ses.record("관련 파일 복제 정리", rel, [])
         ses.record("산문 분리", rel, [c[1] for c in created])
 
     # **허브 하위 행 정리 — 분리 뒤에 돈다.** 같은 처방 안이라 실패하면 이번 실행의 분리까지
@@ -2805,16 +2579,6 @@ def relocate_sections(ses):
             # 허브 형상은 읽어서 보존한다 — 기본값(BOM 없음·LF)으로 메우면 CRLF·BOM 허브가 평탄화된다.
             _write_or_abort(hub_path, cleaned, hbom, hnl, hub_rel)
         ses.record("허브 하위 행 정리", hub_rel, [])
-
-
-def _write_trimmed(ses, path, rel, text, bom, nl):
-    """복제 정리만 하는 경우(분리 없음)의 쓰기 — 분리 경로와 같은 claim·사본 계약을 쓴다."""
-    if not ses.claim(path) or not ses.backup(path):
-        ses.notes.append(f"{rel} 관련 파일 복제 정리 건너뜀 — 다른 처방이 맡았거나 사본 실패")
-        return
-    if not ses.dry_run:
-        _write_or_abort(path, text, bom, nl, rel)
-    ses.record("관련 파일 복제 정리", rel, [])
 
 
 PRESCRIPTIONS.append(relocate_sections)

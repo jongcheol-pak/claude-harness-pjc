@@ -1,5 +1,5 @@
 {
-  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 번호가 부여된 §7 검사 36개 중 케이스가 인용하는 번호 32개(폐지 §7-3·27 언급 포함 — 집계는 케이스의 `§7-N` 인용. 괄호 안은 초기 대표 목록이다: 깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(§7-16 — 통합 표의 가이드 행까지 포함. 종전의 가이드 섹션 전용 검사는 폐지돼 여기에 흡수됐다)·시크릿·decision 어휘·index 부재·feature 폐지 절 보유(§7-38)·updated 누락·관련 파일 섹션/경로(§7-21)·각주/관련 파일 경로 실존(§7-20·21)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산(§7-2)·이동·분리 도달 경로(§7-30 ⓐ정·ⓑ역·ⓒ인덱스 등록·ⓓguide 허브↔하위)·작업 규약 미마이그레이션(§7-31)). 골든이 없는 번호는 §7-4·5·10·13 — [에이전트] 항목(모델 판정)이다.",
+  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 번호가 부여된 §7 검사 36개 중 케이스가 인용하는 번호 32개(폐지 §7-3·27 언급 포함 — 집계는 케이스의 `§7-N` 인용. 괄호 안은 초기 대표 목록이다: 깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(§7-16 — 통합 표의 가이드 행까지 포함. 종전의 가이드 섹션 전용 검사는 폐지돼 여기에 흡수됐다)·시크릿·decision 어휘·index 부재·feature 폐지 절 보유(§7-38)·updated 누락·각주 경로 실존(§7-20)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산(§7-2)·이동·분리 도달 경로(§7-30 ⓐ정·ⓑ역·ⓒ인덱스 등록·ⓓguide 허브↔하위)·작업 규약 미마이그레이션(§7-31)). 골든이 없는 번호는 §7-4·5·10·13 — [에이전트] 항목(모델 판정)이다.",
   "cases": [
     {
       "fixture": "clean",
@@ -1225,17 +1225,15 @@
         "예산 임박: 20_projects/personal/demo/feat-thing-2.md",
         "예산 초과: 20_projects/personal/demo/feat-thing-2.md",
         "폐지 절 보유",
-        "관련 파일 섹션 누락",
         "기능별 인덱스 누락",
         "허브 기능 목록 누락",
         "예산 초과: 20_projects/personal/demo/feat-thing",
         "분리한 본문이 조회 경로 밖",
         "정본 포인터 깨짐",
         "정본 포인터 절 없음",
-        "하위 문서 목록 깨짐",
-        "관련 파일 경로 항목 0개"
+        "하위 문서 목록 깨짐"
       ],
-      "rationale": "**하위의 `## 관련 파일`은 원본 목록을 복제하지 않고 정본 포인터 1줄이다** — 복제하면 하위마다 원본 지도 전체가 실려, 지도가 큰 feature 는 어느 절을 옮겨도 하위가 곧 예산에 닿아 분리가 영영 막혔다(실 vault karina-mobile 6쪽). 옛 목록 줄의 부재는 `expect_file_not_contains` 가 잰다(각주 정의에도 같은 경로가 있어 백틱 토큰이 아니라 목록 줄로 잰다). §4 처방 ③ 산문 하위 분리. **가장 큰 섹션의 본문만** 옮기고 헤딩과 포인터는 원본에 남긴다(통째로 들어내면 §7-21이 곧 새 위반을 낸다). 이 케이스가 한꺼번에 고정하는 것 다섯 — ⓐ 원본에 헤딩 + 정본 포인터가 남는지 ⓑ **하위에도 타입별 필수 섹션이 재현**되는지(하위는 같은 타입이라 §7-21이 그대로 걸린다 — 폐지 절은 재현 대상이 아니다 — 재현하지 않으면 자동 분할이 스스로 새 위반을 만든다. 실제로 초기 구현이 그랬다) ⓒ 각주 정의가 원본에 남고 하위에도 복제되는지(각주는 파일 로컬이라 원본에 남은 참조가 정의를 잃으면 안 된다) ⓓ 허브 `## 기능 목록`과 `build_index` 연쇄로 **분할 직후 인덱스 등록이 끝나는지**(사람이 `--build-index`를 따로 돌려야 통과하는 상태로 끝내지 않는다) ⓔ 원본과 하위 **양쪽 모두** 예산 신호가 사라지는지. **수렴도 함께 본다** — 옮겨도 하위가 곧바로 발동할 섹션을 그대로 옮기면 `-2-2`·`-2-2-2`로 번지는데, 파일명을 끝까지 적은 needle은 그 새 이름을 놓친다. 그래서 예산 위반 needle을 **접두**로 두어 원본·하위·재분할물 어느 것이 남아도 걸리게 했다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "rationale": "§4 처방 ③ 산문 하위 분리. **가장 큰 섹션의 본문만** 옮기고 헤딩과 포인터는 원본에 남긴다(제목까지 지우면 목차에서 그 주제가 사라진다). 이 케이스가 한꺼번에 고정하는 것 다섯 — ⓐ 원본에 헤딩 + 정본 포인터가 남는지 ⓑ **하위에도 타입별 필수 섹션이 원본을 가리키는 포인터로 재현**되는지(하위는 같은 타입이라 정체성 절 `## 개요`가 있어야 한다 — 폐지 절은 재현 대상이 아니다) ⓒ 각주 정의가 원본에 남고 하위에도 복제되는지(각주는 파일 로컬이라 원본에 남은 참조가 정의를 잃으면 안 된다) ⓓ 허브 `## 기능 목록`과 `build_index` 연쇄로 **분할 직후 인덱스 등록이 끝나는지**(사람이 `--build-index`를 따로 돌려야 통과하는 상태로 끝내지 않는다) ⓔ 원본과 하위 **양쪽 모두** 예산 신호가 사라지는지. **수렴도 함께 본다** — 옮겨도 하위가 곧바로 발동할 섹션을 그대로 옮기면 `-2-2`·`-2-2-2`로 번지는데, 파일명을 끝까지 적은 needle은 그 새 이름을 놓친다. 그래서 예산 위반 needle을 **접두**로 두어 원본·하위·재분할물 어느 것이 남아도 걸리게 했다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
       "expect_file_contains": {
         "20_projects/personal/demo/feat-thing.md": [
           "## 화면 구성",
@@ -1247,15 +1245,14 @@
         "20_projects/personal/demo/feat-thing-2.md": [
           "index_label: 것 (Thing) — 화면 구성",
           "> 상위 문서: [[20_projects/personal/demo/feat-thing|것 (Thing)]]",
-          "## 관련 파일",
-          "정본은 [[20_projects/personal/demo/feat-thing|것 (Thing)]]의 「관련 파일」이다.",
+          "## 개요",
+          "정본은 [[20_projects/personal/demo/feat-thing|것 (Thing)]]의 「개요」이다.",
           "[UI·UX] 이 문단은"
         ]
       },
       "expect_file_not_contains": {
         "20_projects/personal/demo/feat-thing-2.md": [
-          "## 설계 메모",
-          "- `src/Demo/Thing.cs` — 본체"
+          "## 설계 메모"
         ],
         "20_projects/personal/demo.md": [
           "feat-thing-2"
@@ -1307,7 +1304,7 @@
       "expect_absent": [
         "산문 분리 — 20_projects/personal/demo/feat-thing.md"
       ],
-      "rationale": "**정지 가드.** 예산은 발동했지만 옮길 수 있는 것이 없다 — `## 개요`는 본문째 남는 정체성이고, 유일한 이동 후보 `## 설계 메모`(옛 `## 구현 방법` 자리 — 픽스처 개명)는 옮기면 하위가 곧바로 발동하는 크기이며, `## 관련 파일`은 항목이 하나뿐이라 최후 수단인 단위 분할도 첫 단위(원본 몫)만 남는다. 이때 쪼개지 않고 멈추며 그 상태를 실패로 판정하지 않는다."
+      "rationale": "**정지 가드.** 예산은 발동했지만 옮길 수 있는 것이 없다 — `## 개요`는 본문째 남는 정체성이고, 유일한 이동 후보 `## 설계 메모`(옛 `## 구현 방법` 자리 — 픽스처 개명)는 옮기면 하위가 곧바로 발동하는 크기다. 이때 쪼개지 않고 멈추며 그 상태를 실패로 판정하지 않는다."
     },
     {
       "fixture": "prose-under",
@@ -1437,13 +1434,12 @@
         "예산 초과: 20_projects/personal/demo/feat-thing",
         "예산 임박: 20_projects/personal/demo/feat-thing",
         "폐지 절 보유",
-        "관련 파일 섹션 누락",
         "분리한 본문이 조회 경로 밖",
         "정본 포인터 깨짐",
         "정본 포인터 절 없음",
         "하위 문서 목록 깨짐"
       ],
-      "rationale": "**유지 목록 밖의 절(`## 설계 메모` — 옛 `## 구현 방법` 자리, 픽스처 개명)이 최대 섹션인 경우** — 실 vault에서 발동 직전인 형상이 정확히 이것이다(`feat-pjc:implement.md`의 그 섹션이 10,173자). 초기 구현은 이 섹션을 이동 제외에 넣어 여기서 「옮길 것이 없다」로 멈췄는데, 폐지된 §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을 옮겨도 게이트가 깨지지 않는다(원본에 헤딩 + 포인터가 남고 각주 정의도 남는다). 절 단위 이동에서 빠지는 것은 지도(`## 관련 파일` — 절 이동으로 풀리지 않을 때만 단위 분할의 대상이 된다)와 정체성(`## 개요`)뿐이라는 것을 이 케이스가 고정한다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
+      "rationale": "**유지 목록 밖의 절(`## 설계 메모` — 옛 `## 구현 방법` 자리, 픽스처 개명)이 최대 섹션인 경우** — 실 vault에서 발동 직전인 형상이 정확히 이것이다(`feat-pjc:implement.md`의 그 섹션이 10,173자). 초기 구현은 이 섹션을 이동 제외에 넣어 여기서 「옮길 것이 없다」로 멈췄는데, 폐지된 §7-18ⓐ는 그 섹션의 **헤딩 존재**만 보므로 본문을 옮겨도 게이트가 깨지지 않는다(원본에 헤딩 + 포인터가 남고 각주 정의도 남는다). 절 단위 이동에서 빠지는 것은 정체성(`## 개요`)과 도달 경로 구역뿐이라는 것을 이 케이스가 고정한다. **산출물이 새 검사를 통과하는지도 본다**(§7-30ⓔ) — 자동 경로가 스스로 도달성 위반을 만들면 그 검사가 무의미해진다. 실제로 재분할 경로가 그랬다: 이번 회차 하위만 목록에 넣어 옛 하위가 빠졌고, `prose-resplit`에만 그 needle이 없어 조용히 통과했다.",
       "expect_file_contains": {
         "20_projects/personal/demo/feat-thing.md": [
           "## 설계 메모",
@@ -1453,7 +1449,7 @@
         "20_projects/personal/demo/feat-thing-2.md": [
           "## 설계 메모",
           "[구현 방법] 이 문단은",
-          "## 관련 파일",
+          "## 개요",
           "[^src-thing]:"
         ]
       }
@@ -1798,7 +1794,7 @@
       "expect_file_not_contains": {
         "log.md": ["[SCHEMA]"]
       },
-      "rationale": "**git vault 에서는 `--auto-split` 이 log.md 에 `[SCHEMA]` 를 쓰지 않는다**(2026-10-12 감사 — 그 줄을 읽는 절차가 없고 git 이력·체크포인트 커밋과 겹치며 log 롤오버만 앞당겼다). 분할이 실제로 수행됐는지는 키워드가, 기록이 없는지는 log.md 대조가 잰다 — 비 git vault 의 기록은 `split-recheck-log`·`prose-sub-dup` 이 그대로 잰다."
+      "rationale": "**git vault 에서는 `--auto-split` 이 log.md 에 `[SCHEMA]` 를 쓰지 않는다**(2026-10-12 감사 — 그 줄을 읽는 절차가 없고 git 이력·체크포인트 커밋과 겹치며 log 롤오버만 앞당겼다). 분할이 실제로 수행됐는지는 키워드가, 기록이 없는지는 log.md 대조가 잰다 — 비 git vault 의 기록은 `split-recheck-log` 가 그대로 잰다."
     },
     {
       "fixture": "prose-split",
@@ -1940,165 +1936,6 @@
       "rationale": "배제의 **범위** — `90_archive/`(검사별 제외)와 달리 생성물은 md 목록 자체에서 빠져 `existing`(링크 대상 우주)에도 안 들어간다. 그래서 파일이 디스크에 실재해도 경로형 wikilink 가 해석되지 않고 §7-1 이 깨진 링크로 잡는다 — 생성물은 사람이 쓴 페이지의 참조 대상이 아니라는 계약이다. **「검사만 면제」로 구현했다면 이 케이스만 통과해 버린다**(그때는 링크가 해석된다). 실 vault 에서 같은 형태가 관측됐다 — 답 노트 본문의 `[[gemma-wiki/cards/…|…]]` 3개."
     },
     {
-      "fixture": "prose-sub-dup",
-      "auto_split": true,
-      "expect_keywords": [
-        "관련 파일 복제 정리 — 20_projects/personal/demo/feat-thing-2.md",
-        "허브 하위 행 정리 — 20_projects/personal/demo.md"
-      ],
-      "expect_absent": [
-        "[SPLIT-FAIL]",
-        "산문 분리 — "
-      ],
-      "after_expect_absent": [
-        "관련 파일 경로 항목 0개",
-        "관련 파일 섹션 누락",
-        "정본 포인터 깨짐",
-        "정본 포인터 절 없음",
-        "예산 초과: 20_projects/personal/demo/feat-thing",
-        "허브 기능 목록 누락"
-      ],
-      "expect_file_contains": {
-        "20_projects/personal/demo/feat-thing-2.md": [
-          "## 관련 파일",
-          "정본은 [[20_projects/personal/demo/feat-thing|것 (Thing)]]의 「관련 파일」이다.",
-          "[UI·UX] 이 문단은"
-        ],
-        "20_projects/personal/demo/feat-thing.md": [
-          "- `src/Demo/Thing.cs` — 본체"
-        ],
-        "log.md": [
-          "[SCHEMA] 관련 파일 복제 정리 — 20_projects/personal/demo/feat-thing-2.md",
-          "(사유: 관련 파일 복제)",
-          "[SCHEMA] 허브 하위 행 정리 — 20_projects/personal/demo.md"
-        ],
-        "20_projects/personal/demo.md": [
-          "[[20_projects/personal/demo/feat-thing\\|것]]",
-          "| 화면 규칙 | 사람이 적은 설명 — 버튼 배치와 여백의 실제 거동 | [[20_projects/personal/demo/feat-thing-2\\|화면]] |"
-        ]
-      },
-      "expect_file_not_contains": {
-        "20_projects/personal/demo/feat-thing-2.md": [
-          "- `src/Demo/Thing.cs` — 본체"
-        ],
-        "20_projects/personal/demo.md": [
-          "것 (Thing)의 「UI·UX」 절"
-        ]
-      },
-      "rationale": "**기존 복제 하위의 정리**(§7 결과 처리 예외 ⑤). 픽스처는 복제를 하던 구 분할기가 `prose-split` 에 실제로 만든 산출물이다 — 하위 `## 관련 파일`이 원본 목록과 글자까지 같다. 원본은 예산 안이라 산문 분리는 돌지 않아야 하고(`expect_absent` 「산문 분리 — 」), **예산과 무관하게** 하위의 복제만 정본 포인터로 바뀌어야 한다. 원본의 목록은 그대로 남는지(지도 유실 가드), 정리 뒤 §7-21 이 포인터 하위를 「경로 항목 0개」로 잡지 않는지, `log.md` 기록이 분할과 다른 사유를 적는지를 함께 본다. **허브에서는 자동 등재 서식의 하위 행만 걷고 사람이 쓴 행은 남는지**도 본다 — 픽스처 허브에 같은 하위를 가리키는 수기 행(설명 텍스트가 그 행에만 있다)을 심었다. 링크 대상만 보고 지우면 그 설명이 사라지고 성공은 보고되지 않아 아무도 모른다(완료 리뷰 실측: 실 vault 허브 수기 행 2개가 그렇게 지워졌다) — 분할의 고정 사유는 이 처방에 거짓이다."
-    },
-    {
-      "fixture": "prose-related-groups",
-      "auto_split": true,
-      "expect_keywords": [
-        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
-        "20_projects/personal/demo/feat-thing-2.md",
-        "20_projects/personal/demo/feat-thing-3.md"
-      ],
-      "expect_absent": [
-        "[SPLIT-FAIL]"
-      ],
-      "after_expect_absent": [
-        "예산 초과: 20_projects/personal/demo/feat-thing",
-        "예산 임박: 20_projects/personal/demo/feat-thing",
-        "관련 파일 경로 항목 0개",
-        "관련 파일 섹션 누락",
-        "정본 포인터 깨짐",
-        "정본 포인터 절 없음",
-        "하위 문서 목록 깨짐",
-        "분리한 본문이 조회 경로 밖",
-        "허브 기능 목록 누락"
-      ],
-      "expect_file_contains": {
-        "20_projects/personal/demo/feat-thing.md": [
-          "### 코어",
-          "`src/A/item001.cs`",
-          "`src/D/item001.cs`",
-          "### 저장소",
-          "**정본은 [[20_projects/personal/demo/feat-thing-2|것 (Thing) — 관련 파일 · 전송 계층 이 기능 src/Net/]]의 「관련 파일」이다**",
-          "**정본은 [[20_projects/personal/demo/feat-thing-3|것 (Thing) — 관련 파일 · 저장소]]의 「관련 파일」이다**",
-          "- [[20_projects/personal/demo/feat-thing-2|것 (Thing) — 관련 파일 · 전송 계층 이 기능 src/Net/]] — 관련 파일 · 전송 계층 이 기능 src/Net/"
-        ],
-        "20_projects/personal/demo/feat-thing-2.md": [
-          "index_label: 것 (Thing) — 관련 파일 · 전송 계층 이 기능 src/Net/",
-          "> 상위 문서: [[20_projects/personal/demo/feat-thing|것 (Thing)]]",
-          "## 관련 파일",
-          "`src/B/item001.cs`",
-          "`src/B/item082.cs`"
-        ],
-        "20_projects/personal/demo/feat-thing-3.md": [
-          "index_label: 것 (Thing) — 관련 파일 · 저장소",
-          "`src/C/item075.cs`"
-        ],
-        "20_projects/personal/demo/feat-thing-3.md": [
-          "> 상위 문서: [[20_projects/personal/demo/feat-thing|것 (Thing)]]"
-        ]
-      },
-      "expect_file_not_contains": {
-        "20_projects/personal/demo/feat-thing.md": [
-          "`src/B/item001.cs`",
-          "`src/C/item001.cs`"
-        ],
-        "20_projects/personal/demo/feat-thing-2.md": [
-          "## 설계 메모",
-          "`src/A/",
-          "`src/C/",
-          "`src/D/"
-        ],
-        "20_projects/personal/demo/feat-thing-3.md": [
-          "`src/A/",
-          "`src/B/",
-          "`src/D/"
-        ],
-        "20_projects/personal/demo.md": [
-          "feat-thing-2",
-          "feat-thing-3"
-        ]
-      },
-      "rationale": "**`## 관련 파일`의 `###` 그룹 단위 분할**(D1·D6 — 최후 수단). 다른 절은 짧아 옮겨도 예산이 풀리지 않고 지도만 크다 — 실 vault `feat-transport` 형상이다. 그룹마다 다른 경로 접두(`src/A/`~`src/D/`)를 심어, **첫 그룹(코어)은 원본에 남고** 큰 그룹부터 옮겨지며 **하위에는 자기 그룹 경로만** 가는지를 잰다(다른 그룹 경로의 부재는 `expect_file_not_contains`). 두 그룹이 나가므로 하위 라벨이 서로 다른지도 함께 본다 — 절 제목만 쓰면 둘 다 「관련 파일」이 된다. **그룹명 하나에 wikilink 와 백틱을 심었다** — 실 vault 그룹명에 실재하는 형상이고, 정제 없이 라벨에 들어가면 허브 표 셀을 `|` 로 가르고 바깥 wikilink 를 끊는다. 정제 결과(표시 텍스트만, 백틱 제거, 콜론 없는 구분자)는 D9 규칙에서 세운 기대값이다. 포인터의 절 이름은 「관련 파일」이라 §7-30 이 하위의 `## 관련 파일`로 도달을 확인한다."
-    },
-    {
-      "fixture": "prose-related-flat",
-      "auto_split": true,
-      "expect_keywords": [
-        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
-        "20_projects/personal/demo/feat-thing-2.md"
-      ],
-      "expect_absent": [
-        "[SPLIT-FAIL]",
-        "feat-thing-3.md"
-      ],
-      "after_expect_absent": [
-        "예산 초과: 20_projects/personal/demo/feat-thing",
-        "예산 임박: 20_projects/personal/demo/feat-thing",
-        "관련 파일 경로 항목 0개",
-        "정본 포인터 깨짐",
-        "정본 포인터 절 없음",
-        "하위 문서 목록 깨짐"
-      ],
-      "expect_file_contains": {
-        "20_projects/personal/demo/feat-thing.md": [
-          "`src/F/item005.cs`",
-          "`src/F/item290.cs`",
-          "의 「관련 파일」이다**"
-        ],
-        "20_projects/personal/demo/feat-thing-2.md": [
-          "## 관련 파일",
-          "`src/F/item150.cs`"
-        ]
-      },
-      "expect_file_not_contains": {
-        "20_projects/personal/demo/feat-thing.md": [
-          "`src/F/item150.cs`"
-        ],
-        "20_projects/personal/demo/feat-thing-2.md": [
-          "`src/F/item005.cs`",
-          "`src/F/item290.cs`"
-        ]
-      },
-      "rationale": "**`###` 그룹이 없는 긴 관련 파일 목록**(D1 항목 묶음). 실 vault `feat-session-terminal`·`feat-source-control` 형상이다 — 소제목이 없어 그룹 단위로 나눌 수 없다. `- ` 항목을 순서대로 예산 절반 크기로 묶고, 첫 묶음은 원본에 남으며 큰 묶음부터 옮겨진다. 300항목 중 앞 묶음(`item005`)과 끝 묶음(`item290`)은 원본에, 가운데 묶음(`item150`)은 하위에 있어야 한다 — 한 번 옮기면 풀리는 크기라 하위는 하나다(`feat-thing-3.md` 부재)."
-    },
-    {
       "fixture": "prose-two-features",
       "auto_split": true,
       "expect_keywords": [
@@ -2140,40 +1977,6 @@
         "expect": "a                b\n## H\nc               d\n"
       },
       "rationale": "**인라인 코드 안의 백틱 셋이 펜스로 짝지어지지 않는가.** 종전 `strip_code` 는 ``` 를 줄 어디서든 펜스로 보고, 인라인 코드를 백틱 하나로만 닫았다 — 그래서 4-백틱 인라인 코드 안의 ```mermaid 와 먼 줄의 ``` 가 짝지어져 **그 사이 헤딩(`## H`)이 지워졌다**. 실 vault `feat-source-control` 에서 `## 동작(사용법)`이 그렇게 보이지 않아 `## 관련 파일`이 그 절까지 먹었다. 펜스는 줄머리에서만 열고, 인라인 코드는 여는 백틱 수와 같은 수로 닫는다(CommonMark). **판정은 반환 전문이다** — 헤딩 줄이 살아 있는지와 두 스팬이 정확히 공백으로 바뀌는지를 함께 본다."
-    },
-    {
-      "fixture": "prose-related-fence",
-      "auto_split": true,
-      "expect_keywords": [
-        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
-        "20_projects/personal/demo/feat-thing-2.md"
-      ],
-      "expect_absent": [
-        "[SPLIT-FAIL]",
-        "feat-thing-3.md"
-      ],
-      "after_expect_absent": [
-        "예산 초과: 20_projects/personal/demo/feat-thing",
-        "관련 파일 섹션 누락",
-        "하위 문서 목록 깨짐",
-        "분리한 본문이 조회 경로 밖",
-        "관련 파일 경로 항목 0개"
-      ],
-      "expect_file_contains": {
-        "20_projects/personal/demo/feat-thing.md": [
-          "## 설계 메모",
-          "닫는 표식은 ```` ``` ```` 로 적는다"
-        ],
-        "20_projects/personal/demo/feat-thing-2.md": [
-          "`src/F/item150.cs` — 댓글의 ```` ```mermaid ```` 블록을 그리는"
-        ]
-      },
-      "expect_file_count": {
-        "20_projects/personal/demo/feat-thing.md": {
-          "## 하위 문서": 1
-        }
-      },
-      "rationale": "**4-백틱 인라인 코드가 든 항목을 옮겨도 원본의 절 경계가 무너지지 않는가.** `prose-related-flat` 에 실 vault `feat-source-control` 형상을 심었다 — 옮겨질 가운데 묶음의 항목 하나에 ```` ```mermaid ```` 가, 원본에 남는 `## 개요`에 ```` ``` ```` 가 있다. 종전 `strip_code` 는 둘을 펜스로 짝지어 원본에서 이미 그 사이 헤딩(`## 관련 파일`)을 지웠고, 항목이 하위로 가자 원본에 짝 잃은 ``` 가 남아 **그 뒤 전부가 미닫힘 펜스**가 됐다 — 실 vault 사본에서 `## 하위 문서`가 네 벌로 중복되고 다음 단위 선택이 그 목록을 집었다. 원본에 `## 하위 문서`가 한 벌인지(`expect_file_count`)와 `## 설계 메모`(옛 `## 구현 방법` 자리)가 보이는지, 옮겨진 것이 그 항목이 든 묶음인지로 잰다."
     },
     {
       "fixture": "facts-bad",
