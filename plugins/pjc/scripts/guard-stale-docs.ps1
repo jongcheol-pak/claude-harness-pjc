@@ -22,7 +22,7 @@ $script:StaleAxisMap = @(
        TtlFile = 'AGENTS.md'
        TtlDays = 90 }
     @{ Pattern = '^plugins/pjc/skills/llm-wiki/'
-       Axis    = '위키 feature 서술 ↔ 코드 — 경로·심볼 실존은 lint 가 재지만 서술 내용은 표본 판정뿐이다' }
+       Axis    = '위키 feature 서술 ↔ 코드 — 각주 경로 실존은 lint 가 재지만 서술 내용은 표본 판정뿐이다' }
 )
 # 4 -> 3: `docs/golden-runner.md` 의 소요 실측 축이 **층 2 의 케이스 수 대조로 승격**돼
 #   빠졌다(회차 64). 근거 문서 §5 의 「감소에도 정당한 형태가 하나 있다」가 이 자리다.

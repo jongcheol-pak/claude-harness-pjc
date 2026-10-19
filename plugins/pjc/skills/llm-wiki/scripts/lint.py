@@ -9,7 +9,6 @@
       / 고아 페이지(간이) / 미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계
       / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
-      / feature '## 관련 파일' 섹션 게이트 + 경로 실존(§7-21 — §7-20과 동일 레포 루트 캐시)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
       / 큐 잔량 집계(INFO — 절차 K 큐 `pending.md`, §7-25)
         · pending.md: [DECISION]/[PROJECT-FACT]/[SYMPTOM] 태그별
@@ -35,7 +34,7 @@
       / decision-log 정정 표기 형식(§7-36 — '정정'을 적은 항목의 '(정정 날짜: 옛 → 새, 근거 …)' 형식 위반).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 비 git vault 만 자동 백업 — schema §7 서두·non-git-backup.md 정본).
-범위: vault 파일 읽기 + 레포 접근 2종 — §7-20·§7-21의 파일 '실존' 확인과 §7-26의 git 이력 조회
+범위: vault 파일 읽기 + 레포 접근 2종 — §7-20의 파일 '실존' 확인과 §7-26의 git 이력 조회
       (커밋 '수'만 셈). 어느 쪽도 코드 내용은 해석하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 환경변수: LLM_WIKI_TODAY(ISO 날짜) — 시간 기반 판정의 「오늘」을 고정한다(_today 참조).
@@ -4119,16 +4118,13 @@ def main():
             if f.startswith(hub_base + "/") and not re.search(re.escape(f) + r"(?![\w-])", hub_text):
                 warn(f"허브 기능 목록 누락: {r} -> {f}", r)
 
-    # feature 각주 경로 레포 실존 (schema-lint §7-20) + '## 관련 파일' 섹션 게이트/경로 실존 (§7-21):
-    #  §7-20 — feature의 [^src-...] 각주 정의 줄에 백틱으로 병기된 레포 상대경로가, 프로젝트 허브
-    #  '## 레포 정보 > 경로'의 레포에 실재하는지 확인. §7-21 — '## 관련 파일' 섹션(기능 구성 파일
-    #  지도, §2.3)이 없거나 경로 항목 0개면 WARN, 섹션 내 경로 토큰은 §7-20과 동일 로직으로 실존 확인.
+    # feature 각주 경로 레포 실존 (schema-lint §7-20): feature의 [^src-...] 각주 정의 줄에 백틱으로
+    #  병기된 레포 상대경로가, 프로젝트 허브 '## 레포 정보 > 경로'의 레포에 실재하는지 확인.
     #  lint은 파일 '실존'만 보고 코드 내용은 해석하지 않는다(서술↔코드 정합은 §7-10 에이전트 표본).
     #  허브에 레포 경로가 없거나 디렉터리가 부재(다른 PC 등)면 프로젝트 단위 INFO 1건 후 건너뛴다
     #  (그 프로젝트의 ① 경로 실재 확인은 §7-10 에이전트가 폴백 수행).
     repo_cache = {}  # 허브 rel 경로 -> 레포 루트(str) 또는 None(접근 불가)
     exists_cache = {}  # (root, 상대경로) -> 실존 여부 — 여러 feature가 같은 경로를 병기할 때 중복 IO 제거
-    symbol_text_cache = {}  # (root, 상대경로) -> 본문 — §7-21 진입점 심볼 실존 검사용
     for r, (fm, typ, text) in sorted(pages.items()):
         if typ != "feature" or r.startswith("90_archive/"):
             continue
@@ -4146,45 +4142,7 @@ def main():
             #  클래스·멤버명)는 오탐 방지 위해 제외
             tokens += [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
                        if "/" in t or "\\" in t]
-        # §7-21: '## 관련 파일' 섹션 판별(strip_code 사본 — 코드펜스 안 유사 헤딩 제외) +
-        #  섹션 내 '- ' 항목의 백틱 경로 토큰 수집(원문 줄에서).
-        rel_tokens, rel_section_found = [], False
-        rel_symbols = []       # (경로 토큰, 심볼) — §7-21 진입점 앵커
-        rel_pointer = False    # 섹션 안에 정본 포인터 줄이 있는가 — 분할 하위의 면제 판정용
-        in_rel = False
-        for i, sl in enumerate(stripped_lines):
-            s = sl.strip()
-            if re.match(r"^##\s*관련 파일\b", s):
-                rel_section_found = True
-                in_rel = True
-                continue
-            if in_rel and s.startswith("## "):
-                in_rel = False
-            if in_rel and PTR_ONLY_LINE_RX.match(raw_lines[i]):
-                rel_pointer = True
-            if in_rel and s.startswith("-"):
-                line_paths = [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
-                              if "/" in t or "\\" in t]
-                rel_tokens += line_paths
-                # 진입점 심볼(선택 필드) — '(진입점: `A` · `B`)'. 그 행의 **첫 경로**에 건다:
-                #  한 행이 파일 하나를 서술하는 형식이라 그 행의 경로가 곧 심볼이 사는 파일이다.
-                #  괄호가 없으면 아무것도 모으지 않는다(미기재는 검사·신호 대상이 아니다 — §7-21).
-                m_ep = re.search(r"\(진입점:\s*([^)]*)\)", raw_lines[i])
-                if m_ep and line_paths:
-                    rel_symbols += [(line_paths[0], sym)
-                                    for sym in re.findall(r"`([^`\n]+)`", m_ep.group(1))]
-        # 문구로 원인을 구분한다 — "섹션 자체 없음"과 "섹션은 있으나 백틱 경로 0개"(형식 누락:
-        #  백틱 미사용·구분자 없는 토큰만 있는 경우)는 수리 방법이 달라 진단 단계를 줄인다.
-        if not rel_section_found:
-            warn(f"관련 파일 섹션 누락: {r} "
-                 f"('## 관련 파일' 기능 구성 파일 지도 — 다음 ingest 시 채움, schema §7-21)", r)
-        elif not rel_tokens and not (rel_pointer and SUBDOC_BACK_RX.search(text)):
-            # 분할 하위(복귀 링크)가 `## 관련 파일`을 정본 포인터로 둔 것은 누락이 아니다 —
-            #  지도는 원본에 있고 하위는 그것을 가리킨다(`_sub_page_text`). **두 조건을 함께 본다**:
-            #  복귀 링크만으로 면제하면 사람이 비워 둔 하위 지도가 조용히 통과한다.
-            warn(f"관련 파일 경로 항목 0개: {r} "
-                 f"(섹션은 있으나 백틱 경로 없음 — '- `경로` — 역할' 형식으로 기재, schema §7-21)", r)
-        if not tokens and not rel_tokens:
+        if not tokens:
             continue
         hub = r.rsplit("/", 1)[0] + ".md"  # 20_projects/{proj}/feat-x.md -> 20_projects/{proj}.md
         if hub not in repo_cache:
@@ -4192,56 +4150,28 @@ def main():
             repo_cache[hub] = repo_root_for_hub(hub_text) if hub_text else None
             if repo_cache[hub] is None:
                 infos.append(f"레포 접근 불가(허브 레포 경로 미기재/부재): {hub} "
-                             f"— 각주·관련 파일 경로 검증 건너뜀(§7-10 에이전트 폴백, schema §7-20·21)")
+                             f"— 각주 경로 검증 건너뜀(§7-10 에이전트 폴백, schema §7-20)")
         root = repo_cache[hub]
         if root is None:
             continue
-        # §7-20(각주)·§7-21(관련 파일)을 같은 실존 로직으로 검사하되 출처를 메시지에 구분
-        for token_list, label, sec in ((tokens, "각주 경로", "§7-20"),
-                                       (rel_tokens, "관련 파일 경로", "§7-21")):
-            for t in token_list:
-                p = t.replace("\\", "/").strip()
-                if p.startswith("./"):
-                    p = p[2:]
-                if os.path.isabs(p) or re.match(r"^[A-Za-z]:", p):
-                    continue  # 레포 '상대'경로만 검사 대상 — 절대경로 병기는 규약 밖이라 제외
-                full = os.path.join(root, p)
-                key = (root, p)
-                if key not in exists_cache:  # 실행-내 memoization (한 실행 중 파일시스템 불변 전제)
-                    # 글롭 분기는 레포 루트를 이스케이프한다(L-3의 vault escape와 동형) — 루트 경로에
-                    #   [ ] 등 메타문자가 있으면 글롭 토큰이 항상 매치 0건이 되어 실재 경로를 오탐한다.
-                    #   토큰 p 안의 글롭(*)은 패턴으로 유지.
-                    exists_cache[key] = (bool(glob.glob(os.path.join(glob.escape(root), p)))
-                                         if "*" in p else os.path.exists(full))
-                if not exists_cache[key]:
-                    detail = "글롭 매치 0건 — 이동·삭제·오기 가능" if "*" in p \
-                        else "이동·삭제·오기 가능 — 갱신 필요"
-                    warn(f"{label} 레포에 없음: {r} -> '{t}' ({detail}, schema {sec})", r)
-
-        # §7-21 진입점 심볼 실존 — 그 파일에 **그 문자열이 나오는가**만 본다.
-        #  정의인지 호출인지 주석인지 가르지 않는다(파싱은 이 도구의 일이 아니다 — §7 결과 처리의
-        #  레포 접근 범위). 낡은 앵커는 조회를 엉뚱한 자리로 보내므로 WARN 이고, **미기재는 검사하지
-        #  않는다**(선택 필드 — 필수로 하면 기존 페이지가 전부 WARN 이 되고 INFO 로 두면 묻힌다).
-        #  본문은 (root, 경로)당 1회만 읽는다 — 한 파일에 심볼이 여럿이면 재읽기가 된다.
-        for sym_token, sym in rel_symbols:
-            sp = sym_token.replace("\\", "/").strip()
-            if sp.startswith("./"):
-                sp = sp[2:]
-            if os.path.isabs(sp) or re.match(r"^[A-Za-z]:", sp) or "*" in sp:
-                continue  # 절대경로·글롭은 대상 밖(경로 검사와 같은 기준)
-            skey = (root, sp)
-            if not exists_cache.get(skey):
-                continue  # 파일 자체가 없으면 위 경로 WARN 이 이미 알렸다 — 중복 신고하지 않는다
-            if skey not in symbol_text_cache:
-                try:
-                    with open(os.path.join(root, sp), encoding="utf-8", errors="replace") as fh:
-                        symbol_text_cache[skey] = fh.read()
-                except OSError:
-                    symbol_text_cache[skey] = None  # 읽기 실패는 fail-open(§7-20과 같은 취지)
-            body = symbol_text_cache[skey]
-            if body is not None and sym not in body:
-                warn(f"진입점 심볼 소스에 없음: {r} -> '{sym_token}'의 `{sym}` "
-                     f"(이름 변경·삭제 가능 — 조회가 엉뚱한 자리로 간다, schema §7-21)", r)
+        for t in tokens:
+            p = t.replace("\\", "/").strip()
+            if p.startswith("./"):
+                p = p[2:]
+            if os.path.isabs(p) or re.match(r"^[A-Za-z]:", p):
+                continue  # 레포 '상대'경로만 검사 대상 — 절대경로 병기는 규약 밖이라 제외
+            full = os.path.join(root, p)
+            key = (root, p)
+            if key not in exists_cache:  # 실행-내 memoization (한 실행 중 파일시스템 불변 전제)
+                # 글롭 분기는 레포 루트를 이스케이프한다(L-3의 vault escape와 동형) — 루트 경로에
+                #   [ ] 등 메타문자가 있으면 글롭 토큰이 항상 매치 0건이 되어 실재 경로를 오탐한다.
+                #   토큰 p 안의 글롭(*)은 패턴으로 유지.
+                exists_cache[key] = (bool(glob.glob(os.path.join(glob.escape(root), p)))
+                                     if "*" in p else os.path.exists(full))
+            if not exists_cache[key]:
+                detail = "글롭 매치 0건 — 이동·삭제·오기 가능" if "*" in p \
+                    else "이동·삭제·오기 가능 — 갱신 필요"
+                warn(f"각주 경로 레포에 없음: {r} -> '{t}' ({detail}, schema §7-20)", r)
 
     # facts 형식 페이지 (schema-lint §7-39): `format: facts` 를 단 project·feature·decision-log 만 본다
     #  (wiki-schema §1 「facts 형식」 — 기존 페이지는 갱신될 때 바뀌므로 표지 없는 페이지는 대상 밖).
