@@ -93,6 +93,8 @@ SKIP_DIRS = {'.git', '__pycache__', 'notes-archive', '.agents-presplit', 'node_m
 EXCEPTIONS = [
     (re.compile(r'^docs/plans/'),
      '대장 3파일은 이력이다 — 등재 당시의 대상을 그 이름으로 적는 것이 기록의 정확성이다'),
+    (re.compile(r'^docs/conventions\.md$'),
+     '작업 함정 기록(docs/conventions.md)은 이력이다 — 날짜를 단 항목이 그때 겪은 대상을 그 이름으로 적는다'),
     (re.compile(r'^(plan|notes)\.md$'),
      '루트의 진행 메모·이력 — 이 스캐너는 pathlib 순회라 gitignore 를 보지 않는다(둘 다 gitignore 지만 디스크에 실재한다). '
      '지나간 회차가 그때의 대상을 이름으로 적은 것이라 갱신 대상이 아니다'),

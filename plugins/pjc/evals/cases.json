@@ -373,6 +373,25 @@
     ]
   },
   {
+    "id": "stale-conventions-exempt",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/conventions.md",
+        "find": "**삭제 자산 이름이 없는 항목** — 착수 조건 없음.",
+        "replace": "**`phase-f-detail.md` 를 지운 뒤 그 이름으로 검색하면 0건이다** — 착수 조건 없음."
+      }
+    ],
+    "expect_keywords": [
+      "작업 함정 기록(docs/conventions.md)은 이력이다"
+    ],
+    "expect_absent": [
+      "[FAIL] 살아 있는 자산에"
+    ]
+  },
+  {
     "id": "stale-tree-hit",
     "checker": "stale",
     "fixture": "refs-repo",
