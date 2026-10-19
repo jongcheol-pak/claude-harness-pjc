@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Create a verification skill
 
-> 출처는 Cursor pstack 의 create-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/skills/create-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/LICENSE`). 한글로 옮기며 생성 위치를 Claude Code 프로젝트 스킬로 바꾸고, Windows 네이티브 조작·「변경 검증」 절·pjc 등록 절차를 더했다.
+> 출처는 Cursor pstack 의 create-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/skills/create-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/LICENSE`). 한글로 옮기며 생성 위치를 Claude Code 프로젝트 스킬로 바꾸고, Windows 데스크톱 조작·「변경 검증」 절·pjc 등록 절차를 더했다.
 
 실제 앱을 띄우고, 사용자가 쓰는 방식으로 기능을 조작하고, 증거를 남기는 절차를 대상 레포 전용 스킬 `.claude/skills/verify-<app>/` 로 만든다. **생성물의 독자는 사람이 아니라 다음 에이전트다** — 앱을 한 번도 본 적 없는 에이전트가 작업 도중에 처음 읽고 그대로 따라 한다. 그 에이전트는 `pjc:implement` 의 화면 확인 전 조작과 `pr-verifier` 의 merge 전 검증이다(`AGENTS.md` 의 `Verify (앱 조작)` 줄로 찾는다).
 
@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 아래를 코드베이스에서 답하고, 볼 수 없는 것만 사용자에게 묻는다.
 
-- **Surface** — 사용자가 실제로 만지는 것: 웹 UI · CLI/TUI · Windows 데스크톱 앱(WinUI·WPF·WinForms) · API · 모바일 앱 · 라이브러리. 여럿이면 주된 하나를 고르고 나머지는 적어 둔다.
+- **Surface** — 사용자가 실제로 만지는 것: 웹 UI · CLI/TUI · Windows 데스크톱 앱(WinUI·WPF·WinForms · gpui 처럼 접근성 트리가 없는 앱) · API · 모바일 앱 · 라이브러리. 여럿이면 주된 하나를 고르고 나머지는 적어 둔다.
 - **Run** — 로컬에서 어떻게 뜨는가. 레포가 문서로 정한 개발 명령(package scripts·Makefile·`dotnet run`·README 빠른 시작)을 먼저 쓴다. 포트·환경변수(이름만 — 값은 적지 않는다)·시드 데이터·인증을 적는다.
 - **Drive** — 에이전트가 프로그램으로 조작할 수단. 레포에 이미 있는 하네스(Playwright·Cypress 스펙, FlaUI·WinAppDriver·Appium 테스트, expect 스크립트, curl 로 부를 엔드포인트, 디버그 포트)가 먼저다. 없을 때만 `references/drive-recipes.md` 의 일반 방식을 고른다.
 - **Observe** — 남길 수 있는 증거: 스크린샷·접근성 트리·터미널 기록·응답 본문·로그·종료 코드·DB 상태.
@@ -27,8 +27,8 @@ disable-model-invocation: true
 `.claude/skills/verify-<app>/SKILL.md` 를 쓴다. YAML frontmatter(`name: verify-<app>` · 앱·표면·언제 쓰는지를 담은 `description`)가 없으면 스킬로 등록되지 않는다. 아래 절은 모두 1단계에서 실제로 찾은 것으로 채운다 — **자리표시를 남기지 않는다.**
 
 - **Launch** — 검증용으로 앱을 띄우는 정확한 명령과 준비 판정(로그 한 줄·프롬프트·기대 창의 출현). 빈 데이터 폴더에서 마이그레이션·시드까지 거쳐 **쓸 수 있는 상태**에 닿아야 한다. 프로세스가 응답하는 것은 준비가 아니다 — DB 헬스 체크는 초기화 스크립트가 도는 중에도 통과한다. 종료 방법을 함께 적는다. 수명이 짧은 CLI·TUI 는 붙잡아 둘 서버가 없다 — Launch 는 바이너리를 한 번 빌드(또는 의존성 설치)하는 것이고, 조작마다 격리된 세션에서 새로 띄운다. **레포 루트를 인자로 받아 다른 worktree 에서도 돌게 쓴다** — `pjc:implement` 가 `(BASE 대조)` 시나리오를 BASE worktree 에서 같은 Launch 로 돌린다.
-- **Doctor** — 「이 인스턴스를 조작해도 되는가」에 답하는 읽기 전용 점검 하나: 프로세스가 떠 있는가 · 기대한 버전·빌드인가 · 포트를 우리가 쥐고 있는가 · 인증이 유효한가. 무언가 이상해 보이면 에이전트가 가장 먼저 돌린다.
-- **Drive** — 이 레포의 실제 셀렉터·명령으로 쓴 조작법. 예시가 아니다. 좌표·탭 순서보다 안정된 손잡이(ARIA 이름·data 속성·AutomationId·프롬프트 문자열·라우트 경로)를 쓴다.
+- **Doctor** — 「이 인스턴스를 조작해도 되는가」에 답하는 읽기 전용 점검 하나: 프로세스가 떠 있는가 · 기대한 버전·빌드인가 · 포트를 우리가 쥐고 있는가 · 인증이 유효한가 · 조작 도구(CLI)를 지금 쓸 수 있는가. 무언가 이상해 보이면 에이전트가 가장 먼저 돌린다.
+- **Drive** — 이 레포의 실제 셀렉터·명령으로 쓴 조작법. 예시가 아니다. 좌표·탭 순서보다 안정된 손잡이(ARIA 이름·data 속성·AutomationId·프롬프트 문자열·라우트 경로)를 쓴다. 실행마다 바뀌는 요소 번호는 적지 않고 그 요소의 이름·역할을 적는다. 접근성 트리가 없는 창은 좌표가 유일한 손잡이다 — 좌표값 대신 스크린샷에서 자리를 찾는 기준을 적는다.
 - **Evidence** — 증명에 무엇을 남기고 어디에 두는가. 증거는 **레포 밖**(시스템 임시 폴더 아래, 예: `%TEMP%/verify-<app>/<실행 id>/`)에 둔다 — `pr-verifier` 는 파일을 고치지 않는 에이전트라 레포 안에 쓰면 그 규칙을 어긴다. 증거 기준을 적는다:
   - 실제 사용자 경로로 조작한다 — 내부 setter·테스트 전용 엔드포인트는 쓰지 않는다
   - 조작과 그 결과 상태를 함께 남긴다 — 마지막 화면만으로는 증명이 아니다
