@@ -21,7 +21,7 @@
 - **마무리 순서는 「plan 파일 커밋 → 인계 절 커밋 → PR 열기(`--base <부모>`) → `pjc:pr` babysit → `worker_done` → 최종 보고」다 — ship 하지 않는다** — 착지는 사용자가 스택을 확인한 뒤 코디네이터가 한다. 인계 절은 PR 브랜치에 커밋돼 뒤 계획이 그 브랜치에서 갈라져 읽는다(`pr-mode.md`「워커」 의 화면 줄 task 직렬 예외가 필요 없다).
 - **브랜치는 `pr-flow.md`「브랜치」 의 「기본 브랜치」 행 그대로 `<부모>` 에서 가른다 — 같은 체크아웃의 HEAD 가 직전 워커가 남은 `<부모>` 이고, `pr-flow.md`「적용 판정」 이 base 를 기본 브랜치 자리로 쓴다.** 그 행의 `git branch -f <기본> origin/<기본>` 은 `<부모>` 에 그대로 적용된다.
 - **base 합치기는 `pr-mode.md`「워커」 의 규칙을 `<부모>` 로 적용한다 — `git merge origin/<부모>`, rebase 금지, 세 번째 합치기면 정지.**
-- **babysit 은 「PR <URL> 을 babysit — 체인 스택 모드」 로 부르고 merge-ready 에서 멈춘다. 멈춘 자리가 merge-ready·화면 확인 대기면 `--outcome succeeded` 에 `PR: 열림 — <URL> · 스택 대기` 로 보고한다** — 화면 게이트는 착지 때 사용자가 한꺼번에 본다. 그 밖의 멈춘 자리(충돌을 못 풂·CI 같은 원인 3회·사람 판단 대기)는 `pr-mode.md`「워커」 표 그대로 `failed` 다.
+- **babysit 은 「PR <URL> 을 babysit — 체인 스택 모드」 로 부르고 merge-ready 에서 멈춘다 — 이 호출이 `../../implement/references/pr-flow.md`「PR 을 연 뒤」 의 「babysit 을 시작하지 않는다」 의 예외다(`pr-mode.md`「워커」 의 ship 호출과 같은 자리). 멈춘 자리가 merge-ready·화면 확인 대기면 `--outcome succeeded` 에 `PR: 열림 — <URL> · 스택 대기` 로 보고한다** — 화면 게이트는 착지 때 사용자가 한꺼번에 본다. 그 밖의 멈춘 자리(충돌을 못 풂·CI 같은 원인 3회·사람 판단 대기)는 `pr-mode.md`「워커」 표 그대로 `failed` 다.
 - **`worker_done` 까지 PR 브랜치에 남고 `git switch` 하지 않는다** — 다음 워커는 지금 HEAD 를 부모로 가르고, 코디네이터 검증과 대기 스크립트(`scripts/pr_stage.py` 는 HEAD 가 base 와 다를 때 그 브랜치의 PR 을 잡는다)도 HEAD 가 그 브랜치라는 것을 전제한다.
 - **PR 본문 끝 줄의 체인 표지는 `pr-mode.md`「워커」 그대로이고, 그 앞 줄에 `스택: plan <N>/<총> · 부모 <부모>` 를 싣는다** — 재개가 PR 들의 위아래 순서를 이 줄과 base 로 되찾는다.
 - **이어받기 워커도 같은 PR 브랜치에 커밋을 더하고 merge 하지 않는다** — `pr-flow.md`「브랜치」 의 「그 밖」 행이 그 브랜치를 그대로 쓴다.
