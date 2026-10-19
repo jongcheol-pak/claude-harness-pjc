@@ -264,7 +264,7 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
 
-    # SC42~SC42f: 계획 세션에 **큐 기록 규약(K 5-2~5-3) 원문 주입** (v1.218.0).
+    # SC42~SC42f: 계획 세션에 **큐 기록 규약(K 5-2) 원문 주입** (v1.218.0).
     #   위 SC41 계열과 같은 분기에서 돌지만 대상 문서가 다르므로 따로 건다 —
     #   한 쪽 주입을 지워도 다른 쪽 assert가 그대로 통과하기 때문이다.
     # SC42 (양성): compact + plan 없음 → K 5-2 **본문 문자열**이 실려 온다.
@@ -272,9 +272,9 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 큐 기록 규약 절 주입 (SC42)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고'
     # SC42b (발췌 표기): SC41b와 같은 이유 — 주입분이 전문이 아니라 발췌임을 밝힌다.
     Assert-Case -Name "session-context: 큐 규약 주입에 발췌 표기 (SC42b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/references/queue-rules.md'
-    # SC42f (경계 계약): 추출 구간이 **K 5-3까지** 닿는다 — 종료 앵커가 `### K 5-5.`임을 고정한다.
-    #   SC42는 K 5-2 본문만 보므로 앵커를 5-3 앞으로 잘못 옮겨도 그대로 통과한다.
-    Assert-Case -Name "session-context: 큐 규약 주입이 K 5-3까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '레포 귀속 실행 사실'
+    # SC42f (경계 계약): 추출 구간이 **K 5-2 끝까지** 닿는다 — 종료 앵커가 `### K 5-5.`임을 고정한다.
+    #   SC42는 K 5-2 첫머리 본문만 보므로 앵커를 절 중간으로 잘못 옮겨도 그대로 통과한다(K 5-3 은 2026-10-20 폐지).
+    Assert-Case -Name "session-context: 큐 규약 주입이 K 5-2 끝까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '레포 자신의 결정은 큐 대신'
     # SC42c (델타 음성): startup엔 주입하지 않는다(SC41c와 같은 취지).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: startup엔 큐 규약 미주입 (SC42c)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
