@@ -39,7 +39,7 @@
     - 병렬 워커는 이 예외 없이 지금 순서다(PR 에 인계 절) — 처리는 「병렬」.
   - **인계 절 머리에 `PR 브랜치: <브랜치>` 를 더한다** — babysit·ship 의 수정 커밋은 인계 절 커밋 뒤라 절의 커밋 범위에 들지 않는다. 뒤 계획은 그 브랜치의 PR 로 나머지를 찾는다.
 - **PR 본문 끝 줄에 `체인: <인계 파일 이름의 Run id> · plan <N>/<총>` 을 싣는다** — 이 체인이 멈추면 재개가 이 표지로 열린 PR 을 찾는다(`resume.md`「열린 PR」). 마지막 계획은 인계 절을 쓰지 않아 인계 파일로는 그 브랜치를 못 찾는다.
-- **PR 을 열기 전과 ship 을 부르기 전마다 base 를 합친다 — `git fetch origin <base>` 뒤 `git merge-base --is-ancestor origin/<base> HEAD` 가 거짓이면 `git merge origin/<base>` 다(rebase 금지)** — merge 는 검증한 조합이 착지할 base 위에 있어야 한다(*"The owner merges only what you verified, tested on the trunk it lands on."*). 병렬 그룹에서는 앞 그룹원의 merge 로 base 가 움직이는 것이 정상 경로이고, squash 된 앞 PR 을 담은 base 를 같은 브랜치에 합치면 PR diff 가 새 커밋만으로 줄어든다.
+- **PR 을 열기 전과 충돌·낡은 base 멈춤에서는 base 를 합친다 — `git fetch origin <base>` 뒤 `git merge-base --is-ancestor origin/<base> HEAD` 가 거짓이면 `git merge origin/<base>` 다(rebase 금지). merge-ready 에서 ship 을 부르기 직전에는 같은 조건에 `../../pr/references/ship.md` 7번의 영향 판정(기준 `git merge-base HEAD origin/<base>` — 파일 겹침 · base 쪽 검증 선택 문서·CI·의존 매니페스트 · drift sweep)을 더해 참일 때만 합치고 babysit 부터 다시 하며, 거짓이면 합치지 않고 두 목록을 보고에 싣고 ship 으로 간다** — PR 을 열기 전의 합치기는 squash 된 앞 PR 을 들여 PR diff 가 새 커밋만 담게 하고(`continuation.md`「코디네이터 검증」 전제), 충돌·낡은 base 는 그 멈춤 자체가 영향의 증거다. ship 직전에 모든 base 이동마다 합치면 검증이 끝나지 않는다(*"rebasing for every trunk move never ends"*) — merge 는 검증한 조합이 착지할 base 위에 있어야 하되(*"tested on the trunk it lands on"*), PR 이 닿지 않는 base 변경은 그 조합을 바꾸지 않는다.
   - **충돌은 재진술을 기준으로 양쪽 의도를 살려 풀고, spec 「근거로 정한 것」 ③ 검증을 돌려 통과하면 커밋·push 한 뒤 babysit 부터 다시 한다** — `parallel.md`「충돌·검증 실패」 의 병합 준비와 같은 기준이다. 풀 수 없으면 아래 정지다.
   - **한 PR 에서 세 번째 합치기가 필요하면 합치지 않고 정지한다** — base 가 계속 움직이면 검증이 끝나지 않는다(*"If trunk would force a third rebase past merge prep, hold and report"*).
 - **PR 을 연 뒤 `pjc:pr` 을 Skill 도구로 「PR <URL> 을 babysit 뒤 ship — 체인 PR 모드」 로 부른다** — 요청이 babysit 과 merge 를 함께 말해 `../../pr/SKILL.md`「모드 고르기」 대로 merge-ready 뒤 ship 으로 잇는다. 이 요청이 `pr-flow.md`「PR 을 연 뒤」 의 「babysit 을 시작하지 않는다」 의 예외다.
@@ -50,6 +50,7 @@
   |---|---|
   | merge-ready | ship 으로 간다 |
   | 충돌 · 낡은 base(`../../pr/references/babysit.md`「1. 충돌」·「3. CI」) | 위 base 합치기 뒤 babysit 부터 다시 |
+  | ship 「base 합치기 필요」(`../../pr/references/ship.md` 7번 영향 판정 참) | 위 base 합치기 뒤 babysit 부터 다시 |
   | `pr-verifier` FAIL | 지적한 결함을 고쳐 커밋·push 한 뒤 babysit 부터 다시 — 지적은 하나의 수정으로 모은다(*"Send every proven finding … to the owner in one fix-forward"*) |
   | head 가 바뀌어 merge 거부(`--match-head-commit`) | ship 1번부터 다시 |
   | 화면 확인 대기(`../../pr/references/ship.md` 7번 화면 게이트) | PR 을 열어 둔 채 작업 트리가 깨끗하면 `git switch <base>`(병렬 워커는 건너뛴다) 뒤 `--outcome succeeded` 로 보고한다 — `PR:` 필드는 `열림 — <URL> · 화면 확인 대기`, `남은 일` 에 `PR <URL> 화면 확인 대기 — 사용자가 스크린샷을 보고 「화면 확인함」 으로 pjc:pr ship 을 요청`. 질문이 아니라 보고다 — 사용자 몫으로 넘기지 않는다 |
