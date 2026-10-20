@@ -12,7 +12,7 @@
   1. 만료(`answered:false`·`status:"pending"`) → 같은 백그라운드 명령을 `ask --resume <questionId>` 로 띄우고 turn 을 끝낸다
   2. 완료 알림이 메모리 부족 종료이거나 그 밖에 하네스가 셸을 끊어 `ask` 출력이 없으면 → 그 질문은 포그라운드 `ask --resume <questionId> --timeout-ms 540000 2>/dev/null`(Bash 도구 timeout 600000)로 잇고, 만료마다 같은 포그라운드로 `--resume` 한다 — 회수 알림은 요청받을 때만 다시 띄우라고 지시해 백그라운드 재기동이 알림과 부딪히고(`../../chain-plan/references/wait-exit.md`「RESULT 없음」), 포그라운드는 turn 안에서 막혀 쉬는 세션의 셸 회수에 걸리지 않는다. 시한을 Bash 도구 상한보다 짧게 잡는 것은 도구가 먼저 끊으면 `questionId` 가 출력되지 않기 때문이다
   3. `ask` 가 오류를 출력하면(`ok:false`·비정상 exit 와 함께 낸 오류 출력) → 같은 명령을 한 번만 다시 띄우고, 연속 두 번이면 `worker_done --outcome failed`(사유: 오류 원문 · `questionId`)로 멈춘다 — 즉시 끝나는 오류를 상한 없이 다시 띄우면 기다림 없이 turn 만 돈다
-- **1·2 의 만료는 답이 올 때까지 상한 없이 잇는다 — 코디네이터 쪽 신호를 확인하지 않고 「코디네이터 무응답」 으로 멈추지 않는다** — 사용자 답이 몇 시간 늦어도 계획은 이 탭의 컨텍스트에 그대로 있고, 멈추면 체인이 새 워커로 계획을 처음부터 다시 돌린다(2026-10-13 Karina 체인 plan 2 — 코디네이터가 신호를 빠뜨려 37분 뒤 무응답 정지 → 새 워커 재실행). 코디네이터가 죽었으면 사용자가 이 탭에서 끊는다.
+- **1·2 의 만료는 답이 올 때까지 상한 없이 잇는다 — 코디네이터 쪽 신호를 확인하지 않고 「코디네이터 무응답」 으로 멈추지 않는다** — 사용자 답이 몇 시간 늦어도 계획은 이 탭의 컨텍스트에 그대로 있고, 멈추면 체인이 새 워커로 계획을 처음부터 다시 돌린다(2026-10-13 Karina 앱 체인 plan 2 — 코디네이터가 신호를 빠뜨려 37분 뒤 무응답 정지 → 새 워커 재실행). 코디네이터가 죽었으면 사용자가 이 탭에서 끊는다.
 
 ## 회차와 이어받기
 
@@ -30,4 +30,4 @@
 
 ## 위임 경로를 바꿀 때
 
-- **이 취급이 기대는 경로를 바꿀 때는 위임부터 다시 설계한다** — 지금 답은 Karina `ask` 의 Bash 출력으로 온다(`../../chain-plan/references/spec-format.md`「spec 서식」 진행 2). 반면 Claude Code 기본 세션 간 메시지(`SendMessage`·agent teams)는 공식 문서상 다른 세션이 보낸 메시지를 사용자 동의로 세지 않는다(https://code.claude.com/docs/en/cross-session-messaging). 그래서 질문 경로를 그것으로 옮기면 위임·판정 답이 승인으로 통하지 않을 것으로 본다(추정 — 옮긴 뒤를 재보지 않았다).
+- **이 취급이 기대는 경로를 바꿀 때는 위임부터 다시 설계한다** — 지금 답은 Karina 앱 `ask` 의 Bash 출력으로 온다(`../../chain-plan/references/spec-format.md`「spec 서식」 진행 2). 반면 Claude Code 기본 세션 간 메시지(`SendMessage`·agent teams)는 공식 문서상 다른 세션이 보낸 메시지를 사용자 동의로 세지 않는다(https://code.claude.com/docs/en/cross-session-messaging). 그래서 질문 경로를 그것으로 옮기면 위임·판정 답이 승인으로 통하지 않을 것으로 본다(추정 — 옮긴 뒤를 재보지 않았다).

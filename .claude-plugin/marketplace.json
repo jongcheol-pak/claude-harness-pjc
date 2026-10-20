@@ -3,13 +3,13 @@
   "owner": {
     "name": "pjc"
   },
-  "description": "Karina 하네스 plugin 배포 마켓플레이스 (계획·검증·자율 루프 + 안전 hook)",
+  "description": "Karina Harness plugin 배포 마켓플레이스 (계획·검증·자율 루프 + 안전 hook)",
   "plugins": [
     {
       "name": "karina",
       "source": "./plugins/karina",
-      "displayName": "Karina — 계획·검증 코딩 하네스",
-      "description": "Korean-first agentic coding harness: plan, implement, chain-plan, pr (babysit/ship), karina-systematic-debugging, 2-stage review subagents, PR verifier subagent, wiki page writer subagent. Safety hooks run on pwsh 7 / Windows PowerShell, cross-platform (Windows verified, macOS/Linux experimental); skills work on any OS (chain-plan needs Karina on Windows).",
+      "displayName": "Karina Harness — 계획·검증 코딩 하네스",
+      "description": "Korean-first agentic coding harness: plan, implement, chain-plan, pr (babysit/ship), karina-systematic-debugging, 2-stage review subagents, PR verifier subagent, wiki page writer subagent. Safety hooks run on pwsh 7 / Windows PowerShell, cross-platform (Windows verified, macOS/Linux experimental); skills work on any OS (chain-plan needs the Karina app on Windows).",
       "category": "workflow",
       "tags": [
         "korean",

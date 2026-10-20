@@ -38,7 +38,7 @@
 ## Windows 데스크톱 (WinUI · WPF · WinForms · gpui 등)
 
 - **하네스** — 레포에 FlaUI·WinAppDriver·Appium(Windows) UI 테스트가 있으면 그 러너와 셀렉터를 쓴다.
-- **없으면 karina-computer-use 가 있는지 먼저 본다** — Karina CLI 를 `KARINA_CLI_COMMAND` 환경변수 → PATH 의 `karina-cli`·`karina-dev-cli` → 설치본 전체경로 순으로 고르고, 그 CLI 의 `skills get karina-computer-use` 가 exit 0 이면 그 CLI 의 `computer` 명령으로 조작한다. 이 순서의 정본은 그 출력의 「Preconditions」 절이다. 명령·옵션·창 선택·좌표 환산도 그 출력을 따르고 여기에 옮겨 적지 않는다 — Karina 판이 바뀌면 사본이 낡는다.
+- **없으면 karina-computer-use 가 있는지 먼저 본다** — Karina CLI 를 `KARINA_CLI_COMMAND` 환경변수 → PATH 의 `karina-cli`·`karina-dev-cli` → 설치본 전체경로 순으로 고르고, 그 CLI 의 `skills get karina-computer-use` 가 exit 0 이면 그 CLI 의 `computer` 명령으로 조작한다. 이 순서의 정본은 그 출력의 「Preconditions」 절이다. 명령·옵션·창 선택·좌표 환산도 그 출력을 따르고 여기에 옮겨 적지 않는다 — Karina 앱 판이 바뀌면 사본이 낡는다.
   - 접근성 트리가 있는 앱은 요소를 이름·역할로 찾는다. 요소 번호는 실행마다 바뀌므로 지도·헬퍼에 적지 않고, 조작할 때마다 직전 트리에서 다시 얻는다.
   - 접근성 트리가 없는 창(gpui·게임 엔진·canvas 렌더 — 트리에 OS 창 틀만 잡힌다)은 직전 스크린샷에서 자리를 읽어 좌표로 조작한다. 지도에는 좌표값 대신 자리를 찾는 기준(창의 어느 영역에 있는 어떤 라벨·아이콘)을 적는다.
 - **karina-computer-use 가 없으면 .NET UI Automation 을 PowerShell 에서 쓴다** — `Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes` 는 Windows PowerShell 5.1 과 pwsh 7 양쪽에서 로드된다(2026-10-18 pwsh 7.6.7 실측). 헬퍼는 `helpers/uia.ps1` 처럼 **`helpers/` 에 둔다** — `.claude/` 아래 `scripts/*.ps1` 은 karina 하니스 hook 이 막는다. 파일은 UTF-8 BOM 으로 저장한다. **접근성 트리가 없는 창은 이 경로로 조작할 수 없다** — 그 기능의 경로를 지도에 `verified-unreachable` 로 적고 생성 보고에 사유(karina-computer-use 없음)를 싣는다.

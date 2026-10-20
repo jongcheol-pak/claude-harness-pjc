@@ -1,6 +1,6 @@
 # 압축 뒤 복원 (`karina:chain-plan`)
 
-> `../SKILL.md` 「Run·Task」가 이 파일을 연다 — 체인이 진행 중인데 체인 승인 답 원문·진행 중인 task id·dispatch id 중 하나라도 컨텍스트에 보이지 않을 때(컨텍스트 압축 뒤)만 읽는다. 이 세션은 레포 파일을 고치지 않으므로 체인 상태는 Karina 의 Run·Task 기록과 레포 밖 체인 결정 파일(`chain-decisions.md`「결정 기록」)에서만 되찾는다.
+> `../SKILL.md` 「Run·Task」가 이 파일을 연다 — 체인이 진행 중인데 체인 승인 답 원문·진행 중인 task id·dispatch id 중 하나라도 컨텍스트에 보이지 않을 때(컨텍스트 압축 뒤)만 읽는다. 이 세션은 레포 파일을 고치지 않으므로 체인 상태는 Karina 앱의 Run·Task 기록과 레포 밖 체인 결정 파일(`chain-decisions.md`「결정 기록」)에서만 되찾는다.
 
 ## 압축 뒤 복원
 

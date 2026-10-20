@@ -12,7 +12,7 @@
 
 ## 자리 대기
 
-`worker-start` 가 `duplicate_worker` 로 다른 세션 워커를 이름 댔을 때 띄운다. 주기(`--poll-ms`, 기본 1분)마다 `check --wait` 로 쉬고 `worker-list --json`(전 Run)에서 그 dispatch 행을 본다. 행이 없거나 Karina `holds_place_at` 기준으로 놓았으면 freed 다. 시한·멈춤 판정은 없다 — 사람이 탭을 놓아야 풀리는 상태도 있어서다. 이 모드의 message·freed 지시문은 `--place` 재기동을 말하고 error 는 두 모드가 같다.
+`worker-start` 가 `duplicate_worker` 로 다른 세션 워커를 이름 댔을 때 띄운다. 주기(`--poll-ms`, 기본 1분)마다 `check --wait` 로 쉬고 `worker-list --json`(전 Run)에서 그 dispatch 행을 본다. 행이 없거나 Karina 앱 `holds_place_at` 기준으로 놓았으면 freed 다. 시한·멈춤 판정은 없다 — 사람이 탭을 놓아야 풀리는 상태도 있어서다. 이 모드의 message·freed 지시문은 `--place` 재기동을 말하고 error 는 두 모드가 같다.
 
 ## 병렬 대기
 

@@ -299,7 +299,7 @@ Pop-Location
 # EOL1 (양성): 추적 파일이 LF 면 경고한다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-a'; tool_input = @{ file_path = $eolLf } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 추적 파일이 LF 면 경고 (EOL1)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
-# 이 hook 은 모든 레포에서 돈다 — 문구가 하네스 레포 문서를 가리키면 다른 레포에서 틀린 지시가 된다(2026-10-08 Karina).
+# 이 hook 은 모든 레포에서 돈다 — 문구가 하네스 레포 문서를 가리키면 다른 레포에서 틀린 지시가 된다(2026-10-08 Karina 앱).
 Assert-Case -Name "post-write: EOL 경고 문구에 하네스 레포 참조가 없다 (EOL1)" -R $r -ExpectExit 0 -ExpectNotContains 'AGENTS.md'
 
 # EOL2 (델타 음성 — CRLF): 규약대로 저장된 파일은 조용하다. 없으면 「항상 경고」로 바꿔도 green 이다.
@@ -347,7 +347,7 @@ $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolAttr
 Assert-Case -Name "post-write: .gitattributes eol=lf 가 autocrlf 를 이긴다 (EOL5)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
 
 # EOL6 (델타 음성 — 혼합 레포): 속성 없음 · 추적 CRLF 3 / LF 7(30%) → 규약이 없는 레포라 경고하지 않는다.
-#   autocrlf=true(Windows 기본값) 를 규약으로 읽던 구현이 Karina(CRLF 34%)에서 오경보 11회를 냈다(2026-10-08).
+#   autocrlf=true(Windows 기본값) 를 규약으로 읽던 구현이 Karina 앱(CRLF 34%)에서 오경보 11회를 냈다(2026-10-08).
 $eolMixRepo = Join-Path $work 'eol-mix-repo'; New-Item -ItemType Directory $eolMixRepo -Force | Out-Null
 Push-Location $eolMixRepo
 git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf true

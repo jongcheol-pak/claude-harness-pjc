@@ -6,7 +6,7 @@
 - stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌고 그 사이 HEAD 가 움직이지 않았다 — 첫 화면이 1장이다(화면 끝 40줄).
 - error      CLI 실행 실패 · JSON 아님 · `ok: false`(원문).
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
-             Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
+             Karina 앱 `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
 - freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 — message 와 같은 축약).
 - orphaned   대기를 띄운 셸·세션이 사라졌다(두 모드 공통 · 본문 없음).
 - deadline   (`--answer-by` 만) 시한까지 배치가 없었다(본문 없음).
@@ -122,7 +122,7 @@ def _parse(raw):
 def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=None, alive=None,
               answer_by=None, now=time.time):
     """대기 반복. call(args)->str 은 `<CLI> orchestration <args>` 의 stdout, lock.owned() 는 잠금 소유,
-    progress 는 진행 감지(Progress — 없으면 끈다), now 는 시계다 — 바깥에서 넣어 골든이 Karina·git 없이 갈래를 잰다.
+    progress 는 진행 감지(Progress — 없으면 끈다), now 는 시계다 — 바깥에서 넣어 골든이 Karina 앱·git 없이 갈래를 잰다.
     poll_ms 가 없으면 timeout_ms 와 같아 주기마다 화면을 읽는다. answer_by(epoch 초)가 있으면 화면을 읽지 않고
     그 시각에 deadline 으로 끝나며, 없으면 시한이 없다(근거는 rationale 「미답 시한」·「병렬 대기」).
     dispatch 는 하나(str) 또는 병렬 워커 여럿(list)이고, progress 도 하나 또는 같은 순서의 list 다."""
@@ -206,7 +206,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
                             streak=streak[d] + 1, parallel=parallel)
 
 
-# Karina `Worker::holds_place_at` 이 「자리를 쥐고 있다」로 보는 state — 그 밖이거나 놓았으면(released) 빈자리다.
+# Karina 앱 `Worker::holds_place_at` 이 「자리를 쥐고 있다」로 보는 state — 그 밖이거나 놓았으면(released) 빈자리다.
 HOLDING_STATES = ('starting', 'ready', 'start_unknown', 'stopping', 'stop_unknown')
 
 

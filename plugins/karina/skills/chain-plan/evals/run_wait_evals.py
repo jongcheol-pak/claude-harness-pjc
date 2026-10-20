@@ -1,6 +1,6 @@
 """chain-plan 대기 스크립트(scripts/wait-worker.py) 골든.
 
-Karina·모델을 부르지 않는다 — CLI 호출·잠금·시계·git·plan 읽기·상태 저장을 가짜로 주입해 갈래마다 첫 줄과
+Karina 앱·모델을 부르지 않는다 — CLI 호출·잠금·시계·git·plan 읽기·상태 저장을 가짜로 주입해 갈래마다 첫 줄과
 호출 인자를 잰다(상태 파일의 원자 쓰기·읽지 못함 케이스만 임시 폴더의 실제 파일을 쓴다).
 마지막 두 케이스만 실제 프로세스로 띄운다 — 중간 부모(cmd)를 죽이면 대기가 orphaned 로 스스로 끝나는지(Windows),
 백그라운드 stdout 이 cp949 일 때도 RESULT 줄이 살아 나오는지 본다.
@@ -747,7 +747,7 @@ def place_waits_then_freed():
 
 @case
 def place_holding_states_keep_waiting():
-    # Karina holds_place_at 의 「쥐고 있음」 조합 — 한 번 보고 놓지 않았으면 다음 주기의 메시지에서야 끝난다.
+    # Karina 앱 holds_place_at 의 「쥐고 있음」 조합 — 한 번 보고 놓지 않았으면 다음 주기의 메시지에서야 끝난다.
     combos = [(s, 'active') for s in ('starting', 'ready', 'start_unknown', 'stopping', 'stop_unknown')]
     combos += [('ready', t) for t in ('reclaimable', 'retained', 'release_pending', 'release_unknown')]
     for state, terminal in combos:

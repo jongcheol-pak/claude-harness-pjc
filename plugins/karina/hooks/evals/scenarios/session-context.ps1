@@ -846,7 +846,7 @@ if (Test-HookSelected @('session-context')) {
     # SC37e/SC37f: 분할 조각(`> 상위 문서:`)은 허브가 아니다 (v1.301.0 T3).
     #   §4 산문 분할이 만든 조각은 원본과 같은 타입이라 `repo_url` 을 그대로 물려받아 URL 축을
     #   통과하고, 열거가 하이픈 우선이라(`scwiki-2.md` < `scwiki.md`) 첫 매치에서 `break` 하는
-    #   구현은 **부모 대신 조각을 집는다**. 실측으로 Karina 조각이 「130커밋 미반영」을 냈다(실제 0).
+    #   구현은 **부모 대신 조각을 집는다**. 실측으로 Karina 앱 조각이 「130커밋 미반영」을 냈다(실제 0).
     $scFragPath = Join-Path $scHubDir 'scwiki-2.md'
     # 조각을 쓰는 지역 헬퍼 — 실제 조각과 같은 형상이다(부모의 frontmatter 를 물려받고
     #   `## 레포 정보` 도 함께 딸려 있다 — vault 실측: karina-2~5 넷 모두 그 절을 갖는다).

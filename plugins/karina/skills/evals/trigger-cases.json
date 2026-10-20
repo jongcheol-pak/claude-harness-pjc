@@ -580,7 +580,7 @@
       "skill": "karina:chain-plan",
       "expect": "no-trigger",
       "workspace": "no_plan",
-      "query": "Karina 오케스트레이션에서 워커 탭 하나 열어 sample.py 컴파일 확인만 시키고 결과 메시지를 받아와줘",
+      "query": "Karina 앱 오케스트레이션에서 워커 탭 하나 열어 sample.py 컴파일 확인만 시키고 결과 메시지를 받아와줘",
       "why": "계획 없이 **워커 조작만** — karina-orchestration 영역. 격리 모드는 그 스킬이 없어 「karina 어느 스킬도 발동하지 않음」을 잰다"
     },
     {

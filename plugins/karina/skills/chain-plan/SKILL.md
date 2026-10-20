@@ -1,23 +1,23 @@
 ---
 name: chain-plan
-description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순서대로 끝내는 코디네이터다 — 계획마다 사용자와 인터뷰를 먼저 끝내고, Karina 오케스트레이션 워커 탭(새 세션)을 계획마다 하나씩 띄워 karina:plan(중계 모드) → karina:implement 를 돌리며, 워커의 질문·승인 요청은 계획의 목표·제약으로 판정해 답하고 사용자 몫만 사용자에게 잇는다. 한국어(계획 체인/계획 여러 개를 차례로/plan 1·plan 2 순서대로/계획마다 새 세션에서/계획별로 따로 세션 돌려)와 영어(chain plans/run these plans in order/fresh session per plan)에 발동한다. 멈춘 체인을 계획 번호로 잇는 재개(「plan 3부터 다시」/resume the chain from plan 2)도 이 스킬이다 — task 번호 재개(「T3부터」)는 karina:implement 다. Karina 앱과 Karina 탭 안의 세션이 전제다. 발동하지 않는 것 — 계획이 하나뿐인 요청은 karina:plan 이다. 승인된 plan.md 를 이 세션에서 실행하라는 요청은 karina:implement 다. 계획 없이 워커를 띄우거나 메시지·task 만 다루는 오케스트레이션 조작은 karina-orchestration 이다.
+description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순서대로 끝내는 코디네이터다 — 계획마다 사용자와 인터뷰를 먼저 끝내고, Karina 앱 오케스트레이션 워커 탭(새 세션)을 계획마다 하나씩 띄워 karina:plan(중계 모드) → karina:implement 를 돌리며, 워커의 질문·승인 요청은 계획의 목표·제약으로 판정해 답하고 사용자 몫만 사용자에게 잇는다. 한국어(계획 체인/계획 여러 개를 차례로/plan 1·plan 2 순서대로/계획마다 새 세션에서/계획별로 따로 세션 돌려)와 영어(chain plans/run these plans in order/fresh session per plan)에 발동한다. 멈춘 체인을 계획 번호로 잇는 재개(「plan 3부터 다시」/resume the chain from plan 2)도 이 스킬이다 — task 번호 재개(「T3부터」)는 karina:implement 다. Karina 앱과 Karina 앱 탭 안의 세션이 전제다. 발동하지 않는 것 — 계획이 하나뿐인 요청은 karina:plan 이다. 승인된 plan.md 를 이 세션에서 실행하라는 요청은 karina:implement 다. 계획 없이 워커를 띄우거나 메시지·task 만 다루는 오케스트레이션 조작은 karina-orchestration 이다.
 ---
 
 # Chain Plan
 
-사용자가 준 계획 목록을 **계획마다 새 세션(Karina 워커 탭)에서** 계획 → 구현까지 순서대로 끝낸다.
+사용자가 준 계획 목록을 **계획마다 새 세션(Karina 앱 워커 탭)에서** 계획 → 구현까지 순서대로 끝낸다.
 
 ## 전제조건
 
 - **이 세션에서 체인 발동 전에 체인과 무관한 작업을 했으면 `references/fresh-session.md`「새 세션 권고」 를 먼저 따른다.**
 - **착수 전에 넷을 확인하고, 하나라도 아니면 사유를 말하고 멈춘다** — 워커 탭에서 막히면 그 화면은 아무도 보지 않는다.
   - ⓐ Karina 앱 실행 — `<CLI> orchestration run-current --json` 이 `app_not_running` 이 아니다(`ok: false` 면 `references/cli-errors.md`「오류 응답」 으로 판정)
-  - ⓑ 이 세션이 Karina 탭 — 환경변수 `KARINA_TAB_UUID` 가 있다(Run 의 코디네이터 핸들이 여기서 나온다)
-  - ⓒ Karina 의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.**
+  - ⓑ 이 세션이 Karina 앱 탭 — 환경변수 `KARINA_TAB_UUID` 가 있다(Run 의 코디네이터 핸들이 여기서 나온다)
+  - ⓒ Karina 앱의 agent 권한 모드(워커에 `--dangerously-skip-permissions` 자동 부여)가 켜져 있다 — **CLI 로 조회할 수 없어 착수 전 사용자에게 한 번 묻는다.**
   - ⓓ `python --version` 이 3.x 를 낸다 — 워커 대기 스크립트(「워커 루프」)가 쓴다
 - **`<CLI>` 는 ⓐ 확인 전에 한 번 해석해 spec 에 싣는다 — 판은 탭 환경변수 `KARINA_APP_ID` 로 가른다(`Karina` → `karina-cli.exe` · `Karina-Dev` → `karina-dev-cli.exe`, 그 밖·없음 → 멈춤)** — 배정문은 실행 파일 이름을 `karina-cli` 로 고정해 적어, dev 판 환경에서 그대로 치면 명령을 못 찾거나 다른 앱으로 간다.
   - 그 이름이 PATH 에 없으면 `references/cli-errors.md`「CLI 경로」 를 읽고 따른다.
-  - **명령 문법·플래그의 정본은 Karina 가이드(`<CLI> skills get karina-orchestration`)다** — 이 스킬은 명령을 쓰는 단계와 그 판정만 적고, 문법을 옮겨 적으면 CLI 가 바뀔 때 이쪽만 낡는다.
+  - **명령 문법·플래그의 정본은 Karina 앱 가이드(`<CLI> skills get karina-orchestration`)다** — 이 스킬은 명령을 쓰는 단계와 그 판정만 적고, 문법을 옮겨 적으면 CLI 가 바뀔 때 이쪽만 낡는다.
 
 ## 계획 목록
 
@@ -106,7 +106,7 @@ EOF
 python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --repo "<대상 레포 경로>" --label "Plan <N>/<총>"
 ```
 
-- **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
+- **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 앱 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
 - **`worker-start` 응답은 `references/cli-errors.md`「오류 응답」(`ok: false`)·「시작 이상 응답」 에 걸리지 않을 때만 대기로 간다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
 - **대기는 둘째 줄(`<skill>` 은 이 SKILL.md 의 폴더)을 Bash 도구 `run_in_background: true` 로 띄우고(샌드박스를 풀었으면 같은 플래그로) 무엇을 기다리는지(plan N/총 · dispatch) 한 줄 알린 뒤 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 해 첫 줄 `RESULT: <갈래> — <지시>` 의 지시를 따른다. RESULT 줄이 없으면 `references/wait-exit.md`「RESULT 없음」 을 따른다** — 이 세션이 주기적으로 깨어나 큰 컨텍스트를 다시 읽지 않도록 반복 확인과 멈춤 판정을 스크립트가 맡는다.
 - **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤 · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다(자리 대기 중이면 `--place` 대기 — `references/cli-errors.md`「오류 응답」). 사용자에게 넘긴 질문이 열려 있는 동안은 ②·③·⑤ 면 미답 시한 대기(`--answer-by` — `references/user-relay.md`「미답 기본값」)만 띄우고 ①·④ 면 띄우지 않는다** — 평소 대기는 답을 기다리는 워커 화면이 그대로라 멈춤으로 오판한다.
