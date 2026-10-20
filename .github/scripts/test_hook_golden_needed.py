@@ -38,10 +38,10 @@ def fake_git(diff_out=None, parents_out='p1 p2', fail=False):
     return run
 
 
-paths(1, ['plugins/pjc/.claude-plugin/plugin.json', 'README.md'], False, '버전 PR')
-paths(2, ['plugins/pjc/skills/implement/references/pr-flow.md'], True, 'skills md')
-paths(3, ['plugins/pjc/scripts/guard-bash.ps1'], True, 'hook 스크립트')
-paths(4, ['plugins/pjc/hooks/hooks.json'], True, 'hooks.json')
+paths(1, ['plugins/karina/.claude-plugin/plugin.json', 'README.md'], False, '버전 PR')
+paths(2, ['plugins/karina/skills/implement/references/pr-flow.md'], True, 'skills md')
+paths(3, ['plugins/karina/scripts/guard-bash.ps1'], True, 'hook 스크립트')
+paths(4, ['plugins/karina/hooks/hooks.json'], True, 'hooks.json')
 paths(5, ['docs/golden-runner.md'], True, 'golden-runner.md')
 paths(5, ['docs/harness-conventions.md'], True, 'harness-conventions.md')
 paths(6, ['.github/workflows/checks.yml'], True, '워크플로')
@@ -52,18 +52,18 @@ paths(8, [], True, '빈 목록')
 check(9, True, h.decide('push', fake_git(diff_out=''))[0], 'push 이벤트')
 check(10, True, h.decide('pull_request', fake_git(fail=True))[0], 'git 실패')
 
-paths(11, ['plugins\\pjc\\scripts\\guard-bash.ps1'], True, 'Windows 구분자')
-paths(11, ['./plugins/pjc/hooks/hooks.json'], True, '앞 ./')
+paths(11, ['plugins\\karina\\scripts\\guard-bash.ps1'], True, 'Windows 구분자')
+paths(11, ['./plugins/karina/hooks/hooks.json'], True, '앞 ./')
 paths(11, ['.\\README.md'], False, '앞 .\\ 입력 밖')
 
-check(12, True, h.decide('pull_request', fake_git(diff_out='plugins/pjc/scripts/x.ps1\0docs/x.ps1\0'))[0],
+check(12, True, h.decide('pull_request', fake_git(diff_out='plugins/karina/scripts/x.ps1\0docs/x.ps1\0'))[0],
       '입력 밖으로 옮김(삭제+추가)')
-check(12, False, h.decide('pull_request', fake_git(diff_out='README.md\0plugins/pjc/.claude-plugin/plugin.json\0'))[0],
+check(12, False, h.decide('pull_request', fake_git(diff_out='README.md\0plugins/karina/.claude-plugin/plugin.json\0'))[0],
       'NUL 구분 입력 밖')
 
-paths(13, ['"plugins/pjc/skills/\\355\\225\\234.md"'], True, '따옴표로 감싼 경로')
+paths(13, ['"plugins/karina/skills/\\355\\225\\234.md"'], True, '따옴표로 감싼 경로')
 paths(13, ['README.md\nhook_golden=false'], True, '줄바꿈이 든 경로')
-check(13, False, '\n' in h.needs_hook_golden(['plugins/pjc/hooks/a\nhook_golden=false'])[1], '사유에 줄바꿈 없음')
+check(13, False, '\n' in h.needs_hook_golden(['plugins/karina/hooks/a\nhook_golden=false'])[1], '사유에 줄바꿈 없음')
 
 print(f'{len(results)} cases')
 sys.exit(0 if all(results) else 1)

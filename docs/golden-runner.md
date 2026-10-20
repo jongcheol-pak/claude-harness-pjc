@@ -8,7 +8,7 @@
 
 ### 검사 대상
 
-격리 USERPROFILE에서 `plugins/pjc/hooks/evals/filter-spec.ps1` 의 `GoldenFilterNames` 에 오른 hook을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
+격리 USERPROFILE에서 `plugins/karina/hooks/evals/filter-spec.ps1` 의 `GoldenFilterNames` 에 오른 hook을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/karina/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
 
 ### 실행 모드 4종
 
@@ -26,9 +26,9 @@
 - **`-Filter`는 단일 문자열 콤마도 받는다**(`-Filter "a,b"`). v1.159.0 이전에는 배열 전달만 동작해 `"a,b"`가 통째로 한 이름이 되어 **매칭 0건 실패로만 드러났다**.
 - **러너 자신의 자식 pwsh는 회수가 아니라 예방으로 닫는다 — 둘은 다른 장치다** — 아래 불릿의 회수(`session-end-cleanup-lib.ps1`)는 대상 이름이 `more.com`·`find.exe` 둘뿐이라 **골든 러너가 띄우는 자식 pwsh를 걷지 않는다**. 그 자리는 **자식 워치독**으로 닫았다(v1.295.0) — 자식이 스스로 끝내는 구조다: 코디네이터가 `-ParentPid`를 넘기고, `run-scenario.ps1`이 그 `Process` 객체의 `.HasExited`를 `Invoke-Hook` 진입부와 시나리오 루프에서 확인해 부모가 죽었으면 throw한다(923회 16ms — `Get-Process -Id`는 같은 횟수에 약 1.4초라 쓰지 않는다). **코디네이터 쪽 `finally` 트리 킬은 보완이지 본체가 아니다** — `Stop-Process -Force`로 죽인 pwsh에서 `finally`는 실행되지 않는 것이 실측이고(2026-09-18), 도구 타임아웃·크래시가 바로 그 경로다. 진단은 `Get-CimInstance Win32_Process -Filter "Name='pwsh.exe'"`에서 CommandLine에 `run-scenario.ps1`을 가진 것을 센다 — ⚠ **세는 명령 자신이 그 리터럴을 CommandLine에 담아 함께 잡히므로 `$PID`를 제외한다**(2026-09-18에 그것을 「자식 1개 잔존」으로 오판했다).
 - **고아 콘솔 프로세스는 자동 회수된다 — 그래도 느려지면 그것부터 센다** — `session-end-cleanup-lib.ps1`이 **SessionStart·SessionEnd** 두 시점에서 부모가 죽은 `more.com`·`find.exe`를 걷는다(회수 사실은 화면에 안 뜨고 `hook-events` jsonl에만 쌓이므로 그 파일을 직접 읽어 확인한다). **자동 회수가 닫지 못하는 경우가 둘 있다** — ⓵ **커널에 갇힌 프로세스**: `Stop-Process`가 성공을 반환하고 `taskkill`이 *"실행 중인 인스턴스 없음"*이라 답하는데도 CPU가 계속 증가한다(핸들 0·스레드 1·커널 모드 93% — 2026-08-20 `find.exe` 12개 실측). 회수는 이를 `Unkillable`로 계상하고 마커를 남겨 재시도만 멈춘다. ⓶ **회수 시점 사이**: 세션이 크래시로 끝나면 SessionEnd가 발화하지 않아 다음 SessionStart까지 남는다. 진단은 `Get-CimInstance Win32_Process -Filter "Name='more.com' OR Name='find.exe'"`로 세고, 부모가 죽었는데 남아 있으면 위 ⓵ 상태다. **애초에 생기지 않게 하는 쪽이 본류다** — `find /` 류 전역 탐색은 Bash 도구 10분 캡 안에 끝나지 않아 실행하는 순간 고아가 확정되므로(2026-08-19 관측 — 캡의 동작은 판에 따라 갈릴 수 있어 대장 「Bash 도구 10분 캡 동작 서술 재검증」이 재측정한다) `warn-global-find` 경고가 실행 전에 알린다. 2026-08-19에는 이 장치가 없어 전체 실행이 37분에서 2시간 이상으로 늘었고(고아 `more.com` 54개, 각 누적 CPU 20,000초+) 「멈췄는가」를 반복 판정하는 데 시간을 썼다.
-- **격리 폴더는 부모 하나 아래 모이고, 중단이 남긴 것은 3일 뒤 걷힌다 (v1.184.0)** — 러너는 실행마다 두 곳을 만든다: **작업 폴더** `%LOCALAPPDATA%\pjc-hook-evals\run\<접미>`(시나리오 픽스처가 놓이는 곳으로, **반드시 임시 폴더 밖이어야 한다** — `guard-write`가 temp 하위를 무조건 통과시키므로 픽스처가 temp 안에 있으면 차단 시나리오가 통째로 무력화된다)와 **격리 홈** `%TEMP%\pjc-hook-evals\run\<접미>`. 같은 임시 쪽 부모에 `state`(`-Resume` 상태)와 `scratch`(temp 완화 경로 픽스처)가 나란히 있다.
+- **격리 폴더는 부모 하나 아래 모이고, 중단이 남긴 것은 3일 뒤 걷힌다 (v1.184.0)** — 러너는 실행마다 두 곳을 만든다: **작업 폴더** `%LOCALAPPDATA%\karina-hook-evals\run\<접미>`(시나리오 픽스처가 놓이는 곳으로, **반드시 임시 폴더 밖이어야 한다** — `guard-write`가 temp 하위를 무조건 통과시키므로 픽스처가 temp 안에 있으면 차단 시나리오가 통째로 무력화된다)와 **격리 홈** `%TEMP%\karina-hook-evals\run\<접미>`. 같은 임시 쪽 부모에 `state`(`-Resume` 상태)와 `scratch`(temp 완화 경로 픽스처)가 나란히 있다.
   - **정상 종료는 자기 폴더를 지운다**(순차 경로와 자식의 `finally`). 남는 것은 **kill·타임아웃으로 그 자리에 닿지 못한 실행분**이며, 걷는 코드가 없던 시절 2026-08-20 시점에 평면 폴더 80개가 쌓여 있었다.
-  - **코디네이터가 기동할 때 3일 경과분을 정리한다**(`eval-paths.ps1`의 `Invoke-EvalSweep`). 대상은 셋이다 — 현행 `run\` 하위 · **부모 폴더 도입 이전에 최상위에 흩어져 만들어지던 평면 이름**(`pjc-hook-evals-<접미>`, 구 `-Resume` 상태 루트 `pjc-hook-evals-state` 포함) · 단수형 `pjc-hook-eval-scratch`. **v1.184.0의 첫 실행이 지운 59개는 대부분 이 평면 축**이었으므로, 오래 안 돌린 기계에서 큰 숫자가 뜨는 것은 정상이다. 1건 이상이면 `[SWEEP] …` 한 줄이 뜨고 0건이면 무출력이다. **`state`·`scratch`는 대상이 아니다** — 실행 간 재사용되어 수명이 다르다. 자식은 정리하지 않는다(자식들이 동시에 훑으면 서로의 진행 중 폴더를 건드린다).
+  - **코디네이터가 기동할 때 3일 경과분을 정리한다**(`eval-paths.ps1`의 `Invoke-EvalSweep`). 대상은 셋이다 — 현행 `run\` 하위 · **부모 폴더 도입 이전에 최상위에 흩어져 만들어지던 평면 이름**(`karina-hook-evals-<접미>`, 구 `-Resume` 상태 루트 `karina-hook-evals-state` 포함) · 단수형 `karina-hook-eval-scratch`. **v1.184.0의 첫 실행이 지운 59개는 대부분 이 평면 축**이었으므로, 오래 안 돌린 기계에서 큰 숫자가 뜨는 것은 정상이다. 1건 이상이면 `[SWEEP] …` 한 줄이 뜨고 0건이면 무출력이다. **`state`·`scratch`는 대상이 아니다** — 실행 간 재사용되어 수명이 다르다. 자식은 정리하지 않는다(자식들이 동시에 훑으면 서로의 진행 중 폴더를 건드린다).
   - **왜 3일인가 — 잔여 폴더 이름의 그룹명이 "어느 그룹이 죽었는지"를 알려주는 진단 창이기 때문이다.** 즉시 지우면 그 정보가 사라지고, 동시 실행 중인 다른 러너의 픽스처를 지우는 사고 위험도 생긴다. 사흘보다 오래 보려면 그 전에 복사해 둘 것.
 - **러너가 자기 소요·규모를 마지막 줄에 찍는다** — `[TIMING] mode=<parallel|sequential|resume|filter> cases=<N> sec=<N>`. **위 표의 실측값은 이 줄에서 옮긴다**(`guard-stale-docs` 의 「골든 실측이 낡았습니다」 고지가 가리키는 자리가 여기다). ⚠ **`mode` 가 `filter`·`resume` 면 전체 실측이 아니라 소요 표에 싣지 않는다** — `docs/harness-conventions.md`「골든 부분 실행의 판정 자격」의 「최종 판정은 무인자 전체」와 같은 구분이고, 그래서 값 자체에 각인한다. 순차·병렬 두 경로가 같은 형식으로 찍으므로 등가 대조에서 `cases` 가 갈리면 그 자체가 신호다. 병렬 실행은 `결과:` 줄 바로 앞에 `[TIMING-GROUPS]` 로 그룹별 소요를 낸다 — `$groupCostSec` 을 다시 맞출 때 이 줄을 옮긴다.
 - **소요 시간을 완료 판정에 쓰지 말 것** — 같은 스위트가 **19분 6초 ↔ 27분 14초로 실측**된 만큼 wall-clock 편차가 크다. 완료는 `결과: N/N OK` 라인과 exit 0으로만 판정한다. 같은 이유로 **성능 비교는 같은 세션에서 두 모드를 연속 측정**해야 한다(교차 세션 비교는 근거가 못 된다).
@@ -44,7 +44,7 @@
 **전경에서 그냥 돌린다.**
 
 ```
-pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/karina/hooks/evals/run-hook-evals.ps1
 ```
 
 - **v1.225.0에서 분리 실행·`Monitor` 폴링 절차가 사라졌다** — 무상태 그룹(313케이스)이 한 자식에서 순차로 돌아 전체 wall-clock을 혼자 결정하던 것을 `stateless-<N>` 8샤드로 나누고 동시 상한을 논리 코어의 절반으로 올렸다. 그때 실측은 **450초**(919케이스, 2026-09-13)였으나 **케이스가 늘어 10분을 넘기는 실행이 이어진다**(684초 — 1059케이스, 2026-10-14). 그래도 전경으로 돌린다 — Claude Code 2.1.299 에서 timeout 600000 으로 띄운 전경 실행이 그 시한에 백그라운드로 넘어가 완주했다(완료 알림 · 2026-10-14 관측 1회).

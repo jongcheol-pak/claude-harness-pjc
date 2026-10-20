@@ -1,0 +1,112 @@
+# 작업 브랜치와 회차 PR
+
+> `karina:implement` 가 **루프 진입 전 1회**(「브랜치」)와 **회차 끝 1회**(「PR 열기」) 읽는다. 시작과 끝에만 쓰이는 절차라 `../SKILL.md` 본문에 두지 않는다. `karina:karina-systematic-debugging` 의 직접 수정 경로는 첫 편집 전과 4-D 뒤에 「디버깅 단독 경로」 로 읽는다.
+> 출처는 Cursor pstack 의 opening-a-pr 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`. 다른 playbook 이 끝날 때마다 PR 을 연다(*"Invoked at the end of every other playbook."*)는 규칙을 karina 의 회차 끝으로 옮겼다.
+
+## 적용 판정
+
+**셋이 모두 참일 때만 아래 두 절을 따른다. 하나라도 거짓이면 브랜치 전환·push·PR 을 하지 않고, 최종 보고의 `PR` 줄에 `건너뜀 — <사유>` 로 적는다.** 판정은 루프 진입 전 1회다.
+
+- **원격이 GitHub 다** — `git remote get-url origin` 이 성공하고 `github.com` 을 담는다. 원격이 없거나 다른 포지면 PR 을 열 곳이 없다.
+- **`gh` 가 인증돼 있다** — `gh auth status` 가 exit 0 이다. 인증정보를 새로 받는 것은 이 루프 밖이다(`../SKILL.md`「멈추는 넷」 3번).
+- **중계 모드면 spec 에 `PR 모드: 켬` 줄이 있다** — `karina:chain-plan` 워커는 체인이 로컬 병합으로 회차를 잇는다. 그 줄이 없는 spec 에서 브랜치를 바꾸면 코디네이터의 병합이 엉뚱한 브랜치를 본다. 중계 모드가 아니면 이 조건은 참으로 친다. **그 줄의 `base <브랜치>` 가 아래 「브랜치」·「PR 열기」 의 기본 브랜치 자리를 대신한다** — 체인 브랜치가 기본 브랜치가 아닐 수 있고, PR 은 체인이 병합해 온 그 브랜치로 들어가야 한다. 줄 끝이 `· 스택` 이면 base 는 앞 계획 PR 브랜치이고 그 값과 마무리는 `../../chain-plan/references/stack-mode.md`「워커」 가 정한다.
+
+## 브랜치
+
+**루프 진입 전 1회.** 기본 브랜치를 먼저 정한다 — `git symbolic-ref --short refs/remotes/origin/HEAD` 의 `origin/` 뒤가 그 이름이다. 실패하면(`git remote add` 로 붙인 레포에는 `origin/HEAD` 가 없다) `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` 을 쓰고, 그것도 실패하면 이 절과 「PR 열기」 를 건너뛰고 사유를 보고한다.
+
+| 지금 브랜치 | 할 일 |
+|---|---|
+| 기본 브랜치 | `git fetch origin <기본>` → `git switch -c karina/<슬러그>` → `git rebase origin/<기본>`(미push 자기 브랜치 — 글로벌 지침 예외 3 · **중계 모드(spec `PR 모드: 켬`)와 체인 끝 PR(`../../chain-plan/references/pr-mode.md`「P 체인 끝 PR」)은 rebase 없이** — 체인 브랜치는 merge commit 을 품어 rebase 가 그것을 편다) → `git branch -f <기본> origin/<기본>` 으로 로컬 기본 브랜치를 원격에 맞춘다. rebase 가 커밋을 옮겼으면(`git rev-parse HEAD` 가 switch 직후와 다르면) `plan.md` 의 `> BASE:` 를 rebase 뒤 HEAD 로 고친다(아래 「merge 된 브랜치에서 시작할 때」 4번과 같은 처리)(중계 PR 모드의 화면 줄 task 직렬 예외 — `../../chain-plan/references/pr-mode.md`「워커」) |
+| `karina/*` 이고 그 PR 이 MERGED | 기본 브랜치에서 시작한 것으로 본다 — 아래 「merge 된 브랜치에서 시작할 때」 |
+| 그 밖(다른 기능 브랜치 · PR 이 OPEN·CLOSED 이거나 없는 `karina/*`) | 그대로 둔다. 회차 끝 PR 은 이 브랜치에서 연다 |
+
+- **`<슬러그>` 는 이 회차가 정해 `plan.md` `## Next Steps` 에 적는 영문 kebab-case 이름이다** — 예: 회차 「PR 흐름 정리」면 `karina/pr-flow`. 한글 제목의 번역은 실행마다 갈려 재개 세션이 다른 브랜치를 만들므로, 처음 정한 이름을 `plan.md` 에 적고 재개 세션은 그것을 쓴다. 같은 이름의 로컬·원격 브랜치가 있으면 `-2`·`-3` 을 붙인다. **`karina/` 접두가 필요한 이유**: 차단 hook 이 force-with-lease 를 `karina/<이름>` 을 명시한 push 에만 허용한다(`../../../scripts/rules/destructive-rationale.md`「자기 `karina/` 브랜치의 force-with-lease」).
+- **로컬 기본 브랜치를 원격에 맞추는 이유** — 앞서 쌓인 미push 커밋이 로컬 기본 브랜치에 남으면, PR 이 squash 로 들어간 뒤 로컬 기본 브랜치가 원격과 갈라진다. 그 커밋들은 `karina/` 브랜치에 그대로 있으므로 잃는 것이 없다. **rebase 를 먼저 하는 이유** — 원격 기본 브랜치가 로컬보다 앞서 있으면 새 브랜치가 낡은 로컬 HEAD 위에서 시작해 task 검증이 원격 기준선 밖에서 돌고, 원격의 변경과 PR 의 변경이 처음 만나는 자리가 squash merge 뒤가 된다(*"Rebase onto clean trunk first so every check measures against the real baseline."*). **rebase 가 충돌하면 `git rebase --abort`, 작업 트리가 깨끗하지 않아 시작 전에 거부되면 abort 없이 — 어느 쪽이든 rebase 없이 `branch -f` 만 해 지금까지의 순서로 돌아간 뒤 그 사실을 보고에 싣는다. 이때 `> BASE:` 는 그대로다.** **원격보다 앞서 있던 커밋 수를 최종 보고에 싣고**, 이 회차 밖 커밋이 섞였으면 PR 본문 `## 범위` 에 그 목록을 적는다.
+- **`git branch -f` 가 거부되면 로컬 기본 브랜치를 그대로 두고 그 사실을 보고에 싣고, 멈추지 않는다** — 기본 브랜치가 다른 worktree 에 체크아웃돼 있으면 거부된다. 이 회차 작업은 `karina/` 브랜치에서 그대로 이어지고, 갈라짐은 merge 뒤 `git pull --ff-only` 실패로 드러나 사용자가 그때 맞춘다.
+- **체크아웃의 HEAD 가 바뀌었다는 사실을 보고에 싣는다** — 병행 세션이 같은 체크아웃을 쓰면 그쪽 커밋도 이 브랜치로 온다.
+- **worktree 를 새로 만들지 않고 지금 체크아웃의 브랜치를 바꾼다** — 새 worktree 에는 무시 대상 파일(추적하지 않는 `plan.md`·`.env`·빌드 캐시)이 옮겨지지 않고, hook 의 plan 게이트가 다른 폴더의 `plan.md` 를 보게 된다(실측 서술은 `../../chain-plan/references/parallel.md`「병렬 그룹」·「띄우기」). 한 세션이 task 를 차례로 도는 직렬 작업이라 격리가 필요 없다 — 동시에 여러 체크아웃이 필요한 체인 병렬 그룹만 worktree 를 쓴다.
+
+### merge 된 브랜치에서 시작할 때
+
+앞 회차 PR 이 GitHub 화면에서 merge 됐거나 ship 이 기본 브랜치로 돌아가지 못했으면, 이 회차의 출발점(`> BASE:`)이 이미 squash 된 옛 브랜치 위에 있다. 그대로 쓰면 새 PR diff 에 merge 된 변경이 다시 섞인다.
+
+1. `gh pr view <옛 브랜치> --json state,headRefOid` 로 옛 PR head 를 얻는다.
+2. `git fetch origin <기본>` → `git switch -c karina/<슬러그> origin/<기본>`.
+3. `git rev-list --count <headRefOid>..<옛 브랜치>` 가 0 이 아니면 `git cherry-pick <headRefOid>..<옛 브랜치>` 로 옛 PR head 뒤의 커밋을 옮긴다 — 0 이면 옮길 커밋이 없어 건너뛴다(빈 범위의 cherry-pick 은 아래 충돌 경로로 떨어진다).
+4. `plan.md` 의 `> BASE:` 를 새 브랜치의 지금 HEAD(`git rev-parse --short HEAD`)로 고친다.
+
+- **cherry-pick 이 충돌하면 `git cherry-pick --abort` → `git switch <옛 브랜치>` → 새 브랜치를 지우고, 이 회차의 브랜치 전환과 PR 을 건너뛴다** — 사유를 보고에 싣고 루프는 계속한다. 충돌 해결은 이 회차의 승인 범위 밖이다.
+
+## PR 열기
+
+**회차 끝 1회 — `../SKILL.md` 완료 순서의 plan 파일 커밋 뒤, 최종 보고 전이다.** 실패하면 그 오류를 최종 보고에 싣고 멈추지 않는다.
+
+1. **push 한다 — `git push -u origin <브랜치>`.** refspec 을 생략하지 않는다 — 브랜치를 명시하지 않은 push 는 나중에 force-with-lease 가 필요할 때 차단 hook 에 막힌다.
+2. **같은 브랜치의 OPEN PR 이 있으면 push 로 끝낸다** — `gh pr view <브랜치> --json state,url` 이 `OPEN` 이면 그 URL 을 보고한다.
+3. **없으면 PR 을 연다** — 본문을 Write 로 스크래치 파일에 쓰고 `gh pr create --base <기본> --head <브랜치> --title "<제목>" --body-file <파일>`. `--draft` 를 붙이지 않는다(*"Open every PR ready, never as a draft."*).
+4. **다시 읽어 확인한다** — `gh pr view <브랜치> --json url,isDraft`. `isDraft` 가 true 면 `gh pr ready <번호>`. 보고하는 URL 은 이 출력의 것이다.
+
+- **제목은 `{유형}: {회차 제목}` 이다** — 유형은 `../SKILL.md`「커밋」 의 다섯이다. squash 하면 이 제목이 기본 브랜치의 커밋 제목이 되므로 커밋 메시지 형식을 따른다.
+- **본문은 리뷰어가 1분 안에 읽는 요약이다** — 절은 이 순서이고 쓸 것이 없는 절은 뺀다. 전체 40줄 이하.
+  - `## 왜` — 문제와 접근 1~3문장. SHA·브랜치 이력·「main 기준」 같은 머리말은 넣지 않는다(*"No SHAs, rebase genealogy, or "based on main" preamble."*)
+  - `## 바뀐 것` — 1~3개 불릿. 변경을 실제로 나르는 심볼·경로만 이름으로 쓴다. 이름을 바꾸거나 대상을 옮겼으면 옛 이름과 새 이름을 함께 쓴다(*"Name both sides of a rename or retarget."*)
+  - `## 범위` — 항상 쓴다. 다루는 것과 일부러 뺀 것 1~3개(회차 밖 커밋이 섞였으면 그 목록). 심볼·경로·파일별 서술은 넣지 않는다
+  - `## 트레이드오프` — 리뷰어가 물을 법한 기각안만
+  - `## 영향 범위` — 무엇을 건드리고 왜 안전하거나 위험한가 1~2문장. 기본 브랜치가 빨간 상태면 그대로 둘 때의 비용을 적는다
+  - `## 검증` — 실제로 돌린 명령과 결과 1~3개. 성능은 대표 지표 하나를 단위와 함께 `전 <중앙값> (<범위>) → 후 <중앙값> (<범위>)` 로 적고 반복 횟수·방법론 서술은 싣지 않는다 — 측정 규율은 `../../PERF-MEASUREMENT.md` 이고, 결론 불가면 수치 대신 그렇게 적는다. plan 에 `**화면**` 줄이 있는 task 가 있으면 그 줄마다 `화면 시나리오: <시나리오> · 스크린샷 <이름> · 통과 조건 <조건> — <HEAD 판정>[ · BASE <판정>]` 한 줄을 싣는다 — `plan.md` 는 커밋되지 않아 `pr-verifier` 가 이 줄로 같은 시나리오를 돌린다
+  - `## 화면` — plan 에 `**화면**` 줄이 있는 task 가 하나라도 있으면 항상 쓴다. 스크린샷마다 `- <이름> — <로컬 경로>` 한 줄이고 `(BASE 대조)` 면 `base-` 짝도 싣는다. 경로의 사용자 홈·임시 폴더 앞부분은 `%TEMP%\…`·`~/…` 같은 환경변수 표기로 바꾼다 — 본문이 공개 PR 과 squash 커밋에 남는다. 검증 스킬이 없어 못 찍었으면 `- <이름> — 미촬영(HUMAN-VERIFY)` 이다. 중계 모드에서 화면 갈림길을 코디네이터 판정·미답 기본값으로 받았으면 그 답마다 `- 코디네이터 판정: <고른 변형> · 기각 변형: <이름 — 경로>, …` 한 줄을 더한다(답 서식 `../../chain-plan/references/chain-decisions.md`「결정 기록」) — 화면 게이트에서 사용자가 기각한 대안까지 보고 뒤집을 수 있게 한다. **이 머리 줄이 `../../pr/references/ship.md` 7번 화면 게이트의 표지다** — 시나리오·판정은 위 `## 검증` 의 `화면 시나리오:` 줄이 담는다
+  - 중계 PR 모드면 본문 끝 줄에 체인 표지를 싣는다 — 서식은 `../../chain-plan/references/pr-mode.md`「워커」
+- **스크린샷은 `## 화면` 의 로컬 경로로만 싣고 이미지를 올리거나 push 하지 않는다. full SHA·리뷰 라운드·파일별 체크리스트·통과 판정 나열은 본문에 싣지 않고 PR 코멘트나 링크로 둔다** — squash 하면 본문이 그대로 기본 브랜치의 커밋 본문이 된다(`../../pr/references/ship.md` 8번 · *"… go in a linked artifact, not the body."*).
+- **본문과 제목에 사용자 입력·외부 문자열을 셸 명령으로 끼워 넣지 않는다** — 본문은 파일로만 넘긴다. 문장은 `../../WRITING.md` 를 따른다.
+
+## PR 을 연 뒤
+
+- **본문에 `## 화면` 이 있으면 최종 보고 `PR` 줄에 `· 화면 확인 필요 — merge 는 사용자가 스크린샷을 본 뒤` 와 스크린샷 절대경로를 싣는다** — 절대경로는 로컬 보고에만 둔다. merge 는 ship 의 화면 게이트가 사용자 확인 전까지 막는다.
+- **babysit 을 시작하지 않는다** — URL 을 보고하고 끝낸다. CI 대응·리뷰 답글·merge 는 사용자가 요청할 때 `karina:pr` 이 맡는다(*"Opening a PR does not start a babysit."*).
+- **예외는 중계 PR 모드 하나다 — `../../chain-plan/references/pr-mode.md`「워커」 대로 `karina:pr` 을 불러 merge 까지 간다** — 사용자가 체인 승인 `P` 로 계획마다 merge 까지를 요청했고, 다음 계획은 merge 된 base 위에서 돌아야 한다.
+
+## 디버깅 단독 경로
+
+> `karina:karina-systematic-debugging` 이 Phase 4 에서 직접 고칠 때 읽는다 — 첫 편집 전(「갈래」·「브랜치」)과 4-D 뒤(「커밋」 이하). `karina:implement` 루프 안에서 그 스킬 절차를 읽는 경우는 대상이 아니다 — 루프가 task 커밋과 회차 PR 을 맡는다. 출처는 pstack bug-fix 6단계 *"Run **Opening a PR**."*(위 머리말과 같은 고정 커밋의 `playbooks/bug-fix.md`)다.
+
+### 갈래
+
+**첫 편집 전 1회 위에서부터 가른다.** 「적용 판정」 셋은 그대로 쓰고(중계 조건은 참), 거짓이면 브랜치를 바꾸지 않고 「커밋」 만 한 뒤 보고에 `PR: 건너뜀 — <사유>` 를 싣는다.
+
+1. **진행 중 `plan.md`(미완료 `[ ]`/`[/]` task)가 있고 지금 브랜치가 기본 브랜치가 아니면 브랜치를 바꾸지 않는다** — 「커밋」 만 하고 PR 은 열지 않으며, 보고에 `PR: 건너뜀 — 진행 중 회차「<plan 제목>」 의 PR 에 실린다` 를 싣는다. 그 회차 PR 은 `karina:implement` 가 같은 브랜치에서 연다. 따로 열면 회차 작업이 섞인 브랜치에서 `수정:` PR 이 열린다. 기본 브랜치면(구현 진입 전 plan) 2번 이하로 간다 — 기본 브랜치에 남긴 커밋은 나중에 회차 PR 에 섞인다.
+2. **`karina:pr` 이 넘긴 경로면(세션에 그 PR 번호가 있다) `gh pr view <번호> --json headRefName` 으로 head 브랜치를 얻는다** — 지금 브랜치가 그것이면 3번으로 간다. 아니면 `git status --porcelain` 이 비었을 때만 `git switch <headRefName>` 뒤 3번으로 가고, 비어 있지 않으면 커밋·PR 없이 고친 내용과 그 사실을 보고한다. babysit 은 PR 브랜치로 옮기지 않아, 옮기지 않으면 아래 표 첫 행이 별도 PR 을 연다.
+3. **그 밖은 위 「브랜치」 표를 따른다** — `<슬러그>` 는 `fix-<영문 kebab>`(예: `karina/fix-null-config`)이고 `plan.md` 에 적지 않는다. 재개 세션은 지금 브랜치를 쓴다 — PR 이 MERGED 가 아닌 `karina/*` 라 표의 「그 밖」 행이다. 지금 브랜치에 OPEN PR 이 있으면 그 PR 로 간다(「PR 열기」 2번).
+
+- **「merge 된 브랜치에서 시작할 때」 4번(`> BASE:` 고침)은 건너뛰고 새 HEAD 를 보고에 싣는다** — 디버깅에는 자기 `plan.md` 가 없고, 있는 plan 은 남의 회차다.
+- **어느 브랜치에서 출발했는지 기억해 둔다** — 「돌아가기」 가 쓴다.
+
+### 커밋
+
+**4-D 뒤 1회 — 재실행이 통과했든 `미검증` 이든 한다.** RED 를 본 시점에 따로 커밋하지 않는다 — Halt·Phase 4.5 로 끝나면 빨간 커밋만 브랜치에 남는다.
+
+1. **회귀 테스트 파일을 먼저 커밋한다** — 제목 `수정: <증상> — 재현 테스트`. 테스트만 담은 이 커밋은 BASE 위에서 실패하므로, 수정보다 먼저 들어간 실패 재현이 이력에 남는다.
+2. **수정 파일을 커밋한다** — 제목 `수정: <증상> — <원인 한 구>`. 본문에 근본 원인 · RED·GREEN·원래 재현의 판정 줄 · 4-B 에서 지운 주석의 이유를 적는다.
+
+- **한 커밋으로 끝내는 경우는 셋이다** — 빌드 실패 버그(RED 예외) · 자동 신호가 없는 재현(테스트 파일이 없다) · 회귀 테스트와 수정이 같은 파일. 제목은 2번 형식이고, 본문에 한 커밋인 사유를 적는다.
+- **새로 만든 파일은 `git add -- <경로>` 를 먼저 한다** — 추적하지 않는 파일에 `git commit -- <경로>` 를 쓰면 `pathspec … did not match any file(s) known to git` 으로 실패한다(실측).
+- **커밋은 `git commit -- <경로…>` 로 고친 파일만 담는다** — 작업 트리의 다른 변경을 함께 커밋하지 않는다.
+- **메시지는 Bash 면 heredoc(`git commit -m "$(cat <<'MSG'` … `MSG` `)"`), PowerShell 이면 작은따옴표 문자열로 넘긴다** — 판정 줄의 백틱·`$` 가 `-m "…"` 에서 치환돼 사라진다.
+- **제목에 `T<N>` 을 넣지 않는다** — `guard-bash` 는 `{유형}: T<N> — …` 제목을 task 완료 커밋으로 읽어 plan 체크박스를 검사한다. 커밋 메시지 형식은 그 레포 규약이 우선한다.
+- **시크릿 경고가 하나라도 뜨면 커밋하지 않고, PR 도 건너뛰고(`PR: 건너뜀 — 시크릿 경고`), 브랜치를 그대로 둔 채 보고한다** — 커밋 안 된 변경을 들고 브랜치를 옮기면 그 변경이 출발 브랜치로 따라간다.
+
+### PR
+
+**「갈래」 에서 PR 을 건너뛰지 않았으면 위 「PR 열기」 1~4 를 그대로 따른다** — 지금 브랜치에 OPEN PR 이 있으면 push 로 끝난다(2번).
+
+- **제목은 `수정: <증상 요약>` 이다.**
+- **본문 `## 검증` 에 RED·GREEN·원래 재현의 판정 요지를 싣는다 — 4-D 가 `미검증` 이면 그 줄을 `미검증 — <사유>` 로 쓴다** — merge 는 `pr-verifier` 와 사용자가 막는다. 미검증을 숨기면 그 판단이 설 자리가 없다.
+- **연 뒤에는 「PR 을 연 뒤」 그대로다** — babysit 을 시작하지 않는다.
+
+### 돌아가기
+
+**「갈래」 3번에서 `karina/fix-*` 를 새로 만들었으면, PR 을 연 뒤 또는 건너뛴 뒤 돌아간다 — 기본 브랜치에서 출발했으면 그 브랜치로, merge 된 `karina/*` 에서 출발했으면 기본 브랜치로.** Halt·`karina:plan` 넘김·Phase 4.5 보고로 끝나 커밋이 없을 때도 같다 — 단 `git status --porcelain` 이 고친 파일·회귀 테스트 파일을 담으면 돌아가지 않는다. 시크릿 경고로 커밋하지 못했을 때도 돌아가지 않는다 — 커밋 안 된 변경을 들고 옮기면 그 변경이 출발 브랜치로 따라간다.
+
+- **돌아가지 않으면 다음 회차 커밋이 버그 수정 PR 로 간다** — 세션이 `karina/fix-*` 에 남으면 다음 `karina:implement` 회차가 「브랜치」 표의 「그 밖」 행으로 그 브랜치를 쓰고, 「PR 열기」 2번으로 회차 커밋을 그 PR 에 push 한다. merge 된 옛 브랜치로 돌아가면 다음 회차가 다시 MERGED 행을 탈 뿐이라 기본 브랜치로 간다.
+- **`git switch` 가 실패하면 그대로 두고 보고한다** — 작업 트리 충돌로 막힌 전환을 억지로 하면 사용자 변경을 잃는다.
+- **보고에 `수정 브랜치 karina/fix-<슬러그> — 확인하려면 그 브랜치로 switch` 를 싣는다** — 4-D 가 수동 확인 대기(`미검증`)면 사용자가 수정 없는 브랜치에서 확인하게 된다.

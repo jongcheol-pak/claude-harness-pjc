@@ -1,0 +1,132 @@
+---
+name: implement
+description: 승인된 plan.md의 모든 task를 자율로 실행한다 — T1부터 마지막 task까지 사용자에게 묻지 않고 진행하고, 전부 끝난 뒤 한 번 보고한다. 승인된 plan.md가 이미 있을 때(또는 사용자가 방금 제시된 plan을 승인할 때)만 발동하며, 한국어(구현/구현해/이대로 진행/진행해/계속/T3부터 계속/실행)와 영어(implement/proceed/go/continue)에 반응한다. "T6부터 계속"은 T6 하나가 아니라 T6부터 마지막 task까지와 최종 검증을 뜻한다. 재개는 task 번호(T N)로 잇는 것만 이 스킬이다 — 「plan 2부터」처럼 계획 번호로 멈춘 체인을 잇는 요청은 karina:chain-plan 이다. 「승인된 plan.md」는 `## Goal` 아래 `> 승인:` 줄에 날짜가 적힌 것이고, 그 줄이 자리표시 그대로인 초안 plan.md 의 「계속」은 karina:plan 이 이어 간다. plan이 아직 없는데 여러 파일에 걸친 변경을 요청받았다면 이 스킬이 아니라 karina:plan이 먼저다 — 그쪽이 계획을 쓰고 이 스킬이 실행한다. 계획 없이 끝나는 한 줄 편집·오타·설정값 변경에는 발동하지 않는다(직접 편집한다).
+---
+
+# Implement
+
+승인된 `plan.md`를 끝까지 실행한다. **완료는 모든 task가 끝났을 때뿐이다.**
+
+## 진행 중 사용자와의 소통
+
+- **자율 루프 안에서는 turn을 끝내는 업데이트를 내지 않는다 — 상태 메모는 다음 도구 호출과 같은 메시지에 싣는다** — 도구 호출 없는 메시지가 turn을 끝내 루프를 세운다. 남길 기록은 `plan.md`에 쓰고, 사용자가 결정할 것은 최종 보고에 모은다.
+- **task를 시작할 때 `T<N>/T<M> 시작 — <무엇을>` 줄을 낸다**(예: `T13/T20 시작`) — `<M>`은 `plan.md`의 **마지막 task 번호**다 — 남은 수로 세면 재개 시 `T13/T8`처럼 분자가 분모를 넘는다. 그 줄도 같은 turn의 다음 도구 호출과 한 묶음이어야 한다. 줄만 내고 turn을 끝내면 거기서 루프가 멈춘다.
+
+- **루프 진입 전 1회 `references/loop-stop-patterns.md` 를 Read 한다** — 가이드 원문 밖의 정지 형태 셋과 그 판정이 거기 있다. plan에 미완 task가 남은 채 turn이 끝나면 `loop-continue` hook이 남은 ID를 적어 계속을 주입한다 — 그 안내가 오면 이어서 진행하고, 규약이 지목한 정지면 막힌 이유를 한 줄로 말한다.
+
+가이드 원문(`platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5-5` 「무인 에이전트 실행」):
+
+> A standing instruction from the user, the person you are working for. It is about how your turns end. A message with no tool call in it ends your turn, and the work stops there until you are asked to continue. The user has seen you end turns in four ways while work they asked for was still owed, and does not want any of them. One: a long summary of what was done that closes by announcing the next step and has no tool call, so the next thing never starts. Two: an offer to carry on with something unless the user would prefer otherwise, which stops to wait for an answer the user was not going to give. Three: a list of decisions for the user when, by your own account, none of them blocks the rest of the work. Four: deciding that this is a good place to report, because the turn has been long or a milestone is done. Status notes are welcome, and so are your recommendations on open decisions, but put them in the same message as your next tool call and carry on with whatever does not depend on the user's answer. If you notice yourself inviting the user to redirect you or offering to wait, delete it and do the next thing. The stops the user does want are the ones where nothing can move without them, or where the thing blocking you is deliberately protected from you. This does not override the need for confirmation on risky or destructive actions.
+
+- **이 단락이 말하는 「원하는 정지」(the stops the user does want)는 아래 「멈추는 넷」과 「목록 밖의 넷」이다** — 승인된 `plan.md`가 전체 작업의 위임장이라 루프 안은 이 단락이 전제한 무인 실행이고, 그 여덟 밖에서 turn을 끝내면 이 단락이 든 넷 중 하나다.
+- **사용자가 루프 도중 멈추라고 하면 여덟 정지와 별개로 그 자리에서 멈춘다 — 절차는 `references/loop-exceptions.md`「사용자 중단」** — 위 단락의 「원하는 정지」는 사용자가 지시하지 않은 정지를 가르는 것이라, 중단 지시를 그 넷 중 하나로 읽으면 받은 지시를 어긴다.
+
+## 작업 범위
+
+> Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
+
+- **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
+- **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 없으면 `references/loop-exceptions.md`「승인 표지 없음」 을 Read 한다 — 확인 방식이 이 루프의 여덟 정지와 갈리는 막힘형 호출이라 그 절에 있다.
+- **루프 진입 전 1회 `references/pr-flow.md`「적용 판정」·「브랜치」 를 Read 한다** — 기본 브랜치에서 시작했으면 `karina/<슬러그>` 로 옮겨 작업하고, 회차 끝에 같은 파일 「PR 열기」 로 PR 을 연다.
+
+## 자율 루프
+
+```
+loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
+  1. 준비  — plan의 해당 task 정독(`**함정**` 줄 포함) · Files 목록 Read
+  2. 구현  — plan이 새 동작을 재는 신규 케이스를 지목한 task면 그 케이스를 먼저 쓰고 돌려 RED 확인(아래 「검증」) · 최소 변경 · 첫 코드 task 전 1회 `references/code-style.md`「코드 작성 규약」 Read
+  3. 검증  — 아래 「검증」 · 그 task의 `**함정**` 줄을 어겼는지 1회 대조
+  4. 기록  — 체크박스 [x](연속된 하위 항목 줄을 Edit 한 번에 묶어 바꾼다 — `plan.md` 를 스크립트로 고치는 것은 guard-bash 가 막는다) · 기능·UI를 바꿨으면 README 갱신 · 완료 커밋 · 2 task마다 Progress Log
+→ 전 task 완료 후 아래 「최종 리뷰」의 완료 순서대로 → 최종 보고
+```
+
+### 멈추는 넷 — 그리고 목록 밖의 넷
+
+1. **파괴적·외부 비가역 작업** — force push(자기 `karina/` 브랜치를 이름으로 지정한 `--force-with-lease` 제외) · history rewrite(자기 `karina/` 브랜치 rebase 제외) · DB DROP/TRUNCATE · WHERE 없는 UPDATE/DELETE · **권한 변경** · 태그 · 릴리즈 · 배포. 이것들은 plan에 적혀 있어도 승인을 받는다(정본 `../plan/references/plan-template.md` 「승인 필요 항목」). push·PR 생성·PR 코멘트·PR merge·로컬 병합은 여기 들지 않는다 — 이 루프 안에서는 묻지 않는다. **파일 삭제는 복구 경로로 가른다** — 커밋된 내용이면 건수와 무관하게 멈추지 않고, 복구 경로가 없는데 plan `## 승인 필요 항목` 에 없는 것만 여기다. 판정은 실행 직전 다시 돌고 진행 중 task 가 새로 만든 경로는 판정 밖이다(제외 규칙 정본은 `../plan/references/deletion-recoverability.md`「삭제 복구 경로 판정」).
+2. **동일 원인 3회 실패** — 같은 문제를 세 번 다르게 시도해도 안 되면 수단이 잘못됐다는 신호다. 시도한 셋과 각각의 결과를 보고한다.
+3. **인증정보가 필요한 신규 외부 서비스**
+4. **같은 수단을 3회 반복하는데 목표에 닿지 못했을 때** — 실패가 아니어도 멈춘다. 2번은 *실패*를 세는데 **매번 조금씩 나아지는 조정**(문서를 조금씩 줄이기·임계를 조금씩 낮추기)은 성공으로 집계돼 그 카운터에 영영 걸리지 않은 채 반복된다. 3회차에 *"이 수단으로 끝낼 수 있는가"*를 자문하고, 아니면 접근을 바꾸거나 선택지를 내고 멈춘다.
+
+**넷을 정지 조건의 전부로 읽지 않는다 — 목록 밖에서 멈추는 자리가 넷 더 있다**: 아래 「plan 승인이 덮지 않는 변경」 · 「커밋」의 시크릿 경고 · `references/final-review.md`의 같은 지적 3회 · **아래 「검증」의 검증 명령이 `AGENTS.md`에 없을 때**. **앞의 넷**은 이 루프가 늘 대조하는 정지다 — 1·3은 plan 승인이 덮지 않는 실행이고 2·4는 루프가 스스로 세는 카운터다. **뒤의 넷**은 그 밖의 절에서 각자 걸린다.
+
+**그 밖에는 멈추지 않는다.** 아래는 자주 멈추게 되는 자리이며, 전부 멈추지 않고 처리한다.
+
+- **task 사이에서 묻지 않는다** — "다음 task로 갈까요?"는 이미 받은 승인을 다시 받는 것이다. `plan.md` 승인이 전체 작업의 위임장이다.
+- **계획이 실제 코드와 달라 그 task가 불요해졌으면 닫고 넘어간다** — `[x] (불요 — 근거)`로 적고 근거를 Progress Log에 남긴다. 계획이 실측과 어긋나는 것은 정상이고, 그것을 발견해 처리하는 것이 실행자의 일이다.
+- **외부 계약(공개 API·스키마·UX 동작)이 갈리는 지점만 plan에서 확정돼 있어야 한다** — 그 밖의 결정은 스스로 한다.
+- **그렇게 스스로 정한 것은 `## Progress Log`에 `판정: <무엇을> — <왜> — <틀리면 무엇을 치르는가>`로 그 자리에서 적는다** — 최종 보고가 이 줄을 전량 옮겨 싣는 자리라, 미루면 근거가 흐려지고 빠지면 사용자가 되돌릴 기회를 못 가진 결정이 남는다.
+- **눈으로 봐야 하는 것은 `HUMAN-VERIFY`로 표기하고 계속 간다 — `AGENTS.md` 의 `Verify (앱 조작)` 줄이 검증 스킬을 가리키면 task 의 `**화면**` 줄(없으면 그 SKILL.md 「변경 검증」 절)대로 먼저 조작하고(절차·`(BASE 대조)` 판정은 `references/report-format.md`「화면 시나리오 실행」), 그래도 사람 눈이 필요한 것만 표기한다** — GUI 조작감·시각 확인은 최종 보고에서 사용자가 한 번에 확인한다. 이 표기는 정직한 보고 수단이지 정지 신호가 아니다.
+- **컨텍스트가 차 가도 멈추지 않는다** — 현재 task를 끝내고 `plan.md`에 상태를 쓴 뒤 계속 진행한다. 압축이 일어나면 첫 행동은 이 SKILL.md와 `plan.md`를 다시 읽는 것이다 — **`AGENTS.md`는 컨텍스트에 전문이 없을 때만 읽는다.** CLAUDE.md 가 없으면 Claude Code(v2.1.277+)가, 있으면 SessionStart 가(16KB 이하일 때만) 전문을 싣고, `compact` 뒤에도 다시 싣는다.
+
+단 **plan 승인이 덮지 않는 변경**(되돌릴 수 없는 것 — 환경변수/시크릿·DB 데이터·외부 호출·새 패키지 소스·외부 공개 API 삭제나 호환을 깨는 변경)이나 plan 에 없던 다른 변경이 필요해지면 **`references/loop-exceptions.md`「plan 밖 변경」 을 Read 한다** — 멈출지 진행할지가 거기서 갈린다.
+
+## 검증
+
+**task마다 아래 셋 중 해당하는 것을 실행한다.** 명령은 `AGENTS.md`에서 가져온다 — 추측한 명령은 실행 시점에 실패한다. **`AGENTS.md`에 없으면 사용자에게 묻는다**(그 파일이 아직 비어 있는 레포가 있다).
+
+| # | 대상 | 언제 |
+|---|---|---|
+| 1 | 빌드 | 코드를 고친 task |
+| 2 | 테스트 | 테스트가 있는 코드를 고쳤거나 **plan이 케이스를 지목한** task (정본 `plan-template.md` 「작업 단계」) |
+| 3 | 변경 파일에 해당하는 정적 검사·전용 검사기 | `AGENTS.md`의 검증 매핑이 지목할 때 · `Verify (형식 검증)` 스킬 「변경 검증」의 감시 경로에 걸릴 때 |
+
+**`**성능**` 줄이 있는 task 는 `../PERF-MEASUREMENT.md` 대로 BASE 와 교대로 재고, 「결론 불가」면 다른 검증이 통과했을 때 `[x]` 로 닫되 커밋 본문과 최종 보고 미검증에 `성능 — 결론 불가(미검증)` 를 적고 다음 task 로 간다.**
+
+**전 task 완료 후 4번을 1회 실행한다.**
+
+| # | 대상 | 판정 |
+|---|---|---|
+| 4 | 전체 빌드 + 전체 테스트 + plan의 Goal 성공 기준 실측 | 모든 기준이 참이고 출력이 남는다 |
+
+- **새 동작을 재는 신규 케이스는 먼저 쓰고 돌려 RED 를 본 뒤 구현하고, 구현 뒤 GREEN 을 본다** — 구현을 본 뒤 쓴 케이스는 그 구현의 값·가정을 기대값으로 옮기기 쉽고, 그런 케이스는 통과해도 재는 것이 없다. 구현 전에는 케이스가 기댈 구현이 없다. 이것은 새 단계가 아니라 위 표의 2번(테스트)이 구현보다 먼저 시작되는 것이고, 루프에서는 「2. 구현」의 첫머리다.
+  - **구현 전이라 컴파일조차 안 되면 스텁을 먼저 둔다** — 시그니처만 두고 몸체는 예외를 던지게 해, assertion 이 실패하는 것을 RED 로 본다. 컴파일 실패는 케이스가 그 동작을 재는지 증명하지 못한다.
+  - **RED 는 재려는 동작 때문에 실패해야 한다 — 실패 메시지가 무엇을 지목하는지 본다** — 경로 오류·픽스처 누락·다른 조건으로 난 실패도 RED 로 보인다.
+  - **신규 케이스가 RED 를 보지 못했으면 그 케이스는 미검증으로 보고한다** — 구현 전에 이미 통과한 케이스는 새 동작이 아니라 원래 참이던 것을 잰다.
+  - **회귀 케이스(기존 동작이 유지되는가)와 `[면제 ②]` 가 지목한 기존 케이스는 RED 대상이 아니다 — GREEN 만 본다** — 그 케이스는 구현 전에도 통과해야 정상이라, RED 를 요구하면 도달할 수 없는 기준이 되어 모든 회귀 케이스가 미검증으로 보고된다.
+  - **새 동작에 짝으로 두는 신규 음성 케이스(그 동작이 걸리지 않아야 할 입력)도 GREEN 만 본다 — 단 같은 task 에 RED 를 본 양성 케이스가 하나 이상 있을 때만이고, 없으면 그 task 의 신규 케이스는 미검증으로 보고한다** — 음성 케이스는 구현 전에도 통과해야 정상이라 RED 를 요구하면 도달할 수 없고, 양성 짝 없이 이 예외를 쓰면 새 동작을 아무것도 재지 않은 task 가 통과한다.
+  - **RED 와 GREEN 출력을 커밋 본문의 「검증 결과」에 함께 담는다** — 그 케이스가 무엇을 재는지 이력에 남는 자리가 거기뿐이다.
+
+### 최종 리뷰 (4번 통과 후 1회)
+
+- **완료 순서는 「4번 검증 → Deferred 판정·대장 이관(「완료 정의」) → 함정 기록(「완료 시 함정 기록」) → 리뷰 → 필터 패스 등재분 대장 이관 → 완료 시각 기록(`references/report-format.md`「소요 기록」) → 추적 레포면 plan 파일 커밋(`references/report-format.md`「plan 파일 커밋」) → PR 열기(`references/pr-flow.md`「PR 열기」) → 최종 보고」다** — 리뷰어가 대장 판정 결과와 함정 기록을 검사하므로 그 둘이 리뷰보다 먼저다. 필터 패스(`references/final-review.md`)가 리뷰 뒤에 `[등재]` 로 남긴 항목은 앞의 대장 이관이 이미 지나간 뒤에 생기므로 그 자리에서 한 번 더 옮긴다 — 안 옮기면 `plan.md` 와 함께 다음 회차에 덮어써진다.
+- **`completion-reviewer` 서브에이전트를 호출한다 — 호출 조건·인자·판정·재호출 한계·리뷰어 부재 처리는 `references/final-review.md`「절차」가 정본이다** — 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
+
+### 실패 처리
+
+- **task 검증이 실패하거나 막히면 `references/loop-exceptions.md`「실패 처리」 를 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
+
+## 커밋
+
+- **task 완료마다 현재 브랜치에 로컬 커밋한다** — 제목은 `{유형}: T<N> — <무엇을>`, 유형은 `기능`·`수정`·`리팩토링`·`문서`·`설정` 다섯이다(글로벌 지침이 없는 배포 환경에서도 이 다섯이고, `guard-bash` 가 이 다섯으로 완료 커밋을 읽는다). 본문에 무엇을·왜·검증 결과를 적는다. 메시지와 README 문장은 첫 README 갱신이나 첫 커밋 메시지 전에 1회 Read 한 `../WRITING.md` 를 따른다. 이 커밋은 plan 승인에 포함되므로 다시 묻지 않는다.
+- **메시지는 셸 치환을 거치지 않게 넘긴다 — Bash 는 `git commit -m "$(cat <<'MSG'` … `MSG` `)"`, PowerShell 은 작은따옴표 문자열을 `-m` 뒤에 바로 쓴다(본문의 `'` 는 `''`)** — 본문에 적는 검증 결과에는 백틱·`$` 가 섞여 `-m "…"` 에 바로 쓰면 치환돼 사라지고, `guard-bash` 는 `-F` 파일·heredoc 은 읽고, 변수 `-m` 은 읽지 못해 체크박스 검사를 건너뛰고 경고만 낸다.
+- **태그·릴리즈·배포는 포함되지 않는다** — 별도 승인이다(push·PR 은 「멈추는 넷」 1번 밖).
+- **커밋 전에 diff에 시크릿·임시 파일이 없는지 확인한다** — 커밋된 시크릿은 이력에 남아 회수가 어렵다. **경고가 하나라도 뜨면 커밋하지 않고 멈춘다** — 비밀번호 값·API key·Bearer·IP·`.env` 스테이징은 차단이 아니라 **경고**라 루프가 그대로 지나간다.
+
+## 재개
+
+- **`plan.md`의 체크박스가 진행 상태의 정본이다** — 첫 미완료 task부터 시작한다.
+- **2 task마다 `## Progress Log`에 1~2줄 남긴다** — 이후 task는 대화 히스토리 대신 이 요약과 git log를 본다.
+
+## 완료 시 함정 기록
+
+전 task 완료 후, 이번 회차에 **① 같은 원인으로 2회 이상 막힌 것**이나 **② 다음 작업자가 모르면 다시 걸릴 함정**이 있었는지 판정하고, 있으면 레포 `docs/conventions.md` 에 기록한다 — 판정·형식·위치는 `../REPO-CONVENTIONS.md` 「쓰기」 가 정본이고 완료 때 그 절만 Read 한다.
+
+- **이 회차의 보류·기각 `[DECISION]` 을 여기서 1회 일괄 큐잉한다 — 대상은 plan 의 `## Out of Scope` 기각 · 완료 시점에 남은 `## Deferred / Follow-up` 보류 · 구현 중 새로 생긴 것과 기록된 보류·기각의 번복이고, 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약의 배치 시점은 여기 하나다(채택은 코드·커밋이 담아 큐잉하지 않는다). vault 판정은 `../WIKI.md` §0 이다. **`queue-rules.md` 는 파일째 읽지 않는다 — K 5~K 5-2 와 K 6 절만 `grep -n '^### K' <queue-rules.md 경로>` 경계로 Read 한다**(K 5-2 가 K 5 의 게이트·폴백과 K 6 커밋에 기댄다).
+
+## 완료 정의
+
+- **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
+- **`## Deferred / Follow-up`의 항목을 전부 판정한다 — 등재 전에 「지금 고칠 것인가」를 먼저 가른다** — 등재분은 그 레포의 **Deferred 대장**(위치는 그 레포 `AGENTS.md` 의 `## Plan Location`)으로 옮기고, **대장이 없는 레포면 등재가 아니라 `[미등재:대장 없음]`으로 닫는다**(판정 3조건과 하한선은 `../plan/references/deferred-rules.md`).
+
+## 최종 보고
+
+- **보고 서식과 그 작성 규칙은 `references/report-format.md`「보고 형식」에 있다** — 회차 끝 1회만 쓰이는 서식이라 본문에 상시 두지 않는다. 전 task 완료 후 그 파일을 읽고 그대로 채운다.
+
+## See also
+
+- `karina:plan` — 이 스킬이 실행할 plan을 만든다
+- `references/code-style.md`「확인할 수 있게 만든다」·「고쳐도 무너지지 않게 만든다」·「파일은 그 프로젝트의 관례로 저장한다」·「주석」 — 코드를 쓰는 순간의 규약
+- `references/final-review.md` — 회차 끝 리뷰 절차
+- `references/report-format.md` — 회차 끝 보고 서식 · 화면 시나리오 실행
+- `../WIKI.md` — 위키를 언제 읽고 언제 쓰는가
+- `../DESIGN.md` — 이 스킬의 문면이 따르는 설계 원칙

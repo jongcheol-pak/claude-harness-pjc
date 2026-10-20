@@ -1,0 +1,2223 @@
+[
+  {
+    "id": "harness-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "문서 예산"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "harness-record-doc-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "2026-01-01-old-plan"
+    ]
+  },
+  {
+    "id": "pointer-dead-section",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "「검증 매핑 (task 검증 선택)」",
+        "replace": "「없어진 절 이름」"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "없어진 절 이름"
+    ]
+  },
+  {
+    "id": "pointer-intent-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "intent/",
+      "승인 뒤 사라진 절 이름"
+    ]
+  },
+  {
+    "id": "pointer-bold-tag-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/references/loop-stop-patterns.md",
+        "find": "축이 발화한다.\r\n",
+        "replace": "축이 발화한다.\r\n- **태그 앵커** · **짧은 규칙이다** — 포인터가 이 이름으로 닿는다.\r\n"
+      },
+      {
+        "file": "plugins/karina/skills/sample/SKILL.md",
+        "find": "여기서 추출이 멈춘다.",
+        "replace": "여기서 추출이 멈춘다.\r\n\r\n- 태그 인용: `loop-stop-patterns.md`「태그 앵커」"
+      }
+    ],
+    "expect_keywords": [
+      "포인터 도달성"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ],
+    "why": "**굵은 태그 앵커 양성.** `- **태그** · **규칙** — 근거` 머리의 짧은 굵은 런을 다른 파일의 `파일`「태그」 포인터가 가리키면 축 ①이 도달로 센다 — code-style.md 의 태그 포인터(2026-10-20 회차)가 기대는 형태다."
+  },
+  {
+    "id": "pointer-bold-tag-renamed",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/references/loop-stop-patterns.md",
+        "find": "축이 발화한다.\r\n",
+        "replace": "축이 발화한다.\r\n- **다른 태그** · **짧은 규칙이다** — 포인터가 이 이름으로 닿지 않는다.\r\n"
+      },
+      {
+        "file": "plugins/karina/skills/sample/SKILL.md",
+        "find": "여기서 추출이 멈춘다.",
+        "replace": "여기서 추출이 멈춘다.\r\n\r\n- 태그 인용: `loop-stop-patterns.md`「태그 앵커」"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "태그 앵커"
+    ],
+    "why": "**굵은 태그 개명 음성.** 태그를 「다른 태그」로 바꾸면 「태그 앵커」 포인터가 끊긴다 — 앵커 이름이 포인터 이름의 접두가 아니어야 양성으로 새지 않는다(매치는 전체 일치 또는 접두)."
+  },
+  {
+    "id": "deferred-count-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "대기 2 / 종결 1",
+        "replace": "대기 2 / 종결 2"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "Deferred 집계",
+      "실측 대기 2/종결 1"
+    ]
+  },
+  {
+    "id": "harness-ledger-item-over-cap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "**첫 번째 미처리 항목** — 착수 조건 없음.",
+        "replace": "**첫 번째 미처리 항목** — 착수 조건 없음. 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"
+      }
+    ],
+    "expect_keywords": [
+      "대장 항목 상한 초과 1건(상한 600자)"
+    ]
+  },
+  {
+    "id": "deferred-wait-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "대기 2 / 종결 1",
+        "replace": "대기 3 / 종결 1"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "Deferred 집계"
+    ]
+  },
+  {
+    "id": "bold-odd",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: 처리하지 않기로 했다.",
+        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: **처리하지 않기로 했다."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "볼드 마커 홀수"
+    ]
+  },
+  {
+    "id": "line-dup",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "## 종결",
+        "replace": "이 줄은 한 줄 안 문장 중복 축을 발화시키려고 넣은 문장이다. 이 줄은 한 줄 안 문장 중복 축을 발화시키려고 넣은 문장이다.\r\n\r\n## 종결"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "한 줄 안 문장"
+    ]
+  },
+  {
+    "id": "batch-gap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-history.md",
+        "find": "> **2차 batch",
+        "replace": "> **4차 batch"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "차수"
+    ]
+  },
+  {
+    "id": "anchor-renamed",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/sample/SKILL.md",
+        "find": "## 주입 대상 절",
+        "replace": "## 이름이 바뀐 절"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "추출 앵커"
+    ]
+  },
+  {
+    "id": "budget-over-cap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/BUDGET.md",
+        "find": "| `SKILL.md` | **12,000자** | **게이트** |",
+        "replace": "| `SKILL.md` | **10자** | **게이트** |"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "문서 예산 초과",
+      "sample/SKILL.md"
+    ]
+  },
+  {
+    "id": "budget-conv-record-mismatch",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 |",
+        "replace": "| `docs/golden-runner.md` | 99 |"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "조건부 참조 표 기록값 불일치",
+      "docs/golden-runner.md"
+    ]
+  },
+  {
+    "id": "budget-conv-over-cap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 | 4,000 |",
+        "replace": "| `docs/golden-runner.md` | 118 | 100 |"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "조건부 참조 표 상한 초과"
+    ]
+  },
+  {
+    "id": "linefeed-all-lf",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "\r\n",
+        "replace": "\n"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "줄바꿈 전면 LF"
+    ]
+  },
+  {
+    "id": "anchor-parse-fail",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 2,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/BUDGET.md",
+        "find": "## 예산 표",
+        "replace": "## 예산표"
+      }
+    ],
+    "expect_keywords": [
+      "ANCHOR FAIL",
+      "예산 표"
+    ]
+  },
+  {
+    "id": "truncation-ok",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 절단 0건 · 짝 전건 일치",
+      "근거 인용 주석 3건"
+    ],
+    "expect_absent": [
+      "[FAIL]"
+    ]
+  },
+  {
+    "id": "truncation-cut",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/sample-hook.ps1",
+        "find": "# 종결부로 끝나는 충분히 긴 표제라서 절단으로 보지 않는다 — 근거는",
+        "replace": "# 표제가 길이 캡에 눌려 단어 중간에서 끊긴 형태를 재는 케이스이며 종결부 없이 여기서 그대로 잘린 — 근거는"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 절단 1건",
+      "sample-hook.ps1"
+    ]
+  },
+  {
+    "id": "truncation-evals-cut",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/evals/sample-checker.py",
+        "find": "# 짧은 표제 — 근거는",
+        "replace": "# 표제가 길이 캡에 눌려 단어 중간에서 끊긴 형태를 검사기 경로에서도 재는 케이스이며 종결부 없이 잘린 — 근거는"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 절단 1건",
+      "sample-checker.py"
+    ]
+  },
+  {
+    "id": "truncation-pair-broken",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/rules/sample-rationale.md",
+        "find": "## §1 짧은 표제",
+        "replace": "## §9 짧은 표제"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 짝 불일치 1건",
+      "§1 헤딩 없음"
+    ]
+  },
+  {
+    "id": "truncation-title-change-ok",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/rules/sample-rationale.md",
+        "find": "## §1 짧은 표제",
+        "replace": "## §1 표제가 바뀐 절"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 절단 0건 · 짝 전건 일치"
+    ],
+    "expect_absent": [
+      "[FAIL]"
+    ]
+  },
+  {
+    "id": "truncation-old-form",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/sample-hook.ps1",
+        "find": "# 짧은 표제 — 근거는 `rules/sample-rationale.md` §1",
+        "replace": "# 짧은 표제 — 근거는 `rules/sample-rationale.md`의 「§1 짧은 표제」"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 옛 형식 1건",
+      "sample-hook.ps1"
+    ]
+  },
+  {
+    "id": "stale-ok",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 살아 있는 자산의 삭제 자산 참조 0건"
+    ],
+    "expect_absent": [
+      "[FAIL]"
+    ]
+  },
+  {
+    "id": "stale-conventions-exempt",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/conventions.md",
+        "find": "**삭제 자산 이름이 없는 항목** — 착수 조건 없음.",
+        "replace": "**`phase-f-detail.md` 를 지운 뒤 그 이름으로 검색하면 0건이다** — 착수 조건 없음."
+      }
+    ],
+    "expect_keywords": [
+      "작업 함정 기록(docs/conventions.md)은 이력이다"
+    ],
+    "expect_absent": [
+      "[FAIL] 살아 있는 자산에"
+    ]
+  },
+  {
+    "id": "stale-tree-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/sample/SKILL.md",
+        "find": "이 스킬 문서에는 삭제된 자산의 이름이 없다.",
+        "replace": "절차 상세는 `references/phase-f-detail.md`를 읽는다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에",
+      "sample/SKILL.md"
+    ]
+  },
+  {
+    "id": "stale-ledger-exempt-notice",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "cli_args": [
+      "--ledger"
+    ],
+    "expect_keywords": [
+      "[NOTICE] 죽은 이름을 담았으나 면제된 항목 1건",
+      "(이력 표기 1 · 검사기 자신 0)",
+      "[history] - [2026-09-02]",
+      "참조 0건"
+    ]
+  },
+  {
+    "id": "stale-ledger-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "cli_args": [
+      "--ledger"
+    ],
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "**삭제 자산 이름이 없는 항목** — 착수 조건 없음.",
+        "replace": "**`plan-feature` 절차를 되살린다** — 착수 조건 없음."
+      }
+    ],
+    "expect_keywords": [
+      "대장 `## 대기` 삭제 자산 참조",
+      "참조 1건"
+    ]
+  },
+  {
+    "id": "stale-no-github-ok",
+    "checker": "stale",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 살아 있는 자산의 삭제 자산 참조 0건"
+    ],
+    "expect_absent": [
+      "[ANCHOR FAIL]"
+    ]
+  },
+  {
+    "id": "stale-github-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": ".github/workflows/checks.yml",
+        "find": "이 워크플로에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 hook protect-harness 를 돌린다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에",
+      "checks.yml"
+    ]
+  },
+  {
+    "id": "stale-root-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "setup.ps1",
+        "find": "이 스크립트에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 스킬 bootstrap-agents-md 를 부른다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에",
+      "setup.ps1"
+    ]
+  },
+  {
+    "id": "stale-root-clean",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 살아 있는 자산의 삭제 자산 참조 0건"
+    ],
+    "expect_absent": [
+      "setup.ps1"
+    ]
+  },
+  {
+    "id": "stale-root-md-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "이 파일에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 스킬 add-viewmodel 을 안내한다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에",
+      "README.md"
+    ]
+  },
+  {
+    "id": "stale-root-exception-silent",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 살아 있는 자산의 삭제 자산 참조 0건",
+      "루트의 진행 메모·이력"
+    ],
+    "expect_absent": [
+      "[FAIL]"
+    ]
+  },
+  {
+    "id": "harness-close-reason-not-reject",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "— 기각: 처리하지 않기로 했다.",
+        "replace": "— 반영: 처리 완료."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "기각 1줄 형식이 아닌 종결 항목: 종결된 항목"
+    ]
+  },
+  {
+    "id": "harness-close-reason-empty",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "— 기각: 처리하지 않기로 했다.",
+        "replace": "— 기각:"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "기각 1줄 형식이 아닌 종결 항목"
+    ]
+  },
+  {
+    "id": "harness-close-reason-subbullet",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: 처리하지 않기로 했다.",
+        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: 처리하지 않기로 했다.\r\n  - 조사 경위를 이어 적은 하위 불릿"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "종결 대장의 항목 밖 줄",
+      "조사 경위를 이어 적은 하위 불릿"
+    ]
+  },
+  {
+    "id": "harness-close-reason-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 기각: 처리하지 않기로 했다.",
+        "replace": "- [2026-08-01 → 2026-09-01] **종결된 항목** — 처리하지 않기로 했다."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "기각 1줄 형식이 아닌 종결 항목"
+    ]
+  },
+  {
+    "id": "harness-close-reason-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "종결 사유 명시"
+    ],
+    "expect_absent": [
+      "기각 1줄 형식이 아닌",
+      "종결 대장의 항목 밖 줄"
+    ]
+  },
+  {
+    "id": "harness-critical-pointer-target-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/references/loop-stop-patterns.md",
+        "delete": true
+      }
+    ],
+    "expect_keywords": [
+      "핵심 포인터의 대상이 없다"
+    ]
+  },
+  {
+    "id": "harness-critical-pointer-lost",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/SKILL.md",
+        "find": "`references/loop-stop-patterns.md`",
+        "replace": "`references/gone.md`"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 포인터가 출처에서 사라졌다"
+    ]
+  },
+  {
+    "id": "harness-ledger-marker-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "등재 마커 실재 1항목"
+    ],
+    "expect_absent": [
+      "등재 마커가 주장하는"
+    ]
+  },
+  {
+    "id": "harness-ledger-marker-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "**첫 번째 미처리 항목**",
+        "replace": "**이름이 바뀐 항목**"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "등재 마커가 주장하는 항목이 대장에 없음"
+    ]
+  },
+  {
+    "id": "harness-ledger-format-bold",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- `[등재]` **첫 번째 미처리 항목**",
+        "replace": "- **`[등재]` 첫 번째 미처리 항목**"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "Deferred 항목 서식 위반"
+    ]
+  },
+  {
+    "id": "harness-ledger-title-spacing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "**첫 번째 미처리 항목**",
+        "replace": "**첫번째 미처리 항목**"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "등재 마커가 주장하는"
+    ]
+  },
+  {
+    "id": "harness-ledger-format-outside-section",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- [x] **T1** 마커를 예시로 인용하는 체크박스 줄",
+        "replace": "- [x] **T1** 마커를 예시로 인용하는 줄이 하나 더 있어도"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "Deferred 항목 서식 위반"
+    ]
+  },
+  {
+    "id": "harness-next-round-evidence-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- `[미등재:이번 회차가 처리]` **픽스처 미등재 항목** — 대장에 없는 것이 정상이라 대조 대상이 아니다.",
+        "replace": "- `[다음 회차]` **근거 없는 이월 항목** — 근거 필드가 없어 이 줄은 걸려야 한다."
+      }
+    ],
+    "expect_keywords": [
+      "`[다음 회차]` 에 근거 필드 없음"
+    ]
+  },
+  {
+    "id": "harness-next-round-evidence-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- `[미등재:이번 회차가 처리]` **픽스처 미등재 항목** — 대장에 없는 것이 정상이라 대조 대상이 아니다.",
+        "replace": "- `[다음 회차]` **근거 있는 이월 항목** — T7 은 다음 회차가 이어받는다 (근거: a1b2c3d `git log` 로 미착수 확인)."
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "근거 필드 없음"
+    ]
+  },
+  {
+    "id": "harness-critical-pointer-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "핵심 포인터 실재"
+    ],
+    "expect_absent": [
+      "핵심 포인터가"
+    ]
+  },
+  {
+    "id": "harness-pointer-counts-normal-source",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/sample/SKILL.md",
+        "find": "여기서 추출이 멈춘다.",
+        "replace": "여기서 추출이 멈춘다.\r\n\r\n- 임시 인용: `loop-stop-patterns.md`「루프를 멈추는 형태 (픽스처)」"
+      }
+    ],
+    "expect_keywords": [
+      "포인터 도달성"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "harness-deprecated-live-asset",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/SKILL.md",
+        "find": "# Implement (픽스처)",
+        "replace": "# Implement (픽스처)\n\n검증은 Phase V-3 에서 수행한다."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "폐기 식별자",
+      "implement/SKILL.md"
+    ]
+  },
+  {
+    "id": "harness-deprecated-allowlist-dead",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/DESIGN.md",
+        "find": "- **폐기한 것**: Phase V 9단계(V-1~V-9) · Phase F 8단계 · Phase G.",
+        "replace": "- 구 검증 단계는 전부 사라졌다."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "허용목록 항목이 적중하지 않는다",
+      "**폐기한 것**:"
+    ]
+  },
+  {
+    "id": "harness-ledger-evidence-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": " **(실해: 2026-09-01 픽스처용 관측 요지)**",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "등재 근거 필드가 없다",
+      "첫 번째 미처리 항목"
+    ]
+  },
+  {
+    "id": "harness-ledger-evidence-ok-added",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "- [2026-09-02] **두 번째 미처리 항목**",
+        "replace": "- [2026-09-03] **세 번째 미처리 항목** — 착수 조건 없음. **(실해: 2026-09-03 필드를 갖춘 신규 항목)**\r\n- [2026-09-02] **두 번째 미처리 항목**"
+      },
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "대기 2 / 종결 1",
+        "replace": "대기 3 / 종결 1"
+      }
+    ],
+    "expect_keywords": [
+      "등재 근거 실측 3항목",
+      "대조 전부 일치"
+    ]
+  },
+  {
+    "id": "harness-ledger-evidence-multiline",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred.md",
+        "find": "- [2026-09-01] **첫 번째 미처리 항목** — 착수 조건 없음. **(실해: 2026-09-01 픽스처용 관측 요지)**",
+        "replace": "- [2026-09-01] **첫 번째 미처리 항목** — 착수 조건 없음. 본문이 코드스팬에 실제 줄바꿈을 담아 여기서 끊긴다.\r\n이어지는 물리줄이다. **(실해: 2026-09-01 픽스처용 관측 요지)**"
+      }
+    ],
+    "expect_keywords": [
+      "등재 근거 실측 2항목",
+      "대조 전부 일치"
+    ]
+  },
+  {
+    "id": "harness-split-helper-sync-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "복제 사본 동기 9항목",
+      "대조 전부 일치"
+    ]
+  },
+  {
+    "id": "harness-split-helper-sync-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/guard-bash.ps1",
+        "find": "        } elseif ($ch -eq ';' -or $ch -eq '|') {",
+        "replace": "        } elseif ($ch -eq ';') {"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `Split-TopLevel` 묶음이 갈렸다",
+      "block-destructive.ps1 ↔ guard-bash.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-plan-func-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/loop-continue.ps1",
+        "find": "if ($parent -eq $dir) { break }",
+        "replace": "if ($parent -eq $base) { break }"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `Find-PlanFileUpwards` 묶음이 갈렸다",
+      "session-context.ps1 ↔ loop-continue.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-bullet-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/session-context.ps1",
+        "find": "$planBulletRx = '(?m)^\\s*([-*+]|\\d+[.)])\\s*'",
+        "replace": "$planBulletRx = '(?m)^\\s*([-*]|\\d+[.)])\\s*'"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `불릿 정규식` 묶음이 갈렸다",
+      "guard-write.ps1 ↔ session-context.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-heredoc-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/guard-bash.ps1",
+        "find": "(?<tag>\\w+)\\k<q>",
+        "replace": "(?<tag>[\\w-]+)\\k<q>"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `heredoc 정규식` 묶음이 갈렸다",
+      "block-destructive.ps1 ↔ guard-bash.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-copy-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/scripts/loop-continue.ps1",
+        "find": "$planBulletRx = '(?m)^\\s*([-*+]|\\d+[.)])\\s*'",
+        "replace": "# 사본이 지워졌다"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `불릿 정규식` 묶음 — loop-continue.ps1 에",
+      "이 없다"
+    ]
+  },
+  {
+    "id": "harness-count-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "계수·버전 정합"
+    ],
+    "expect_absent": [
+      "계수 정합:",
+      "버전 정합:"
+    ]
+  },
+  {
+    "id": "harness-count-baseline-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**기준선 2케이스**",
+        "replace": "**기준선 3케이스**"
+      }
+    ],
+    "expect_keywords": [
+      "계수 정합: `plugins/karina/evals/cases.json` 는 2건인데 문서는 **기준선 3케이스**로 적었다"
+    ]
+  },
+  {
+    "id": "harness-count-baseline-history",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**기준선 2케이스**다.",
+        "replace": "**기준선 2케이스**다(그 앞 1 은 첫 회차 값이다)."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "기준선 줄에 증감 서사"
+    ]
+  },
+  {
+    "id": "harness-count-baseline-history-neg",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**기준선 2케이스**다.",
+        "replace": "**기준선 2케이스**다(그 앞 회차가 정한 값이다)."
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "증감 서사"
+    ]
+  },
+  {
+    "id": "harness-count-filecount-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "`hook-cases.json`은 3건",
+        "replace": "`hook-cases.json`은 5건"
+      }
+    ],
+    "expect_keywords": [
+      "계수 정합: `plugins/karina/hooks/evals/hook-cases.json` 는 3건인데 문서는 5건으로 적었다"
+    ]
+  },
+  {
+    "id": "harness-count-version-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "**버전**: 1.0.0",
+        "replace": "**버전**: 1.0.1"
+      }
+    ],
+    "expect_keywords": [
+      "버전 정합: `plugin.json` 1.0.0 ↔ `README.md` 1.0.1"
+    ]
+  },
+  {
+    "id": "harness-fm-description-over-cap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "find": "description: frontmatter 길이 축의 변이 대상 픽스처.",
+        "replace": "description: 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter 길이:",
+      "자로 상한 1024자를 넘었다",
+      "넘으면 그 스킬이 로드되지 않는다"
+    ]
+  },
+  {
+    "id": "harness-fm-description-total-over",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "find": "description: frontmatter 길이 축의 변이 대상 픽스처.",
+        "replace": "description: 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가 frontmatter 길이 축의 변이 대상 픽스처."
+      }
+    ],
+    "expect_keywords": [
+      "[NOTICE]",
+      "description 합계"
+    ],
+    "why": "**스킬 description 합계가 통지 상한을 넘으면 `[NOTICE]` 로 알린다.** 스킬 목록 예산은 컨텍스트 비율이라 합계가 재는 단위이고, 1,024자는 스킬별 상한일 뿐이다. 픽스처의 frontmatter 스킬이 fm-sample 하나라 합계만 넘기는 변이는 만들 수 없어 스킬별 게이트도 함께 걸린다(`expect_rc: 1`) — 판정은 통지 문구다. **이 케이스는 합산과 「스킬별 6,000자」를 구별하지 못한다** — 합산은 회차 실측(실레포 사본에서 6 스킬을 각 1,000자로)이 쟀다."
+  },
+  {
+    "id": "harness-fm-name-over-cap",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+      }
+    ],
+    "expect_keywords": [
+      "name 가 65자로 상한 64자를 넘었다"
+    ]
+  },
+  {
+    "id": "harness-fm-name-reserved",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: claude-sample"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter 예약어:",
+      "예약어 `claude` 를 담았다"
+    ]
+  },
+  {
+    "id": "harness-fm-name-xml",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: <b>fm</b>"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter XML 태그:",
+      "의 name 가 `<` 로 시작하는 태그꼴을 담았다"
+    ]
+  },
+  {
+    "id": "harness-fm-desc-xml",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "find": "description: frontmatter",
+        "replace": "description: <tag>frontmatter"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter XML 태그:",
+      "의 description 가 `<` 로 시작하는 태그꼴을 담았다"
+    ]
+  },
+  {
+    "id": "harness-fm-no-frontmatter-skipped",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/sample/SKILL.md",
+        "find": "# Sample",
+        "replace": "# Sample\r\n\r\ndescription: 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"
+      }
+    ],
+    "expect_keywords": [
+      "계수·버전 정합"
+    ],
+    "expect_absent": [
+      "frontmatter 길이:"
+    ]
+  },
+  {
+    "id": "harness-count-unmeasured-unmarked",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**4케이스(기계 미대조)**",
+        "replace": "**4케이스**"
+      }
+    ],
+    "expect_keywords": [
+      "매니페스트 없이 케이스 수를 적은 줄에 `(기계 미대조)` 표시가 없다"
+    ]
+  },
+  {
+    "id": "harness-count-outside-section-unmarked",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**5케이스(기계 미대조)**",
+        "replace": "**5케이스**"
+      }
+    ],
+    "expect_keywords": [
+      "매니페스트 없이 케이스 수를 적은 줄에 `(기계 미대조)` 표시가 없다",
+      "5케이스"
+    ]
+  },
+  {
+    "id": "harness-count-anchor-fail",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 2,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "## 검증 명령 상세 (무엇을 대조하는가 · 함정)",
+        "replace": "## 검증 명령 (무엇을 대조하는가 · 함정)"
+      }
+    ],
+    "expect_keywords": [
+      "절을 찾지 못함",
+      "COUNT_SECTION_HEADING"
+    ]
+  },
+  {
+    "id": "stale-dead-baseline-drift",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/evals/check-stale-refs.py",
+        "find": "DEAD_BASELINE = 32",
+        "replace": "DEAD_BASELINE = 33"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] DEAD 총량이 기준선과 다르다: 32 != 33",
+      "DEAD_BASELINE"
+    ]
+  },
+  {
+    "id": "harness-critical-pointers-baseline-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/evals/check-harness-consistency.py",
+        "find": "CRITICAL_POINTERS_BASELINE = 1",
+        "replace": "CRITICAL_POINTERS_BASELINE = 2"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 포인터 총량이 기준선과 다르다: 1 != 2",
+      "CRITICAL_POINTERS_BASELINE"
+    ]
+  },
+  {
+    "id": "harness-critical-literal-lost",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/SKILL.md",
+        "find": "K 5-2가 정본이다",
+        "replace": "K 5-9가 정본이다"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 리터럴이 출처에서 사라졌다"
+    ]
+  },
+  {
+    "id": "harness-critical-literal-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "핵심 포인터 실재"
+    ],
+    "expect_absent": [
+      "핵심 리터럴이"
+    ]
+  },
+  {
+    "id": "harness-critical-literals-baseline-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/evals/check-harness-consistency.py",
+        "find": "CRITICAL_LITERALS_BASELINE = 3",
+        "replace": "CRITICAL_LITERALS_BASELINE = 4"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 리터럴 총량이 기준선과 다르다: 3 != 4",
+      "CRITICAL_LITERALS_BASELINE"
+    ]
+  },
+  {
+    "id": "harness-deprecated-tokens-baseline-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/evals/check-harness-consistency.py",
+        "find": "DEPRECATED_TOKENS_BASELINE = 7",
+        "replace": "DEPRECATED_TOKENS_BASELINE = 8"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "폐기 식별자 토큰 수가 기준선과 다르다: 7 != 8",
+      "DEPRECATED_TOKENS_BASELINE"
+    ]
+  },
+  {
+    "id": "harness-rule-rationale-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/SKILL.md",
+        "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
+        "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다**(핵심 포인터 축의 검사 대상이다)."
+      }
+    ],
+    "expect_keywords": [
+      "규칙 근거 보유",
+      "**1건**",
+      "plugins/karina/skills/implement/SKILL.md:3"
+    ]
+  },
+  {
+    "id": "harness-rule-rationale-label-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/SKILL.md",
+        "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
+        "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.\r\n- **5**: 지시가 아니라 눈금이다."
+      }
+    ],
+    "expect_keywords": [
+      "규칙 근거 보유",
+      "(전건 충족)"
+    ]
+  },
+  {
+    "id": "harness-rule-rationale-placeholder-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/implement/SKILL.md",
+        "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
+        "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.\r\n- **Files**: <경로> · <경로>"
+      }
+    ],
+    "expect_keywords": [
+      "규칙 근거 보유",
+      "(전건 충족)"
+    ]
+  },
+  {
+    "id": "stale-prose-ok",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "== 산문 경로 실존 ==",
+      "대상 11문서",
+      "docs/harness-conventions.md — 후보 4건 · 미실존 0건",
+      "결과: 후보 5건 전부 실재"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다"
+    ]
+  },
+  {
+    "id": "stale-prose-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 디렉터리: `docs/plans/`",
+        "replace": "- 디렉터리: `docs/gone-dir/`"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다 — 1건",
+      "docs/harness-conventions.md -> `docs/gone-dir/`"
+    ]
+  },
+  {
+    "id": "stale-prose-fp-control",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 글롭: `plugins/karina/evals/*.json`",
+        "replace": "- 글롭: `plugins/karina/evals/*.json`\r\n\r\n아래 다섯은 백틱 안에 있으나 경로가 아니다 — 후보 수가 4 그대로여야 한다.\r\n\r\n- 명령 조각: `python plugins/karina/evals/nowhere.py`\r\n- 정규식 리터럴: `\\r\\n`\r\n- 홈 경로: `~/.claude/nowhere.md`\r\n- 절대 경로: `/etc/nowhere`\r\n- 자리표시: `skills/<name>/nowhere.md`"
+      }
+    ],
+    "expect_keywords": [
+      "docs/harness-conventions.md — 후보 4건 · 미실존 0건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다"
+    ]
+  },
+  {
+    "id": "stale-prose-no-target",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "delete": true
+      }
+    ],
+    "expect_keywords": [
+      "[SKIP] 산문 대상 없음: docs/harness-conventions.md",
+      "README.md — 후보 1건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다"
+    ]
+  },
+  {
+    "id": "stale-prose-untracked",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": ".gitignore",
+        "find": "#PLACEHOLDER",
+        "replace": "docs/plans/"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다 — 1건",
+      "docs/harness-conventions.md -> `docs/plans/`"
+    ]
+  },
+  {
+    "id": "stale-symbol-ok",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "== 산문 심볼 실존 ==",
+      "대상 11문서",
+      "docs/harness-conventions.md — 후보 3건 · 미실존 0건",
+      "결과: 후보 5건 전부 실재"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 심볼이 없습니다"
+    ]
+  },
+  {
+    "id": "stale-symbol-hit",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 루트 파일명: `setup.ps1`",
+        "replace": "- 루트 파일명: `gone-setup.ps1`"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 산문이 가리키는 심볼이 없습니다 — 1건",
+      "docs/harness-conventions.md -> `gone-setup.ps1`"
+    ]
+  },
+  {
+    "id": "stale-symbol-fp-control",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 루트 파일명: `setup.ps1`",
+        "replace": "- 루트 파일명: `setup.ps1`\r\n\r\n아래 세 줄은 백틱 안에 있으나 심볼이 아니다 — 후보 수가 3 그대로여야 한다.\r\n\r\n- 커밋 SHA: `d3fad946`\r\n- CLI 플래그: `--porcelain`\r\n- 구분자 없는 식별자: `SyntaxError`"
+      }
+    ],
+    "expect_keywords": [
+      "docs/harness-conventions.md — 후보 3건 · 미실존 0건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 심볼이 없습니다"
+    ]
+  },
+  {
+    "id": "stale-symbol-no-target",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "delete": true
+      }
+    ],
+    "expect_keywords": [
+      "== 산문 심볼 실존 ==",
+      "[SKIP] 산문 대상 없음: docs/harness-conventions.md",
+      "README.md — 후보 2건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 심볼이 없습니다"
+    ]
+  },
+  {
+    "id": "harness-impact-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "영향 검토 3축 3항목"
+    ],
+    "expect_absent": [
+      "영향 검토 3축 미기재"
+    ]
+  },
+  {
+    "id": "harness-impact-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "영향 검토 3축 미기재: `병목` 행이",
+      "Files 가 plugins/karina/evals/ 를 담아 대상이다"
+    ]
+  },
+  {
+    "id": "harness-impact-gate-only",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "| **① 충돌** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n| **② 도달성** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "영향 검토 3축 미기재: `충돌` 행이",
+      "영향 검토 3축 미기재: `도달성` 행이",
+      "영향 검토 3축 미기재: `병목` 행이",
+      "Files 가 plugins/karina/evals/ 를 담아 대상이다"
+    ]
+  },
+  {
+    "id": "harness-impact-no-gate",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `plugins/karina/evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `README.md`"
+      },
+      {
+        "file": "plan.md",
+        "find": "| **② 도달성** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      },
+      {
+        "file": "plan.md",
+        "find": "| **① 충돌** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "영향 검토 3축 0항목"
+    ],
+    "expect_absent": [
+      "영향 검토 3축 미기재"
+    ]
+  },
+  {
+    "id": "harness-impact-partial-no-gate",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `plugins/karina/evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `README.md`"
+      },
+      {
+        "file": "plan.md",
+        "find": "| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "영향 검토 3축 미기재: `병목` 행이",
+      "다른 축(도달성 · 충돌)이 이미 실려 있다"
+    ]
+  },
+  {
+    "id": "stale-prose-multi-doc",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "- 정상 경로: `plugins/karina/skills/sample/SKILL.md`",
+        "replace": "- 정상 경로: `plugins/karina/skills/gone-second/SKILL.md`"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다 — 1건",
+      "README.md -> `plugins/karina/skills/gone-second/SKILL.md`"
+    ]
+  },
+  {
+    "id": "stale-prose-fp-numeric",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 글롭: `plugins/karina/evals/*.json`",
+        "replace": "- 글롭: `plugins/karina/evals/*.json`\r\n- 분수·비율(경로가 아니다): `29/30` · `13/14`"
+      }
+    ],
+    "expect_keywords": [
+      "docs/harness-conventions.md — 후보 4건 · 미실존 0건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다"
+    ]
+  },
+  {
+    "id": "stale-prose-fp-url",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "- 글롭: `plugins/karina/evals/*.json`",
+        "replace": "- 글롭: `plugins/karina/evals/*.json`\r\n- URL(레포 밖이다): `platform.claude.com/docs/ko/nowhere`"
+      }
+    ],
+    "expect_keywords": [
+      "docs/harness-conventions.md — 후보 4건 · 미실존 0건"
+    ],
+    "expect_absent": [
+      "[FAIL] 산문이 가리키는 경로가 없습니다"
+    ]
+  },
+  {
+    "id": "harness-self-ref-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "자기 파일"
+    ]
+  },
+  {
+    "id": "harness-self-ref-dead",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "위 「위험한 명령 차단」이 정본이다",
+        "replace": "위 「사라진 절 이름」이 정본이다"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「사라진 절 이름」"
+    ]
+  },
+  {
+    "id": "harness-self-ref-bullet-anchor",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "- 위험한 명령 차단 (끌 수 없음)",
+        "replace": "- 다른 이름의 항목 (끌 수 없음)"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「위험한 명령 차단」"
+    ]
+  },
+  {
+    "id": "harness-self-ref-table-anchor",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "| 모드 | 명령 |",
+        "replace": "| 모드 | 호출 |"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「명령」"
+    ]
+  },
+  {
+    "id": "harness-self-ref-heading-prefix",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "## §3 ---- 접두 달린 절",
+        "replace": "## §3 ---- 이름이 바뀐 절"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「접두 달린 절」"
+    ]
+  },
+  {
+    "id": "harness-self-ref-no-bidirectional-match",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "> 차단 목록은 위 「위험한 명령 차단」이 정본이다.",
+        "replace": "> **차단 목록은 위 「없는 절 이름」이 정본이다.**"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "자기 파일 「없는 절 이름」"
+    ]
+  },
+  {
+    "id": "harness-tagenum-ok",
+    "checker": "harness",
+    "fixture": "tagenum-ok",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "큐 태그 열거 정합"
+    ],
+    "expect_absent": [
+      "큐 태그 열거 불일치",
+      "큐 태그 수 표현 불일치"
+    ]
+  },
+  {
+    "id": "harness-tagenum-count-bad",
+    "checker": "harness",
+    "fixture": "tagenum-count-bad",
+    "expect_rc": 1,
+    "expect_keywords": [
+      "큐 태그 수 표현 불일치",
+      "docs/queue-tags.md:3"
+    ],
+    "expect_absent": [
+      "결과: 대조 전부 일치"
+    ]
+  },
+  {
+    "id": "deleted-section-net-decrease",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate_after_commit": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "## 검증 매핑 (task 검증 선택)\r\n\r\n| 변경",
+        "replace": "## 검증 매핑 (task 검증 선택)\r\n| 변경"
+      }
+    ],
+    "expect_keywords": [
+      "줄이 지워진 절을 가리키는 포인터",
+      "AGENTS.md",
+      "검증 매핑 (task 검증 선택)"
+    ],
+    "why": "**ⓐ 순감 양성.** 커밋 뒤 「검증 매핑」 헤딩 바로 아래 줄을 지우면 그 절을 가리키는 `AGENTS.md` 포인터를 알린다. 헤딩에서 1줄 아래라 문맥 3줄 diff 였다면 hunk 시작이 앞 절(「검증 명령 상세」)로 귀속돼 놓친다 — `-U0` 을 함께 잰다. 아래 `deleted-section-before-commit` 와 짝이라 커밋 뒤 변이 경로(`mutate_after_commit`)의 실증이기도 하다."
+  },
+  {
+    "id": "deleted-section-parent-heading",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**5케이스(기계 미대조)** 다.\r\n",
+        "replace": "**5케이스(기계 미대조)** 다.\r\n\r\n### 하위 절\r\n\r\n하위 줄 하나\r\n하위 줄 둘\r\n"
+      }
+    ],
+    "mutate_after_commit": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "하위 줄 하나\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "줄이 지워진 절을 가리키는 포인터",
+      "AGENTS.md",
+      "검증 매핑 (task 검증 선택)"
+    ],
+    "why": "**ⓑ 상위 절 양성.** 포인터는 `##` 절을 가리키고 지운 줄은 그 아래 `###` 하위 절 안이다. 가장 가까운 헤딩에만 귀속하면 상위 절의 포인터를 놓친다 — 순감을 상위 절까지 더하는지 잰다."
+  },
+  {
+    "id": "deleted-section-replace-no-net",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**5케이스(기계 미대조)** 다.\r\n",
+        "replace": "**5케이스(기계 미대조)** 다.\r\n\r\n치환 대상 줄\r\n"
+      }
+    ],
+    "mutate_after_commit": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "치환 대상 줄\r\n",
+        "replace": "다른 문구로 바뀐 줄\r\n"
+      }
+    ],
+    "expect_absent": [
+      "줄이 지워진 절을 가리키는 포인터"
+    ],
+    "why": "**ⓒ 줄 치환 음성.** 같은 절의 줄을 다른 문구로 바꾸면 삭제 1·추가 1 이라 순감 0 이다. 「`-` 줄이 있는 절」 기준으로 구현하면 이 케이스가 알림을 내 FAIL 한다(시험 실측에서 그 기준은 60커밋 중 31커밋이 알림을 냈다)."
+  },
+  {
+    "id": "deleted-section-unpointed",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "**버전**: 1.0.0\r\n",
+        "replace": "**버전**: 1.0.0\r\n\r\n## 무관 절\r\n\r\n무관 줄 하나\r\n무관 줄 둘\r\n"
+      }
+    ],
+    "mutate_after_commit": [
+      {
+        "file": "README.md",
+        "find": "무관 줄 하나\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_absent": [
+      "줄이 지워진 절을 가리키는 포인터"
+    ],
+    "why": "**ⓓ 가리키는 포인터 없는 절 음성.** 순감 절이 있어도 그 절을 가리키는 포인터가 없으면 알리지 않는다 — 순감 절마다 무조건 알리는 구현을 거른다."
+  },
+  {
+    "id": "deleted-section-before-commit",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "## 검증 매핑 (task 검증 선택)\r\n\r\n| 변경",
+        "replace": "## 검증 매핑 (task 검증 선택)\r\n| 변경"
+      }
+    ],
+    "expect_absent": [
+      "줄이 지워진 절을 가리키는 포인터"
+    ],
+    "why": "**ⓔ HEAD 없음 음성.** `deleted-section-net-decrease` 와 같은 변이를 커밋 전에 넣으면 HEAD 가 없어 비교 대상이 없다 — 알림 없이 rc 0 이어야 한다(기존 케이스 103건이 이 형상이라 여기서 죽으면 전부 깨진다). 짝인 ⓐ 가 알림을 내고 이것이 내지 않아야 커밋 뒤 변이 경로가 실제로 쓰였다는 것이 선다."
+  },
+  {
+    "id": "deleted-section-self-path",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "**버전**: 1.0.0\r\n",
+        "replace": "**버전**: 1.0.0\r\n\r\n## 자기 절\r\n\r\n자기 줄 하나\r\n자기 줄 둘\r\n\r\n상세는 `README.md` 「자기 절」이 정본이다.\r\n"
+      }
+    ],
+    "mutate_after_commit": [
+      {
+        "file": "README.md",
+        "find": "자기 줄 하나\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_absent": [
+      "줄이 지워진 절을 가리키는 포인터"
+    ],
+    "why": "**ⓕ 같은 파일 경로 포인터 음성.** 출처와 대상이 같은 파일이면 알리지 않는다 — 그 줄을 지우는 세션이 그 파일을 보고 있다. 경로 형태라 포인터 해석 헬퍼에는 걸리므로 「출처 == 대상」 제외가 없으면 알림이 나 FAIL 한다."
+  },
+  {
+    "id": "fix-conv-dry-run",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--fix",
+      "--dry-run"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 |",
+        "replace": "| `docs/golden-runner.md` | 99 |"
+      }
+    ],
+    "expect_keywords": [
+      "[WOULD-FIX]",
+      "docs/golden-runner.md"
+    ],
+    "expect_absent": [
+      "[FIXED]"
+    ],
+    "why": "**`--fix --dry-run` 이 크기 임계 표 기록값 불일치를 보인다.** 종전엔 그 표가 `--fix` 대상이 아니어서 본 검사는 exit 1 인데 `--fix` 는 「고칠 것 없음」을 냈다(2026-09-21 왕복 1회). 쓰지 않는다는 것은 이 러너가 파일 내용을 못 봐 골든 미측정이다 — 계획의 수동 확인(사본 해시 대조)이 맡는다."
+  },
+  {
+    "id": "fix-conv-apply",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--fix"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 |",
+        "replace": "| `docs/golden-runner.md` | 99 |"
+      }
+    ],
+    "expect_keywords": [
+      "[FIXED]",
+      "docs/golden-runner.md",
+      "남은 치환 0"
+    ],
+    "why": "**`--fix` 가 표 기록값을 실측으로 고치고, 다시 잰 결과가 0 이다.** `--fix` 는 축을 돌리지 않고 끝나므로 「불일치」 부재 단언은 무의미하다 — 적용 뒤 같은 계산을 다시 돌린 결과(남은 치환 0)로 쓰기가 실제로 됐는지를 잰다."
+  },
+  {
+    "id": "fix-conv-self-row",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--fix"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 | 4,000 |",
+        "replace": "| `docs/golden-runner.md` | 118 | 4,000 |\n| `docs/harness-conventions.md` | 99 | 9,999 |"
+      }
+    ],
+    "expect_keywords": [
+      "[FIXED]",
+      "docs/harness-conventions.md",
+      "남은 치환 0",
+      "반복 2회"
+    ],
+    "why": "**자기 행(표를 담은 파일 자신의 크기)은 반복 기입으로 수렴한다.** 틀린 기록값 99(2자리)를 실측(3자리)으로 바꾸면 파일이 1자 늘어 방금 적은 값이 틀린다 — 그래서 쓴 횟수가 2다. 자릿수가 같은 값으로 두면 1회로 끝나 반복 루프를 재지 못한다(레포 docs/conventions.md)."
+  },
+  {
+    "id": "fix-conv-over-cap-untouched",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--fix"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "| `docs/golden-runner.md` | 118 | 4,000 |",
+        "replace": "| `docs/golden-runner.md` | 118 | 50 |"
+      }
+    ],
+    "expect_keywords": [
+      "고칠 것 없음"
+    ],
+    "expect_absent": [
+      "[FIXED]"
+    ],
+    "why": "**상한 초과는 `--fix` 가 손대지 않는다(회귀).** 기록값은 맞고 상한만 실측보다 작다 — 상한을 올리는 것은 처방이 아니라 판단이라(`AGENTS.md` 「파일 크기」) `--fix` 대상이 아니다."
+  },
+  {
+    "id": "harness-fm-name-folder-mismatch",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: fm-other"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter name 폴더 불일치:",
+      "name `fm-other` 이 폴더 이름 `fm-sample` 과 다르다"
+    ],
+    "expect_absent": [
+      "frontmatter name 형식:"
+    ]
+  },
+  {
+    "id": "harness-fm-name-format",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "find": "name: fm-sample",
+        "replace": "name: Fm_Sample"
+      }
+    ],
+    "expect_keywords": [
+      "frontmatter name 형식:",
+      "name `Fm_Sample` 이 소문자·숫자·하이픈 형식이 아니다"
+    ]
+  },
+  {
+    "id": "harness-readme-skill-mismatch",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "`karina:fm-sample`",
+        "replace": "`karina:ghost`"
+      }
+    ],
+    "expect_keywords": [
+      "README 목록: 「Skills」 표에 없는 스킬 — fm-sample",
+      "README 목록: 「Skills」 표의 실재하지 않는 id — ghost"
+    ]
+  },
+  {
+    "id": "harness-readme-agent-mismatch",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "| sample-agent |",
+        "replace": "| ghost-agent |"
+      }
+    ],
+    "expect_keywords": [
+      "README 목록: 「Subagents」 표에 없는 에이전트 — sample-agent",
+      "README 목록: 「Subagents」 표의 실재하지 않는 이름 — ghost-agent"
+    ]
+  },
+  {
+    "id": "harness-readme-skills-section-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "### Skills\r\n",
+        "replace": "### 기능 목록\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "README 목록: `README.md` 에 `### Skills` 절이 없다"
+    ]
+  },
+  {
+    "id": "harness-readme-agents-section-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "README.md",
+        "find": "### Subagents\r\n",
+        "replace": "### 검토자 목록\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "README 목록: `README.md` 에 `### Subagents` 절이 없다"
+    ]
+  }
+]

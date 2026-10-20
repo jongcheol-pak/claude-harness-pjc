@@ -9,9 +9,9 @@ import subprocess
 import sys
 
 INPUT_PREFIXES = (
-    'plugins/pjc/scripts/',
-    'plugins/pjc/hooks/',
-    'plugins/pjc/skills/',
+    'plugins/karina/scripts/',
+    'plugins/karina/hooks/',
+    'plugins/karina/skills/',
     '.github/',
 )
 INPUT_FILES = (

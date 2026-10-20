@@ -1,4 +1,4 @@
-﻿# validate.ps1 — pjc plugin 설치 후 정상 동작 검증
+﻿# validate.ps1 — karina plugin 설치 후 정상 동작 검증
 #
 # 사용법:
 #   .\validate.ps1
@@ -26,11 +26,11 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 $homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 
 # 플러그인 설치 캐시 레이아웃은 Claude Code 버전에 따라 다르다 — 실재하는 쪽을 탐지한다:
-#   신: cache/pjc-harness/pjc/<버전>/  (버전 디렉터리 누적 — 최신 버전을 검사)
-#   구: cache/pjc-harness/plugins/pjc
-$cacheBase = Join-Path $homeBase ".claude/plugins/cache/pjc-harness"
+#   신: cache/karina-harness/karina/<버전>/  (버전 디렉터리 누적 — 최신 버전을 검사)
+#   구: cache/karina-harness/plugins/karina
+$cacheBase = Join-Path $homeBase ".claude/plugins/cache/karina-harness"
 $pluginRoot = $null
-$verRoot = Join-Path $cacheBase "pjc"
+$verRoot = Join-Path $cacheBase "karina"
 if (Test-Path -LiteralPath $verRoot) {
     $verDirs = @(Get-ChildItem -LiteralPath $verRoot -Directory -ErrorAction SilentlyContinue)
     # [version] 파싱 가능한 이름을 버전 순으로 정렬해 최신 채택 (파싱 불가만 있으면 이름 정렬 폴백)
@@ -42,14 +42,14 @@ if (Test-Path -LiteralPath $verRoot) {
     }
 }
 if (-not $pluginRoot) {
-    $legacy = Join-Path $cacheBase "plugins/pjc"
+    $legacy = Join-Path $cacheBase "plugins/karina"
     if (Test-Path -LiteralPath (Join-Path $legacy ".claude-plugin/plugin.json")) { $pluginRoot = $legacy }
 }
 if (-not $pluginRoot) {
     # 어느 레이아웃도 없음 — 아래 Test-Item-Exists가 FAIL로 안내하도록 신 레이아웃 경로를 기본값으로
     $pluginRoot = $verRoot
 }
-$marketplaceRoot = Join-Path $homeBase ".claude/plugins/marketplaces/pjc-harness"
+$marketplaceRoot = Join-Path $homeBase ".claude/plugins/marketplaces/karina-harness"
 
 $pass = 0
 $fail = 0
@@ -94,7 +94,7 @@ function Test-Ps1-Bom {
     return $false
 }
 
-Write-Host "=== pjc plugin 검증 시작 ===" -ForegroundColor Cyan
+Write-Host "=== karina plugin 검증 시작 ===" -ForegroundColor Cyan
 Write-Host "검사 대상 plugin 경로: $pluginRoot" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -112,7 +112,7 @@ Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" |
 Write-Host ""
 
 # 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
-$skills = @('plan', 'implement', 'pjc-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'pr', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill')
+$skills = @('plan', 'implement', 'karina-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'pr', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"
@@ -194,16 +194,16 @@ if (Test-Path -LiteralPath $userSettings) {
     try {
         $settings = Get-Content -LiteralPath $userSettings -Raw | ConvertFrom-Json
         if ($settings.enabledPlugins) {
-            $pjcKey = $settings.enabledPlugins.PSObject.Properties | Where-Object { $_.Name -match "^pjc(@|$)" }
-            if ($pjcKey) {
-                if ($pjcKey.Value -eq $true) {
+            $karinaKey = $settings.enabledPlugins.PSObject.Properties | Where-Object { $_.Name -match "^karina(@|$)" }
+            if ($karinaKey) {
+                if ($karinaKey.Value -eq $true) {
                     $enableStatus = "enabled"
-                    Write-Host "  [OK]   settings.json에 pjc enabled" -ForegroundColor Green
+                    Write-Host "  [OK]   settings.json에 karina enabled" -ForegroundColor Green
                     $script:pass++
-                } elseif ($pjcKey.Value -eq $false) {
+                } elseif ($karinaKey.Value -eq $false) {
                     $enableStatus = "disabled"
-                    Write-Host "  [FAIL] settings.json에 pjc가 false로 설정됨" -ForegroundColor Red
-                    Write-Host "         해결: claude plugin enable pjc@pjc-harness" -ForegroundColor DarkGray
+                    Write-Host "  [FAIL] settings.json에 karina가 false로 설정됨" -ForegroundColor Red
+                    Write-Host "         해결: claude plugin enable karina@karina-harness" -ForegroundColor DarkGray
                     Write-Host "         또는 settings.json에서 해당 항목 제거" -ForegroundColor DarkGray
                     $script:fail++
                 }
