@@ -17,12 +17,12 @@
 
 | 지금 브랜치 | 할 일 |
 |---|---|
-| 기본 브랜치 | `git switch -c pjc/<슬러그>` 로 옮긴다. 그다음 `git fetch origin <기본>` → `git branch -f <기본> origin/<기본>` 으로 로컬 기본 브랜치를 원격에 맞춘다(중계 PR 모드의 화면 줄 task 직렬 예외 — `../../chain-plan/references/pr-mode.md`「워커」) |
+| 기본 브랜치 | `git fetch origin <기본>` → `git switch -c pjc/<슬러그>` → `git rebase origin/<기본>`(미push 자기 브랜치 — 글로벌 지침 예외 3 · **중계 모드(spec `PR 모드: 켬`)와 체인 끝 PR(`../../chain-plan/references/pr-mode.md`「P 체인 끝 PR」)은 rebase 없이** — 체인 브랜치는 merge commit 을 품어 rebase 가 그것을 편다) → `git branch -f <기본> origin/<기본>` 으로 로컬 기본 브랜치를 원격에 맞춘다. rebase 가 커밋을 옮겼으면(`git rev-parse HEAD` 가 switch 직후와 다르면) `plan.md` 의 `> BASE:` 를 rebase 뒤 HEAD 로 고친다(아래 「merge 된 브랜치에서 시작할 때」 4번과 같은 처리)(중계 PR 모드의 화면 줄 task 직렬 예외 — `../../chain-plan/references/pr-mode.md`「워커」) |
 | `pjc/*` 이고 그 PR 이 MERGED | 기본 브랜치에서 시작한 것으로 본다 — 아래 「merge 된 브랜치에서 시작할 때」 |
 | 그 밖(다른 기능 브랜치 · PR 이 OPEN·CLOSED 이거나 없는 `pjc/*`) | 그대로 둔다. 회차 끝 PR 은 이 브랜치에서 연다 |
 
 - **`<슬러그>` 는 이 회차가 정해 `plan.md` `## Next Steps` 에 적는 영문 kebab-case 이름이다** — 예: 회차 「PR 흐름 정리」면 `pjc/pr-flow`. 한글 제목의 번역은 실행마다 갈려 재개 세션이 다른 브랜치를 만들므로, 처음 정한 이름을 `plan.md` 에 적고 재개 세션은 그것을 쓴다. 같은 이름의 로컬·원격 브랜치가 있으면 `-2`·`-3` 을 붙인다. **`pjc/` 접두가 필요한 이유**: 차단 hook 이 force-with-lease 를 `pjc/<이름>` 을 명시한 push 에만 허용한다(`../../../scripts/rules/destructive-rationale.md`「자기 `pjc/` 브랜치의 force-with-lease」).
-- **로컬 기본 브랜치를 원격에 맞추는 이유** — 앞서 쌓인 미push 커밋이 로컬 기본 브랜치에 남으면, PR 이 squash 로 들어간 뒤 로컬 기본 브랜치가 원격과 갈라진다. 그 커밋들은 `pjc/` 브랜치에 그대로 있으므로 잃는 것이 없다. **원격보다 앞서 있던 커밋 수를 최종 보고에 싣고**, 이 회차 밖 커밋이 섞였으면 PR 본문 `## 범위` 에 그 목록을 적는다.
+- **로컬 기본 브랜치를 원격에 맞추는 이유** — 앞서 쌓인 미push 커밋이 로컬 기본 브랜치에 남으면, PR 이 squash 로 들어간 뒤 로컬 기본 브랜치가 원격과 갈라진다. 그 커밋들은 `pjc/` 브랜치에 그대로 있으므로 잃는 것이 없다. **rebase 를 먼저 하는 이유** — 원격 기본 브랜치가 로컬보다 앞서 있으면 새 브랜치가 낡은 로컬 HEAD 위에서 시작해 task 검증이 원격 기준선 밖에서 돌고, 원격의 변경과 PR 의 변경이 처음 만나는 자리가 squash merge 뒤가 된다(*"Rebase onto clean trunk first so every check measures against the real baseline."*). **rebase 가 충돌하면 `git rebase --abort`, 작업 트리가 깨끗하지 않아 시작 전에 거부되면 abort 없이 — 어느 쪽이든 rebase 없이 `branch -f` 만 해 지금까지의 순서로 돌아간 뒤 그 사실을 보고에 싣는다. 이때 `> BASE:` 는 그대로다.** **원격보다 앞서 있던 커밋 수를 최종 보고에 싣고**, 이 회차 밖 커밋이 섞였으면 PR 본문 `## 범위` 에 그 목록을 적는다.
 - **`git branch -f` 가 거부되면 로컬 기본 브랜치를 그대로 두고 그 사실을 보고에 싣고, 멈추지 않는다** — 기본 브랜치가 다른 worktree 에 체크아웃돼 있으면 거부된다. 이 회차 작업은 `pjc/` 브랜치에서 그대로 이어지고, 갈라짐은 merge 뒤 `git pull --ff-only` 실패로 드러나 사용자가 그때 맞춘다.
 - **체크아웃의 HEAD 가 바뀌었다는 사실을 보고에 싣는다** — 병행 세션이 같은 체크아웃을 쓰면 그쪽 커밋도 이 브랜치로 온다.
 - **worktree 를 새로 만들지 않고 지금 체크아웃의 브랜치를 바꾼다** — 새 worktree 에는 무시 대상 파일(추적하지 않는 `plan.md`·`.env`·빌드 캐시)이 옮겨지지 않고, hook 의 plan 게이트가 다른 폴더의 `plan.md` 를 보게 된다(실측 서술은 `../../chain-plan/references/parallel.md`「병렬 그룹」·「띄우기」). 한 세션이 task 를 차례로 도는 직렬 작업이라 격리가 필요 없다 — 동시에 여러 체크아웃이 필요한 체인 병렬 그룹만 worktree 를 쓴다.
