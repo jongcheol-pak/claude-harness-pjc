@@ -2019,7 +2019,7 @@
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[회차 53 완료 리뷰 델타 음성] 캐시 루트 전체 삭제는 통과 — install.ps1 의 재설치 경로다",
+      "name": "[회차 53 완료 리뷰 델타 음성] 캐시 루트 전체 삭제는 통과 — 플러그인 재설치 경로다",
       "command": "Remove-Item -Recurse -Force ~/.claude/plugins/cache/pjc-harness",
       "expect_exit": 0,
       "expect_silent": true,

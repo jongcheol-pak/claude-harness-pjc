@@ -47,7 +47,7 @@
 >
 > **기준선 줄에는 현재 값만 적는다 — 증감 이력(「직전 N」·「N건 추가」)은 커밋 본문이 정본이다.** 이력을 여기 쌓으면 한 줄이 3,000자를 넘어 정작 함정이 묻힌다. 축 ⑰ 이 기준선 줄의 「직전·그 전·그 앞 N」을 잡는다.
 
-**Hook 골든 회귀** — ⚠ **실행 전 `CLAUDE_HARNESS_QUICK` 을 지울 것**(남아 있으면 QUICK 분기를 쓰는 케이스가 무더기로 FAIL 한다 — 그 수는 케이스가 늘 때마다 낡아 적지 않는다(회차 44 완료 리뷰 4R). 상세는 `docs/golden-runner.md` 의 「골든 러너 운용 (실행·대기·판정)」). 케이스 정본은 `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오이고, 전부 OK면 exit 0이다. **기준선 1217케이스**(러너 상수 `$GoldenTotalBaseline`·`docs/golden-runner.md` 의 현행 기준선 줄과 같은 값이다). **케이스 수와 총계 증감은 1:1 이 아니다** — `guard-bash.ps1` 무상태 케이스는 **전건 dispatch 에코를 함께 돌아** 1건이 2로 세고(`scenarios/stateless.ps1` 의 `$runDispatchEcho`), 같은 이유로 **기존 케이스의 `name`·`tool_name` 을 고치는 정정은 0건을 더한다**. **차단 hook 과 `guard-stale-docs` 가 같은 `$cmd` 를 볼 때는 판정을 따로 잰다** — 한 케이스에 담으면 어느 판정이 걸렸는지 갈리지 않는다. ⚠ **수치를 기대값으로 쓰는 케이스는 다른 케이스가 커밋을 더 만드는지 본다** — 공유 SHA(`$scSha30` 등)를 재사용하면 사이에 낀 커밋으로 `N커밋 미반영` 의 N 이 어긋난다(실측). 리뷰 반영이 케이스를 더하면 이 수를 다시 잰다. **이 수는 기계로 세어지지 않는다** — `hook-cases.json`은 313건이고 나머지는 러너 내장 시나리오라 파일 하나를 세면 어긋난다(2026-09-08 실측). 다른 러너와 달리 여기서는 **`결과: N/N OK` 라인의 N을 눈으로 대조**하는 것이 유일한 방법이다. **중간 task 는 `-Filter` 부분 실행, 무인자 전체는 마지막 1회다** — 조건은 아래 「골든 부분 실행의 판정 자격」. **케이스를 추가할 때는 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다. **양성과 음성은 짝으로 둔다** — 한쪽만 두면 판정을 지운 구현이나 범위를 넓힌 구현도 green 이다.
+**Hook 골든 회귀** — ⚠ **실행 전 `CLAUDE_HARNESS_QUICK` 을 지울 것**(남아 있으면 QUICK 분기를 쓰는 케이스가 무더기로 FAIL 한다 — 그 수는 케이스가 늘 때마다 낡아 적지 않는다(회차 44 완료 리뷰 4R). 상세는 `docs/golden-runner.md` 의 「골든 러너 운용 (실행·대기·판정)」). 케이스 정본은 `plugins/pjc/hooks/evals/hook-cases.json` + 러너 내장 시나리오이고, 전부 OK면 exit 0이다. **기준선 1216케이스**(러너 상수 `$GoldenTotalBaseline`·`docs/golden-runner.md` 의 현행 기준선 줄과 같은 값이다). **케이스 수와 총계 증감은 1:1 이 아니다** — `guard-bash.ps1` 무상태 케이스는 **전건 dispatch 에코를 함께 돌아** 1건이 2로 세고(`scenarios/stateless.ps1` 의 `$runDispatchEcho`), 같은 이유로 **기존 케이스의 `name`·`tool_name` 을 고치는 정정은 0건을 더한다**. **차단 hook 과 `guard-stale-docs` 가 같은 `$cmd` 를 볼 때는 판정을 따로 잰다** — 한 케이스에 담으면 어느 판정이 걸렸는지 갈리지 않는다. ⚠ **수치를 기대값으로 쓰는 케이스는 다른 케이스가 커밋을 더 만드는지 본다** — 공유 SHA(`$scSha30` 등)를 재사용하면 사이에 낀 커밋으로 `N커밋 미반영` 의 N 이 어긋난다(실측). 리뷰 반영이 케이스를 더하면 이 수를 다시 잰다. **이 수는 기계로 세어지지 않는다** — `hook-cases.json`은 313건이고 나머지는 러너 내장 시나리오라 파일 하나를 세면 어긋난다(2026-09-08 실측). 다른 러너와 달리 여기서는 **`결과: N/N OK` 라인의 N을 눈으로 대조**하는 것이 유일한 방법이다. **중간 task 는 `-Filter` 부분 실행, 무인자 전체는 마지막 1회다** — 조건은 아래 「골든 부분 실행의 판정 자격」. **케이스를 추가할 때는 「검증 케이스의 축 분리」를 먼저 본다** — 한 케이스가 여러 축을 담으면 나중에 한 축을 제외할 때 나머지가 조용히 무력화된다. **양성과 음성은 짝으로 둔다** — 한쪽만 두면 판정을 지운 구현이나 범위를 넓힌 구현도 green 이다.
 
 **llm-wiki 상수·배치 정합 셀프체크** — 네 곳의 공유 상수·절차 배치·타입 열거 정합·트리거 유일성과 **lint.py 가 인용하는 §7 번호의 schema 실재**(축 ⑭)·**파일명 § 인용이 그 § 를 가진 schema 파일을 가리키는가**(축 ⑮ — schema 번들이 코어·`schema-types.md`·`schema-budget.md`·`schema-lint.md` 넷으로 나뉜 뒤 `plugins/pjc` 전역을 잰다)를 기계 대조한다(일치 exit 0 / 불일치 1 / 앵커 실패 2). 대조 항목 전문은 `plugins/pjc/skills/llm-wiki/evals/check_consistency.py` 의 모듈 docstring 이 정본이다. **lint 검사에 제외(exemption)를 넣을 때는 「검증 케이스의 축 분리」를 먼저 본다** — 제외 기준에 걸리는 기존 골든 케이스가 다른 축을 함께 싣고 있으면 그 축이 통째로 가려진다(§7-29 타입 제외에서 실측).
 
@@ -73,7 +73,7 @@
 
 **잘린 주석 검사** — `plugins/pjc/evals/check-comment-truncation.py`. 세 축이다: 근거 인용 주석의 **절단**, 주석의 `§<id>` 가 `rules/*-rationale.md` 에 헤딩으로 하나 있는가(**번호 짝**), 헤딩 제목까지 복제하던 **옛 형식**의 잔존. `scripts/*.ps1`·`scripts/rules/*-rationale.md` 를 고쳤으면 필수다.
 
-**삭제 자산 참조 검사** — `plugins/pjc/evals/check-stale-refs.py`. 여러 회차가 없앤 **이름**(`DEAD` 목록 — 수는 `DEAD_BASELINE` 이 고정한다)이 살아 있는 자산에 남았는가를 본다. 스캔 범위는 `plugins/**`·`docs/**`·레포 루트의 `*.ps1`·`*.md`(`validate.ps1`·`install.ps1`·`README.md` 등)이고 트리거도 같다. **`--ledger` 는 대장 `## 대기` 를 함께 본다** — 회차 25 가 대기 13건을 전수 판정해 **현재는 exit 0** 이고, 죽은 이름을 담았으나 면제된 항목은 `[NOTICE]` 로 건수·목록이 나온다. **면제는 항목 단위다** — 한 번 표기된 항목에 나중에 다른 죽은 이름이 섞여도 잡히지 않으며, 그 대가를 숨기지 않고 보이게 한 것이 이 `[NOTICE]` 다.
+**삭제 자산 참조 검사** — `plugins/pjc/evals/check-stale-refs.py`. 여러 회차가 없앤 **이름**(`DEAD` 목록 — 수는 `DEAD_BASELINE` 이 고정한다)이 살아 있는 자산에 남았는가를 본다. 스캔 범위는 `plugins/**`·`docs/**`·레포 루트의 `*.ps1`·`*.md`(`validate.ps1`·`README.md` 등)이고 트리거도 같다. **`--ledger` 는 대장 `## 대기` 를 함께 본다** — 회차 25 가 대기 13건을 전수 판정해 **현재는 exit 0** 이고, 죽은 이름을 담았으나 면제된 항목은 `[NOTICE]` 로 건수·목록이 나온다. **면제는 항목 단위다** — 한 번 표기된 항목에 나중에 다른 죽은 이름이 섞여도 잡히지 않으며, 그 대가를 숨기지 않고 보이게 한 것이 이 `[NOTICE]` 다.
 
 **같은 검사기의 둘째 축 — 산문 경로 실존(v1.276.0).** 방향이 반대다: 위가 「죽은 이름이 살아 있는 자산에 남았는가」라면 이쪽은 **대상 문서가 백틱으로 인용한 경로가 지금도 실재하는가**이고, **대상은 11문서다**(v1.278.0 — 회차 67 이 후보 여덟을 재서 전부 오탐율 10% 미만을 확인하고 넣었다. 늘리는 조건은 그대로이며 목록의 정본은 `check-stale-refs.py` 의 `PROSE_TARGETS` 다 — 전체 마크다운으로 넓히면 후보 706 중 미실존 191 이 나오는데 그것은 결함이 아니라 다른 성격의 경로다). **문자셋을 통과하지만 경로가 아닌 둘은 구조 규칙이 뺀다** — 분수·비율(슬래시로 이어진 숫자뿐)과 URL(첫 세그먼트가 도메인). **폐기 식별자 선언 줄도 두 축의 대상이 아니다** — 그 줄이 담는 이름은 정의상 지금 없는 것이라 실존을 묻는 것이 모순이고 「폐기 식별자 실재」 축이 그 자리를 전담한다. **후보 판정이 이 축의 전부다** — 인라인 백틱 토큰 중 디렉터리 구분자를 담고 **좁은 문자셋**(영숫자와 밑줄·점·붙임표·별표·슬래시)만으로 이뤄진 것만 보고, 홈·절대 경로는 레포 밖이라 뺀다. 구분자만으로 거르면 미실존이 58 로 튀고 문자셋을 더하면 1 로 떨어진다(명령 조각·정규식 리터럴·자리표시가 그 57 이었다). **경로 인덱스는 `git ls-files` 다 — 파일시스템 순회가 아니다.** 산문이 가리키는 대상이 「읽는 사람에게 있는가」를 재는 축이라 모집단은 클론이 받는 것이어야 하고, 순회로 지으면 gitignore 대상이 실존으로 잡혀 판정이 체크아웃마다 갈린다. 매치는 **접미와 글롭을 받는다** — 이 문서는 앞 포인터가 준 앵커를 생략한 상대 표기를 상용하므로 완전 경로만 보면 그 표기가 전부 오탐이다. 대가는 **동명이인**이고(같은 접미의 다른 파일이 있으면 통과한다), 잡으려는 것이 「대상이 통째로 사라진 자리」라 그 대가를 받는다. **대상 문서가 없으면 `[SKIP]` 1줄이고 exit 에 기여하지 않는다** — 「0건」(재서 아무것도 안 나왔다)과 「대상 없음」(잴 것이 없었다)을 가르되, 이 검사기가 다른 레포·골든 픽스처에서도 돌아야 해서 앵커 실패로는 보지 않는다.
 
@@ -87,7 +87,7 @@
 
 **⚠ 검증 배치에 `Remove-Item`을 인라인으로 넣지 말 것** — PowerShell 도구의 내장 경로 보호가 같은 명령 문자열 안 다른 따옴표 경로를 집어 오차단한다(하니스 hook과 무관). 조건·회피법은 아래 「검증 배치의 `Remove-Item` 오차단」.
 
-**통합 검증 (재설치 후)** — `pwsh ./validate.ps1`은 **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(`install.ps1 -Uninstall` 후 `install.ps1`). 개발 중 워킹트리 검증은 Build/Test로 한다. **같은 이유로 규약을 조회할 때는 설치본 문면을 읽지 않는다** — 설치본은 마지막 `/plugin update` 시점에 고정돼 이번 회차는 물론 지난 회차 변경도 없을 수 있다. 스킬이 「Base directory」로 설치본 경로를 주어도 규약 문면은 레포 `plugins/pjc/skills/**` 를 읽는다(2026-09-20 — 설치본 `WIKI.md` 의 폐지된 태그를 근거로 대장에 커밋했다).
+**통합 검증 (재설치 후)** — `pwsh ./validate.ps1`은 **설치 캐시**(`~/.claude/plugins/cache/...`)를 검사하므로 **워킹트리 변경은 재설치 후에만 반영**된다(push 뒤 `/plugin update` — 설치는 GitHub 마켓 경로뿐이다). 개발 중 워킹트리 검증은 Build/Test로 한다. **같은 이유로 규약을 조회할 때는 설치본 문면을 읽지 않는다** — 설치본은 마지막 `/plugin update` 시점에 고정돼 이번 회차는 물론 지난 회차 변경도 없을 수 있다. 스킬이 「Base directory」로 설치본 경로를 주어도 규약 문면은 레포 `plugins/pjc/skills/**` 를 읽는다(2026-09-20 — 설치본 `WIKI.md` 의 폐지된 태그를 근거로 대장에 커밋했다).
 
 ## 검증 매핑 (task 검증 선택)
 
@@ -95,7 +95,7 @@
 
 task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 패턴에 걸치면 해당 행 전부 — 합집합). 전체 검증은 전 task 완료 후 1회 도는 최종 검증이 보장하므로 매 task 전량 실행은 중복이다.
 
-**단 「줄바꿈 정합」 축은 파일 패턴과 무관하게 레포 안 파일을 고치거나 **새로 만든** 모든 task 가 대상이다** — 아래 표에는 `check-harness-consistency.py` 를 부르지 않는 행이 여럿이고(JSON 매니페스트 3종 · `validate.ps1`·`install.ps1` · `llm-wiki/**` · `record-project-fact/**`), 그 행만 따르면 **v1.214.0 이 실제로 겪은 형태(`plugin.json`·`README.md` 가 편집으로 LF 화)가 task 단위 검증에서 발화하지 않는다**. 행마다 명령을 더하면 표가 부푸므로 여기 예외로 둔다.
+**단 「줄바꿈 정합」 축은 파일 패턴과 무관하게 레포 안 파일을 고치거나 **새로 만든** 모든 task 가 대상이다** — 아래 표에는 `check-harness-consistency.py` 를 부르지 않는 행이 여럿이고(JSON 매니페스트 3종 · `validate.ps1` · `llm-wiki/**` · `record-project-fact/**`), 그 행만 따르면 **v1.214.0 이 실제로 겪은 형태(`plugin.json`·`README.md` 가 편집으로 LF 화)가 task 단위 검증에서 발화하지 않는다**. 행마다 명령을 더하면 표가 부푸므로 여기 예외로 둔다.
 
 | 변경 파일 패턴 | 필수 검증 |
 |---|---|
@@ -109,7 +109,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `plugins/pjc/evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `plugins/pjc/agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python plugins/pjc/evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python plugins/pjc/evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든(**exit 2 는 `cases.json` 서식 위반 또는 미추적 픽스처** — 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다)이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다). 이 정합 검사는 **그 회차 `plan.md` 의 영향 검토 3축 기재도 함께 잰다** — `plan.md` 는 gitignore 라 「변경 파일 패턴」이 될 수 없어 이 표에 자기 행을 갖지 못하지만, 축은 그 파일을 직접 읽으므로 **이 행이 실행되는 순간 함께 판정된다**(부재 시 fail-open). |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | **agent·skill·hook 신설** | 해당 행에 더해 **`validate.ps1` 의 화이트리스트 배열을 같은 task 에서 갱신한다** — 빠지면 재설치 후 통합 검증이 `[WARN] validate 미등록` 을 적재한 채로 남는다(v1.169.0 T1 이 신설한 agent 를 등재하지 않아 완료 리뷰가 BLOCKER 로 잡을 때까지 그 상태로 갔다). **워킹트리 검사기 어느 축도 이것을 잡지 못한다** — `validate.ps1` 이 보는 것은 설치 캐시다 |
-| `validate.ps1`·`install.ps1` | Build(전 ps1 parse) + **`python plugins/pjc/evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 두 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
+| `validate.ps1` | Build(전 ps1 parse) + **`python plugins/pjc/evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
 | `.github/**` | **`python .github/scripts/test_hook_golden_needed.py`**(CI 의 Hook 골든 경로 판정) + **`python plugins/pjc/evals/check-stale-refs.py`** — 정합 검사는 `.github` 를 보지 않고 stale-refs 만 본다. 워크플로 YAML 은 로컬에서 재는 검사가 없어 PR 의 실제 CI 실행이 판정한다 |
 | **모든 `*.md` 변경 (공통 — 다른 행에 걸려도 **더해진다**)** · `agents/*.md` · 기타 skills | Build(전 ps1 parse) + Test(JSON 3종) + **`check-harness-consistency.py`** — **행 이름이 「그 외」였을 때 배타로 오독됐다**(2026-09-11 2R 리뷰가 판정을 유보했다). 머리말대로 **합집합**이라, `*.md` 를 고치는 task 는 다른 행에 걸리더라도 이 행을 함께 돈다. 정합 검사가 붙는 이유는 **볼드 마커 짝·한 줄 문장 중복 축이 레포 md 전수를 본다**는 것이다(`plugins/pjc/evals/check-harness-consistency.py` 의 두 축 함수 주석). md를 고치면 그 두 축의 대상이 된다 | 여기에 **`python plugins/pjc/evals/check-stale-refs.py`**를 함께 돌린다 — 여러 회차가 없앤 이름이 살아 있는 자산(레포 루트의 `*.ps1`·`*.md` 포함)에 남았는지 본다(실행에 영향이 없어 골든이 못 잡는 축이다).
 | `plugins/pjc/skills/*/SKILL.md` 의 frontmatter **`description`** (`disable-model-invocation: true` 스킬은 제외 — 설명이 모델 컨텍스트에 실리지 않아 트리거를 바꾸지 못한다) | 위 「모든 `*.md` 변경」 행에 더해 **`python plugins/pjc/skills/evals/trigger_eval.py --filter <접두>`** — `description` 이 트리거의 1차 메커니즘이라(`plugins/pjc/skills/AUTHORING.md` 「description 작성」) 한 구만 고쳐도 발동·미발동 경계가 함께 움직인다. 케이스 id 접두는 `plan`·`impl`·`rec`·`wiki`·`dbg`·`chain`·`pr`. **자수도 함께 잰다** — 운용 기준 **1,024자**를 넘으면 잘린다(회차 30 실측: `record-project-fact` 가 1,045자로 넘어 있었고 재는 축이 0건이었다). 전량 실행은 명시 호출 전용이다 |
@@ -126,8 +126,8 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 52,225 | 137,000 |
-| `docs/golden-runner.md` | 13,626 | 28,000 |
+| `docs/harness-conventions.md` | 52,186 | 137,000 |
+| `docs/golden-runner.md` | 13,656 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 10,202 | 37,000 |
 
 > **단위는 문자 수다(v1.273.0)** — 근거는 `plugins/pjc/skills/BUDGET.md`「예산 표」의 단위 문단이다. **아래 도출 근거의 수치는 전부 바이트 실측이고 그대로 둔다** — *"그때 그렇게 정했다"*는 기록이라 낡지 않으며, **상한 숫자는 바이트 시절 값을 단위만 옮긴 것**이다(그래서 실질 여유가 늘었다 — 이 표의 파일은 B/문자가 1.8~2.0이다).

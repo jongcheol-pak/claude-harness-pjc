@@ -466,17 +466,11 @@ claude plugin marketplace remove pjc-harness
 ```
 
 <details>
-<summary>로컬 개발 모드 / 배포 워크플로</summary>
+<summary>배포 워크플로</summary>
 
-개발용으로 로컬 폴더에서 직접 쓰거나, 수정 후 GitHub에 배포하려면:
+설치는 GitHub 마켓플레이스 경로 하나뿐입니다 — 로컬 폴더에서 직접 설치하지 않습니다. 수정은 커밋 → push → 아래 흐름으로 배포한 뒤 사용 PC에서 업데이트합니다.
 
 ```powershell
-# 로컬 설치 (개발용)
-.\install.ps1
-
-# GitHub 모드 일괄 설치 (정리 + enable + 검증)
-.\install.ps1 -GitHub jongcheol-pak/claude-harness-pjc
-
 # 배포 (개발 PC에서 수정 후) — 회차 PR 이 merge 되면 pjc:pr ship 이 버전 전용 PR 을 이어 merge 한다
 # 그 merge 커밋으로 릴리즈 발행(별도 승인): gh release create v<버전> --target <merge 커밋 full-sha>
 # → 사용 PC에서 위의 "업데이트" 명령 실행
@@ -487,22 +481,9 @@ claude plugin marketplace remove pjc-harness
 <details>
 <summary>구버전 캐시 회수</summary>
 
-`/plugin update`는 버전마다 `~/.claude/plugins/cache/pjc-harness/pjc/<버전>/` 을 새로 만들고 예전 것을 지우지 않아 캐시가 단조 증가합니다. `-PruneCache`가 오래된 버전 폴더를 회수합니다.
+`/plugin update`는 버전마다 `~/.claude/plugins/cache/pjc-harness/pjc/<버전>/` 을 새로 만들고 예전 것을 지우지 않아 캐시가 단조 증가합니다. 회수는 손으로 합니다 — 그 폴더 아래에서 **지금 설치된 버전 폴더를 뺀** 예전 버전 폴더를 지웁니다.
 
-```powershell
-# 열거만 — 한 바이트도 지우지 않고 대상 버전·파일 수·크기만 보여준다
-.\install.ps1 -PruneCache
-
-# 실제 회수 (-ConfirmPrune 이 있어야 지운다)
-.\install.ps1 -PruneCache -ConfirmPrune
-
-# 보존할 최신 버전 수를 바꾼다 (기본 3)
-.\install.ps1 -PruneCache -KeepVersions 5 -ConfirmPrune
-```
-
-**보존 대상은 「최신 N개」에 더해 레포 `plugin.json`의 현행 버전과 Claude Code가 기록한 설치본 버전이며, 뒤의 둘은 `-KeepVersions`가 작아도 빠지지 않습니다** — 지금 돌고 있는 세션의 hook이 설치본 폴더에 살아 있어, 지우면 그 세션의 안전장치가 통째로 사라집니다. **둘을 따로 세는 것은 갈리기 때문입니다** — 버전을 올린 뒤 `/plugin update` 전까지 레포가 설치본보다 앞섭니다. `-KeepVersions`의 하한은 1이고, 레포 `plugin.json`을 읽지 못하면 열거도 하지 않고 멈춥니다.
-
-회수한 구버전이 다시 필요하면 GitHub 태그에서 재설치합니다.
+**설치본 버전 폴더는 지우지 않습니다** — 지금 돌고 있는 세션의 hook이 그 폴더에 살아 있어, 지우면 그 세션의 안전장치가 통째로 사라집니다. 설치본 버전은 `claude plugin list` 로 확인합니다. 회수한 구버전이 다시 필요하면 GitHub 태그에서 재설치합니다.
 
 </details>
 

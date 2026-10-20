@@ -2,10 +2,9 @@
 """삭제 자산 참조 검출 — 회차 1·2가 없앤 것을 살아 있는 자산이 아직 가리키는가.
 
 무엇을 재는가: 아래 DEAD 목록의 이름을 `plugins/**`·`docs/**` 와 **레포 루트의 `*.ps1`·`*.md`** 에서
-계수한다. 루트를 넣은 것은 `validate.ps1`·`install.ps1` 이 스킬·hook 이름을 배열로 담아
+계수한다. 루트를 넣은 것은 `validate.ps1` 이 스킬·hook 이름을 배열로 담아
 **이름이 죽으면 조용히 깨지는 자리**인데 종전 범위 밖이었기 때문이다(회차 22 가 지운
-`bootstrap-agents-md` 가 `validate.ps1` 에, 회차 4 가 지운 같은 이름이 `install.ps1` 에
-살아 있었고 검사기는 계속 exit 0 이었다).
+`bootstrap-agents-md` 가 `validate.ps1` 에 살아 있었고 검사기는 계속 exit 0 이었다).
 `--ledger` 를 주면 대신 `docs/plans/deferred.md` 의 `## 대기` 구간만 본다(T9 용).
 
 **축이 셋이다 — 트리 경로에서는 전부 돈다.** 위가 「죽은 이름이 살아 있는 자산에 남았는가」라면

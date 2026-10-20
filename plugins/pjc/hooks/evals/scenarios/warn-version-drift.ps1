@@ -27,9 +27,7 @@ try {
     # 1) 불일치 → 드리프트 경고 (exit 0 — 비차단)
     $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
     Assert-Case -Name "version-drift: 설치본≠레포 경고" -R $r -ExpectExit 0 -ExpectContains '버전 드리프트'
-    # 재설치 안내 — GitHub 소스 갱신 경로(양성)와 로컬 모드 install.ps1(음성)을 갈라 잰다.
     Assert-Case -Name "version-drift: 재설치 안내가 /plugin update 를 가리킨다" -R $r -ExpectExit 0 -ExpectContains '/plugin update'
-    Assert-Case -Name "version-drift: 재설치 안내가 install.ps1 을 가리키지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'install.ps1'
 
     # 2) 일치 → 무출력
     '{ "name": "pjc", "version": "1.0.0" }' | Set-Content (Join-Path $vdRepo 'plugins/pjc/.claude-plugin/plugin.json')

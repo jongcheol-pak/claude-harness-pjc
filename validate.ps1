@@ -243,6 +243,6 @@ if ($fail -eq 0) {
     exit 0
 } else {
     Write-Host "❌ plugin에 문제 있음. 위 FAIL 항목 확인 후 재설치 권장." -ForegroundColor Red
-    Write-Host "   재설치: install.ps1 -Uninstall 후 install.ps1" -ForegroundColor DarkGray
+    Write-Host "   재설치: claude plugin uninstall 후 claude plugin install (GitHub 마켓)" -ForegroundColor DarkGray
     exit 1
 }
