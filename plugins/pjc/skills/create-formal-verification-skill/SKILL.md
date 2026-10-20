@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Create a formal verification skill
 
-> 출처는 Cursor pstack 의 create-formal-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/6b78e9f4e46c75d1697d837e51f07c2692e60b24/pstack/skills/create-formal-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/6b78e9f4e46c75d1697d837e51f07c2692e60b24/pstack/LICENSE`). 한글로 옮기며 생성 위치를 Claude Code 프로젝트 스킬로 바꾸고, 도구 설치 승인·「변경 검증」 절·알려진 위반 목록·pjc 등록 절차를 더했다.
+> 출처는 Cursor pstack 의 create-formal-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/7b353f78f6ec193bdbe48ed8059444eb09b6878e/pstack/skills/create-formal-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/7b353f78f6ec193bdbe48ed8059444eb09b6878e/pstack/LICENSE`). 한글로 옮기며 원문과 다르게 한 것 — ① 생성 위치를 Claude Code 프로젝트 스킬 `.claude/skills/formal-<영역>/` 로 ② 도구 설치는 승인 뒤에만 ③ 소비자가 이름으로 찾는 「변경 검증」 절과 알려진 위반 목록 ④ 원문의 덮는 코드 기록·동기 커밋을 그 절의 항목으로 ⑤ `AGENTS.md` 등록 절차(6단계).
 
 테스트는 누군가 떠올린 경우만 확인한다. 형식 검증은 정해 둔 범위 안의 모든 경우를 확인한다 — 모델 안의 모든 단계 순서, 한계까지의 모든 입력, 또는 모든 입력이다. 이 스킬은 레포에서 그것이 가장 중요한 자리를 찾아 그 자리의 속성 하나를 검증하고, 다음 에이전트가 변경을 그 속성에 대조할 수 있는 프로젝트 스킬 `.claude/skills/formal-<영역>/` 을 남긴다. **생성물의 독자는 작업 도중에 그 스킬을 처음 읽는, 이번 작업을 본 적 없는 에이전트다** — `pjc:implement`·`pr-verifier`·`pjc:pjc-systematic-debugging` 이 `AGENTS.md` 의 `Verify (형식 검증)` 줄로 찾는다. 사용자는 검증 언어를 배우지 않고도 결과를 믿고 행동할 수 있어야 한다.
 
@@ -36,19 +36,21 @@ disable-model-invocation: true
 - **범위에 정직하다** — 무엇을, 어떤 한계와 가정 아래 검증했고 무엇을 뺐는지 말한다. 통과는 모델이나 한계를 덮을 뿐 시스템 전체를 덮지 않는다.
 - **도구 없이 읽힌다** — 속성과 피해를 각각 평이한 한 문장으로 쓴다. 반례는 코드의 말로 쓴 짧은 단계 순서로 말한다.
 - **다시 돌리기 싸다** — 명령 하나, 재현 가능한 도구 버전, 그리고 다음 에이전트가 관련 변경마다 쓸 만큼 짧은 실행 시간.
-- **코드와 보조를 맞춘다** — 검증된 코드가 바뀌면 검증을 다시 볼 때라는 것을 무언가가 다음 에이전트에게 알린다. pjc 에서는 4단계가 생성 스킬에 두게 하는 변경 검증 절의 감시 경로와 `AGENTS.md` 등록이 그 일을 한다.
+- **코드와 보조를 맞춘다** — 검사마다 덮는 파일·함수와, 검증이 그 코드를 서술함을 마지막으로 확인한 커밋을 기록한다. 그 커밋 뒤 덮는 코드가 바뀌면 다음 에이전트는 검증을 다시 볼 때임을 안다. pjc 에서는 4단계의 「변경 검증」 절(덮는 코드·동기 커밋)과 `AGENTS.md` 등록이 그 기록이다.
 
 ## 4. 검증 스킬을 만든다
 
 `.claude/skills/formal-<영역>/SKILL.md` 를 쓴다. YAML frontmatter(`name: formal-<영역>` · 영역과 언제 쓰는지를 담은 `description`)가 없으면 스킬로 등록되지 않는다. 이 레포의 실제 명령·경로·명사를 쓰고 **자리표시를 남기지 않는다.** 모델·증명 파일과 헬퍼는 그 폴더 안에 두고, **헬퍼 스크립트는 `helpers/` 아래에 둔다** — `.claude/` 아래 `scripts/*.ps1` 은 pjc 하니스의 `guard-harness` hook 이 hook 스크립트 개조로 보고 막는다. PowerShell 헬퍼는 UTF-8 BOM 으로 저장한다(Windows PowerShell 5.1 한글).
 
-다음 에이전트가 그 스킬만 읽고 변경이 검증된 코드에 닿는지 가르고, 검사를 돌리고, 진짜 버그와 모델링 오류를 가르고, 의도된 변경이면 검증을 고칠 수 있어야 한다. 그래서 본문에 **「변경 검증」 절**을 이 이름으로 두고 다섯을 담는다 — 소비자가 이 절 이름으로 찾는다.
+다음 에이전트가 그 스킬만 읽고 변경이 검증된 코드에 닿는지 가르고, 검사를 돌리고, 진짜 버그와 모델링 오류를 가르고, 의도된 변경이면 검증을 고칠 수 있어야 한다. 그래서 본문에 **「변경 검증」 절**을 이 이름으로 두고 일곱을 담는다 — 소비자가 이 절 이름으로 찾는다.
 
 - **감시 경로** — 검증된 코드의 경로 glob 목록. 변경 파일이 여기 걸리면 검사를 돌린다.
+- **덮는 코드** — 검사마다 덮는 파일·함수·심볼 이름. 감시 경로는 파일을 매칭하는 glob 이고, 이것은 이름이 바뀌거나 쪼개지거나 다른 파일로 옮겨진 덮는 함수를 좇는 기록이다 — 형식 검증 유지 스킬이 여기서 변경을 읽을 코드를 얻는다.
 - **검사 명령** — 레포 루트에서 도는 명령 하나와 도구 버전, 끝나는 데 걸린 시간(실측).
 - **알려진 위반** — 지금 코드에서 이미 깨져 있어 보고한 속성과 그 반례 요지. 없으면 「없음」. 검사 결과가 이 목록과 같으면 새 위반이 아니다.
 - **판정** — 새 위반(목록 밖 반례)은 실패다. 반례가 코드에서 일어날 수 없는 순서·값이면 모델링 오류이니 모델을 코드에 맞춰 고치고, 반례가 코드에서 재현되면 버그다.
-- **의도된 변경** — 변경이 속성 자체를 바꾸는 것이면 속성·모델을 고치고 3절의 「실패할 수 있다」를 다시 보인 뒤, 감시 경로와 알려진 위반을 갱신한다.
+- **의도된 변경** — 변경이 속성 자체를 바꾸는 것이면 속성·모델을 고치고 3절의 「실패할 수 있다」를 다시 보인 뒤, 감시 경로·알려진 위반과 덮는 코드·동기 커밋을 갱신한다.
+- **동기 커밋** — 검증이 덮는 코드를 서술함을 마지막으로 확인한 커밋 SHA. 초기값은 5단계 증명 때의 HEAD 다(등록 커밋은 자기 SHA 를 담을 수 없다). 새 커밋에서 검증이 코드를 서술함을 확인한 뒤에만 앞으로 옮긴다 — 확인 없이 옮기면 낡은 서술 위의 통과가 최신 확인처럼 보인다.
 
 ## 5. 넘기기 전에 증명한다
 
@@ -69,6 +71,7 @@ disable-model-invocation: true
 2. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 없는지 본다** — `git status --porcelain -- AGENTS.md` 가 비어 있지 않으면 등록하지 않고 보고한다. 4번 커밋이 그 파일의 다른 변경까지 담기 때문이다.
 3. **`pjc:record-project-fact` 로 `AGENTS.md` 의 `Verify (형식 검증)` 줄에 `.claude/skills/formal-<영역>/` 를 적는다** — 줄이 이미 있으면 ` · ` 로 이어 붙인다. `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고 승인을 받는다.
 4. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git add -- .claude/skills/formal-<영역> AGENTS.md` 뒤 `git commit -m "설정: 형식 검증 스킬 formal-<영역> 생성" -- .claude/skills/formal-<영역> AGENTS.md`. 1번에서 부정 사슬을 골랐으면 `.gitignore` 를, `-f` 를 골랐으면 `add` 에 `-f` 를 더한다. 포인터만 커밋되고 대상이 빠지거나 그 반대면 PR head 에서 한쪽이 없다.
+5. **스킬을 거치지 않은 변경(merge·리팩토링) 뒤에는 `/pjc:maintain-formal-verification-skill` 로 검증을 코드에 다시 맞춘다고 안내한다** — 그 스킬이 동기 커밋부터의 변경을 읽어 검증 드리프트와 코드 버그를 가른다. 주기는 사용자가 물을 때만 제안한다.
 
 ## 보고
 
