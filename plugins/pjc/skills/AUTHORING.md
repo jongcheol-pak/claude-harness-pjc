@@ -25,6 +25,11 @@ pjc 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**할
 
 ④ **평가를 문서보다 먼저 만든다.** 공식 권장이고(*"Create evaluations BEFORE writing extensive documentation. This ensures your Skill solves real problems rather than documenting imagined ones."*) 순서는 **결함 식별 → 평가 작성 → 기준선 측정 → 최소 문면 → 반복**이다. 스킬을 **안 붙인 상태로** 대표 작업을 돌려 무엇이 실제로 실패하는지 먼저 적고, 그 실패를 재는 케이스를 만든 뒤, 그것을 통과시킬 만큼만 쓴다. **우리 자리는 둘이다** — 발동 경계는 `skills/evals/trigger_eval.py`(실제 모델 호출), 검사기 판정은 `evals/cases.json`(모델 호출 없음). **없는 요구를 미리 문서로 막는 문면이 이 순서를 건너뛴 자리에서 나온다.**
 
+## 다른 하니스에서 들여온 문서
+
+- **번안·복제 문서의 머리말에는 출처의 고정 커밋 URL 과 함께 「원문과 다르게 한 것」 목록을 적고, 묶음(예시 폴더·참조 묶음)을 일부만 들였으면 빠진 파일을 이름으로 적는다** — 「원문 그대로」만 적으면 생략이 가려진다. 2026-10-18 `119bd6a1` 이 `feature-map-example/` 두 파일 중 하나만 들이고 머리말에 「원문 그대로」를 적어, 빠진 `search.md` 를 2026-10-20 검토 전까지 아무도 몰랐다.
+- **다른 파일이 이름으로 가리키는 불릿은 `- **태그** · **규칙** — 근거` 머리를 두고, 가리키는 쪽은 이름을 산문에 열거하지 않고 `` `파일`「태그」 `` 로 쓴다** — 검사기 축 ①(포인터 도달성)은 경로 뒤 「」 형태만 세고 굵은 런(80자 이하)을 앵커로 받으므로, 산문 열거는 이름이 바뀌어도 검사기가 모른다(2026-10-17 `c8b1fb18` 이 불릿 이름을 바꾸고 포인터 두 곳을 안 고쳤다). 구분자를 `—` 로 두면 축 ⑱(규칙 근거 보유)이 태그 뒤에서 매치돼 규칙의 근거를 못 잰다. 가리키는 곳이 없는 불릿에는 태그를 두지 않는다.
+
 ## description 작성 (트리거 메타데이터)
 
 **공식 한도 (Agent Skills 표준 — agentskills.io/specification + code.claude.com/docs/en/plugins.md, 2026-07-08 확인 · 작성 권장은 platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices, 2026-09-11 확인)**:
