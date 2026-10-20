@@ -64,7 +64,7 @@ tools: Read, Grep, Glob
 
 ### 범위
 
-- **plan의 task가 `> 요구:`·`## Goal` 에 없는 일을 하는지 본다** — 요청되지 않은 기능 추가와 바꾸는 영역 밖의 리팩토링·정리가 task로 들어와 있으면 지적한다 — 바꾸는 영역 안의 삭제 먼저(`skills/implement/references/code-style.md`)는 대상이 아니다.
+- **plan의 task가 `> 요구:`·`## Goal` 에 없는 일을 하는지 본다** — 요청되지 않은 기능 추가와 바꾸는 영역 밖의 리팩토링·정리가 task로 들어와 있으면 지적한다 — 바꾸는 영역 안의 `skills/implement/references/code-style.md`「삭제 먼저」는 대상이 아니다.
 - **반대로 Goal 에 있는데 task가 없는 것도 본다** — 여기서 놓치면 구현이 끝난 뒤 완료 리뷰(`completion-reviewer` 「요구 ↔ 산출물」)에서야 드러난다.
 - **Investigation Log 가 드러낸 요청 범위 밖 연관 수정이 task·`## Out of Scope`·`## Deferred / Follow-up` 어디에도 없으면 지적한다 — 후보 라운드(`skills/plan/references/interview.md`「후보 라운드」)를 건너뛴 것이다** — 그 수정은 구현이 끝난 뒤에야 사용자에게 알려진다. Log 의 대장 행에 `→ 대장 유지` 로 남긴 항목과, 중계 모드에서 Decisions 의 회피 설계 근거나 `[요청 밖]` 문답이 있는 것은 지적하지 않는다.
 
