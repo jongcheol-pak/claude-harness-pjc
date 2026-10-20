@@ -110,6 +110,7 @@
 
 ### 도구·환경 함정
 
+- [2026-10-20] **`AGENTS.md` 의 Build 명령(`pwsh -NoProfile -Command "$f=0; … $e …"`)을 Claude Code 의 Bash 도구로 돌리면 bash 가 `$f`·`$e`·`$_` 를 빈 문자열로 치환해 PowerShell 이 ParserError 를 낸다 — PowerShell 도구로 돌리거나, Bash 에서는 명령 전체를 작은따옴표로 감싼다.** 실패 출력이 깨진 한글 ParserError 라 원인이 치환이라는 것이 보이지 않는다. (실측)
 - [2026-10-14] **스크립트가 자식 프로세스(git·claude)를 띄우며 stderr 를 리다이렉트했으면 반드시 비우거나 임시 파일로 받는다** — stdout 만 읽는 동안 stderr 파이프가 차면 자식이 stderr 쓰기에서 막혀 시한·watchdog 에 걸리고, 그 실패는 「느리다」나 케이스 timeout 으로만 보인다. 같은 원인이 두 자리에서 났다 — 세션 시작 위키 뒤처짐 계산의 git(`plugins/pjc/scripts/session-wiki-signals.ps1` — 비동기로 비움)과 트리거 eval 의 claude(`plugins/pjc/skills/evals/trigger_eval.py` `run_claude` — 임시 파일). 리다이렉트를 풀면 경고가 hook stderr 로 새므로 푸는 것은 답이 아니다 (실측 — 1583cdd3·f6b1af96 커밋 본문: `GIT_TRACE=1`+긴 경로에서 5초 상한 초과, 비우면 46ms)
 - [2026-10-14] **Git Bash 에서 띄운 python 의 직계 부모는 세션이 아니라 WindowsApps python 스텁이다** — 부모 생존으로 「띄운 세션이 사라졌는가」를 재면 스텁만 보게 된다. 조상 사슬에서 스텁·셸을 건너뛴 첫 비셸 프로세스를 감시 대상으로 고르고, 사슬을 못 얻으면 감시 없이 종전대로 기다린다(fail-open) (실측 — bd5fe8ba 커밋 본문: python → python(스텁) → bash×3 → claude.exe)
 - [2026-10-14] **`cmd /c` 에 따옴표가 셋 이상인 명령을 넘기면 첫·끝 따옴표가 벗겨져 공백 경로가 깨진다 — `cmd /s /c "<전체>"` 로 넘긴다** (실측 — 1583cdd3 커밋 본문)
