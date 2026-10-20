@@ -90,6 +90,7 @@
 
 ### hook 검사·차단
 
+- [2026-10-20] **파괴적 명령 문자열을 담은 골든 케이스·시나리오를 Bash 도구 인라인(heredoc·`python -c`)으로 고치면 지금 도는 `block-destructive` 가 명령 문자열 전체를 보고 막는다** — 케이스 텍스트 안의 `git push --force-with-lease origin main` 이 실제 명령으로 읽힌다. 편집 스크립트는 Write 도구로 파일에 쓰고 `python <파일>` 로 돌린다 (실측)
 - [2026-10-08] **hook 에서 외부 프로세스 출력을 `StandardOutput.ReadToEnd()` 로 읽은 뒤 `WaitForExit(ms)` 를 부르면 그 대기 상한이 걸리지 않는다** — `ReadToEnd` 가 프로세스가 끝날 때까지 먼저 막기 때문이다(4초 걸리는 프로세스에 1초 상한을 주고 4,422ms 를 기다렸다). 상한이 필요하면 `ReadToEndAsync()` 로 읽고 남은 시간으로 `WaitForExit` 한다 — `session-wiki-signals.ps1` 의 위키 뒤처짐 계산이 그렇게 고쳐졌다. (실측)
 - [2026-09-23] **hook `matcher` 는 글자·숫자·`_`·`-`·공백·`,`·`|` 만 쓰면 정규식이 아니라 「정확 일치 목록」이다** — `"implement|plan"` 은 `pjc:implement` 를 받지 못한다. 그 밖의 문자가 하나라도 있어야 정규식(비앵커)으로 판정되므로 `^(pjc:)?(implement|plan)$` 처럼 쓴다. **골든 시나리오는 스크립트에 JSON 을 직접 넣어 matcher 를 거치지 않으므로** hooks.json 의 matcher 를 읽어 입력 형태에 대 보는 케이스를 따로 둔다 (실측 — 완료 리뷰 BLOCKER)
 - [2026-09-23] **자기보호 이름 집합(`harness-hooks.json`)의 등재는 8.3 짧은 경로(`CLAUDE~1/plugins/cache/…`)로만 잰다** — 설치본 일반 경로는 경로 축이 `scripts/*.ps1` 전체를 막아, 목록에서 이름이 빠져도 일반 경로 케이스는 PASS 한다. 누락을 잡으려면 목록이 아니라 **실제 스크립트 파일을 기준으로 전수** 대조한다 (실측 — `guard-stale-docs` 누락이 그렇게 숨어 있었다)
