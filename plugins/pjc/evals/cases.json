@@ -55,6 +55,54 @@
     ]
   },
   {
+    "id": "pointer-bold-tag-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/references/loop-stop-patterns.md",
+        "find": "축이 발화한다.\r\n",
+        "replace": "축이 발화한다.\r\n- **태그 앵커** · **짧은 규칙이다** — 포인터가 이 이름으로 닿는다.\r\n"
+      },
+      {
+        "file": "plugins/pjc/skills/sample/SKILL.md",
+        "find": "여기서 추출이 멈춘다.",
+        "replace": "여기서 추출이 멈춘다.\r\n\r\n- 태그 인용: `loop-stop-patterns.md`「태그 앵커」"
+      }
+    ],
+    "expect_keywords": [
+      "포인터 도달성"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ],
+    "why": "**굵은 태그 앵커 양성.** `- **태그** · **규칙** — 근거` 머리의 짧은 굵은 런을 다른 파일의 `파일`「태그」 포인터가 가리키면 축 ①이 도달로 센다 — code-style.md 의 태그 포인터(2026-10-20 회차)가 기대는 형태다."
+  },
+  {
+    "id": "pointer-bold-tag-renamed",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/skills/implement/references/loop-stop-patterns.md",
+        "find": "축이 발화한다.\r\n",
+        "replace": "축이 발화한다.\r\n- **다른 태그** · **짧은 규칙이다** — 포인터가 이 이름으로 닿지 않는다.\r\n"
+      },
+      {
+        "file": "plugins/pjc/skills/sample/SKILL.md",
+        "find": "여기서 추출이 멈춘다.",
+        "replace": "여기서 추출이 멈춘다.\r\n\r\n- 태그 인용: `loop-stop-patterns.md`「태그 앵커」"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "태그 앵커"
+    ],
+    "why": "**굵은 태그 개명 음성.** 태그를 「다른 태그」로 바꾸면 「태그 앵커」 포인터가 끊긴다 — 앵커 이름이 포인터 이름의 접두가 아니어야 양성으로 새지 않는다(매치는 전체 일치 또는 접두)."
+  },
+  {
     "id": "deferred-count-drift",
     "checker": "harness",
     "fixture": "minimal-repo",
