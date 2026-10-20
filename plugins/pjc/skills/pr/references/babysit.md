@@ -12,7 +12,7 @@
 | `check` | 「상태만」 · 「지금 초록이야?」 | 한 번 읽고 보고한다. 고치지 않는다 |
 | `threads-only` | 「리뷰 코멘트에만 답해」 | 리뷰 스레드만 다룬다. CI·충돌은 보고만 한다 |
 
-- **문서만 바뀐 작은 PR 은 `drive` 를 요청받아도 `check` 로 시작한다** — 고칠 코드가 없는 PR 에 루프를 돌리면 CI 만 다시 태운다. 실패가 보이면 그때 `drive` 로 바꾼다.
+- **작거나 문서만 바뀐 PR 은 `drive` 를 요청받아도 `check` 다 — 「babysit 뒤 ship」 결합 요청이면 `check` 도 `gh pr checks <n> --watch --fail-fast` 로 CI 가 끝난 뒤 한 번 읽고 고치지 않는다** — 그런 PR 에 루프를 돌리면 CI 재실행 비용이 고칠 것보다 크고(*"Small or docs-only PRs get check, not drive."*), 결합 요청은 merge-ready 판정이 있어야 ship 으로 이어진다.
 - **PR 하나에 babysit 은 하나다** — 시작 전에 그 PR 을 다른 세션이 맡고 있는지(같은 브랜치에 진행 중인 push·최근 내 답글) 본다.
 
 ## 순서 — 충돌 → 리뷰 스레드 → CI
@@ -23,6 +23,7 @@
 
 - **충돌은 고치지 않고 보고한다** — rebase·force push·base 변경은 babysit 이 하지 않는다(*"Never mutate stack topology."*). 어느 브랜치가 rebase 가 필요한지 적고 멈춘다. 충돌을 두고 CI 로 넘어가 바쁜 척하지 않는다.
 - 확인: `gh pr view <n> --json mergeable,mergeStateStatus` 의 `mergeable` 이 `CONFLICTING`.
+- **충돌 보고에 drift sweep 을 적는다** — `git fetch origin <base>` 뒤 PR 이 지우거나 옮긴 심볼(`gh pr diff <n>` 의 `-` 줄에서 정의가 사라진 함수·클래스·파일)을 `git diff $(git merge-base HEAD origin/<base>)..origin/<base>` 에서 grep 해 base 가 새로 만든 호출부를 지목한다. 비어 있으면 「없음」. rebase 하는 쪽이 같은 push 에서 그 호출부를 함께 맞춰야 하고(*"trunk may have grown callers of code the stack deletes or moves"*), `ship.md` 7번의 영향 판정 ③ 이 같은 수단을 쓴다.
 
 ### 2. 리뷰 스레드
 
