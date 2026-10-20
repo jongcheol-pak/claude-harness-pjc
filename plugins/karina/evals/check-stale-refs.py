@@ -76,13 +76,16 @@ DEAD = [
     # 구 debugging 참조 1 (2026-10-18 체인 plan 2) — 세 스킬이 함께 읽도록 skills 최상위 PERF-MEASUREMENT.md 로 옮겼다.
     #  대소문자를 가르는 정규식이라 새 이름은 걸리지 않는다.
     'perf-measurement',
+    # 개명 전 이름 5 (2.0.0 플러그인 개명) — 스킬 호출 접두·플러그인 폴더·마켓 이름·hook 태그와 지운 설치 스크립트.
+    #  `pjc/` 브랜치 접두와 단어 `pjc` 는 넣지 않는다: 다른 프로젝트 슬러그 `pjc-homepage`·작성자 이니셜이 오탐된다.
+    'pjc:', 'plugins/pjc', 'pjc-harness', '[pjc ', 'install.ps1',
 ]
 
 # DEAD **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 목록이 곧 검사 대상이라
 #  항목이 조용히 빠지면 그 이름의 잔존이 **검출되지 않는 채 통과**한다(축이 좁아진 것과
 #  전건 통과가 구분되지 않는다). 정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가
 #  목록 변경의 기록이다(`check-harness-consistency.py` 의 허용목록 기준선과 같은 형태).
-DEAD_BASELINE = 32
+DEAD_BASELINE = 37
 
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
@@ -110,6 +113,9 @@ EXCEPTIONS = [
 # 버전 태그만 보면 "v1.220.0의 recovery.md 규정을 따른다" 같은 살아 있는 참조까지 통과한다.
 HISTORY_RX = re.compile(r'v1\.\d{1,3}\.\d+')
 HISTORY_VERB_RX = re.compile(r'제거|삭제|폐기|지웠|지운|없앴|소멸|합쳤|통폐합|개명|→\s*`?guard-|매핑은')
+# 줄 단위 예외 — 개명 뒤 옛 이름이 막히는지 재는 음성 케이스는 옛 이름을 일부러 심고 그 줄에 「개명 전」 을 단다.
+RENAME_MARK = '개명 전'
+RENAME_WHY = '개명 전 표지 줄 — 옛 이름이 이제 막히는지 재는 음성 케이스가 일부러 심은 이름이다'
 HISTORY_WHY = ('회차 1·2의 제거·개명 이력 — 지우면 다음 세션이 옛 이름으로 검색했을 때 '
                '무엇으로 바뀌었는지 알 길이 없다')
 
@@ -286,6 +292,8 @@ def scan_tree():
                 excused_n[why] += n
             elif HISTORY_RX.search(line) and HISTORY_VERB_RX.search(line):
                 excused_n[HISTORY_WHY] += n
+            elif RENAME_MARK in line:
+                excused_n[RENAME_WHY] += n
             else:
                 hits[rel] += n
 

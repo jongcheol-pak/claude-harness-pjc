@@ -457,6 +457,42 @@
     ]
   },
   {
+    "id": "stale-rename-old-names",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/sample/SKILL.md",
+        "find": "이 스킬 문서에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 이름 `pjc:plan` · `plugins/pjc/` · `pjc-harness` · `[pjc 세션 컨텍스트]` · `install.ps1` 을 그대로 적었다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에 5건",
+      "sample/SKILL.md"
+    ]
+  },
+  {
+    "id": "stale-rename-marker-exempt",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/karina/skills/sample/SKILL.md",
+        "find": "이 스킬 문서에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 접두 `pjc:plan` 흔적만 있으면 차단한다 — 개명 전 이름을 일부러 심은 음성 케이스다."
+      }
+    ],
+    "expect_keywords": [
+      "개명 전 표지 줄"
+    ],
+    "expect_absent": [
+      "[FAIL] 살아 있는 자산에"
+    ]
+  },
+  {
     "id": "stale-ledger-exempt-notice",
     "checker": "stale",
     "fixture": "refs-repo",
@@ -1308,12 +1344,12 @@
     "mutate": [
       {
         "file": "plugins/karina/evals/check-stale-refs.py",
-        "find": "DEAD_BASELINE = 32",
-        "replace": "DEAD_BASELINE = 33"
+        "find": "DEAD_BASELINE = 37",
+        "replace": "DEAD_BASELINE = 38"
       }
     ],
     "expect_keywords": [
-      "[FAIL] DEAD 총량이 기준선과 다르다: 32 != 33",
+      "[FAIL] DEAD 총량이 기준선과 다르다: 37 != 38",
       "DEAD_BASELINE"
     ]
   },
