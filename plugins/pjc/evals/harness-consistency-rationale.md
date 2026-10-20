@@ -2,7 +2,7 @@
 
 > `check-harness-consistency.py` 의 축별 「왜 필요한가」가 여기 있다 — 코드에는 **판정 규칙**만
 > 두고 근거 산문은 이 문서가 받는다. 회차 54 가 `lint.py` → `references/lint-rationale.md` 로
-> 같은 분리를 했고 그것이 선례다(`BUDGET.md` 예산 표의 `검사기 evals/*.py` 행이 그 처방을 적는다).
+> 같은 분리를 했고 그것이 선례다(`BUDGET.md` 「처방 ④의 단서 셋」이 그 처방을 적는다).
 >
 > **헤딩을 바꿀 때 기계가 재는 자리와 사람이 맞추는 자리가 갈린다.** `## §N` 헤딩은
 > `check-comment-truncation.py` 축 B 가 `evals/*.py` 의 `§` 인용과 짝을 잰다. `.md` 출처의 「…」
