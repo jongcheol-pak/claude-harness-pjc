@@ -45,7 +45,7 @@ disable-model-invocation: true
 
 `.claude/skills/verify-<app>/features/README.md` 와, 찾을 수 있는 사용자 기능마다 파일 하나를 만든다(라우트·명령·메뉴·문서에서 주요 기능 3~5개로 시작한다). 형태는 `references/feature-map-example/` 를 따른다 — README 색인 하나와 기능마다 파일 하나다.
 
-- **기능 파일은 사용자 관점에서 넷에 답한다** — 그 기능이 무엇인가 · 어떻게 닿는가 · 하네스로 어떻게 조작하는가 · 무엇이 보이면 동작한다는 증명인가. H2 넷은 이 이름 그대로 쓴다: `Sub-features` · `How to get to it (user POV)` · `Driving it with <harness>` · `Gotchas`. 유지 스킬(`/pjc:maintain-verification-skill`)이 이 이름으로 절을 찾는다.
+- **기능 파일은 사용자 관점에서 넷에 답한다** — 그 기능이 무엇인가 · 어떻게 닿는가 · 하네스로 어떻게 조작하는가 · 무엇이 보이면 동작한다는 증명인가. H2 넷은 이 이름 그대로 쓴다: `Sub-features` · `How to get to it (user POV)` · `Driving it with <harness>` · `Gotchas`.
 - **시드 데이터에 경로가 요구하는 전제가 없으면 그 경로는 실패로 보고하고 이유를 그 기능의 `Gotchas` 에 적는다** — 통과시키려고 경로를 약하게 바꾸지 않는다.
 - **지도는 그 레포가 유지하는 검증의 정본이다** — 지도가 진입 경로를 여럿 적었는데 편한 하나만 조작한 증명은 불완전하다.
 
