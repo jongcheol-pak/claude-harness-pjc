@@ -214,6 +214,7 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | 검증 스킬 만들기 (`pjc:create-verification-skill`) | `/pjc:create-verification-skill` 직접 호출 | 레포를 조사해 앱을 사용자처럼 조작하는 검증 스킬(`.claude/skills/verify-앱이름/` — 띄우기·점검·조작·증거·정리 + 기능 지도)을 만들고, 한 번 끝까지 실제로 돌려 증명된 것만 AGENTS.md 의 `Verify (앱 조작)` 줄에 등록 · 웹·CLI/TUI·HTTP 서비스·Windows 데스크톱(karina-computer-use 우선 · 없으면 UI Automation) |
 | 검증 스킬 유지 (`pjc:maintain-verification-skill`) | `/pjc:maintain-verification-skill` 직접 호출 | 앱이 바뀐 뒤 기능 지도를 다시 맞춤 — 기능마다 소스를 읽고 모든 기능을 실제로 조작해, 증명된 수정만 PR 하나로 낸다(고칠 것이 없으면 PR 없음) |
 | 형식 검증 스킬 만들기 (`pjc:create-formal-verification-skill`) | `/pjc:create-formal-verification-skill` 직접 호출 | 깨지면 사용자가 다치고 테스트가 잘 닿지 않는 속성 하나(동시성·재시도·상태 기계·파서)를 골라 맞는 도구(순서 문제는 TLA+)로 형식 검증하고, 일부러 깨뜨린 변경을 잡는지 한 번 증명한 뒤 검증 스킬(`.claude/skills/formal-영역/`)을 AGENTS.md 의 `Verify (형식 검증)` 줄에 등록 · 이후 그 코드를 건드린 task·PR·디버깅 수정에서 검사를 다시 돌린다 · 검증 도구 설치는 승인을 받은 뒤에만 |
+| 형식 검증 스킬 유지 (`pjc:maintain-formal-verification-skill`) | `/pjc:maintain-formal-verification-skill` 직접 호출 | 코드가 바뀐 뒤 형식 검증을 코드에 다시 맞춤 — 동기 커밋부터 덮는 코드의 변경을 읽어 모델·하네스·속성을 고치고 다시 돌려, 검증 드리프트와 코드 버그를 갈라 보고하고 증명된 검증 수정만 PR 하나로 낸다(검증 도구가 없으면 설치하지 않고 blocked) |
 
 계획 체인은 Karina 앱이 떠 있고 이 세션이 Karina 탭 안에 있어야 하며, 워커 세션은 **agent 권한 확인을 끈 채** 돈다 — 하니스 차단 hook 은 그대로 동작하지만 사람이 보는 권한 확인 층은 없다. 워커는 Karina 에서 어느 워크트리를 보고 있든 대상 레포 폴더에서 돌고(병렬 그룹의 워커는 각자 새 worktree 에서 돈다), 그 폴더를 다른 세션 워커가 쓰고 있으면 끝날 때까지 기다린다. PR 모드는 GitHub 원격과 `gh` 로그인이 있고, 지금 브랜치에 미커밋 변경도 기본 브랜치에 없는 커밋(push 안 된 커밋 포함 · merge 된 `pjc/*` 브랜치는 그 PR 뒤 커밋만 센다)도 없을 때만 고를 수 있다. 스택 모드(`T`)는 같은 조건에 더해 병렬 그룹이 없을 때만 고를 수 있다. `Y` 로 승인해도 체인이 끝나면 PR 하나를 엽니다(체인 끝 PR — GitHub 원격과 `gh` 로그인이 있을 때 · merge 는 요청할 때).
 
@@ -302,6 +303,7 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | `/pjc:create-verification-skill` | 검증 스킬 만들기 (직접 호출 전용) |
 | `/pjc:maintain-verification-skill` | 검증 스킬 유지 (직접 호출 전용) |
 | `/pjc:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |
+| `/pjc:maintain-formal-verification-skill` | 형식 검증 스킬 유지 (직접 호출 전용) |
 
 ---
 
@@ -564,7 +566,7 @@ PowerShell 인코딩 문제일 수 있습니다. pjc의 모든 스크립트는 U
 <details>
 <summary>동시성·재시도 버그가 테스트로 안 잡혀요</summary>
 
-`/pjc:create-formal-verification-skill` 을 돌리세요. 레포에서 깨지면 사용자가 다치고 테스트가 잘 닿지 않는 속성 하나(동시성·재시도·상태 기계·파서)를 골라 형식 검증하고, 일부러 깨뜨린 변경을 잡는지 한 번 증명한 뒤 `AGENTS.md`의 `Verify (형식 검증)` 줄에 등록합니다. 그 뒤로 구현·PR 검증·디버깅 수정이 그 코드를 건드릴 때마다 검사를 다시 돌리고, 이미 알고 있는 위반과 새 위반을 갈라 보고합니다. 검증 도구(예: TLA+)가 없으면 무엇을 어디서 받는지 보여 주고 승인을 받은 뒤에만 설치합니다.
+`/pjc:create-formal-verification-skill` 을 돌리세요. 레포에서 깨지면 사용자가 다치고 테스트가 잘 닿지 않는 속성 하나(동시성·재시도·상태 기계·파서)를 골라 형식 검증하고, 일부러 깨뜨린 변경을 잡는지 한 번 증명한 뒤 `AGENTS.md`의 `Verify (형식 검증)` 줄에 등록합니다. 그 뒤로 구현·PR 검증·디버깅 수정이 그 코드를 건드릴 때마다 검사를 다시 돌리고, 이미 알고 있는 위반과 새 위반을 갈라 보고합니다. 검증 도구(예: TLA+)가 없으면 무엇을 어디서 받는지 보여 주고 승인을 받은 뒤에만 설치합니다. 생성된 스킬은 검사마다 덮는 코드와 동기 커밋을 적어 두고, 스킬을 거치지 않은 merge·리팩토링 뒤에는 `/pjc:maintain-formal-verification-skill` 이 그 커밋부터의 변경을 읽어 검증을 코드에 다시 맞추고 검증 드리프트와 코드 버그를 갈라 보고합니다.
 
 </details>
 
