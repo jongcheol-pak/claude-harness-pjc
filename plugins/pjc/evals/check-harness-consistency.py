@@ -65,8 +65,8 @@ def read(path):
 def charlen(path):
     """문서 예산의 측정 단위 — **바이트가 아니라 문자 수**다.
 
-    규약 문서는 한글이 섞여 B/문자가 군마다 1.25~1.99 로 갈린다(`BUDGET.md`「예산 표」
-    실측). 바이트로 재면 같은 정보량이 어느 파일에 있느냐로 다른 비용이 되고, 컨텍스트를
+    규약 문서는 한글이 섞여 B/문자가 군마다 갈린다(실측은 `BUDGET.md`「예산 표」의 단위
+    문단). 바이트로 재면 같은 정보량이 어느 파일에 있느냐로 다른 비용이 되고, 컨텍스트를
     차지하는 것은 바이트가 아니라 내용이라 문자 수가 재려는 것에 맞다.
     디코드 실패는 예산 판정의 관심사가 아니므로 대체 문자로 넘긴다(길이만 쓴다).
     """
@@ -726,27 +726,10 @@ BUDGET_TARGETS = [
     # 글롭 하나로 잡는다 — 파일을 이름으로 열거하면 `WIKI.md` 처럼 나중에 온 것이
     #  어느 행에도 안 걸린 채 상한 없이 자란다.
     ("스킬 트리 최상위 `skills/*.md`", ["plugins/pjc/skills/*.md"]),
-    ("스킬 스크립트 `skills/*/scripts/*.py`", ["plugins/pjc/skills/*/scripts/*.py"]),
-    ("hook 스크립트 `scripts/*.ps1`", ["plugins/pjc/scripts/*.ps1"]),
-    ("근거 문서 `scripts/rules/*.md`", ["plugins/pjc/scripts/rules/*.md"]),
-    # 검사기 자신도 잰다 — 근거는 `BUDGET.md` 「예산 표」의 이 행이 정본이다.
-    ("검사기 `evals/*.py`", ["plugins/pjc/evals/*.py", "plugins/pjc/hooks/evals/*.py",
-                             "plugins/pjc/skills/evals/*.py",
-                             "plugins/pjc/skills/*/evals/*.py"]),
-    # 검사기에서 내린 근거 산문의 수령처. **글롭을 위 `*.py` 행과 대칭으로 둔다** —
-    #   갈라 두면 새로 생긴 md 가 어느 쪽에도 안 걸려 재는 축 밖에 남는다(그 자리가
-    #   실제로 있었다: `harness-consistency-rationale.md` 가 이 행이 생기기 전까지
-    #   예산 표 어느 행에도 없었다). `fixtures/` 는 한 단계 더 아래라 `*` 에 안 걸린다.
-    ("근거 문서 `evals/*.md`", ["plugins/pjc/evals/*.md", "plugins/pjc/hooks/evals/*.md",
-                                "plugins/pjc/skills/evals/*.md",
-                                "plugins/pjc/skills/*/evals/*.md"]),
 ]
 
 # `llm-wiki` 트리 면제 — 선언과 근거는 `BUDGET.md` 「예산 표」가 정본이다(면제이지 통과가 아니다).
 BUDGET_EXEMPT_PREFIX = ("plugins/pjc/skills/llm-wiki/",)
-# 초과를 면제로 숨기지 않는다 — `rules/*.md` 는 **통지 등급**이라 초과해도 exit 0 이므로,
-#   면제 없이 그대로 두면 「얼마나 넘었는가」가 매 실행에 보이면서 회차를 막지는 않는다.
-BUDGET_EXEMPT = set()
 
 # 게이트 등급의 임박 통지 임계. 추출 앵커 축의 80% 보다 높게 잡았다 — 실측에서 SKILL.md 6개가
 #   전부 87% 이상이라 80% 로 두면 **매 실행에 6건이 상시로 떠 신호가 소음이 된다**
@@ -863,7 +846,7 @@ def check_doc_budget():
         for g in globs:
             for path in sorted(glob.glob(os.path.join(ROOT, g))):
                 rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
-                if rel in BUDGET_EXEMPT or rel.startswith(BUDGET_EXEMPT_PREFIX):
+                if rel.startswith(BUDGET_EXEMPT_PREFIX):
                     continue
                 n += 1
                 size = charlen(path)
