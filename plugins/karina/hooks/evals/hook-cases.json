@@ -1817,6 +1817,13 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "[2026-10-20 이름 교체 경계] 옛 접두 브랜치의 force-with-lease 차단 — 면제는 karina/ 로 옮겨 갔다",
+      "command": "git push --force-with-lease origin pjc/feat-x  # 개명 전",
+      "expect_exit": 2,
+      "expect_contains": "refspec 으로 명시한 경우만 통과"
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "[2026-10-17 범위 축소 경계] karina/ 와 main 을 함께 올리는 force-with-lease 차단",
       "command": "git push --force-with-lease origin karina/feat-x main",
       "expect_exit": 2,

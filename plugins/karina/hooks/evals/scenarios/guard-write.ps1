@@ -275,6 +275,8 @@ $trPlanIn = Join-Path $work 'tr-plan-input.jsonl'
 '{"type":"assistant","tool_use":{"name":"Skill","input":{"skill":"karina:plan"}}}' | Set-Content $trPlanIn
 $trImplRes = Join-Path $work 'tr-impl-result.jsonl'
 '{"type":"tool_result","content":"Launching skill: karina:implement"}' | Set-Content $trImplRes
+$trPlanOld = Join-Path $work 'tr-plan-oldname.jsonl'
+'{"type":"assistant","tool_use":{"name":"Skill","input":{"skill":"pjc:plan"}}}' | Set-Content $trPlanOld  # 개명 전
 
 $pg = Join-Path $work 'proj-plangate'; New-Item -ItemType Directory $pg -Force | Out-Null
 $pgPlan = Join-Path $pg 'plan.md'
@@ -298,6 +300,8 @@ $r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ]
 Assert-Case -Name "plan게이트: plan.md Write + karina:plan 흔적 통과 (PG2)" -R $r -ExpectExit 0
 $r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trImplRes)
 Assert-Case -Name "plan게이트: plan.md Write + karina:implement 흔적 통과 (PG3)" -R $r -ExpectExit 0
+$r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $pg $pgPlan "# plan`n- [ ] T1: x" $trPlanOld)
+Assert-Case -Name "plan게이트: plan.md Write + 옛 이름 스킬 흔적만 있으면 차단 (PG3b — 2026-10-20 이름 교체 경계)" -R $r -ExpectExit 2 -ExpectContains 'plan 작성은 karina:plan 스킬로만 합니다'
 # PG4: 기존 plan.md도 Write면 차단 (신규/기존 무관 — 통째 재작성이므로)
 "# 기존 plan`n- [x] T1: done" | Set-Content $pgPlan
 $r = Invoke-Hook 'guard-write.ps1' (New-PlanWriteJson $pg $pgPlan "# 재작성`n- [ ] T1: y" $trPlanNo)
