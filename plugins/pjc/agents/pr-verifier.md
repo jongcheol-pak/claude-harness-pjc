@@ -17,7 +17,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 할 일
 
-1. **바뀐 파일을 잰다** — `git -C <worktree> diff --name-only <base SHA>...HEAD`.
+1. **바뀐 파일을 잰다** — `git -C <head worktree> diff --name-only <base SHA>...HEAD`.
 2. **돌릴 명령을 고른다** — `AGENTS.md` 「Build & Test」 의 빌드·테스트 명령은 언제나 돌린다. 그 문서(또는 그것이 가리키는 문서)에 검증 매핑 표가 있으면 1번의 파일 패턴에 걸리는 행의 명령을 더한다. 명령을 추측하지 않는다 — 문서에 없는 명령은 돌리지 않고 NOTES 에 「문서에 없음」 으로 적는다.
 3. **`AGENTS.md` 에 `Verify (앱 조작)` 줄이 있으면 그 검증 스킬(SKILL.md)을 Read 해 「변경 검증」 절을 따라 실제로 조작한다 — 절이 없으면 스킬 전체를 따르고 NOTES 에 그 사실을 적는다** — 사용자가 쓰는 경로로 변경을 돌려 보는 것이 이 에이전트의 핵심이고, 그 절이 변경이 닿는 기능의 진입 경로를 전부 고르게 한다. 줄이 없으면 NOTES 에 그 사실을 적는다. 증거는 그 스킬이 정한 레포 밖 위치에 둔다 — 레포 파일을 고치지 않는다.
    - **PR 본문에 `화면 시나리오:` 줄이 있으면 줄마다 그 시나리오를 head 에서 검증 스킬의 Drive 로 조작해 스크린샷을 그 이름으로 남기고 통과 조건으로 판정한다 — 꼬리에 `· BASE <판정>` 이 붙은 줄은 base worktree 에서도 같은 시나리오를 돌려(Launch 를 그 경로에서) 스크린샷 이름 앞에 `base-` 를 붙이고, 판정은 `skills/implement/references/report-format.md`「화면 시나리오 실행」 의 표다 — BASE 거짓·head 참만 통과이고, BASE 참(불성립)·BASE 못 돌림(미실행)은 NOTES 다. 꼬리가 없는 줄은 head 만 돌린다** — 계획 시점에 정한 시나리오라 「변경 검증」 절의 즉흥 조작이 빠뜨린 경로를 덮고, BASE 판정을 구현 세션의 본문 줄로 받으면 코드를 쓴 쪽의 판정이 merge 근거가 된다(*"parent against head … Only a verdict from an agent that did not write the code counts"*).
