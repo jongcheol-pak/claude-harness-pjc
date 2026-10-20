@@ -1267,6 +1267,78 @@
       "rationale": "**정지 가드.** 예산은 발동했지만 옮길 수 있는 것이 없다 — `## 개요`는 본문째 남는 정체성이고, 유일한 이동 후보 `## 설계 메모`(옛 `## 구현 방법` 자리 — 픽스처 개명)는 옮기면 하위가 곧바로 발동하는 크기다. 이때 쪼개지 않고 멈추며 그 상태를 실패로 판정하지 않는다."
     },
     {
+      "fixture": "prose-h3-fallback",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "20_projects/personal/demo/feat-thing-3.md"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 20_projects/personal/demo/feat-thing.md",
+        "예산 초과: 20_projects/personal/demo/feat-thing.md",
+        "예산 임박: 20_projects/personal/demo/feat-thing-2.md",
+        "예산 초과: 20_projects/personal/demo/feat-thing-2.md",
+        "정본 포인터 절 없음",
+        "정본 포인터 깨짐"
+      ],
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "### 함정 나",
+          "**정본은 [["
+        ],
+        "20_projects/personal/demo/feat-thing-2.md": [
+          "### 함정 나",
+          "## 관련 지식·레시피"
+        ]
+      },
+      "rationale": "**`###` 경계 폴백.** facts 형식 feature 처럼 이동 가능한 `## ` 가 하나뿐이고 그 절을 통째로 옮기면 하위가 곧바로 발동하는 크기일 때, `## ` 후보만 보는 분할은 옮길 것이 없어 멈춘다(실 vault 의 `feat-implement`·`feat-chain-plan-6` 이 그 상태였다). 폴백은 그 절 안의 가장 큰 `### ` 구역을 하위로 옮기고 원본에 `### ` 헤딩과 정본 포인터를 남긴다. 포인터가 하위의 `### ` 헤딩을 가리키므로 §7-30 이 `### ` 도 절로 읽어야 한다 — `## ` 만 찾으면 분할할 때마다 「정본 포인터 절 없음」이 난다. 한 번 옮겨 풀리므로 `-3.md` 가 생기면 부모가 통째로 따라간 것이다."
+    },
+    {
+      "fixture": "prose-h3-twice",
+      "auto_split": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md",
+        "20_projects/personal/demo/feat-thing-2.md",
+        "20_projects/personal/demo/feat-thing-3.md"
+      ],
+      "expect_absent": [
+        "[SPLIT-FAIL]",
+        "20_projects/personal/demo/feat-thing-4.md"
+      ],
+      "after_expect_absent": [
+        "예산 임박: 20_projects/personal/demo/feat-thing.md",
+        "예산 초과: 20_projects/personal/demo/feat-thing.md",
+        "정본 포인터 절 없음",
+        "정본 포인터 깨짐"
+      ],
+      "expect_file_contains": {
+        "20_projects/personal/demo/feat-thing.md": [
+          "## 관련 지식·레시피",
+          "### 함정 다"
+        ]
+      },
+      "rationale": "**같은 부모에서 `###` 을 두 번 옮긴다.** 구역 하나를 옮겨도 아직 발동 중이라 같은 실행이 둘째 구역을 옮겨야 풀린다. 첫 이동 뒤 부모 절에는 정본 포인터가 섞이는데, 그 절을 통째 후보로 다시 집으면 포인터까지 하위로 딸려 가 원본에서 두 번 거쳐야 본문에 닿는다. 그래서 포인터를 담은 `## ` 는 통째 이동 후보에서 빼고 폴백으로만 다룬다 — 제목으로 막으면 한 호출 안에서만 통해 다음 실행이 다시 집는다. 부모 절이 원본에 남아 있는지와 `-4.md` 가 없는지로 잰다."
+    },
+    {
+      "fixture": "prose-h3-guard",
+      "auto_split": true,
+      "expect_keywords": [
+        "수행 대상 없음"
+      ],
+      "expect_absent": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "after_expect_keywords": [
+        "예산 임박: 20_projects/personal/demo/feat-thing.md",
+        "auto-split이 옮길 `## ` 경계가 없다"
+      ],
+      "rationale": "**폴백에도 정지 가드가 걸린다.** `### ` 구역이 하나뿐이고 그것을 옮겨도 하위가 곧바로 발동하는 크기면 옮기지 않는다 — 옮기면 같은 크기의 파일이 하나 더 생겨 다음 실행이 그것을 또 쪼개려 든다. 처방이 없으니 신호는 그대로 남아야 한다(신호와 처방이 한 술어를 공유한다). `prose-h3-fallback` 의 음성 짝이다."
+    },
+    {
       "fixture": "prose-under",
       "auto_split": true,
       "expect_keywords": [

@@ -2173,6 +2173,18 @@ def _md_sections(text, probe=None):
     return out
 
 
+def _h3_sections(text, s0, s1):
+    """`## ` 섹션 `[s0, s1)` 안의 `### ` 구역을 [(제목, 시작, 끝)]으로 돌려준다.
+
+    판정 사본·길이 보존은 `_md_sections` 와 같다. 첫 `### ` 앞의 도입 문단은 어느 구역에도
+    들지 않는다 — 그 문단은 부모 절에 남는다."""
+    probe = strip_code(text[s0:s1])
+    marks = [(s0 + m.start(), m.group(1).strip())
+             for m in re.finditer(r"(?m)^###[ \t]+(.+)$", probe)]
+    return [(title, pos, marks[i + 1][0] if i + 1 < len(marks) else s1)
+            for i, (pos, title) in enumerate(marks)]
+
+
 def _root_stem(rel):
     """분할 family 의 **루트 stem** — 경로에서 `.md`와 후행 순번 접미(`-2`·`-2-2`)를 뗀다.
 
@@ -2221,12 +2233,15 @@ def _label_with_section(base, title):
     return base + " — " + title
 
 
-def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
+def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap, parent=None):
     """하위 파일 본문. frontmatter는 원본 복사 + `index_label`에 섹션 제목을 붙인다.
 
     **타입별 필수 섹션을 하위에도 재현한다.** 하위는 원본과 같은 타입이라(§4 2번) 그 타입의
     정체성 절이 있어야 한다. 재현 방식은 결정론이다: 전부 **상위를 가리키는 한 줄**을 둔다
-    (정본은 하나라는 것을 문면으로 못박는다)."""
+    (정본은 하나라는 것을 문면으로 못박는다).
+
+    `parent` 가 있으면 `title` 은 그 `## ` 안의 `### ` 구역이다(`###` 경계 폴백) — 하위에도
+    `## {parent}` 아래 `### {title}` 로 둬 원본과 같은 절 구조를 유지한다."""
     head = "---\n"
     for k, v in fm.items():
         if k == "index_label":
@@ -2242,14 +2257,15 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap):
     #  §7-20 이 원본의 각주 경로를 더는 재지 못한다.
     keep_body = ""
     for req in TYPE_REQUIRED_SECTIONS.get(typ, ()):
-        if req == title:
+        if req == (parent or title):
             continue
         src = secmap.get(req)
         if src is None:
             continue
         ref = "정본은 [[%s|%s]]의 「%s」이다." % (rel[:-len(".md")], label, req)
         keep_body += "## %s\n\n%s\n\n" % (req, ref)
-    out += keep_body + "## %s\n\n" % title + body
+    head_sec = ("## %s\n\n### %s\n\n" % (parent, title)) if parent else ("## %s\n\n" % title)
+    out += keep_body + head_sec + body
 
     used = set(re.findall(r"\[\^([^\]\n]+)\]", keep_body + body))
     defs = [d for d in FOOTNOTE_DEF_RX.findall(text)
@@ -2338,34 +2354,68 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
     for cand in sorted(movable, key=lambda x: x[2] - x[1], reverse=True):
         c_title, c0, c1 = cand
         c_body = cur[cur.index("\n", c0) + 1:c1]
-        if not c_body.strip():
+        # **정본 포인터가 섞인 절은 통째로 옮기지 않는다** — 그런 절은 `###` 경계 폴백만 만든다
+        #  (구역 하나를 옮긴 자리에 포인터가 남는다). 통째로 옮기면 그 포인터까지 하위로 딸려 가
+        #  원본에서 두 번 거쳐야 본문에 닿는다. 제목 keep 은 한 호출 안에서만 살아 다음 실행이
+        #  다시 집으므로 내용으로 가른다(포인터 전용 판정과 같은 축). 그 절은 폴백이 맡는다.
+        if PROSE_PTR_RX.search(c_body):
             continue
-        # **본문이 정본 포인터뿐인 절은 옮기지 않는다** — 옮겨도 문서가 줄지 않고 같은 스텁이
-        #  하나 더 생길 뿐이다. 위 빈 본문 판정과 사유가 달라 분기를 합치지 않는다(저쪽은
-        #  「비어 있다」, 이쪽은 「옮길 실 내용이 없다」).
-        #  **이 판정이 여기 있어야 하는 이유**: relocate_sections의 `keep`은 한 번의 호출
-        #  안에서만 살아 있어(지역 변수) 다음 호출이 같은 스텁을 다시 최대 후보로 집는다.
-        #  파일 내용으로 가르면 호출 경계와 무관해진다.
-        #  **스텁의 생산자는 둘이고 둘 다 정상 동작이다** — 이동 자리에 남는 포인터와
-        #  _sub_page_text가 하위에 재현하는 필수 섹션 포인터. 그 재현을 없애는 것은 처방이 아니다.
-        # 각주 정의 줄도 함께 뺀다 — 옮긴 자리에 포인터와 **원본에 남긴 각주 정의**가 남는데,
-        #  정의만으로는 옮길 실 내용이 아니다. 빼지 않으면 그 스텁이 다음 라운드에 다시 최대
-        #  후보로 잡혀, 각주를 데리고 하위로 갔다가 원본에 남은 참조가 깨진다.
-        if not FOOTNOTE_DEF_RX.sub("", PTR_ONLY_LINE_RX.sub("", c_body)).strip():
+        hit = _relocation_candidate(cand, c_body, text, fm, typ, label, rel, nl, secmap, sub_rel)
+        if hit:
+            return hit
+    # **`###` 경계 폴백** — 옮길 수 있는 `## ` 가 없으면 기본 유지 섹션 밖 `## ` 안의 `### `
+    #  구역을 크기순으로 같은 가드에 건다. facts 형식 feature 는 `## 개요`·`## 관련 지식·레시피`
+    #  둘뿐이라, 뒤의 절이 통째로는 하위를 곧바로 발동시켜 이 폴백 없이는 처방이 없다.
+    #  범위를 `extra_keep` 으로 줄이지 않는다 — 같은 부모에서 여러 번 옮길 수 있어야 한다.
+    #  이미 옮긴 구역은 제목(`extra_keep`)과 포인터 전용 판정이 뺀다.
+    base_keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(typ, ()))
+    subs = []
+    for p_title, p0, p1 in secs:
+        if p_title in base_keep:
             continue
-        # **옮겨도 문서가 줄지 않는 절은 후보에서 뺀다.** 이동 자리에는 정본 포인터가 남는데,
-        #  그 줄이 본문보다 길면 옮길수록 파일이 커진다 — 실측된 concept 허브는 127~314자짜리
-        #  절 8개가 약 200자 포인터로 바뀌며 하위 13개까지 번졌고, 그때 허브는 예산의 82%가
-        #  비계였다. 위의 스텁 판정과 축이 다르다: 저쪽은 「옮길 실 내용이 없다」이고 이쪽은
-        #  「내용은 있지만 옮기면 손해다」라, 합치면 한쪽 사유가 다른 쪽에 가려진다.
-        if len(c_body) <= len(_relocation_pointer(sub_rel, label, c_title, len(c_body))):
-            continue
-        sub_text = _sub_page_text(text, fm, typ, c_title, c_body, label, rel, nl, secmap)
-        sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
-        if sst and (sst.critical or sst.over):
-            continue
-        return (cand, c_body, sub_text)
+        subs += [(x, p_title) for x in _h3_sections(cur, p0, p1) if x[0] not in extra_keep]
+    for cand, parent in sorted(subs, key=lambda x: x[0][2] - x[0][1], reverse=True):
+        c_title, c0, c1 = cand
+        c_body = cur[cur.index("\n", c0) + 1:c1]
+        hit = _relocation_candidate(cand, c_body, text, fm, typ, label, rel, nl, secmap, sub_rel, parent)
+        if hit:
+            return hit
     return None
+
+
+def _relocation_candidate(cand, c_body, text, fm, typ, label, rel, nl, secmap, sub_rel, parent=None):
+    """한 후보(`## ` 절 또는 `### ` 구역)가 실제로 옮길 수 있는가 — 되면 (후보, 본문, 하위 텍스트).
+
+    `## ` 후보와 `###` 경계 폴백이 **같은 가드**를 쓰게 뽑았다 — 갈리면 폴백이 `## ` 쪽에서
+    막던 것(빈 본문·포인터 전용·옮기면 손해·하위 곧바로 발동)을 다시 연다."""
+    c_title = cand[0]
+    if not c_body.strip():
+        return None
+    # **본문이 정본 포인터뿐인 절은 옮기지 않는다** — 옮겨도 문서가 줄지 않고 같은 스텁이
+    #  하나 더 생길 뿐이다. 위 빈 본문 판정과 사유가 달라 분기를 합치지 않는다(저쪽은
+    #  「비어 있다」, 이쪽은 「옮길 실 내용이 없다」).
+    #  **이 판정이 여기 있어야 하는 이유**: relocate_sections의 `keep`은 한 번의 호출
+    #  안에서만 살아 있어(지역 변수) 다음 호출이 같은 스텁을 다시 최대 후보로 집는다.
+    #  파일 내용으로 가르면 호출 경계와 무관해진다.
+    #  **스텁의 생산자는 둘이고 둘 다 정상 동작이다** — 이동 자리에 남는 포인터와
+    #  _sub_page_text가 하위에 재현하는 필수 섹션 포인터. 그 재현을 없애는 것은 처방이 아니다.
+    # 각주 정의 줄도 함께 뺀다 — 옮긴 자리에 포인터와 **원본에 남긴 각주 정의**가 남는데,
+    #  정의만으로는 옮길 실 내용이 아니다. 빼지 않으면 그 스텁이 다음 라운드에 다시 최대
+    #  후보로 잡혀, 각주를 데리고 하위로 갔다가 원본에 남은 참조가 깨진다.
+    if not FOOTNOTE_DEF_RX.sub("", PTR_ONLY_LINE_RX.sub("", c_body)).strip():
+        return None
+    # **옮겨도 문서가 줄지 않는 절은 후보에서 뺀다.** 이동 자리에는 정본 포인터가 남는데,
+    #  그 줄이 본문보다 길면 옮길수록 파일이 커진다 — 실측된 concept 허브는 127~314자짜리
+    #  절 8개가 약 200자 포인터로 바뀌며 하위 13개까지 번졌고, 그때 허브는 예산의 82%가
+    #  비계였다. 위의 스텁 판정과 축이 다르다: 저쪽은 「옮길 실 내용이 없다」이고 이쪽은
+    #  「내용은 있지만 옮기면 손해다」라, 합치면 한쪽 사유가 다른 쪽에 가려진다.
+    if len(c_body) <= len(_relocation_pointer(sub_rel, label, c_title, len(c_body))):
+        return None
+    sub_text = _sub_page_text(text, fm, typ, c_title, c_body, label, rel, nl, secmap, parent)
+    sst = budget_state(sub_rel, frontmatter(sub_text), sub_text)
+    if sst and (sst.critical or sst.over):
+        return None
+    return (cand, c_body, sub_text)
 
 
 def relocatable(rel, fm, text, nl):
@@ -2430,7 +2480,8 @@ def prescribable(rel, fm, text, nl, vault=None):
     return relocatable(rel, fm, text, nl)
 
 def relocate_sections(ses):
-    """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다.
+    """§7-2 발동 산문 페이지에서 **가장 큰 섹션의 본문을** 하위로 옮긴다 — 옮길 `## ` 이 없으면
+    그 안의 가장 큰 `### ` 구역이다(`_pick_relocatable` 의 폴백).
 
     헤딩과 포인터 1줄은 원본에 남는다 — 제목까지 지우면 목차에서 그 주제가 사라져 물을
     실마리가 없어진다."""
@@ -3767,9 +3818,10 @@ def main():
             tf = tgt if tgt.endswith(".md") else tgt + ".md"
             if tf not in pages:
                 warn(f"정본 포인터 깨짐: {r} -> {tgt} 없음 (schema-budget §4)", r)
-            elif not re.search(r"(?m)^##[ \t]+" + re.escape(sec_name) + r"[ \t]*$",
+            elif not re.search(r"(?m)^#{2,3}[ \t]+" + re.escape(sec_name) + r"[ \t]*$",
                                pages[tf][2]):
-                warn(f"정본 포인터 절 없음: {r} -> {tgt}에 '## {sec_name}' 없음 "
+                # `### ` 도 절로 읽는다 — `###` 경계 폴백의 포인터는 하위의 `### {소제목}` 을 가리킨다.
+                warn(f"정본 포인터 절 없음: {r} -> {tgt}에 '{sec_name}' 절 없음 "
                      f"— 옮긴 본문에 닿지 못한다 (schema-budget §4)", r)
 
     # §7-32: feature의 한 `## ` 섹션이 통짜로 커서 부분 조회가 안 되는 상태를 알린다.
