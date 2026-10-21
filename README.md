@@ -1,3 +1,6 @@
+> **이 레포는 이전됐습니다 — [jongcheol-pak/Karina-Plugins](https://github.com/jongcheol-pak/Karina-Plugins) 의 `plugins/claude-harness-karina/` 가 이제 개발·배포 위치입니다.**
+> 설치: `claude plugin marketplace add jongcheol-pak/Karina-Plugins` → `claude plugin install karina@karina-plugins`. 이 레포는 이력 보관용이며 더는 갱신하지 않습니다.
+
 <p align="center">
   <img src="assets/logo.png" alt="claude-harness-karina logo" width="180" />
 </p>
